@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import re
 import numpy as np
 
@@ -18,60 +20,76 @@ def v_ld_max(v1, w1, v2, w2, v3, w3):
     w_test = w_test[valid]
 
     ld = v_test / w_test
-    return v_test[np.argmax(ld)]
+    return float(v_test[np.argmax(ld)])
 
 
 # ------------------------------------
-# Regex für Polarenzeile
+# Regex: extract the three polar points
+# (ONLY what we need)
 # ------------------------------------
 polar_re = re.compile(
-    r'''
+    r"""
     ^\s*\{\s*
-    (\d+)\s*,\s*
-    "([^"]+)"\s*,\s*
-    ([\d.]+)\s*,\s*
-    ([\d.]+)\s*,\s*(-?[\d.]+)\s*,\s*
-    ([\d.]+)\s*,\s*(-?[\d.]+)\s*,\s*
-    ([\d.]+)\s*,\s*(-?[\d.]+)\s*
-    (.*)
-    \}\s*,?\s*$
-    ''',
+    \d+\s*,\s*           # index
+    "[^"]+"\s*,\s*      # name
+    [\d.]+\s*,\s*       # L/D ref
+
+    ([\d.]+)\s*,\s*(-?[\d.]+)\s*,   # v1, w1
+    ([\d.]+)\s*,\s*(-?[\d.]+)\s*,   # v2, w2
+    ([\d.]+)\s*,\s*(-?[\d.]+)\s*,   # v3, w3
+    """,
     re.VERBOSE
 )
 
+
+def has_vld(line: str) -> bool:
+    # Require TWO numeric fields at the end: flaps + V(L/D)
+    return bool(
+        re.search(
+            r",\s*\d+\s*,\s*\d+(\.\d+)?\s*\}\s*,\s*$",
+            line
+        )
+    )
+
+def append_vld(line: str, v_ld: float) -> str:
+    line = line.rstrip()
+
+    # must end with }, allowing whitespace
+    if not re.search(r"\}\s*,\s*$", line):
+        return line
+
+    if has_vld(line):
+        return line
+
+    # remove closing "},"
+    base = re.sub(r"\s*\}\s*,\s*$", "", line)
+
+    # remove ALL trailing whitespace
+    base = re.sub(r"\s+$", "", base)
+
+    # normalize flap flag: exactly ",0" or ",1"
+    base = re.sub(r",\s*([01])$", r",\1", base)
+
+    # append V(L/D) with ZERO spaces
+    return base + "," + format(v_ld, ".1f") + "},"
+
+
 # ------------------------------------
-# Datei lesen → erweiterte Tabelle ausgeben
+# Main
 # ------------------------------------
 with open("PolarTable.txt", "r", encoding="utf-8") as f:
     for line in f:
-        line = line.rstrip()
         m = polar_re.match(line)
 
         if not m:
-            print(line)
+            print(line, end="")
             continue
-
-        groups = m.groups()
-
-        idx  = groups[0]
-        name = groups[1]
-        ldref = groups[2]
-
-        v1, w1 = float(groups[3]), float(groups[4])
-        v2, w2 = float(groups[5]), float(groups[6])
-        v3, w3 = float(groups[7]), float(groups[8])
-
-        rest = groups[9].rstrip().rstrip(',')
 
         try:
-            v_ld = round(v_ld_max(v1, w1, v2, w2, v3, w3), 1)
+            v1, w1, v2, w2, v3, w3 = map(float, m.groups())
+            v_ld = v_ld_max(v1, w1, v2, w2, v3, w3)
+            print(append_vld(line, v_ld))
         except Exception:
-            print(line)
-            continue
-
-        print(
-            f'{{ {idx}, "{name}", {ldref}, '
-            f'{v1:g},{w1:g},{v2:g},{w2:g},{v3:g},{w3:g}'
-            f'{rest}, {v_ld} }},'
-        )
+            # safety: never destroy data
+            print(line, end="")
 
