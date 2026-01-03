@@ -1,7 +1,7 @@
 #include "LeakTest.h"
 
 #include "sensor/press_diff/AirspeedSensor.h"
-#include "PressureSensor.h"
+#include "sensor/pressure/PressureSensor.h"
 #include "IpsDisplay.h"
 #include "ESPRotary.h"
 #include "sensor.h"

@@ -1,6 +1,6 @@
 #include "BMPVario.h"
 
-#include "PressureSensor.h"
+#include "sensor/pressure/PressureSensor.h"
 #include "Atmosphere.h"
 #include "S2F.h"
 #include "AverageVario.h"

@@ -73,7 +73,6 @@ extern i2cbus::I2C& i2c;
 
 extern AnalogInput *AnalogInWk;
 
-extern float airspeed;
 extern float aTE;
 extern float tas;
 extern float aTES2F;

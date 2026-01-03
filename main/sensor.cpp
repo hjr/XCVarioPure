@@ -2,12 +2,11 @@
 #include "sensor.h"
 
 #include "Cipher.h"
-#include "BME280_ESP32_SPI.h"
+#include "sensor/pressure/bme280_spi.h"
+#include "sensor/pressure/spl06_007.h"
 #include "ESP32NVS.h"
 #include "sensor/press_diff/AirspeedSensor.h"
 #include "sensor/SensorMgr.h"
-// #include "sensor/press_diff/abpmrr.h"
-// #include "sensor/press_diff/mcph21.h"
 #include "BMPVario.h"
 #include "comm/BTspp.h"
 #include "comm/BTnus.h"
@@ -50,7 +49,6 @@
 #include "LeakTest.h"
 #include "Units.h"
 #include "Flap.h"
-#include "SPL06-007.h"
 #include "wind/WindCalcTask.h"
 #include "comm/SerialLine.h"
 #include "comm/OneWireBus.h"
@@ -961,6 +959,7 @@ void system_startup(void *args){
         asSensor = 0;
     }
 
+	// Configure pressure sensors
     ESP_LOGI(FNAME,"Absolute pressure sensors init, detect type of sensor type..");
 	float ba_t, ba_p, te_t, te_p;
 	SPL06_007 *splBA = new SPL06_007( SPL06_007_BARO );

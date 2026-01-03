@@ -1,5 +1,5 @@
 
-#include "SPL06-007.h"
+#include "spl06_007.h"
 #include "Atmosphere.h"
 #include "sensor.h"
 #include "logdefnone.h"

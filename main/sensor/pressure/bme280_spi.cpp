@@ -2,7 +2,7 @@
   BME280_ESP32_SPI.cpp Bosch BME280 for ESP32
 
  */
-#include "BME280_ESP32_SPI.h"
+#include "bme280_spi.h"
 
 #include "Atmosphere.h"
 #include "sensor.h"
