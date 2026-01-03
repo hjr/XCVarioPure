@@ -836,12 +836,6 @@ static void system_menu_create_airspeed(SetupMenu *top) {
 	spc->setHelp("Calibration of airspeed sensor (AS). Normally not needed, unless the pressure probe has a systematic error");
 	top->addEntry(spc);
 
-	SetupMenuSelect *auze = new SetupMenuSelect("Set AS Zero", RST_IMMEDIATE, nullptr, &autozero);
-	top->addEntry(auze);
-	auze->setHelp("Recalculate zero point for airspeed sensor (immidiate restart)");
-	auze->addEntry("Cancel");
-	auze->addEntry("Start");
-
 	SetupMenuSelect *stawaen = new SetupMenuSelect("Stall Warning", RST_NONE, nullptr, &stall_warning);
 	stawaen->setHelp("Enable alarm sound when speed goes below configured stall speed (until 30% less)");
 	stawaen->mkEnable();

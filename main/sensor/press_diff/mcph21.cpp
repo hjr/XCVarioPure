@@ -58,7 +58,7 @@ bool MCPH21::probe()
 bool MCPH21::setup()
 {
     // set continuous mode
-    esp_err_t err = _bus->writeByte(_address, 0x30, 0x0B); // continuous mode, sleep 62.5msec
+    [[maybe_unused]] esp_err_t err = _bus->writeByte(_address, 0x30, 0x0B); // continuous mode, sleep 62.5msec
     return AirspeedSensor::setup();
 }
 

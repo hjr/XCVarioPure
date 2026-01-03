@@ -287,7 +287,7 @@ SetupNG<int>  			alt_display_mode( "ALT_DISP_MODE" , Altimeter::MODE_QNH );
 SetupNG<float>  		transition_alt( "TRANS_ALT", 50, true, SYNC_NONE, PERSISTENT, nullptr, QUANT_NONE, LIMITS(0, 400, 10)); // Transition Altitude
 SetupNG<int>  			glider_type( "GLIDER_TYPE_IDX", 1000, true, SYNC_BIDIR, PERSISTENT, polar_update );
 
-SetupNG<float>  		as_offset( "AS_OFFSET" , -1 );
+SetupNG<float>  		as_offset( "AS_OFFSET" , -1 ); // enforce an air speed sensor zero calibration at first start and after a factory reset
 static const limits_t bat_limits = {0.0, 28.0, 0.1};
 SetupNG<float>  		bat_low_volt( "BAT_LOW_VOLT" , 11.5, true, SYNC_BIDIR, PERSISTENT, nullptr, QUANT_NONE, &bat_limits);
 SetupNG<float>  		bat_red_volt( "BAT_RED_VOLT", 11.75, true, SYNC_BIDIR, PERSISTENT, nullptr, QUANT_NONE, &bat_limits);
@@ -340,7 +340,6 @@ SetupNG<int>		    rotary_dir( "ROTARY_DIR", 0 );
 SetupNG<int>		    rotary_inc( "ROTARY_INC", 1 );
 SetupNG<int>		    student_mode( "STUD_MOD", 0 );
 SetupNG<float>		    password( "PASSWORD", 0, true, SYNC_NONE, PERSISTENT, nullptr, QUANT_NONE, LIMITS(0, 1000, 1));
-SetupNG<int>		    autozero( "AUTOZERO", 1, false );  // AS autozero at factory
 SetupNG<int>		    ahrs_rpyl_dataset("RPYL", 0 );
 SetupNG<int>		    ahrs_autozero("AHRSAZ", 0 );
 SetupNG<float>		    ahrs_gyro_factor("AHRSMGYF", 100, true, SYNC_NONE, PERSISTENT, nullptr, QUANT_NONE, &percentage_limits);

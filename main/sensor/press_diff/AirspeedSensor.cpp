@@ -136,19 +136,20 @@ bool AirspeedSensor::setup()
     }
 
     // Long term stability of Sensor as from datasheet 0.5% per year -> 4000 * 0.005 = 20
-    if (_offset < 0 || (plausible && deviation_ok) || autozero.get())
+    if (_offset < 0 || (plausible && deviation_ok))
     {
         ESP_LOGI(FNAME, "Airspeed OFFSET correction ongoing, calculate new _offset...");
-        if (autozero.get())
-            autozero.set(0);
         int32_t rawOffset = 0;
+        int samples = 0;
         for (int i = 0; i < 100; i++)
         {
-            fetch_pressure(adcval, temp);
-            rawOffset += adcval;
+            if ( fetch_pressure(adcval, temp) ) {
+                samples++;
+                rawOffset += adcval;
+            }
             vTaskDelay(10 / portTICK_PERIOD_MS);
         }
-        _offset = fast_iroundf(rawOffset / 100.f);
+        _offset = fast_iroundf(float(rawOffset) / samples);
         if (offsetPlausible(_offset)) {
             ESP_LOGI(FNAME, "Offset procedure finished, offset: %d", _offset);
             as_offset.set(_offset);
