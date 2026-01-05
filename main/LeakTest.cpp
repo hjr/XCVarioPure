@@ -44,9 +44,8 @@ void LeakTest::start(PressureSensor* bmpBA, PressureSensor* bmpTE, AirspeedSenso
 					loops_run++;
 				}
 			}
-			bool ok1 = false, ok2 = false;
-			ba += bmpBA->readPressure(ok1);
-			te += bmpTE->readPressure(ok2);
+			ba += bmpBA->doRead();
+			te += bmpTE->doRead();
 			delay(33);
 		}
 

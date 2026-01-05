@@ -5,29 +5,54 @@
 #include "bme280_spi.h"
 
 #include "Atmosphere.h"
+#include "../SensorMgr.h"
 #include "sensor.h"
-#include <logdefnone.h>
+#include "logdef.h"
 
 #include <freertos/FreeRTOS.h>
 #include <freertos/semphr.h>
 
-#include <cstring>
 #include <cstdint>
-#include <cstdio>
 
-extern SemaphoreHandle_t spiMutex;
+/*
+BMP:
+    SCK - This is the SPI Clock pin, its an input to the chip
+    SDO - this is the Serial Data Out / Master In Slave Out pin (MISO), for data sent from the BMP183 to your processor
+    SDI - this is the Serial Data In / Master Out Slave In pin (MOSI), for data sent from your processor to the BME280
+    CS - this is the Chip Select pin, drop it low to start an SPI transaction. Its an input to the chip
+ */
 
-bool BME280_ESP32_SPI::setSPIBus(gpio_num_t sclk, gpio_num_t mosi, gpio_num_t miso, gpio_num_t cs, uint32_t freq)
-{
-	_sclk = sclk;
-	_mosi = mosi;
-	_miso = miso;
-	_cs =   cs;
-	_freq = freq;
-	return true;
-}
 
-BME280_ESP32_SPI::BME280_ESP32_SPI()
+#define CS_bme280BA GPIO_NUM_26   // before CS pin 33
+#define CS_bme280TE GPIO_NUM_33   // before CS pin 26
+#define FREQ_BMP_SPI 6555556 // for SPI BMP pressure sensor clock
+
+#define c_sb      0   //stanby 0: 0,5 mS 1: 62,5 mS 2: 125 mS
+#define c_filter  0   //filter O = off
+#define c_osrs_t  5   //OverSampling Temperature
+#define c_osrs_p  5   //OverSampling Pressure (5:x16 4:x8, 3:x4 2:x2 )
+#define c_osrs_h  0   //OverSampling Humidity x4
+#define c_Mode    3   //Normal mode
+
+static spi_transaction_t ta = {
+	.flags = SPI_TRANS_USE_RXDATA | SPI_TRANS_USE_TXDATA,
+	.cmd = 0,
+	.addr = 0,
+	.length = 0,
+	.rxlength = 0,
+	.user = nullptr,
+	.tx_data = {0, 0, 0, 0},
+	.rx_data = {0, 0, 0, 0}
+};
+
+
+BME280_SPI::BME280_SPI(SensorId id) :
+	PressureSensor(id),
+	_sclk(SPI_SCLK),
+	_mosi(SPI_MOSI),
+	_miso(SPI_MISO),
+	_cs((id == SensorId::STATIC_PRESSURE) ? CS_bme280BA : CS_bme280TE),
+	_freq(FREQ_BMP_SPI * ((100.0 + display_clock_adj.get())/100.0))
 {
 	_t_fine = 0;
 	_dig_T1 = 0;
@@ -50,37 +75,33 @@ BME280_ESP32_SPI::BME280_ESP32_SPI()
 	_dig_H4 = 0;
 	_dig_H5 = 0;
 	_dig_H6 = 0;
-	exponential_average = 0;
+	// exponential_average = 0;
 	init_err = false;
-	_avg_alt = 0;
-	_avg_alt_std = 0;
-	_freq = 0;
-	_cs = GPIO_NUM_0;
-	_miso = GPIO_NUM_MAX;
-	_mosi = GPIO_NUM_MAX;
-	_sclk = GPIO_NUM_MAX;
+	// _avg_alt = 0;
+	// _avg_alt_std = 0;
 }
 
-#define c_sb      0   //stanby 0: 0,5 mS 1: 62,5 mS 2: 125 mS
-#define c_filter  0   //filter O = off
-#define c_osrs_t  5   //OverSampling Temperature
-#define c_osrs_p  5   //OverSampling Pressure (5:x16 4:x8, 3:x4 2:x2 )
-#define c_osrs_h  0   //OverSampling Humidity x4
-#define c_Mode    3   //Normal mode
+// bool BME280_SPI::setSPIBus(gpio_num_t sclk, gpio_num_t mosi, gpio_num_t miso, uint32_t freq)
+// {
+// 	_sclk = sclk;
+// 	_mosi = mosi;
+// 	_miso = miso;
+// 	_freq = freq;
+// 	return true;
+// }
 
-static spi_transaction_t ta = {
-	.flags = SPI_TRANS_USE_RXDATA | SPI_TRANS_USE_TXDATA,
-	.cmd = 0,
-	.addr = 0,
-	.length = 0,
-	.rxlength = 0,
-	.user = nullptr,
-	.tx_data = {0, 0, 0, 0},
-	.rx_data = {0, 0, 0, 0}
-};
+bool BME280_SPI::probe()
+{
+    uint8_t id = readID();
+    if (id != 0x58) {
+        return false;
+	}
+    return true;
+}
 
-//****************BME280_ESP32_SPI*************************************************
-bool BME280_ESP32_SPI::begin(){
+
+//****************BME280_SPI*************************************************
+bool BME280_SPI::setup(){
 
 	// SPI device configuration
 	spi_device_interface_config_t devcfg = {
@@ -109,12 +130,12 @@ bool BME280_ESP32_SPI::begin(){
 	uint8_t ctrl_hum  = c_osrs_h;
 
 	WriteRegister(0xE0, 0xB6); //reset device
-	delay(20);
+	vTaskDelay(pdMS_TO_TICKS(20));
 	int id = readID();
 	int count = 0;
 	while( (id != 0x58) && (count < 20) ) {
 		id = readID();
-		delay( 20 );
+		vTaskDelay(pdMS_TO_TICKS(20));
 		count++;
 	}
 	if( count == 500 ) {
@@ -127,10 +148,10 @@ bool BME280_ESP32_SPI::begin(){
 	WriteRegister(0xF2, ctrl_hum);
 	WriteRegister(0xF4, ctrl_meas);
 	WriteRegister(0xF5, config);
-	delay( 20 );
+	vTaskDelay(pdMS_TO_TICKS(20));
 	readCalibration();
 	if( _dig_T2 == 0 && _dig_T2 == 0 ) {
-		delay( 20 );
+		vTaskDelay(pdMS_TO_TICKS(20));
 		readCalibration();
 		ESP_LOGI(FNAME,"BMP280 Calibration Data read retry CS: %d ", _cs);
 	}
@@ -142,7 +163,7 @@ bool BME280_ESP32_SPI::begin(){
 }
 
 //***************BME280 ****************************
-void BME280_ESP32_SPI::WriteRegister(uint8_t reg_address, uint8_t data) {
+void BME280_SPI::WriteRegister(uint8_t reg_address, uint8_t data) {
 	xSemaphoreTake(spiMutex,portMAX_DELAY );
 	ta.addr =  reg_address & 0x7F;   // Bit 7 != 0 for Write operation!
 	ta.tx_data[0] = data;
@@ -158,7 +179,7 @@ void BME280_ESP32_SPI::WriteRegister(uint8_t reg_address, uint8_t data) {
 }
 
 //*******************************************************
-void BME280_ESP32_SPI::readCalibration(void) {
+void BME280_SPI::readCalibration(void) {
 	// ESP_LOGI(FNAME,"BME280_ESP32_SPI::readCalibration");
 	_dig_T1 = read16bit(0x88);
 
@@ -179,7 +200,7 @@ void BME280_ESP32_SPI::readCalibration(void) {
 }
 
 //***************BME280 ****************************
-float BME280_ESP32_SPI::readTemperature( bool& success ){
+float BME280_SPI::readTemperature( bool& success ){
 	int32_t adc_T = readADC(0x7A);
 	success = (adc_T != 0);
 	float t=compensate_T(adc_T) / 100.0;
@@ -189,10 +210,10 @@ float BME280_ESP32_SPI::readTemperature( bool& success ){
 }
 
 //***************BME280 ****************************
-float BME280_ESP32_SPI::readPressure(bool &ok){
+float BME280_SPI::doRead() {
+	bool ok=false;
 	if( init_err ){
-		ok=false;
-		return 0.0;
+		return NAN;
 	}
 	// ESP_LOGI(FNAME,"++BMP280 readPressure cs:%d", _cs);
 	bool success;
@@ -200,7 +221,7 @@ float BME280_ESP32_SPI::readPressure(bool &ok){
 	int loop = 0;
 	ok = true;
 	while( !success && loop < 100) {  // workaround as first read after others access SPI reads zero
-		delay(1);
+		vTaskDelay(pdMS_TO_TICKS(1));
 		readTemperature( success );
 		loop++;
 	}
@@ -210,13 +231,13 @@ float BME280_ESP32_SPI::readPressure(bool &ok){
 	}
 
 	uint32_t adc_P = readADC(0x77);
-	double p=compensate_P((int32_t)adc_P) / 100.0;
+	float p=compensate_P((int32_t)adc_P) / 100.0;
     // ESP_LOGI(FNAME,"--BMP280 readPressure, p=%lf", p);
 	return p;
 }
 
 //***************BME280****************************
-float BME280_ESP32_SPI::readHumidity(){
+float BME280_SPI::readHumidity(){
 	// ESP_LOGI(FNAME,"++BMP280 readHumidity");
 	bool success;
 	readTemperature( success );
@@ -226,7 +247,7 @@ float BME280_ESP32_SPI::readHumidity(){
 }
 
 //*******************************************
-int32_t BME280_ESP32_SPI::compensate_T(int32_t adc_T) {
+int32_t BME280_SPI::compensate_T(int32_t adc_T) {
 	int32_t var1, var2, T;
 
 	var1 = ((((adc_T >> 3) - ((int32_t)_dig_T1<<1))) * ((int32_t)_dig_T2)) >> 11;
@@ -238,7 +259,7 @@ int32_t BME280_ESP32_SPI::compensate_T(int32_t adc_T) {
 }
 
 //*******************************************
-uint32_t BME280_ESP32_SPI::compensate_P(int32_t adc_P) {
+uint32_t BME280_SPI::compensate_P(int32_t adc_P) {
 
 	int32_t var1, var2;
 	uint32_t P;
@@ -270,7 +291,7 @@ uint32_t BME280_ESP32_SPI::compensate_P(int32_t adc_P) {
 	return P;
 }
 //*******************************************
-uint32_t BME280_ESP32_SPI::compensate_H(int32_t adc_H) {
+uint32_t BME280_SPI::compensate_H(int32_t adc_H) {
 	int32_t v_x1;
 
 	v_x1 = (_t_fine - ((int32_t)76800));
@@ -286,15 +307,8 @@ uint32_t BME280_ESP32_SPI::compensate_H(int32_t adc_H) {
 }
 
 //*******************************************************************
-float BME280_ESP32_SPI::readAltitude(float SeaLevel_Pres, bool &ok ) {
-	if( init_err ) {
-		ok = false;
-		return 0.0;
-	}
-	return Atmosphere::calcAltitude( SeaLevel_Pres, readPressure(ok) );
-}
 
-bool BME280_ESP32_SPI::selfTest( float& t, float &p ) {
+bool BME280_SPI::selfTest( float& t, float &p ) {
 	uint8_t id = readID();
 	if( id != 0x58 ) {
 		ESP_LOGE(FNAME,"BMP280 Error, Chip ID reading failed BMP280 chip select pin %d read 0x%.2X (instead 0x58) ", _cs, id  );
@@ -322,7 +336,7 @@ bool BME280_ESP32_SPI::selfTest( float& t, float &p ) {
 	p=0;
 	bool ok;
 	for( int i=0; i<10; i++ ){
-		p += (float)readPressure(ok);
+		p += doRead();
 		// delay(100);
 	}
 	p=p/10;
@@ -330,7 +344,7 @@ bool BME280_ESP32_SPI::selfTest( float& t, float &p ) {
     return( true );
 }
 
-uint8_t BME280_ESP32_SPI::readID()
+uint8_t BME280_SPI::readID()
 {
 	ta.addr = 0xD0 | 0x80;
 	ta.length = 8; // Total transaction length in bits
@@ -349,7 +363,7 @@ uint8_t BME280_ESP32_SPI::readID()
 }
 
 //***************BME280****************************
-uint32_t BME280_ESP32_SPI::readADC(uint8_t reg)
+uint32_t BME280_SPI::readADC(uint8_t reg)
 {
 	ta.addr =  reg | 0x80;
 	ta.length = 24;
@@ -366,7 +380,7 @@ uint32_t BME280_ESP32_SPI::readADC(uint8_t reg)
 }
 
 //***************BME280****************************
-uint16_t BME280_ESP32_SPI::read16bit(uint8_t reg)
+uint16_t BME280_SPI::read16bit(uint8_t reg)
 {
 	ta.addr =  reg | 0x80; // 0xFD Humidity msb read =bit 7 high
 	ta.length = 16;
@@ -388,7 +402,7 @@ uint16_t BME280_ESP32_SPI::read16bit(uint8_t reg)
 }
 
 //***************BME280****************************
-uint8_t BME280_ESP32_SPI::read8bit(uint8_t reg) {
+uint8_t BME280_SPI::read8bit(uint8_t reg) {
 	ta.addr =  reg | 0x80;
 	ta.length = 8;
 
@@ -405,14 +419,13 @@ uint8_t BME280_ESP32_SPI::read8bit(uint8_t reg) {
 	return ta.rx_data[0];
 }
 
-float BME280_ESP32_SPI::readPressureAVG( float alpha ){
-	if( init_err )
-		return 0.0;
-	bool ok;
-    float newval = readPressure(ok);
-	if ( exponential_average == 0 ){
-		exponential_average = newval;
-	}
-	exponential_average = exponential_average + alpha*(newval - exponential_average);
-	return exponential_average;
-}
+// float BME280_SPI::readPressureAVG( float alpha ){
+// 	if( init_err )
+// 		return 0.0;
+//     float newval = doRead();
+// 	if ( exponential_average == 0 ){
+// 		exponential_average = newval;
+// 	}
+// 	exponential_average = exponential_average + alpha*(newval - exponential_average);
+// 	return exponential_average;
+// }

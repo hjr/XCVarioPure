@@ -80,22 +80,12 @@
 
 
 
-/*
-BMP:
-    SCK - This is the SPI Clock pin, its an input to the chip
-    SDO - this is the Serial Data Out / Master In Slave Out pin (MISO), for data sent from the BMP183 to your processor
-    SDI - this is the Serial Data In / Master Out Slave In pin (MOSI), for data sent from your processor to the BME280
-    CS - this is the Chip Select pin, drop it low to start an SPI transaction. Its an input to the chip
- */
 
-#define CS_bme280BA GPIO_NUM_26   // before CS pin 33
-#define CS_bme280TE GPIO_NUM_33   // before CS pin 26
-
-#define SPL06_007_BARO 0x77
-#define SPL06_007_TE   0x76
 
 
 AirspeedSensor *asSensor = nullptr;
+PressureSensor *baroSensor = nullptr;
+PressureSensor *teSensor = nullptr;
 
 SemaphoreHandle_t spiMutex=NULL;
 
@@ -104,20 +94,11 @@ int MyGliderPolarIndex; // Todo make private in S2F?
 
 AnalogInput *BatVoltage = nullptr;
 
-TaskHandle_t apid = NULL;
-TaskHandle_t bpid = NULL;
-TaskHandle_t tpid = NULL;
-TaskHandle_t dpid = NULL;
-
-PressureSensor *baroSensor = nullptr;
-PressureSensor *teSensor = nullptr;
-
 AdaptUGC *MYUCG = 0;  // ( SPI_DC, CS_Display, RESET_Display );
 SetupRoot  *MenuRoot = nullptr;
 WatchDog_C *uiMonitor = nullptr;
 
 // Gyro and acceleration sensor
-I2C_t& i2c = i2c1;
 MPU_t MPU;         // create an object
 
 // Magnetic sensor / compass
@@ -130,7 +111,6 @@ std::string logged_tests;
 
 // global variables
 float baroP=0; // barometric pressure
-static float teP=0;   // TE pressure
 static float xcvTemp=15.0;
 static unsigned long _millis = 0;
 unsigned long _gps_millis = 0;
@@ -156,7 +136,6 @@ int   ccp = 60;
 float tas = 0;
 float aTE = 0;
 float alt_external;
-float altSTD;
 float netto = 0;
 float as2f = 0;
 float s2f_delta = 0;
@@ -166,6 +145,7 @@ float mpu_target_temp=45.0;
 
 const constexpr char passed_text[] = "PASSED\n";
 const constexpr char failed_text[] = "FAILED\n";
+const constexpr char notfound_text[] = "NOT FOUND\n";
 
 int IRAM_ATTR sign(int num) {
     return (num > 0) - (num < 0);
@@ -247,7 +227,7 @@ static void toyFeed(int count) // Called at 5Hz from clientLoop or sensorloop
         {
         case BORGELT_P:
             ToyNmeaPrtcl->sendBorgelt(te_vario.get(), OAT.get(), ias.get(), tas, MC.get(), bugs.get(), ballast.get(), VCMode.getCMode(), gflags.validTemperature);
-            ToyNmeaPrtcl->sendXcvGeneric(te_vario.get(), altSTD, tas);
+            ToyNmeaPrtcl->sendXcvGeneric(te_vario.get(), altitude_isa.get(), tas);
             break;
         case OPENVARIO_P:
             ToyNmeaPrtcl->sendOpenVario(baroP, dynamicP, te_vario.get(), OAT.get(), gflags.validTemperature);
@@ -313,9 +293,9 @@ static void commonThings5Secs()
     SetupCommon::commitDirty(); // very important, flash NVS settings permanently
 
     ESP_LOGI(FNAME, "Free Heap: %d bytes", heap_caps_get_free_size(MALLOC_CAP_8BIT));
-    if (uxTaskGetStackHighWaterMark(bpid) < 512)
+    if (uxTaskGetStackHighWaterMark(NULL) < 512)
     {
-        ESP_LOGW(FNAME, "Warning %s task stack low: %d bytes", pcTaskGetName(NULL), uxTaskGetStackHighWaterMark(bpid));
+        ESP_LOGW(FNAME, "Warning %s task stack low: %d bytes", pcTaskGetName(NULL), uxTaskGetStackHighWaterMark(NULL));
     }
     if (heap_caps_get_free_size(MALLOC_CAP_8BIT) < 20000)
     {
@@ -367,8 +347,8 @@ void clientLoop(void *pvParameters)
 				gload_neg_max.set( IMU::getGliderAccelZ() );
 			}
 
-			if( uxTaskGetStackHighWaterMark( bpid ) < 512 ) {
-				ESP_LOGW(FNAME,"Warning client task stack low: %d bytes", uxTaskGetStackHighWaterMark( bpid ) );
+			if( uxTaskGetStackHighWaterMark(NULL) < 512 ) {
+				ESP_LOGW(FNAME,"Warning client task stack low: %d bytes", uxTaskGetStackHighWaterMark(NULL) );
 			}
         }
 
@@ -406,9 +386,9 @@ void startClientSync()
 	client_sync_dataIdx = 0;
 }
 
-void readSensors(void *pvParameters){
+void readSensors(void *pvParameters)
+{
 
-	float tasraw = 0;
 	esp_task_wdt_add(NULL);
     int count = 0;
 	int16_t landed = 0; // airborne detection counter
@@ -439,30 +419,22 @@ void readSensors(void *pvParameters){
 		// ESP_LOGI(FNAME,"Start");
         commonThingsFirst();
 
-		// ESP_LOGI(FNAME,"IMU");
-		if ( asSensor ) {
-            // AS differential Sensor
-			dynamicP = asSensor->getHead();
-		}
+		dynamicP = asSensor->getHead();
+        baroP = baroSensor->getHead();  	// Baro Pressure
+		float teP = teSensor->getHead();    // TE Pressure
 
-        _millis=millis();
-		struct timeval tv;
-		gettimeofday(&tv, NULL);
-		// ESP_LOGI(FNAME,"AS");
-		bool bok=false;
-		float bp = baroSensor->readPressure(bok);
-		// ESP_LOGI(FNAME,"Baro");
-		bool tok=false;
-		float tp = teSensor->readPressure(tok);  // TE Pressure
-		// ESP_LOGI(FNAME,"TE, Delta: %d - log%d", (int)(millis() - _millis));
-		if( logging.get() ){
+        // ESP_LOGI(FNAME,"TE, Delta: %d - log%d", (int)(millis() - _millis));
+        if( logging.get() ){
 			char log[ProtocolItf::MAX_LEN];
+			_millis=millis();
+			struct timeval tv;
+			gettimeofday(&tv, NULL);
 			sprintf( log, "$SENS;");
 			int pos = strlen(log);
 			long delta = _millis - _gps_millis;
 			if( delta < 0 )
 				delta += 1000;
-			sprintf( log+pos, "%d.%03d,%ld,%.3f,%.3f,%.3f,%.2f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f", (int)(tv.tv_sec%(60*60*24)), (int)(tv.tv_usec / 1000), delta, bp, tp, dynamicP, T, IMU::getGliderAccelX(), IMU::getGliderAccelY(), IMU::getGliderAccelZ(),
+			sprintf( log+pos, "%d.%03d,%ld,%.3f,%.3f,%.3f,%.2f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f", (int)(tv.tv_sec%(60*60*24)), (int)(tv.tv_usec / 1000), delta, baroP, teP, dynamicP, T, IMU::getGliderAccelX(), IMU::getGliderAccelY(), IMU::getGliderAccelZ(),
 					IMU::getGliderNogateGyroX(), IMU::getGliderNogateGyroY(), IMU::getGliderNogateGyroZ() );
 			if( theCompass ){
 				pos=strlen(log);
@@ -475,26 +447,13 @@ void readSensors(void *pvParameters){
 				prtcl->sendXCV(log);
 			}
 		}
-		if( tok )
-			teP = tp;
-		if( bok )
-			baroP = bp;
-		float te = bmpVario.readTE( tasraw, teP );   // TE value caclulation
-		if( (int( te_vario.get()*20 +0.5 ) != int( te*20 +0.5)) || !(count%10) ){  // a bit more fine granular updates than 0.1 m/s as of sound
-					te_vario.set( te );  // max 10x per second
-		}
-		if( !(count%10) ) { // every second read temperature of baro sensor
-			bool ok=false;
-			float xt = baroSensor->readTemperature(ok);
-			if( ok ){
-				xcvTemp = xt;
-			}
 
-			// Check auto s2f mode filter every second
-			if (S2FSWITCH) {
-				S2FSWITCH->checkCruiseMode();
-			}
-		}
+		// TE vario calculation
+		float tasraw =  Atmosphere::TAS( ias.get() , baroP, T);  // True airspeed in km/h
+		float te = bmpVario.readTE( tasraw, teP );   // TE value caclulation
+		te_vario.set( te );  // max 10x per second
+		
+
 		// float iasraw = Atmosphere::pascal2kmh( dynamicP );
 		// if( baroP != 0 )
 		// 	tasraw =  Atmosphere::TAS( iasraw , baroP, T);  // True airspeed in km/h
@@ -523,42 +482,43 @@ void readSensors(void *pvParameters){
 
 		// ESP_LOGI(FNAME,"count %d ccp %d", count, ccp );
 		if( !(count % ccp) ) {
+			ESP_LOGI(FNAME,"count %d ccp %d", count, ccp );
 			AverageVario::recalcAvgClimb();
 		}
 		if (FLAP && FLAP->haveAdcSensor()) { FLAP->progress(); }
 
 		// ESP_LOGI(FNAME,"Baro Pressure: %4.3f", baroP );
-		float altSTD = 0;
-		if( Flarm::validExtAlt() && alt_select.get() == AS_EXTERNAL )
-			altSTD = alt_external;
-		else
-			altSTD = Atmosphere::calcAltitudeISA( baroP );
-		float new_alt = 0;
-		if( alt_select.get() == AS_TE_SENSOR ) // TE
-			new_alt = bmpVario.readAVGalt();
-		else if( alt_select.get() == AS_BARO_SENSOR  || alt_select.get() == AS_EXTERNAL ){ // Baro or external
-			if(  alt_unit.get() == ALT_UNIT_FL ) { // FL, always standard
-				new_alt = altSTD;
-				gflags.standard_setting = true;
-				// ESP_LOGI(FNAME,"au: %d", alt_unit.get() );
-			}else if( (fl_auto_transition.get() == 1) && ((int)Units::meters2FL( altSTD ) + (int)(gflags.standard_setting) > transition_alt.get() ) ) { // above transition altitude
-				new_alt = altSTD;
-				gflags.standard_setting = true;
-				// ESP_LOGI(FNAME,"auto:%d alts:%f ss:%d ta:%f", fl_auto_transition.get(), altSTD, gflags.standard_setting, transition_alt.get() );
-			}
-			else {
-				if( Flarm::validExtAlt() && alt_select.get() == AS_EXTERNAL )
-					new_alt = altSTD + ( QNH.get()- 1013.25)*8.2296;  // correct altitude according to ISA model = 27ft / hPa
-				else
-					new_alt = Atmosphere::calcAltitude( QNH.get(), baroP );
-				gflags.standard_setting = false;
-				// ESP_LOGI(FNAME,"QNH %f baro: %f alt: %f SS:%d", QNH.get(), baroP, alt, gflags.standard_setting  );
-			}
-		}
-		// if( (int( new_alt +0.5 ) != int( altitude.get() +0.5 )) || !(count%20) ){
-			// ESP_LOGI(FNAME,"New Altitude: %.1f", new_alt );
-			altitude.set( new_alt );
+		// float altSTD = 0;
+		// if( Flarm::validExtAlt() && alt_select.get() == AS_EXTERNAL )
+		// 	altSTD = alt_external;
+		// else
+		// 	altSTD = Atmosphere::calcAltitudeISA( baroP );
+		// float new_alt = 0;
+		// if( alt_select.get() == AS_TE_SENSOR ) // TE
+		// 	new_alt = bmpVario.readAVGalt();
+		// else if( alt_select.get() == AS_BARO_SENSOR  || alt_select.get() == AS_EXTERNAL ){ // Baro or external
+		// 	if(  alt_unit.get() == ALT_UNIT_FL ) { // FL, always standard
+		// 		new_alt = altSTD;
+		// 		gflags.standard_setting = true;
+		// 		// ESP_LOGI(FNAME,"au: %d", alt_unit.get() );
+		// 	}else if( (fl_auto_transition.get() == 1) && ((int)Units::meters2FL( altSTD ) + (int)(gflags.standard_setting) > transition_alt.get() ) ) { // above transition altitude
+		// 		new_alt = altSTD;
+		// 		gflags.standard_setting = true;
+		// 		// ESP_LOGI(FNAME,"auto:%d alts:%f ss:%d ta:%f", fl_auto_transition.get(), altSTD, gflags.standard_setting, transition_alt.get() );
+		// 	}
+		// 	else {
+		// 		if( Flarm::validExtAlt() && alt_select.get() == AS_EXTERNAL )
+		// 			new_alt = altSTD + ( QNH.get()- 1013.25)*8.2296;  // correct altitude according to ISA model = 27ft / hPa
+		// 		else
+		// 			new_alt = Atmosphere::calcAltitude( QNH.get(), baroP );
+		// 		gflags.standard_setting = false;
+		// 		// ESP_LOGI(FNAME,"QNH %f baro: %f alt: %f SS:%d", QNH.get(), baroP, alt, gflags.standard_setting  );
+		// 	}
 		// }
+		// // if( (int( new_alt +0.5 ) != int( altitude.get() +0.5 )) || !(count%20) ){
+		// 	// ESP_LOGI(FNAME,"New Altitude: %.1f", new_alt );
+		 	// altitude.set( new_alt );
+		// // }
 
 		aTE = bmpVario.readAVGTE();
 
@@ -631,12 +591,23 @@ void readSensors(void *pvParameters){
 
 
         // battery voltage update
-        if ( count%10 == 0 ) {
+        if ( !(count%10) ) {
             battery_voltage.set(BatVoltage->get());
             if (theCompass) {
                theCompass->ageIncr();
             }
-        }
+
+			bool ok=false;
+			float xt = baroSensor->readTemperature(ok);
+			if( ok ) {
+				xcvTemp = xt;
+			}
+
+			// Check auto s2f mode filter every second
+			if (S2FSWITCH) {
+				S2FSWITCH->checkCruiseMode();
+			}
+		}
 
         commonThingsLast(count);
         if ((count % 50) == 0) { commonThings5Secs(); }
@@ -747,7 +718,7 @@ void system_startup(void *args){
 	logged_tests += "\n";
 
     // Start UI task responsible to manage screens and display. Needed to habe the boot screen and message box working
-    xTaskCreate(&UiEventLoop, "UIloop", 6144, Rotary, 4, &dpid); // increase stack by 1K
+    xTaskCreate(&UiEventLoop, "UIloop", 6144, Rotary, 4, NULL); // increase stack by 1K
 
     BootUpScreen *boot_screen = BootUpScreen::create();
     MessageBox::createMessageBox();
@@ -954,148 +925,118 @@ void system_startup(void *args){
     {
         ESP_LOGE(FNAME, "Error with air speed pressure sensor, no working sensor found!");
         MBOX->pushMessage(2, "AS Sensor: NOT FOUND");
-        logged_tests += "NOT FOUND\n";
+        logged_tests += notfound_text;
         selftestPassed = false;
-        asSensor = 0;
+        asSensor = nullptr;
     }
 
-	// Configure pressure sensors
-    ESP_LOGI(FNAME,"Absolute pressure sensors init, detect type of sensor type..");
-	float ba_t, ba_p, te_t, te_p;
-	SPL06_007 *splBA = new SPL06_007( SPL06_007_BARO );
-	SPL06_007 *splTE = new SPL06_007( SPL06_007_TE );
-	splBA->setBus( &i2c );
-	splTE->setBus( &i2c );
-	bool baok =  splBA->begin();
-	bool teok =  splTE->begin();
-	if( baok || teok ){
-		ESP_LOGI(FNAME,"SPL06_007 type detected");
-		i2c.begin(GPIO_NUM_21, GPIO_NUM_22, 100000 );  // higher speed, we have 10K pullups on that board
-		baroSensor = splBA;
-		teSensor = splTE;
-	}
-	else{
-		delete splBA;
-		ESP_LOGI(FNAME,"No SPL06_007 chip detected, now check BMP280");
-		BME280_ESP32_SPI *bmpBA = new BME280_ESP32_SPI();
-		BME280_ESP32_SPI *bmpTE= new BME280_ESP32_SPI();
-		int spi_freq=rint( FREQ_BMP_SPI / 2 * ((100.0 + display_clock_adj.get())/100.0));
-		bmpBA->setSPIBus(SPI_SCLK, SPI_MOSI, SPI_MISO, CS_bme280BA, spi_freq);
-		bmpTE->setSPIBus(SPI_SCLK, SPI_MOSI, SPI_MISO, CS_bme280TE, spi_freq);
-		bmpTE->begin();
-		bmpBA->begin();
-		baroSensor = bmpBA;
-		teSensor = bmpTE;
-		gpio_set_pull_mode(CS_bme280BA, GPIO_PULLUP_ONLY );
-		gpio_set_pull_mode(CS_bme280TE, GPIO_PULLUP_ONLY );
+    // Configure pressure sensors
+    ESP_LOGI(FNAME, "Absolute pressure sensors init, detect type of sensor type..");
+    logged_tests += "Baro Sensor: ";
+    baroSensor = PressureSensor::autoSetup(SensorId::STATIC_PRESSURE);
+    bool batest = true;
+    float ba_t, ba_p, te_t, te_p;
+    if (baroSensor) {
+        if (!baroSensor->selfTest(ba_t, ba_p)) {
+            ESP_LOGE(FNAME, "HW Error: Self test Barometric Pressure Sensor failed!");
+            MBOX->pushMessage(2, "Baro Sensor: NOT FOUND");
+            selftestPassed = false;
+            batest = false;
+            logged_tests += notfound_text;
+        } else {
+            ESP_LOGI(FNAME, "Baro Sensor test OK, T=%f P=%f", ba_t, ba_p);
+            logged_tests += passed_text;
+        }
+    }
 
-	}
-	bool tetest=true;
-	bool batest=true;
-	delay(200);
-
-	logged_tests += "Baro Sensor: ";
-	if( !baroSensor->selfTest( ba_t, ba_p)  ) {
-		ESP_LOGE(FNAME,"HW Error: Self test Barometric Pressure Sensor failed!");
-		MBOX->pushMessage(2, "Baro Sensor: NOT FOUND");
-		selftestPassed = false;
-		batest=false;
-		logged_tests += "NOT FOUND\n";
-	}
-	else {
-		ESP_LOGI(FNAME,"Baro Sensor test OK, T=%f P=%f", ba_t, ba_p);
-		logged_tests += passed_text;
-	}
-	logged_tests += "TE Sensor: ";
-	if( !teSensor->selfTest(te_t, te_p) ) {
-		ESP_LOGE(FNAME,"HW Error: Self test TE Pressure Sensor failed!");
-		MBOX->pushMessage(2, "TE Sensor: NOT FOUND");
-		selftestPassed = false;
-		tetest=false;
-		logged_tests += "NOT FOUND\n";
-	}
-	else {
-		ESP_LOGI(FNAME,"TE Sensor test OK,   T=%f P=%f", te_t, te_p);
-		logged_tests += passed_text;
-	}
-	if( tetest && batest ) {
-		ESP_LOGI(FNAME,"Both absolute pressure sensor TESTs SUCCEEDED, now test deltas");
-		logged_tests += "TE/Baro Sens. T d. <4'C: ";
-		if( (abs(ba_t - te_t) >4.0)  && ( ias.get() < 50 ) ) {   // each sensor has deviations, and new PCB has more heat sources
-			selftestPassed = false;
-			ESP_LOGE(FNAME,"Severe T delta > 4 °C between Baro and TE sensor: °C %f", abs(ba_t - te_t) );
-			MBOX->pushMessage(1, "TE/Baro Temp: Unequal");
-			logged_tests += failed_text;
-		}
-		else{
-			ESP_LOGI(FNAME,"Abs p sensors temp. delta test PASSED, delta: %f °C",  abs(ba_t - te_t));
-			logged_tests += passed_text;
-		}
-		float delta = 2.5; // in factory we test at normal temperature, so temperature change is ignored.
-		if( abs(factory_volt_adjust.get() - 0.00815) < 0.00001 ) {
-			delta += 1.8; // plus 1.5 Pa per Kelvin, for 60K T range = 90 Pa or 0.9 hPa per Sensor, for both there is 2.5 plus 1.8 hPa to consider
-		}
-		logged_tests += "TE/Baro Sens. P d. <2hPa: ";
-		if( (abs(ba_p - te_p) >delta)  && ( ias.get() < 50 ) ) {
-			selftestPassed = false;
-			ESP_LOGI(FNAME,"Abs p sensors deviation delta > 2.5 hPa between Baro and TE sensor: %f", abs(ba_p - te_p) );
-			MBOX->pushMessage(1, "TE/Baro P: Unequal");
-			logged_tests += failed_text;
-		}
-		else {
-			ESP_LOGI(FNAME,"AbsP sensor deta test PASSED, D: %f hPa", abs(ba_p - te_p) );
-			logged_tests += passed_text;
-		}
-		boot_screen->finish(2);
-	}
-	else {
-		ESP_LOGI(FNAME,"Absolute pressure sensor TESTs failed");
-	}
+    logged_tests += "TE Sensor: ";
+    teSensor = PressureSensor::autoSetup(SensorId::TE_PRESSURE);
+    bool tetest = true;
+    if (teSensor) {
+        if (!teSensor->selfTest(te_t, te_p)) {
+            ESP_LOGE(FNAME, "HW Error: Self test TE Pressure Sensor failed!");
+            MBOX->pushMessage(2, "TE Sensor: NOT FOUND");
+            selftestPassed = false;
+            tetest = false;
+            logged_tests += notfound_text;
+        } else {
+            ESP_LOGI(FNAME, "TE Sensor test OK,   T=%f P=%f", te_t, te_p);
+            logged_tests += passed_text;
+        }
+    }
+    if (tetest && batest) {
+        ESP_LOGI(FNAME, "Both absolute pressure sensor TESTs SUCCEEDED, now test deltas");
+        logged_tests += "TE/Baro Sens. T d. <4'C: ";
+        if ((abs(ba_t - te_t) > 4.0) && (ias.get() < 50)) {  // each sensor has deviations, and new PCB has more heat sources
+            selftestPassed = false;
+            ESP_LOGE(FNAME, "Severe T delta > 4 °C between Baro and TE sensor: °C %f", abs(ba_t - te_t));
+            MBOX->pushMessage(1, "TE/Baro Temp: Unequal");
+            logged_tests += failed_text;
+        } else {
+            ESP_LOGI(FNAME, "Abs p sensors temp. delta test PASSED, delta: %f °C", abs(ba_t - te_t));
+            logged_tests += passed_text;
+        }
+        float delta = 2.5;  // in factory we test at normal temperature, so temperature change is ignored.
+        if (abs(factory_volt_adjust.get() - 0.00815) < 0.00001) {
+            delta += 1.8;  // plus 1.5 Pa per Kelvin, for 60K T range = 90 Pa or 0.9 hPa per Sensor, for both there is 2.5 plus 1.8 hPa to
+                           // consider
+        }
+        logged_tests += "TE/Baro Sens. P d. <2hPa: ";
+        if ((abs(ba_p - te_p) > delta) && (ias.get() < 50)) {
+            selftestPassed = false;
+            ESP_LOGI(FNAME, "Abs p sensors deviation delta > 2.5 hPa between Baro and TE sensor: %f", abs(ba_p - te_p));
+            MBOX->pushMessage(1, "TE/Baro P: Unequal");
+            logged_tests += failed_text;
+        } else {
+            ESP_LOGI(FNAME, "AbsP sensor deta test PASSED, D: %f hPa", abs(ba_p - te_p));
+            logged_tests += passed_text;
+        }
+        boot_screen->finish(2);
+    } else {
+        ESP_LOGI(FNAME, "Absolute pressure sensor TESTs failed");
+    }
 
     AUDIO->applySetup();
-	if ( audio_mute_gen.get() != AUDIO_OFF ) {
-		ESP_LOGI(FNAME,"Audio begin");
-		logged_tests += "Digi. Audio Poti test: ";
-		if( AUDIO->isUp() && AUDIO->isPotiUp() ) {
-			ESP_LOGI(FNAME,"Digital potentiometer test PASSED");
-			logged_tests += passed_text;
-		}
-		else {
-			ESP_LOGE(FNAME,"Error: Digital potentiomenter selftest failed");
-			MBOX->pushMessage(1, "Digital Poti: Failure");
-			selftestPassed = false;
-			logged_tests += failed_text;
-		}
-	}
+    if (audio_mute_gen.get() != AUDIO_OFF) {
+        ESP_LOGI(FNAME, "Audio begin");
+        logged_tests += "Digi. Audio Poti test: ";
+        if (AUDIO->isUp() && AUDIO->isPotiUp()) {
+            ESP_LOGI(FNAME, "Digital potentiometer test PASSED");
+            logged_tests += passed_text;
+        } else {
+            ESP_LOGE(FNAME, "Error: Digital potentiomenter selftest failed");
+            MBOX->pushMessage(1, "Digital Poti: Failure");
+            selftestPassed = false;
+            logged_tests += failed_text;
+        }
+    }
 
-	bmpVario.begin( teSensor, baroSensor, &Speed2Fly );
-	bmpVario.setup();
+    bmpVario.begin(teSensor, baroSensor, &Speed2Fly);
+    bmpVario.setup();
 
-	// 2021 series 3, or 2022 model with new digital poti CAT5171 also features CAN bus
-	// do not move the check unless you know the sequence of HW detection
-	if ( !CAN && AUDIO->haveCAT5171() )
-	{
-		// fixme, shouldnt be the HW increased to 22 based on audio poti??
-		// check on CAN available, if 100% reliable this would only be a one shot need.
-		ESP_LOGI(FNAME,"probing CAN");
-		CANbus::createCAN();
-		if( CAN->selfTest() ){
-			// series 2023 has fixed slope control, prior slope bit for AHRS temperature control
-			if ( CAN->hasSlopeSupport() ) {
-				if( hardwareRevision.get() < XCVARIO_22)
-					hardwareRevision.set(XCVARIO_22);  // XCV-22, CAN but no AHRS temperature control
-			} else {
-				ESP_LOGI(FNAME,"CAN Bus selftest without RS control OK: set hardwareRevision (XCV-23)");
-				if( hardwareRevision.get() < XCVARIO_23)
-					hardwareRevision.set(XCVARIO_23);  // XCV-23, including AHRS temperature control
-			}
-		}
-		delete CAN;
-		CAN = nullptr;
-	}
+    // 2021 series 3, or 2022 model with new digital poti CAT5171 also features CAN bus
+    // do not move the check unless you know the sequence of HW detection
+    if (!CAN && AUDIO->haveCAT5171()) {
+        // fixme, shouldnt be the HW increased to 22 based on audio poti??
+        // check on CAN available, if 100% reliable this would only be a one shot need.
+        ESP_LOGI(FNAME, "probing CAN");
+        CANbus::createCAN();
+        if (CAN->selfTest()) {
+            // series 2023 has fixed slope control, prior slope bit for AHRS temperature control
+            if (CAN->hasSlopeSupport()) {
+                if (hardwareRevision.get() < XCVARIO_22)
+                    hardwareRevision.set(XCVARIO_22);  // XCV-22, CAN but no AHRS temperature control
+            } else {
+                ESP_LOGI(FNAME, "CAN Bus selftest without RS control OK: set hardwareRevision (XCV-23)");
+                if (hardwareRevision.get() < XCVARIO_23)
+                    hardwareRevision.set(XCVARIO_23);  // XCV-23, including AHRS temperature control
+            }
+        }
+        delete CAN;
+        CAN = nullptr;
+    }
 
-
-	if( gflags.haveIMU ){
+    if( gflags.haveIMU ){
 		if( MPU.whoAmI() == 0x12 ){
 			if( hardwareRevision.get() < XCVARIO_25){
 				hardwareRevision.set(XCVARIO_25);  // XCV-25: ICL20602
@@ -1176,9 +1117,9 @@ void system_startup(void *args){
 		ESP_LOGI(FNAME,"Master Mode: QNH Autosetup, IAS=%3f (<50 km/h)", ias.get() );
 		// QNH autosetup
 		float ae = airfield_elevation.get();
-		bool ok;
-        if (ae > NO_ELEVATION) {
-            float baroP = baroSensor->readPressure(ok);
+		ESP_LOGI(FNAME, "Airfield Elevation = %4.1f m", ae);
+		if (ae > NO_ELEVATION) {
+            float baroP = baroSensor->doRead();
             if (Flarm::validExtAlt() && alt_select.get() == AS_EXTERNAL) {
                 // correct altitude according to ISA model = 27ft / hPa
                 ae = alt_external + (QNH.get() - 1013.25f) * 8.2296f;
@@ -1258,10 +1199,10 @@ void system_startup(void *args){
 
 	// enter normal operation
 	if( SetupCommon::isClient() ){
-		xTaskCreate(&clientLoop, "clientLoop", 4096, NULL, 11, &bpid);
+		xTaskCreate(&clientLoop, "clientLoop", 4096, NULL, 11, NULL);
 	}
 	else {
-		xTaskCreate(&readSensors, "readSensors", 5120, NULL, 12, &bpid);
+		xTaskCreate(&readSensors, "readSensors", 5120, NULL, 12, NULL);
 	}
 
 	VCMode.updateCache(); // correct initialization
@@ -1328,12 +1269,12 @@ extern "C" void  app_main(void)
 		gflags.schedule_reboot = true;
 	}
 
-	// start i2c bus
+	// start i2c bus 1
 	ESP_LOGI( FNAME, "Now setup I2C bus IO 21/22");
-	i2c.begin(GPIO_NUM_21, GPIO_NUM_22, 100000 );
+	i2c1.begin(GPIO_NUM_21, GPIO_NUM_22, 100000 );
 
 	// probe on MPU
-	MPU.setBus(i2c);  // set communication bus, for SPI -> pass 'hspi'
+	MPU.setBus(i2c1);  // set communication bus, for SPI -> pass 'hspi'
 	MPU.setAddr(mpud::MPU_I2CADDRESS_AD0_LOW);  // set address or handle, for SPI -> pass 'mpu_spi_handle'
 	if( (MPU.reset() == ESP_OK) && hardwareRevision.get() < XCVARIO_21 ){
 		ESP_LOGI( FNAME,"MPU avail, increase hardware revision to 3 (XCV-21)");

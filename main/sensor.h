@@ -48,9 +48,6 @@ class AirspeedSensor;
 namespace mpud {
     class MPU;
 }
-namespace i2cbus {
-    class I2C;
-}
 
 extern S2F Speed2Fly;
 extern BMPVario bmpVario;
@@ -61,6 +58,7 @@ extern SerialLine *S1,*S2;
 extern Clock *MY_CLOCK;
 extern AirspeedSensor *asSensor;
 extern PressureSensor *baroSensor;
+extern PressureSensor *teSensor;
 extern SetupRoot *MenuRoot;
 extern WatchDog_C *uiMonitor;
 extern AnalogInput *BatVoltage;
@@ -68,8 +66,6 @@ extern AnalogInput *BatVoltage;
 extern std::string logged_tests;
 
 extern float getTAS();
-
-extern i2cbus::I2C& i2c;
 
 extern AnalogInput *AnalogInWk;
 

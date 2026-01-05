@@ -10,6 +10,8 @@
 
 // A simple filter design not knowing the signal history
 
+class SensorBase;
+
 class BaseFilterItf
 {
 public:
@@ -38,4 +40,22 @@ public:
     float filter(float input) override;
 private:
     LowPassFilter _lpf;
+};
+
+// Altimeter 
+class AltimeterFilter : public BaseFilterItf
+{
+public:
+    AltimeterFilter() = default;
+    float filter(float input) override;
+};
+
+// TE Variometer 
+class TEVariometerFilter : public BaseFilterItf
+{
+public:
+    TEVariometerFilter() = default;
+    float filter(float input) override;
+private:
+    float _oldte = 0.0f;
 };

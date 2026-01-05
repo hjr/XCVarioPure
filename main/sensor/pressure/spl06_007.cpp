@@ -1,51 +1,82 @@
 
 #include "spl06_007.h"
-#include "Atmosphere.h"
-#include "sensor.h"
-#include "logdefnone.h"
 
-SPL06_007::SPL06_007( char _addr ){
-	bus = 0;
-	address = _addr;
+#include "Atmosphere.h"
+#include "../SensorMgr.h"
+#include "logdef.h"
+
+#include <I2Cbus.hpp>
+
+#define SPL06_007_BARO 0x77
+#define SPL06_007_TE   0x76
+
+
+SPL06_007::SPL06_007(SensorId id) :
+    PressureSensor(id)
+{
+	_bus = &i2c1;
+	_address = (id == SensorId::STATIC_PRESSURE) ? SPL06_007_BARO : SPL06_007_TE;
 	c00 = c10 = c01 = c11 = c20 = c21 = c30 = c0 = c1 = 0;
 	_scale_factor_p = 0;
 	_scale_factor_t = 0;
 	errors = 0;
-	_praw = 0;
 	_traw = 0;
 	last_praw = 0;
 	last_traw = 0;
 	tick = 0;
 }
 
+bool SPL06_007::probe()
+{
+    uint8_t id;
+    if (_bus->readByte(_address, 0x0D, &id) != ESP_OK) {
+        return false;
+    }
+
+    return (id == 0x10);
+}
+
+
 // Addr. 0x06 PM_RATE Bits 6-4:    110  - 64 measurements pr. sec.
 //            PM_PRC  Bis  3-0:    0011 - 8 times oversampling
 
 // Addr. 0x08 MEAS_CTRL Bits 2-0:  111  - Continuous pressure and temperature measurement
 
-bool SPL06_007::begin() {
+bool SPL06_007::setup()
+{
 	// ---- Oversampling of >8x for temperature or pressuse requires FIFO operational mode which is not implemented ---
 	// ---- Use rates of 8x or less until feature is implemented ---
-	errors = 0;
 
-	i2c_write_uint8( 0X06, 0x63);	// Pressure    7=128 samples per second and 3 = 8x oversampling 128/8 = 16 mS
-	i2c_write_uint8( 0X07, 0X80);	// Temperature 0=1   sample  per second and 0 = no oversampling
-	i2c_write_uint8( 0X08, 0B0111);	// continuous temp and pressure measurement
-	i2c_write_uint8( 0X09, 0x00);	// FIFO Pressure measurement
+	// Pressure    7=128 samples per second and 3 = 8x oversampling 128/8 = 16 mS
+    esp_err_t err = _bus->writeByte(_address, 0X06, 0x63);
+    // Temperature 0=1   sample  per second and 0 = no oversampling
+	err |= _bus->writeByte(_address, 0X07, 0X80);
+	// continuous temp and pressure measurement
+    err |= _bus->writeByte(_address, 0X08, 0B0111);
+	// FIFO Pressure measurement
+    err |= _bus->writeByte(_address, 0X09, 0x00);
 
-	errors = 0x81;
-	for(int i=0; i<10; i++ ){
-		int8_t status = i2c_read_uint8( 0x08 );
-		if( (status & 0x80) != 0x80 ){
-			ESP_LOGW(FNAME,"Coefficients not ready, status byte %02x", status );
-			delay(10);
-		}else{
-			errors=0;
-			break;
+    if ( err != ESP_OK ) {
+        ESP_LOGE(FNAME, "Error I2C write during setup");
+        return false;
+    }
+
+	bool errors = true;
+	for(int i=0; i<10; i++ ) {
+		uint8_t status = 0xff;
+        err = _bus->readByte(_address, 0x08, &status );
+        if ( err == ESP_OK ) {
+		    if( ! (status & 0x80) ) {
+			    ESP_LOGW(FNAME,"Coefficients not ready, status byte %02x", status );
+    		}
+            else {
+			    errors = false;
+			    break;
+            }
 		}
+		vTaskDelay(pdMS_TO_TICKS(10));
 	}
-	if( errors )
-		return false;
+	if( errors ) return false;
 
 	c00 = get_c00();
 	if( errors )
@@ -78,36 +109,36 @@ float SPL06_007::readTemperature( bool& success ){
 
 bool SPL06_007::selfTest( float& t, float& p ){
 	uint8_t rdata = 0xFF;
-	delay(100); // give first measurement time to settle
-	esp_err_t err = bus->readByte(address, 0x0D, &rdata );  // ID
+	vTaskDelay(pdMS_TO_TICKS(100)); // give first measurement time to settle
+	esp_err_t err = _bus->readByte(_address, 0x0D, &rdata );  // ID
 	if( err != ESP_OK ){
 		ESP_LOGE(FNAME,"Error I2C read, status :%d", err );
 		return false;
 	}
 
-	ESP_LOGI(FNAME,"SPL06_007 selftest, scan for I2C address %02x PASSED, Product ID: %d, Revision ID:%d", address, rdata>>4 , rdata&0x0F );
-	bool ok;
+	ESP_LOGI(FNAME,"SPL06_007 selftest, scan for I2C address %02x PASSED, Product ID: %d, Revision ID:%d", _address, rdata>>4 , rdata&0x0F );
+	bool ok = true;
 	p=0;
 	for(int i=0; i<10;i++){
-		p += (float)get_pressure(ok);
-		delay( 50 );
-		if( !ok )
-			break;
+		p += doRead();
+		vTaskDelay(pdMS_TO_TICKS(50));
+		// if( !ok )
+		// 	break;
 	}
 	p=p/10.0;
 	if( !ok ) {
 		ESP_LOGI(FNAME,"SPL06_007 selftest failed, getPressure returnd false, retry");
-		delay(2);
-		p = (float)get_pressure(ok);
-		if( !ok ){
-			ESP_LOGW(FNAME,"SPL06_007 selftest failed, getPressure returnd false, abort");
-			return false;
-		}
+		vTaskDelay(pdMS_TO_TICKS(2));
+		p = doRead();
+		// if( !ok ){
+		// 	ESP_LOGW(FNAME,"SPL06_007 selftest failed, getPressure returnd false, abort");
+		// 	return false;
+		// }
 	}
 	t=0.0;
 	for(int i=0; i<10;i++){
 		t += (float)get_temp_c(ok);
-		delay( 50 );
+		vTaskDelay(pdMS_TO_TICKS(50));
 		if( !ok )
 			break;
 	}
@@ -117,11 +148,11 @@ bool SPL06_007::selfTest( float& t, float& p ){
 	}
 
 	if( p < 1200 && p > 0 && ok ) {
-		ESP_LOGI(FNAME,"SPL06_007 selftest addr: %d PASSED, p=%f t=%f", address, p, t );
+		ESP_LOGI(FNAME,"SPL06_007 selftest addr: %d PASSED, p=%f t=%f", _address, p, t );
 		return true;
 	}
 	else{
-		ESP_LOGI(FNAME,"SPL06_007 selftest addr: %d FAILED, p=%f t=%f", address, p, t );
+		ESP_LOGI(FNAME,"SPL06_007 selftest addr: %d FAILED, p=%f t=%f", _address, p, t );
 		return false;
 	}
 }
@@ -172,20 +203,20 @@ int32_t SPL06_007::get_traw( bool &ok )
 }
 
 float SPL06_007::get_praw_sc( bool &ok ) {
-    return (double(get_praw( ok ))/_scale_factor_p);
+    return (get_praw(ok) / _scale_factor_p);
 }
 
 
-float SPL06_007::get_pcomp(bool &ok)
+float SPL06_007::doRead()
 {
 	bool ok_t, ok_p;
-	ok = false;
+	bool ok = false;
 	int i=0;
 	uint8_t status = 0;
 	for( i=0; i<10; i++ ){
 		status = i2c_read_uint8( 0x08 );
 		if( (status & 0x10) != 0x10 ){  // sensor, temp, and pressure ready  D7
-			delay( 10 );
+			vTaskDelay(pdMS_TO_TICKS(10));
 		}else{
 			ok=true;
 			break;
@@ -209,63 +240,25 @@ float SPL06_007::get_pcomp(bool &ok)
 	// ESP_LOGI(FNAME,"P:%06x,%d  T:%06x PC:%f T:%f I2C E:%d",_praw, _praw, _traw, p/100, t , errors );
 	// }
 	ok = true;
-	last_p = p;
-	return p;
+	last_p = p / 100.f; // convert to mb
+	return last_p;
 }
 
 
-float SPL06_007::readAltitude( float qnh, bool &ok ) {
-    return Atmosphere::calcAltitude( qnh, get_pressure( ok ));
-};
+const float oversampling_factor[8] =
+	{ 524288.0, 1572864.0, 3670016.0, 7864320.0, 253952.0, 516096.0, 1040384.0, 2088960.0 };
 
-float SPL06_007::get_pressure( bool &ok ) {
-    return get_pcomp( ok ) / 100.f; // convert to mb
-}
+float SPL06_007::get_scale_factor(int reg) {
+    float k = 0;
+    uint8_t tmp_Byte;
+    tmp_Byte = i2c_read_uint8(reg);    // MSB
+    tmp_Byte = tmp_Byte & 0B00000111;  // Focus on 2-0 oversampling rate
 
-double SPL06_007::get_scale_factor( int reg )
-{
-	double k = 0;
-	uint8_t tmp_Byte;
-	tmp_Byte = i2c_read_uint8( reg );   // MSB
-	tmp_Byte = tmp_Byte & 0B00000111;   // Focus on 2-0 oversampling rate
+    ESP_LOGI(FNAME, "Oversampling reg %d = %02x", reg, tmp_Byte);
 
-	ESP_LOGI(FNAME,"Oversampling reg %d = %02x", reg, tmp_Byte );
-
-	switch (tmp_Byte) // oversampling rate
-	{
-	case 0B000:
-		k = 524288.0;
-		break;
-
-	case 0B001:
-		k = 1572864.0;
-		break;
-
-	case 0B010:
-		k = 3670016.0;
-		break;
-
-	case 0B011:
-		k = 7864320.0;
-		break;
-
-	case 0B100:
-		k = 253952.0;
-		break;
-
-	case 0B101:
-		k = 516096.0;
-		break;
-
-	case 0B110:
-		k = 1040384.0;
-		break;
-
-	case 0B111:
-		k = 2088960.0;
-		break;
-	}
-	return k;
+    // oversampling rate
+    k = oversampling_factor[tmp_Byte];
+    return k;
 }
 
 // #define RANDOM_TEST
@@ -274,6 +267,8 @@ double SPL06_007::get_scale_factor( int reg )
 int32_t SPL06_007::get_praw( bool &ok )
 {
 	uint8_t data[3];
+	int32_t praw;
+
 	ok = i2c_read_bytes( 0X00, 3, data );
 	if( ok )
 	{
@@ -281,9 +276,9 @@ int32_t SPL06_007::get_praw( bool &ok )
 		data[2] = esp_random() % 255;
 		data[1] = esp_random() % 255;
 #endif
-		_praw = data[0] << 16 | data[1] << 8 | data[2];
-		if(_praw & (1 << 23)){
-			_praw = _praw | 0XFF000000; // Set left bits to one for 2's complement conversion of negative number
+		praw = data[0] << 16 | data[1] << 8 | data[2];
+		if(praw & (1 << 23)){
+			praw = praw | 0XFF000000; // Set left bits to one for 2's complement conversion of negative number
 		}
 	}
 	else{
@@ -292,14 +287,14 @@ int32_t SPL06_007::get_praw( bool &ok )
 	}
 #ifdef I2C_ISSUE_TEST
 	if( address == 0x76 ){
-		if( abs( _praw - last_praw )  > 400 ){
-			ESP_LOGW(FNAME,"P raw delta OOB: %d %06x last: %d %06x, delta %d", _praw, _praw, last_praw, last_praw, abs( _praw - last_praw ) );
+		if( abs( praw - last_praw )  > 400 ){
+			ESP_LOGW(FNAME,"P raw delta OOB: %d %06x last: %d %06x, delta %d", praw, praw, last_praw, last_praw, abs( praw - last_praw ) );
 		}
-		last_praw = _praw;
+		last_praw = praw;
 	}
 #endif
-	last_praw = _praw;
-	return _praw;
+	last_praw = praw;
+	return praw;
 }
 
 int16_t SPL06_007::get_c0()
@@ -355,18 +350,10 @@ int16_t SPL06_007::get_16bit( uint8_t addr )
 	return (int16_t)(tmp_LSB | (tmp_MSB<<8));
 }
 
-void SPL06_007::i2c_write_uint8( uint8_t eeaddress, uint8_t data )
-{
-	esp_err_t err = bus->writeByte(address, eeaddress, data );
-	if( err != ESP_OK ){
-		ESP_LOGE(FNAME,"Error I2C write, status :%d", err );
-		errors++;
-	}
-}
 
 bool SPL06_007::i2c_read_bytes( uint8_t eeaddress, int num, uint8_t *data )
 {
-	esp_err_t err = bus->readBytes(address, eeaddress, num, data );
+	esp_err_t err = _bus->readBytes(_address, eeaddress, num, data );
 	if( err != ESP_OK ){
 		ESP_LOGE(FNAME,"Error I2C bytes read, status :%d", err );
 		errors++;
@@ -378,7 +365,7 @@ bool SPL06_007::i2c_read_bytes( uint8_t eeaddress, int num, uint8_t *data )
 uint8_t SPL06_007::i2c_read_uint8( uint8_t eeaddress )
 {
 	uint8_t rdata = 0xFF;
-	esp_err_t err = bus->readByte(address, eeaddress, &rdata );
+	esp_err_t err = _bus->readByte(_address, eeaddress, &rdata );
 	if( err != ESP_OK ){
 		ESP_LOGE(FNAME,"Error I2C read, status :%d", err );
 		errors++;

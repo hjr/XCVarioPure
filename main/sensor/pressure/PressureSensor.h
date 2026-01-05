@@ -1,16 +1,22 @@
 #pragma once
 
-#include "I2Cbus.hpp"
-#include <driver/gpio.h>
+#include "../SensorBase.h"
 
-class PressureSensor {
-public:
-	virtual bool  setSPIBus(gpio_num_t sclk, gpio_num_t mosi, gpio_num_t miso, gpio_num_t cs, uint32_t freq ) = 0;
-	virtual bool  setBus( I2C_t *theBus ) = 0;
-	virtual bool  begin() = 0;
-	virtual bool  selfTest( float& p, float &t ) = 0;
-	virtual float readPressure(bool &success) = 0;
-	virtual float readTemperature( bool& success ) = 0;
-	virtual float readAltitude( float qnh, bool &success ) = 0;
+
+class PressureSensor : public SensorTP<float>
+{
+   public:
+    using PSens_Type = enum : uint8_t { SPL06_007, BME280_SPI, PS_MAX_TYPES };
+
+    PressureSensor(SensorId id);
+    virtual ~PressureSensor() {};
+
+    virtual bool selfTest(float& p, float& t) = 0;
+    virtual float readTemperature(bool& success) = 0;
+    float readAltitude(float qnh, bool& success);
+
+    static PressureSensor* autoSetup(SensorId id);
+
+   protected:
+    // float _multiplier = 1.0f;
 };
-

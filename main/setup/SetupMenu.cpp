@@ -21,6 +21,7 @@
 #include "glider/Polars.h"
 #include "Cipher.h"
 #include "Units.h"
+#include "Atmosphere.h"
 #include "S2fSwitch.h"
 #include "Flap.h"
 #include "setup/SetupMenuSelect.h"
@@ -321,34 +322,21 @@ static int imu_calib(SetupMenuSelect *p) {
 int qnh_adj(SetupMenuValFloat *p) {
 	ESP_LOGI(FNAME,"qnh_adj %f", QNH.get() );
 	float alt = 0;
-	if (Flarm::validExtAlt() && alt_select.get() == AS_EXTERNAL) {
+	if (Flarm::validExtAlt() && alt_select.get() == AS_EXTERNAL) { // fixme
 		alt = alt_external + (QNH.get() - 1013.25) * 8.2296; // correct altitude according to ISA model = 27ft / hPa
 	} else {
-		int samples = 0;
-		for (int i = 0; i < 6; i++) {
-			bool ok;
-			float a = baroSensor->readAltitude(QNH.get(), ok);
-			if (ok) {  // only consider correct readouts
-				alt += a;
-				samples++;
-			}
-			delay(10);
-		}
-		alt = alt / (float) samples;
+		alt = Atmosphere::calcAltitude(QNH.get(), baroSensor->getAVG(600));
 	}
 	ESP_LOGI(FNAME,"Setup BA alt=%f QNH=%f hPa", alt, QNH.get() );
 	MYUCG->setFont(ucg_font_fub25_hr, true);
-	float altp;
 	const char *u = "m";
-	if (alt_unit.get() == 0) { // m
-		altp = alt;
-	} else {
+	if (alt_unit.get() != 0) { // m
 		u = "ft";
-		altp = Units::meters2feet(alt);
+		alt = Units::meters2feet(alt);
 	}
 	MYUCG->setPrintPos(1, 120);
 	MYUCG->setColor( COLOR_WHITE );
-	MYUCG->printf("%5d %s  ", fast_iroundf(altp), u);
+	MYUCG->printf("%5d %s  ", fast_iroundf(alt), u);
 
 	MYUCG->setFont(ucg_font_ncenR14_hr);
 	return 0;

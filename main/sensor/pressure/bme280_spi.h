@@ -33,20 +33,21 @@ altitude calculation by open source community on github.
 #include <driver/spi_master.h>
 
 
-class BME280_ESP32_SPI: public PressureSensor
+class BME280_SPI: public PressureSensor
 {
 public:
-	BME280_ESP32_SPI();
-	bool  setBus( I2C_t *_theBus ) { return true; };  // for future
-	bool  setSPIBus(gpio_num_t sclk, gpio_num_t mosi, gpio_num_t miso, gpio_num_t cs, uint32_t freq );
-	bool begin();
-    bool selfTest( float& p, float& t );
+	BME280_SPI(SensorId id);
+	void setBus( I2C_t *_theBus ) {};  // for future
+	// bool setSPIBus(gpio_num_t sclk, gpio_num_t mosi, gpio_num_t miso, uint32_t freq );
+	const char* name() const override { return "BME280_SPI"; }
+	bool probe() override;
+	bool setup() override;
+    bool selfTest( float& p, float& t ) override;
 
 	float readTemperature( bool& success ) override;
-	float readPressure(bool &ok) override;
-	float readPressureAVG( float alpha=0.1 );
+	float doRead() override;
+	// float readPressureAVG( float alpha=0.1 );
 	float readHumidity();
-	float readAltitude(float SeaLevel_Pres, bool &ok) override;
 	uint8_t readID();
 
 private:
@@ -58,8 +59,8 @@ private:
 	uint32_t readADC(uint8_t reg);
 	uint16_t read16bit(uint8_t reg);
 	uint8_t read8bit(uint8_t reg);
-	double _avg_alt;
-	double _avg_alt_std;
+	// double _avg_alt;
+	// double _avg_alt_std;
 
 
 private:
@@ -88,10 +89,8 @@ private:
 	int16_t _dig_H4;
 	int16_t _dig_H5;
 	int8_t  _dig_H6;
-	double exponential_average;
+	// double exponential_average;
 	bool init_err;
-	spi_device_interface_config_t spis;
 	spi_device_handle_t spi;
-	// SPISettings spis;
 };
 

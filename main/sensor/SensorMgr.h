@@ -15,17 +15,17 @@ class SensorBase;
 
 enum SensorId : uint8_t {
     NONE = 0,
+    TEMPERATURE,
     DIFFPRESSURE,
+    STATIC_PRESSURE,
+    TE_PRESSURE,
+    POSITION,
     ALTITUDE,
     VARIO,
     MAGNETO,
     GYRO,
-    POSITION,
-    TEMPERATURE,
     HUMIDITY,
-    PRESSURE,
     FLAP_POSITION,
-    SINK_RATE,
     MAX_SENSOR_ID
 };
 
