@@ -1,0 +1,11 @@
+# Add more options as needed (full list: https://clang.llvm.org/docs/ClangFormatStyleOptions.html)
+Language: Cpp
+BasedOnStyle: Chromium
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+ColumnLimit: 140
+BreakBeforeBraces: Attach  # Options: Attach, Linux, Allman, etc.
+AllowShortIfStatementsOnASingleLine: false
+PointerAlignment: Left
+SpaceBeforeParens: ControlStatements
