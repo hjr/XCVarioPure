@@ -10,6 +10,8 @@
 
 #include "setup/SetupNG.h"
 #include "Filters.h"
+#include "protocol/Clock.h"
+// #include "logdef.h"
 
 #include <type_traits>
 #include <cstdint>
@@ -52,7 +54,10 @@ public:
         _head = nxt;
         if (_head == 0) { _full = true; }
     }
-    size_t size() const {
+    int getCapacity() const {
+        return _capacity;
+    }
+    int level() const {
         return _full ? _capacity : _head;
     }
     T getHead() const {
@@ -61,14 +66,23 @@ public:
     T* getHeadPtr() const {
         return &_buffer[_head];
     }
+    int getHeadIdx() const {
+        return _head;
+    }
     void reset() {
         _head = 0;
         _full = false;
         std::memset(_buffer, 0, sizeof(T) * _capacity);
     }
-
+    T operator[] (int index) const { // Always count from head backwards
+        return _buffer[wrap_back(index)];
+    }
+    
 private:
-    size_t _capacity;
+    inline int wrap_back(int offset) const {
+        return (_head + _capacity - (offset % _capacity)) % _capacity;
+    }
+    int    _capacity;
     int    _head;       ///< Index of the next write position (also count when full)
     uint8_t _full :1;   ///< Whether the buffer has wrapped around
     uint8_t _heap_alloced :1; ///< Whether the buffer was heap allocated
@@ -150,6 +164,31 @@ public:
             }
         }
     }
+
+    // get average of the last X milli seconds
+    T getAVG(int interval_ms) {
+        int count = _history.level();
+        int samples = 0;
+        T sum = T{};
+        uint32_t cutoff_time = Clock::getMillis() - interval_ms;
+
+        // Start from latest and go backwards
+        uint32_t ts = _last_update_time_ms;
+        for (int i = 0; i < count; ++i) {
+            if (ts < cutoff_time) {
+                break;
+            }
+            sum += _history[i];
+            samples++;
+            ts -= _update_interval_ms;
+        }
+
+        if (samples == 0) {
+            return T{};
+        }
+        return sum / samples;
+    }
+
 
     /**
      * @brief Retrieve full history (caller provides buffer).
