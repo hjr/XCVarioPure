@@ -337,6 +337,7 @@ extern SetupNG<float>  		mag_hdt;
 extern SetupNG<float>  		average_climb;
 extern SetupNG<float>  		flap_pos;
 extern SetupNG<float>  		altitude;
+extern SetupNG<float>  		altitude_isa;
 extern SetupNG<float>  		ias;
 extern SetupNG<float>  		gnd_speed;
 extern SetupNG<float>  		te_vario;
