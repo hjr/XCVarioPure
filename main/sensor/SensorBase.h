@@ -153,7 +153,7 @@ public:
     // The sensor bypass to fill the history directly (e.g. from group read)
     void pushToHistory(const T& value, uint32_t now_ms) {
         _last_update_time_ms = now_ms - _latency_ms; // allways > 0 :)
-        _history.push(value);
+        _history.push(value); // fixme what to do with NAN in the histroy?
         if constexpr (std::is_same_v<T, float>) { // only for float types
             if (_nvsvar) {
                 float nvsval = value;
