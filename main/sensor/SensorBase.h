@@ -250,6 +250,9 @@ public:
     inline int getLastUpdateTimeMs() const {
         return _last_update_time_ms;
     }
+    bool getValid() const {
+        return _history.level() > 0 && (_last_update_time_ms + _update_interval_ms * 2 > Clock::getMillis());
+    }
 
 protected:
     // Capacity = ceil(5000 / _update_interval_ms)
