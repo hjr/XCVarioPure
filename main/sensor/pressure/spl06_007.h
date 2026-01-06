@@ -42,12 +42,6 @@ private:
 
 
 	int16_t get_16bit( uint8_t addr );
-	int16_t get_c0();
-	int16_t get_c1();
-	int32_t get_c00();
-	int32_t get_c10();
-
-
 	int32_t c00,c10;
 	int16_t c0,c1;
 	int16_t c01,c11,c20,c21,c30;

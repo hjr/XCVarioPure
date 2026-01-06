@@ -78,10 +78,19 @@ bool SPL06_007::setup()
 	}
 	if( errors ) return false;
 
-	c00 = get_c00();
-	if( errors )
-		return false;
-	c10 = get_c10();
+    uint8_t calib[18];
+    if ( _bus->readBytes(_address, 0x10, sizeof(calib), calib ) != ESP_OK ) {
+        ESP_LOGE(FNAME, "Error I2C read calibration data");
+        return false;
+    }
+    c0  = (calib[0] << 4) | (calib[1] >> 4);
+    if (c0 & (1 << 11)) c0 = c0 | 0xF000; // 2's complement conversion of negitive number
+    c1  = ((calib[1] & 0x0F) << 8) | calib[2];
+    if (c1 & (1 << 11)) c1 = c1 | 0xF000;
+    c00 = (calib[3] << 12) | (calib[4] << 4) | (calib[5] >> 4);
+    if (c00 & (1 << 19)) c00 = c00 | 0xFFF00000;
+    c10 = ((calib[5] & 0x0F) << 16) | (calib[6] << 8) | calib[7];
+   	if(c10 & (1 << 19)) c10 = c10 | 0xFFF00000;
 
 	c01 = get_16bit( 0X18 );  // ok
 	c11 = get_16bit( 0X1A );  //
@@ -89,8 +98,7 @@ bool SPL06_007::setup()
 	c21 = get_16bit( 0X1E );
 	c30 = get_16bit( 0X20 );
 
-	get_c0();
-	get_c1();
+
 
 	_scale_factor_p = get_scale_factor( 0x06 );
 	_scale_factor_t = get_scale_factor( 0x07 );
@@ -297,51 +305,6 @@ int32_t SPL06_007::get_praw( bool &ok )
 	return praw;
 }
 
-int16_t SPL06_007::get_c0()
-{
-	uint8_t bytes[2];
-	i2c_read_bytes( 0x10, 2, bytes );
-	c0 = (bytes[0] << 4) | (bytes[1] >> 4);
-	if(c0 & (1 << 11)) // Check for 2's complement negative number
-		c0 = c0 | 0XF000; // Set left bits to one for 2's complement conversion of negitive number
-	return c0;
-}
-
-int16_t SPL06_007::get_c1()
-{
-	uint8_t bytes[2];
-	i2c_read_bytes( 0x11, 2, bytes );
-	bytes[0] = bytes[0] & 0XF;
-	c1 = (bytes[0] << 8) | bytes[1];
-	if(c1 & (1 << 11)) // Check for 2's complement negative number
-		c1 = c1 | 0XF000; // Set left bits to one for 2's complement conversion of negitive number
-	return c1;
-}
-
-int32_t SPL06_007::get_c00()
-{
-	int32_t ret;
-	uint8_t bytes[4];
-	i2c_read_bytes( 0x13, 3, bytes );
-	bytes[2] = bytes[2] >> 4;
-	ret = (uint32_t)bytes[0] << 12 | (uint32_t)bytes[1] << 4 | (uint32_t)bytes[2];
-	if(ret & (1 << 19))
-		ret = ret | 0XFFF00000; // Set left bits to one for 2's complement conversion of negitive number
-	return ret;
-}
-
-int32_t SPL06_007::get_c10()
-{
-	int32_t ret;
-	uint8_t bytes[4];
-	i2c_read_bytes( 0x15, 3, bytes );
-	bytes[0] = bytes[0] & 0b00001111;
-	ret = (uint32_t)bytes[0] << 16 | (uint32_t)bytes[1] << 8 | (uint32_t)bytes[2];
-	if(ret & (1 << 19))
-		ret = ret | 0XFFF00000; // Set left bits to one for 2's complement conversion of negitive number
-	return ret;
-}
-
 int16_t SPL06_007::get_16bit( uint8_t addr )
 {
 	uint8_t tmp_MSB,tmp_LSB;
@@ -349,7 +312,6 @@ int16_t SPL06_007::get_16bit( uint8_t addr )
 	tmp_LSB = i2c_read_uint8( addr+1 );
 	return (int16_t)(tmp_LSB | (tmp_MSB<<8));
 }
-
 
 bool SPL06_007::i2c_read_bytes( uint8_t eeaddress, int num, uint8_t *data )
 {
