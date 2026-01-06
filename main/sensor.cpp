@@ -725,7 +725,6 @@ void system_startup(void *args){
     if (gflags.schedule_reboot) {
         MBOX->pushMessage(3, "Detecting XCV hardware");
     }
-    Rotary->begin();
 
     // Check if we shall enter OTA update mode
     if (software_update.get() || Rotary->readBootupStatus()) {
@@ -1177,6 +1176,8 @@ void system_startup(void *args){
 		BootUpScreen::terminate();
 		Display->clear();
 	}
+	Rotary->begin();
+
 
 	// Wind calculation
 	WindCalcTask::createWindResources();
