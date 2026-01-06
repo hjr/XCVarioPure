@@ -33,10 +33,8 @@ static AirspeedSensor* factory(AirspeedSensor::ASens_Type type)
     AirspeedSensor* tmp = nullptr;
     switch (type) {
     case AirspeedSensor::PS_ABPMRR:
-    {
         tmp = new MS4525DO(true);
         break;
-    }
     case AirspeedSensor::PS_TE4525:
         tmp = new MS4525DO();
         break;
