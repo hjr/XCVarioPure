@@ -451,7 +451,7 @@ void readSensors(void *pvParameters)
 		// TE vario calculation
 		float tasraw =  Atmosphere::TAS( ias.get() , baroP, T);  // True airspeed in km/h
 		float te = bmpVario.readTE( tasraw, teP );   // TE value caclulation
-		te_vario.set( te );  // max 10x per second
+		te_vario.set( te );
 		
 
 		// float iasraw = Atmosphere::pascal2kmh( dynamicP );
@@ -894,7 +894,7 @@ void system_startup(void *args){
 
     // Configure airspeed sensor
     asSensor = AirspeedSensor::autoSetup();
-    logged_tests += "AS Sensor offset: ";
+    logged_tests += "AS " + std::string(asSensor->name()) +  " offset: ";
     if (asSensor)
     {
         ESP_LOGI(FNAME, "AS Speed sensor %s self test PASSED", asSensor->name());

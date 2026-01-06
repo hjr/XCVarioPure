@@ -12,7 +12,6 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/queue.h>
 
-#include <esp_attr.h>
 #include <set>
 
 esp_timer_handle_t Clock::_clock_timer = nullptr;
@@ -24,7 +23,7 @@ struct ClkRequest {
     Clock_I* cb;
 };
 
-static volatile unsigned long msec_counter = 0;
+volatile unsigned long Clock::msec_counter = 0;
 
 // Simple unique receiver registry
 static std::set<Clock_I*> clock_registry;
@@ -33,7 +32,7 @@ static std::set<Clock_I*> clock_registry;
 static void IRAM_ATTR clock_timer_sr(std::set<Clock_I*> *registry)
 {
     // be in sync with millis, but sparse
-    msec_counter = esp_timer_get_time() / 1000;
+    Clock::msec_counter = esp_timer_get_time() / 1000;
 
     // Check if there are any requests
     ClkRequest msg;
@@ -95,11 +94,6 @@ void Clock::stop(Clock_I *cb)
 {
     ClkRequest req = { CMD_STOP, cb };
     xQueueSend(request_queue, &req, portMAX_DELAY);
-}
-
-unsigned long Clock::getMillis()
-{
-    return msec_counter;
 }
 int Clock::getSeconds()
 {

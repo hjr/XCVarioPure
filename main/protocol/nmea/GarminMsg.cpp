@@ -18,7 +18,7 @@
 //
 // Supported messages:
 // PGRMZ,<Value>,F,2
-
+// e.g.
 // $PGRMZ,880,F,2*3A
 //
 dl_action_t GarminMsg::parsePGRMZ(NmeaPlugin *plg)

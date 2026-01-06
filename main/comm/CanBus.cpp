@@ -128,48 +128,35 @@ void CANbus::ConfigureIntf(int cfg)
 }
 
 // install/reinstall CAN driver in corresponding mode
-void CANbus::driverInstall(twai_mode_t mode)
-{
-    if (_initialized)
-    {
+void CANbus::driverInstall(twai_mode_t mode) {
+    if (_initialized) {
         driverUninstall();
     }
     twai_general_config_t g_config = TWAI_GENERAL_CONFIG_DEFAULT(_tx_io, _rx_io, mode);
     ESP_LOGI(FNAME, "default alerts %X", (unsigned int)g_config.alerts_enabled);
     // g_config.alerts_enabled = TWAI_ALERT_TX_FAILED | TWAI_ALERT_BUS_OFF | TWAI_ALERT_ABOVE_ERR_WARN | TWAI_ALERT_BUS_ERROR;
     g_config.alerts_enabled = TWAI_ALERT_ALL;
-    if (_slope_support)
-    {
-    	ESP_LOGI(FNAME, "_slope_support is TRUE");
+    if (_slope_support) {
+        ESP_LOGI(FNAME, "_slope_support is TRUE");
         g_config.bus_off_io = _slope_ctrl;
     }
-    g_config.rx_queue_len = 15; // 1.5x the need of one NMEA sentence
+    g_config.rx_queue_len = 15;  // 1.5x the need of one NMEA sentence
     g_config.tx_queue_len = 15;
     ESP_LOGI(FNAME, "my alerts %X", (unsigned int)g_config.alerts_enabled);
 
     twai_timing_config_t t_config;
-    _tx_timeout = 2; // 111usec/chunk -> 2msec
-    if (can_speed.get() == CAN_SPEED_250KBIT)
-    {
+    _tx_timeout = 2;  // 111usec/chunk -> 2msec
+    t_config = TWAI_TIMING_CONFIG_1MBITS();
+    if (can_speed.get() == CAN_SPEED_250KBIT) {
         ESP_LOGI(FNAME, "CAN rate 250KBit");
         t_config = TWAI_TIMING_CONFIG_250KBITS();
-        _tx_timeout = 4; // 444usec/chunk -> 4msec
-    }
-    else if (can_speed.get() == CAN_SPEED_500KBIT)
-    {
+        _tx_timeout = 4;  // 444usec/chunk -> 4msec
+    } else if (can_speed.get() == CAN_SPEED_500KBIT) {
         ESP_LOGI(FNAME, "CAN rate 500KBit");
         t_config = TWAI_TIMING_CONFIG_500KBITS();
-        _tx_timeout = 2; // 222usec/chunk -> 2msec
-    }
-    else if (can_speed.get() == CAN_SPEED_1MBIT)
-    {
+        _tx_timeout = 2;  // 222usec/chunk -> 2msec
+    } else {
         ESP_LOGI(FNAME, "CAN rate 1MBit");
-        t_config = TWAI_TIMING_CONFIG_1MBITS();
-    }
-    else
-    {
-        ESP_LOGI(FNAME, "CAN rate 1MBit for selftest");
-        t_config = TWAI_TIMING_CONFIG_1MBITS();
     }
     // t_config.triple_sampling = true; // improved sampling incoming bits, no effect in test
 
@@ -186,28 +173,21 @@ void CANbus::driverInstall(twai_mode_t mode)
     //     .single_filter = true
     // };
     // Install TWAI driver
-    if (twai_driver_install(&g_config, &t_config, &f_config) == ESP_OK)
-    {
+    if (twai_driver_install(&g_config, &t_config, &f_config) == ESP_OK) {
         ESP_LOGI(FNAME, "Driver installed OK, mode %d", mode);
-    }
-    else
-    {
+    } else {
         ESP_LOGI(FNAME, "Failed to install driver");
         return;
     }
 
     // Start TWAI driver
-    if (twai_start() == ESP_OK)
-    {
+    if (twai_start() == ESP_OK) {
         ESP_LOGI(FNAME, "Driver started");
         _initialized = true;
-        if (_slope_support)
-        {
+        if (_slope_support) {
             gpio_set_direction(_slope_ctrl, GPIO_MODE_OUTPUT);
         }
-    }
-    else
-    {
+    } else {
         twai_driver_uninstall();
         ESP_LOGI(FNAME, "Failed to start driver");
     }

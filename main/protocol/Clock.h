@@ -9,6 +9,7 @@
 #pragma once
 
 #include <esp_timer.h>
+#include <esp_attr.h>
 
 class Clock_I;
 
@@ -25,8 +26,12 @@ public:
     // API
     static void start(Clock_I *cb);
     static void stop(Clock_I *cb);
-    static unsigned long getMillis();
+    static inline unsigned long getMillis() {
+        return msec_counter;
+    }
     static int getSeconds();
+
+    static volatile IRAM_ATTR unsigned long msec_counter;
 
 private:
     static esp_timer_handle_t _clock_timer;
