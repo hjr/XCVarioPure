@@ -45,6 +45,7 @@ class SetupRoot;
 class WatchDog_C;
 class BMPVario;
 class AirspeedSensor;
+class OwSens;
 namespace mpud {
     class MPU;
 }
@@ -59,6 +60,7 @@ extern Clock *MY_CLOCK;
 extern AirspeedSensor *asSensor;
 extern PressureSensor *baroSensor;
 extern PressureSensor *teSensor;
+extern OwSens		  *oatempSensor;
 extern SetupRoot *MenuRoot;
 extern WatchDog_C *uiMonitor;
 extern AnalogInput *BatVoltage;

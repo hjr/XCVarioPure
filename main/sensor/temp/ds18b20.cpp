@@ -26,6 +26,8 @@ constexpr int DS18B20_RESOLUTION_12B = 0x7f; // 12-bit resolution
 #define DS18B20_CMD_WRITE_SCRATCHPAD  0x4E
 #define DS18B20_CMD_READ_SCRATCHPAD   0xBE
 
+OwSens *oatempSensor = nullptr;
+
 // OneWIRE need to be created earlier and live longer than the sensor
 
 DS18B20::DS18B20(onewire_device_address_t addr) : OwSens(addr, SensorId::TEMPERATURE)
@@ -33,6 +35,7 @@ DS18B20::DS18B20(onewire_device_address_t addr) : OwSens(addr, SensorId::TEMPERA
     setNVSVar(&OAT);
     setFilter(new LowPassFilter(0.3f));
     SensorRegistry::removeFromUpdateLoop(SensorId::TEMPERATURE);
+    oatempSensor = this;
 }
 
 bool DS18B20::setup()
