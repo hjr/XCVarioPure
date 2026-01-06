@@ -622,7 +622,7 @@ static int s2fModeChangeF(SetupMenuValFloat *p) {
 }
 
 void vario_menu_create_damping(SetupMenu *top) {
-	SetupMenuValFloat *vda = new SetupMenuValFloat("Damping", "sec", nullptr, false, &vario_delay);
+	SetupMenuValFloat *vda = new SetupMenuValFloat("Damping", "sec", vario_setup, false, &vario_delay);
     vda->setExitAction(varioAvChange);
 	vda->setHelp("Response time, time constant of Vario low pass filter");
 	top->addEntry(vda);
