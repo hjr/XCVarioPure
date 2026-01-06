@@ -935,6 +935,11 @@ Device::~Device()
             // _link->removeId(_id); not needed
         }
     }
+    if ( _sensor ) {
+        ESP_LOGI(FNAME, "Delete sensor for device %d.", _id);
+        delete _sensor;
+        // _sensor = nullptr;
+    }
 }
 
 ProtocolItf *Device::getProtocol(ProtocolType p) const
