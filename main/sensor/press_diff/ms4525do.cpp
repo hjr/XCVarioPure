@@ -31,7 +31,7 @@ const int16_t MS4525Span = MS4525FullScaleCounts - MS4525MinScaleCounts;
 // MS4525D sensor differential pressure
 // const int16_t MS4525ZeroCounts = (MS4525MinScaleCounts + MS4525FullScaleCounts) / 2;
 
-MS4525DO::MS4525DO() : AsSensI2c(&i2c1, I2C_ADDRESS_MS4525DO)
+MS4525DO::MS4525DO(bool is_abpmrr) : AsSensI2c(&i2c1, I2C_ADDRESS_MS4525DO), _is_abpmrr(is_abpmrr)
 {
     changeConfig();
 }
@@ -47,13 +47,16 @@ const char *MS4525DO::name() const {
 
 void MS4525DO::changeConfig() {
     _multiplier = (2.f * 6894.76 / MS4525Span) * ((100.0 + speedcal.get()) / 100.0);
+    _multiplier *= (_is_abpmrr) ? -1.0f : 1.0f;
 }
 
-void MS4525DO::setSubType(bool positive)
+
+void MS4525DO::setSubType(bool negative)
 {
     // This will set the correct sensor type for the next XCV boot and
     // provide the proper zero offset tollerances
-    _is_abpmrr = ! positive;
+    _is_abpmrr = negative;
+    changeConfig();
     if ( _is_abpmrr ) {
         airspeed_sensor.set( AirspeedSensor::PS_ABPMRR );
     }

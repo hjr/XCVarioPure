@@ -30,7 +30,7 @@ float LowPassFilter::filter(float input)
 
 float AirSpeedFilter::filter(float input)
 {
-    float tmp = Atmosphere::pascal2kmh(fabsf(_lpf.filter(input)));  // fixme -> m/s
+    float tmp = Atmosphere::pascal2kmh(_lpf.filter(input));  // fixme -> m/s
     // clamp to zero for speeds < 15km/h (to avoid noise around zero)
     if ( tmp < 15.0f ) {
         tmp = 0.0f;

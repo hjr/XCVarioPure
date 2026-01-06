@@ -10,15 +10,15 @@ class MS4525DO final : public AsSensI2c
 {
 public:
     // instance methods
-    MS4525DO();
+    MS4525DO(bool is_abpmrr = false);
     virtual ~MS4525DO() = default;
 
     const char *name() const override;
     void changeConfig() override;
-    inline void setAbpmrr() { setSubType(false); }
+    inline void setAbpmrr() { setSubType(true); }
 
 protected:
-    void setSubType(bool positive) override;
+    void setSubType(bool negative) override;
     bool offsetPlausible(int32_t offset) override;
     int getMaxACOffset() override;
 

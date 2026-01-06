@@ -34,9 +34,7 @@ static AirspeedSensor* factory(AirspeedSensor::ASens_Type type)
     switch (type) {
     case AirspeedSensor::PS_ABPMRR:
     {
-        MS4525DO *abpmrr = new MS4525DO();
-        abpmrr->setAbpmrr();
-        tmp = abpmrr;
+        tmp = new MS4525DO(true);
         break;
     }
     case AirspeedSensor::PS_TE4525:
@@ -68,11 +66,7 @@ AirspeedSensor* AirspeedSensor::autoSetup()
 
         // there is a configured sensor
         ESP_LOGI(FNAME, "There is valid config for airspeed sensor: check this one first...");
-        if (as_sens->probe()) {
-            ESP_LOGI(FNAME, "Selftest for configured sensor OKAY");
-        }
-        else {
-            ESP_LOGI(FNAME, "AS sensor not found");
+        if (!as_sens->probe()) {
             delete as_sens;
             as_sens = nullptr;
         }
@@ -81,6 +75,7 @@ AirspeedSensor* AirspeedSensor::autoSetup()
     // Probe any kind of ever known sensors
     if (!as_sens)
     {
+        ESP_LOGI(FNAME, "Configured AS sensor not found, probing all known types...");
         // behaves same as above, so we can't detect this, needs to be setup in factory
         for ( ASens_Type t = PS_ABPMRR; t < PS_MAX_TYPES; t = static_cast<ASens_Type>(t + 1) ) {
             as_sens = factory(t);
@@ -180,7 +175,11 @@ float AirspeedSensor::doRead()
             return NAN;
         }
     }
-    float pascal = static_cast<float>(p_raw - _offset) * _multiplier;
-    ESP_LOGI(FNAME,"P:%f offset:%d raw:%ld  raw-off:%f m:%f T:%u", pascal, _offset, p_raw,  static_cast<float>(p_raw - _offset),  _multiplier, t_dat);
+    int raw_diff = p_raw - _offset;
+    if (raw_diff < 0) {
+        return 0.f;
+    }
+    float pascal = static_cast<float>(raw_diff) * _multiplier;
+    ESP_LOGI(FNAME,"P:%f offset:%d raw:%ld  raw-off:%d m:%f T:%u", pascal, _offset, p_raw, raw_diff, _multiplier, t_dat);
     return pascal;
 }
