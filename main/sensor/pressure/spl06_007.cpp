@@ -3,7 +3,7 @@
 
 #include "Atmosphere.h"
 #include "../SensorMgr.h"
-#include "logdef.h"
+#include "logdefnone.h"
 
 #include <I2Cbus.hpp>
 

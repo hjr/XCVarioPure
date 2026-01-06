@@ -1,4 +1,4 @@
-#include "BMPVario.h"
+#include "VarioFilter.h"
 
 #include "sensor/pressure/PressureSensor.h"
 #include "Atmosphere.h"

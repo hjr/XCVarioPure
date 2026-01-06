@@ -15,7 +15,7 @@
 #include "setup/ShowBootMsg.h"
 #include "screen/element/MultiGauge.h"
 #include "Colors.h"
-#include "BMPVario.h"
+#include "sensor/VarioFilter.h"
 #include "S2F.h"
 #include "Version.h"
 #include "glider/Polars.h"

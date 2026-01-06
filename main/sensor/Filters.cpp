@@ -9,7 +9,7 @@
 #include "Filters.h"
 
 #include "SensorBase.h"
-#include "BMPVario.h"
+#include "VarioFilter.h"
 #include "Atmosphere.h"
 #include "Units.h"
 #include "setup/SetupNG.h"

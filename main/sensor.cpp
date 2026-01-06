@@ -7,7 +7,7 @@
 #include "ESP32NVS.h"
 #include "sensor/press_diff/AirspeedSensor.h"
 #include "sensor/SensorMgr.h"
-#include "BMPVario.h"
+#include "sensor/VarioFilter.h"
 #include "comm/BTspp.h"
 #include "comm/BTnus.h"
 #include "comm/OneWireBus.h"

@@ -10,7 +10,7 @@
 #include "setup/SetupMenu.h"
 #include "AdaptUGC.h"
 #include "IpsDisplay.h"
-#include "BMPVario.h"
+#include "sensor/VarioFilter.h"
 #include "Units.h"
 #include "sensor.h"
 #include "logdefnone.h"
