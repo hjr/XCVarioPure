@@ -85,8 +85,6 @@ extern float meanClimb;
 extern float baroP;    // Static pressure
 extern float dynamicP; // Pitot pressure
 
-extern long unsigned int _gps_millis;
-
 extern ESPRotary *Rotary;
 
 extern SemaphoreHandle_t spiMutex;

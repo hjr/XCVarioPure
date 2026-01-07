@@ -28,7 +28,7 @@ public:
 
 private:
     int _connected = -10;
-    unsigned long _delta_time; //msec
-    unsigned long _last_sample_time;
+    int _delta_time; //msec
+    int _last_sample_time;
     AliveMonitor *_alive = nullptr; // alive monitor for the mag stream
 };

@@ -10,8 +10,11 @@
 
 #include <esp_timer.h>
 #include <esp_attr.h>
+#include <cstdint>
+#include <set>
 
 class Clock_I;
+using ClockSet = std::set<Clock_I*>;
 
 // Clock based on esp_timer
 class Clock
@@ -24,15 +27,25 @@ public:
     ~Clock();
 
     // API
-    static void start(Clock_I *cb);
+    static void start(Clock_I *cb); // register a tick callback
     static void stop(Clock_I *cb);
-    static inline unsigned long getMillis() {
-        return msec_counter;
-    }
+    static inline int getMillis() { return msec_counter; } // spars, but monotone time for all XCV concerns, millis since boot-up
     static int getSeconds();
-
-    static volatile IRAM_ATTR unsigned long msec_counter;
+    // UTC time access
+    static int64_t getMillisUTC() {
+        return getMillis() + _offset_ms;
+    }
+    static inline bool isValidUTC() { return _valid; }
+    static int getUpdateAgeMs();
+    static void setTimeUTC(int64_t gps_utc_ms); // just call once with first valid GPS time stamp
+    static void updateTimeUTC(int64_t gps_utc_ms);
 
 private:
+    static void IRAM_ATTR clock_timer_sr(ClockSet *registry);
+    static volatile IRAM_ATTR int msec_counter; // yields for 600h of flight time monotone msec since boot
     static esp_timer_handle_t _clock_timer;
+    // time sync
+    static int64_t  _offset_ms;     // gps_utc - system_ms
+    static bool     _valid;
+    static int      _last_updated_ms;
 };

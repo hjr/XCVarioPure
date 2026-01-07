@@ -107,8 +107,8 @@ public:
 
 protected:
     int _update_interval_ms;  ///< Expected update interval
-    uint32_t _latency_ms;          ///< Sensor conversion/acquisition latency
-    uint32_t _last_update_time_ms; ///< Raw update time (before latency compensation)
+    int _latency_ms;          ///< Sensor conversion/acquisition latency
+    int _last_update_time_ms; ///< Raw update time (before latency compensation)
 };
 
 template <typename T>

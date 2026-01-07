@@ -10,8 +10,8 @@
 #include "Flarm.h"
 #include "wind/CircleWind.h"
 #include "wind/WindCalcTask.h"
+#include "protocol/Clock.h"
 #include "setup/SetupNG.h"
-#include "sensor.h"
 #include "logdefnone.h"
 
 #include <cstring>
@@ -66,24 +66,32 @@ dl_action_t GpsMsg::parseGPRMC(NmeaPlugin *plg)
     gnd_speed.set(gndspeed);
 
     Flarm::myGPS_OK = (warn == 'A');
-    if (BackgroundTaskQueue && Flarm::myGPS_OK) {
+    if (Flarm::myGPS_OK) {
+        if ( BackgroundTaskQueue ) {
+            ESP_LOGI(FNAME,"Track: %3.2f, GPRMC: %s", Flarm::gndCourse, sm->_frame.c_str() );
+            circleWind->setNewSample(Vector(Flarm::gndCourse, gndspeed));
 
-        // ESP_LOGI(FNAME,"Track: %3.2f, GPRMC: %s", gndCourse, gprmc );
-        circleWind->setNewSample(Vector(Flarm::gndCourse, gndspeed));
-
-        CalkTaskJob job(CalkTaskJob::CALK_TASK_EVENT_NEW_GPSPOSE);
-        xQueueSend(BackgroundTaskQueue, &job, 0);
-        if (/*!Flarm::time_sync &&*/ (valid_time_scan && valid_date_scan))
+            CalkTaskJob job(CalkTaskJob::CALK_TASK_EVENT_NEW_GPSPOSE);
+            xQueueSend(BackgroundTaskQueue, &job, 0);
+        }
+        ESP_LOGI(FNAME,"Valid GPS Time info received %d/%d.", valid_date_scan, valid_time_scan );
+        if (valid_time_scan == 3 && valid_date_scan == 3)
         {
-            ESP_LOGD(FNAME, "Start TimeSync");
             long int epoch_time = mktime(&t);
-            timeval epoch = {epoch_time, 0};
-            const timeval *tv = &epoch;
-            timezone utc = {0, 0};
-            const timezone *tz = &utc;
-            settimeofday(tv, tz);
-            // Flarm::time_sync = true; fixme
-            ESP_LOGD(FNAME, "Finish Time Sync");
+            if (!Clock::isValidUTC()) // set system time if not yet done
+            {
+                // just once, at first valid GPS time info
+                ESP_LOGD(FNAME, "Start TimeSync");
+                timeval epoch = {epoch_time, 0};
+                settimeofday(&epoch, nullptr);
+                Clock::setTimeUTC(epoch_time * 1000LL);
+                ESP_LOGD(FNAME, "Finish Time Sync");
+            }
+            else if ( Clock::getUpdateAgeMs() > 600000 )  // update every 10 minutes
+            {
+                // update time offset
+                Clock::updateTimeUTC(epoch_time * 1000LL);
+            }
         }
     }
     // ESP_LOGI(FNAME,"parseGPRMC() GPS: %d, Speed: %3.1f knots, Track: %3.1f° ", myGPS_OK, gndSpeedKnots, gndCourse );
@@ -108,15 +116,11 @@ dl_action_t GpsMsg::parseGPRMC(NmeaPlugin *plg)
 // x.x = Age of Differential GPS data (seconds)
 // xxxx = Differential reference station ID
 //
-extern unsigned long _gps_millis;
-
 dl_action_t GpsMsg::parseGPGGA(NmeaPlugin *plg)
 {
     ProtocolState *sm = plg->getNMEA().getSM();
     const std::vector<int> *word = &sm->_word_start;
     ESP_LOGD(FNAME, "parseGPGGA");
-
-    _gps_millis = millis();
 
     if (word->size() > 13)
     {

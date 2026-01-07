@@ -113,7 +113,6 @@ std::string logged_tests;
 float baroP=0; // barometric pressure
 static float xcvTemp=15.0;
 static unsigned long _millis = 0;
-unsigned long _gps_millis = 0;
 
 
 float dynamicP; // Pitot
@@ -431,10 +430,10 @@ void readSensors(void *pvParameters)
 			gettimeofday(&tv, NULL);
 			sprintf( log, "$SENS;");
 			int pos = strlen(log);
-			long delta = _millis - _gps_millis;
+			int delta = (GpsSens) ?  _millis - GpsSens->getLastUpdateTimeMs() : 0;
 			if( delta < 0 )
 				delta += 1000;
-			sprintf( log+pos, "%d.%03d,%ld,%.3f,%.3f,%.3f,%.2f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f", (int)(tv.tv_sec%(60*60*24)), (int)(tv.tv_usec / 1000), delta, baroP, teP, dynamicP, T, IMU::getGliderAccelX(), IMU::getGliderAccelY(), IMU::getGliderAccelZ(),
+			sprintf( log+pos, "%d.%03d,%d,%.3f,%.3f,%.3f,%.2f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f", (int)(tv.tv_sec%(60*60*24)), (int)(tv.tv_usec / 1000), delta, baroP, teP, dynamicP, T, IMU::getGliderAccelX(), IMU::getGliderAccelY(), IMU::getGliderAccelZ(),
 					IMU::getGliderNogateGyroX(), IMU::getGliderNogateGyroY(), IMU::getGliderNogateGyroZ() );
 			if( theCompass ){
 				pos=strlen(log);

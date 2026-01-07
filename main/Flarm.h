@@ -39,8 +39,6 @@ private:
 	static int _confirmedTime;
 	static int ext_alt_timer;
 	static int _numSat;
-	// static int clock_timer;
-	// static bool time_sync;
 };
 
 

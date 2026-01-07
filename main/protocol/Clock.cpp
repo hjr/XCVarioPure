@@ -8,11 +8,12 @@
 
 #include "Clock.h"
 #include "ClockIntf.h"
+#include "logdef.h"
 
 #include <freertos/FreeRTOS.h>
 #include <freertos/queue.h>
 
-#include <set>
+#include <algorithm>
 
 esp_timer_handle_t Clock::_clock_timer = nullptr;
 
@@ -23,16 +24,19 @@ struct ClkRequest {
     Clock_I* cb;
 };
 
-volatile unsigned long Clock::msec_counter = 0;
+volatile int Clock::msec_counter = 0;
+int64_t  Clock::_offset_ms = 0;
+bool     Clock::_valid = false;
+int      Clock::_last_updated_ms = 0;
 
 // Simple unique receiver registry
-static std::set<Clock_I*> clock_registry;
+static ClockSet clock_registry;
 
 // Timer SR (called in a timer task context)
-static void IRAM_ATTR clock_timer_sr(std::set<Clock_I*> *registry)
+void IRAM_ATTR Clock::clock_timer_sr(ClockSet*registry)
 {
     // be in sync with millis, but sparse
-    Clock::msec_counter = esp_timer_get_time() / 1000;
+    msec_counter = esp_timer_get_time() / 1000;
 
     // Check if there are any requests
     ClkRequest msg;
@@ -97,5 +101,25 @@ void Clock::stop(Clock_I *cb)
 }
 int Clock::getSeconds()
 {
-    return static_cast<int>(msec_counter / 1000);
+    return msec_counter / 1000;
 }
+
+int Clock::getUpdateAgeMs() {
+    return  msec_counter - _last_updated_ms;
+}
+
+void Clock::setTimeUTC(int64_t gps_utc_ms) {
+    _offset_ms = gps_utc_ms - (esp_timer_get_time() / 1000);
+    _last_updated_ms = msec_counter;
+    _valid = true;
+}
+
+void Clock::updateTimeUTC(int64_t gps_utc_ms) {
+    int64_t sys_ms = (esp_timer_get_time() / 1000);
+    int64_t est_now = sys_ms + _offset_ms;
+    int64_t error   = gps_utc_ms - est_now;
+    _last_updated_ms = msec_counter;
+    _offset_ms += std::clamp(error / 16, -5LL, +5LL); // max 5 ms correction per update
+    ESP_LOGI(FNAME, "Clock sync update: error %lld ms, new offset %lld ms", error, _offset_ms);
+}
+

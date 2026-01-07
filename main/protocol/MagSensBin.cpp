@@ -64,6 +64,6 @@ bool MagSensBin::isActive() const
     if ( _alive ) {
         return _alive->get() == ALIVE_OK;
     }
-    ESP_LOGI(FNAME, "Active %ld %ld %ld", Clock::getMillis(), _last_sample_time, _delta_time);
+    ESP_LOGI(FNAME, "Active %d %d %d", Clock::getMillis(), _last_sample_time, _delta_time);
     return (Clock::getMillis() - _last_sample_time) < (2 * _delta_time);
 }
