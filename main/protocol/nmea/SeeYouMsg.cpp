@@ -10,6 +10,9 @@
 #include "protocol/nmea_util.h"
 #include "comm/DataLink.h"
 #include "comm/Messages.h"
+#include "setup/SetupNG.h"
+#include "setup/CruiseMode.h"
+#include "KalmanMPU6050.h"
 #include "Units.h"
 #include "logdef.h"
 
@@ -107,7 +110,7 @@ void NmeaPrtcl::sendSeeYouVal(float val, int idx)
     S2FMODE = 0:1; 0 == vario mode (int)
     CS = standard NMEA checksum
 */
-void NmeaPrtcl::sendSeeYouF(float accx, float accy, float accz, float vario, float ias, float alt, bool cruise)
+void NmeaPrtcl::sendSeeYouF()
 {
     if ( _dl.isBinActive() ) {
         return; // no NMEA output in binary mode
@@ -120,19 +123,19 @@ void NmeaPrtcl::sendSeeYouF(float accx, float accy, float accz, float vario, flo
     gettimeofday(&tv, NULL);
     std::sprintf(tmp, "%d.%03d", (int)(tv.tv_sec - 315964800), (int)(tv.tv_usec / 1000));
     msg->buffer += tmp;
-    std::sprintf(tmp, ",%.1f", accx);
+    std::sprintf(tmp, ",%.1f", IMU::getGliderAccelX());
     msg->buffer += tmp;
-    std::sprintf(tmp, ",%.1f", accy);
+    std::sprintf(tmp, ",%.1f", IMU::getGliderAccelY());
     msg->buffer += tmp;
-    std::sprintf(tmp, ",%.1f", accz);
+    std::sprintf(tmp, ",%.1f", IMU::getGliderAccelZ());
     msg->buffer += tmp;
-    std::sprintf(tmp, ",%.1f", vario);
+    std::sprintf(tmp, ",%.1f", te_vario.get());
     msg->buffer += tmp;
-    std::sprintf(tmp, ",%.1f", ias);
+    std::sprintf(tmp, ",%.1f", ias.get());
     msg->buffer += tmp;
-    std::sprintf(tmp, ",%.1f", alt);
+    std::sprintf(tmp, ",%.1f", altitude.get());
     msg->buffer += tmp;
-    std::sprintf(tmp, ",%1d", !cruise);
+    std::sprintf(tmp, ",%1d", !VCMode.getCMode());
 
     msg->buffer += "*" + NMEA::CheckSum(msg->buffer.c_str()) + "\r\n";
     ESP_LOGD(FNAME, "SeeYouF %s", msg->buffer.c_str());
@@ -149,7 +152,7 @@ void NmeaPrtcl::sendSeeYouF(float accx, float accy, float accz, float vario, flo
     ALT = m (float)
     CS = standard NMEA checksum
 */
-void NmeaPrtcl::sendSeeYouS(float oat, bool cruise, float volt, float alt)
+void NmeaPrtcl::sendSeeYouS()
 {
     if ( _dl.isBinActive() ) {
         return;
@@ -158,13 +161,13 @@ void NmeaPrtcl::sendSeeYouS(float oat, bool cruise, float volt, float alt)
 
     msg->buffer = "$PLXVS,";
     char tmp[50];
-    std::sprintf(tmp, "%.1f", oat);
+    std::sprintf(tmp, "%.1f", OAT.get());
     msg->buffer += tmp;
-    std::sprintf(tmp, ",%1d", !cruise);
+    std::sprintf(tmp, ",%1d", !VCMode.getCMode());
     msg->buffer += tmp;
-    std::sprintf(tmp, ",%.1f", volt);
+    std::sprintf(tmp, ",%.1f", battery_voltage.get());
     msg->buffer += tmp;
-    std::sprintf(tmp, ",%.1f", alt);
+    std::sprintf(tmp, ",%.1f", altitude.get());
     msg->buffer += tmp;
 
     msg->buffer += "*" + NMEA::CheckSum(msg->buffer.c_str()) + "\r\n";

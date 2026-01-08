@@ -16,11 +16,12 @@ class XCVSyncMsg;
 struct httpd_req;
 
 struct t_setup_flags {
-	bool _reset    :1; // reset data on factory reset
-	bool _volatile :1; // none nvs, run-time (black board) item only
-	uint8_t _sync  :2; // sync mode with client device
-	uint8_t _quant :3; // quantity
-	bool _dirty    :1; // has changed
+    bool _reset    : 1; // reset data on factory reset
+    bool _volatile : 1; // none nvs, run-time (black board) item only
+    uint8_t _sync  : 2; // sync mode with client device
+    uint8_t _quant : 3; // quantity
+    bool _dirty    : 1; // has changed
+    bool _valid    : 1; // valid data
 };
 
 class SetupCommon {
@@ -36,7 +37,7 @@ public:
 	virtual int getSize() = 0;
 	virtual bool isDefault() = 0;
 	virtual void setDefault() = 0;
-	virtual bool isValid() const = 0;
+	virtual bool inLimits() const = 0;
 
 	bool init();
 	bool erase();
@@ -49,6 +50,8 @@ public:
 	bool getDirty() const { return flags._dirty; }
 	void setDirty() { flags._dirty = true; }
 	uint8_t getSync() const { return flags._sync; }
+    bool getValid() const { return flags._valid; }
+    void setInvalid() { flags._valid = false; }
 
 	static bool initSetup();  // returns false if at least one entry was blank
 	static char *getID();
@@ -75,7 +78,7 @@ public:
     // variables
 protected:
 	const std::string_view _key; // unique identification TAG
-	t_setup_flags flags = {false, false, 0, 0, false};
+	t_setup_flags flags = {false, false, 0, 0, false, false};
 	void (*_action)(); // action on a value change
 
 private:

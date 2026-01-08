@@ -13,7 +13,7 @@
 #include "comm/DataLink.h"
 #include "comm/Messages.h"
 #include "Units.h"
-
+#include "setup/SetupNG.h"
 #include "logdefnone.h"
 
 
@@ -83,7 +83,7 @@ const ParserEntry CambridgeMsg::_pt[] = {
     <13>   Instrument Bug setting
     *hh   Checksum, XOR of all bytes of the sentence after the ‘!’ and before the ‘*’
 */
-void NmeaPrtcl::sendCambridge(float te, float tas, float mc, int bugs, float alt)
+void NmeaPrtcl::sendCambridge()
 {
     if ( _dl.isBinActive() ) {
         return; // no NMEA output in binary mode
@@ -92,19 +92,19 @@ void NmeaPrtcl::sendCambridge(float te, float tas, float mc, int bugs, float alt
 
     msg->buffer = "!w,0,0,0,0,";
     char buffer[50];
-    std::sprintf(buffer, "%d", int(alt+1000.5));
+    std::sprintf(buffer, "%d", int(altitude.get()+1000.5));
     msg->buffer += buffer;
     std::sprintf(buffer, ",%4.2f", QNH.get());
     msg->buffer += buffer;
-    std::sprintf(buffer, ",%d", int(Units::kmh2ms(tas)*100));
+    std::sprintf(buffer, ",%d", int(Units::kmh2ms(tas.get())*100.f));
     msg->buffer += buffer;
-    std::sprintf(buffer, ",%d", int((Units::ms2knots(te)*10)+200));
+    std::sprintf(buffer, ",%d", int((Units::ms2knots(te_vario.get())*10.f)+200));
     msg->buffer += buffer;
-    std::sprintf(buffer, ",0,0,%d", int(Units::mcval2knots(mc)*10));
+    std::sprintf(buffer, ",0,0,%d", int(Units::mcval2knots(MC.get())*10));
     msg->buffer += buffer;
     std::sprintf(buffer, ",%d", int((100*ballast_kg.get() / polar_max_ballast.get())));
     msg->buffer += buffer;
-    std::sprintf(buffer, ",%d", 100-bugs);
+    std::sprintf(buffer, ",%d", 100 - int(bugs.get()));
 
     msg->buffer += "*" + NMEA::CheckSum(msg->buffer.c_str()) + "\r\n";
     ESP_LOGD(FNAME, "Cambridge %s", msg->buffer.c_str());

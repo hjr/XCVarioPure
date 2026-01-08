@@ -13,6 +13,7 @@
 #include "comm/DataLink.h"
 #include "comm/Messages.h"
 #include "setup/SetupNG.h"
+#include "setup/CruiseMode.h"
 #include "KalmanMPU6050.h"
 #include "Units.h"
 #include "sensor.h"
@@ -91,7 +92,7 @@ const ParserEntry XCVarioMsg::_pt[] = {
     Y.YY:   acceleration in Y-Axis,
     Z.ZZ:   acceleration in Z-Axis,
 */
-void NmeaPrtcl::sendStdXCVario(float baro, float dp, bool cruise)
+void NmeaPrtcl::sendStdXCVario(float baro, float dp)
 {
     if ( _dl.isBinActive() ) {
         return; // no NMEA output in binary mode
@@ -116,7 +117,7 @@ void NmeaPrtcl::sendStdXCVario(float baro, float dp, bool cruise)
         std::sprintf(str, "%1.3f", (ballast.get() + 100.f) / 100.f);
         msg->buffer += str;
     }
-    msg->buffer += ',' + std::to_string(!cruise);
+    msg->buffer += ',' + std::to_string(!VCMode.getCMode());
     std::sprintf(str, ",%2.1f", std::roundf(temp * 10.f) / 10.f);
     msg->buffer += str;
     std::sprintf(str, ",%4.1f", QNH.get());
@@ -149,7 +150,7 @@ void NmeaPrtcl::sendStdXCVario(float baro, float dp, bool cruise)
     DEV::Send(msg);
 }
 
-void NmeaPrtcl::sendXcvRPYL(float roll, float pitch, float yaw, float acc_z)
+void NmeaPrtcl::sendXcvRPYL()
 {
     if ( _dl.isBinActive() ) {
         return; // no NMEA output in binary mode
@@ -160,16 +161,16 @@ void NmeaPrtcl::sendXcvRPYL(float roll, float pitch, float yaw, float acc_z)
     msg->buffer = "$RPYL,";
     char str[50];
     sprintf(str, "%d,%d,%d,0,0,%d,0",
-            (int)fast_iroundf(roll*10.f),       // Bank == roll     (deg)
-            (int)fast_iroundf(pitch*10.f),      // Pitch            (deg)
-            (int)fast_iroundf(yaw*10.f),        // Magnetic Heading (deg) ?? fixme what ??
-            (int)fast_iroundf(acc_z*1000.f));
+            (int)fast_iroundf(IMU::getRoll()*10.f),       // Bank == roll     (deg)
+            (int)fast_iroundf(IMU::getPitch()*10.f),      // Pitch            (deg)
+            (int)fast_iroundf(IMU::getYaw()*10.f),        // Yaw              (deg)
+            (int)fast_iroundf(IMU::getGliderAccelZ()*1000.f));
     msg->buffer += str;
     msg->buffer += "*" + NMEA::CheckSum(msg->buffer.c_str()) + "\r\n";
     DEV::Send(msg);
 }
 
-void NmeaPrtcl::sendXcvAPENV1(float ias, float alt, float te)
+void NmeaPrtcl::sendXcvAPENV1()
 {
     if ( _dl.isBinActive() ) {
         return; // no NMEA output in binary mode
@@ -178,7 +179,7 @@ void NmeaPrtcl::sendXcvAPENV1(float ias, float alt, float te)
 
     msg->buffer = "$APENV1,";
     char str[50];
-    std::sprintf(str, "%d,%d,0,0,0,%d", (int)fast_iroundf(Units::kmh2knots(ias)),(int)fast_iroundf(Units::meters2feet(alt)),(int)fast_iroundf(Units::ms2fpm(te)));
+    std::sprintf(str, "%d,%d,0,0,0,%d", fast_iroundf(Units::kmh2knots(ias.get())), fast_iroundf(Units::meters2feet(altitude.get())), fast_iroundf(Units::ms2fpm(te_vario.get())));
     msg->buffer += str;
     msg->buffer += "*" + NMEA::CheckSum(msg->buffer.c_str()) + "\r\n";
     DEV::Send(msg);
@@ -191,16 +192,16 @@ void NmeaPrtcl::sendXcvAPENV1(float ias, float alt, float te)
  * zzzzz: Barometric altitude in feet +2000
  * aaa:   TAS knots 0-200
  */
-void NmeaPrtcl::sendXcvGeneric(float te, float alt, float tas)
+void NmeaPrtcl::sendXcvGeneric()
 {
     if ( _dl.isBinActive() ) {
         return; // no NMEA output in binary mode
     }
     Message *msg = newMessage();
-
+    
     msg->buffer = "$PTAS1,";
     char str[50];
-    sprintf(str, "%d,0,%d,%d", fast_iroundf(Units::ms2knots(te)*10.f+200.), fast_iroundf(Units::meters2feet(alt)+2000.f), fast_iroundf(Units::kmh2knots(tas)) );
+    sprintf(str, "%d,0,%d,%d", fast_iroundf(Units::ms2knots(te_vario.get())*10.f)+200, fast_iroundf(Units::meters2feet(altitude_isa.get()))+2000, fast_iroundf(Units::kmh2knots(tas.get())) );
     msg->buffer += str;
     msg->buffer += "*" + NMEA::CheckSum(msg->buffer.c_str()) + "\r\n";
     DEV::Send(msg);

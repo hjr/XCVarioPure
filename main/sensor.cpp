@@ -211,27 +211,27 @@ static void toyFeed(int count) // Called at 5Hz from clientLoop or sensorloop
     {
         if (ahrs_rpyl_dataset.get())
         {
-            ToyNmeaPrtcl->sendXcvRPYL(IMU::getRoll(), IMU::getPitch(), IMU::getYaw(), IMU::getGliderAccelZ());
-            ToyNmeaPrtcl->sendXcvAPENV1(ias.get(), altitude.get(), te_vario.get());
+            ToyNmeaPrtcl->sendXcvRPYL();
+            ToyNmeaPrtcl->sendXcvAPENV1();
         }
         switch (ToyNmeaPrtcl->getProtocolId())
         {
         case BORGELT_P:
-            ToyNmeaPrtcl->sendBorgelt(te_vario.get(), OAT.get(), ias.get(), tas.get(), MC.get(), bugs.get(), ballast.get(), VCMode.getCMode(), gflags.validTemperature);
-            ToyNmeaPrtcl->sendXcvGeneric(te_vario.get(), altitude_isa.get(), tas.get());
+            ToyNmeaPrtcl->sendBorgelt();
+            ToyNmeaPrtcl->sendXcvGeneric();
             break;
         case OPENVARIO_P:
-            ToyNmeaPrtcl->sendOpenVario(baroP, dynamicP, te_vario.get(), OAT.get(), gflags.validTemperature);
+            ToyNmeaPrtcl->sendOpenVario(baroP, dynamicP);
             break;
         case CAMBRIDGE_P:
-            ToyNmeaPrtcl->sendCambridge(te_vario.get(), tas.get(), MC.get(), bugs.get(), altitude.get());
+            ToyNmeaPrtcl->sendCambridge();
             break;
         case XCVARIO_P:
-            ToyNmeaPrtcl->sendStdXCVario(baroP, dynamicP, VCMode.getCMode());
+            ToyNmeaPrtcl->sendStdXCVario(baroP, dynamicP);
             break;
         case SEEYOU_P:
-            ToyNmeaPrtcl->sendSeeYouF(IMU::getGliderAccelX(), IMU::getGliderAccelY(), IMU::getGliderAccelZ(), te_vario.get(), ias.get(), altitude.get(), VCMode.getCMode());
-            if ( !(count%10) ) ToyNmeaPrtcl->sendSeeYouS(OAT.get(), VCMode.getCMode(), battery_voltage.get(), altitude.get());
+            ToyNmeaPrtcl->sendSeeYouF();
+            if ( !(count%10) ) ToyNmeaPrtcl->sendSeeYouS();
             break;
         default:
             ESP_LOGE(FNAME, "Protocol %d not supported error", ToyNmeaPrtcl->getProtocolId());
@@ -403,7 +403,7 @@ void readSensors(void *pvParameters)
         }
 
         float T=OAT.get(); // fixme
-		if( !gflags.validTemperature ) {
+		if( !OAT.getValid() ) {
 			T= 15 - ( (altitude.get()/100) * 0.65 );
 			// ESP_LOGW(FNAME,"T invalid, using 15 deg");
 		}
@@ -589,6 +589,7 @@ void readSensors(void *pvParameters)
                theCompass->ageIncr();
             }
 
+			// for the IMU temperature regulation
 			bool ok=false;
 			float xt = baroSensor->readTemperature(ok);
 			if( ok ) {

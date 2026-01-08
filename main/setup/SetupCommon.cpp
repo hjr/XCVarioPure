@@ -73,7 +73,7 @@ bool SetupCommon::init()
 			// ESP_LOGI(FNAME,"NVS size okay");
 			ret = NVS.getBlob(_key.data(), getPtr(), &required_size);
 
-			if ( !ret || !isValid() ){
+			if ( !ret || !inLimits() ){
 				ESP_LOGE(FNAME, "NVS nvs_get_blob error");
 				erase();
 				setDefault();  // try to init

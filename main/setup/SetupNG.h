@@ -231,7 +231,7 @@ public:
 	int getSize() override { return sizeof(_value); }
 	bool isDefault() override { return _default == _value; }
 	void setDefault() override { set( _default ); }
-	bool isValid() const override; // check on nan for <float>
+	bool inLimits() const override; // check on nan for <float>
 
 	// virtual T getGui() const { return get(); } // tb. overloaded for blackboard fixme
 	// virtual const char* unit() const { return ""; } // tb. overloaded for blackboard
@@ -244,6 +244,7 @@ public:
 			return( true );
 		}
 		_value = aval;
+		flags._valid = true;
 		if ( dosync ) {
 			sync();
 		}

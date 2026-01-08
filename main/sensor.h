@@ -20,19 +20,18 @@
 #define GYRO_FS (mpud::GYRO_FS_250DPS)
 
 union global_flags {
-	struct {
-		uint16_t inSetup :1;
-		uint16_t haveIMU :1;
-		uint16_t ahrsKeyValid :1;
-		uint16_t standard_setting :1;
-		uint16_t validTemperature :1 ;
-		uint16_t mpu_pwm_initalized :1;
-		uint16_t gear_warn_external :1;
-		uint16_t schedule_reboot :1;
-		uint16_t first_devices_run :1;
-		uint16_t flaps_nvs_defined :1;
-	};
-	uint16_t raw;
+    struct {
+        uint16_t inSetup : 1;
+        uint16_t haveIMU : 1;
+        uint16_t ahrsKeyValid : 1;
+        uint16_t standard_setting : 1;
+        uint16_t mpu_pwm_initalized : 1;
+        uint16_t gear_warn_external : 1;
+        uint16_t schedule_reboot : 1;
+        uint16_t first_devices_run : 1;
+        uint16_t flaps_nvs_defined : 1;
+    };
+    uint16_t raw;
 };
 
 class CANbus;

@@ -43,9 +43,9 @@
 
 // Specialization for float
 template<typename T>
-bool SetupNG<T>::isValid() const { return true; }
+bool SetupNG<T>::inLimits() const { return true; }
 template<>
-bool SetupNG<float>::isValid() const {
+bool SetupNG<float>::inLimits() const {
 	if ( std::isnan(_value) ) { return false; }
 	if ( _limt ) {
 		// check min/max limit
@@ -55,7 +55,7 @@ bool SetupNG<float>::isValid() const {
 	return true;
 }
 template<>
-bool SetupNG<int>::isValid() const {
+bool SetupNG<int>::inLimits() const {
 	if ( _limt ) {
 		// check min/max limit
 		if ( _value < (int)_limt->_min ) { return false; }

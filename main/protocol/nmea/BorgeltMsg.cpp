@@ -10,8 +10,10 @@
 #include "protocol/nmea_util.h"
 #include "comm/DataLink.h"
 #include "comm/Messages.h"
+#include "math/Floats.h"
 #include "Units.h"
-
+#include "setup/SetupNG.h"
+#include "setup/CruiseMode.h"
 #include "logdefnone.h"
 
 #include <cmath>
@@ -38,36 +40,33 @@ const ParserEntry BorgeltMsg::_pt[] = {
     HH = Outside airtemp in degrees celcius ( may have leading negative sign )
     CHK = standard NMEA checksum
 */
-void NmeaPrtcl::sendBorgelt(float te, float temp, float ias, float tas, float mc, int bugs, float aballast, bool cruise, bool validTemp)
+void NmeaPrtcl::sendBorgelt()
 {
     if ( _dl.isBinActive() ) {
         return; // no NMEA output in binary mode
     }
     Message* msg = newMessage();
 
-    if( !validTemp ) {
-        temp = 0;
-    }
-
-    float iaskn = Units::kmh2knots( ias );
+    float temp = OAT.getValid() ? OAT.get() : 0; 
+    float iaskn = Units::kmh2knots( ias.get() );
 
     msg->buffer = "$PBB50,";
     char buffer[50];
-    std::sprintf(buffer, "%03d", (int)std::round(Units::kmh2knots(tas)));
+    std::sprintf(buffer, "%03d", fast_iroundf(Units::kmh2knots(tas.get())));
     msg->buffer += buffer;
-    std::sprintf(buffer, ",%3.1f", Units::ms2knots(te));
+    std::sprintf(buffer, ",%3.1f", Units::ms2knots(te_vario.get()));
     msg->buffer += buffer;
-    std::sprintf(buffer, ",%1.1f", Units::mcval2knots(mc));
+    std::sprintf(buffer, ",%1.1f", Units::mcval2knots(MC.get()));
     msg->buffer += buffer;
-    std::sprintf(buffer, ",%d", (int)std::round(iaskn*iaskn));
+    std::sprintf(buffer, ",%d", fast_iroundf(iaskn*iaskn));
     msg->buffer += buffer;
-    std::sprintf(buffer, ",%d", bugs);
+    std::sprintf(buffer, ",%d", int(bugs.get()));
     msg->buffer += buffer;
-    std::sprintf(buffer, ",%1.2f", (aballast+100.f)/100.f);
+    std::sprintf(buffer, ",%1.2f", (ballast.get()+100.f)/100.f);
     msg->buffer += buffer;
-    std::sprintf(buffer, ",%1d", !cruise);
+    std::sprintf(buffer, ",%1d", !VCMode.getCMode());
     msg->buffer += buffer;
-    std::sprintf(buffer, ",%2d", (int)std::round(temp));
+    std::sprintf(buffer, ",%2d", fast_iroundf(temp));
 
     msg->buffer += "*" + NMEA::CheckSum(msg->buffer.c_str()) + "\r\n";
     ESP_LOGD(FNAME, "Borgelt %s", msg->buffer.c_str());

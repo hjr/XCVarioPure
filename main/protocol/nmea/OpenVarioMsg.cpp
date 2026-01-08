@@ -10,7 +10,7 @@
 #include "protocol/nmea_util.h"
 #include "comm/DataLink.h"
 #include "comm/Messages.h"
-
+#include "setup/SetupNG.h"
 #include "logdefnone.h"
 
 
@@ -24,7 +24,7 @@ const ParserEntry OpenVarioMsg::_pt[] = {
 };
 
 
-void NmeaPrtcl::sendOpenVario(float baro, float dp, float te, float temp, bool validTemp)
+void NmeaPrtcl::sendOpenVario(float baro, float dp)
 {
     if ( _dl.isBinActive() ) {
         return; // no NMEA output in binary mode
@@ -37,10 +37,10 @@ void NmeaPrtcl::sendOpenVario(float baro, float dp, float te, float temp, bool v
     msg->buffer += buffer;
     std::sprintf(buffer, ",Q,%0.1f", dp);
     msg->buffer += buffer;
-    std::sprintf(buffer, ",E,%0.1f", te);
+    std::sprintf(buffer, ",E,%0.1f", te_vario.get());
     msg->buffer += buffer;
-    if( validTemp ) {
-        std::sprintf(buffer, ",T,%0.1f", temp);
+    if( OAT.getValid() ) {
+        std::sprintf(buffer, ",T,%0.1f", OAT.get());
         msg->buffer += buffer;
     }
 
