@@ -116,10 +116,10 @@ int speedcal_change(SetupMenuValFloat *p) {
 
 int set_ahrs_defaults(SetupMenuSelect *p) {
 	if (p->getSelect() == 1) {
-		ahrs_gyro_factor.setDefault();
-		ahrs_min_gyro_factor.setDefault();
-		ahrs_dynamic_factor.setDefault();
-		gyro_gating.setDefault();
+		ahrs_gyro_factor.set(ahrs_gyro_factor.getDefault());
+		ahrs_min_gyro_factor.set(ahrs_min_gyro_factor.getDefault());
+		ahrs_dynamic_factor.set(ahrs_dynamic_factor.getDefault());
+		gyro_gating.set(gyro_gating.getDefault());
 	}
 	p->setSelect(0);
 	return 0;

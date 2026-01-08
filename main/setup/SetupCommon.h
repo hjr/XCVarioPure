@@ -36,7 +36,6 @@ public:
 	virtual void* getPtr() = 0;
 	virtual int getSize() = 0;
 	virtual bool isDefault() = 0;
-	virtual void setDefault() = 0;
 	virtual bool inLimits() const = 0;
 
 	bool init();
@@ -77,6 +76,7 @@ public:
 
     // variables
 protected:
+	virtual void setDefault() = 0;
 	const std::string_view _key; // unique identification TAG
 	t_setup_flags flags = {false, false, 0, 0, false, false};
 	void (*_action)(); // action on a value change

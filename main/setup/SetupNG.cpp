@@ -191,7 +191,7 @@ static void propagate_caps()
 
 void chg_display_orientation(){
 	ESP_LOGI(FNAME, "display changed");
-	imu_reference.setDefault();
+	imu_reference.set(imu_reference.getDefault());
 }
 
 static void ch_airborne_state(){

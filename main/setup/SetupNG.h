@@ -71,7 +71,7 @@ typedef enum e_qnh_unit { QNH_HPA, QNH_INHG } e_qnh_unit_t;
 typedef enum e_compasss_sensor_type { CS_DISABLE=0, CS_I2C=1, CS_CAN=3 } e_compasss_sensor_type_t;
 typedef enum e_sync { SYNC_NONE, SYNC_FROM_MASTER, SYNC_FROM_CLIENT, SYNC_BIDIR } e_sync_t;       // determines if data is synched from/to client. BIDIR means sync at commit from both sides
 typedef enum e_reset { RESET_NO, RESET_YES } e_reset_t;   // determines if data is reset to defaults on factory reset
-typedef enum e_volatility { VOLATILE, PERSISTENT, SEMI_VOLATILE } e_volatility_t;  // stored in RAM, FLASH, or into FLASH after a while
+enum e_volatility { VOLATILE, PERSISTENT };  // stored in RAM only, or additionally in FLASH
 typedef enum e_can_mode { CAN_MODE_MASTER, CAN_MODE_CLIENT, CAN_MODE_STANDALONE } e_can_mode_t;
 typedef enum e_altimeter_select { AS_TE_SENSOR, AS_BARO_SENSOR, AS_EXTERNAL } e_altimeter_select_t;
 typedef enum e_s2f_arrow_color { AC_WHITE_WHITE, AC_BLUE_BLUE, AC_GREEN_RED } e_s2f_arrow_color_t;
@@ -230,7 +230,6 @@ public:
 	void* getPtr() override { return &_value; }
 	int getSize() override { return sizeof(_value); }
 	bool isDefault() override { return _default == _value; }
-	void setDefault() override { set( _default ); }
 	bool inLimits() const override; // check on nan for <float>
 
 	// virtual T getGui() const { return get(); } // tb. overloaded for blackboard fixme
@@ -285,6 +284,18 @@ public:
 	float getMin() const { return _limt->_min; }
 	float getMax() const { return _limt->_max; }
 	float getStep() const { return _limt->_step; }
+
+protected:
+    void setDefault() override {
+        // do not do the set procedure here (only for intialization or factory reset)
+        if (_value == _default) {
+            return;
+        }
+        _value = _default;
+        if (flags._volatile == PERSISTENT) {
+            setDirty();
+        }
+    }
 
 private:
 	T       _value;   // the value
