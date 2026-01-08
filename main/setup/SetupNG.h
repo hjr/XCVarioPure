@@ -31,10 +31,10 @@ class Quaternion;
 /*
  *
  * NEW Simplified and distributed non volatile config data API with template classes:
- * SetupNG<int>  airspeed_mode( "AIRSPEED_MODE", MODE_IAS );
+ * SetupNG<int>  MC( "MacCready", 0.5 );
  *
- *  int as = airspeed_mode.get();
- *  airspeed_mode.set( MODE_TAS );
+ *  int as = MC.get();
+ *  MC.set( 1.5 );
  *
  */
 
@@ -427,7 +427,6 @@ extern SetupNG<int>  		serial2_ttl_signals;
 extern SetupNG<int>  		serial2_tx_enable;
 extern SetupNG<int>  		software_update;
 extern SetupNG<int>  		battery_display;
-extern SetupNG<int>  		airspeed_mode;
 extern SetupNG<int>		    log_level;
 extern SetupNG<float>		te_comp_adjust;
 extern SetupNG<int>		    te_comp_enable;

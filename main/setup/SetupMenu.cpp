@@ -201,13 +201,6 @@ int select_battery_type(SetupMenuSelect *p) {
 	return 0;
 }
 
-const std::array<std::string_view, 3> velocity_mode = {"IAS", "TAS"};
-static int update_velocity_buzz(SetupMenuSelect *p) {
-	SetupMenu *velocity = static_cast<SetupMenu*>(p->getParent()->getParent()->getEntry(3));
-	velocity->setBuzzword(velocity_mode[airspeed_mode.get()].data());
-	return 0;
-}
-
 const std::array<std::string_view, 2> alti_mode = {"QNH", "QFE"};
 static int update_alti_buzz(SetupMenuSelect *p) {
 	SetupMenu *alti = static_cast<SetupMenu*>(p->getParent()->getParent()->getEntry(4));
@@ -813,12 +806,6 @@ void options_menu_create_units(SetupMenu *top) {
 }
 
 static void system_menu_create_airspeed(SetupMenu *top) {
-	SetupMenuSelect *amode = new SetupMenuSelect("Airspeed Mode", RST_NONE, update_velocity_buzz, &airspeed_mode);
-	amode->setHelp("Select mode of Airspeed indicator to display IAS (Indicated AirSpeed), TAS (True AirSpeed)", 180);
-	amode->addEntry(velocity_mode[0].data());
-	amode->addEntry(velocity_mode[1].data());
-	top->addEntry(amode);
-
 	SetupMenuValFloat *spc = new SetupMenuValFloat("AS Calibration", "%", nullptr, false, &speedcal);
     spc->setExitAction(speedcal_change);
 	spc->setHelp("Calibration of airspeed sensor (AS). Normally not needed, unless the pressure probe has a systematic error");
@@ -922,7 +909,8 @@ static void screens_menu_create_vario(SetupMenu *top) {
     SetupMenuSelect *tgauge = new SetupMenuSelect("Upper Gauge", RST_NONE, nullptr, &vario_upper_gauge);
     tgauge->setHelp("Choose the content for this gauge");
     tgauge->addEntry("Disable", MultiGauge::GAUGE_NONE);
-    tgauge->addEntry("Airspeed", MultiGauge::GAUGE_SPEED);
+    tgauge->addEntry("IAS Speed", MultiGauge::GAUGE_IAS_SPEED);
+    tgauge->addEntry("TAS Speed", MultiGauge::GAUGE_TAS_SPEED);
     tgauge->addEntry("GND Speed", MultiGauge::GAUGE_GND_SPEED);
     tgauge->addEntry("Speed2Fly", MultiGauge::GAUGE_S2F);
     tgauge->addEntry("Net. Vario", MultiGauge::GAUGE_NETTO);
@@ -1074,7 +1062,6 @@ void options_menu_create(SetupMenu *opt) { // dynamic!
 
 		// Airspeed
 		SetupMenu *velocity = new SetupMenu("Airspeed", system_menu_create_airspeed);
-		velocity->setBuzzword(velocity_mode[airspeed_mode.get()].data());
 		opt->addEntry(velocity);
 
 		// Altimeter

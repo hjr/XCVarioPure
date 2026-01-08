@@ -417,7 +417,7 @@ void readSensors(void *pvParameters)
 		dynamicP = asSensor->getHead();
         baroP = baroSensor->getHead();  	// Baro Pressure
 		float teP = teSensor->getHead();    // TE Pressure
-		tas.set(Atmosphere::TAS2(ias.get(), altitude.get(), OAT.get()));
+		tas.set(Atmosphere::TAS2(ias.get(), altitude.get(), T));
 
         // ESP_LOGI(FNAME,"TE, Delta: %d - log%d", (int)(millis() - _millis));
         if( logging.get() ){

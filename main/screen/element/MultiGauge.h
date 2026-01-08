@@ -17,7 +17,7 @@ class SetupNG;
 class MultiGauge : public ScreenElement
 {
 public:
-    using MultiDisplay = enum { GAUGE_NONE, GAUGE_SPEED, GAUGE_GND_SPEED, GAUGE_S2F, GAUGE_NETTO, GAUGE_HEADING, GAUGE_SLIP };
+    using MultiDisplay = enum { GAUGE_NONE, GAUGE_IAS_SPEED, GAUGE_TAS_SPEED, GAUGE_GND_SPEED, GAUGE_S2F, GAUGE_NETTO, GAUGE_HEADING, GAUGE_SLIP };
 
     MultiGauge(int16_t cx, int16_t cy, MultiDisplay d);
     ~MultiGauge() = default;

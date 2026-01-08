@@ -34,23 +34,14 @@ void MultiGauge::setDisplay(MultiDisplay d)
     update_nvs();
 }
 
-static const char *SpeedModeStr() {
-    if (airspeed_mode.get() == MODE_IAS) {
-        return "IAS";
-    } else if (airspeed_mode.get() == MODE_TAS) {
-        return "TAS";
-    } else {
-        return "-";
-    }
-}
-
 // accepts speed in kmh IAS/TAS, translates into configured unit
 // right-aligned to value
 void MultiGauge::draw()
 {
     float fval = 0;
     switch (_display) {
-    case GAUGE_SPEED:
+    case GAUGE_IAS_SPEED:
+    case GAUGE_TAS_SPEED:
     case GAUGE_GND_SPEED:
     case GAUGE_S2F:
         fval = Units::Speed(_nvsvar->get());
@@ -104,8 +95,11 @@ void MultiGauge::drawUnit() const
     case GAUGE_S2F:
         if (!mode_str) mode_str = "S2F";
         [[fallthrough]];
-    case GAUGE_SPEED:
-        if (!mode_str) mode_str = SpeedModeStr();
+    case GAUGE_IAS_SPEED:
+        if (!mode_str) mode_str = "IAS";
+        [[fallthrough]];
+    case GAUGE_TAS_SPEED:
+        if (!mode_str) mode_str = "TAS";
         unit_str = Units::SpeedUnitStr();
         break;
     case GAUGE_NETTO:
@@ -132,8 +126,11 @@ void MultiGauge::drawUnit() const
 void MultiGauge::update_nvs()
 {
     switch (_display) {
-    case MultiGauge::GAUGE_SPEED:
+    case MultiGauge::GAUGE_IAS_SPEED:
         _nvsvar = &ias;
+        break;
+    case MultiGauge::GAUGE_TAS_SPEED:
+        _nvsvar = &tas;
         break;
     case MultiGauge::GAUGE_GND_SPEED:
         _nvsvar = &gnd_speed;
