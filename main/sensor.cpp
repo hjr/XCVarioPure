@@ -2,9 +2,8 @@
 #include "sensor.h"
 
 #include "Cipher.h"
-#include "sensor/pressure/bme280_spi.h"
-#include "sensor/pressure/spl06_007.h"
 #include "ESP32NVS.h"
+#include "sensor/pressure/PressureSensor.h"
 #include "sensor/press_diff/AirspeedSensor.h"
 #include "sensor/SensorMgr.h"
 #include "sensor/VarioFilter.h"
@@ -79,13 +78,6 @@
 #include <cstring>
 
 
-
-
-
-
-AirspeedSensor *asSensor = nullptr;
-PressureSensor *baroSensor = nullptr;
-PressureSensor *teSensor = nullptr;
 
 SemaphoreHandle_t spiMutex=NULL;
 
@@ -402,7 +394,7 @@ void readSensors(void *pvParameters)
             }
         }
 
-        float T=OAT.get(); // fixme
+        float T=OAT.get();
 		if( !OAT.getValid() ) {
 			T= 15 - ( (altitude.get()/100) * 0.65 );
 			// ESP_LOGW(FNAME,"T invalid, using 15 deg");

@@ -24,3 +24,6 @@ protected:
     int32_t _offset = 0.; // raw adc offset value (float in nvs storage)
     float _multiplier = 1.0f;
 };
+
+extern AirspeedSensor *asSensor;
+

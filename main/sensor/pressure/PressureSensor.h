@@ -20,3 +20,7 @@ class PressureSensor : public SensorTP<float>
    protected:
     // float _multiplier = 1.0f;
 };
+
+extern PressureSensor *baroSensor;
+extern PressureSensor *teSensor;
+

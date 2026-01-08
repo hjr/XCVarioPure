@@ -19,12 +19,13 @@
 
 #include <freertos/FreeRTOS.h>
 
+AirspeedSensor *asSensor = nullptr;
+
 static float as_buffer[ (SENSOR_HISTORY_DURATION_MS / 100) + 4 ]; // history buffer for airspeed sensor
 
 AirspeedSensor::AirspeedSensor() : SensorTP<float>(as_buffer, 100, SensorId::DIFFPRESSURE)
 {
     setNVSVar(&ias);
-    // todo airspeed_mode.get()
     setFilter(new AirSpeedFilter(0.25f));
 }
 

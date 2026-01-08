@@ -83,8 +83,10 @@ float DS18B20::doRead()
     OneWIRE->readBytes(scratch, sizeof(scratch));
 
     // 5. Validate CRC
-    if (scratch[8] != OneWIRE->crc8(scratch, 8))
+    if (scratch[8] != OneWIRE->crc8(scratch, 8)) {
+        ESP_LOGE(FNAME, "DS18B20 CRC error, return NAN");
         return NAN;
+    }
 
     // 6. Decode temp
     int16_t raw = (scratch[1] << 8) | scratch[0];

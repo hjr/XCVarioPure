@@ -20,6 +20,8 @@
 
 #include <freertos/FreeRTOS.h>
 
+PressureSensor *baroSensor = nullptr;
+PressureSensor *teSensor = nullptr;
 
 #define SPL06_007_BARO 0x77
 #define SPL06_007_TE   0x76
