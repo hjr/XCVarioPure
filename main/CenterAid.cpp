@@ -182,8 +182,8 @@ void CenterAid::ageThermal(){
 
 
 void CenterAid::calcFlightMode( float headingDiff ){
-	// ESP_LOGI(FNAME,"calcFlightMode cur_head: %.1f hdiff:%.1f gs:%.0f GPSS:%d MH:%.1f FM:%d", cur_heading, headingDiff, getTAS(), Flarm::gpsStatus(), mag_hdt.get(), flightmode  );
-	if( getTAS() < 25 ){
+	// ESP_LOGI(FNAME,"calcFlightMode cur_head: %.1f hdiff:%.1f gs:%.0f GPSS:%d MH:%.1f FM:%d", cur_heading, headingDiff, tas.get(), Flarm::gpsStatus(), mag_hdt.get(), flightmode  );
+	if( tas.get() < 25 ){
 		if( flightmode != undefined ) {
 			flightmode = undefined;
 			ESP_LOGI(FNAME,"New fm: undefined, no AS");

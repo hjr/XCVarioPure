@@ -67,12 +67,9 @@ extern AnalogInput *BatVoltage;
 
 extern std::string logged_tests;
 
-extern float getTAS();
-
 extern AnalogInput *AnalogInWk;
 
 extern float aTE;
-extern float tas;
 extern float aTES2F;
 extern float as2f;
 extern float s2f_delta;

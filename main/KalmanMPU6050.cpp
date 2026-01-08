@@ -193,14 +193,14 @@ void IMU::Process()
 	// ESP_LOGI( FNAME,"Omega: %f axis: %.3f,%.3f,%.3f", w, axis.a, axis.b, axis.c);
 
 	float roll=0, pitch=0;
-	if( getTAS() > 10 ){
+	if( tas.get() > 10 ){
 		float loadFactor = accel.get_norm();
 		float lf = loadFactor > 2.0 ? 2.0 : loadFactor;
 		loadFactor = lf < 0 ? 0 : lf; // limit to 0..2g
 		// the yz portion of w is proportional to the length of YZ portion of the normalized axis.
 		circle_omega = w * std::sqrtf(axis.y*axis.y + axis.z*axis.z) * (std::signbit(gyro_rad.z)?-1.f:1.f);
 		// tan(roll):= petal force/G = m w v / m g
-		float tanw = -circle_omega * getTAS() / (3.6f * 9.80665f);
+		float tanw = -circle_omega * tas.get() / (3.6f * 9.80665f);
 		roll = atan( tanw );
 		if ( ahrs_roll_check.get() ) {
 			// expected extra load c = sqrt(aa+bb) - 1, here a = 1/9.81 x atan, b=1

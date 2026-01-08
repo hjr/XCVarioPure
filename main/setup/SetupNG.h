@@ -339,6 +339,7 @@ extern SetupNG<float>  		flap_pos;
 extern SetupNG<float>  		altitude;
 extern SetupNG<float>  		altitude_isa;
 extern SetupNG<float>  		ias;
+extern SetupNG<float>  		tas;
 extern SetupNG<float>  		gnd_speed;
 extern SetupNG<float>  		te_vario;
 extern SetupNG<float>  		te_netto;

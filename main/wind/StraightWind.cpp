@@ -125,7 +125,7 @@ bool StraightWind::calculateWind()
 	float cgs = Units::knots2kmh( Flarm::getGndSpeedKnots() );
 
 	// Get current TAS in km/h
-	float ctas = float( getTAS() );
+	float ctas = tas.get();
 
 	// Check, if we have a AS value > minimum, default is 25 km/h.
 	// If GS is nearly zero, the measurement makes also sense (wave), hence if we are not flying it doesn't

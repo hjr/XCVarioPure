@@ -132,7 +132,6 @@ uint8_t gyro_flash_savings=0;
 global_flags gflags = {};
 
 int   ccp = 60;
-float tas = 0;
 float aTE = 0;
 float alt_external;
 float netto = 0;
@@ -149,9 +148,6 @@ const constexpr char notfound_text[] = "NOT FOUND\n";
 int IRAM_ATTR sign(int num) {
     return (num > 0) - (num < 0);
 }
-
-float getTAS() { return tas; }
-
 
 static void grabMPU()
 {
@@ -225,14 +221,14 @@ static void toyFeed(int count) // Called at 5Hz from clientLoop or sensorloop
         switch (ToyNmeaPrtcl->getProtocolId())
         {
         case BORGELT_P:
-            ToyNmeaPrtcl->sendBorgelt(te_vario.get(), OAT.get(), ias.get(), tas, MC.get(), bugs.get(), ballast.get(), VCMode.getCMode(), gflags.validTemperature);
-            ToyNmeaPrtcl->sendXcvGeneric(te_vario.get(), altitude_isa.get(), tas);
+            ToyNmeaPrtcl->sendBorgelt(te_vario.get(), OAT.get(), ias.get(), tas.get(), MC.get(), bugs.get(), ballast.get(), VCMode.getCMode(), gflags.validTemperature);
+            ToyNmeaPrtcl->sendXcvGeneric(te_vario.get(), altitude_isa.get(), tas.get());
             break;
         case OPENVARIO_P:
             ToyNmeaPrtcl->sendOpenVario(baroP, dynamicP, te_vario.get(), OAT.get(), gflags.validTemperature);
             break;
         case CAMBRIDGE_P:
-            ToyNmeaPrtcl->sendCambridge(te_vario.get(), tas, MC.get(), bugs.get(), altitude.get());
+            ToyNmeaPrtcl->sendCambridge(te_vario.get(), tas.get(), MC.get(), bugs.get(), altitude.get());
             break;
         case XCVARIO_P:
             ToyNmeaPrtcl->sendStdXCVario(baroP, dynamicP, VCMode.getCMode());
@@ -339,7 +335,7 @@ void clientLoop(void *pvParameters)
 				baroP = Atmosphere::calcPressure( QNH.get(), tmpalt);
 			}
 			dynamicP = Atmosphere::kmh2pascal(ias.get());
-			tas = Atmosphere::TAS2( ias.get(), altitude.get(), OAT.get() );
+			tas.set(Atmosphere::TAS2(ias.get(), altitude.get(), OAT.get()));
 			if( IMU::getGliderAccelZ() > gload_pos_max.get() ){
 				gload_pos_max.set( IMU::getGliderAccelZ() );
 			}else if( IMU::getGliderAccelZ() < gload_neg_max.get() ){
@@ -421,6 +417,7 @@ void readSensors(void *pvParameters)
 		dynamicP = asSensor->getHead();
         baroP = baroSensor->getHead();  	// Baro Pressure
 		float teP = teSensor->getHead();    // TE Pressure
+		tas.set(Atmosphere::TAS2(ias.get(), altitude.get(), OAT.get()));
 
         // ESP_LOGI(FNAME,"TE, Delta: %d - log%d", (int)(millis() - _millis));
         if( logging.get() ){
