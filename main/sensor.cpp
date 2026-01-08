@@ -145,10 +145,6 @@ const constexpr char passed_text[] = "PASSED\n";
 const constexpr char failed_text[] = "FAILED\n";
 const constexpr char notfound_text[] = "NOT FOUND\n";
 
-int IRAM_ATTR sign(int num) {
-    return (num > 0) - (num < 0);
-}
-
 static void grabMPU()
 {
 	// Automatically trac the gyro bias

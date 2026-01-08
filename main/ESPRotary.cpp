@@ -6,7 +6,7 @@
 #include "screen/UiEvents.h"
 #include "protocol/Clock.h"
 #include "comm/Mutex.h"
-#include "sensor.h"
+#include "math/Integers.h"
 #include "logdefnone.h"
 
 #include <freertos/FreeRTOS.h>
