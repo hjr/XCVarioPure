@@ -46,7 +46,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
-
+#include <algorithm>
 
 ////////////////////////////
 // types
@@ -177,10 +177,7 @@ Point Line::intersect(Point p1, Point p2) const {
     int dy = p2.y - p1.y;
     float num = _d - (_nx * p1.x + _ny * p1.y);
     float den = _nx * dx + _ny * dy;
-    float t = num / den;
-    // clamp t into [0,1], prevents extrusion due to rounding
-    if (t < 0.f) t = 0.f;
-    else if (t > 1.f) t = 1.f;
+    float t = std::clamp(num / den, 0.f, 1.f); // prevents extrusion due to rounding
     Point ret;
     ret.x = fast_iroundf(dx * t) + p1.x;
     ret.y = fast_iroundf(dy * t) + p1.y;
