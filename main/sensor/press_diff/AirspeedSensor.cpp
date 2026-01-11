@@ -159,7 +159,7 @@ bool AirspeedSensor::setup()
     return true;
 }
 
-float AirspeedSensor::doRead()
+bool AirspeedSensor::doRead(float &val)
 {
     int32_t p_raw;
     uint16_t t_dat;
@@ -171,14 +171,16 @@ float AirspeedSensor::doRead()
         if (!ok)
         {
             ESP_LOGE(FNAME, "Warning, status :%d  p=%ld, bad even retry", ok, p_raw);
-            return NAN;
+            val = NAN;
+            return false;
         }
     }
     int raw_diff = p_raw - _offset;
     if (raw_diff < 0) {
-        return 0.f;
+        val = 0.f;
+        return true;
     }
-    float pascal = static_cast<float>(raw_diff) * _multiplier;
-    ESP_LOGI(FNAME,"P:%f offset:%d raw:%ld  raw-off:%d m:%f T:%u", pascal, _offset, p_raw, raw_diff, _multiplier, t_dat);
-    return pascal;
+    val = static_cast<float>(raw_diff) * _multiplier;
+    ESP_LOGI(FNAME,"P:%f offset:%d raw:%ld  raw-off:%d m:%f T:%u", val, _offset, p_raw, raw_diff, _multiplier, t_dat);
+    return true;
 }

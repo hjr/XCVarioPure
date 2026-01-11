@@ -119,6 +119,9 @@ public:
         SensorBase(ums, id),
         _history((T*)buf, HistoryCapacity(ums))
     {
+        if constexpr (std::is_same_v<T, float>) { // only for float types
+            _invalid = NAN;
+        }
     }
     virtual ~SensorTP() {
         if ( _filter ) {
@@ -134,18 +137,21 @@ public:
         }
         _filter = filter;
     }
-
-    virtual T doRead() = 0;
+    // read current value from sensor hardware
+    virtual bool doRead(T &val) = 0;
     // optional: diagnostic info
     // virtual bool healthy() const { return true; }
 
     // Call this periodically from main loop or task.
     bool update(uint32_t now_ms) override {
-        if (now_ms - _last_update_time_ms < _update_interval_ms) {
+        if ((now_ms - _last_update_time_ms) < _update_interval_ms) {
             return false;
         }
 
-        T value = doRead();
+        T value;
+        if (!doRead(value)) {
+            ESP_LOGE(FNAME, "Sensor %s read NAN", name());
+        }
         pushToHistory(value, now_ms);
         return true;
     }
@@ -156,11 +162,11 @@ public:
         _history.push(value); // fixme what to do with NAN in the histroy?
         if constexpr (std::is_same_v<T, float>) { // only for float types
             if (_nvsvar) {
-                float nvsval = value;
+                float fval = value;
                 if ( _filter ) {
-                    nvsval = _filter->filter(value);
+                    fval = _filter->filter(value);
                 }
-                if ( ! std::isnan(nvsval) ) _nvsvar->set(nvsval, true, false);
+                _nvsvar->set(fval, true, false);
             }
         }
     }
@@ -253,6 +259,12 @@ public:
     bool getValid() const {
         return _history.level() > 0 && (_last_update_time_ms + _update_interval_ms * 2 > Clock::getMillis());
     }
+    bool isValid(T val) const {
+        if ( val != _invalid ) {
+            return true;
+        }
+        return false;
+    }
 
 protected:
     // Capacity = ceil(5000 / _update_interval_ms)
@@ -261,5 +273,6 @@ protected:
     FixedSensorHistory<T> _history;
     SetupNG<float> *_nvsvar = nullptr; ///< Optional link to NVS variable for sync etc.
     BaseFilterItf*  _filter = nullptr; ///< Optional filter plugin
+    T               _invalid = T{};    ///< Invalid value representation
 };
 

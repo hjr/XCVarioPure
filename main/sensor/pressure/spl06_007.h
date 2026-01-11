@@ -17,7 +17,7 @@ class SPL06_007 : public PressureSensor {
     bool probe() override;
     bool setup() override;
     bool selfTest(float& t, float& p);
-    float doRead() override;
+    bool doRead(float &val) override;
     float readTemperature(bool& success) override;
 
    private:

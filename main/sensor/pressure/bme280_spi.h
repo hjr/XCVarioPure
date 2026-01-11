@@ -45,7 +45,7 @@ public:
     bool selfTest( float& p, float& t ) override;
 
 	float readTemperature( bool& success ) override;
-	float doRead() override;
+	bool doRead(float &val) override;
 	// float readPressureAVG( float alpha=0.1 );
 	float readHumidity();
 	uint8_t readID();

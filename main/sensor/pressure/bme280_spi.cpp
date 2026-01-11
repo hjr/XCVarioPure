@@ -210,10 +210,10 @@ float BME280_SPI::readTemperature( bool& success ){
 }
 
 //***************BME280 ****************************
-float BME280_SPI::doRead() {
+bool BME280_SPI::doRead(float &val) {
 	bool ok=false;
 	if( init_err ){
-		return NAN;
+		return false;
 	}
 	// ESP_LOGI(FNAME,"++BMP280 readPressure cs:%d", _cs);
 	bool success;
@@ -227,13 +227,14 @@ float BME280_SPI::doRead() {
 	}
 	if( loop == 100 ){
 		ESP_LOGE(FNAME,"Error reading temp BMP280 CS: %d !", _cs );
-		ok = false;
+		val = NAN;
+		return false;
 	}
 
 	uint32_t adc_P = readADC(0x77);
-	float p=compensate_P((int32_t)adc_P) / 100.0;
+	val=compensate_P((int32_t)adc_P) / 100.0;
     // ESP_LOGI(FNAME,"--BMP280 readPressure, p=%lf", p);
-	return p;
+	return true;
 }
 
 //***************BME280****************************
@@ -336,7 +337,9 @@ bool BME280_SPI::selfTest( float& t, float &p ) {
 	p=0;
 	bool ok;
 	for( int i=0; i<10; i++ ){
-		p += doRead();
+		float tmp;
+		doRead(tmp);
+		p += tmp;
 		// delay(100);
 	}
 	p=p/10;

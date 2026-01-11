@@ -117,7 +117,9 @@ bool SPL06_007::selfTest( float& t, float& p ){
 	ESP_LOGI(FNAME,"SPL06_007 selftest, scan for I2C address %02x PASSED, Product ID: %d, Revision ID:%d", _address, rdata>>4 , rdata&0x0F );
 	p = 0.;
 	for(int i=0; i<10;i++){
-		p += doRead();
+        float tmp;
+		doRead(tmp);
+		p += tmp;
 		vTaskDelay(pdMS_TO_TICKS(50));
 	}
     p = p / 10.;
@@ -136,7 +138,7 @@ bool SPL06_007::selfTest( float& t, float& p ){
 	}
 }
 
-float SPL06_007::doRead()
+bool SPL06_007::doRead(float &val)
 {
     int32_t *t_rawptr = nullptr;
     int32_t p_raw;
@@ -146,7 +148,8 @@ float SPL06_007::doRead()
     }
     if ( ! get_raw(p_raw, t_rawptr) ) {
         ESP_LOGW(FNAME, "Sensor reading failed");
-        return NAN;
+        val = NAN;
+        return false;
     }
 	float praw_sc = p_raw / _scale_factor_p;
 	float traw_sc = _traw / _scale_factor_t;
@@ -155,7 +158,8 @@ float SPL06_007::doRead()
                   + traw_sc * (c01 + praw_sc * (c11 + praw_sc * c21));
 
     tick++;
-	return p / 100.f; // convert to mb
+	val = p / 100.f; // convert to mb
+    return true;
 }
 
 

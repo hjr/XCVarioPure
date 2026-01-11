@@ -26,16 +26,11 @@ constexpr int DS18B20_RESOLUTION_12B = 0x7f; // 12-bit resolution
 #define DS18B20_CMD_WRITE_SCRATCHPAD  0x4E
 #define DS18B20_CMD_READ_SCRATCHPAD   0xBE
 
-OwSens *oatempSensor = nullptr;
-
 // OneWIRE need to be created earlier and live longer than the sensor
 
-DS18B20::DS18B20(onewire_device_address_t addr) : OwSens(addr, SensorId::TEMPERATURE)
+DS18B20::DS18B20(onewire_device_address_t addr) : OwSens(addr)
 {
-    setNVSVar(&OAT);
-    setFilter(new LowPassFilter(0.3f));
-    SensorRegistry::removeFromUpdateLoop(SensorId::TEMPERATURE);
-    oatempSensor = this;
+    _latency_ms = 800;
 }
 
 bool DS18B20::setup()
@@ -64,13 +59,13 @@ bool DS18B20::primeRead(uint32_t now_ms)
     // 2. send command: DS18B20_CMD_CONVERT_TEMP
     if ( OneWIRE->sendCommand(_address, DS18B20_CMD_CONVERT_TEMP) == ESP_OK ) {
         _converting = true;
-        _convert_start_ms = now_ms;
     }
+    _convert_start_ms = now_ms; // allways keep timing for conversion
     return _converting;
 }
 
 // call when conversion is over to read the temperature
-float DS18B20::doRead()
+bool DS18B20::doRead(float &val)
 {
     uint8_t scratch[9];
     _converting = false;
@@ -79,17 +74,18 @@ float DS18B20::doRead()
     OneWIRE->busReset();
 
     // 4. Read scratchpad
-    OneWIRE->sendCommand(_address, DS18B20_CMD_READ_SCRATCHPAD);
-    OneWIRE->readBytes(scratch, sizeof(scratch));
+    esp_err_t err = OneWIRE->sendCommand(_address, DS18B20_CMD_READ_SCRATCHPAD);
+    err |= OneWIRE->readBytes(scratch, sizeof(scratch));
 
     // 5. Validate CRC
-    if (scratch[8] != OneWIRE->crc8(scratch, 8)) {
-        ESP_LOGE(FNAME, "DS18B20 CRC error, return NAN");
-        return NAN;
+    if (err != ESP_OK || scratch[8] != OneWIRE->crc8(scratch, 8)) {
+        ESP_LOGE(FNAME, "DS18B20 error, return NAN");
+        val = NAN;
+        return false;
     }
 
     // 6. Decode temp
-    int16_t raw = (scratch[1] << 8) | scratch[0];
-    return raw / 16.0f;
+    val = (float)((scratch[1] << 8) | scratch[0]) / 16.0f;
+    return true;
 }
 

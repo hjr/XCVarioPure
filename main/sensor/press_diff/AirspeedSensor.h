@@ -14,7 +14,7 @@ public:
     static AirspeedSensor *autoSetup();
 
     bool setup() override;
-    float doRead() override;
+    bool doRead(float &val) override;
     virtual void changeConfig() = 0;
 
 protected:
