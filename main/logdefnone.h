@@ -1,6 +1,8 @@
 
 #pragma once
 
+#include <esp_log.h>
+
 #if defined(ESP_LOGV)
 # undef ESP_LOGV
 #endif

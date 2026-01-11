@@ -12,7 +12,7 @@
 #include "DataLink.h"
 #include "setup/SetupCommon.h"
 #include "math/Floats.h"
-#include "logdef.h"
+#include "logdefnone.h"
 
 #include <esp_bt.h>
 #include <esp_gatts_api.h>
