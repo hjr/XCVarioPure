@@ -8,10 +8,12 @@
 
 #include "FlarmMsg.h"
 #include "protocol/FlarmBin.h"
+#include "protocol/nmea/XCVSimMsg.h"
 #include "Flarm.h"
 #include "screen/UiEvents.h"
 #include "screen/DrawDisplay.h"
 #include "sensor.h"
+#include "sensor/SensorMgr.h"
 #include "screen/MessageBox.h"
 #include "comm/DeviceMgr.h"
 #include "setup/SetupNG.h"
@@ -191,22 +193,34 @@ dl_action_t FlarmMsg::parsePFLAX(NmeaPlugin *plg)
     ProtocolState *sm = nmea.getSM();
     const std::vector<int> *word = &sm->_word_start;
 
-    if ( word->size() == 2 && *(sm->_frame.c_str() + word->at(0)) == 'A' ) {
-        // this is the confirmation from flarm to go binary
-        ESP_LOGI(FNAME,"confirmed");
-        DataLink *host = DEVMAN->getFlarmBPInitiator();
-        if ( host && host->getProtocol(FLARMBIN_P) && nmea.getDL()->getProtocol(FLARMBIN_P)) {
-            // Host side
-            FlarmBinary *hostfb = static_cast<FlarmBinary*>(host->getBinary());
-            ESP_LOGI(FNAME, "Host side %d", hostfb->getDeviceId());
-            // Device side
-            FlarmBinary *devfb = static_cast<FlarmBinary*>(nmea.getDL()->goBIN());
-            ESP_LOGI(FNAME, "Device side %d", devfb->getDeviceId());
-            // Cross link them
-            devfb->setPeer(hostfb);
-            hostfb->setPeer(devfb);
+    if ( word->size() == 2 ) {
+        if ( *(sm->_frame.c_str() + word->at(0)) == 'A' ) {
+            // this is the confirmation from flarm to go binary
+            ESP_LOGI(FNAME,"confirmed");
+            DataLink *host = DEVMAN->getFlarmBPInitiator();
+            if ( host && host->getProtocol(FLARMBIN_P) && nmea.getDL()->getProtocol(FLARMBIN_P)) {
+                // Host side
+                FlarmBinary *hostfb = static_cast<FlarmBinary*>(host->getBinary());
+                ESP_LOGI(FNAME, "Host side %d", hostfb->getDeviceId());
+                // Device side
+                FlarmBinary *devfb = static_cast<FlarmBinary*>(nmea.getDL()->goBIN());
+                ESP_LOGI(FNAME, "Device side %d", devfb->getDeviceId());
+                // Cross link them
+                devfb->setPeer(hostfb);
+                hostfb->setPeer(devfb);
+            }
+        }
+        else if ( *(sm->_frame.c_str() + word->at(0)) == 'S' ) {
+            // XCV extension to switch to simulation mode
+            ESP_LOGI(FNAME,"enter SIMULATION MODE");
+            DEVMAN->removeDevice(TEMPSENS_DEV);
+            DEVMAN->addDevice(TEMPSENS_DEV, NO_ONE, 0, 0, NO_PHY);
+            SensorRegistry::enterSimMode();
+            nmea.addPlugin(new XCVSimMsg(nmea));
+            gflags.inSimulationMode = 1;
         }
     }
+
     return DO_ROUTING;
 }
 

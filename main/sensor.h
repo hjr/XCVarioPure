@@ -30,13 +30,13 @@ union global_flags {
         uint16_t schedule_reboot : 1;
         uint16_t first_devices_run : 1;
         uint16_t flaps_nvs_defined : 1;
+        uint16_t inSimulationMode : 1;
     };
     uint16_t raw;
 };
 
 class CANbus;
 class SerialLine;
-class Clock;
 class ESPRotary;
 class AnalogInput;
 class SetupRoot;
@@ -52,7 +52,6 @@ extern BMPVario bmpVario;
 extern global_flags gflags;
 extern CANbus *CAN;
 extern SerialLine *S1,*S2;
-extern Clock *MY_CLOCK;
 extern SetupRoot *MenuRoot;
 extern WatchDog_C *uiMonitor;
 extern AnalogInput *BatVoltage;

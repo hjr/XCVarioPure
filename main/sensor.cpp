@@ -97,7 +97,6 @@ MPU_t MPU;         // create an object
 // Magnetic sensor / compass
 SerialLine *S1 = NULL;
 SerialLine *S2 = NULL;
-Clock *MY_CLOCK = nullptr;
 
 // boot log
 std::string logged_tests;
@@ -288,9 +287,9 @@ static void commonThings5Secs()
     extern MessagePool MP;
     ESP_LOGI(FNAME, "MPool in-use:%d, acq-fails: %d", MP.nrUsed(), MP.nrAcqFails());
 
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
-    ESP_LOGI(FNAME, "TofDay %d.%03ds", (int)(tv.tv_sec % (60 * 60 * 24)), (int)(tv.tv_usec / 1000));
+    // struct timeval tv;
+    // gettimeofday(&tv, NULL);
+    // ESP_LOGI(FNAME, "TofDay %d.%03ds", (int)(tv.tv_sec % (60 * 60 * 24)), (int)(tv.tv_usec / 1000));
 
     // static char buf[2048];
     // vTaskGetRunTimeStats(buf);
@@ -1246,7 +1245,7 @@ extern "C" void  app_main(void)
 	// ESP_LOGI(FNAME,"Measure add %ucount", (unsigned int)cycle_count());
 
 	// Instance to a simple esp timer based clock
-	MY_CLOCK = new Clock();
+	Clock *MY_CLOCK = new Clock(); // no need for delete, lives all time, only static methods used
 
 	// Figure HW revision first
 	if( hardwareRevision.get() == HW_UNKNOWN ){  // per default we assume there is XCV-20

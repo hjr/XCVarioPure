@@ -236,6 +236,7 @@ std::string_view DeviceManager::getPrtclName(ProtocolType pid) {
 class DmyItf final : public InterfaceCtrl
 {
 public:
+    DmyItf() : InterfaceCtrl(true, false) {}
     const char* getStringId() const override { return "NUL"; }
     void ConfigureIntf(int cfg) override {}
     int Send(const char *msg, int &len, int port=0) { return 0; }

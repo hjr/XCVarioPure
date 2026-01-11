@@ -1,0 +1,77 @@
+/***********************************************************
+ ***   THIS DOCUMENT CONTAINS PROPRIETARY INFORMATION.   ***
+ ***    IT IS THE EXCLUSIVE CONFIDENTIAL PROPERTY OF     ***
+ ***     Rohs Engineering Design AND ITS AFFILIATES.     ***
+ ***                                                     ***
+ ***       Copyright (C) Rohs Engineering Design         ***
+ ***********************************************************/
+
+#include "XCVSimMsg.h"
+
+#include "protocol/nmea_util.h"
+#include "protocol/Clock.h"
+#include "comm/Messages.h"
+#include "sensor/pressure/PressureSensor.h"
+#include "sensor/press_diff/AirspeedSensor.h"
+#include "sensor/temp/TempSensor.h"
+#include "logdef.h"
+
+#include <cstring>
+
+// The XCV Sens raw sensor log messages to run the vario in simulation mode.
+
+XCVSimMsg::XCVSimMsg(NmeaPrtcl &nr) :
+    NmeaPlugin(nr, XCVSENS_P)
+{
+    // route diverse protocols further (e.g. Flarm to master-second-BT...)
+    _nmeaRef.setDefaultAction(NOACTION);
+}
+
+//
+// The Sens transmitter routine
+//
+
+// bool XCVSimMsg::sendSens()
+// {
+//     // Message* msg = _nmeaRef.newMessage();
+//     // ...
+//     // return DEV::Send(msg);
+// }
+
+//
+// Sens receiver routines
+//
+
+//
+// Example message:
+//        gpsT, deltaT, baroP, teP, dynamicP, Temp, Gx, Gy, Gz, Az, Ay, Ax, MagX, MagY, MagZ
+// $SENS;43799.060,179,990.646,990.562,0.000,13.43,0.1728,0.0805,0.9861,-0.2031,-0.0145,0.0053,19.6474,19.7357,-34.4881
+//
+dl_action_t XCVSimMsg::parse_Sens(NmeaPlugin *plg)
+{
+    ProtocolState *sm = plg->getNMEA().getSM();
+    const std::vector<int> *word = &sm->_word_start;
+
+    ESP_LOGD(FNAME,"parseSens %s", sm->_frame.c_str() );
+
+    // int pos = word->at(2);
+    int time = Clock::getMillis();
+    float tmp = atof(sm->_frame.c_str() + word->at(2));
+    baroSensor->pushToHistory(tmp, time);
+
+    tmp = atof(sm->_frame.c_str() + word->at(3));
+    teSensor->pushToHistory(tmp, time);
+
+    tmp = atof(sm->_frame.c_str() + word->at(4));
+    asSensor->pushToHistory(tmp, time);
+
+    tmp = atof(sm->_frame.c_str() + word->at(5));
+    OATSensor->pushToHistory(tmp, time);
+
+    return NOACTION; // never forward the simulation
+}
+
+const ParserEntry XCVSimMsg::_pt[] = {
+    {Key("SENS"), XCVSimMsg::parse_Sens},
+    {}
+};

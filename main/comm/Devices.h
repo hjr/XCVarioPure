@@ -63,6 +63,7 @@ enum ProtocolType : uint8_t
     XCVSYNC_P,
     XCNAV_P,
     SEEYOU_P, // <- 20
+    XCVSENS_P,
     TEST_P
 };
 // old ones .. P_EYE_PEYA, P_EYE_PEYI

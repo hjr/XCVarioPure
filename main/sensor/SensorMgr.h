@@ -44,6 +44,7 @@ public:
     static bool registerSensor(SensorId id, SensorBase* sensor);
     static void deregisterSensor(SensorBase* sensor);
     static void removeFromUpdateLoop(SensorId id);
+    static void enterSimMode();
     static SensorEntry* find(SensorId id);
 
     static auto begin() { return all_sensors.begin(); }

@@ -60,6 +60,16 @@ void SensorRegistry::removeFromUpdateLoop(SensorId id)
     }
 }
 
+void SensorRegistry::enterSimMode()
+{
+    ESP_LOGI(FNAME, "SensorRegistry entering SIMULATION MODE");
+    for (auto& e : all_sensors) {
+        if (e.isActive()) {
+            e.dutycycle = 0; // no further sensor reading
+        }
+    }
+}
+
 SensorEntry* SensorRegistry::find(SensorId id) {
     for (auto& e : all_sensors)
         if (e.id == id) return &e;
