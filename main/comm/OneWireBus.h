@@ -15,6 +15,7 @@
 
 
 struct onewire_bus_t;
+class SensorBase;
 class OwSens;
 
 class OneWireBus final : public InterfaceCtrl
@@ -29,7 +30,7 @@ public:
 
     // OneWire specific
     onewire_bus_t *getOneWire() const { return _onewire; }
-    OwSens* probeAndSetup(uint8_t did);
+    SensorBase* probeAndSetup(uint8_t famid);
     void busReset();
     esp_err_t sendCommand(onewire_device_address_t addr, uint8_t cmd);
     esp_err_t writeBytes(const uint8_t *buf, uint8_t size);
@@ -45,9 +46,11 @@ public:
 
 private:
     OwSens* getSensorByAddress(onewire_device_address_t addr);
+    // void recover();
     onewire_bus_t *_onewire = nullptr;
     static const int _ONEWIRE_BUS_GPIO;
     std::vector<OwSens*> _all_sensor;
+    // int8_t errors = 0;
 };
 
 extern OneWireBus *OneWIRE;

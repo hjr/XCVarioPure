@@ -465,8 +465,8 @@ Device* DeviceManager::addDevice(DeviceId did, ProtocolType proto, int listen_po
         }
         else {
             // a sensor w/o a data link?
-            if ( iid == OW_BUS && OneWIRE ) {
-                dev->_sensor = OneWIRE->probeAndSetup(did);
+            if ( iid == OW_BUS && OneWIRE && did == TEMPSENS_DEV ) {
+                dev->_sensor = OneWIRE->probeAndSetup(0x28); // DS18B20
             }
             if ( ! dev->_sensor ) {
                 ESP_LOGW(FNAME, "Could not create sensor for device %d on itf %d", did, iid);

@@ -27,7 +27,7 @@ const int OneWireBus::_ONEWIRE_BUS_GPIO = GPIO_NUM_23;
 
 OneWireBus::OneWireBus() : InterfaceCtrl(false, false)
 {
-   	gpio_set_drive_capability(GPIO_NUM_23, GPIO_DRIVE_CAP_1);
+   	gpio_set_drive_capability((gpio_num_t)_ONEWIRE_BUS_GPIO, GPIO_DRIVE_CAP_1);
 }
 
 OneWireBus* OneWireBus::create()
@@ -52,7 +52,7 @@ void OneWireBus::ConfigureIntf(int cfg)
     // install 1-wire bus
     onewire_bus_handle_t bus;
     onewire_bus_config_t bus_config = {
-        .bus_gpio_num = _ONEWIRE_BUS_GPIO,
+        .bus_gpio_num = (gpio_num_t)_ONEWIRE_BUS_GPIO,
         .flags = {
             .en_pull_up = false,
         }
@@ -70,25 +70,14 @@ void OneWireBus::ConfigureIntf(int cfg)
     }
 }
 
-OwSens* OneWireBus::probeAndSetup(uint8_t did) {
+SensorBase* OneWireBus::probeAndSetup(uint8_t famid) {
 
     // Search for devices
     onewire_device_iter_handle_t iter = nullptr;
     onewire_device_t next_device;
     std::vector<onewire_device_t> devices;
 
-    // Convert did to expected family code
-    uint8_t expected_family = did;  // For now, we assume did directly corresponds
-    switch (did) {
-        case TEMPSENS_DEV:
-            expected_family = 0x28;
-            break;
-        // Add more mappings here if needed
-        default:
-            ESP_LOGW(FNAME, "Unknown device ID %d for OneWire probe", did);
-            return nullptr;
-    }
-    OwSens* found_sensor = nullptr;
+    SensorBase* found_sensor = nullptr;
 
     esp_err_t err = onewire_new_device_iter(_onewire, &iter);
     if (err != ESP_OK) return nullptr;
@@ -104,16 +93,17 @@ OwSens* OneWireBus::probeAndSetup(uint8_t did) {
     }
 
     ESP_LOGI(FNAME, "Found %d OneWire device(s) on GPIO %d", devices.size(), _ONEWIRE_BUS_GPIO);
-
     // Process each device by family code
     for (const auto& dev : devices) {
         uint8_t family = dev.address & 0xFF;  // LSB is family code
 
         ESP_LOGI(FNAME, "Device ROM: %016llX, Family: 0x%02X", dev.address, family);
 
-        if ( family == expected_family ) {
-            if ( getSensorByAddress(dev.address) ) {
+        if ( family == famid ) {
+            OwSens *s = getSensorByAddress(dev.address);
+            if ( s ) {
                 // Already registered
+                s->setup(); // re-setup
                 ESP_LOGI(FNAME, "Device %016llX already registered", dev.address);
                 continue;
             }
@@ -187,18 +177,29 @@ bool OneWireBus::groupUpdate(uint32_t now_ms)
     const uint32_t UPDATE_INTERVAL_MS = 1000;  // Desired update interval
     const uint32_t MAX_CONVERSION_TIME_MS = 750;  // Max time for 12-bit conversion
 
+    // if ( errors > 10 ) {
+    //     ESP_LOGW(FNAME, "Too many errors on OneWire bus, attempting recovery");
+    //     recover();
+    //     busReset();
+    //     for ( auto s : _all_sensor ) {
+    //         probeAndSetup(s->family());
+    //     }
+    //     errors = 0;
+    //     return false;
+    // }
+
     // Read all sensors individually
     for (auto* sensor : _all_sensor) {
         if ( ! sensor->isConverting() ) {
-            if (now_ms - sensor->getLastUpdateTimeMs() < UPDATE_INTERVAL_MS) {
+            if ((now_ms - sensor->getLastUpdateTimeMs()) < (UPDATE_INTERVAL_MS + sensor->getLatency())) {
                 continue;
             }
 
             // Start conversion
             if (! sensor->primeRead(now_ms)) {
                 ESP_LOGE(FNAME, "Failed to trigger conversion");
+                // errors++;
             }
-
             continue;
         }
 
@@ -206,7 +207,12 @@ bool OneWireBus::groupUpdate(uint32_t now_ms)
             continue;
         }
         
-        float val = sensor->doRead();
+        float val;
+        if ( !sensor->doRead(val) ) {
+            // errors++;
+            ESP_LOGE(FNAME, "Failed to read sensor %016llX", sensor->getAddress());
+            continue;
+        }
         sensor->pushToHistory(val, sensor->getConvertStartMs());
 
         ESP_LOGI(FNAME, "OW sensor %016llX: %umsec %.2f", sensor->getAddress(), (unsigned)sensor->getConvertStartMs(), val);
@@ -215,6 +221,15 @@ bool OneWireBus::groupUpdate(uint32_t now_ms)
     return true;
 }
 
+// void OneWireBus::recover()
+// {
+//     gpio_set_direction((gpio_num_t)_ONEWIRE_BUS_GPIO, GPIO_MODE_OUTPUT);
+//     gpio_set_level((gpio_num_t)_ONEWIRE_BUS_GPIO, 0);
+//     vTaskDelay(pdMS_TO_TICKS(5));   // > reset time
+
+//     gpio_set_direction((gpio_num_t)_ONEWIRE_BUS_GPIO, GPIO_MODE_INPUT);
+//     vTaskDelay(pdMS_TO_TICKS(1));
+// }
 
 //
 // private helper
