@@ -18,6 +18,7 @@
 #include "logdefnone.h"
 
 #include <cmath>
+#include <algorithm>
 
 S2F::S2F() {
 	a0=a1=a2=0;
@@ -220,27 +221,56 @@ float S2F::cw( float v ){  // in m/s
 }
 
 
-float S2F::speed( float netto_vario, bool circling )
+// float S2F::speed( float netto_vario, bool circling )
+// {
+// 	float stf = 0;
+// 	if ( circling ) {
+// 		// Optimum speed for a load factor of 1.4 g what corresponds 45° angle of bank and factor 1.2 speed increase; 3.6*1.2 = 4.32
+// 		// fixme, calculate to current g-load
+// 		stf = _circling_speed;
+// 	}else{
+// 		if( s2f_blockspeed.get() )
+// 			stf = 3.6*std::sqrtf( ((a0-MC.get())) / a2 );  // no netto vario, no G impact
+// 		else
+// 			stf = 3.6*std::sqrtf( (a0-MC.get()+netto_vario) / a2 );
+// 	}
+// 	// ESP_LOGI(FNAME,"speed() S2F: %f netto_vario: %f circ: %d, a0: %f, MC %f", stf, netto_vario, circling, a0, MC.get() );
+// 	// ESP_LOGI(FNAME,"max speed %.1f km/h", v_max.get() );
+// 	if( (stf < _min_sink_speed) || std::isnan(stf) )
+// 		return _min_sink_speed;
+// 	if( stf > v_max.get() || std::isinf( stf) )
+// 		return v_max.get();
+// 	else
+// 		return stf;
+// }
+float S2F::speed(float netto_vario, bool circling)
 {
-	float stf = 0;
-	if( circling ){  // Optimum speed for a load factor of 1.4 g what corresponds 45° angle of bank and factor 1.2 speed increase; 3.6*1.2 = 4.32
-		// fixme, calculate to current g-load
-		stf = _circling_speed;
-	}else{
-		if( s2f_blockspeed.get() )
-			stf = 3.6*std::sqrtf( ((a0-MC.get())) / a2 );  // no netto vario, no G impact
-		else
-			stf = 3.6*std::sqrtf( (a0-MC.get()+netto_vario) / a2 );
-	}
-	// ESP_LOGI(FNAME,"speed() S2F: %f netto_vario: %f circ: %d, a0: %f, MC %f", stf, netto_vario, circling, a0, MC.get() );
-	// ESP_LOGI(FNAME,"max speed %.1f km/h", v_max.get() );
-	if( (stf < _min_sink_speed) || std::isnan(stf) )
-		return _min_sink_speed;
-	if( stf > v_max.get() || std::isinf( stf) )
-		return v_max.get();
-	else
-		return stf;
+    if (circling) {
+        return _circling_speed; // std::clamp(_circling_speed, _min_sink_speed, v_max.get());
+    }
+
+    // // ---------- 2. Validate polar ----------
+    // if (!std::isfinite(a0) || !std::isfinite(a2) || a2 <= 0.0f) {
+    //     return _min_sink_speed;
+    // }
+
+    float climb = a0 - MC.get();
+
+    if (!s2f_blockspeed.get()) {
+        climb += netto_vario;
+    }
+
+    // radicand check
+    float arg = climb / a2;
+    if (!std::isfinite(arg) || arg <= 0.0f) {
+        return _min_sink_speed;
+    }
+
+    float stf = 3.6f * std::sqrtf(arg);
+
+    return std::clamp(stf, _min_sink_speed, v_max.get());
 }
+
 
 // minimum sink, circling sink, best circling speed
 void S2F::recalcSinkNSpeeds()
