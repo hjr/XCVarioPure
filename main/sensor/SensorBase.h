@@ -104,11 +104,14 @@ public:
     virtual bool setup() = 0;
     virtual bool update(uint32_t now_ms) = 0;
     int getDutyCycle() const { return _update_interval_ms; }
+    int getLastObservationTime() const { return _last_update_time_ms + _latency_ms; }
+    inline int getLastUpdateTimeMs() const { return _last_update_time_ms; }
+    inline int getLatency() const { return _latency_ms; }
 
 protected:
     int _update_interval_ms;  ///< Expected update interval
     int _latency_ms;          ///< Sensor conversion/acquisition latency
-    int _last_update_time_ms; ///< Raw update time (before latency compensation)
+    int _last_update_time_ms; ///< Time the update got registered
 };
 
 template <typename T>
@@ -158,8 +161,8 @@ public:
 
     // The sensor bypass to fill the history directly (e.g. from group read)
     void pushToHistory(const T& value, uint32_t now_ms) {
-        _last_update_time_ms = now_ms - _latency_ms; // allways > 0 :)
-        _history.push(value); // fixme what to do with NAN in the histroy?
+        _last_update_time_ms = now_ms;
+        _history.push(value);
         if constexpr (std::is_same_v<T, float>) { // only for float types
             if (_nvsvar) {
                 float fval = value;
@@ -253,10 +256,7 @@ public:
     inline T* getHeadPtr() const {
         return _history.getHeadPtr();
     }
-    inline int getLastUpdateTimeMs() const {
-        return _last_update_time_ms;
-    }
-    bool getValid() const {
+    bool getHeadValid() const {
         return _history.level() > 0 && (_last_update_time_ms + _update_interval_ms * 2 > Clock::getMillis());
     }
     bool isValid(T val) const {
