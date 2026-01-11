@@ -64,7 +64,7 @@ public:
 	static void writeText( int line, const char *text );
 	static void writeText( int line, std::string &text );
 	                    //  TE,       aTE,       polar_sink,       alt, temperature, battery, s2f_delta, as2f, acl, wkf
-	static void drawDisplay(float te, float ate, float polar_sink, float s2fd, float s2f);
+	static void drawDisplay(float ate, float polar_sink, float s2fd);
 
 	static void drawLoadDisplay( float loadFactor );
 	static void drawLoadDisplayTexts();
@@ -97,7 +97,6 @@ public:
 
 	// local variabls for dynamic display
 	static int s2falt;
-	static int s2fdalt;
 	static bool wireless_alive;
 	static int tempalt;
 	static temp_status_t siliconTempStatusOld;

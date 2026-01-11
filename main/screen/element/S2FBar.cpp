@@ -15,6 +15,7 @@
 
 #include <cstdio>
 #include <cmath>
+#include <algorithm>
 
 extern AdaptUGC *MYUCG;
 
@@ -89,12 +90,7 @@ void S2FBar::draw(int s2fd)
     int16_t level = s2fd / 10; // dice up into 10 kmh steps
 
     // draw max. three bars, then change color of the last one to red
-    if (level > 4) {
-        level = 4;
-    }
-    else if (level < -4) {
-        level = -4;
-    }
+    level = std::clamp((int)level, -4, 4);
     if ( _dirty ) {
         // force redraw of all
         _prev_s2f_level = 0;
@@ -105,6 +101,7 @@ void S2FBar::draw(int s2fd)
     if (level == _prev_s2f_level) {
         return;
     }
+    ESP_LOGI(FNAME,"S2FBar::draw s2fd: %d level: %d prev: %d", s2fd, level, _prev_s2f_level);
 
     int16_t inc = (level - _prev_s2f_level > 0) ? 1 : -1;
     for (int16_t i = _prev_s2f_level + ((_prev_s2f_level == 0 || _prev_s2f_level * inc > 0) ? inc : 0);

@@ -124,8 +124,7 @@ static int16_t LOAD_MIAS_POS = 0;
 AdaptUGC *IpsDisplay::ucg = 0;
 
 static int _ate = -1000;
-int IpsDisplay::s2falt=-1;
-int IpsDisplay::s2fdalt=0;
+int IpsDisplay::s2falt = -1;
 int IpsDisplay::tempalt = -2000;
 
 temp_status_t IpsDisplay::siliconTempStatusOld = MPU_T_UNKNOWN;
@@ -591,7 +590,6 @@ void IpsDisplay::redrawValues()
 	// ESP_LOGI(FNAME,"IpsDisplay::redrawValues()");
 	tempalt = -2000;
 	s2falt = -1;
-	s2fdalt = -1;
 	flags.wireless_alive = false;
     if (MCgauge) {
         MCgauge->forceRedraw();
@@ -888,7 +886,7 @@ float getHeading() { // fixme move to compass
 }
 
 // fixme arg not needed on stack
-void IpsDisplay::drawDisplay(float te_ms, float ate_ms, float polar_sink_ms, float s2fd_ms, float s2f_ms){
+void IpsDisplay::drawDisplay(float ate_ms, float polar_sink_ms, float s2fd_kmh){
 	// ESP_LOGI(FNAME,"drawDisplay polar_sink: %f AVario: %f m/s", polar_sink_ms, ate_ms );
 	if( !(screens_init & INIT_DISPLAY_RETRO) ){
 		initDisplay();
@@ -898,9 +896,10 @@ void IpsDisplay::drawDisplay(float te_ms, float ate_ms, float polar_sink_ms, flo
 	// ESP_LOGI(FNAME,"drawDisplay  TE=%0.1f IAS:%d km/h  WK=%d", te, airspeed, wksensor  );
 
 	// todo integrate better into screen element
+    float te_ms = te_vario.get();
 	if ( VCMode.isNetto() ) {
 		te_ms -= polar_sink_ms;
-		ate_ms -= polar_sink_ms;
+		ate_ms -= polar_sink_ms; // average
 	}
 	if ( VCMode.getVMode() == CruiseMode::MODE_REL_NETTO ) { // Super Netto, considering circling sink
 		te_ms += Speed2Fly.circlingSink( ias.get() );
@@ -908,8 +907,8 @@ void IpsDisplay::drawDisplay(float te_ms, float ate_ms, float polar_sink_ms, flo
 	}
 
 	// Unit adaption for mph and knots
-	float s2f = Units::Speed( s2f_ms );
-	float s2fd = Units::Speed( s2fd_ms );
+	float s2f = Units::Speed( s2f_ideal.get() );
+	float s2fd = Units::Speed( s2fd_kmh );
 	// int airspeed = fast_iroundf_positive(Units::Airspeed( airspeed_kmh ));
 
     // average Climb
@@ -918,12 +917,13 @@ void IpsDisplay::drawDisplay(float te_ms, float ate_ms, float polar_sink_ms, flo
     }
 
     // S2F bar
-    if ((((int)s2fd != s2fdalt) || (s2falt != (int)(s2f + 0.5)) || !(tick % 11)) && S2FBARgauge) {
+    if ((s2falt != s2f || !(tick % 11)) && S2FBARgauge) {
         // static float s=0; // check the bar code
         // s2fd = sin(s) * 42.;
         // s+=0.04;
         S2FBARgauge->draw(s2fd);
         S2FBARgauge->drawSpeed(s2f);
+        s2falt = (int)s2f;
     }
 
     // MC val

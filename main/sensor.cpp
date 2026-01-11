@@ -12,6 +12,7 @@
 #include "comm/OneWireBus.h"
 #include "setup/SetupNG.h"
 #include "setup/CruiseMode.h"
+#include "math/Floats.h"
 #include "ESPAudio.h"
 #include "ESPRotary.h"
 #include "AnalogInput.h"
@@ -252,7 +253,7 @@ static void commonThingsLast(int count)
     te_netto.set(te_vario.get() - polar_sink);
     as2f = Speed2Fly.speed(te_netto.get(), !VCMode.getCMode());
 
-    s2f_ideal.set(std::roundf(as2f));
+    s2f_ideal.set(fast_iroundf(as2f));
     // low pass damping
     s2f_delta = s2f_delta + ((as2f - ias.get()) - s2f_delta) * (1 / (s2f_delay.get() * 10));
     // ESP_LOGI( FNAME, "te: %f, polar_sink: %f, netto %f, s2f: %f  delta: %f", aTES2F, polar_sink, te_netto.get(), as2f, s2f_delta );
