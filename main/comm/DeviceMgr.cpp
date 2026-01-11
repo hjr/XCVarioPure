@@ -24,6 +24,7 @@
 #include "setup/SetupNG.h"
 #include "Compass.h"
 #include "sensor/temp/OwSens.h"
+#include "sensor/temp/TempVSens.h"
 
 #include "sensor.h"
 #include "logdefnone.h"
@@ -467,7 +468,10 @@ Device* DeviceManager::addDevice(DeviceId did, ProtocolType proto, int listen_po
             // a sensor w/o a data link?
             if ( iid == OW_BUS && OneWIRE && did == TEMPSENS_DEV ) {
                 dev->_sensor = OneWIRE->probeAndSetup(0x28); // DS18B20
+            } else if ( iid == NO_PHY && did == TEMPSENS_DEV ) {
+                dev->_sensor = new TempVSens();
             }
+            
             if ( ! dev->_sensor ) {
                 ESP_LOGW(FNAME, "Could not create sensor for device %d on itf %d", did, iid);
                 delete dev;

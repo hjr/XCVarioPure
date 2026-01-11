@@ -42,7 +42,6 @@ class AnalogInput;
 class SetupRoot;
 class WatchDog_C;
 class BMPVario;
-class OwSens;
 namespace mpud {
     class MPU;
 }
@@ -54,7 +53,6 @@ extern global_flags gflags;
 extern CANbus *CAN;
 extern SerialLine *S1,*S2;
 extern Clock *MY_CLOCK;
-extern OwSens		  *oatempSensor;
 extern SetupRoot *MenuRoot;
 extern WatchDog_C *uiMonitor;
 extern AnalogInput *BatVoltage;

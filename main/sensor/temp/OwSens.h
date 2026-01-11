@@ -8,20 +8,17 @@
 
 #pragma once
 
-#include "sensor/SensorBase.h"
-
-#include "../SensorMgr.h"
+#include "TempSensor.h"
 
 #include <onewire_types.h>
 #include <cstdint>
 
 
-class OwSens : public SensorTP<float> {
+class OwSens : public TempSensor
+{
 public:
     OwSens() = delete;
-    OwSens(onewire_device_address_t addr, SensorId id) : SensorTP<float>(nullptr, 1000, id), _address(addr) {
-        _latency_ms = 800;
-    };
+    OwSens(onewire_device_address_t addr) : TempSensor(), _address(addr) {}
     virtual uint8_t family() = 0;
     virtual bool primeRead(uint32_t now_ms) = 0;
     onewire_device_address_t getAddress() const { return _address; }

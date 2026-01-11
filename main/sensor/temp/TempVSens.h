@@ -1,0 +1,22 @@
+/***********************************************************
+ ***   THIS DOCUMENT CONTAINS PROPRIETARY INFORMATION.   ***
+ ***    IT IS THE EXCLUSIVE CONFIDENTIAL PROPERTY OF     ***
+ ***     Rohs Engineering Design AND ITS AFFILIATES.     ***
+ ***                                                     ***
+ ***       Copyright (C) Rohs Engineering Design         ***
+ ***********************************************************/
+
+#pragma once
+
+#include "TempSensor.h"
+
+class TempVSens : public TempSensor
+{
+public:
+    TempVSens() : TempSensor() {}
+    ~TempVSens() = default;
+
+    const char* name() const override { return "TempSim"; }
+    bool setup() override { return true; }
+    bool doRead(float &val) override { return false; } // never used
+};
