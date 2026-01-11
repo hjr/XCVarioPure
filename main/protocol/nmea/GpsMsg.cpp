@@ -8,15 +8,40 @@
 
 #include "GpsMsg.h"
 #include "Flarm.h"
+#include "sensor/gps/GpsVSensor.h"
 #include "wind/CircleWind.h"
 #include "wind/WindCalcTask.h"
 #include "protocol/Clock.h"
 #include "setup/SetupNG.h"
 #include "logdefnone.h"
 
+#include <cmath>
+#include <cstdlib>
 #include <cstring>
 #include <time.h>
 #include <sys/time.h>
+
+
+
+
+static float decodeNMEADegMin(const char* degmin, char hemi)
+{
+    if (!degmin || !*degmin)
+        return NAN;
+
+    float v = std::strtof(degmin, nullptr);
+
+    int deg = static_cast<int>(v / 100.0f);
+    float min = v - deg * 100.0f;
+
+    float deg_dec = deg + min / 60.0f;
+
+    if (hemi == 'S' || hemi == 'W')
+        deg_dec = -deg_dec;
+
+    return deg_dec;
+}
+
 
 
 // The GPS protocol parser.
@@ -52,14 +77,16 @@ dl_action_t GpsMsg::parseGPRMC(NmeaPlugin *plg)
     const char *s = sm->_frame.c_str();
     int valid_time_scan = sscanf( s + word->at(0), "%02d%02d%02d", &t.tm_hour, &t.tm_min, &t.tm_sec );
     char warn = *(s + word->at(1));
+    float lat = decodeNMEADegMin( s + word->at(2), *(s + word->at(3)) );
+    float lon = decodeNMEADegMin( s + word->at(4), *(s + word->at(5)) );
     sscanf( s + word->at(6), "%f", &Flarm::gndSpeedKnots );
     sscanf( s + word->at(7), "%f", &Flarm::gndCourse );
     int valid_date_scan = sscanf( s + word->at(8),"%02d%02d%02d", &t.tm_mday, &t.tm_mon, &t.tm_year );
     t.tm_year +=100;
-    ESP_LOGI(FNAME,"SC: %d/%d/%d %02d:%02d:%02d ", t.tm_year, t.tm_mon, t.tm_mday, t.tm_hour, t.tm_min, t.tm_sec );
+    // ESP_LOGI(FNAME,"SC: %d/%d/%d %02d:%02d:%02d ", t.tm_year, t.tm_mon, t.tm_mday, t.tm_hour, t.tm_min, t.tm_sec );
 
     // ESP_LOGI(FNAME,"G: %s",_gprmc );
-    ESP_LOGI(FNAME,"parseGPRMC() GPS: %d, Speed: %3.1f knots, Track: %3.1f° warn:%c", Flarm::myGPS_OK, Flarm::gndSpeedKnots, Flarm::gndCourse, warn  );
+    // ESP_LOGI(FNAME,"parseGPRMC() GPS: %d, Speed: %3.1f knots, Track: %3.1f° warn:%c", Flarm::myGPS_OK, Flarm::gndSpeedKnots, Flarm::gndCourse, warn  );
     // ESP_LOGI(FNAME,"GP%s, GPS_OK:%d warn:%c T:%s D:%s", gprmc+3, myGPS_OK, warn, time, date  );
     // set the GND speed
     float gndspeed = Units::knots2kmh(Flarm::gndSpeedKnots);
@@ -67,14 +94,18 @@ dl_action_t GpsMsg::parseGPRMC(NmeaPlugin *plg)
 
     Flarm::myGPS_OK = (warn == 'A');
     if (Flarm::myGPS_OK) {
+        if (!std::isnan(lat) && !std::isnan(lon)) {
+           // valid fix
+           GpsSensor->inject(lat, lon);
+        }
         if ( BackgroundTaskQueue ) {
-            ESP_LOGI(FNAME,"Track: %3.2f, GPRMC: %s", Flarm::gndCourse, sm->_frame.c_str() );
+            ESP_LOGD(FNAME,"Track: %3.2f, GPRMC: %s", Flarm::gndCourse, sm->_frame.c_str() );
             circleWind->setNewSample(Vector(Flarm::gndCourse, gndspeed));
 
             CalkTaskJob job(CalkTaskJob::CALK_TASK_EVENT_NEW_GPSPOSE);
             xQueueSend(BackgroundTaskQueue, &job, 0);
         }
-        ESP_LOGI(FNAME,"Valid GPS Time info received %d/%d.", valid_date_scan, valid_time_scan );
+        ESP_LOGD(FNAME,"Valid GPS Time info received %d/%d.", valid_date_scan, valid_time_scan );
         if (valid_time_scan == 3 && valid_date_scan == 3)
         {
             long int epoch_time = mktime(&t);
@@ -87,7 +118,7 @@ dl_action_t GpsMsg::parseGPRMC(NmeaPlugin *plg)
                 Clock::setTimeUTC(epoch_time * 1000LL);
                 ESP_LOGD(FNAME, "Finish Time Sync");
             }
-            else if ( Clock::getUpdateAgeMs() > 600000 )  // update every 10 minutes
+            else if ( Clock::getUpdateAgeMs() > 60000 )  // update every minute
             {
                 // update time offset
                 Clock::updateTimeUTC(epoch_time * 1000LL);
@@ -125,7 +156,7 @@ dl_action_t GpsMsg::parseGPGGA(NmeaPlugin *plg)
     if (word->size() > 13)
     {
         int numSat = atoi(sm->_frame.c_str() + word->at(6));
-        ESP_LOGI(FNAME, "numSat=%d", numSat);
+        ESP_LOGD(FNAME, "numSat=%d", numSat);
         if ((numSat != Flarm::_numSat) && (wind_enable.get() & WA_BOTH))
         {
             Flarm::_numSat = numSat;

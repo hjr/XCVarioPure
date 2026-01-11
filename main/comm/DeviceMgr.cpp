@@ -24,6 +24,7 @@
 #include "setup/SetupNG.h"
 #include "Compass.h"
 #include "sensor/temp/OwSens.h"
+#include "sensor/gps/GpsVSensor.h"
 #include "sensor/temp/TempVSens.h"
 
 #include "sensor.h"
@@ -460,10 +461,9 @@ Device* DeviceManager::addDevice(DeviceId did, ProtocolType proto, int listen_po
             if ( did == MAGLEG_DEV || did == MAGSENS_DEV ) {
                 Compass::createCompass(itf->getId());
             }
-            // todo creat flarm processor
-            // if ( did == FLARM_DEV ) {
-            //     Flarm::createFlarmProcessor(itf->getId());
-            // }
+            else if ( did == FLARM_DEV ) {
+                GpsVSensor::createGpsVSensor(); // create flarm processor
+            }
         }
         else {
             // a sensor w/o a data link?

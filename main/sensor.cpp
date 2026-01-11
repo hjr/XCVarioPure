@@ -7,6 +7,7 @@
 #include "sensor/press_diff/AirspeedSensor.h"
 #include "sensor/SensorMgr.h"
 #include "sensor/VarioFilter.h"
+#include "sensor/gps/GpsVSensor.h"
 #include "comm/BTspp.h"
 #include "comm/BTnus.h"
 #include "comm/OneWireBus.h"
@@ -415,7 +416,7 @@ void readSensors(void *pvParameters)
 			gettimeofday(&tv, NULL);
 			sprintf( log, "$SENS;");
 			int pos = strlen(log);
-			int delta = (GpsSens) ?  _millis - GpsSens->getLastUpdateTimeMs() : 0;
+			int delta = (GpsSensor) ?  _millis - GpsSensor->getLastUpdateTimeMs() : 0;
 			if( delta < 0 )
 				delta += 1000;
 			sprintf( log+pos, "%d.%03d,%d,%.3f,%.3f,%.3f,%.2f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f", (int)(tv.tv_sec%(60*60*24)), (int)(tv.tv_usec / 1000), delta, baroP, teP, dynamicP, T, IMU::getGliderAccelX(), IMU::getGliderAccelY(), IMU::getGliderAccelZ(),
