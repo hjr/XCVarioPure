@@ -883,8 +883,8 @@ void system_startup(void *args){
     {
         ESP_LOGI(FNAME, "AS Speed sensor %s self test PASSED", asSensor->name());
         bool as_ok = asSensor->setup();
-        float p = asSensor->doRead();
-        if (!std::isnan(p) && p > 60.f) {
+        float p;
+        if (asSensor->doRead(p) && p > 60.f) {
             dynamicP = p;
         }
         ias.set(Atmosphere::pascal2kmh(dynamicP));
@@ -1103,15 +1103,17 @@ void system_startup(void *args){
 		float ae = airfield_elevation.get();
 		ESP_LOGI(FNAME, "Airfield Elevation = %4.1f m", ae);
 		if (ae > NO_ELEVATION) {
-            float baroP = baroSensor->doRead();
             if (Flarm::validExtAlt() && alt_select.get() == AS_EXTERNAL) {
                 // correct altitude according to ISA model = 27ft / hPa
                 ae = alt_external + (QNH.get() - 1013.25f) * 8.2296f;
             }
 
-            float qnh_best = Atmosphere::calcQNHPressure(baroP, ae);
-            QNH.set(qnh_best);
-            ESP_LOGI(FNAME, "Auto QNH (direkt) = %4.2f hPa", qnh_best);
+            float baroP;
+			if (baroSensor->doRead(baroP)) {
+            	float qnh_best = Atmosphere::calcQNHPressure(baroP, ae);
+            	QNH.set(qnh_best);
+            	ESP_LOGI(FNAME, "Auto QNH (direkt) = %4.2f hPa", qnh_best);
+			}
         }
         Display->clear();
 
