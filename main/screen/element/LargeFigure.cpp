@@ -37,10 +37,13 @@ void LargeFigure::draw(float val) {
         MYUCG->setFont(ucg_font_fub35_hn, false);
         MYUCG->setFontPosCenter();
         if ( std::abs(ival) < 100 ) {
-            sprintf(s, "%2.1f", float(abs(ival) / 10.));
+            sprintf(s, "%2.1f", float(std::abs(ival)) / 10.0f);
+        }
+        else if ( std::abs(ival) < 1000 ) {
+            sprintf(s, "%d", std::abs(ival) / 10);
         }
         else {
-            sprintf(s, "%d.", abs(ival) / 10);
+            sprintf(s, "99");
         }
         int16_t tmp = MYUCG->getStrWidth(s)/2;
         if (val < 0.f) {
