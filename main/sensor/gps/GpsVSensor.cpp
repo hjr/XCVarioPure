@@ -31,11 +31,23 @@ void GpsVSensor::inject(float lat, float lon)
     vector_f v;
     v.x = lat;
     v.y = lon;
-    v.z = 0.f;
+    v.z = _alt;
+    _alt = 0.f;
     int time = Clock::getMillis();
     pushToHistory(v, time);
     if ( _lat_ref == 0.f && _lon_ref == 0.f ) {
         _lat_ref = lat;
         _lon_ref = lon;
+    }
+}
+
+void GpsVSensor::setExternalAltitude(float alt) {
+    vector_f *last = getHeadPtr();
+    if (last) {
+        if (last->z == 0.f && (_last_update_time_ms + _update_interval_ms/2) > Clock::getMillis()) {
+            last->z = alt;
+        } else {
+            _alt = alt; // for next injection
+        }
     }
 }

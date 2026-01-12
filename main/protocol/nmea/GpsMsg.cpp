@@ -13,7 +13,9 @@
 #include "wind/WindCalcTask.h"
 #include "protocol/Clock.h"
 #include "setup/SetupNG.h"
-#include "logdefnone.h"
+#include "sensor.h"
+#include "logdef.h"
+
 
 #include <cmath>
 #include <cstdlib>
@@ -167,6 +169,14 @@ dl_action_t GpsMsg::parseGPGGA(NmeaPlugin *plg)
                 xQueueSend(BackgroundTaskQueue, &job, 0);
             }
         }
+
+        float alt = std::strtof(sm->_frame.c_str() + word->at(8), nullptr);
+        // GPGGA altitude is defined in meters (MSL)
+        // Unit field should be 'M', ignore otherwise
+        if ((sm->_frame.c_str() + word->at(8))[0] == 'M') {
+            GpsSensor->setExternalAltitude(alt);
+        }
+
     }
     return DO_ROUTING;
 }

@@ -30,8 +30,12 @@ public:
 
     // Injection API
     void inject(float lat, float lon);
+    void setExternalAltitude(float);
+
 private:
-    float _lat_ref = 0.f, _lon_ref = 0.f;
+    float _lat_ref = 0.f;
+    float _lon_ref = 0.f;
+    float _alt = 0.f;
 };
 
 extern GpsVSensor* GpsSensor;
