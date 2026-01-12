@@ -24,7 +24,7 @@
 #include "setup/SetupNG.h"
 #include "setup/CruiseMode.h"
 #include "ESPRotary.h"
-#include "KalmanMPU6050.h"
+#include "sensor/imu/KalmanMPU6050.h"
 #include "ESPAudio.h"
 #include "Flarm.h"
 #include "sensor.h"

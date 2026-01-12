@@ -14,7 +14,7 @@
 #include "sensor.h"
 #include "AdaptUGC.h"
 #include "Colors.h"
-#include "KalmanMPU6050.h"
+#include "sensor/imu/KalmanMPU6050.h"
 #include "logdefnone.h"
 
 

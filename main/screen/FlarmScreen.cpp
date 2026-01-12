@@ -13,7 +13,7 @@
 #include "IpsDisplay.h"
 #include "DrawDisplay.h"
 #include "ESPAudio.h"
-#include "KalmanMPU6050.h"
+#include "sensor/imu/KalmanMPU6050.h"
 #include "Flarm.h"
 #include "math/Trigonometry.h"
 #include "math/Quaternion.h"

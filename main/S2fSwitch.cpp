@@ -15,7 +15,7 @@
 #include "screen/DrawDisplay.h"
 #include "sensor.h"
 #include "Flap.h"
-#include "KalmanMPU6050.h"
+#include "sensor/imu/KalmanMPU6050.h"
 #include "logdefnone.h"
 
 // auto switch filters

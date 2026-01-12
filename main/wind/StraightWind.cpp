@@ -30,7 +30,7 @@
 #include "Units.h"
 #include "sensor.h"
 #include "sensor.h"
-#include "KalmanMPU6050.h"
+#include "sensor/imu/KalmanMPU6050.h"
 #include "math/Trigonometry.h"
 #include "math/Floats.h"
 #include "comm/DeviceMgr.h"

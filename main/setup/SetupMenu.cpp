@@ -33,7 +33,7 @@
 #include "setup/SetupNG.h"
 #include "Flarm.h"
 #include "protocol/FlarmSim.h"
-#include "KalmanMPU6050.h"
+#include "sensor/imu/KalmanMPU6050.h"
 #include "sensor/pressure/PressureSensor.h"
 #include "AnalogInput.h"
 #include "sensor/press_diff/AirspeedSensor.h"

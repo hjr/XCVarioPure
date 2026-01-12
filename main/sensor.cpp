@@ -46,7 +46,7 @@
 #include "mpu/math.hpp"   // math helper for dealing with MPU data
 #include "mpu/types.hpp"  // MPU data types and definitions
 #include "I2Cbus.hpp"
-#include "KalmanMPU6050.h"
+#include "sensor/imu/KalmanMPU6050.h"
 #include "LeakTest.h"
 #include "Units.h"
 #include "Flap.h"

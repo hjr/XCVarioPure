@@ -4,7 +4,7 @@
 #include "AnalogInput.h"
 #include "setup/SubMenuFlap.h"
 #include "setup/SetupNG.h"
-#include "KalmanMPU6050.h"
+#include "sensor/imu/KalmanMPU6050.h"
 #include "math/Floats.h"
 #include "sensor.h"
 #include "logdefnone.h"

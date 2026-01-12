@@ -12,7 +12,7 @@
 #include "comm/Messages.h"
 #include "setup/SetupNG.h"
 #include "setup/CruiseMode.h"
-#include "KalmanMPU6050.h"
+#include "sensor/imu/KalmanMPU6050.h"
 #include "Units.h"
 #include "logdef.h"
 

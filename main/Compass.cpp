@@ -17,7 +17,7 @@ Author: Axel Pauli, deviation and refactoring by Eckhard Völlm Dec 2021
  **************************************************************************/
 
 #include "Compass.h"
-#include "KalmanMPU6050.h"
+#include "sensor/imu/KalmanMPU6050.h"
 #include "QMCMagCAN.h"
 #include "math/Quaternion.h"
 #include "vector.h"
