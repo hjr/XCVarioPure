@@ -1,2 +1,2 @@
-espcoredump.py dbg_corefile --core-format b64 --core $1   ~/XCVario/build/sensor.elf 
+espcoredump.py dbg_corefile --core-format b64 --core $1   ~/projekte/XCVarioPro/build/xcvario_pro.elf
 
