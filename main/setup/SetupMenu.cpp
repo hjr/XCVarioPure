@@ -13,6 +13,7 @@
 #include "setup/SubMenuGlider.h"
 #include "setup/SubMenuFlap.h"
 #include "setup/ShowBootMsg.h"
+#include "setup/ShowFlightInfo.h"
 #include "screen/element/MultiGauge.h"
 #include "Colors.h"
 #include "sensor/VarioFilter.h"
@@ -1373,6 +1374,8 @@ void system_menu_create(SetupMenu *sye) {
 
 	// SetupAction *devdump = new SetupAction("Device Setup Dump", deviceDumpAction, 0);
 	// sye->addEntry(devdump);
+	SetupMenuDisplay *info = new ShowFlightInfo("Flight Info");
+	sye->addEntry(info);
 }
 
 void setup_create_root(SetupMenu *top) {
