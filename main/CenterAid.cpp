@@ -8,6 +8,7 @@
 #include "CenterAid.h"
 
 #include "screen/element/PolarGauge.h"
+#include "protocol/Clock.h"
 #include "math/Trigonometry.h"
 #include "Flarm.h"
 #include "sensor.h"
@@ -251,8 +252,8 @@ void CenterAid::tick(){
 		float diff = Vector::angleDiffDeg( new_heading, cur_heading );
 		// ESP_LOGI(FNAME,"new heading %.1f diff:%.1f", new_heading, diff );
 		if( new_heading != cur_heading ){
-			uint64_t rts = esp_timer_get_time();
-			float dt = (float)(rts - last_rts)/1000000.0;
+			int rts = Clock::getMillis();
+			float dt = (float)(rts - last_rts)/1000.0f;
 			last_rts = rts;
 			calcFlightMode( diff/dt ); // we calculate own flight mode here
 			cur_heading = new_heading;

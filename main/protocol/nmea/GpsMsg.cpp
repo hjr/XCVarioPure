@@ -82,7 +82,6 @@ dl_action_t GpsMsg::parseGPRMC(NmeaPlugin *plg)
     sscanf( s + word->at(6), "%f", &Flarm::gndSpeedKnots );
     sscanf( s + word->at(7), "%f", &Flarm::gndCourse );
     int valid_date_scan = sscanf( s + word->at(8),"%02d%02d%02d", &t.tm_mday, &t.tm_mon, &t.tm_year );
-    t.tm_year +=100;
     // ESP_LOGI(FNAME,"SC: %d/%d/%d %02d:%02d:%02d ", t.tm_year, t.tm_mon, t.tm_mday, t.tm_hour, t.tm_min, t.tm_sec );
 
     // ESP_LOGI(FNAME,"G: %s",_gprmc );
@@ -108,6 +107,8 @@ dl_action_t GpsMsg::parseGPRMC(NmeaPlugin *plg)
         ESP_LOGD(FNAME,"Valid GPS Time info received %d/%d.", valid_date_scan, valid_time_scan );
         if (valid_time_scan == 3 && valid_date_scan == 3)
         {
+            t.tm_year += 2000 - 1900; // NMEA gives only two digit year
+            t.tm_mon -= 1; // struct tm month is 0..11
             long int epoch_time = mktime(&t);
             if (!Clock::isValidUTC()) // set system time if not yet done
             {
@@ -118,7 +119,7 @@ dl_action_t GpsMsg::parseGPRMC(NmeaPlugin *plg)
                 Clock::setTimeUTC(epoch_time * 1000LL);
                 ESP_LOGD(FNAME, "Finish Time Sync");
             }
-            else if ( Clock::getUpdateAgeMs() > 60000 )  // update every minute
+            else if ( Clock::getUpdateAgeMs() > 60000 || gflags.inSimulationMode )  // update every minute
             {
                 // update time offset
                 Clock::updateTimeUTC(epoch_time * 1000LL);

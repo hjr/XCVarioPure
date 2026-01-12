@@ -33,9 +33,10 @@ public:
     static int getSeconds();
     // UTC time access
     static int64_t getMillisUTC() {
-        return getMillis() + _offset_ms;
+        return _offset_ms + getMillis();
     }
     static inline bool isValidUTC() { return _valid; }
+    static void setSimSpeed(uint8_t s) { _sim_speed = s; }
     static int getUpdateAgeMs();
     static void setTimeUTC(int64_t gps_utc_ms); // just call once with first valid GPS time stamp
     static void updateTimeUTC(int64_t gps_utc_ms);
@@ -48,4 +49,5 @@ private:
     static int64_t  _offset_ms;     // gps_utc - system_ms
     static bool     _valid;
     static int      _last_updated_ms;
+    static uint8_t  _sim_speed;     // simulation speed multiplier
 };

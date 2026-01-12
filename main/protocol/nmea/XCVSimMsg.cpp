@@ -54,6 +54,9 @@ dl_action_t XCVSimMsg::parse_Sens(NmeaPlugin *plg)
 
     ESP_LOGD(FNAME,"parseSens %s", sm->_frame.c_str() );
 
+    if ( word->size() < 6 ) {
+        return NOACTION; // invalid SENS message
+    }
     // int pos = word->at(2);
     int time = Clock::getMillis();
     float tmp = atof(sm->_frame.c_str() + word->at(2));

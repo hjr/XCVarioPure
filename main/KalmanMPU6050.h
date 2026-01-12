@@ -188,7 +188,7 @@ private:
   // static void RollPitchFromAccel(double *roll, double *pitch);
   static float PitchFromAccel();
   static float PitchFromAccelRad();
-  static uint64_t last_rts;
+  static int last_rts;
   static float  filterPitch_rad;
   static float  filterRoll_rad;
   static float  filterYaw;

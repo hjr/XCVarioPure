@@ -85,12 +85,6 @@ extern float mpu_target_temp;
 
 extern mpud::MPU MPU;
 
-// Arduino.h remains
-inline unsigned long millis() // fixme
-{
-    return (unsigned long) (esp_timer_get_time() / 1000ULL);
-}
-
 inline void delay(uint32_t ms)
 {
     vTaskDelay(ms / portTICK_PERIOD_MS);

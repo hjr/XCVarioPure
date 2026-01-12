@@ -9,6 +9,7 @@
 #include "FlarmMsg.h"
 #include "protocol/FlarmBin.h"
 #include "protocol/nmea/XCVSimMsg.h"
+#include "protocol/Clock.h"
 #include "Flarm.h"
 #include "screen/UiEvents.h"
 #include "screen/DrawDisplay.h"
@@ -211,13 +212,25 @@ dl_action_t FlarmMsg::parsePFLAX(NmeaPlugin *plg)
             }
         }
         else if ( *(sm->_frame.c_str() + word->at(0)) == 'S' ) {
-            // XCV extension to switch to simulation mode
-            ESP_LOGI(FNAME,"enter SIMULATION MODE");
-            DEVMAN->removeDevice(TEMPSENS_DEV);
-            DEVMAN->addDevice(TEMPSENS_DEV, NO_ONE, 0, 0, NO_PHY);
-            SensorRegistry::enterSimMode();
-            nmea.addPlugin(new XCVSimMsg(nmea));
-            gflags.inSimulationMode = 1;
+            if ( SetupCommon::isMaster() && !gflags.inSimulationMode ) {
+                // XCV extension to switch to simulation mode
+                ESP_LOGI(FNAME,"enter SIMULATION MODE");
+                DEVMAN->removeDevice(TEMPSENS_DEV);
+                DEVMAN->addDevice(TEMPSENS_DEV, NO_ONE, 0, 0, NO_PHY);
+                SensorRegistry::enterSimMode();
+                nmea.addPlugin(new XCVSimMsg(nmea));
+                gflags.inSimulationMode = true;
+                MBOX->pushMessage(1, "Simulation Mode");
+            }
+            else if ( gflags.inSimulationMode) {
+                // time jump, reset clock
+                // Clock::sim();
+                if ( word->size() >= 2 ) {
+                    int speed = atoi(sm->_frame.c_str() + word->at(1));
+                    ESP_LOGI(FNAME,"Set SIM speed %d", speed);
+                    Clock::setSimSpeed(speed);
+                }
+            }
         }
     }
 

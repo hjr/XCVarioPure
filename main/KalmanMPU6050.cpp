@@ -1,6 +1,7 @@
 
 #include "KalmanMPU6050.h"
 #include "setup/SetupNG.h"
+#include "protocol/Clock.h"
 #include "mpu/math.hpp"
 #include "math/Quaternion.h"
 #include "math/Trigonometry.h"
@@ -23,7 +24,7 @@ float  IMU::filterPitch_rad = 0;
 float  IMU::filterRoll_rad = 0;
 float  IMU::filterYaw = 0;
 
-uint64_t IMU::last_rts=0;
+int IMU::last_rts=0;
 vector_i   IMU::raw_gyro(0,0,0);
 vector_f IMU::nogate_gyro(0,0,0);
 vector_f IMU::accel(0,0,0);
@@ -175,10 +176,10 @@ void IMU::Process()
 {
 	float dt=0;
 	bool ret=false;
-	uint64_t rts = esp_timer_get_time();
+	int rts = Clock::getMillis();
 	if( last_rts == 0 )
 		ret=true;
-	dt = (double)(rts - last_rts)/1000000.0;
+	dt = (rts - last_rts)/1000.0f;
 	last_rts = rts;
 	if( ret )
 		return;

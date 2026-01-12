@@ -105,7 +105,6 @@ std::string logged_tests;
 // global variables
 float baroP=0; // barometric pressure
 static float xcvTemp=15.0;
-static unsigned long _millis = 0;
 
 
 float dynamicP; // Pitot
@@ -272,7 +271,7 @@ static void commonThingsLast(int count)
     const int screenEvent = ScreenEvent(ScreenEvent::MAIN_SCREEN).raw;
     xQueueSend(uiEventQueue, &screenEvent, 0);
 }
-static void commonThings5Secs()
+static void commonThingsSeldom()
 {
     SetupCommon::commitDirty(); // very important, flash NVS settings permanently
 
@@ -356,7 +355,7 @@ void clientLoop(void *pvParameters)
                 }
             }
         }
-        if (!(count % 50)) { commonThings5Secs(); }
+        if (!(count % 300)) { commonThingsSeldom(); }
 
         esp_task_wdt_reset();
         vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(100));
@@ -408,15 +407,13 @@ void readSensors(void *pvParameters)
 		float teP = teSensor->getHead();    // TE Pressure
 		tas.set(Atmosphere::TAS2(ias.get(), altitude.get(), T));
 
-        // ESP_LOGI(FNAME,"TE, Delta: %d - log%d", (int)(millis() - _millis));
         if( logging.get() ){
 			char log[ProtocolItf::MAX_LEN];
-			_millis=millis();
 			struct timeval tv;
 			gettimeofday(&tv, NULL);
 			sprintf( log, "$SENS;");
 			int pos = strlen(log);
-			int delta = (GpsSensor) ?  _millis - GpsSensor->getLastUpdateTimeMs() : 0;
+			int delta = (GpsSensor) ?  Clock::getMillis() - GpsSensor->getLastUpdateTimeMs() : 0;
 			if( delta < 0 )
 				delta += 1000;
 			sprintf( log+pos, "%d.%03d,%d,%.3f,%.3f,%.3f,%.2f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f", (int)(tv.tv_sec%(60*60*24)), (int)(tv.tv_usec / 1000), delta, baroP, teP, dynamicP, T, IMU::getGliderAccelX(), IMU::getGliderAccelY(), IMU::getGliderAccelZ(),
@@ -596,7 +593,7 @@ void readSensors(void *pvParameters)
 		}
 
         commonThingsLast(count);
-        if ((count % 50) == 0) { commonThings5Secs(); }
+        if ((count % 300) == 0) { commonThingsSeldom(); }
 
 		esp_task_wdt_reset();
 		vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(100));

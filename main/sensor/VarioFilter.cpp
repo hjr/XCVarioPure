@@ -31,7 +31,7 @@ float BMPVario::readS2FTE() {
 }
 
 
-uint64_t lastrts = 0;
+static int lastrts = 0;
 
 void BMPVario::configChange(){
 	_damping = vario_delay.get();
@@ -44,8 +44,8 @@ void BMPVario::configChange(){
 void BMPVario::setup() {
 	_qnh = QNH.get();
 	configChange();
-	lastrts = esp_timer_get_time();
-	vTaskDelay(100 / portTICK_PERIOD_MS);
+	lastrts = Clock::getMillis();
+	vTaskDelay(pdMS_TO_TICKS(100));
 	bool success;
 	_currentAlt = _sensorTE->readAltitude(_qnh, success ) * 1.03; // we want have some beep when powerd on
 	if( success ){
@@ -66,14 +66,14 @@ double BMPVario::readTE( float tas, float tep ) {
 	bool success;
 	N++;
 	// Latency supervision and correction
-	uint64_t rts = esp_timer_get_time();
-	float time_delta = (float)(rts - lastrts)/1000000.0;   // in seconds
+	int rts = Clock::getMillis();
+	float time_delta = (float)(rts - lastrts)/1000.0f;   // in seconds
 	if( time_delta < 0.095 ) {   // ensure time_delta is 100 mS at least
 		int addwait = (int)(100.0-time_delta*1000);
 		// ESP_LOGW(FNAME, "Too short TE time time_delta <95 mS: %4.1f, add wait %d ", time_delta*1000, addwait );
 		delay( addwait );
-		rts = esp_timer_get_time();
-		time_delta = (float)(rts - lastrts)/1000000.0;
+		rts = Clock::getMillis();
+		time_delta = (rts - lastrts)/1000.0f;
 	}
 	lastrts = rts;
 	if( time_delta < 0.090 || time_delta > 0.2 ) {

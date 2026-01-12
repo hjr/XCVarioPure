@@ -44,7 +44,7 @@ private:
 	uint8_t turn_left;
 	uint8_t turn_right;
 	uint8_t fly_straight;
-	uint64_t last_rts;
+	int last_rts;
 	float peak_value;
 	float scale;
 };

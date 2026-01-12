@@ -8,6 +8,7 @@
 
 #include "Clock.h"
 #include "ClockIntf.h"
+#include "sensor.h"
 #include "logdef.h"
 
 #include <freertos/FreeRTOS.h>
@@ -28,6 +29,7 @@ volatile int Clock::msec_counter = 0;
 int64_t  Clock::_offset_ms = 0;
 bool     Clock::_valid = false;
 int      Clock::_last_updated_ms = 0;
+uint8_t  Clock::_sim_speed = 1;
 
 // Simple unique receiver registry
 static ClockSet clock_registry;
@@ -36,7 +38,11 @@ static ClockSet clock_registry;
 void IRAM_ATTR Clock::clock_timer_sr(ClockSet*registry)
 {
     // be in sync with millis, but sparse
-    msec_counter = esp_timer_get_time() / 1000;
+    if ( _sim_speed == 1 ) {
+        msec_counter = esp_timer_get_time() / 1000;
+    } else {
+        msec_counter += TICK_ATOM * _sim_speed;
+    }
 
     // Check if there are any requests
     ClkRequest msg;
@@ -109,17 +115,21 @@ int Clock::getUpdateAgeMs() {
 }
 
 void Clock::setTimeUTC(int64_t gps_utc_ms) {
-    _offset_ms = gps_utc_ms - (esp_timer_get_time() / 1000);
+    _offset_ms = gps_utc_ms - (esp_timer_get_time() / 1000); // esp time in usec
     _last_updated_ms = msec_counter;
     _valid = true;
+    ESP_LOGI(FNAME, "Clock set UTC: offset %lld ms", _offset_ms);
 }
 
 void Clock::updateTimeUTC(int64_t gps_utc_ms) {
-    int64_t sys_ms = (esp_timer_get_time() / 1000);
-    int64_t est_now = sys_ms + _offset_ms;
+    int64_t est_now = _offset_ms + msec_counter;
     int64_t error   = gps_utc_ms - est_now;
+    ESP_LOGI(FNAME, "Clock sync update: error %lldms, since %dms, new offset %lldms", error, getUpdateAgeMs(), _offset_ms);
     _last_updated_ms = msec_counter;
-    _offset_ms += std::clamp(error / 16, -5LL, +5LL); // max 5 ms correction per update
-    ESP_LOGI(FNAME, "Clock sync update: error %lld ms, new offset %lld ms", error, _offset_ms);
+    if ( gflags.inSimulationMode ) {
+        _offset_ms = gps_utc_ms - msec_counter;
+        return;
+    }
+    _offset_ms += std::clamp(error / 16, -8LL, +8LL); // max 8 ms correction per update
 }
 
