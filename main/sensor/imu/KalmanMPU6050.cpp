@@ -16,9 +16,9 @@
 #define hypotenuse(x, y) std::sqrtf(sqr(x) + sqr(y))
 
 // Kalman Variables
-Kalman IMU::kalmanX; // Create the Kalman instances
-Kalman IMU::kalmanY;
-Kalman IMU::kalmanZ;
+// Kalman IMU::kalmanX; // Create the Kalman instances
+// Kalman IMU::kalmanY;
+// Kalman IMU::kalmanZ;
 
 float  IMU::filterPitch_rad = 0;
 float  IMU::filterRoll_rad = 0;
@@ -55,81 +55,81 @@ vector_f gravity_vector( 0,0,-1 );
 
 // Kalman Function Definition
 
-void Kalman_Init(Kalman *kalPointer, double qang, double qbias, double rmeas )
-{
-	/* We will set the variables like so, these can also be tuned by the user */
-	kalPointer->Q_angle = 0.01;
-	kalPointer->Q_bias =  0.03;
-	kalPointer->R_measure = 0.1;
+// void Kalman_Init(Kalman *kalPointer, double qang, double qbias, double rmeas )
+// {
+// 	/* We will set the variables like so, these can also be tuned by the user */
+// 	kalPointer->Q_angle = 0.01;
+// 	kalPointer->Q_bias =  0.03;
+// 	kalPointer->R_measure = 0.1;
 
-	kalPointer->angle = 0; // Reset the angle
-	kalPointer->bias = 0;  // Reset bias
+// 	kalPointer->angle = 0; // Reset the angle
+// 	kalPointer->bias = 0;  // Reset bias
 
-	kalPointer->P[0][0] = 0; // Since we assume that the bias is 0 and we know the starting angle (use setAngle), the error covariance matrix is set like so - see: http://en.wikipedia.org/wiki/Kalman_filter#Example_application.2C_technical
-	kalPointer->P[0][1] = 0;
-	kalPointer->P[1][0] = 0;
-	kalPointer->P[1][1] = 0;
-}
+// 	kalPointer->P[0][0] = 0; // Since we assume that the bias is 0 and we know the starting angle (use setAngle), the error covariance matrix is set like so - see: http://en.wikipedia.org/wiki/Kalman_filter#Example_application.2C_technical
+// 	kalPointer->P[0][1] = 0;
+// 	kalPointer->P[1][0] = 0;
+// 	kalPointer->P[1][1] = 0;
+// }
 
 // The angle should be in degrees and the rate should be in degrees per second and the delta time in seconds
-double Kalman_GetAngle(Kalman *kalPointer,
-		double newAngle, double newRate, double dt)
-{
-	// KasBot V2  -  Kalman filter module - http://www.x-firm.com/?page_id=145
-	// Modified by Kristian Lauszus
-	// See my blog post for more information: http://blog.tkjelectronics.dk/2012/09/a-practical-approach-to-kalman-filter-and-how-to-implement-it
+// double Kalman_GetAngle(Kalman *kalPointer,
+// 		double newAngle, double newRate, double dt)
+// {
+// 	// KasBot V2  -  Kalman filter module - http://www.x-firm.com/?page_id=145
+// 	// Modified by Kristian Lauszus
+// 	// See my blog post for more information: http://blog.tkjelectronics.dk/2012/09/a-practical-approach-to-kalman-filter-and-how-to-implement-it
 
-	// Discrete Kalman filter time update equations - Time Update ("Predict")
-	// Update xhat - Project the state ahead
-	/* Step 1 */
-	kalPointer->rate = newRate - kalPointer->bias;
-	kalPointer->angle += dt * kalPointer->rate;
+// 	// Discrete Kalman filter time update equations - Time Update ("Predict")
+// 	// Update xhat - Project the state ahead
+// 	/* Step 1 */
+// 	kalPointer->rate = newRate - kalPointer->bias;
+// 	kalPointer->angle += dt * kalPointer->rate;
 
-	// Update estimation error covariance - Project the error covariance ahead
-	/* Step 2 */
-	kalPointer->P[0][0] += dt * (dt * kalPointer->P[1][1] - kalPointer->P[0][1] - kalPointer->P[1][0] + kalPointer->Q_angle);
-	kalPointer->P[0][1] -= dt * kalPointer->P[1][1];
-	kalPointer->P[1][0] -= dt * kalPointer->P[1][1];
-	kalPointer->P[1][1] += kalPointer->Q_bias * dt;
+// 	// Update estimation error covariance - Project the error covariance ahead
+// 	/* Step 2 */
+// 	kalPointer->P[0][0] += dt * (dt * kalPointer->P[1][1] - kalPointer->P[0][1] - kalPointer->P[1][0] + kalPointer->Q_angle);
+// 	kalPointer->P[0][1] -= dt * kalPointer->P[1][1];
+// 	kalPointer->P[1][0] -= dt * kalPointer->P[1][1];
+// 	kalPointer->P[1][1] += kalPointer->Q_bias * dt;
 
-	// Discrete Kalman filter measurement update equations - Measurement Update ("Correct")
-	// Calculate Kalman gain - Compute the Kalman gain
-	/* Step 4 */
-	kalPointer->S = kalPointer->P[0][0] + kalPointer->R_measure;
-	/* Step 5 */
-	kalPointer->K[0] = kalPointer->P[0][0] / kalPointer->S;
-	kalPointer->K[1] = kalPointer->P[1][0] / kalPointer->S;
+// 	// Discrete Kalman filter measurement update equations - Measurement Update ("Correct")
+// 	// Calculate Kalman gain - Compute the Kalman gain
+// 	/* Step 4 */
+// 	kalPointer->S = kalPointer->P[0][0] + kalPointer->R_measure;
+// 	/* Step 5 */
+// 	kalPointer->K[0] = kalPointer->P[0][0] / kalPointer->S;
+// 	kalPointer->K[1] = kalPointer->P[1][0] / kalPointer->S;
 
-	// Calculate angle and bias - Update estimate with measurement zk (newAngle)
-	/* Step 3 */
-	kalPointer->y = newAngle - kalPointer->angle;
-	/* Step 6 */
-	kalPointer->angle += kalPointer->K[0] * kalPointer->y;
-	kalPointer->bias += kalPointer->K[1] * kalPointer->y;
+// 	// Calculate angle and bias - Update estimate with measurement zk (newAngle)
+// 	/* Step 3 */
+// 	kalPointer->y = newAngle - kalPointer->angle;
+// 	/* Step 6 */
+// 	kalPointer->angle += kalPointer->K[0] * kalPointer->y;
+// 	kalPointer->bias += kalPointer->K[1] * kalPointer->y;
 
-	// Calculate estimation error covariance - Update the error covariance
-	/* Step 7 */
-	kalPointer->P[0][0] -= kalPointer->K[0] * kalPointer->P[0][0];
-	kalPointer->P[0][1] -= kalPointer->K[0] * kalPointer->P[0][1];
-	kalPointer->P[1][0] -= kalPointer->K[1] * kalPointer->P[0][0];
-	kalPointer->P[1][1] -= kalPointer->K[1] * kalPointer->P[0][1];
+// 	// Calculate estimation error covariance - Update the error covariance
+// 	/* Step 7 */
+// 	kalPointer->P[0][0] -= kalPointer->K[0] * kalPointer->P[0][0];
+// 	kalPointer->P[0][1] -= kalPointer->K[0] * kalPointer->P[0][1];
+// 	kalPointer->P[1][0] -= kalPointer->K[1] * kalPointer->P[0][0];
+// 	kalPointer->P[1][1] -= kalPointer->K[1] * kalPointer->P[0][1];
 
-	return kalPointer->angle;
-};
+// 	return kalPointer->angle;
+// };
 
 void IMU::init()
 {
-	Kalman_Init(&kalmanX);
-	Kalman_Init(&kalmanY);
-	Kalman_Init(&kalmanZ);
+	// Kalman_Init(&kalmanX);
+	// Kalman_Init(&kalmanY);
+	// Kalman_Init(&kalmanZ);
 
 	MPU6050Read();
 	// sleep( 0.1 );
 	double roll=0;
 	double pitch=0;
 
-	kalmanX.angle = roll; // Set starting angle
-	kalmanY.angle = pitch;
+	// kalmanX.angle = roll; // Set starting angle
+	// kalmanY.angle = pitch;
 
 	att_quat = Quaternion();
 	att_vector = vector_f(0.0,0.0,1.0);

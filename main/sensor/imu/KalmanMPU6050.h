@@ -38,24 +38,24 @@ class Quaternion;
 
 typedef enum e_imudir { IMU_RIGHT=1, IMU_LEFT=2 } e_imudir_t;
 
-typedef struct kalman_t
-{
-	double Q_angle;   // Process noise variance for the accelerometer
-	double Q_bias;    // Process noise variance for the gyro bias
-	double R_measure; // Measurement noise variance - this is actually the variance of the measurement noise
+// typedef struct kalman_t
+// {
+// 	double Q_angle;   // Process noise variance for the accelerometer
+// 	double Q_bias;    // Process noise variance for the gyro bias
+// 	double R_measure; // Measurement noise variance - this is actually the variance of the measurement noise
 
-	double angle; // The angle calculated by the Kalman filter - part of the 2x1 state vector
-	double bias;  // The gyro bias calculated by the Kalman filter - part of the 2x1 state vector
-	double rate;  // Unbiased rate calculated from the rate and the calculated bias - you have to call getAngle to update the rate
+// 	double angle; // The angle calculated by the Kalman filter - part of the 2x1 state vector
+// 	double bias;  // The gyro bias calculated by the Kalman filter - part of the 2x1 state vector
+// 	double rate;  // Unbiased rate calculated from the rate and the calculated bias - you have to call getAngle to update the rate
 
-	double P[2][2]; // Error covariance matrix - This is a 2x2 matrix
-	double K[2];    // Kalman gain - This is a 2x1 vector
-	double y;       // Angle difference
-	double S;       // Estimate error
-} Kalman;
+// 	double P[2][2]; // Error covariance matrix - This is a 2x2 matrix
+// 	double K[2];    // Kalman gain - This is a 2x1 vector
+// 	double y;       // Angle difference
+// 	double S;       // Estimate error
+// } Kalman;
 
-void Kalman_Init(Kalman *kalPointer, double qang=0.001, double qbias=0.003, double rmeas=0.03 );
-double Kalman_GetAngle(Kalman *kalPointer, double newAngle, double newRate, double dt);
+// void Kalman_Init(Kalman *kalPointer, double qang=0.001, double qbias=0.003, double rmeas=0.03 );
+// double Kalman_GetAngle(Kalman *kalPointer, double newAngle, double newRate, double dt);
 
 #define SERIAL_KalmanMPU6050_DEBUG 0 // 1 Enables, 0 Disables
 
@@ -172,9 +172,9 @@ public:
 private:
   static float getGyroYawDelta();
   static void update_fused_vector(vector_f& fused, float gyro_trust, vector_f& petal_force, Quaternion& omega_step);
-  static Kalman kalmanX; // Create the Kalman instances
-  static Kalman kalmanY;
-  static Kalman kalmanZ;
+  // static Kalman kalmanX; // Create the Kalman instances
+  // static Kalman kalmanY;
+  // static Kalman kalmanZ;
 
   static vector_i   raw_gyro;
   static vector_f nogate_gyro;
