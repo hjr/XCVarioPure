@@ -54,6 +54,7 @@ bool ImuSensor::probe() {
 		ESP_LOGI( FNAME,"MPU not avail");
         return false;
 	}
+    vTaskDelay(pdMS_TO_TICKS(100)); // wait after reset
     _who_typ = getImuId();
     if (_who_typ != ImuType::UNKNOWN) {
         ESP_LOGI(FNAME, "found %s", name());
