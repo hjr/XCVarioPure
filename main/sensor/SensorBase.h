@@ -96,7 +96,7 @@ private:
 //
 class SensorBase {
 public:
-    SensorBase(int ums, SensorId id);
+    SensorBase(int ums);
     virtual ~SensorBase();
 
     virtual const char* name() const = 0;
@@ -121,8 +121,8 @@ template <typename T>
 class SensorTP : public SensorBase {
 public:
     SensorTP() = delete;
-    SensorTP(void *buf, uint32_t ums, SensorId id) :
-        SensorBase(ums, id),
+    SensorTP(void *buf, uint32_t ums) :
+        SensorBase(ums),
         _history((T*)buf, HistoryCapacity(ums))
     {
         if constexpr (std::is_same_v<T, float>) { // only for float types

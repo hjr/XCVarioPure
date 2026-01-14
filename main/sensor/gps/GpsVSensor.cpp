@@ -13,8 +13,9 @@ static vector_f gps_buffer[ (SENSOR_HISTORY_DURATION_MS / DUTY_CYCLE_MS) + 1 ];
 
 GpsVSensor* GpsSensor = nullptr;
 
-GpsVSensor::GpsVSensor() : SensorTP<vector_f>(gps_buffer, 1000, SensorId::POSITION | SensorId::ExternalSensor)
+GpsVSensor::GpsVSensor() : SensorTP<vector_f>(gps_buffer, DUTY_CYCLE_MS)
 {
+    _id = SensorId::POSITION | SensorId::ExternalSensor;
     _latency_ms = 750; // classical Flarm latency
 }
 

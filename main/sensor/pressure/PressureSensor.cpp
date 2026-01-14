@@ -30,8 +30,9 @@ constexpr int DUTY_CYCLE_MS = 100; // 100ms cycle time for pressure sensors
 static float pstat_buffer[ (SENSOR_HISTORY_DURATION_MS / DUTY_CYCLE_MS) + 1 ];
 static float te_buffer[ (SENSOR_HISTORY_DURATION_MS / DUTY_CYCLE_MS) + 1 ];
 
-PressureSensor::PressureSensor(SensorId id) : SensorTP<float>((id == SensorId::STATIC_PRESSURE) ? pstat_buffer : te_buffer, DUTY_CYCLE_MS, id)
+PressureSensor::PressureSensor(SensorId id) : SensorTP<float>((id == SensorId::STATIC_PRESSURE) ? pstat_buffer : te_buffer, DUTY_CYCLE_MS)
 {
+    _id = id;
     if (id == SensorId::STATIC_PRESSURE) {
         setNVSVar(&altitude);
         setFilter(new AltimeterFilter());

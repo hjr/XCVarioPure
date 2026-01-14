@@ -21,10 +21,12 @@
 
 AirspeedSensor *asSensor = nullptr;
 
-static float as_buffer[ (SENSOR_HISTORY_DURATION_MS / 100) + 4 ]; // history buffer for airspeed sensor
+constexpr int DUTY_CYCLE_MS = 100; // 10Hz
+static float as_buffer[ (SENSOR_HISTORY_DURATION_MS / DUTY_CYCLE_MS) + 4 ]; // history buffer for airspeed sensor
 
-AirspeedSensor::AirspeedSensor() : SensorTP<float>(as_buffer, 100, SensorId::DIFFPRESSURE)
+AirspeedSensor::AirspeedSensor() : SensorTP<float>(as_buffer, DUTY_CYCLE_MS)
 {
+    _id = SensorId::DIFFPRESSURE;
     setNVSVar(&ias);
     setFilter(new AirSpeedFilter(0.25f));
 }

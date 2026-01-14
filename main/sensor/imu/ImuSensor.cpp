@@ -29,9 +29,10 @@ Quaternion ImuSensor::_ref_rot;
 mpud::MPU myMPU; // TODO as optional resource
 
 
-ImuSensor::ImuSensor(SensorId id) : SensorTP<vector_f>((id == SensorId::ACC_INERTIAL) ? acc_buffer : gyro_buffer, DUTY_CYCLE_MS, id),
+ImuSensor::ImuSensor(SensorId id) : SensorTP<vector_f>((id == SensorId::ACC_INERTIAL) ? acc_buffer : gyro_buffer, DUTY_CYCLE_MS),
     _MPUdev(myMPU)
 {
+    _id = id;
     if ( id == SensorId::GYRO_INERTIAL ) {
         // set long term zero tracker filter
     }

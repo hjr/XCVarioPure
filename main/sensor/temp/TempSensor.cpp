@@ -6,8 +6,6 @@
  ***       Copyright (C) Rohs Engineering Design         ***
  ***********************************************************/
 
-#pragma once
-
 #include "sensor/temp/TempSensor.h"
 
 TempSensor* OATSensor = nullptr;
@@ -15,8 +13,9 @@ TempSensor* OATSensor = nullptr;
 constexpr int DUTY_CYCLE_MS = 1000;
 static float temp_buffer[ (SENSOR_HISTORY_DURATION_MS / DUTY_CYCLE_MS) + 1 ];
 
-TempSensor::TempSensor() : SensorTP<float>(temp_buffer, DUTY_CYCLE_MS, SensorId::TEMPERATURE | SensorId::ExternalSensor)
+TempSensor::TempSensor() : SensorTP<float>(temp_buffer, DUTY_CYCLE_MS)
 {
+    _id = SensorId::TEMPERATURE | SensorId::ExternalSensor;
     setNVSVar(&OAT);
     setFilter(new LowPassFilter(0.3f));
     OATSensor = this;
