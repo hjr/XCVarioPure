@@ -14,6 +14,7 @@
 #include "comm/Messages.h"
 #include "setup/SetupNG.h"
 #include "setup/CruiseMode.h"
+#include "sensor/imu/ImuSensor.h"
 #include "sensor/imu/KalmanMPU6050.h"
 #include "Units.h"
 #include "sensor.h"
@@ -128,7 +129,7 @@ void NmeaPrtcl::sendStdXCVario(float baro, float dp)
     msg->buffer += str;
 
     // optional IMU additions
-    if (gflags.haveIMU && gflags.ahrsKeyValid)
+    if (accSensor && gflags.ahrsKeyValid)
     {
         std::sprintf(str, ",%3.1f", IMU::getRoll());
         msg->buffer += str;

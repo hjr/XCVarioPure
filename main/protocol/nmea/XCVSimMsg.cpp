@@ -14,6 +14,7 @@
 #include "sensor/pressure/PressureSensor.h"
 #include "sensor/press_diff/AirspeedSensor.h"
 #include "sensor/temp/TempSensor.h"
+#include "sensor/imu/ImuSensor.h"
 #include "logdef.h"
 
 #include <cstring>
@@ -44,7 +45,7 @@ XCVSimMsg::XCVSimMsg(NmeaPrtcl &nr) :
 
 //
 // Example message:
-//        gpsT, deltaT, baroP, teP, dynamicP, Temp, Gx, Gy, Gz, Az, Ay, Ax, MagX, MagY, MagZ
+//        gpsT, deltaT, baroP, teP, dynamicP, Temp, Az, Ay, Ax, Gx, Gy, Gz, MagX, MagY, MagZ
 // $SENS;43799.060,179,990.646,990.562,0.000,13.43,0.1728,0.0805,0.9861,-0.2031,-0.0145,0.0053,19.6474,19.7357,-34.4881
 //
 dl_action_t XCVSimMsg::parse_Sens(NmeaPlugin *plg)
@@ -54,7 +55,7 @@ dl_action_t XCVSimMsg::parse_Sens(NmeaPlugin *plg)
 
     ESP_LOGD(FNAME,"parseSens %s", sm->_frame.c_str() );
 
-    if ( word->size() < 6 ) {
+    if ( word->size() < 12 ) {
         return NOACTION; // invalid SENS message
     }
     // int pos = word->at(2);
@@ -70,6 +71,17 @@ dl_action_t XCVSimMsg::parse_Sens(NmeaPlugin *plg)
 
     tmp = atof(sm->_frame.c_str() + word->at(5));
     OATSensor->pushToHistory(tmp, time);
+
+    vector_f vtmp;
+    vtmp.x = atof(sm->_frame.c_str() + word->at(6));
+    vtmp.y = atof(sm->_frame.c_str() + word->at(7));
+    vtmp.z = atof(sm->_frame.c_str() + word->at(8));
+    if ( accSensor ) accSensor->pushToHistory(vtmp, time);
+
+    vtmp.x = atof(sm->_frame.c_str() + word->at(9));
+    vtmp.y = atof(sm->_frame.c_str() + word->at(10));
+    vtmp.z = atof(sm->_frame.c_str() + word->at(11));
+    if ( gyroSensor ) gyroSensor->pushToHistory(vtmp, time);
 
     return NOACTION; // never forward the simulation
 }
