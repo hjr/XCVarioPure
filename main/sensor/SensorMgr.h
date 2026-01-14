@@ -27,8 +27,19 @@ enum SensorId : uint8_t {
     GYRO_INERTIAL,
     HUMIDITY,
     FLAP_POSITION,
-    MAX_SENSOR_ID
+    MAX_SENSOR_ID,
+    // mask with upper bits as needed
+    ExternalSensor = 0x80
 };
+
+constexpr bool isExternalSensor(SensorId id) {
+    return (static_cast<uint8_t>(id) & static_cast<uint8_t>(SensorId::ExternalSensor)) != 0;
+}
+constexpr SensorId operator|(SensorId a, SensorId b) {
+    return static_cast<SensorId>(
+        static_cast<uint32_t>(a) | static_cast<uint32_t>(b)
+    );
+}
 
 struct SensorEntry {
     SensorId    id = SensorId::NONE; // enum
@@ -42,7 +53,7 @@ class SensorRegistry
 public:
     static constexpr int MaxSensors = 10;
 
-    static bool registerSensor(SensorId id, SensorBase* sensor);
+    static bool registerSensor(SensorBase* sensor);
     static void deregisterSensor(SensorBase* sensor);
     static void removeFromUpdateLoop(SensorId id);
     static void enterSimMode();

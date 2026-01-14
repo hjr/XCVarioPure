@@ -11,13 +11,15 @@
 
 #include "SensorMgr.h"
 
-SensorBase::SensorBase(int ums, SensorId id) : _update_interval_ms(ums), _latency_ms(0), _last_update_time_ms(0)
+SensorBase::SensorBase(int ums, SensorId id) : _update_interval_ms(ums), _latency_ms(0), _last_update_time_ms(0),
+    _id(id)
 {
-    SensorRegistry::registerSensor(id, this);
+    // Pls register sensors as needed in the sensor loop and in the proper order
+    // SensorRegistry::registerSensor(this);
 }
 
 SensorBase::~SensorBase()
 {
-    // deregister
+    // deregister is done automatically
     SensorRegistry::deregisterSensor(this);
 }

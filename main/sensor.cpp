@@ -833,108 +833,116 @@ void system_startup(void *args){
     }
     boot_screen->finish(0);
 
-    // Configure airspeed sensor
-    asSensor = AirspeedSensor::autoSetup();
-    logged_tests += "AS " + std::string(asSensor->name()) +  " offset: ";
-    if (asSensor)
+    if ( SetupCommon::isMaster() )
     {
-        ESP_LOGI(FNAME, "AS Speed sensor %s self test PASSED", asSensor->name());
-        bool as_ok = asSensor->setup();
-        float p;
-        if (asSensor->doRead(p) && p > 60.f) {
-            dynamicP = p;
-        }
-        ias.set(Atmosphere::pascal2kmh(dynamicP));
-
-        // Initialize the airborne status
-        airborne.set(ias.get() > Speed2Fly.getStallSpeed());
-
-        ESP_LOGI(FNAME, "Aispeed sensor current speed=%f", ias.get());
-        if (!as_ok && (ias.get() < 50))
+        // Configure sensors only on master XCVario
+        asSensor = AirspeedSensor::autoSetup();
+        logged_tests += "AS " + std::string(asSensor->name()) +  " offset: ";
+        if (asSensor)
         {
-            MBOX->pushMessage(2, "AS Sensor: NEED ZERO");
-            logged_tests += failed_text;
-            selftestPassed = false;
+            ESP_LOGI(FNAME, "AS Speed sensor %s self test PASSED", asSensor->name());
+            bool as_ok = asSensor->setup();
+            float p;
+            if (asSensor->doRead(p) && p > 60.f) {
+                dynamicP = p;
+            }
+            ias.set(Atmosphere::pascal2kmh(dynamicP));
+
+            // Initialize the airborne status
+            airborne.set(ias.get() > Speed2Fly.getStallSpeed());
+
+            ESP_LOGI(FNAME, "Aispeed sensor current speed=%f", ias.get());
+            if (!as_ok && (ias.get() < 50))
+            {
+                MBOX->pushMessage(2, "AS Sensor: NEED ZERO");
+                logged_tests += failed_text;
+                selftestPassed = false;
+            }
+            else
+            {
+                logged_tests += passed_text;
+                boot_screen->finish(1);
+            }
+            SensorRegistry::registerSensor(asSensor);
         }
         else
         {
-            logged_tests += passed_text;
-            boot_screen->finish(1);
-        }
-    }
-    else
-    {
-        ESP_LOGE(FNAME, "Error with air speed pressure sensor, no working sensor found!");
-        MBOX->pushMessage(2, "AS Sensor: NOT FOUND");
-        logged_tests += notfound_text;
-        selftestPassed = false;
-        asSensor = nullptr;
-    }
-
-    // Configure pressure sensors
-    ESP_LOGI(FNAME, "Absolute pressure sensors init, detect type of sensor type..");
-    logged_tests += "Baro Sensor: ";
-    baroSensor = PressureSensor::autoSetup(SensorId::STATIC_PRESSURE);
-    bool batest = true;
-    float ba_t, ba_p, te_t, te_p;
-    if (baroSensor) {
-        if (!baroSensor->selfTest(ba_t, ba_p)) {
-            ESP_LOGE(FNAME, "HW Error: Self test Barometric Pressure Sensor failed!");
-            MBOX->pushMessage(2, "Baro Sensor: NOT FOUND");
-            selftestPassed = false;
-            batest = false;
+            ESP_LOGE(FNAME, "Error with air speed pressure sensor, no working sensor found!");
+            MBOX->pushMessage(2, "AS Sensor: NOT FOUND");
             logged_tests += notfound_text;
-        } else {
-            ESP_LOGI(FNAME, "Baro Sensor test OK, T=%f P=%f", ba_t, ba_p);
-            logged_tests += passed_text;
+            selftestPassed = false;
+            asSensor = nullptr;
         }
-    }
 
-    logged_tests += "TE Sensor: ";
-    teSensor = PressureSensor::autoSetup(SensorId::TE_PRESSURE);
-    bool tetest = true;
-    if (teSensor) {
-        if (!teSensor->selfTest(te_t, te_p)) {
-            ESP_LOGE(FNAME, "HW Error: Self test TE Pressure Sensor failed!");
-            MBOX->pushMessage(2, "TE Sensor: NOT FOUND");
-            selftestPassed = false;
-            tetest = false;
-            logged_tests += notfound_text;
+        // Configure pressure sensors
+        ESP_LOGI(FNAME, "Absolute pressure sensors init, detect type of sensor type..");
+        logged_tests += "Baro Sensor: ";
+        baroSensor = PressureSensor::autoSetup(SensorId::STATIC_PRESSURE);
+        bool batest = true;
+        float ba_t, ba_p, te_t, te_p;
+        if (baroSensor) {
+            if (!baroSensor->selfTest(ba_t, ba_p)) {
+                ESP_LOGE(FNAME, "HW Error: Self test Barometric Pressure Sensor failed!");
+                MBOX->pushMessage(2, "Baro Sensor: NOT FOUND");
+                selftestPassed = false;
+                batest = false;
+                logged_tests += notfound_text;
+            } else {
+                ESP_LOGI(FNAME, "Baro Sensor test OK, T=%f P=%f", ba_t, ba_p);
+                logged_tests += passed_text;
+            }
+            SensorRegistry::registerSensor(baroSensor);
+        }
+
+        logged_tests += "TE Sensor: ";
+        teSensor = PressureSensor::autoSetup(SensorId::TE_PRESSURE);
+        bool tetest = true;
+        if (teSensor) {
+            if (!teSensor->selfTest(te_t, te_p)) {
+                ESP_LOGE(FNAME, "HW Error: Self test TE Pressure Sensor failed!");
+                MBOX->pushMessage(2, "TE Sensor: NOT FOUND");
+                selftestPassed = false;
+                tetest = false;
+                logged_tests += notfound_text;
+            } else {
+                ESP_LOGI(FNAME, "TE Sensor test OK,   T=%f P=%f", te_t, te_p);
+                logged_tests += passed_text;
+            }
+            SensorRegistry::registerSensor(teSensor);
+        }
+        if (tetest && batest) {
+            ESP_LOGI(FNAME, "Both absolute pressure sensor TESTs SUCCEEDED, now test deltas");
+            logged_tests += "TE/Baro Sens. T d. <4'C: ";
+            if ((abs(ba_t - te_t) > 4.0) && (ias.get() < 50)) {  // each sensor has deviations, and new PCB has more heat sources
+                selftestPassed = false;
+                ESP_LOGE(FNAME, "Severe T delta > 4 °C between Baro and TE sensor: °C %f", abs(ba_t - te_t));
+                MBOX->pushMessage(1, "TE/Baro Temp: Unequal");
+                logged_tests += failed_text;
+            } else {
+                ESP_LOGI(FNAME, "Abs p sensors temp. delta test PASSED, delta: %f °C", abs(ba_t - te_t));
+                logged_tests += passed_text;
+            }
+            float delta = 2.5;  // in factory we test at normal temperature, so temperature change is ignored.
+            if (abs(factory_volt_adjust.get() - 0.00815) < 0.00001) {
+                delta += 1.8;  // plus 1.5 Pa per Kelvin, for 60K T range = 90 Pa or 0.9 hPa per Sensor, for both there is 2.5 plus 1.8 hPa to
+                            // consider
+            }
+            logged_tests += "TE/Baro Sens. P d. <2hPa: ";
+            if ((abs(ba_p - te_p) > delta) && (ias.get() < 50)) {
+                selftestPassed = false;
+                ESP_LOGI(FNAME, "Abs p sensors deviation delta > 2.5 hPa between Baro and TE sensor: %f", abs(ba_p - te_p));
+                MBOX->pushMessage(1, "TE/Baro P: Unequal");
+                logged_tests += failed_text;
+            } else {
+                ESP_LOGI(FNAME, "AbsP sensor data test PASSED, D: %f hPa", abs(ba_p - te_p));
+                logged_tests += passed_text;
+            }
+            boot_screen->finish(2);
         } else {
-            ESP_LOGI(FNAME, "TE Sensor test OK,   T=%f P=%f", te_t, te_p);
-            logged_tests += passed_text;
+            ESP_LOGI(FNAME, "Absolute pressure sensor TESTs failed");
         }
-    }
-    if (tetest && batest) {
-        ESP_LOGI(FNAME, "Both absolute pressure sensor TESTs SUCCEEDED, now test deltas");
-        logged_tests += "TE/Baro Sens. T d. <4'C: ";
-        if ((abs(ba_t - te_t) > 4.0) && (ias.get() < 50)) {  // each sensor has deviations, and new PCB has more heat sources
-            selftestPassed = false;
-            ESP_LOGE(FNAME, "Severe T delta > 4 °C between Baro and TE sensor: °C %f", abs(ba_t - te_t));
-            MBOX->pushMessage(1, "TE/Baro Temp: Unequal");
-            logged_tests += failed_text;
-        } else {
-            ESP_LOGI(FNAME, "Abs p sensors temp. delta test PASSED, delta: %f °C", abs(ba_t - te_t));
-            logged_tests += passed_text;
-        }
-        float delta = 2.5;  // in factory we test at normal temperature, so temperature change is ignored.
-        if (abs(factory_volt_adjust.get() - 0.00815) < 0.00001) {
-            delta += 1.8;  // plus 1.5 Pa per Kelvin, for 60K T range = 90 Pa or 0.9 hPa per Sensor, for both there is 2.5 plus 1.8 hPa to
-                           // consider
-        }
-        logged_tests += "TE/Baro Sens. P d. <2hPa: ";
-        if ((abs(ba_p - te_p) > delta) && (ias.get() < 50)) {
-            selftestPassed = false;
-            ESP_LOGI(FNAME, "Abs p sensors deviation delta > 2.5 hPa between Baro and TE sensor: %f", abs(ba_p - te_p));
-            MBOX->pushMessage(1, "TE/Baro P: Unequal");
-            logged_tests += failed_text;
-        } else {
-            ESP_LOGI(FNAME, "AbsP sensor deta test PASSED, D: %f hPa", abs(ba_p - te_p));
-            logged_tests += passed_text;
-        }
-        boot_screen->finish(2);
-    } else {
-        ESP_LOGI(FNAME, "Absolute pressure sensor TESTs failed");
+        if ( accSensor ) SensorRegistry::registerSensor(accSensor);
+        if ( gyroSensor ) SensorRegistry::registerSensor(gyroSensor);
     }
 
     AUDIO->applySetup();

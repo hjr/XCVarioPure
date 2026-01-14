@@ -16,24 +16,26 @@
 // manage max. 10 sensors at a time (incl. all virtual filter sensors)
 std::array<SensorEntry, SensorRegistry::MaxSensors> SensorRegistry::all_sensors {};
 
-bool SensorRegistry::registerSensor(SensorId id, SensorBase *s)
+bool SensorRegistry::registerSensor(SensorBase *s)
 {
     if (!s) {
         ESP_LOGE(FNAME, "Attempt to register nullptr sensor");
         return false;
     }
-
+    SensorId id = s->getId();
     if ( find(id) ) {
         ESP_LOGI(FNAME, "Sensor with id %d already registered", static_cast<int>(id));
         return false; // already registered
     }
 
+    int idx = 0;
     for (auto& e : all_sensors) {
         if (!e.isActive()) {
-            e = { id, s, s->getDutyCycle() / 100 }; // store dutycycle in 100ms units
-            ESP_LOGI(FNAME, "Sensor registered with id %d", static_cast<int>(id));
+            e = { id, s, isExternalSensor(id) ? 0 : s->getDutyCycle() / 100 }; // store dutycycle in 100ms units
+            ESP_LOGI(FNAME, "Sensor %d registered with id %d", idx, static_cast<int>(id));
             return true;
         }
+        idx++;
     }
     return false; // full
 }

@@ -11,7 +11,7 @@
 #include "setup/SetupNG.h"
 #include "Filters.h"
 #include "protocol/Clock.h"
-#include "logdef.h"
+// #include "logdef.h"
 
 #include <type_traits>
 #include <cstdint>
@@ -103,15 +103,18 @@ public:
     virtual bool probe() = 0;
     virtual bool setup() = 0;
     virtual bool update(uint32_t now_ms) = 0;
+    virtual void postProcess() {};
     int getDutyCycle() const { return _update_interval_ms; }
     int getLastObservationTime() const { return _last_update_time_ms + _latency_ms; }
     inline int getLastUpdateTimeMs() const { return _last_update_time_ms; }
     inline int getLatency() const { return _latency_ms; }
+    inline SensorId getId() const { return _id; }
 
 protected:
     int _update_interval_ms;  ///< Expected update interval
     int _latency_ms;          ///< Sensor conversion/acquisition latency
     int _last_update_time_ms; ///< Time the update got registered
+    SensorId _id; /// SensorId as integer
 };
 
 template <typename T>
@@ -142,7 +145,6 @@ public:
     }
     // read current value from sensor hardware
     virtual bool doRead(T &val) = 0;
-    virtual void postProcess() {};
     // optional: diagnostic info
     // virtual bool healthy() const { return true; }
 
@@ -159,7 +161,7 @@ public:
             postProcess();
             return true;
         }
-        ESP_LOGE(FNAME, "Sensor %s read NAN", name());
+        // ESP_LOGE(FNAME, "Sensor %s read NAN", name());
         pushToHistory(_invalid, now_ms);
         return true;
     }

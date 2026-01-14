@@ -9,6 +9,7 @@
 #include "GyroMPU6050.h"
 #include "mpu/math.hpp"
 #include "../SensorMgr.h"
+#include "logdef.h"
 
 GyroMPU6050::GyroMPU6050() : ImuSensor(SensorId::GYRO_INERTIAL)
 {

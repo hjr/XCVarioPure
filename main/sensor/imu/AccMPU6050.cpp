@@ -10,6 +10,7 @@
 #include "mpu/math.hpp"
 #include "../SensorMgr.h"
 #include "../pressure/PressureSensor.h"
+#include "logdef.h"
 
 AccMPU6050::AccMPU6050() : ImuSensor(SensorId::ACC_INERTIAL)
 {
