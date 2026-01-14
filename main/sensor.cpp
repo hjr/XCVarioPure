@@ -228,123 +228,123 @@ static void toyFeed(int count) // Called at 5Hz from clientLoop or sensorloop
     }
 }
 
-static void commonThingsLast(int count)
-{
-    if (IMU::getGliderAccelZ() > gload_pos_max.get()) {
-        gload_pos_max.set(IMU::getGliderAccelZ());
-    }
-    else if (IMU::getGliderAccelZ() < gload_neg_max.get()) {
-        gload_neg_max.set(IMU::getGliderAccelZ());
-    }
+// static void commonThingsLast(int count)
+// {
+//     if (IMU::getGliderAccelZ() > gload_pos_max.get()) {
+//         gload_pos_max.set(IMU::getGliderAccelZ());
+//     }
+//     else if (IMU::getGliderAccelZ() < gload_neg_max.get()) {
+//         gload_neg_max.set(IMU::getGliderAccelZ());
+//     }
 
-    // Need to be done for client and main vario
-    polar_sink = Speed2Fly.sink(ias.get());
-    te_netto.set(te_vario.get() - polar_sink);
-    as2f = Speed2Fly.speed(te_netto.get(), !VCMode.getCMode());
+//     // Need to be done for client and main vario
+//     polar_sink = Speed2Fly.sink(ias.get());
+//     te_netto.set(te_vario.get() - polar_sink);
+//     as2f = Speed2Fly.speed(te_netto.get(), !VCMode.getCMode());
 
-    s2f_ideal.set(fast_iroundf(as2f));
-    // low pass damping
-    s2f_delta = s2f_delta + ((as2f - ias.get()) - s2f_delta) * (1 / (s2f_delay.get() * 10));
-    // ESP_LOGI( FNAME, "te: %f, polar_sink: %f, netto %f, s2f: %f  delta: %f", aTES2F, polar_sink, te_netto.get(), as2f, s2f_delta );
+//     s2f_ideal.set(fast_iroundf(as2f));
+//     // low pass damping
+//     s2f_delta = s2f_delta + ((as2f - ias.get()) - s2f_delta) * (1 / (s2f_delay.get() * 10));
+//     // ESP_LOGI( FNAME, "te: %f, polar_sink: %f, netto %f, s2f: %f  delta: %f", aTES2F, polar_sink, te_netto.get(), as2f, s2f_delta );
 
-    if (OneWIRE) {
-        // read one wire sensors
-        OneWIRE->groupUpdate(Clock::getMillis());
-    }
+//     if (OneWIRE) {
+//         // read one wire sensors
+//         OneWIRE->groupUpdate(Clock::getMillis());
+//     }
 
-    AUDIO->updateTone();
-    const int screenEvent = ScreenEvent(ScreenEvent::MAIN_SCREEN).raw;
-    xQueueSend(uiEventQueue, &screenEvent, 0);
-}
-static void commonThingsSeldom()
-{
-    SetupCommon::commitDirty(); // very important, flash NVS settings permanently
+//     AUDIO->updateTone();
+//     const int screenEvent = ScreenEvent(ScreenEvent::MAIN_SCREEN).raw;
+//     xQueueSend(uiEventQueue, &screenEvent, 0);
+// }
+// static void commonThingsSeldom()
+// {
+//     SetupCommon::commitDirty(); // very important, flash NVS settings permanently
 
-    ESP_LOGI(FNAME, "Free Heap: %d bytes", heap_caps_get_free_size(MALLOC_CAP_8BIT));
-    if (uxTaskGetStackHighWaterMark(NULL) < 512)
-    {
-        ESP_LOGW(FNAME, "Warning %s task stack low: %d bytes", pcTaskGetName(NULL), uxTaskGetStackHighWaterMark(NULL));
-    }
-    if (heap_caps_get_free_size(MALLOC_CAP_8BIT) < 20000)
-    {
-        ESP_LOGW(FNAME, "Warning heap_caps_get_free_size getting low: %d", heap_caps_get_free_size(MALLOC_CAP_8BIT));
-    }
-    extern MessagePool MP;
-    ESP_LOGI(FNAME, "MPool in-use:%d, acq-fails: %d", MP.nrUsed(), MP.nrAcqFails());
+//     ESP_LOGI(FNAME, "Free Heap: %d bytes", heap_caps_get_free_size(MALLOC_CAP_8BIT));
+//     if (uxTaskGetStackHighWaterMark(NULL) < 512)
+//     {
+//         ESP_LOGW(FNAME, "Warning %s task stack low: %d bytes", pcTaskGetName(NULL), uxTaskGetStackHighWaterMark(NULL));
+//     }
+//     if (heap_caps_get_free_size(MALLOC_CAP_8BIT) < 20000)
+//     {
+//         ESP_LOGW(FNAME, "Warning heap_caps_get_free_size getting low: %d", heap_caps_get_free_size(MALLOC_CAP_8BIT));
+//     }
+//     extern MessagePool MP;
+//     ESP_LOGI(FNAME, "MPool in-use:%d, acq-fails: %d", MP.nrUsed(), MP.nrAcqFails());
 
-    // struct timeval tv;
-    // gettimeofday(&tv, NULL);
-    // ESP_LOGI(FNAME, "TofDay %d.%03ds", (int)(tv.tv_sec % (60 * 60 * 24)), (int)(tv.tv_usec / 1000));
+//     // struct timeval tv;
+//     // gettimeofday(&tv, NULL);
+//     // ESP_LOGI(FNAME, "TofDay %d.%03ds", (int)(tv.tv_sec % (60 * 60 * 24)), (int)(tv.tv_usec / 1000));
 
-    // static char buf[2048];
-    // vTaskGetRunTimeStats(buf);
-    // std::printf("Task runtime stats:\n%s\n", buf);
+//     // static char buf[2048];
+//     // vTaskGetRunTimeStats(buf);
+//     // std::printf("Task runtime stats:\n%s\n", buf);
 
-    // DeviceManager* dm = DeviceManager::Instance();
-    // static_cast<TestQuery*>(dm->getProtocol( TEST_DEV2, TEST_P ))->sendTestQuery();  // all 5 seconds on burst
-}
+//     // DeviceManager* dm = DeviceManager::Instance();
+//     // static_cast<TestQuery*>(dm->getProtocol( TEST_DEV2, TEST_P ))->sendTestQuery();  // all 5 seconds on burst
+// }
 
-void clientLoop(void *pvParameters)
-{
-	int count = 0;
-	esp_task_wdt_add(NULL);
+// void clientLoop(void *pvParameters)
+// {
+// 	int count = 0;
+// 	esp_task_wdt_add(NULL);
 
-	while (true)
-	{
-		TickType_t xLastWakeTime = xTaskGetTickCount();
-		count++; // 10 Hz
+// 	while (true)
+// 	{
+// 		TickType_t xLastWakeTime = xTaskGetTickCount();
+// 		count++; // 10 Hz
 
-		aTE += (te_vario.get() - aTE)* (1/(10*vario_av_delay.get()));
+// 		aTE += (te_vario.get() - aTE)* (1/(10*vario_av_delay.get()));
 
-		if( !(count%2) )
-		{
-			double tmpalt = altitude.get(); // get pressure from altitude
-			if( (fl_auto_transition.get() == 1) && ((int)( Units::meters2FL( altitude.get() )) + (int)(gflags.standard_setting) > transition_alt.get() ) ) {
-				ESP_LOGI(FNAME,"Above transition altitude");
-				baroP = Atmosphere::calcPressureISA(tmpalt); // above transition altitude
-			}
-			else {
-				baroP = Atmosphere::calcPressure( QNH.get(), tmpalt);
-			}
-			dynamicP = Atmosphere::kmh2pascal(ias.get());
-			tas.set(Atmosphere::TAS2(ias.get(), altitude.get(), OAT.get()));
-			if( IMU::getGliderAccelZ() > gload_pos_max.get() ){
-				gload_pos_max.set( IMU::getGliderAccelZ() );
-			}else if( IMU::getGliderAccelZ() < gload_neg_max.get() ){
-				gload_neg_max.set( IMU::getGliderAccelZ() );
-			}
+// 		if( !(count%2) )
+// 		{
+// 			double tmpalt = altitude.get(); // get pressure from altitude
+// 			if( (fl_auto_transition.get() == 1) && ((int)( Units::meters2FL( altitude.get() )) + (int)(gflags.standard_setting) > transition_alt.get() ) ) {
+// 				ESP_LOGI(FNAME,"Above transition altitude");
+// 				baroP = Atmosphere::calcPressureISA(tmpalt); // above transition altitude
+// 			}
+// 			else {
+// 				baroP = Atmosphere::calcPressure( QNH.get(), tmpalt);
+// 			}
+// 			dynamicP = Atmosphere::kmh2pascal(ias.get());
+// 			tas.set(Atmosphere::TAS2(ias.get(), altitude.get(), OAT.get()));
+// 			if( IMU::getGliderAccelZ() > gload_pos_max.get() ){
+// 				gload_pos_max.set( IMU::getGliderAccelZ() );
+// 			}else if( IMU::getGliderAccelZ() < gload_neg_max.get() ){
+// 				gload_neg_max.set( IMU::getGliderAccelZ() );
+// 			}
 
-			if( uxTaskGetStackHighWaterMark(NULL) < 512 ) {
-				ESP_LOGW(FNAME,"Warning client task stack low: %d bytes", uxTaskGetStackHighWaterMark(NULL) );
-			}
-        }
+// 			if( uxTaskGetStackHighWaterMark(NULL) < 512 ) {
+// 				ESP_LOGW(FNAME,"Warning client task stack low: %d bytes", uxTaskGetStackHighWaterMark(NULL) );
+// 			}
+//         }
 
-        commonThingsLast(count);
-        if (!(count % 2))
-        {
-            toyFeed(count);
-            if (true)
-            { // todo need a mag_hdm.valid() flag
-                if (ToyNmeaPrtcl)
-                {
-                    if (compass_nmea_hdm.get())
-                    {
-                        ToyNmeaPrtcl->sendXCVNmeaHDM(mag_hdm.get());
-                    }
+//         commonThingsLast(count);
+//         if (!(count % 2))
+//         {
+//             toyFeed(count);
+//             if (true)
+//             { // todo need a mag_hdm.valid() flag
+//                 if (ToyNmeaPrtcl)
+//                 {
+//                     if (compass_nmea_hdm.get())
+//                     {
+//                         ToyNmeaPrtcl->sendXCVNmeaHDM(mag_hdm.get());
+//                     }
 
-                    if (compass_nmea_hdt.get())
-                    {
-                        ToyNmeaPrtcl->sendXCVNmeaHDT(mag_hdt.get());
-                    }
-                }
-            }
-        }
-        if (!(count % 300)) { commonThingsSeldom(); }
+//                     if (compass_nmea_hdt.get())
+//                     {
+//                         ToyNmeaPrtcl->sendXCVNmeaHDT(mag_hdt.get());
+//                     }
+//                 }
+//             }
+//         }
+//         if (!(count % 300)) { commonThingsSeldom(); }
 
-        esp_task_wdt_reset();
-        vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(100));
-	}
-}
+//         esp_task_wdt_reset();
+//         vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(100));
+// 	}
+// }
 
 static int client_sync_dataIdx = 10000;
 void startClientSync()
@@ -369,7 +369,7 @@ void readSensors(void *pvParameters)
         // pick the time
         spartse_time = Clock::getMillis();
 
-        // loop over all sensors
+        // read all sensors
         for (SensorEntry *e = SensorRegistry::begin(); e != SensorRegistry::end(); ++e)
         {
             if ( ! e->isActive() ) break;
@@ -378,7 +378,14 @@ void readSensors(void *pvParameters)
             }
         }
 
-        IMU::Process(); // fixme
+        // post process all sensors
+        for (SensorEntry *e = SensorRegistry::begin(); e != SensorRegistry::end(); ++e)
+        {
+            if ( ! e->isActive() ) break;
+            if ( e->dutycycle && ! (count%e->dutycycle) ) {
+                e->sensor->postProcess();
+            }
+        }
 
         float T=OAT.get();
 		if( !OAT.getValid() ) {
@@ -432,7 +439,7 @@ void readSensors(void *pvParameters)
 		// if( (int( ias.get()+0.5 ) != int( new_ias+0.5 ) ) || !(count%20) ){
 		// 	ias.set( new_ias );  // low pass filter
 		// }
-		if( airspeed_max.get() < ias.get() ){
+		if( ias.get() > airspeed_max.get() ){
 			airspeed_max.set( ias.get() );
 		}
 		// // ESP_LOGI("FNAME","P: %f  IAS:%f IASF: %d", dynamicP, iasraw, ias );
@@ -545,7 +552,7 @@ void readSensors(void *pvParameters)
 		}
 
 		// Check on new clients connecting
-		if ( client_sync_dataIdx < SetupCommon::numEntries() ) {
+		if ( SetupCommon::isMaster() && client_sync_dataIdx < SetupCommon::numEntries() ) {
 			while( client_sync_dataIdx < SetupCommon::numEntries() ) {
 				if ( SetupCommon::syncEntry(client_sync_dataIdx++) ) {
 					break; // Hit entry to actually sync and send data
@@ -558,7 +565,7 @@ void readSensors(void *pvParameters)
 
 
         // battery voltage update
-        if ( !(count%10) ) {
+        if ( SetupCommon::isMaster() && !(count%10) ) {
             battery_voltage.set(BatVoltage->get());
             if (theCompass) {
                theCompass->ageIncr();
@@ -570,8 +577,57 @@ void readSensors(void *pvParameters)
 			}
 		}
 
-        commonThingsLast(count);
-        if ((count % 300) == 0) { commonThingsSeldom(); }
+        if (IMU::getGliderAccelZ() > gload_pos_max.get()) {
+            gload_pos_max.set(IMU::getGliderAccelZ());
+        }
+        else if (IMU::getGliderAccelZ() < gload_neg_max.get()) {
+            gload_neg_max.set(IMU::getGliderAccelZ());
+        }
+
+        // Need to be done for client and main vario
+        polar_sink = Speed2Fly.sink(ias.get());
+        te_netto.set(te_vario.get() - polar_sink);
+        as2f = Speed2Fly.speed(te_netto.get(), !VCMode.getCMode());
+
+        s2f_ideal.set(fast_iroundf(as2f));
+        // low pass damping
+        s2f_delta = s2f_delta + ((as2f - ias.get()) - s2f_delta) * (1 / (s2f_delay.get() * 10));
+        // ESP_LOGI( FNAME, "te: %f, polar_sink: %f, netto %f, s2f: %f  delta: %f", aTES2F, polar_sink, te_netto.get(), as2f, s2f_delta );
+
+        if (OneWIRE) {
+            // read one wire sensors
+            OneWIRE->groupUpdate(Clock::getMillis());
+        }
+
+        AUDIO->updateTone();
+        const int screenEvent = ScreenEvent(ScreenEvent::MAIN_SCREEN).raw;
+        xQueueSend(uiEventQueue, &screenEvent, 0);
+
+        if ((count % 300) == 0) {
+            SetupCommon::commitDirty(); // very important, flash NVS settings permanently
+            ESP_LOGI(FNAME, "Free Heap: %d bytes", heap_caps_get_free_size(MALLOC_CAP_8BIT));
+            if (uxTaskGetStackHighWaterMark(NULL) < 512)
+            {
+                ESP_LOGW(FNAME, "Warning %s task stack low: %d bytes", pcTaskGetName(NULL), uxTaskGetStackHighWaterMark(NULL));
+            }
+            if (heap_caps_get_free_size(MALLOC_CAP_8BIT) < 20000)
+            {
+                ESP_LOGW(FNAME, "Warning heap_caps_get_free_size getting low: %d", heap_caps_get_free_size(MALLOC_CAP_8BIT));
+            }
+            extern MessagePool MP;
+            ESP_LOGI(FNAME, "MPool in-use:%d, acq-fails: %d", MP.nrUsed(), MP.nrAcqFails());
+
+            // struct timeval tv;
+            // gettimeofday(&tv, NULL);
+            // ESP_LOGI(FNAME, "TofDay %d.%03ds", (int)(tv.tv_sec % (60 * 60 * 24)), (int)(tv.tv_usec / 1000));
+
+            // static char buf[2048];
+            // vTaskGetRunTimeStats(buf);
+            // std::printf("Task runtime stats:\n%s\n", buf);
+
+            // DeviceManager* dm = DeviceManager::Instance();
+            // static_cast<TestQuery*>(dm->getProtocol( TEST_DEV2, TEST_P ))->sendTestQuery();  // all 5 seconds on burst
+        }
 
 		esp_task_wdt_reset();
 		vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(100));
@@ -998,7 +1054,7 @@ void system_startup(void *args){
 		logged_tests += passed_text;
 	}
 
-	// magnetic sensor / compass selftest
+	// magnetic sensor / compass selftest fixme move, register ..
 	if( theCompass ) {
 		logged_tests += "Compass test: ";
 		theCompass->begin();
@@ -1141,12 +1197,12 @@ void system_startup(void *args){
 	}
 
 	// enter normal operation
-	if( SetupCommon::isClient() ){
-		xTaskCreate(&clientLoop, "clientLoop", 4096, NULL, 11, NULL);
-	}
-	else {
+	// if( SetupCommon::isClient() ){
+	// 	xTaskCreate(&clientLoop, "clientLoop", 4096, NULL, 11, NULL);
+	// }
+	// else {
 		xTaskCreate(&readSensors, "readSensors", 5120, NULL, 12, NULL);
-	}
+	// }
 
 	VCMode.updateCache(); // correct initialization
     AUDIO->initVarioVoice();
@@ -1196,7 +1252,7 @@ extern "C" void  app_main(void)
     if (wk_speed_0.exists()) {
         gflags.flaps_nvs_defined = true;
     }
-    ESP_LOGI(FNAME,"Now init all Setup elements");
+    ESP_LOGI(FNAME,"Init all NVS Setup items");
 	SetupCommon::initSetup();
 
 	// ESP_LOGI(FNAME,"Measure add %ucount", (unsigned int)cycle_count());

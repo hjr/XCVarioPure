@@ -158,7 +158,6 @@ public:
         T value;
         if (doRead(value)) {
             pushToHistory(value, now_ms);
-            postProcess();
             return true;
         }
         // ESP_LOGE(FNAME, "Sensor %s read NAN", name());

@@ -7,6 +7,7 @@
  ***********************************************************/
 
 #include "AccMPU6050.h"
+#include "KalmanMPU6050.h"
 #include "mpu/math.hpp"
 #include "../SensorMgr.h"
 #include "../pressure/PressureSensor.h"
@@ -57,4 +58,5 @@ void AccMPU6050::postProcess() {
     if ( ok ) {
         _MPUdev.temp_control(xcvTemp);
     }
+    IMU::Process(); // fixme
 }
