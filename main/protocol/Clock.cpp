@@ -8,8 +8,7 @@
 
 #include "Clock.h"
 #include "ClockIntf.h"
-#include "sensor.h"
-#include "logdef.h"
+#include "logdefnone.h"
 
 #include <freertos/FreeRTOS.h>
 #include <freertos/queue.h>
@@ -126,10 +125,6 @@ void Clock::updateTimeUTC(int64_t gps_utc_ms) {
     int64_t error   = gps_utc_ms - est_now;
     ESP_LOGI(FNAME, "Clock sync update: error %lldms, since %dms, new offset %lldms", error, getUpdateAgeMs(), _offset_ms);
     _last_updated_ms = msec_counter;
-    if ( gflags.inSimulationMode ) {
-        _offset_ms = gps_utc_ms - msec_counter;
-        return;
-    }
-    _offset_ms += std::clamp(error / 16, -8LL, +8LL); // max 8 ms correction per update
+    _offset_ms += std::clamp(error / 12, -5LL, +5LL); // max 5 ms correction per update
 }
 
