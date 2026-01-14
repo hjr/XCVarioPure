@@ -23,7 +23,8 @@ enum SensorId : uint8_t {
     ALTITUDE,
     VARIO,
     MAGNETO,
-    GYRO,
+    ACC_INERTIAL,
+    GYRO_INERTIAL,
     HUMIDITY,
     FLAP_POSITION,
     MAX_SENSOR_ID
