@@ -1,5 +1,7 @@
 
 #include "KalmanMPU6050.h"
+
+#include "ImuSensor.h"
 #include "setup/SetupNG.h"
 #include "protocol/Clock.h"
 #include "mpu/math.hpp"
@@ -14,6 +16,8 @@
 
 #define sqr(x) x *x
 #define hypotenuse(x, y) std::sqrtf(sqr(x) + sqr(y))
+
+extern mpud::MPU myMPU; // fixme
 
 // Kalman Variables
 // Kalman IMU::kalmanX; // Create the Kalman instances
@@ -184,9 +188,11 @@ void IMU::Process()
 	if( ret )
 		return;
 	float gravity_trust = 1;
+	gyro = gyroSensor->getHead();
+	accel = accSensor->getHead();
 
 	// create a gyro base rotation axis
-	vector_f gyro_rad = gyro * deg2rad(1.f);
+	vector_f gyro_rad = *gyroSensor->getHeadPtr() * deg2rad(1.f);
 	omega_step = Quaternion::fromGyro(gyro_rad, dt);
 	vector_f axis;
 	float w = omega_step.getAngleAndAxis(axis) * 1.f / dt; // angular speed [rad/sec]
@@ -289,57 +295,58 @@ float IMU::fallbackToGyro(){
 // Central read of IMU with reotation into the glider reference system
 esp_err_t IMU::MPU6050Read()
 {
-	static vector_f prev_accel(1,0,0), prev_gyro(0,0,0);
+	// static vector_f prev_accel(1,0,0), prev_gyro(0,0,0);
 
-	// Get new accelerometer values from MPU6050
-	mpud::raw_axes_t imuRaw; // holds x, y, z axes as int16
-	esp_err_t err = MPU.acceleration(&imuRaw);  // fetch raw data from the registers
-	if( err != ESP_OK ) {
-		ESP_LOGE(FNAME, "accel I2C error, X:%d Y:%d Z:%d", imuRaw.x, imuRaw.y, imuRaw.z );
-	}
-	mpud::float_axes_t tmp = mpud::accelGravity(imuRaw, mpud::ACCEL_FS_8G); // raw data to gravity
-	vector_f tmpvec(tmp.x, tmp.y, tmp.z);
+	// // Get new accelerometer values from MPU6050
+	// mpud::raw_axes_t imuRaw; // holds x, y, z axes as int16
+	// esp_err_t err = MPU.acceleration(&imuRaw);  // fetch raw data from the registers
+	// if( err != ESP_OK ) {
+	// 	ESP_LOGE(FNAME, "accel I2C error, X:%d Y:%d Z:%d", imuRaw.x, imuRaw.y, imuRaw.z );
+	// }
+	// mpud::float_axes_t tmp = mpud::accelGravity(imuRaw, mpud::ACCEL_FS_8G); // raw data to gravity
+	// vector_f tmpvec(tmp.x, tmp.y, tmp.z);
 
-	// Check on irrational changes
-	if ( (tmpvec-prev_accel).get_norm2() > 25 ) {
-		vector_f d(tmpvec-prev_accel);
-		ESP_LOGE(FNAME, "accelaration change > 5 g in 0.2 S:  X:%+.2f Y:%+.2f Z:%+.2f", d.x, d.y, d.z );
-		err |= ESP_FAIL;
-	}
-	else {
-		// into glide reference system
-		accel = ref_rot * tmpvec;
-	}
-	prev_accel = tmpvec;
+	// // Check on irrational changes
+	// if ( (tmpvec-prev_accel).get_norm2() > 25 ) {
+	// 	vector_f d(tmpvec-prev_accel);
+	// 	ESP_LOGE(FNAME, "accelaration change > 5 g in 0.2 S:  X:%+.2f Y:%+.2f Z:%+.2f", d.x, d.y, d.z );
+	// 	err |= ESP_FAIL;
+	// }
+	// else {
+	// 	// into glide reference system
+	// 	accel = ref_rot * tmpvec;
+	// }
+	// prev_accel = tmpvec;
 
-	// Get new gyro values from MPU6050
-	err |= MPU.rotation(&imuRaw);       // fetch raw data from the registers
-	if( err != ESP_OK ) {
-		ESP_LOGE(FNAME, "gyro I2C error, X:%d Y:%d Z:%d",  imuRaw.x, imuRaw.y, imuRaw.z );
-	}
-	tmp = mpud::gyroDegPerSec(imuRaw, GYRO_FS);  // raw data to º/s
-	tmpvec = vector_f(tmp.x, tmp.y, tmp.z);
+	// // Get new gyro values from MPU6050
+	// err |= MPU.rotation(&imuRaw);       // fetch raw data from the registers
+	// if( err != ESP_OK ) {
+	// 	ESP_LOGE(FNAME, "gyro I2C error, X:%d Y:%d Z:%d",  imuRaw.x, imuRaw.y, imuRaw.z );
+	// }
+	// tmp = mpud::gyroDegPerSec(imuRaw, mpud::GYRO_FS_250DPS);  // raw data to º/s
+	// tmpvec = vector_f(tmp.x, tmp.y, tmp.z);
 
-	// Check on irrational changes
-	if ( (tmpvec-prev_gyro).get_norm2() > 30000 ) {
-		vector_f d(tmpvec-prev_gyro);
-		ESP_LOGE(FNAME, "gyro angle >300 deg/s in 0.2 S: X:%+.2f Y:%+.2f Z:%+.2f", d.x, d.y, d.z );
-		err |= ESP_FAIL;
-	}
-	else {
-		// Gating ignores Gyro drift < 1 deg per second (default)
-		float gate = gyro_gating.get();
-		nogate_gyro = ref_rot * tmpvec;
-		tmpvec.x = abs(tmpvec.x) < gate ? 0.0 : tmpvec.x;
-		tmpvec.y = abs(tmpvec.y) < gate ? 0.0 : tmpvec.y;
-		tmpvec.z = abs(tmpvec.z) < gate ? 0.0 : tmpvec.z;
-		// into glider reference system
-		gyro = ref_rot * tmpvec;
-		// preserve the raw read-out
-		raw_gyro.x = imuRaw.x; raw_gyro.y = imuRaw.y; raw_gyro.z = imuRaw.z;
-	}
-	prev_gyro = tmpvec;
-	return err;
+	// // Check on irrational changes
+	// if ( (tmpvec-prev_gyro).get_norm2() > 30000 ) {
+	// 	vector_f d(tmpvec-prev_gyro);
+	// 	ESP_LOGE(FNAME, "gyro angle >300 deg/s in 0.2 S: X:%+.2f Y:%+.2f Z:%+.2f", d.x, d.y, d.z );
+	// 	err |= ESP_FAIL;
+	// }
+	// else {
+	// 	// Gating ignores Gyro drift < 1 deg per second (default)
+	// 	float gate = gyro_gating.get();
+	// 	nogate_gyro = ref_rot * tmpvec;
+	// 	tmpvec.x = abs(tmpvec.x) < gate ? 0.0 : tmpvec.x;
+	// 	tmpvec.y = abs(tmpvec.y) < gate ? 0.0 : tmpvec.y;
+	// 	tmpvec.z = abs(tmpvec.z) < gate ? 0.0 : tmpvec.z;
+	// 	// into glider reference system
+	// 	gyro = ref_rot * tmpvec;
+	// 	// preserve the raw read-out
+	// 	raw_gyro.x = imuRaw.x; raw_gyro.y = imuRaw.y; raw_gyro.z = imuRaw.z;
+	// }
+	// prev_gyro = tmpvec;
+	// return err;
+	return ESP_FAIL;
 }
 
 float IMU::getVerticalAcceleration()
@@ -424,7 +431,7 @@ int IMU::getAccelSamplesAndCalib(int side, float &wing_angle  )
 		return -1;
 	}
 
-	err = MPU.getMPUSamples(bob->x, bob->y, bob->z, *gbias);
+	err = myMPU.getMPUSamples(bob->x, bob->y, bob->z, *gbias);
 	ESP_LOGI(FNAME, "wing down bob: %f/%f/%f", bob->x, bob->y, bob->z);
 	if ( err == 0 ) {
 		progress |= side; // accumulate progress
@@ -482,20 +489,20 @@ int IMU::getAccelSamplesAndCalib(int side, float &wing_angle  )
 			ESP_LOGI(FNAME, "raw  Bias: %d,%d,%d", raw_bias.x, raw_bias.y, raw_bias.z);
 			accl_bias.set(raw_bias, false);
 			// Reprogam MPU bias
-			MPU.setAccelOffset(raw_bias);
+			myMPU.setAccelOffset(raw_bias);
 
 			// Additionaly use gyro sample to calc offset and save it
 			raw_bias = mpud::raw_axes_t((gyro_bias_one.x + gyro_bias_two.x) / -2,
 				(gyro_bias_one.y + gyro_bias_two.y) / -2,
 				(gyro_bias_one.z + gyro_bias_two.z) / -2);
 			ESP_LOGI(FNAME, "raw  Gyro: %d,%d,%d", raw_bias.x, raw_bias.y, raw_bias.z);
-			mpud::raw_axes_t curr_bias = MPU.getGyroOffset();
+			mpud::raw_axes_t curr_bias = myMPU.getGyroOffset();
 			ESP_LOGI(FNAME, "curr Gyro: %d,%d,%d", curr_bias.x, curr_bias.y, curr_bias.z);
 			raw_bias += curr_bias;
 			ESP_LOGI(FNAME, "new  Gyro: %d,%d,%d", raw_bias.x, raw_bias.y, raw_bias.z);
 			gyro_bias.set(raw_bias, false);
 			// Reprogam MPU bias
-			MPU.setGyroOffset(raw_bias);
+			myMPU.setGyroOffset(raw_bias);
 		}
 		return progress;
 	}

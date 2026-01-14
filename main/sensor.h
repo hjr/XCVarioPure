@@ -17,15 +17,11 @@
 #define SPI_MOSI       GPIO_NUM_27      // SPI SDO Master Out Slave In pin
 #define SPI_MISO       GPIO_NUM_32      // SPI SDI Master In Slave Out
 
-#define GYRO_FS (mpud::GYRO_FS_250DPS)
-
 union global_flags {
     struct {
         uint16_t inSetup : 1;
-        uint16_t haveIMU : 1;
         uint16_t ahrsKeyValid : 1;
         uint16_t standard_setting : 1;
-        uint16_t mpu_pwm_initalized : 1;
         uint16_t gear_warn_external : 1;
         uint16_t schedule_reboot : 1;
         uint16_t first_devices_run : 1;
@@ -42,9 +38,6 @@ class AnalogInput;
 class SetupRoot;
 class WatchDog_C;
 class BMPVario;
-namespace mpud {
-    class MPU;
-}
 
 extern S2F Speed2Fly;
 extern BMPVario bmpVario;
@@ -80,8 +73,6 @@ extern SemaphoreHandle_t spiMutex;
 extern vector_f gravity_vector;
 
 #define NEED_VOLTAGE_ADJUST (abs(factory_volt_adjust.get() - 0.00815) < 0.00001)
-
-extern mpud::MPU MPU;
 
 inline void delay(uint32_t ms)
 {

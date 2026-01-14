@@ -11,7 +11,7 @@
 #include "setup/SetupNG.h"
 #include "Filters.h"
 #include "protocol/Clock.h"
-// #include "logdef.h"
+#include "logdef.h"
 
 #include <type_traits>
 #include <cstdint>
@@ -142,20 +142,25 @@ public:
     }
     // read current value from sensor hardware
     virtual bool doRead(T &val) = 0;
+    virtual void postProcess() {};
     // optional: diagnostic info
     // virtual bool healthy() const { return true; }
 
     // Call this periodically from main loop or task.
+    // returns true if new data was read.
     bool update(uint32_t now_ms) override {
         if ((now_ms - _last_update_time_ms) < _update_interval_ms) {
             return false;
         }
 
         T value;
-        if (!doRead(value)) {
-            ESP_LOGE(FNAME, "Sensor %s read NAN", name());
+        if (doRead(value)) {
+            pushToHistory(value, now_ms);
+            postProcess();
+            return true;
         }
-        pushToHistory(value, now_ms);
+        ESP_LOGE(FNAME, "Sensor %s read NAN", name());
+        pushToHistory(_invalid, now_ms);
         return true;
     }
 
