@@ -25,12 +25,13 @@
 #ifndef _MPU_HPP_
 #define _MPU_HPP_
 
-#include <stdint.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/semphr.h>
+
+#include <cstdint>
 #include <esp_err.h>
 #include "sdkconfig.h"
 
-#include "freertos/FreeRTOS.h"
-#include "freertos/semphr.h"
 
 extern SemaphoreHandle_t i2c_mutex;
 
@@ -255,9 +256,9 @@ class MPU
     //! \}
 
     // Temperature regulator by PI control
-    void pwm_init();             // one time initialize of PMW subsystem
-    int pi_control(int tick, float xcvTemp);    // PI control to regulate temperatured
-    void temp_control(int tick, float xcvTemp);  // Tick hook
+    void pwm_init(float target_temp);   // one time initialize of PMW subsystem, or target temp change
+    int pi_control(float xcvTemp);      // PI control to regulate temperatured
+    void temp_control(float xcvTemp);   // Tick hook
     void clearpwm(); // ensure heating is off
 
     temp_status_t getSiliconTempStatus() {
@@ -282,9 +283,10 @@ class MPU
     esp_err_t err;          /*!< Holds last error code */
 
     raw_axes_t accel_factory_trim;
+    float mpu_target_temp = 45.f;
     float mpu_t_delta = 0;
     float mpu_t_delta_i = 0;
-    float mpu_heat_pwm = 0;
+    int8_t heatctrl_initialized = false;
 };
 
 }  // namespace mpud

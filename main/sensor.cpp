@@ -131,8 +131,6 @@ float as2f = 0;
 float s2f_delta = 0;
 float polar_sink = 0;
 
-float mpu_target_temp=45.0;
-
 const constexpr char passed_text[] = "PASSED\n";
 const constexpr char failed_text[] = "FAILED\n";
 const constexpr char notfound_text[] = "NOT FOUND\n";

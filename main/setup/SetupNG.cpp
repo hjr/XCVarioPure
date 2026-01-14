@@ -31,6 +31,7 @@
 #include "screen/element/PolarGauge.h"
 #include "screen/element/MultiGauge.h"
 #include "sensor/press_diff/AirspeedSensor.h"
+#include "sensor/imu/ImuSensor.h"
 #include "logdefnone.h"
 
 #include <freertos/FreeRTOS.h>
@@ -177,7 +178,7 @@ int restore_config(int len, char *data){
 }
 
 void chg_mpu_target(){
-	mpu_target_temp = mpu_temperature.get();
+	if ( accSensor ) accSensor->initHeatCtrl();
 }
 
 static void propagate_caps()

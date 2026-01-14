@@ -81,8 +81,6 @@ extern vector_f gravity_vector;
 
 #define NEED_VOLTAGE_ADJUST (abs(factory_volt_adjust.get() - 0.00815) < 0.00001)
 
-extern float mpu_target_temp;
-
 extern mpud::MPU MPU;
 
 inline void delay(uint32_t ms)
