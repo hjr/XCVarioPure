@@ -19,6 +19,7 @@
 #include "screen/element/FlapsBox.h"
 #include "screen/MessageBox.h"
 
+#include "sensor/imu/ImuSensor.h"
 #include "math/Trigonometry.h"
 #include "math/Floats.h"
 #include "math/Quaternion.h"
@@ -729,8 +730,8 @@ void IpsDisplay::drawTemperature( int x, int y, float t ) {
 	ucg->setColor( COLOR_WHITE );
 	ucg->setPrintPos(x,y-3);
 	ucg->print(s);
-	if( HAS_MPU_TEMP_CONTROL ){   // Color if T unit shows if MPU silicon temperature is locked, too high or too low
-		switch( MPU.getSiliconTempStatus() ){
+	if( accSensor && HAS_MPU_TEMP_CONTROL ){   // Color if T unit shows if MPU silicon temperature is locked, too high or too low
+		switch( accSensor->getTempStatus() ){
 		case MPU_T_LOCKED:
 			ucg->setColor( COLOR_HEADER );
 			break;
@@ -993,7 +994,7 @@ void IpsDisplay::drawDisplay(float ate_ms, float polar_sink_ms, float s2fd_kmh){
     }
 
     // Temperature Value
-	temp_status_t mputemp = MPU.getSiliconTempStatus();
+	temp_status_t mputemp = (accSensor) ? accSensor->getTempStatus() : temp_status_t::MPU_T_UNKNOWN;  // fixme 
     float temp = OAT.get();
 	if( (((int)(temp*10) != tempalt) || (mputemp != siliconTempStatusOld)) && !(tick%12)) {
 		drawTemperature( 4, 30, temp );

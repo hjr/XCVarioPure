@@ -8,7 +8,7 @@
 
 #pragma once
 
-// A simple filter design not knowing the signal history
+// Simple filter not knowing the signal history
 
 class SensorBase;
 
