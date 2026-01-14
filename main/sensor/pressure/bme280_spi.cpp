@@ -200,7 +200,7 @@ void BME280_SPI::readCalibration(void) {
 }
 
 //***************BME280 ****************************
-float BME280_SPI::readTemperature( bool& success ){
+float BME280_SPI::readTemperature( bool& success ){ // todo need to be cached
 	int32_t adc_T = readADC(0x7A);
 	success = (adc_T != 0);
 	float t=compensate_T(adc_T) / 100.0;
