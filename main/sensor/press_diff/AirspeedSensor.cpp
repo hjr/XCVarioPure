@@ -186,3 +186,9 @@ bool AirspeedSensor::doRead(float &val)
     ESP_LOGI(FNAME,"P:%f offset:%d raw:%ld  raw-off:%d m:%f T:%u", val, _offset, p_raw, raw_diff, _multiplier, t_dat);
     return true;
 }
+
+void AirspeedSensor::postProcess() {
+    if ( OAT.getValid() && ias.getValid() && altitude.getValid() ) {
+        tas.set(tasfilter.filter(Atmosphere::TAS2(ias.get(), altitude.get(), OAT.get())));
+    }   
+}
