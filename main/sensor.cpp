@@ -85,7 +85,6 @@
 
 SemaphoreHandle_t spiMutex=NULL;
 
-S2F Speed2Fly;
 int MyGliderPolarIndex; // Todo make private in S2F?
 
 AnalogInput *BatVoltage = nullptr;

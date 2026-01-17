@@ -39,7 +39,6 @@ class SetupRoot;
 class WatchDog_C;
 class VarioFilter;
 
-extern S2F Speed2Fly;
 extern VarioFilter bmpVario;
 
 extern global_flags gflags;

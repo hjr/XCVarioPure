@@ -51,3 +51,4 @@ private:
 	float _stall_speed_ms;
 };
 
+extern S2F Speed2Fly;

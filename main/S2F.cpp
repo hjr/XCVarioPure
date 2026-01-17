@@ -20,6 +20,8 @@
 #include <cmath>
 #include <algorithm>
 
+S2F Speed2Fly;
+
 S2F::S2F() {
 	a0=a1=a2=0;
 	w0=w1=w2=0;
