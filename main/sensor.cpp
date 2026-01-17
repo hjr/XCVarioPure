@@ -998,6 +998,9 @@ void system_startup(void *args){
         }
         if ( accSensor ) SensorRegistry::registerSensor(accSensor);
         if ( gyroSensor ) SensorRegistry::registerSensor(gyroSensor);
+
+        bmpVario.begin(teSensor, baroSensor, &Speed2Fly);
+        bmpVario.setup();
     }
 
     AUDIO->applySetup();
@@ -1014,9 +1017,6 @@ void system_startup(void *args){
             logged_tests += failed_text;
         }
     }
-
-    bmpVario.begin(teSensor, baroSensor, &Speed2Fly);
-    bmpVario.setup();
 
     // 2021 series 3, or 2022 model with new digital poti CAT5171 also features CAN bus
     // do not move the check unless you know the sequence of HW detection
