@@ -37,10 +37,10 @@ class ESPRotary;
 class AnalogInput;
 class SetupRoot;
 class WatchDog_C;
-class BMPVario;
+class VarioFilter;
 
 extern S2F Speed2Fly;
-extern BMPVario bmpVario;
+extern VarioFilter bmpVario;
 
 extern global_flags gflags;
 extern CANbus *CAN;

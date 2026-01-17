@@ -20,9 +20,9 @@ constexpr const double ALPHA = 0.2; // Kalman Gain alpha
 constexpr const float STANDARD = 1013.25; // ICAO standard pressure
 
 
-class BMPVario {
+class VarioFilter {
 public:
-	BMPVario() {
+	VarioFilter() {
 		_qnh = STANDARD;
 		index = 0;
 		_alpha = ALPHA;
@@ -43,7 +43,6 @@ public:
 
 	void begin( PressureSensor *te,  PressureSensor *baro, S2F* s2f );
 
-	static void setHolddown( int hold ) { holddown = hold; }
 	void setQNH( float qnh ) { _qnh = qnh; };
 	void setAveragerTime(float t) { avgTE.setLength(t); };
 	void setup();
@@ -72,9 +71,8 @@ private:
 	Average<60, float, float> avgTE;
 	double _avgTE;
 	double _damping_factor;
-	static int   holddown;
 	S2F * myS2F;
 	int N;
 };
 
-extern BMPVario bmpVario;
+extern VarioFilter bmpVario;

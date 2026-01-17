@@ -159,8 +159,6 @@ void SetupMenuValFloat::press()
 		}
 	}
 
-	BMPVario::setHolddown( 150 );  // so seconds stop average ?? fixme
-
 	if( bits._end_menu ) {
 		exit(-1);
 		return;

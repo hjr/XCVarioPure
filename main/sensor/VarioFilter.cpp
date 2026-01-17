@@ -12,27 +12,26 @@
 #include <cmath>
 
 const double sigmaAdjust = 255 * 2.0/33;  // 2 Vss
-int BMPVario::holddown = 0;
 
-void BMPVario::begin( PressureSensor *te, PressureSensor *baro, S2F *aS2F  ) {
+void VarioFilter::begin( PressureSensor *te, PressureSensor *baro, S2F *aS2F  ) {
 	_sensorTE = te;
 	_sensorBARO = baro;
 	myS2F = aS2F;
 	avgTE.setLength(vario_av_delay.get());
 }
 
-double BMPVario::readAVGTE() {
+double VarioFilter::readAVGTE() {
 	return _avgTE;
 }
 
-// float BMPVario::readS2FTE() {
+// float VarioFilter::readS2FTE() {
 // 	return _TEF;
 // }
 
 
 static int lastrts = 0;
 
-void BMPVario::configChange(){
+void VarioFilter::configChange(){
 	float damping = vario_delay.get();
 	_damping_factor = (1.0/(damping));
 	int filter_len = rint(damping*(10.0/3));
@@ -40,7 +39,7 @@ void BMPVario::configChange(){
 	ESP_LOGI(FNAME, "configChange damping:%f filter_len:%d", damping, filter_len );
 }
 
-void BMPVario::setup() {
+void VarioFilter::setup() {
 	_qnh = QNH.get();
 	configChange();
 	lastrts = Clock::getMillis();
@@ -59,7 +58,7 @@ void BMPVario::setup() {
 }
 
 
-double BMPVario::readTE( float tas, float tep ) {
+double VarioFilter::readTE( float tas, float tep ) {
 	bool success;
 	N++;
 	// Latency supervision and correction
@@ -100,7 +99,7 @@ double BMPVario::readTE( float tas, float tep ) {
 	// ESP_LOGI(FNAME,"TE alt: %4.3f m, ST: %.1f PI: %.1f", _currentAlt, barP, (dynP*100) );
 	averageAlt += (curr_altitude - averageAlt) * 0.1;
 	float adiff = curr_altitude - Altitude;
-	// ESP_LOGI(FNAME,"BMPVario new alt %0.1f err %0.1f", _currentAlt, err);
+	// ESP_LOGI(FNAME,"VarioFilter new alt %0.1f err %0.1f", _currentAlt, err);
 	float diff = (abs(adiff) * 1000) + 1;
 	if(diff > 1000000){  // more than 100 m altitude diff in 0.1 second not plausible ( > 400 km/h vertical ) -> handled by Kalman filter
 		 ESP_LOGW(FNAME,"TE sensor delta OOB: %f m", diff/10000 );
@@ -119,13 +118,7 @@ double BMPVario::readTE( float tas, float tep ) {
 		_avgTE = avgTE( _TEF );
 		// ESP_LOGI(FNAME," _avgTE: %f ", _avgTE);
 	}
- 	if( holddown > 0 ) {
-		holddown--;
-	}
-	else
-	{
-		AverageVario::newSample( _TEF );
-	}
+	AverageVario::newSample( _TEF );
 	// Bird catcher
 	if( (altDiff > 0.2) || (altDiff < -0.2) ){
 		ESP_LOGI(FNAME,"Vario alt: %f, Vario: %f, Vario-AVG: %f, t-delta=%2.3f sec \b\b\b", curr_altitude, _TEF, TEAVG, time_delta );
@@ -134,4 +127,4 @@ double BMPVario::readTE( float tas, float tep ) {
 }
 
 
-BMPVario bmpVario; // fixme create only if needed.
+VarioFilter bmpVario; // fixme create only if needed.
