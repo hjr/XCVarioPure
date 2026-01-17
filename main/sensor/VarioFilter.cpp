@@ -13,13 +13,6 @@
 
 const double sigmaAdjust = 255 * 2.0/33;  // 2 Vss
 
-void VarioFilter::begin( PressureSensor *te, PressureSensor *baro, S2F *aS2F  ) {
-	_sensorTE = te;
-	_sensorBARO = baro;
-	myS2F = aS2F;
-	avgTE.setLength(vario_av_delay.get());
-}
-
 double VarioFilter::readAVGTE() {
 	return _avgTE;
 }
@@ -45,7 +38,7 @@ void VarioFilter::setup() {
 	lastrts = Clock::getMillis();
 	vTaskDelay(pdMS_TO_TICKS(100));
 	bool success;
-	float curr_altitude = _sensorTE->readAltitude(_qnh, success ) * 1.03; // we want have some beep when powerd on
+	float curr_altitude = teSensor->readAltitude(_qnh, success ) * 1.03; // we want have some beep when powerd on
 	if( success ){
 		lastAltitude = curr_altitude;
 		predictAlt = curr_altitude;
@@ -83,17 +76,17 @@ double VarioFilter::readTE( float tas, float tep ) {
 		if( !std::isnan(curr_altitude) )
 			curr_altitude = lastAltitude;  // ignore readout when failed
 		float mps = tas / 3.6;  // m/s
-		float cw  = myS2F->cw( mps );
+		float cw  = Speed2Fly.cw( mps );
 		float ealt = (((  (mps*mps)/19.62) * (1+(te_comp_adjust.get()/100.0) ))) * ( 1 - cw );  // Ekin ~ h = v²/2g  * adjust * (1-cw)
 		curr_altitude += ealt;
 		ESP_LOGD(FNAME,"Energiehöhe @%0.1f km/h: %0.1f cw: %f", tas, ealt, cw );
 	}
 	else if( te_comp_enable.get() == TE_TEK_PRESSURE ){
-		float barP = _sensorBARO->getHead();
+		float barP = baroSensor->getHead();
 		curr_altitude = Atmosphere::calcAltitude(_qnh, barP-(dynP/100.0)*(1+(te_comp_adjust.get()/100.0) ));  // subtract PI pressure like TEK probe does
 	}
 	else { // TE_TEK_PROBE
-		_sensorTE->readAltitude( _qnh, success );
+		teSensor->readAltitude( _qnh, success );
 		curr_altitude = Atmosphere::calcAltitude(_qnh, tep );
 	}
 	// ESP_LOGI(FNAME,"TE alt: %4.3f m, ST: %.1f PI: %.1f", _currentAlt, barP, (dynP*100) );

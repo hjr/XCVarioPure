@@ -943,7 +943,6 @@ void system_startup(void *args){
         if ( accSensor ) SensorRegistry::registerSensor(accSensor);
         if ( gyroSensor ) SensorRegistry::registerSensor(gyroSensor);
 
-        bmpVario.begin(teSensor, baroSensor, &Speed2Fly);
         bmpVario.setup();
     }
 

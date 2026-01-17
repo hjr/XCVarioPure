@@ -31,17 +31,12 @@ public:
 		lastAltitude = 0;
 		_errorval = ERRORVAL;
 		_TEF = 0;
-		_sensorTE = 0;
 		_avgTE = 0;
 		averageAlt = 0;
 		_damping_factor = 1.0;
 		_analog_adj = 0;
-		myS2F = 0;
-		_sensorBARO = 0;
 		N = 0;
 	}
-
-	void begin( PressureSensor *te,  PressureSensor *baro, S2F* s2f );
 
 	void setQNH( float qnh ) { _qnh = qnh; };
 	void setAveragerTime(float t) { avgTE.setLength(t); };
@@ -58,8 +53,6 @@ private:
 	double _alpha;
 	double _errorval;
 	float _qnh;
-	PressureSensor *_sensorTE;
-	PressureSensor *_sensorBARO;
 	double predictAlt;
 	double Altitude;
 	double lastAltitude;
@@ -71,7 +64,6 @@ private:
 	Average<60, float, float> avgTE;
 	double _avgTE;
 	double _damping_factor;
-	S2F * myS2F;
 	int N;
 };
 
