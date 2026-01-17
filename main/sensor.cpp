@@ -228,61 +228,6 @@ static void toyFeed(int count) // Called at 5Hz from clientLoop or sensorloop
     }
 }
 
-// static void commonThingsLast(int count)
-// {
-//     if (IMU::getGliderAccelZ() > gload_pos_max.get()) {
-//         gload_pos_max.set(IMU::getGliderAccelZ());
-//     }
-//     else if (IMU::getGliderAccelZ() < gload_neg_max.get()) {
-//         gload_neg_max.set(IMU::getGliderAccelZ());
-//     }
-
-//     // Need to be done for client and main vario
-//     polar_sink = Speed2Fly.sink(ias.get());
-//     te_netto.set(te_vario.get() - polar_sink);
-//     as2f = Speed2Fly.speed(te_netto.get(), !VCMode.getCMode());
-
-//     s2f_ideal.set(fast_iroundf(as2f));
-//     // low pass damping
-//     s2f_delta = s2f_delta + ((as2f - ias.get()) - s2f_delta) * (1 / (s2f_delay.get() * 10));
-//     // ESP_LOGI( FNAME, "te: %f, polar_sink: %f, netto %f, s2f: %f  delta: %f", aTES2F, polar_sink, te_netto.get(), as2f, s2f_delta );
-
-//     if (OneWIRE) {
-//         // read one wire sensors
-//         OneWIRE->groupUpdate(Clock::getMillis());
-//     }
-
-//     AUDIO->updateTone();
-//     const int screenEvent = ScreenEvent(ScreenEvent::MAIN_SCREEN).raw;
-//     xQueueSend(uiEventQueue, &screenEvent, 0);
-// }
-// static void commonThingsSeldom()
-// {
-//     SetupCommon::commitDirty(); // very important, flash NVS settings permanently
-
-//     ESP_LOGI(FNAME, "Free Heap: %d bytes", heap_caps_get_free_size(MALLOC_CAP_8BIT));
-//     if (uxTaskGetStackHighWaterMark(NULL) < 512)
-//     {
-//         ESP_LOGW(FNAME, "Warning %s task stack low: %d bytes", pcTaskGetName(NULL), uxTaskGetStackHighWaterMark(NULL));
-//     }
-//     if (heap_caps_get_free_size(MALLOC_CAP_8BIT) < 20000)
-//     {
-//         ESP_LOGW(FNAME, "Warning heap_caps_get_free_size getting low: %d", heap_caps_get_free_size(MALLOC_CAP_8BIT));
-//     }
-//     extern MessagePool MP;
-//     ESP_LOGI(FNAME, "MPool in-use:%d, acq-fails: %d", MP.nrUsed(), MP.nrAcqFails());
-
-//     // struct timeval tv;
-//     // gettimeofday(&tv, NULL);
-//     // ESP_LOGI(FNAME, "TofDay %d.%03ds", (int)(tv.tv_sec % (60 * 60 * 24)), (int)(tv.tv_usec / 1000));
-
-//     // static char buf[2048];
-//     // vTaskGetRunTimeStats(buf);
-//     // std::printf("Task runtime stats:\n%s\n", buf);
-
-//     // DeviceManager* dm = DeviceManager::Instance();
-//     // static_cast<TestQuery*>(dm->getProtocol( TEST_DEV2, TEST_P ))->sendTestQuery();  // all 5 seconds on burst
-// }
 
 // void clientLoop(void *pvParameters)
 // {

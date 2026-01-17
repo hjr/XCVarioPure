@@ -218,7 +218,7 @@ void SetupRoot::press()
 
 void SetupRoot::longPress()
 {
-    // enter setup fron any screen
+    // enter setup from any screen
     if (!gflags.inSetup) {
         begin();
     }

@@ -1,11 +1,11 @@
 #include "VarioFilter.h"
 
-#include "sensor/pressure/PressureSensor.h"
+#include "pressure/PressureSensor.h"
+#include "press_diff/AirspeedSensor.h"
 #include "Atmosphere.h"
 #include "S2F.h"
 #include "AverageVario.h"
 #include "setup/SetupNG.h"
-#include "sensor.h"
 #include "logdefnone.h"
 
 
@@ -17,7 +17,6 @@ int BMPVario::holddown = 0;
 void BMPVario::begin( PressureSensor *te, PressureSensor *baro, S2F *aS2F  ) {
 	_sensorTE = te;
 	_sensorBARO = baro;
-	_S2FTE = 0.0;
 	myS2F = aS2F;
 	avgTE.setLength(vario_av_delay.get());
 }
@@ -26,19 +25,19 @@ double BMPVario::readAVGTE() {
 	return _avgTE;
 }
 
-float BMPVario::readS2FTE() {
-	return _TEF;
-}
+// float BMPVario::readS2FTE() {
+// 	return _TEF;
+// }
 
 
 static int lastrts = 0;
 
 void BMPVario::configChange(){
-	_damping = vario_delay.get();
-	_damping_factor = (1.0/(_damping));
-	int filter_len = rint(_damping*(10.0/3));
+	float damping = vario_delay.get();
+	_damping_factor = (1.0/(damping));
+	int filter_len = rint(damping*(10.0/3));
 	TEavg.setLength( filter_len );
-	ESP_LOGI(FNAME, "configChange damping:%f filter_len:%d", _damping, filter_len );
+	ESP_LOGI(FNAME, "configChange damping:%f filter_len:%d", damping, filter_len );
 }
 
 void BMPVario::setup() {
@@ -47,12 +46,12 @@ void BMPVario::setup() {
 	lastrts = Clock::getMillis();
 	vTaskDelay(pdMS_TO_TICKS(100));
 	bool success;
-	_currentAlt = _sensorTE->readAltitude(_qnh, success ) * 1.03; // we want have some beep when powerd on
+	float curr_altitude = _sensorTE->readAltitude(_qnh, success ) * 1.03; // we want have some beep when powerd on
 	if( success ){
-		lastAltitude = _currentAlt;
-		predictAlt = _currentAlt;
-		Altitude = _currentAlt;
-		averageAlt = _currentAlt;
+		lastAltitude = curr_altitude;
+		predictAlt = curr_altitude;
+		Altitude = curr_altitude;
+		averageAlt = curr_altitude;
 		ESP_LOGI(FNAME, "Initial Alt=%0.1f",Altitude );
 	}else{
 		ESP_LOGE(FNAME, "Initial Alt read error Alt=%0.1f",Altitude );
@@ -61,8 +60,6 @@ void BMPVario::setup() {
 
 
 double BMPVario::readTE( float tas, float tep ) {
-	if ( _test )     // we are in testmode, just return what has been set
-		return _TEF;
 	bool success;
 	N++;
 	// Latency supervision and correction
@@ -71,7 +68,7 @@ double BMPVario::readTE( float tas, float tep ) {
 	if( time_delta < 0.095 ) {   // ensure time_delta is 100 mS at least
 		int addwait = (int)(100.0-time_delta*1000);
 		// ESP_LOGW(FNAME, "Too short TE time time_delta <95 mS: %4.1f, add wait %d ", time_delta*1000, addwait );
-		delay( addwait );
+		vTaskDelay(pdMS_TO_TICKS( addwait ));
 		rts = Clock::getMillis();
 		time_delta = (rts - lastrts)/1000.0f;
 	}
@@ -79,34 +76,37 @@ double BMPVario::readTE( float tas, float tep ) {
 	if( time_delta < 0.090 || time_delta > 0.2 ) {
 		ESP_LOGW(FNAME,"Vario time_delta=%2.3f sec", time_delta );
 	}
-	bmpTemp = _sensorTE->readTemperature( success );
-	// ESP_LOGI(FNAME,"BMP temp=%0.1f", bmpTemp );
+
+	float curr_altitude;
+	float dynP = asSensor->getHead();
 	if( te_comp_enable.get() == TE_TEK_EPOT ) {
-		_currentAlt = altitude.get(); // already read
-		if( !success )
-			_currentAlt = lastAltitude;  // ignore readout when failed
+		curr_altitude = altitude.get(); // already read
+		if( !std::isnan(curr_altitude) )
+			curr_altitude = lastAltitude;  // ignore readout when failed
 		float mps = tas / 3.6;  // m/s
 		float cw  = myS2F->cw( mps );
 		float ealt = (((  (mps*mps)/19.62) * (1+(te_comp_adjust.get()/100.0) ))) * ( 1 - cw );  // Ekin ~ h = v²/2g  * adjust * (1-cw)
-		_currentAlt += ealt;
+		curr_altitude += ealt;
 		ESP_LOGD(FNAME,"Energiehöhe @%0.1f km/h: %0.1f cw: %f", tas, ealt, cw );
 	}
 	else if( te_comp_enable.get() == TE_TEK_PRESSURE ){
-		_currentAlt = Atmosphere::calcAltitude(_qnh, baroP-(dynamicP/100.0)*(1+(te_comp_adjust.get()/100.0) ));  // subtract PI pressure like TEK probe does
+		float barP = _sensorBARO->getHead();
+		curr_altitude = Atmosphere::calcAltitude(_qnh, barP-(dynP/100.0)*(1+(te_comp_adjust.get()/100.0) ));  // subtract PI pressure like TEK probe does
 	}
-	else{
-		_currentAlt = Atmosphere::calcAltitude(_qnh, tep );
+	else { // TE_TEK_PROBE
+		_sensorTE->readAltitude( _qnh, success );
+		curr_altitude = Atmosphere::calcAltitude(_qnh, tep );
 	}
-	// ESP_LOGI(FNAME,"TE alt: %4.3f m, ST: %.1f PI: %.1f", _currentAlt, baroP, (dynamicP*100) );
-	averageAlt += (_currentAlt - averageAlt) * 0.1;
-	float adiff = _currentAlt - Altitude;
+	// ESP_LOGI(FNAME,"TE alt: %4.3f m, ST: %.1f PI: %.1f", _currentAlt, barP, (dynP*100) );
+	averageAlt += (curr_altitude - averageAlt) * 0.1;
+	float adiff = curr_altitude - Altitude;
 	// ESP_LOGI(FNAME,"BMPVario new alt %0.1f err %0.1f", _currentAlt, err);
 	float diff = (abs(adiff) * 1000) + 1;
 	if(diff > 1000000){  // more than 100 m altitude diff in 0.1 second not plausible ( > 400 km/h vertical ) -> handled by Kalman filter
 		 ESP_LOGW(FNAME,"TE sensor delta OOB: %f m", diff/10000 );
 	}
-	float err = (abs(_currentAlt - predictAlt) * 1000) + 1;
-	averageAlt += (_currentAlt - averageAlt) * 0.1;
+	float err = (abs(curr_altitude - predictAlt) * 1000) + 1;
+	averageAlt += (curr_altitude - averageAlt) * 0.1;
 	float kg = (diff / (err*_errorval + diff)) * _alpha;
 	Altitude += (adiff) * kg;
 	float altDiff = Altitude - lastAltitude;
@@ -128,16 +128,10 @@ double BMPVario::readTE( float tas, float tep ) {
 	}
 	// Bird catcher
 	if( (altDiff > 0.2) || (altDiff < -0.2) ){
-		ESP_LOGI(FNAME,"Vario alt: %f, Vario: %f, Vario-AVG: %f, t-delta=%2.3f sec \b\b\b", _currentAlt, _TEF, TEAVG, time_delta );
+		ESP_LOGI(FNAME,"Vario alt: %f, Vario: %f, Vario-AVG: %f, t-delta=%2.3f sec \b\b\b", curr_altitude, _TEF, TEAVG, time_delta );
 	}
 	return _TEF;
 }
 
-void BMPVario::setTE( double te ) {
-	_test = true;
-	_TEF = te;
-	// calcAnalogOut();
-}  // for testing purposes
 
-
-BMPVario bmpVario;
+BMPVario bmpVario; // fixme create only if needed.
