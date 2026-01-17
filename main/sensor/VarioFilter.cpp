@@ -13,7 +13,7 @@
 
 const double sigmaAdjust = 255 * 2.0/33;  // 2 Vss
 
-double VarioFilter::readAVGTE() {
+float VarioFilter::readAVGTE() {
 	return _avgTE;
 }
 
@@ -29,6 +29,7 @@ void VarioFilter::configChange(){
 	_damping_factor = (1.0/(damping));
 	int filter_len = rint(damping*(10.0/3));
 	TEavg.setLength( filter_len );
+	avgTE.setLength(vario_av_delay.get());
 	ESP_LOGI(FNAME, "configChange damping:%f filter_len:%d", damping, filter_len );
 }
 
@@ -51,7 +52,7 @@ void VarioFilter::setup() {
 }
 
 
-double VarioFilter::readTE( float tas, float tep ) {
+float VarioFilter::readTE( float tas, float tep ) {
 	bool success;
 	N++;
 	// Latency supervision and correction

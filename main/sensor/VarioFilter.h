@@ -15,7 +15,7 @@ class PressureSensor;
 
 // #define SPS 10                   // samples per second
 constexpr const int FILTER_LEN = 34; // Max Filter length
-constexpr const double ALPHA = 0.2; // Kalman Gain alpha
+constexpr const float ALPHA = 0.2; // Kalman Gain alpha
 #define ERRORVAL 1.6             // damping Factor for values off the weeds
 constexpr const float STANDARD = 1013.25; // ICAO standard pressure
 
@@ -42,28 +42,28 @@ public:
 	void setAveragerTime(float t) { avgTE.setLength(t); };
 	void setup();
 
-	double readTE(float tas, float tePressure);   // get TE value im m/s
-	double readAVGTE();   // get TE value im m/s
+	float readTE(float tas, float tePressure);   // get TE value im m/s
+	float readAVGTE();   // get TE value im m/s
 	// float  readS2FTE();   // get TE value im m/s for S2F
-	// double readAVGalt() { return averageAlt; };    // get average Altitude
-	// double readCuralt() { return _currentAlt; };   // get current Altitude
+	// float readAVGalt() { return averageAlt; };    // get average Altitude
+	// float readCuralt() { return _currentAlt; };   // get current Altitude
 	void configChange();
 
 private:
-	double _alpha;
-	double _errorval;
+	float _alpha;
+	float _errorval;
 	float _qnh;
-	double predictAlt;
-	double Altitude;
-	double lastAltitude;
-	double averageAlt;
-	Average<FILTER_LEN, double, double> TEavg;
-	double _analog_adj;
+	float predictAlt;
+	float Altitude;
+	float lastAltitude;
+	float averageAlt;
+	Average<FILTER_LEN, float, float> TEavg;
+	float _analog_adj;
 	int    index;
-	double _TEF;
+	float _TEF;
 	Average<60, float, float> avgTE;
-	double _avgTE;
-	double _damping_factor;
+	float _avgTE;
+	float _damping_factor;
 	int N;
 };
 
