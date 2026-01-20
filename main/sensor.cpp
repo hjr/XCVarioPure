@@ -697,12 +697,12 @@ void system_startup(void *args){
     }
 
     if (accSensor) {
-        // ok a MPU got probed allready
+        // ok a MPU got probed already
         // add AHRS to my caps
         CANPeerCaps::addCapability(XcvCaps::AHRS_CAP);
         ESP_LOGI(FNAME, "MPU setup");
         if (accSensor->setup()) {
-            vector_f accelG(0.0f, 0.0f, 0.0f), sum(0.0f, 0.0f, 0.0f);
+            vector_f accelG, sum;
             int samples = 0;
             vTaskDelay(pdMS_TO_TICKS(200));
             for (auto i = 0; i < 10; i++) {
@@ -716,8 +716,8 @@ void system_startup(void *args){
                 ESP_LOGI(FNAME, "MPU %.2f", accelG[2]);
                 vTaskDelay(pdMS_TO_TICKS(10));
             }
-            accelG /= samples;
-            float accel = std::sqrtf(accelG[0] * accelG[0] + accelG[1] * accelG[1] + accelG[2] * accelG[2]);
+            sum /= samples;
+            float accel = std::sqrtf(sum[0] * sum[0] + sum[1] * sum[1] + sum[2] * sum[2]);
             char ahrs[10];
             sprintf(ahrs, "%.2f", accel);
             logged_tests += "IMU AHRS (" + std::string(ahrs) + "g): ";
