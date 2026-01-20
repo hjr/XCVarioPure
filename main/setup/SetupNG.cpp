@@ -149,6 +149,13 @@ void resetCWindAge() {
 	}
 }
 
+static void calc_tas() {
+    // IAS to TAS conversion
+    if (OAT.getValid() && altitude.getValid()) {
+        tas.set(Atmosphere::TAS2(ias.get(), altitude.get(), OAT.get()));
+    }
+}
+
 static void feed_te_alt() {
     if (bmpVario) {
         bmpVario->inject(te_alt.get());
@@ -258,7 +265,7 @@ SetupNG<float>  		average_climb( "AVCL", 0.0, false, SYNC_NONE, VOLATILE );
 SetupNG<float>  		flap_pos( "FLPS", 0.0, false, SYNC_BIDIR, VOLATILE );
 SetupNG<float>  		altitude( "ALTI", 0.0, false, SYNC_FROM_MASTER, VOLATILE );
 SetupNG<float>  		altitude_isa( "ALT_ISA", 0.0, false, SYNC_FROM_MASTER, VOLATILE );
-SetupNG<float>  		ias( "IASV", 0.0, false, SYNC_FROM_MASTER, VOLATILE );
+SetupNG<float>  		ias( "IASV", 0.0, false, SYNC_FROM_MASTER, VOLATILE, calc_tas );
 SetupNG<float>  		tas( "TASV", 0.0, false, SYNC_NONE, VOLATILE );
 SetupNG<float>  		gnd_speed( "GNDV", -1.0, false, SYNC_NONE, VOLATILE );
 SetupNG<float>  		te_alt( "TEALT", 0.0, false, SYNC_FROM_MASTER, VOLATILE, feed_te_alt );

@@ -22,7 +22,7 @@
 AirspeedSensor *asSensor = nullptr;
 
 constexpr int DUTY_CYCLE_MS = 100; // 10Hz
-static float as_buffer[ (SENSOR_HISTORY_DURATION_MS / DUTY_CYCLE_MS) + 4 ]; // history buffer for airspeed sensor
+static float as_buffer[ (SENSOR_HISTORY_DURATION_MS / DUTY_CYCLE_MS) + 1 ]; // history buffer for airspeed sensor
 
 AirspeedSensor::AirspeedSensor() : SensorTP<float>(as_buffer, DUTY_CYCLE_MS)
 {
@@ -187,8 +187,3 @@ bool AirspeedSensor::doRead(float &val)
     return true;
 }
 
-void AirspeedSensor::postProcess() {
-    if ( OAT.getValid() && ias.getValid() && altitude.getValid() ) {
-        tas.set(tasfilter.filter(Atmosphere::TAS2(ias.get(), altitude.get(), OAT.get())));
-    }   
-}
