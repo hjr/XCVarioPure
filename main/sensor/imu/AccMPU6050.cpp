@@ -13,7 +13,7 @@
 #include "../pressure/PressureSensor.h"
 #include "logdef.h"
 
-AccMPU6050::AccMPU6050() : ImuSensor(SensorId::ACC_INERTIAL)
+AccMPU6050::AccMPU6050() : ImuSensor(SensorId::ACC_INERTIAL | SensorId::LocalSensor)
 {
     // push a single previous value
     pushToHistory(vector_f(1,0,0), 0);

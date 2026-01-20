@@ -31,8 +31,8 @@ bool SensorRegistry::registerSensor(SensorBase *s)
     int idx = 0;
     for (auto& e : all_sensors) {
         if (!e.isActive()) {
-            e = { id, s, isExternalSensor(id) ? 0 : s->getDutyCycle() / 100 }; // store dutycycle in 100ms units
-            ESP_LOGI(FNAME, "Sensor %d registered with id %d", idx, static_cast<int>(id));
+            e = { id, s, s->getDutyCycle() / 100 }; // store dutycycle in 100ms units
+            ESP_LOGI(FNAME, "Sensor %d registered with id %d and dutycycle %d", idx, static_cast<int>(id), e.dutycycle);
             return true;
         }
         idx++;
@@ -58,7 +58,7 @@ void SensorRegistry::removeFromUpdateLoop(SensorId id)
     SensorEntry *entry = find(id);
     if (entry) {
         ESP_LOGI(FNAME, "Sensor %d removed from update loop", static_cast<int>(entry->id));
-        entry->dutycycle = 0;
+        entry->id = entry->id & ~SensorId::LocalSensor; // clear local sensor flag
     }
 }
 
@@ -66,8 +66,8 @@ void SensorRegistry::enterSimMode()
 {
     ESP_LOGI(FNAME, "SensorRegistry entering SIMULATION MODE");
     for (auto& e : all_sensors) {
-        if (e.isActive()) {
-            e.dutycycle = 0; // no further sensor reading
+        if (e.isActive() && !isEssentialSensor(e.id)) {
+            e.id = e.id & ~SensorId::LocalSensor; // no further sensor reading
         }
     }
 }

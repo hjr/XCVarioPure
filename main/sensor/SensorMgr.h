@@ -29,16 +29,28 @@ enum SensorId : uint8_t {
     FLAP_POSITION,
     MAX_SENSOR_ID,
     // mask with upper bits as needed
-    ExternalSensor = 0x80
+    LocalSensor = 0x80,
+    EssentialSensor = 0x40
 };
 
-constexpr bool isExternalSensor(SensorId id) {
-    return (static_cast<uint8_t>(id) & static_cast<uint8_t>(SensorId::ExternalSensor)) != 0;
+constexpr bool isLocalSensor(SensorId id) {
+    return (static_cast<uint8_t>(id) & static_cast<uint8_t>(SensorId::LocalSensor)) != 0;
+}
+constexpr bool isEssentialSensor(SensorId id) {
+    return (static_cast<uint8_t>(id) & static_cast<uint8_t>(SensorId::EssentialSensor)) != 0;
 }
 constexpr SensorId operator|(SensorId a, SensorId b) {
     return static_cast<SensorId>(
-        static_cast<uint32_t>(a) | static_cast<uint32_t>(b)
+        static_cast<uint8_t>(a) | static_cast<uint8_t>(b)
     );
+}
+constexpr SensorId operator&(SensorId a, int b) {
+    return static_cast<SensorId>(
+        static_cast<uint8_t>(a) & b
+    );
+}
+constexpr bool operator==(SensorId a, SensorId b) {
+    return static_cast<uint8_t>(a & 0x1f) == static_cast<uint8_t>(b & 0x1f);
 }
 
 struct SensorEntry {
@@ -57,12 +69,12 @@ public:
     static void deregisterSensor(SensorBase* sensor);
     static void removeFromUpdateLoop(SensorId id);
     static void enterSimMode();
-    static SensorEntry* find(SensorId id);
 
     static auto begin() { return all_sensors.begin(); }
     static auto end()   { return all_sensors.end(); }
 
 private:
+    static SensorEntry* find(SensorId id);
     static std::array<SensorEntry, MaxSensors> all_sensors;
 };
 

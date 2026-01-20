@@ -316,7 +316,7 @@ void readSensors(void *pvParameters)
         for (SensorEntry *e = SensorRegistry::begin(); e != SensorRegistry::end(); ++e)
         {
             if ( ! e->isActive() ) break;
-            if ( e->dutycycle && ! (count%e->dutycycle) ) {
+            if ( isLocalSensor(e->id) && !(count%e->dutycycle) ) {
                 e->sensor->update(spartse_time);
             }
         }
@@ -325,11 +325,12 @@ void readSensors(void *pvParameters)
         for (SensorEntry *e = SensorRegistry::begin(); e != SensorRegistry::end(); ++e)
         {
             if ( ! e->isActive() ) break;
-            if ( e->dutycycle && ! (count%e->dutycycle) ) {
+            if ( !(count%e->dutycycle) ) {
                 e->sensor->postProcess();
             }
         }
 
+        // the SENS logging
         if (SetupCommon::isMaster()) {
             float temp = OAT.get();
             if (!OAT.getValid()) {

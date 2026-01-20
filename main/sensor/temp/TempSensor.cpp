@@ -15,7 +15,7 @@ static float temp_buffer[ (SENSOR_HISTORY_DURATION_MS / DUTY_CYCLE_MS) + 1 ];
 
 TempSensor::TempSensor() : SensorTP<float>(temp_buffer, DUTY_CYCLE_MS)
 {
-    _id = SensorId::TEMPERATURE | SensorId::ExternalSensor;
+    _id = SensorId::TEMPERATURE;
     setNVSVar(&OAT);
     setFilter(new LowPassFilter(0.3f));
     OATSensor = this;

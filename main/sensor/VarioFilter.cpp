@@ -25,14 +25,11 @@ VarioFilter bmpVario; // static instance of it
 constexpr int DUTY_CYCLE_MS = 100; // 10Hz
 static float vario_buffer[ (SENSOR_HISTORY_DURATION_MS / DUTY_CYCLE_MS) + 1 ]; // history buffer for airspeed sensor
 
-VarioFilter::VarioFilter() : SensorTP<float>(vario_buffer, DUTY_CYCLE_MS)
-{
-	// Decide if sensor readings come from local sensor or master
-	_id = SensorId::VARIOMETER | ((SetupCommon::isClient()) ? SensorId::ExternalSensor : SensorId::NONE);
-	setNVSVar(&te_alt);
-	setFilter(new LowPassFilter(0.25f));
+VarioFilter::VarioFilter() : SensorTP<float>(vario_buffer, DUTY_CYCLE_MS) {
+    _id = SensorId::VARIOMETER;
+    setNVSVar(&te_alt);
+    setFilter(new LowPassFilter(0.25f));
 }
-
 
 void VarioFilter::configChange() {
     // vario needle damping
@@ -44,10 +41,15 @@ void VarioFilter::configChange() {
 }
 
 bool VarioFilter::setup() {
+    // Decide if sensor readings come from local sensor or master
+    if (SetupCommon::isMaster()) {
+        _id = _id | SensorId::LocalSensor;
+        // mark as essential sensor to be able to simulate
+        _id = _id | SensorId::EssentialSensor;
+    }
     configChange();
-	return true;
+    return true;
 }
-
 
 // call in main loop every 100 ms
 // extract from real existing sensors according to the selected TE compensation method
@@ -75,7 +77,7 @@ bool VarioFilter::doRead(float& val) {
         curr_altitude = teSensor->readAltitude(qnh, success);
     }
 
-    // linear prediction and innovation check
+    // linear prediction and innovation gating
     const float max_10thsec_step = 2.0f;  // max 20 m/s vertical speed
     if (accept(curr_altitude, max_10thsec_step)) {
         val = curr_altitude;
@@ -94,7 +96,8 @@ void VarioFilter::postProcess() {
     float te = 0.f;
     if (_history.level() > _te_filter_idx) {
         float tecurr = getHead();
-        te = (tecurr - _history[_te_filter_idx]) * 5.f;  // in m/s
+        // te = (tecurr - _history[_te_filter_idx]) * 5.f;  // in m/s
+        te = (tecurr - _history[1]) * 10.f;  // in m/s
     }
     te_vario.set(_lpf.filter(te));
 

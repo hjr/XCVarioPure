@@ -12,7 +12,7 @@
 
 
 SPL06_007::SPL06_007(SensorId id) :
-    PressureSensor(id),
+    PressureSensor(id | SensorId::LocalSensor),
     _bus(&i2c1),
     _address( (id == SensorId::STATIC_PRESSURE) ? SPL06_007_BARO : SPL06_007_TE )
 {

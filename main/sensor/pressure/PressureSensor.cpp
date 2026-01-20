@@ -32,7 +32,7 @@ static float te_buffer[ (SENSOR_HISTORY_DURATION_MS / DUTY_CYCLE_MS) + 1 ];
 
 PressureSensor::PressureSensor(SensorId id) : SensorTP<float>((id == SensorId::STATIC_PRESSURE) ? pstat_buffer : te_buffer, DUTY_CYCLE_MS)
 {
-    _id = id;
+    _id = id | SensorId::LocalSensor;
     if (id == SensorId::STATIC_PRESSURE) {
         setNVSVar(&altitude);
         setFilter(new AltimeterFilter());

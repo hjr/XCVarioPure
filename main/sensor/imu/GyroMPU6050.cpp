@@ -11,7 +11,7 @@
 #include "../SensorMgr.h"
 #include "logdef.h"
 
-GyroMPU6050::GyroMPU6050() : ImuSensor(SensorId::GYRO_INERTIAL)
+GyroMPU6050::GyroMPU6050() : ImuSensor(SensorId::GYRO_INERTIAL | SensorId::LocalSensor)
 {
     // push a single previous value
     pushToHistory(vector_f(0,0,0), 0);
