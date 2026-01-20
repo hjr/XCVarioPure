@@ -29,7 +29,7 @@
 // - Capacity is computed to cover N seconds at the sensor's update rate.
 // 
 
-constexpr int SENSOR_HISTORY_DURATION_MS = 5000;  // milliseconds
+constexpr int SENSOR_HISTORY_DURATION_MS = 50000;  // milliseconds
 
 enum SensorId : uint8_t;
 
