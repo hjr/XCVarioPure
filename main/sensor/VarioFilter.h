@@ -13,11 +13,7 @@
 //
 
 class PressureSensor;
-class LowPassFilter;
 
-constexpr const int FILTER_LEN = 34; // Max Filter length
-constexpr const float ALPHA = 0.2; // Kalman Gain alpha
-#define ERRORVAL 1.6             // damping Factor for values off the weeds
 constexpr const float STANDARD = 1013.25; // ICAO standard pressure
 
 class VarioFilter final : public SensorTP<float> {
@@ -39,11 +35,11 @@ class VarioFilter final : public SensorTP<float> {
     // float readCuralt() { return _currentAlt; };   // get current Altitude
 
    private:
-   int16_t _te_filter_idx;
+    int16_t _te_filter_idx;
     LowPassFilter _lpf{0.25f};
     int16_t _avg_filter_idx;
     // some usefull derived values
     float _avg_vario = 0.f;
 };
 
-extern VarioFilter* bmpVario;
+extern VarioFilter bmpVario;

@@ -941,10 +941,9 @@ void system_startup(void *args){
         if ( gyroSensor ) SensorRegistry::registerSensor(gyroSensor);
     }
 
-    // create TE vario "sensor" always
-    bmpVario = new VarioFilter();
-    bmpVario->setup();
-    SensorRegistry::registerSensor(bmpVario);
+    // TE vario "sensor" always needed, but last in line
+    bmpVario.setup();
+    SensorRegistry::registerSensor(&bmpVario);
 
     AUDIO->applySetup();
     if (audio_mute_gen.get() != AUDIO_OFF) {

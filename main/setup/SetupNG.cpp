@@ -157,9 +157,7 @@ static void calc_tas() {
 }
 
 static void feed_te_alt() {
-    if (bmpVario) {
-        bmpVario->inject(te_alt.get());
-    }
+    bmpVario.inject(te_alt.get());
 }
 
 void change_volume() {

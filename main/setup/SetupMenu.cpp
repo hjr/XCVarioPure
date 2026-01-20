@@ -99,9 +99,7 @@ int compass_ena(SetupMenuSelect *p) {
 }
 
 int vario_setup(SetupMenuValFloat *p) {
-	if ( bmpVario ) {
-		bmpVario->configChange();
-	}
+	bmpVario.configChange();
 	return 0;
 }
 
@@ -598,9 +596,7 @@ int deviceDumpAction(SetupAction *p)
 
 int varioAvChange(SetupMenuValFloat *p) {
 	// ESP_LOGI(FNAME,"varioAvChange() %f", vario_av_delay.get() );
-	if (bmpVario) {
-		bmpVario->configChange();
-	}
+	bmpVario.configChange();
 	return 0;
 }
 

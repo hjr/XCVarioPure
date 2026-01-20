@@ -899,7 +899,7 @@ void IpsDisplay::drawDisplay(float polar_sink_ms, float s2fd_kmh){
 
 	// todo integrate better into screen element
     float te_ms = te_vario.get();
-    float te_avg_ms = bmpVario->getAvgVario();
+    float te_avg_ms = bmpVario.getAvgVario();
 	if ( VCMode.isNetto() ) {
 		te_ms -= polar_sink_ms;
 		te_avg_ms -= polar_sink_ms; // average

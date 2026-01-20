@@ -1,3 +1,11 @@
+/***********************************************************
+ ***   THIS DOCUMENT CONTAINS PROPRIETARY INFORMATION.   ***
+ ***    IT IS THE EXCLUSIVE CONFIDENTIAL PROPERTY OF     ***
+ ***     Rohs Engineering Design AND ITS AFFILIATES.     ***
+ ***                                                     ***
+ ***       Copyright (C) Rohs Engineering Design         ***
+ ***********************************************************/
+
 #include "VarioFilter.h"
 #include "SensorMgr.h"
 
@@ -12,7 +20,7 @@
 
 #include <cmath>
 
-VarioFilter *bmpVario = nullptr;
+VarioFilter bmpVario; // static instance of it
 
 constexpr int DUTY_CYCLE_MS = 100; // 10Hz
 static float vario_buffer[ (SENSOR_HISTORY_DURATION_MS / DUTY_CYCLE_MS) + 1 ]; // history buffer for airspeed sensor
