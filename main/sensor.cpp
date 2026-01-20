@@ -430,22 +430,27 @@ void readSensors(void *pvParameters)
 		// // }
 
 
-		if( (count % 2) == 0 ){
+        // Trace airborne status
+		if( (count % 5) == 0 ) {
 			if ( ! airborne.get() && (ias.get() >  Speed2Fly.getStallSpeed() + 7) ) {
 				airborne.set(true);
 			}
 			else if ( airborne.get() && (ias.get() <  5) ) {
-				if ( landed++ > 100 ) { // ias < 5 km/h for 10 seconds
+				if ( landed++ > 20 ) { // ias < 5 km/h for 10 seconds
 					airborne.set(false);
 				}
 			}
 			else {
 				landed = 0;
 			}
-			
-			toyFeed(count);
 		}
 
+        // a 5Hz toy feed
+        if( (count % 2) == 0 ) {
+			toyFeed(count);
+        }
+
+        // big todo
 		if( theCompass ){
 			// ESP_LOGI(FNAME,"Compass, have sensor=%d  hdm=%d", compass->haveSensor(),  compass_nmea_hdt.get());
 			if( ! theCompass->calibrationIsRunning() ) {
