@@ -31,6 +31,8 @@
 #include "screen/element/PolarGauge.h"
 #include "screen/element/MultiGauge.h"
 #include "sensor/press_diff/AirspeedSensor.h"
+#include "Atmosphere.h"
+#include "sensor/VarioFilter.h"
 #include "sensor/imu/ImuSensor.h"
 #include "logdefnone.h"
 
@@ -147,6 +149,12 @@ void resetCWindAge() {
 	}
 }
 
+static void feed_te_alt() {
+    if (bmpVario) {
+        bmpVario->inject(te_alt.get());
+    }
+}
+
 void change_volume() {
 	float vol = audio_volume.get();
 	AUDIO->setVolume(vol, false);
@@ -220,9 +228,9 @@ SetupNG<float>			polar_stall_speed( "STALL_SPEED", 0, true, SYNC_BIDIR, PERSISTE
 SetupNG<float> 			polar_max_ballast( "POLAR_MAX_BAL",  80, true, SYNC_BIDIR, PERSISTENT, change_ballast, QUANT_MASS, LIMITS(0, 500, 1));
 SetupNG<float> 			polar_wingarea( "POLAR_WINGAREA", 10.5, true, SYNC_BIDIR, PERSISTENT, change_ballast, QUANT_NONE, LIMITS(0, 50, 0.1));
 
-SetupNG<float>  		speedcal( "SPEEDCAL", 0.0, true, SYNC_FROM_MASTER, PERSISTENT, nullptr, QUANT_NONE, LIMITS(-100, 100, 1));
+SetupNG<float>  		speedcal( "SPEEDCAL", 0.0, true, SYNC_BIDIR, PERSISTENT, nullptr, QUANT_NONE, LIMITS(-100, 100, 1));
 SetupNG<float>  		vario_delay( "VARIO_DELAY", 3.0, true, SYNC_NONE, PERSISTENT, nullptr, QUANT_NONE, LIMITS(2.0, 10.0, 0.1));
-SetupNG<float>  		vario_av_delay( "VARIO_AV_DELAY", 20.0, true, SYNC_NONE, PERSISTENT, nullptr, QUANT_NONE, LIMITS(2.0, 60.0, 1)); // changed to 20 seconds (quasi standard) what equals to a half circle
+SetupNG<float>  		vario_av_delay( "VARIO_AV_DELAY", 20.0, true, SYNC_NONE, PERSISTENT, nullptr, QUANT_NONE, LIMITS(7.0, 50.0, 1)); // changed to 20 seconds (quasi standard) what equals to a half circle
 SetupNG<float>  		scale_range( "VARIO_RANGE", 5.0, true, SYNC_NONE, PERSISTENT, 0, QUANT_VSPEED, LIMITS(1.0, 30.0, 1));
 SetupNG<int>			log_scale( "LOG_SCALE", 0 );
 SetupNG<float>  		ballast( "BALLAST" , 0.0, true, SYNC_NONE, VOLATILE, 0 );  // ballast increase from reference weight in %
@@ -246,14 +254,15 @@ SetupNG<int>  			extwind_inst_speed( "EIWDS", 0.0, false, SYNC_BIDIR, VOLATILE )
 SetupNG<int>  			extwind_status( "EWST", -1, false, SYNC_BIDIR, VOLATILE );
 SetupNG<float>  		mag_hdm( "HDM", -1.0, false, SYNC_FROM_MASTER, VOLATILE );
 SetupNG<float>  		mag_hdt( "HDT", -1.0, false, SYNC_FROM_MASTER, VOLATILE );
-SetupNG<float>  		average_climb( "AVCL", 0.0, false, SYNC_FROM_MASTER, VOLATILE );
+SetupNG<float>  		average_climb( "AVCL", 0.0, false, SYNC_NONE, VOLATILE );
 SetupNG<float>  		flap_pos( "FLPS", 0.0, false, SYNC_BIDIR, VOLATILE );
 SetupNG<float>  		altitude( "ALTI", 0.0, false, SYNC_FROM_MASTER, VOLATILE );
 SetupNG<float>  		altitude_isa( "ALT_ISA", 0.0, false, SYNC_FROM_MASTER, VOLATILE );
 SetupNG<float>  		ias( "IASV", 0.0, false, SYNC_FROM_MASTER, VOLATILE );
 SetupNG<float>  		tas( "TASV", 0.0, false, SYNC_NONE, VOLATILE );
 SetupNG<float>  		gnd_speed( "GNDV", -1.0, false, SYNC_NONE, VOLATILE );
-SetupNG<float>  		te_vario( "TEVA", 0.0, false, SYNC_FROM_MASTER, VOLATILE );
+SetupNG<float>  		te_alt( "TEALT", 0.0, false, SYNC_FROM_MASTER, VOLATILE, feed_te_alt );
+SetupNG<float>  		te_vario( "TEVA", 0.0, false, SYNC_NONE, VOLATILE );
 SetupNG<float>  		te_netto( "TENET", 0.0, false, SYNC_NONE, VOLATILE );
 SetupNG<float>  		slip_angle( "SLANGLE", 0.0, false, SYNC_FROM_MASTER, VOLATILE );
 SetupNG<float>  		battery_voltage( "BATV", 0.0, false, SYNC_FROM_MASTER, VOLATILE );
@@ -341,7 +350,7 @@ SetupNG<int>  			software_update( "SOFTWARE_UPDATE", 0 );
 SetupNG<int>  			battery_display( "BAT_DISPLAY", Battery::BAT_PERCENTAGE );
 SetupNG<int>		    log_level( "LOG_LEVEL", 3 );
 SetupNG<float>		    te_comp_adjust ( "TECOMP_ADJ", 0, true, SYNC_NONE, PERSISTENT, nullptr, QUANT_NONE, LIMITS(-100, 100, 0.1));
-SetupNG<int>		    te_comp_enable( "TECOMP_ENA", TE_TEK_PROBE );
+SetupNG<int>		    te_comp_enable( "TECOMP_ENA", VarioFilter::TE_TEK_PROBE );
 SetupNG<int>		    rotary_dir( "ROTARY_DIR", 0 );
 SetupNG<int>		    rotary_inc( "ROTARY_INC", 1 );
 SetupNG<int>		    student_mode( "STUD_MOD", 0 );

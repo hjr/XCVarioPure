@@ -86,7 +86,7 @@ void UiEventLoop(void *arg)
                     if (!gflags.inSetup) {
                         switch (MenuRoot->getActiveScreen()) {
                             case SCREEN_VARIO:
-                                Display->drawDisplay(aTE, polar_sink, s2f_delta);
+                                Display->drawDisplay(polar_sink, s2f_delta);
                                 break;
                             case SCREEN_GMETER:
                                 Display->drawLoadDisplay( IMU::getGliderAccelZ() );

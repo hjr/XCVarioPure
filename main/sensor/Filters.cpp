@@ -56,13 +56,13 @@ float AltimeterFilter::filter(float input)
     return new_alt;
 }
 
-float TEVariometerFilter::filter(float input) {
+// float TEVariometerFilter::filter(float input) {
 
-    float tasraw = Atmosphere::TAS2( ias.get(), altitude.get(), OAT.get()); // True airspeed in km/h
-    input = std::roundf(bmpVario.readTE(tasraw, input) * 20.); // TE value caclulation
-    if ( !floatEqualFast(_oldte, input) ) {
-        _oldte = input;
-    }
+//     float tasraw = Atmosphere::TAS2( ias.get(), altitude.get(), OAT.get()); // True airspeed in km/h
+//     input = std::roundf(bmpVario->readTE(tasraw, input) * 20.); // TE value caclulation
+//     if ( !floatEqualFast(_oldte, input) ) {
+//         _oldte = input;
+//     }
 
-    return _oldte/20.f;
-}
+//     return _oldte/20.f;
+// }

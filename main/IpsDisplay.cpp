@@ -20,6 +20,7 @@
 #include "screen/MessageBox.h"
 
 #include "sensor/imu/ImuSensor.h"
+#include "sensor/VarioFilter.h"
 #include "math/Trigonometry.h"
 #include "math/Floats.h"
 #include "math/Quaternion.h"
@@ -887,24 +888,25 @@ float getHeading() { // fixme move to compass
 }
 
 // fixme arg not needed on stack
-void IpsDisplay::drawDisplay(float ate_ms, float polar_sink_ms, float s2fd_kmh){
+void IpsDisplay::drawDisplay(float polar_sink_ms, float s2fd_kmh){
 	// ESP_LOGI(FNAME,"drawDisplay polar_sink: %f AVario: %f m/s", polar_sink_ms, ate_ms );
 	if( !(screens_init & INIT_DISPLAY_RETRO) ){
 		initDisplay();
 		screens_init |= INIT_DISPLAY_RETRO;
 	}
 	tick++;
-	// ESP_LOGI(FNAME,"drawDisplay  TE=%0.1f IAS:%d km/h  WK=%d", te, airspeed, wksensor  );
+	// ESP_LOGI(FNAME,"drawDisplay  TE=%0.1f IAS:%d km/h", te, airspeed  );
 
 	// todo integrate better into screen element
     float te_ms = te_vario.get();
+    float te_avg_ms = bmpVario->getAvgVario();
 	if ( VCMode.isNetto() ) {
 		te_ms -= polar_sink_ms;
-		ate_ms -= polar_sink_ms; // average
+		te_avg_ms -= polar_sink_ms; // average
 	}
 	if ( VCMode.getVMode() == CruiseMode::MODE_REL_NETTO ) { // Super Netto, considering circling sink
 		te_ms += Speed2Fly.circlingSink( ias.get() );
-		ate_ms += Speed2Fly.circlingSink( ias.get() );
+		te_avg_ms += Speed2Fly.circlingSink( ias.get() );
 	}
 
 	// Unit adaption for mph and knots
@@ -914,7 +916,7 @@ void IpsDisplay::drawDisplay(float ate_ms, float polar_sink_ms, float s2fd_kmh){
 
     // average Climb
     if (!(tick % 2)) {
-        MAINgauge->drawFigure(ate_ms);
+        MAINgauge->drawFigure(te_avg_ms);
     }
 
     // S2F bar

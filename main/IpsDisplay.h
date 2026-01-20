@@ -64,7 +64,7 @@ public:
 	static void writeText( int line, const char *text );
 	static void writeText( int line, std::string &text );
 	                    //  TE,       aTE,       polar_sink,       alt, temperature, battery, s2f_delta, as2f, acl, wkf
-	static void drawDisplay(float ate, float polar_sink, float s2fd);
+	static void drawDisplay(float polar_sink, float s2fd);
 
 	static void drawLoadDisplay( float loadFactor );
 	static void drawLoadDisplayTexts();

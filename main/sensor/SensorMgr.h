@@ -21,7 +21,7 @@ enum SensorId : uint8_t {
     TE_PRESSURE,
     POSITION,
     ALTITUDE,
-    VARIO,
+    VARIOMETER,
     MAGNETO,
     ACC_INERTIAL,
     GYRO_INERTIAL,

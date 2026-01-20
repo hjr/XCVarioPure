@@ -271,7 +271,29 @@ public:
         }
         return false;
     }
+    int getFirstUpdateTimeMs() const { 
+        int count = _history.level();
+        return _last_update_time_ms - (count - 1) * _update_interval_ms;
+    }
 
+    // simple predictor to implement an innovation gate
+    T predict() const {
+        return _history.getHead() + (_history.getHead() - _history[1]);
+    }
+    bool accept(T x_meas, T max_jump) const {
+        if constexpr (std::is_same_v<T, float>) { // only for float types
+            if (!getHeadValid()) {
+                return true;
+            }
+
+            float x_pred = _history.getHead() + (_history.getHead() - _history[1]);
+            float resid  = x_meas - x_pred;
+            if (fabsf(resid) > max_jump) {
+                return false; // outlier
+            }
+        }
+        return true;
+    }
 protected:
     // Capacity = ceil(5000 / _update_interval_ms)
     static constexpr size_t HistoryCapacity(uint32_t ums) { return (SENSOR_HISTORY_DURATION_MS + ums - 1) / ums; }

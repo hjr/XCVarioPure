@@ -33,13 +33,10 @@ union global_flags {
 
 class CANbus;
 class SerialLine;
-class ESPRotary;
+// class ESPRotary;
 class AnalogInput;
 class SetupRoot;
 class WatchDog_C;
-class VarioFilter;
-
-extern VarioFilter bmpVario;
 
 extern global_flags gflags;
 extern CANbus *CAN;
@@ -52,24 +49,19 @@ extern std::string logged_tests;
 
 extern AnalogInput *AnalogInWk;
 
-extern float aTE;
-extern float aTES2F;
 extern float as2f;
 extern float s2f_delta;
 extern float polar_sink;
 extern float alt_external;
-extern float wksensor;
 
 extern int MyGliderPolarIndex;
 extern float meanClimb;
 
-extern ESPRotary *Rotary;
+// extern ESPRotary *Rotary;
 
 extern SemaphoreHandle_t spiMutex;
 
 extern vector_f gravity_vector;
-
-#define NEED_VOLTAGE_ADJUST (abs(factory_volt_adjust.get() - 0.00815) < 0.00001)
 
 inline void delay(uint32_t ms)
 {

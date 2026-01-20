@@ -19,12 +19,22 @@ public:
     virtual float filter(float input) = 0;
 };
 
-// A simple low-pass filter
+// A simple low-pass filter (exponential moving average)
+//
+// Links to N-sample average
+// in time:
+// alpha = dt / (tau + dt)
+// with tau => N/2 * dt
+// in samples:
+// alpha = 2 / (N + 1)
+//
 class LowPassFilter : public BaseFilterItf
 {
 public:
     explicit LowPassFilter(float alpha) : _alpha(alpha), _last_output(0.0f) {}
     void reset(float init_val);
+    void setAlpha(float alpha) { _alpha = alpha; }
+    float getAlpha() const { return _alpha; }
     float filter(float input) override;
 private:
     float _alpha;
@@ -50,12 +60,12 @@ public:
     float filter(float input) override;
 };
 
-// TE Variometer 
-class TEVariometerFilter : public BaseFilterItf
-{
-public:
-    TEVariometerFilter() = default;
-    float filter(float input) override;
-private:
-    float _oldte = 0.0f;
-};
+// // TE Variometer 
+// class TEVariometerFilter : public BaseFilterItf
+// {
+// public:
+//     TEVariometerFilter() = default;
+//     float filter(float input) override;
+// private:
+//     float _oldte = 0.0f;
+// };

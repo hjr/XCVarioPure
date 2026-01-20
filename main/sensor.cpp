@@ -82,6 +82,7 @@
 #include <cstring>
 
 
+#define NEED_VOLTAGE_ADJUST (abs(factory_volt_adjust.get() - 0.00815) < 0.00001)
 
 SemaphoreHandle_t spiMutex=NULL;
 
@@ -121,9 +122,7 @@ uint8_t gyro_flash_savings=0;
 global_flags gflags = {};
 
 int   ccp = 60;
-float aTE = 0;
 float alt_external;
-float netto = 0;
 float as2f = 0;
 float s2f_delta = 0;
 float polar_sink = 0;
@@ -331,47 +330,41 @@ void readSensors(void *pvParameters)
             }
         }
 
-        float T=OAT.get();
-		if( !OAT.getValid() ) {
-			T= 15 - ( (altitude.get()/100) * 0.65 );
-			// ESP_LOGW(FNAME,"T invalid, using 15 deg");
-		}
-		// ESP_LOGI(FNAME,"Start");
-        
-		dynamicP = asSensor->getHead();
-        baroP = baroSensor->getHead();  	// Baro Pressure
-		float teP = teSensor->getHead();    // TE Pressure
+        if (SetupCommon::isMaster()) {
+            float temp = OAT.get();
+            if (!OAT.getValid()) {
+                temp = 15 - ((altitude.get() / 100) * 0.65);
+                // ESP_LOGW(FNAME,"T invalid, using 15 deg");
+            }
+            // ESP_LOGI(FNAME,"Start");
 
-        if( logging.get() ){
-			char log[ProtocolItf::MAX_LEN];
-			struct timeval tv;
-			gettimeofday(&tv, NULL);
-			sprintf( log, "$SENS;");
-			int pos = strlen(log);
-			int delta = (GpsSensor) ?  Clock::getMillis() - GpsSensor->getLastUpdateTimeMs() : 0;
-			if( delta < 0 )
-				delta += 1000;
-			sprintf( log+pos, "%d.%03d,%d,%.3f,%.3f,%.3f,%.2f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f", (int)(tv.tv_sec%(60*60*24)), (int)(tv.tv_usec / 1000), delta, baroP, teP, dynamicP, T, IMU::getGliderAccelX(), IMU::getGliderAccelY(), IMU::getGliderAccelZ(),
-					IMU::getGliderNogateGyroX(), IMU::getGliderNogateGyroY(), IMU::getGliderNogateGyroZ() );
-			if( theCompass ){
-				pos=strlen(log);
-				sprintf( log+pos,",%.4f,%.4f,%.4f", theCompass->rawX(), theCompass->rawY(), theCompass->rawZ());
-			}
-			pos=strlen(log);
-			sprintf( log+pos, "\n");
-			const NmeaPrtcl *prtcl = DEVMAN->getNMEA(NAVI_DEV); // Todo preliminary solution ..
-			if ( prtcl ) {
-				prtcl->sendXCV(log);
-			}
-		}
+            if (logging.get()) {
+                char log[ProtocolItf::MAX_LEN];
+                struct timeval tv;
+                gettimeofday(&tv, NULL);
+                sprintf(log, "$SENS;");
+                int pos = strlen(log);
+                int delta = (GpsSensor) ? Clock::getMillis() - GpsSensor->getLastUpdateTimeMs() : 0;
+                if (delta < 0)
+                    delta += 1000;
+                sprintf(log + pos, "%d.%03d,%d,%.3f,%.3f,%.3f,%.2f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f", (int)(tv.tv_sec % (60 * 60 * 24)),
+                        (int)(tv.tv_usec / 1000), delta, baroSensor->getHead(), teSensor->getHead(), asSensor->getHead(), temp, 
+                        IMU::getGliderAccelX(), IMU::getGliderAccelY(), IMU::getGliderAccelZ(), 
+                        IMU::getGliderNogateGyroX(), IMU::getGliderNogateGyroY(), IMU::getGliderNogateGyroZ());
+                if (theCompass) {
+                    pos = strlen(log);
+                    sprintf(log + pos, ",%.4f,%.4f,%.4f", theCompass->rawX(), theCompass->rawY(), theCompass->rawZ());
+                }
+                pos = strlen(log);
+                sprintf(log + pos, "\n");
+                const NmeaPrtcl* prtcl = DEVMAN->getNMEA(NAVI_DEV);  // Todo preliminary solution ..
+                if (prtcl) {
+                    prtcl->sendXCV(log);
+                }
+            }
+        }
 
-		// TE vario calculation
-		float tasraw =  Atmosphere::TAS( ias.get() , baroP, T);  // True airspeed in km/h
-		float te = bmpVario.readTE( tasraw, teP );   // TE value caclulation
-		te_vario.set( te );
-		
-
-		// float iasraw = Atmosphere::pascal2kmh( dynamicP );
+        // float iasraw = Atmosphere::pascal2kmh( dynamicP );
 		// if( baroP != 0 )
 		// 	tasraw =  Atmosphere::TAS( iasraw , baroP, T);  // True airspeed in km/h
 
@@ -382,9 +375,7 @@ void readSensors(void *pvParameters)
 		// if( (int( ias.get()+0.5 ) != int( new_ias+0.5 ) ) || !(count%20) ){
 		// 	ias.set( new_ias );  // low pass filter
 		// }
-		if( ias.get() > airspeed_max.get() ){
-			airspeed_max.set( ias.get() );
-		}
+
 		// // ESP_LOGI("FNAME","P: %f  IAS:%f IASF: %d", dynamicP, iasraw, ias );
 		// tas += (tasraw-tas)*0.25;       // low pass filter
 		// // ESP_LOGI(FNAME,"IAS=%f, T=%f, TAS=%f baroP=%f", ias, T, tas, baroP );
@@ -437,7 +428,6 @@ void readSensors(void *pvParameters)
 		 	// altitude.set( new_alt );
 		// // }
 
-		aTE = bmpVario.readAVGTE();
 
 		if( (count % 2) == 0 ){
 			if ( ! airborne.get() && (ias.get() >  Speed2Fly.getStallSpeed() + 7) ) {
@@ -520,12 +510,16 @@ void readSensors(void *pvParameters)
 			}
 		}
 
+        // MinMax tracking
         if (IMU::getGliderAccelZ() > gload_pos_max.get()) {
             gload_pos_max.set(IMU::getGliderAccelZ());
         }
         else if (IMU::getGliderAccelZ() < gload_neg_max.get()) {
             gload_neg_max.set(IMU::getGliderAccelZ());
         }
+		if( ias.get() > airspeed_max.get() ){
+			airspeed_max.set( ias.get() );
+		}
 
         // Need to be done for client and main vario
         polar_sink = Speed2Fly.sink(ias.get());
@@ -835,44 +829,6 @@ void system_startup(void *args){
     if ( SetupCommon::isMaster() )
     {
         // Configure sensors only on master XCVario
-        asSensor = AirspeedSensor::autoSetup();
-        logged_tests += "AS " + std::string(asSensor->name()) +  " offset: ";
-        if (asSensor)
-        {
-            ESP_LOGI(FNAME, "AS Speed sensor %s self test PASSED", asSensor->name());
-            bool as_ok = asSensor->setup();
-            float p;
-            if (asSensor->doRead(p) && p > 60.f) {
-                dynamicP = p;
-            }
-            ias.set(Atmosphere::pascal2kmh(dynamicP));
-
-            // Initialize the airborne status
-            airborne.set(ias.get() > Speed2Fly.getStallSpeed());
-
-            ESP_LOGI(FNAME, "Aispeed sensor current speed=%f", ias.get());
-            if (!as_ok && (ias.get() < 50))
-            {
-                MBOX->pushMessage(2, "AS Sensor: NEED ZERO");
-                logged_tests += failed_text;
-                selftestPassed = false;
-            }
-            else
-            {
-                logged_tests += passed_text;
-                boot_screen->finish(1);
-            }
-            SensorRegistry::registerSensor(asSensor);
-        }
-        else
-        {
-            ESP_LOGE(FNAME, "Error with air speed pressure sensor, no working sensor found!");
-            MBOX->pushMessage(2, "AS Sensor: NOT FOUND");
-            logged_tests += notfound_text;
-            selftestPassed = false;
-            asSensor = nullptr;
-        }
-
         // Configure pressure sensors
         ESP_LOGI(FNAME, "Absolute pressure sensors init, detect type of sensor type..");
         logged_tests += "Baro Sensor: ";
@@ -940,11 +896,55 @@ void system_startup(void *args){
         } else {
             ESP_LOGI(FNAME, "Absolute pressure sensor TESTs failed");
         }
+
+        // Configure airspeed sensor
+        asSensor = AirspeedSensor::autoSetup();
+        logged_tests += "AS " + std::string(asSensor->name()) +  " offset: ";
+        if (asSensor)
+        {
+            ESP_LOGI(FNAME, "AS Speed sensor %s self test PASSED", asSensor->name());
+            bool as_ok = asSensor->setup();
+            float p;
+            if (asSensor->doRead(p) && p > 60.f) {
+                dynamicP = p;
+            }
+            ias.set(Atmosphere::pascal2kmh(dynamicP));
+
+            // Initialize the airborne status
+            airborne.set(ias.get() > Speed2Fly.getStallSpeed());
+
+            ESP_LOGI(FNAME, "Aispeed sensor current speed=%f", ias.get());
+            if (!as_ok && (ias.get() < 50))
+            {
+                MBOX->pushMessage(2, "AS Sensor: NEED ZERO");
+                logged_tests += failed_text;
+                selftestPassed = false;
+            }
+            else
+            {
+                logged_tests += passed_text;
+                boot_screen->finish(1);
+            }
+            SensorRegistry::registerSensor(asSensor);
+        }
+        else
+        {
+            ESP_LOGE(FNAME, "Error with air speed pressure sensor, no working sensor found!");
+            MBOX->pushMessage(2, "AS Sensor: NOT FOUND");
+            logged_tests += notfound_text;
+            selftestPassed = false;
+            asSensor = nullptr;
+        }
+
+        // register IMU sensors
         if ( accSensor ) SensorRegistry::registerSensor(accSensor);
         if ( gyroSensor ) SensorRegistry::registerSensor(gyroSensor);
-
-        bmpVario.setup();
     }
+
+    // create TE vario "sensor" always
+    bmpVario = new VarioFilter();
+    bmpVario->setup();
+    SensorRegistry::registerSensor(bmpVario);
 
     AUDIO->applySetup();
     if (audio_mute_gen.get() != AUDIO_OFF) {
@@ -1059,7 +1059,7 @@ void system_startup(void *args){
 		if (ae > NO_ELEVATION) {
             if (Flarm::validExtAlt() && alt_select.get() == AS_EXTERNAL) {
                 // correct altitude according to ISA model = 27ft / hPa
-                ae = alt_external + (QNH.get() - 1013.25f) * 8.2296f;
+                ae = alt_external + (QNH.get() - 1013.25f) * 8.2296f; // fixme alt extr
             }
 
             float baroP;
