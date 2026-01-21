@@ -153,6 +153,7 @@ static void calc_tas() {
     // IAS to TAS conversion
     if (OAT.getValid() && altitude.getValid()) {
         tas.set(Atmosphere::TAS2(ias.get(), altitude.get(), OAT.get()));
+        ESP_LOGI(FNAME, "calc_tas: IAS=%.2f, Alt=%.2f, OAT=%.2f -> TAS=%.2f", ias.get(), altitude.get(), OAT.get(), tas.get());
     }
 }
 
