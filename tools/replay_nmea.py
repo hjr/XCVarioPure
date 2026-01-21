@@ -123,20 +123,24 @@ def playback_worker():
     start_time = time.time()
     last_time = start_time
     num_sens = 0
+    idx_inc = 0
     max_sens = 11
     smax = [11, 11, 5, 3, 2, 1]
     while True:
         time.sleep(0.01)  # Sehr kurze Sleep → reagiert schnell
 
         with lock:
+            # Wichtig: Index-Inkrement nur hier unter Lock
+            current_index += idx_inc
+            idx = current_index
             if speed != playback_speed:
                 was_plaing = False
             if not is_playing or current_index >= len(flight_data):
                 was_plaing = False
                 continue
-            idx = current_index
             speed = playback_speed
 
+        idx_inc = 0
         if is_playing:
             max_sens = smax[int(speed)]
             timestamp = flight_data[idx]['timestamp']
@@ -147,40 +151,21 @@ def playback_worker():
             delta = now - last_time
             playback_time += delta * speed
             last_time = now
-            if playback_time >= timestamp:
+            while playback_time >= timestamp:
                 if not flight_data[idx]['line'].startswith("$SENS") or num_sens < max_sens:
                     ser.write((flight_data[idx]['line'] + "\r\n").encode("ascii", errors="ignore"))
-                    #print(playback_time, ": ", flight_data[idx]['line'])
+                    #print(now, playback_time, ": ", flight_data[idx]['line'])
                 if flight_data[idx]['line'].startswith("$SENS"):
                     num_sens += 1
                 elif flight_data[idx]['line'].startswith("$GPRMC"):
                     num_sens = 0
-                # Wichtig: Index-Inkrement nur hier, aber unter Lock
-                with lock:
-                    current_index += 1
-            if not was_plaing:
-                was_plaing = True
+                idx_inc += 1
+                idx += 1
+                if idx >= len(flight_data):
+                    break
+                timestamp = flight_data[idx]['timestamp']
 
-# --- Neue Sprung-Routine ---
-def jump_by_seconds(seconds):
-    global current_index, playback_time
-
-    target_time = playback_time + seconds
-    if target_time < flight_data[0]['timestamp']:
-        target_time = flight_data[0]['timestamp']
-    elif target_time > flight_data[-1]['timestamp']:
-        target_time = flight_data[-1]['timestamp']
-
-    # Finde nächsten Index >= target_time
-    for i in range(0, len(flight_data)):
-        if flight_data[i]['timestamp'] >= target_time and flight_data[i]['line'].startswith("$GPRMC"):
-            current_index = i
-            break
-    else:
-        current_index = len(flight_data) - 1
-
-    playback_time = flight_data[current_index]['timestamp']
-    print(f"Sprung zu Index {current_index}, Zeit {playback_time:.3f}s")
+            was_plaing = True
 
 # --- Matplotlib Visualisierung ---
 def setup_plot():
@@ -251,8 +236,7 @@ def setup_plot():
                 if e['lat'] is not None and e['lon'] is not None:
                     current_point.set_data([e['lon']], [e['lat']])
                     # --- Kurzer Schweif der letzten 5 Positionen ---
-                    start = max(0, idx - 4)
-
+ 
         # Status aktualisieren
         status = "PLAY" if playing else "PAUSE"
         status_text.set_text(f"{status}   {speed:.1f}×")
@@ -260,6 +244,26 @@ def setup_plot():
         return current_point, status_text
 
     ani = FuncAnimation(fig, update, interval=50, blit=True, cache_frame_data=False)
+
+    # --- Neue Sprung-Routine ---
+    def jump_by_seconds(seconds):
+        global current_index, playback_time
+
+        target_time = playback_time + seconds
+        if target_time < flight_data[0]['timestamp']:
+            target_time = flight_data[0]['timestamp']
+        elif target_time > flight_data[-1]['timestamp']:
+            target_time = flight_data[-1]['timestamp']
+
+        # Finde nächsten Index >= target_time
+        for i in range(0, len(flight_data)):
+            if flight_data[i]['timestamp'] >= target_time and flight_data[i]['line'].startswith("$GPRMC"):
+                current_index = i
+                break
+        else:
+            current_index = len(flight_data) - 1
+        playback_time = flight_data[current_index]['timestamp']
+        print(f"Sprung zu Index {current_index}, Zeit {playback_time:.3f}s")
 
     def on_key(event):
         global is_playing, playback_speed, current_index
