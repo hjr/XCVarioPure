@@ -225,69 +225,6 @@ static void toyFeed(int count) // Called at 5Hz from clientLoop or sensorloop
     }
 }
 
-
-// void clientLoop(void *pvParameters)
-// {
-// 	int count = 0;
-// 	esp_task_wdt_add(NULL);
-
-// 	while (true)
-// 	{
-// 		TickType_t xLastWakeTime = xTaskGetTickCount();
-// 		count++; // 10 Hz
-
-// 		aTE += (te_vario.get() - aTE)* (1/(10*vario_av_delay.get()));
-
-// 		if( !(count%2) )
-// 		{
-// 			double tmpalt = altitude.get(); // get pressure from altitude
-// 			if( (fl_auto_transition.get() == 1) && ((int)( Units::meters2FL( altitude.get() )) + (int)(gflags.standard_setting) > transition_alt.get() ) ) {
-// 				ESP_LOGI(FNAME,"Above transition altitude");
-// 				baroP = Atmosphere::calcPressureISA(tmpalt); // above transition altitude
-// 			}
-// 			else {
-// 				baroP = Atmosphere::calcPressure( QNH.get(), tmpalt);
-// 			}
-// 			dynamicP = Atmosphere::kmh2pascal(ias.get());
-// 			tas.set(Atmosphere::TAS2(ias.get(), altitude.get(), OAT.get()));
-// 			if( IMU::getGliderAccelZ() > gload_pos_max.get() ){
-// 				gload_pos_max.set( IMU::getGliderAccelZ() );
-// 			}else if( IMU::getGliderAccelZ() < gload_neg_max.get() ){
-// 				gload_neg_max.set( IMU::getGliderAccelZ() );
-// 			}
-
-// 			if( uxTaskGetStackHighWaterMark(NULL) < 512 ) {
-// 				ESP_LOGW(FNAME,"Warning client task stack low: %d bytes", uxTaskGetStackHighWaterMark(NULL) );
-// 			}
-//         }
-
-//         commonThingsLast(count);
-//         if (!(count % 2))
-//         {
-//             toyFeed(count);
-//             if (true)
-//             { // todo need a mag_hdm.valid() flag
-//                 if (ToyNmeaPrtcl)
-//                 {
-//                     if (compass_nmea_hdm.get())
-//                     {
-//                         ToyNmeaPrtcl->sendXCVNmeaHDM(mag_hdm.get());
-//                     }
-
-//                     if (compass_nmea_hdt.get())
-//                     {
-//                         ToyNmeaPrtcl->sendXCVNmeaHDT(mag_hdt.get());
-//                     }
-//                 }
-//             }
-//         }
-//         if (!(count % 300)) { commonThingsSeldom(); }
-
-//         esp_task_wdt_reset();
-//         vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(100));
-// 	}
-// }
-
 static int client_sync_dataIdx = 10000;
 void startClientSync()
 {
@@ -345,12 +282,14 @@ void readSensors(void *pvParameters)
                 sprintf(log, "$SENS;");
                 int pos = strlen(log);
                 int delta = (GpsSensor) ? Clock::getMillis() - GpsSensor->getLastUpdateTimeMs() : 0;
-                if (delta < 0)
+                if (delta < 0) {
                     delta += 1000;
+                }
+                vector_3d acc = accSensor->getHead();
+                vector_3d gyro = gyroSensor->getHead();
                 sprintf(log + pos, "%d.%03d,%d,%.3f,%.3f,%.3f,%.2f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f", (int)(tv.tv_sec % (60 * 60 * 24)),
                         (int)(tv.tv_usec / 1000), delta, baroSensor->getHead(), teSensor->getHead(), asSensor->getHead(), temp, 
-                        IMU::getGliderAccelX(), IMU::getGliderAccelY(), IMU::getGliderAccelZ(), 
-                        IMU::getGliderNogateGyroX(), IMU::getGliderNogateGyroY(), IMU::getGliderNogateGyroZ());
+                        acc.x, acc.y, acc.z, gyro.x, gyro.y, gyro.z);
                 if (theCompass) {
                     pos = strlen(log);
                     sprintf(log + pos, ",%.4f,%.4f,%.4f", theCompass->rawX(), theCompass->rawY(), theCompass->rawZ());
@@ -516,11 +455,14 @@ void readSensors(void *pvParameters)
 		}
 
         // MinMax tracking
-        if (IMU::getGliderAccelZ() > gload_pos_max.get()) {
-            gload_pos_max.set(IMU::getGliderAccelZ());
-        }
-        else if (IMU::getGliderAccelZ() < gload_neg_max.get()) {
-            gload_neg_max.set(IMU::getGliderAccelZ());
+        if (accSensor) {
+            float g = accSensor->getHeadPtr()->z;
+            if (g > gload_pos_max.get()) {
+                gload_pos_max.set(g);
+            }
+            else if (g < gload_neg_max.get()) {
+                gload_neg_max.set(g);
+            }
         }
 		if( ias.get() > airspeed_max.get() ){
 			airspeed_max.set( ias.get() );
@@ -570,7 +512,7 @@ void readSensors(void *pvParameters)
         }
 
 		esp_task_wdt_reset();
-		vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(100));
+		xTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(100));
 	}
 }
 
@@ -730,10 +672,6 @@ void system_startup(void *args){
                 logged_tests += failed_text;
                 selftestPassed = false;
             }
-            // IMU::init();
-            // if (IMU::MPU6050Read() == ESP_OK) {
-            //     IMU::Process();
-            // }
         }
     }
 

@@ -30,10 +30,13 @@ public:
 
     ImuType getImuType() const { return _who_typ; }
     inline temp_status_t getTempStatus() const { return _MPUdev.getSiliconTempStatus(); }
+    static Quaternion setDefaultImuReference();
+    void applyImuReference(const float gAA, const Quaternion& basic) {
+        _ref_rot = concatGaaAndImuReference(gAA, basic);
+    }
 
 protected:
     ImuType getImuId();
-    static Quaternion setDefaultImuReference();
     static Quaternion concatGaaAndImuReference(const float gAA, const Quaternion& basic);
     mpud::MPU& _MPUdev;
     ImuType _who_typ; // cached IMU type

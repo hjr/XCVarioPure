@@ -67,12 +67,12 @@ public:
   /**
    * Initializes the Wire library, the MPU and the Kalman Filter.
    */
-  static void init();
+  // static void init();
 
   /**
    * Fetches the IMU data and proccesses it through the Kalman Filter.
    */
-  static esp_err_t MPU6050Read();
+  // static esp_err_t MPU6050Read();
   static void Process();
 
   // Accelerometer reading in glider reference and in [g]
@@ -164,8 +164,8 @@ public:
   // Reference calibration
   static int getAccelSamplesAndCalib(int side, float &wing_angle );
   static void getGyroSamplesAndZero();
-  static void defaultImuReference();
-  static void applyImuReference(const float gAA, const Quaternion& basic);
+  // static void defaultImuReference();
+  // static void applyImuReference(const float gAA, const Quaternion& basic);
   static inline Quaternion getAHRSQuaternion() { return att_quat; };
   static inline vector_f getAHRSVector() { return att_vector; };
 

@@ -44,16 +44,16 @@ vector_f IMU::petal(0,0,0);
 float IMU::circle_omega = 0.f;
 
 
-Quaternion IMU::att_quat;
-Quaternion IMU::omega_step;
-vector_f IMU::att_vector;
-vector_f IMU::euler_rad;
+Quaternion IMU::att_quat = Quaternion();
+Quaternion IMU::omega_step = Quaternion();
+vector_f IMU::att_vector = {};
+vector_f IMU::euler_rad = {};
 
 // Reference calib
 static int progress = 0; // bit-wise 0 -> 1 -> 3 -> 0 // start -> right -> left -> finish
 static vector_d bob_right_wing, bob_left_wing;
 static mpud::axes_t<int> gyro_bias_one, gyro_bias_two;
-static Quaternion ref_rot;
+// static Quaternion ref_rot;
 
 vector_f gravity_vector( 0,0,-1 );
 
@@ -121,36 +121,36 @@ vector_f gravity_vector( 0,0,-1 );
 // 	return kalPointer->angle;
 // };
 
-void IMU::init()
-{
-	// Kalman_Init(&kalmanX);
-	// Kalman_Init(&kalmanY);
-	// Kalman_Init(&kalmanZ);
+// void IMU::init()
+// {
+// 	// Kalman_Init(&kalmanX);
+// 	// Kalman_Init(&kalmanY);
+// 	// Kalman_Init(&kalmanZ);
 
-	MPU6050Read();
-	// sleep( 0.1 );
-	double roll=0;
-	double pitch=0;
+// 	MPU6050Read();
+// 	// sleep( 0.1 );
+	// double roll=0;
+	// double pitch=0;
 
-	// kalmanX.angle = roll; // Set starting angle
-	// kalmanY.angle = pitch;
+// 	// kalmanX.angle = roll; // Set starting angle
+// 	// kalmanY.angle = pitch;
 
-	att_quat = Quaternion();
-	att_vector = vector_f(0.0,0.0,1.0);
-	euler_rad = { 0,0,0 };
-	progress = 0;
-	bob_right_wing = bob_left_wing = vector_3d<double>();
-	gyro_bias_one = gyro_bias_two = mpud::axes_t<int>();
-	Quaternion basic_ref = imu_reference.get();
-	if ( basic_ref == Quaternion() ) {
-		// If unset, set to a rough default
-		defaultImuReference();
-	}
-	else {
-		applyImuReference(glider_ground_aa.get(), basic_ref);
-	}
-	ESP_LOGI(FNAME, "Finished IMU setup");
-}
+	// att_quat = Quaternion();
+	// att_vector = vector_f(0.0,0.0,1.0);
+// 	euler_rad = { 0,0,0 };
+// 	progress = 0;
+// 	bob_right_wing = bob_left_wing = vector_3d<double>();
+// 	gyro_bias_one = gyro_bias_two = mpud::axes_t<int>();
+// 	Quaternion basic_ref = imu_reference.get();
+// 	if ( basic_ref == Quaternion() ) {
+// 		// If unset, set to a rough default
+// 		defaultImuReference();
+// 	}
+// 	else {
+// 		applyImuReference(glider_ground_aa.get(), basic_ref);
+// 	}
+// 	ESP_LOGI(FNAME, "Finished IMU setup");
+// }
 
 float IMU::getGyroYawDelta()
 {
@@ -190,14 +190,15 @@ void IMU::Process()
 	float gravity_trust = 1;
 	gyro = gyroSensor->getHead();
 	accel = accSensor->getHead();
+	// ESP_LOGI( FNAME, " Accel: %.3f,%.3f,%.3f Gyro: %.3f,%.3f,%.3f dt: %.3f", accel.x, accel.y, accel.z, gyro.x, gyro.y, gyro.z, dt );
 
 	// create a gyro base rotation axis
-	vector_f gyro_rad = *gyroSensor->getHeadPtr() * deg2rad(1.f);
+	vector_f gyro_rad = gyro * deg2rad(1.f);
 	omega_step = Quaternion::fromGyro(gyro_rad, dt);
 	vector_f axis;
 	float w = omega_step.getAngleAndAxis(axis) * 1.f / dt; // angular speed [rad/sec]
 	omega_step.conjugate(); // inverse step
-	// ESP_LOGI( FNAME,"Omega: %f axis: %.3f,%.3f,%.3f", w, axis.a, axis.b, axis.c);
+	// ESP_LOGI( FNAME,"Omega: %f axis: %.3f,%.3f,%.3f", w, axis.x, axis.y, axis.z);
 
 	float roll=0, pitch=0;
 	if( tas.get() > 10 ){
@@ -226,7 +227,7 @@ void IMU::Process()
 		petal.z = cos(roll)*cos(pitch);   // Any roll or pitch creates a smaller positive Z, gravity Z is positive
 		// trust in gyro at load factors unequal 1 g
 		gravity_trust = (ahrs_min_gyro_factor.get() + (ahrs_gyro_factor.get() * ( pow(10, abs(loadFactor-1) * ahrs_dynamic_factor.get()) - 1)));
-		// ESP_LOGI( FNAME,"Omega roll: %f Pitch: %f W_yz: %f Gyro Trust: %f", rad2deg(roll), rad2deg(pitch), circle_omega, gravity_trust );
+		ESP_LOGI( FNAME,"Omega roll: %f Pitch: %f W_yz: %f Gyro Trust: %f", rad2deg(roll), rad2deg(pitch), circle_omega, gravity_trust );
 	}
 	else {
 		// For still stand centripetal forces are taken from the accelerometer
@@ -238,12 +239,12 @@ void IMU::Process()
 	update_fused_vector(att_vector, gravity_trust, petal, omega_step);
 	// ESP_LOGI(FNAME,"attv: %.3f %.3f %.3f ProjAccel: %f", att_vector.a, att_vector.b, att_vector.c, accel.dot(att_vector));
 	att_quat = Quaternion::fromAccelerometer(att_vector);
-	// ESP_LOGI(FNAME,"attq: %.3f %.3f %.3f %.3f", att_quat.a, att_quat.b, att_quat.c, att_quat.d );
-	// ESP_LOGI(FNAME,"Circle Omega: %f", circle_omega );
+	// ESP_LOGI(FNAME,"attq: %.3f %.3f %.3f %.3f", att_quat._x, att_quat._y, att_quat._z, att_quat._w );
+	ESP_LOGI(FNAME,"Circle Omega: %f", circle_omega );
 	euler_rad = att_quat.toEulerRad() * -1.f;
 	if ( (att_vector-att_prev).get_norm2() > 0.5 ) {
 		[[maybe_unused]] vector_f euler = euler_rad * rad2deg(1.f);
-		ESP_LOGI( FNAME,"Euler R:%.1f P:%.1f OR:%.1f IMUP:%.1f %.1f@GA(%.3f,%.3f,%.3f)", euler.Roll(), euler.Pitch(), rad2deg(roll), rad2deg(pitch), rad2deg(w), axis.x, axis.y, axis.z );
+		// ESP_LOGI( FNAME,"Euler R:%.1f P:%.1f OR:%.1f IMUP:%.1f %.1f@GA(%.3f,%.3f,%.3f)", euler.Roll(), euler.Pitch(), rad2deg(roll), rad2deg(pitch), rad2deg(w), axis.x, axis.y, axis.z );
 	}
 	filterRoll_rad =  euler_rad.Roll();
 	filterPitch_rad =  euler_rad.Pitch();
@@ -293,8 +294,8 @@ float IMU::fallbackToGyro(){
 }
 
 // Central read of IMU with reotation into the glider reference system
-esp_err_t IMU::MPU6050Read()
-{
+// esp_err_t IMU::MPU6050Read()
+// {
 	// static vector_f prev_accel(1,0,0), prev_gyro(0,0,0);
 
 	// // Get new accelerometer values from MPU6050
@@ -346,8 +347,8 @@ esp_err_t IMU::MPU6050Read()
 	// }
 	// prev_gyro = tmpvec;
 	// return err;
-	return ESP_FAIL;
-}
+// 	return ESP_FAIL;
+// }
 
 float IMU::getVerticalAcceleration()
 {
@@ -480,7 +481,7 @@ int IMU::getAccelSamplesAndCalib(int side, float &wing_angle  )
 			// The inverted rotation we need to apply
 			Quaternion basic_reference = Quaternion::fromRotationMatrix(X, Y).get_conjugate();
 			// Concatenated with ground angle
-			applyImuReference(glider_ground_aa.get(), basic_reference);
+			accSensor->applyImuReference(glider_ground_aa.get(), basic_reference);
 
 			// Save the basic part to nvs storage
 			imu_reference.set(basic_reference, false);
@@ -509,27 +510,27 @@ int IMU::getAccelSamplesAndCalib(int side, float &wing_angle  )
 	return -1;
 }
 
-// Setup the rotation for the "upright", "topdown" and "ninety" vario mounting positions
-void IMU::defaultImuReference()
-{
-	// Revert from calibrated IMU to default mapping, which fits
-	// roughly to an upright or top down installation.
-	Quaternion accelDefaultRef = Quaternion(deg2rad(90.0f), vector_f(0,1,0)).get_conjugate();
+// // Setup the rotation for the "upright", "topdown" and "ninety" vario mounting positions
+// void IMU::defaultImuReference()
+// {
+// 	// Revert from calibrated IMU to default mapping, which fits
+// 	// roughly to an upright or top down installation.
+// 	Quaternion accelDefaultRef = Quaternion(deg2rad(90.0f), vector_f(0,1,0)).get_conjugate();
 
-	if ( display_orientation.get() == DISPLAY_TOPDOWN ) {
-		accelDefaultRef = Quaternion(deg2rad(180.0f), vector_f(1,0,0)) * accelDefaultRef;
-	}
-	else if ( display_orientation.get() == DISPLAY_NINETY ) {
-		accelDefaultRef = Quaternion(deg2rad(-90.0f), vector_f(1,0,0)) * accelDefaultRef;
-	}
-	ref_rot = accelDefaultRef;
-	imu_reference.set(ref_rot, false); // nvs
-	imu_reference.commit();
-	progress = 0; // reset the calibration procedure
-}
+// 	if ( display_orientation.get() == DISPLAY_TOPDOWN ) {
+// 		accelDefaultRef = Quaternion(deg2rad(180.0f), vector_f(1,0,0)) * accelDefaultRef;
+// 	}
+// 	else if ( display_orientation.get() == DISPLAY_NINETY ) {
+// 		accelDefaultRef = Quaternion(deg2rad(-90.0f), vector_f(1,0,0)) * accelDefaultRef;
+// 	}
+// 	ref_rot = accelDefaultRef;
+// 	imu_reference.set(ref_rot, false); // nvs
+// 	imu_reference.commit();
+// 	progress = 0; // reset the calibration procedure
+// }
 // Concatenation of ground angle of attack and the basic reference calibration rotation
-void IMU::applyImuReference(const float gAA, const Quaternion& basic)
-{
-	ref_rot = Quaternion(deg2rad(gAA), vector_f(0,1,0)) * basic; // rotate positive around Y
-	ref_rot.normalize();
-}
+// void IMU::applyImuReference(const float gAA, const Quaternion& basic)
+// {
+// 	ref_rot = Quaternion(deg2rad(gAA), vector_f(0,1,0)) * basic; // rotate positive around Y
+// 	ref_rot.normalize();
+// }

@@ -37,6 +37,7 @@
 #include "sensor/pressure/PressureSensor.h"
 #include "AnalogInput.h"
 #include "sensor/press_diff/AirspeedSensor.h"
+#include "sensor/imu/ImuSensor.h"
 #include "AdaptUGC.h"
 #include "sensor.h"
 #include "logdefnone.h"
@@ -224,8 +225,8 @@ static int add_key(SetupMenuChar *p) {
 }
 
 static int imu_gaa(SetupMenuValFloat *f) {
-	if (!(imu_reference.get() == Quaternion())) {
-		IMU::applyImuReference(f->_value, imu_reference.get());
+	if (accSensor && !(imu_reference.get() == Quaternion())) {
+		accSensor->applyImuReference(f->_value, imu_reference.get());
 	}
 	return 0;
 }
@@ -304,7 +305,7 @@ static int imu_calib(SetupMenuSelect *p) {
 		break;
 	case 2:
 		// reset to default
-		IMU::defaultImuReference();
+		ImuSensor::setDefaultImuReference();
 		break;
 	default:
 		break;
