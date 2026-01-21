@@ -31,6 +31,7 @@ class VarioFilter final : public SensorTP<float> {
     void inject(float te_alt);  // te raw feed from master
     void configChange();
     float getAvgVario() const { return _avg_vario; }
+	float getPolarSink() const { return _polar_sink; }
     // float readAVGalt() { return averageAlt; };    // get average Altitude
     // float readCuralt() { return _currentAlt; };   // get current Altitude
 
@@ -40,6 +41,7 @@ class VarioFilter final : public SensorTP<float> {
     int16_t _avg_filter_idx;
     // some usefull derived values
     float _avg_vario = 0.f;
+	float _polar_sink = 0.f;
 };
 
 extern VarioFilter bmpVario;

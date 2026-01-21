@@ -16,6 +16,7 @@
 #include "setup/CruiseMode.h"
 #include "setup/SetupNG.h"
 #include "sensor.h"
+#include "sensor/VarioFilter.h"
 #include "logdefnone.h"
 
 #include <freertos/FreeRTOS.h>
@@ -1140,7 +1141,7 @@ void Audio::dactask()
                     // vario is the parameter for audio
                     audio_value = te_vario.get();
                     if ( VCMode.isNetto() ) {
-                        audio_value -= polar_sink;
+                        audio_value -= bmpVario.getPolarSink();
                     }
                     if ( VCMode.getVMode() == CruiseMode::MODE_REL_NETTO ) {
                         audio_value += Speed2Fly.circlingSink( ias.get() );

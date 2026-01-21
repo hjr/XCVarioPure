@@ -125,7 +125,6 @@ int   ccp = 60;
 float alt_external;
 float as2f = 0;
 float s2f_delta = 0;
-float polar_sink = 0;
 
 const constexpr char passed_text[] = "PASSED\n";
 const constexpr char failed_text[] = "FAILED\n";
@@ -528,8 +527,6 @@ void readSensors(void *pvParameters)
 		}
 
         // Need to be done for client and main vario
-        polar_sink = Speed2Fly.sink(ias.get());
-        te_netto.set(te_vario.get() - polar_sink);
         as2f = Speed2Fly.speed(te_netto.get(), !VCMode.getCMode());
 
         s2f_ideal.set(fast_iroundf(as2f));

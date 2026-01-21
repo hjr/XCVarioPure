@@ -96,10 +96,11 @@ void VarioFilter::postProcess() {
     float te = 0.f;
     if (_history.level() > _te_filter_idx) {
         float tecurr = getHead();
-        // te = (tecurr - _history[_te_filter_idx]) * 5.f;  // in m/s
         te = (tecurr - _history[1]) * 10.f;  // in m/s
     }
     te_vario.set(_lpf.filter(te));
+    _polar_sink = Speed2Fly.sink(ias.get());
+    te_netto.set(te - _polar_sink);
 
     // the big AVG value
     // ESP_LOGI(FNAME, "VarioFilter::postProcess history level: %d avg_idx: %d", _history.level(), _avg_filter_idx);

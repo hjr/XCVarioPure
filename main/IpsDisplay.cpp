@@ -888,7 +888,7 @@ float getHeading() { // fixme move to compass
 }
 
 // fixme arg not needed on stack
-void IpsDisplay::drawDisplay(float polar_sink_ms, float s2fd_kmh){
+void IpsDisplay::drawDisplay(float s2fd_kmh){
 	// ESP_LOGI(FNAME,"drawDisplay polar_sink: %f AVario: %f m/s", polar_sink_ms, ate_ms );
 	if( !(screens_init & INIT_DISPLAY_RETRO) ){
 		initDisplay();
@@ -900,6 +900,7 @@ void IpsDisplay::drawDisplay(float polar_sink_ms, float s2fd_kmh){
 	// todo integrate better into screen element
     float te_ms = te_vario.get();
     float te_avg_ms = bmpVario.getAvgVario();
+    float polar_sink_ms = bmpVario.getPolarSink();
 	if ( VCMode.isNetto() ) {
 		te_ms -= polar_sink_ms;
 		te_avg_ms -= polar_sink_ms; // average
@@ -987,7 +988,7 @@ void IpsDisplay::drawDisplay(float polar_sink_ms, float s2fd_kmh){
     // Vario indicator
     MAINgauge->draw(te_ms);
     if (VCMode.isGross()) {
-        MAINgauge->drawPolarSink(polar_sink);
+        MAINgauge->drawPolarSink(polar_sink_ms);
     }
 
     // Battery
