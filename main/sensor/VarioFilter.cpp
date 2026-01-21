@@ -19,11 +19,90 @@
 
 
 #include <cmath>
+#include <algorithm>
 
 VarioFilter bmpVario; // static instance of it
 
 constexpr int DUTY_CYCLE_MS = 100; // 10Hz
 static float vario_buffer[ (SENSOR_HISTORY_DURATION_MS / DUTY_CYCLE_MS) + 1 ]; // history buffer for airspeed sensor
+
+struct VarioKF {
+    // State
+    float h;     // altitude [m]
+    float v;     // vertical speed [m/s]
+
+    // Covariance
+    float P00, P01, P10, P11;
+
+    // Noise
+    float R;     // measurement noise
+    float sigma_a;
+
+    void init(float h0) {
+        h = h0;
+        v = 0.0f;
+
+        P00 = 10.0f;
+        P11 = 1.0f;
+        P01 = P10 = 0.0f;
+
+        R = 0.11;
+        sigma_a = sqrt(R);
+    }
+
+    void predict(float dt) {
+        // State prediction
+        h += v * dt;
+
+        // Process noise
+        float dt2 = dt * dt;
+        float dt3 = dt2 * dt;
+        float dt4 = dt2 * dt2;
+        float q = sigma_a * sigma_a;
+
+        float Q00 = q * dt4 * 0.25f;
+        float Q01 = q * dt3 * 0.5f;
+        float Q11 = q * dt2;
+
+        // Covariance prediction
+        float P00_ = P00 + dt*(P10 + P01) + dt2*P11 + Q00;
+        float P01_ = P01 + dt*P11 + Q01;
+        float P10_ = P10 + dt*P11 + Q01;
+        float P11_ = P11 + Q11;
+
+        P00 = P00_;
+        P01 = P01_;
+        P10 = P10_;
+        P11 = P11_;
+    }
+
+    void update(float z) {
+        // Innovation
+        float y = z - h;
+        float S = P00 + R;
+
+        // Kalman gain
+        float K0 = P00 / S;
+        float K1 = P10 / S;
+
+        // State update
+        h += K0 * y;
+        v += K1 * y;
+
+        // Covariance update
+        float P00_ = (1 - K0) * P00;
+        float P01_ = (1 - K0) * P01;
+        float P10_ = P10 - K1 * P00;
+        float P11_ = P11 - K1 * P01;
+
+        P00 = P00_;
+        P01 = P01_;
+        P10 = P10_;
+        P11 = P11_;
+    }
+};
+
+static VarioKF vkf;
 
 VarioFilter::VarioFilter() : SensorTP<float>(vario_buffer, DUTY_CYCLE_MS) {
     _id = SensorId::VARIOMETER;
@@ -38,6 +117,9 @@ void VarioFilter::configChange() {
     // vario averager damping
     _avg_filter_idx = (vario_av_delay.get() / 0.1) - 1;
     ESP_LOGI(FNAME, "configChange damping:%f filter_len:%d", _lpf.getAlpha(), _avg_filter_idx);
+
+    avgTE.setLength( vario_av_delay.get() );
+	TEavg.setLength( rint(vario_delay.get()*(10.0/3)) );
 }
 
 bool VarioFilter::setup() {
@@ -47,6 +129,7 @@ bool VarioFilter::setup() {
         // mark as essential sensor to be able to simulate
         _id = _id | SensorId::EssentialSensor;
     }
+    vkf.init(altitude.get());
     configChange();
     return true;
 }
@@ -78,7 +161,7 @@ bool VarioFilter::doRead(float& val) {
     }
 
     // linear prediction and innovation gating
-    const float max_10thsec_step = 2.0f;  // max 20 m/s vertical speed
+    const float max_10thsec_step = 3.0f;  // max 30 m/s vertical speed
     if (accept(curr_altitude, max_10thsec_step)) {
         val = curr_altitude;
         // ESP_LOGI(FNAME, "VarioFilter: accepted alt %f", curr_altitude);
@@ -91,6 +174,49 @@ bool VarioFilter::doRead(float& val) {
 }
 
 // apply filters individually as desired from settings
+#define FILTER 2
+#if defined(FILTER) && FILTER == 0
+void VarioFilter::postProcess() {
+    static float _errorval = 1.6;
+    static float averageAlt = 0.f;
+    static float Altitude = 0.f;
+    static float predictAlt = 0.f;
+    static float lastAltitude = 0.f;
+    static float _TEF = 0.f;
+    static int N = 0;
+    static float _avgTE = 0.f;
+
+    N++;
+	// ESP_LOGI(FNAME,"TE alt: %4.3f m, ST: %.1f PI: %.1f", _currentAlt, barP, (dynP*100) );
+    float curr_altitude = getHead();
+	averageAlt += (curr_altitude - averageAlt) * 0.1;
+	float adiff = curr_altitude - Altitude;
+	// ESP_LOGI(FNAME,"VarioFilter new alt %0.1f err %0.1f", _currentAlt, err);
+	float diff = (abs(adiff) * 1000) + 1;
+	if(diff > 1000000){  // more than 100 m altitude diff in 0.1 second not plausible ( > 400 km/h vertical ) -> handled by Kalman filter
+		 ESP_LOGW(FNAME,"TE sensor delta OOB: %f m", diff/10000 );
+	}
+	float err = (abs(curr_altitude - predictAlt) * 1000) + 1;
+	averageAlt += (curr_altitude - averageAlt) * 0.1;
+	float kg = (diff / (err*_errorval + diff)) * 0.2;
+	Altitude += (adiff) * kg;
+	float altDiff = Altitude - lastAltitude;
+	// ESP_LOGI(FNAME," altDiff %0.1f diff %0.1f", TE, diff);
+	lastAltitude = Altitude;
+	float TEAVG = TEavg( altDiff / 0.1 ); // in m/s
+	predictAlt = Altitude + (TEAVG * 0.1);
+	_TEF += ((TEAVG - _TEF)) * _lpf.getAlpha();
+
+    te_vario.set(_TEF);
+    _polar_sink = Speed2Fly.sink(ias.get());
+    te_netto.set(_TEF - _polar_sink);
+
+	if( !(N%10) ){ // every second one sample
+		_avg_vario = avgTE( _TEF );
+		// ESP_LOGI(FNAME," _avgTE: %f ", _avg_vario);
+	}
+}
+#elif defined(FILTER) && FILTER == 1
 void VarioFilter::postProcess() {
     // TE vario calculation
     float te = 0.f;
@@ -109,6 +235,34 @@ void VarioFilter::postProcess() {
         // ESP_LOGI(FNAME, "VarioFilter: H:%f 1:%f avg:%f", getHead(), _history[_avg_filter_idx], avg);
     }
 }
+#elif defined(FILTER) && FILTER == 2
+void VarioFilter::postProcess() {
+    vkf.predict(0.1);
+    float innov = getHead() - vkf.h;
+    // if (fabsf(innov) > 5.0f) {
+    //     // reject baro glitch
+    //     ESP_LOGE(FNAME, "VarioFilter: large innov %f, rejecting update", innov);
+    //     return;
+    // }
+    vkf.R = 0.25 * (1 + fabsf(innov));
+    vkf.R = std::clamp(vkf.R, 0.05f, 1.0f);
+
+    vkf.update(getHead());
+    ESP_LOGI(FNAME, "VKF: predict: %f innov:%f R:%f update: %f", vkf.h, innov, vkf.R, vkf.v);
+    if (fabsf(innov) < 5.0f) {
+        // te_vario.set(vkf.v);
+        te_vario.set(_lpf.filter(vkf.v));
+        _polar_sink = Speed2Fly.sink(ias.get());
+        te_netto.set(vkf.v - _polar_sink);
+    }
+
+    if (_history.level() > _avg_filter_idx) {
+        _avg_vario = (getHead() - _history[_avg_filter_idx]) * (10.f / (_avg_filter_idx + 1));  // in m/s
+        // ESP_LOGI(FNAME, "VarioFilter: H:%f 1:%f avg:%f", getHead(), _history[_avg_filter_idx], avg);
+    }
+
+}
+#endif
 
 void VarioFilter::inject(float te_alt) {
     int time = Clock::getMillis();

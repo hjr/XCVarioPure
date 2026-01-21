@@ -4,6 +4,7 @@
 #include "SensorBase.h"
 #include "Filters.h"
 #include "S2F.h"
+#include "average.h"
 
 #include <driver/gpio.h>
 
@@ -36,6 +37,8 @@ class VarioFilter final : public SensorTP<float> {
     // float readCuralt() { return _currentAlt; };   // get current Altitude
 
    private:
+    Average<34, float, float> TEavg;
+	Average<60, float, float> avgTE;
     int16_t _te_filter_idx;
     LowPassFilter _lpf{0.25f};
     int16_t _avg_filter_idx;
