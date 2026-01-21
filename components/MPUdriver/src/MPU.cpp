@@ -138,12 +138,12 @@ int MPU::pi_control(float XCVTemp){
 	// I control with Ki = 1
 	if (fabs(mpu_t_delta) < 1.0 ) {
 		mpu_t_delta_i -= (mpu_t_delta)*1.0;	      // I part
-		std::clamp(mpu_t_delta_i, -180.0f, 180.0f);
+		mpu_t_delta_i = std::clamp(mpu_t_delta_i, -180.0f, 180.0f);
 	}else{
 		mpu_t_delta_i = 0;
 	}
 	mpu_heat_pwm += mpu_t_delta_i;
-	std::clamp(mpu_heat_pwm, 0.0f, 255.0f);
+	mpu_heat_pwm = std::clamp(mpu_heat_pwm, 0.0f, 255.0f);
 
 	// MPU_LOGI("Target T: %.1f XCV T: %.1f MPU T: T=%.1f Delta= %.1f P=%.2f I=%.2f, PWM=%d", mpu_target_temp, XCVTemp, temp, mpu_t_delta, mpu_t_delta_p, mpu_t_delta_i, (int)rint(mpu_heat_pwm) );
 
