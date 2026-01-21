@@ -239,6 +239,9 @@ void readSensors(void *pvParameters)
     int count = 0;
 	int16_t landed = 0; // airborne detection counter
     uint32_t spartse_time;
+    static int max_time = 0;
+    static float avg_delta = 0;
+
 
 	while (1)
 	{
@@ -498,6 +501,7 @@ void readSensors(void *pvParameters)
             }
             extern MessagePool MP;
             ESP_LOGI(FNAME, "MPool in-use:%d, acq-fails: %d", MP.nrUsed(), MP.nrAcqFails());
+            ESP_LOGI(FNAME, "Sensor loop avg: %0.f, max %d", avg_delta, max_time);
 
             // struct timeval tv;
             // gettimeofday(&tv, NULL);
@@ -510,6 +514,14 @@ void readSensors(void *pvParameters)
             // DeviceManager* dm = DeviceManager::Instance();
             // static_cast<TestQuery*>(dm->getProtocol( TEST_DEV2, TEST_P ))->sendTestQuery();  // all 5 seconds on burst
         }
+        int delta = Clock::getMillis() - spartse_time;
+        if (delta > max_time)
+        {
+            max_time = delta;
+            ESP_LOGI(FNAME, "Sensor loop max time: %d ms", max_time);
+        }
+        avg_delta = avg_delta + (delta - avg_delta) * 0.1;
+
 
 		esp_task_wdt_reset();
 		xTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(100));
