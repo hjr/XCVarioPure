@@ -64,7 +64,7 @@ static const RoutingTarget navi_routes[] = {
 static const RoutingTarget fhost_routes[] = {
     {FLARM_DEV, S1_RS232, 0}, {FLARM_DEV, CAN_BUS, 0}, {} };
 static const RoutingTarget xcv_proxy_routes[] = {
-    {NAVI_DEV, S2_RS232, 0}, {FLARM_HOST_DEV, WIFI_APSTA, 8881}, {FLARM_HOST_DEV, BT_SPP, 0}, {} };
+    {NAVI_DEV, S2_RS232, 0}, {FLARM_HOST_DEV, WIFI_APSTA, 8881}, {FLARM_HOST_DEV, BT_SPP, 0}, {FLARM_HOST_DEV, BT_LE, 0}, {} };
 // Mapping table with (one hop): From-Target <> To-Target-List
 static const std::pair<RoutingTarget, const RoutingTarget*> Routes[] = {
     { RoutingTarget(FLARM_DEV, S1_RS232, 0), flarm_routes },
