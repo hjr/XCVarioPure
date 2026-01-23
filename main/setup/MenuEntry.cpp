@@ -12,7 +12,7 @@
 #include "ESPAudio.h"
 #include "sensor.h"
 #include "AdaptUGC.h"
-#include "logdef.h"
+#include "logdefnone.h"
 
 #include <cstdint>
 
@@ -92,23 +92,24 @@ void MenuEntry::SavedDelay(bool showit)
 
 
 // Handle the basics to jump in- and out of setup menu levels
-void MenuEntry::enter()
-{
-	selected = this;
-	if (bits._locked) {
-		return;
-	}
+void MenuEntry::enter() {
+    selected = this;
+    if (bits._locked) {
+        return;
+    }
 
-	// enter a level of setup menu
-	attach(); // set rotary focus
-	if ( isLeaf() && canInline() ) {
-		showhelp(true);
-		bits._is_inline = true;
-	} else {
-		clear();
-		showhelp();
-	}
-	display();
+    // enter a level of setup menu
+    attach();  // set rotary focus
+    if (isLeaf()) {
+        if (canInline()) {
+            showhelp(true);
+            bits._is_inline = true;
+        } else {
+            clear();
+            showhelp();
+        }
+    }
+    display();
 }
 
 void MenuEntry::exit(int ups)
@@ -227,6 +228,7 @@ int MenuEntry::nrOfHelpLines() const
 // returns true when inlining
 bool MenuEntry::showhelp(bool inln)
 {
+	ESP_LOGI(FNAME,"MenuEntry showhelp() %s inline=%d", _title.c_str(), inln );
 	bool ret = true; // inlining w/o help text is always possible
     if( helptext != 0 )
 	{
@@ -282,6 +284,7 @@ bool MenuEntry::showhelp(bool inln)
 
 void MenuEntry::clear()
 {
+	ESP_LOGI(FNAME,"MenuEntry clear() %s", _title.c_str() );
 	MYUCG->setColor(COLOR_BLACK);
 	MYUCG->drawBox(0, 0, dwidth, dheight);
 	MYUCG->setFont(ucg_font_ncenR14_hr);
@@ -291,6 +294,7 @@ void MenuEntry::clear()
 
 void MenuEntry::clearHelpLines() const
 {
+	ESP_LOGI(FNAME,"MenuEntry clearHelpLines() %s", _title.c_str() );
 	int dy = freeBottomLines()*25;
 	MYUCG->setColor(COLOR_BLACK);
 	MYUCG->drawBox(0, dheight-dy, dwidth, dy);
