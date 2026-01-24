@@ -53,10 +53,9 @@ bool AccMPU6050::doRead(vector_f& val) {
 
 // Call temp regulation
 void AccMPU6050::postProcess() {
-    bool ok = false;
-    float xcvTemp = baroSensor->readTemperature(ok);
-    if ( ok ) {
-        _MPUdev.temp_control(xcvTemp);
+    static int count = 0;
+    if ( hasHeatCtlr() && ! (++count%10) ) { // every second
+        temp_control();
     }
     IMU::Process(); // fixme
 }

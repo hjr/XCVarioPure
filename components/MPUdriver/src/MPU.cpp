@@ -20,13 +20,10 @@
 #include "mpu/registers.hpp"
 #include "mpu/types.hpp"
 #include "sdkconfig.h"
-#include "driver/ledc.h"
 
 static const char* TAG = CONFIG_MPU_CHIP_MODEL;
 
 #include "mpu/log.hpp"
-
-#include <algorithm> // for std::clamp
 
 
 
@@ -126,75 +123,6 @@ esp_err_t MPU::reset()
 #endif
 	MPU_LOGI("MPU Reset OKAY!");
 	return ESP_OK;
-}
-
-int MPU::pi_control(float XCVTemp){
-	float temp = getTemperature();
-	float mpu_heat_pwm = 9.0*(mpu_target_temp-XCVTemp)-30;
-	mpu_t_delta = temp - mpu_target_temp;
-	// float mpu_t_delta_p = -mpu_t_delta*100.0;     // P control with Kp=100;
-	mpu_heat_pwm -= mpu_t_delta*100.0;            // P part
-	// To avoid damping of temperature correction, integral correction is only applied when pwm is close enougn to target pwm
-	// I control with Ki = 1
-	if (fabs(mpu_t_delta) < 1.0 ) {
-		mpu_t_delta_i -= (mpu_t_delta)*1.0;	      // I part
-		mpu_t_delta_i = std::clamp(mpu_t_delta_i, -180.0f, 180.0f);
-	}else{
-		mpu_t_delta_i = 0;
-	}
-	mpu_heat_pwm += mpu_t_delta_i;
-	mpu_heat_pwm = std::clamp(mpu_heat_pwm, 0.0f, 255.0f);
-
-	// MPU_LOGI("Target T: %.1f XCV T: %.1f MPU T: T=%.1f Delta= %.1f P=%.2f I=%.2f, PWM=%d", mpu_target_temp, XCVTemp, temp, mpu_t_delta, mpu_t_delta_p, mpu_t_delta_i, (int)rint(mpu_heat_pwm) );
-
-	// if( !(tick_count%30) && abs(mpu_t_delta) > 1.0 ){
-	// 	MPU_LOGW("Warning MPU T deviation > 1°: T=%.1f Delta= %.1f P=%.2f I=%.2f, PWM=%d", temp, mpu_t_delta, mpu_t_delta_p, mpu_t_delta_i, (int)rint(mpu_heat_pwm) );
-	// }
-	return (uint32_t)rint(mpu_heat_pwm);
-}
-
-void MPU::temp_control(float xcvTemp ) {
-	// MPU temperature PI control
-	// MPU_LOGI("temp_control: %.2f °C", xcvTemp );
-	if( mpu_target_temp >= 0.0 ){     // MPU T = -1.0 switches off feature
-		int pwm=pi_control(xcvTemp);
-		ledc_set_duty(LEDC_HIGH_SPEED_MODE, LEDC_CHANNEL_1, pwm );
-		ledc_update_duty(LEDC_HIGH_SPEED_MODE, LEDC_CHANNEL_1);
-	}
-}
-
-void MPU::pwm_init(float target_temp) {
-	mpu_target_temp = target_temp;
-	if ( ! heatctrl_initialized ) {
-		MPU_LOGI("Initialize AHRS heating PWM control");
-		ledc_timer_config_t pwm_timer = {
-				.speed_mode = LEDC_HIGH_SPEED_MODE,
-				.duty_resolution = LEDC_TIMER_8_BIT,
-				.timer_num  = LEDC_TIMER_1,
-				.freq_hz = 500,
-				.clk_cfg = LEDC_AUTO_CLK,
-				.deconfigure = false };
-		ledc_channel_config_t pwm_ch = {
-				.gpio_num = GPIO_NUM_2,
-				.speed_mode = LEDC_HIGH_SPEED_MODE,
-				.channel = LEDC_CHANNEL_1,
-				.intr_type = LEDC_INTR_DISABLE,
-				.timer_sel = LEDC_TIMER_1,
-				.duty = 0,
-				.hpoint = 0,
-				.sleep_mode = LEDC_SLEEP_MODE_NO_ALIVE_NO_PD,
-				.flags = {0}};
-		ledc_channel_config(&pwm_ch);
-		ledc_timer_config(&pwm_timer);
-		temp_control( 45.0 );
-	}
-	mpu_target_temp = target_temp;
-	heatctrl_initialized = true;
-}
-
-void MPU::clearpwm(){
-	gpio_set_direction(GPIO_NUM_2,GPIO_MODE_OUTPUT);
-	gpio_set_level(GPIO_NUM_2, 0 ); // heating off
 }
 
 

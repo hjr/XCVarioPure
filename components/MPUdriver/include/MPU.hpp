@@ -35,8 +35,6 @@
 
 extern SemaphoreHandle_t i2c_mutex;
 
-typedef enum temp_status { MPU_T_UNKNOWN, MPU_T_LOCKED, MPU_T_LOW, MPU_T_HIGH } temp_status_t;
-
 #ifdef CONFIG_MPU_I2C
 #if !defined I2CBUS_COMPONENT_TRUE
 #error ''MPU component requires I2Cbus library. \
@@ -255,22 +253,6 @@ class MPU
     esp_err_t sensors(sensors_t* sensors, size_t extsens_len = 0);
     //! \}
 
-    // Temperature regulator by PI control
-    void pwm_init(float target_temp);   // one time initialize of PMW subsystem, or target temp change
-    int pi_control(float xcvTemp);      // PI control to regulate temperatured
-    void temp_control(float xcvTemp);   // Tick hook
-    void clearpwm(); // ensure heating is off
-
-    temp_status_t getSiliconTempStatus() {
-    	if( abs(mpu_t_delta) < 0.5)
-    		return MPU_T_LOCKED;
-    	else if( mpu_t_delta < -0.5 )
-    		return MPU_T_LOW;
-    	else if( mpu_t_delta > 0.5 )
-    	    return MPU_T_HIGH;
-    	else
-    		return MPU_T_UNKNOWN;
-    };
  protected:
     esp_err_t accelSelfTest(raw_axes_t& regularBias, raw_axes_t& selfTestBias, uint8_t* result);
     esp_err_t gyroSelfTest(raw_axes_t& regularBias, raw_axes_t& selfTestBias, uint8_t* result);
@@ -283,10 +265,6 @@ class MPU
     esp_err_t err;          /*!< Holds last error code */
 
     raw_axes_t accel_factory_trim;
-    float mpu_target_temp = 45.f;
-    float mpu_t_delta = 0;
-    float mpu_t_delta_i = 0;
-    int8_t heatctrl_initialized = false;
 };
 
 }  // namespace mpud
