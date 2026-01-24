@@ -191,10 +191,6 @@ int restore_config(int len, char *data){
 	return( SetupCommon::restoreConfigChanges( len, data ) );
 }
 
-void chg_mpu_target(){
-	if ( accSensor ) accSensor->initHeatCtrl();
-}
-
 static void propagate_caps()
 {
     // when my_caps changes, propagate to peer side
@@ -465,7 +461,7 @@ SetupNG<float>				glider_ground_aa("GLD_GND_AA", 12.0, true, SYNC_FROM_MASTER, P
 SetupNG<Quaternion>			imu_reference("IMU_REFERENCE", Quaternion(), false);
 SetupNG<mpud::raw_axes_t>	gyro_bias("GYRO_BIAS", {} );
 SetupNG<mpud::raw_axes_t>	accl_bias("ACCL_BIAS", {} );
-SetupNG<float>              mpu_temperature("MPUTEMP", 45.0, true, SYNC_FROM_MASTER, PERSISTENT, chg_mpu_target, QUANT_NONE, LIMITS(-1, 60, 1)); // default for AHRS chip temperature (XCV 2023)
+SetupNG<float>              mpu_temperature("MPUTEMP", 45.0, true, SYNC_NONE, PERSISTENT, nullptr, QUANT_NONE, LIMITS(-1, 60, 1)); // default for AHRS chip temperature (XCV 2023)
 SetupNG<int> 			xcv_role("XCVROLE", MASTER_ROLE, false, SYNC_NONE, PERSISTENT, nullptr, QUANT_NONE, LIMITS(MASTER_ROLE, SECOND_ROLE, 1));
 // Bitfield to exchange status on connected devices between master and second
 SetupNG<int> 			my_caps("MACAPS", 0, false, SYNC_NONE, VOLATILE, propagate_caps );

@@ -129,7 +129,7 @@ static int _ate = -1000;
 int IpsDisplay::s2falt = -1;
 int IpsDisplay::tempalt = -2000;
 
-temp_status_t IpsDisplay::siliconTempStatusOld = MPU_T_UNKNOWN;
+uint8_t IpsDisplay::siliconTempStatusOld = ImuSensor::MPU_T_UNKNOWN;
 Point IpsDisplay::screen_edge[4];
 
 static union {
@@ -731,15 +731,15 @@ void IpsDisplay::drawTemperature( int x, int y, float t ) {
 	ucg->setColor( COLOR_WHITE );
 	ucg->setPrintPos(x,y-3);
 	ucg->print(s);
-	if( accSensor && HAS_MPU_TEMP_CONTROL ){   // Color if T unit shows if MPU silicon temperature is locked, too high or too low
+	if( accSensor && accSensor->hasHeatCtlr() ){   // Color if T unit shows if MPU silicon temperature is locked, too high or too low
 		switch( accSensor->getTempStatus() ){
-		case MPU_T_LOCKED:
+		case ImuSensor::MPU_T_LOCKED:
 			ucg->setColor( COLOR_HEADER );
 			break;
-		case MPU_T_LOW:
+		case ImuSensor::MPU_T_LOW:
 			ucg->setColor( COLOR_LBLUE );
 			break;
-		case MPU_T_HIGH:
+		case ImuSensor::MPU_T_HIGH:
 			ucg->setColor( COLOR_RED );
 			break;
 		default:
@@ -997,7 +997,7 @@ void IpsDisplay::drawDisplay(float s2fd_kmh){
     }
 
     // Temperature Value
-	temp_status_t mputemp = (accSensor) ? accSensor->getTempStatus() : temp_status_t::MPU_T_UNKNOWN;  // fixme 
+	uint8_t mputemp = (accSensor) ? accSensor->getTempStatus() : ImuSensor::MPU_T_UNKNOWN; 
     float temp = OAT.get();
 	if( (((int)(temp*10) != tempalt) || (mputemp != siliconTempStatusOld)) && !(tick%12)) {
 		drawTemperature( 4, 30, temp );

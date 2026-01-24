@@ -98,7 +98,7 @@ public:
 	static int s2falt;
 	static bool wireless_alive;
 	static int tempalt;
-	static temp_status_t siliconTempStatusOld;
+	static uint8_t siliconTempStatusOld;
     static Point screen_edge[4];
 
 	static void drawBT();

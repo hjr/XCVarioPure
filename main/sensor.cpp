@@ -653,40 +653,6 @@ void system_startup(void *args){
         return;
     }
 
-    if (accSensor) {
-        // ok a MPU got probed already
-        // add AHRS to my caps
-        CANPeerCaps::addCapability(XcvCaps::AHRS_CAP);
-        ESP_LOGI(FNAME, "MPU setup");
-        if (accSensor->setup()) {
-            vector_f accelG, sum;
-            int samples = 0;
-            vTaskDelay(pdMS_TO_TICKS(200));
-            for (auto i = 0; i < 10; i++) {
-                bool ok = accSensor->doRead(accelG);  // fetch G data
-                if (!ok) {
-                    ESP_LOGE(FNAME, "AHRS acceleration I2C read error");
-                    continue;
-                }
-                samples++;
-                sum += accelG;
-                ESP_LOGI(FNAME, "MPU %.2f", accelG[2]);
-                vTaskDelay(pdMS_TO_TICKS(10));
-            }
-            sum /= samples;
-            float accel = std::sqrtf(sum[0] * sum[0] + sum[1] * sum[1] + sum[2] * sum[2]);
-            char ahrs[10];
-            sprintf(ahrs, "%.2f", accel);
-            logged_tests += "IMU AHRS (" + std::string(ahrs) + "g): ";
-            if (accel > 0.8 && accel < 1.1) {
-                logged_tests += passed_text;
-            } else {
-                logged_tests += failed_text;
-                selftestPassed = false;
-            }
-        }
-    }
-
     // Show configured glider polar
     bool glider_polar_configured = glider_type.get() != glider_type.getDefault() 
             || ! S2F::isPolarEqualTo(MyGliderPolarIndex);
@@ -778,6 +744,44 @@ void system_startup(void *args){
         ESP_LOGI(FNAME, "AHRS key valid=%d", gflags.ahrsKeyValid);
     }
     boot_screen->finish(0);
+
+    if (accSensor) {
+        // ok a MPU got probed already
+        // add AHRS to my caps
+        CANPeerCaps::addCapability(XcvCaps::AHRS_CAP);
+        ESP_LOGI(FNAME, "MPU setup");
+        if (accSensor->setup()) { // after CAN bus self test !
+            vector_f accelG, sum;
+            int samples = 0;
+            vTaskDelay(pdMS_TO_TICKS(200));
+            for (auto i = 0; i < 10; i++) {
+                bool ok = accSensor->doRead(accelG);  // fetch G data
+                if (!ok) {
+                    ESP_LOGE(FNAME, "AHRS acceleration I2C read error");
+                    continue;
+                }
+                samples++;
+                sum += accelG;
+                ESP_LOGI(FNAME, "MPU %.2f", accelG[2]);
+                vTaskDelay(pdMS_TO_TICKS(10));
+            }
+            sum /= samples;
+            float accel = std::sqrtf(sum[0] * sum[0] + sum[1] * sum[1] + sum[2] * sum[2]);
+            char ahrs[10];
+            sprintf(ahrs, "%.2f", accel);
+            logged_tests += "IMU AHRS (" + std::string(ahrs) + "g): ";
+            if (accel > 0.8 && accel < 1.1) {
+                logged_tests += passed_text;
+            } else {
+                logged_tests += failed_text;
+                selftestPassed = false;
+            }
+        }
+        // register IMU sensors always, even on client XCVario
+        SensorRegistry::registerSensor(accSensor);
+        SensorRegistry::registerSensor(gyroSensor);
+    }
+
 
     if ( SetupCommon::isMaster() )
     {
@@ -893,10 +897,6 @@ void system_startup(void *args){
         boot_screen->finish(1);
         boot_screen->finish(2);
     }
-
-    // register IMU sensors always, even on client XCVario
-    if ( accSensor ) SensorRegistry::registerSensor(accSensor);
-    if ( gyroSensor ) SensorRegistry::registerSensor(gyroSensor);
 
     // TE vario "sensor" always needed, but last in line
     bmpVario.setup();
@@ -1086,12 +1086,7 @@ void system_startup(void *args){
 		FLAP = Flap::theFlap(); // check on FLAP pointer further on
 	}
 	if( hardwareRevision.get() != XCVARIO_20 ){
-		gpio_pullup_en( GPIO_NUM_34 );
-		if( accSensor && HAS_MPU_TEMP_CONTROL )
-		{
-			// series 2023 does not have slope support on CAN bus but MPU temperature control
-            accSensor->initHeatCtrl();
-		}
+		gpio_pullup_en( GPIO_NUM_34 ); // fixme gear warning input
 	}
 
 	// enter normal operation
