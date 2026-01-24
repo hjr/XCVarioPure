@@ -21,6 +21,8 @@
 #include <cmath>
 #include <algorithm>
 
+#define FILTER 1
+
 VarioFilter bmpVario; // static instance of it
 
 constexpr int DUTY_CYCLE_MS = 100; // 10Hz
@@ -161,7 +163,7 @@ bool VarioFilter::doRead(float& val) {
     }
 
     // linear prediction and innovation gating
-    const float max_10thsec_step = 3.0f;  // max 30 m/s vertical speed
+    const float max_10thsec_step = 6.0f;  // max 60 m/s vertical speed
     if (accept(curr_altitude, max_10thsec_step)) {
         val = curr_altitude;
         // ESP_LOGI(FNAME, "VarioFilter: accepted alt %f", curr_altitude);
@@ -174,7 +176,7 @@ bool VarioFilter::doRead(float& val) {
 }
 
 // apply filters individually as desired from settings
-#define FILTER 2
+
 #if defined(FILTER) && FILTER == 0
 void VarioFilter::postProcess() {
     static float _errorval = 1.6;
@@ -228,6 +230,37 @@ void VarioFilter::postProcess() {
     _polar_sink = Speed2Fly.sink(ias.get());
     te_netto.set(te - _polar_sink);
 
+    constexpr const float errorval = 1.6;
+    static float averageAlt = 0.f;
+    static float Altitude = 0.f;
+    static float predictAlt = 0.f;
+    static float lastAltitude = 0.f;
+    static float _TEF = 0.f;
+
+    float curr_altitude = getHead();
+	averageAlt += (curr_altitude - averageAlt) * 0.1;
+	float adiff = curr_altitude - Altitude;
+	// ESP_LOGI(FNAME,"VarioFilter new alt %0.1f err %0.1f", _currentAlt, err);
+	float diff = (abs(adiff) * 1000) + 1;
+	if(diff > 1000000){  // more than 100 m altitude diff in 0.1 second not plausible ( > 400 km/h vertical ) -> handled by Kalman filter
+		 ESP_LOGW(FNAME,"TE sensor delta OOB: %f m", diff/10000 );
+	}
+	float err = (abs(curr_altitude - predictAlt) * 1000) + 1;
+	averageAlt += (curr_altitude - averageAlt) * 0.1;
+	float kg = (diff / (err*errorval + diff)) * 0.2;
+	Altitude += (adiff) * kg;
+	float altDiff = Altitude - lastAltitude;
+	// ESP_LOGI(FNAME," altDiff %0.1f diff %0.1f", TE, diff);
+	lastAltitude = Altitude;
+	float TEAVG = TEavg( altDiff / 0.1 ); // in m/s
+	predictAlt = Altitude + (TEAVG * 0.1);
+	_TEF += ((TEAVG - _TEF)) * _lpf.getAlpha();
+
+    te_vario.set(_TEF);
+    // ESP_LOGI(FNAME, "VarioFilter ias: %f", ias.get());
+    _polar_sink = Speed2Fly.sink(ias.get());
+    te_netto.set(_TEF - _polar_sink);
+
     // the big AVG value
     // ESP_LOGI(FNAME, "VarioFilter::postProcess history level: %d avg_idx: %d", _history.level(), _avg_filter_idx);
     if (_history.level() > _avg_filter_idx) {
@@ -236,6 +269,25 @@ void VarioFilter::postProcess() {
     }
 }
 #elif defined(FILTER) && FILTER == 2
+void VarioFilter::postProcess() {
+    // TE vario calculation
+    float te = 0.f;
+    if (_history.level() > _te_filter_idx) {
+        float tecurr = getHead();
+        te = (tecurr - _history[1]) * 10.f;  // in m/s
+    }
+    te_vario.set(_lpf.filter(te));
+    _polar_sink = Speed2Fly.sink(ias.get());
+    te_netto.set(te - _polar_sink);
+
+    // the big AVG value
+    // ESP_LOGI(FNAME, "VarioFilter::postProcess history level: %d avg_idx: %d", _history.level(), _avg_filter_idx);
+    if (_history.level() > _avg_filter_idx) {
+        _avg_vario = (getHead() - _history[_avg_filter_idx]) * (10.f / (_avg_filter_idx + 1));  // in m/s
+        // ESP_LOGI(FNAME, "VarioFilter: H:%f 1:%f avg:%f", getHead(), _history[_avg_filter_idx], avg);
+    }
+}
+#elif defined(FILTER) && FILTER == 3
 void VarioFilter::postProcess() {
     vkf.predict(0.1);
     float innov = getHead() - vkf.h;
