@@ -12,11 +12,11 @@
 class S2F {
 public:
 	S2F( );
-	virtual ~S2F();
+	~S2F();
 	void begin();
 	void calculateOverweight();
 	void modifyPolar();
-	bool IsValid() const;
+	bool IsValid() const { return _valid;};
 	void recalculatePolar();
 	void change_ballast();
 	void change_mc();
@@ -25,21 +25,18 @@ public:
 	float speed( float st, bool circling=false );
 	float getStallSpeed() const { return _stall_speed_ms * 3.6; }
 	float sink( float v );
-	inline float minsink_speed() { return _min_sink_speed; };
+	float minsink_speed() { return _min_sink_speed; };
 	void recalcSinkNSpeeds();
-	static float getBallastPercent();
-	inline float circlingSink(float v) {
-		if( v > _stall_speed_ms * 3.6 * 0.6 )
-			return _circling_sink;
-		else
-			return 0;
-	};
+	float circlingSink(float v);
 	float cw( float v );
+
+private:
+	static float getBallastPercent();
 	void test( void );
 	float getN();
 	float getVn( float v );
+	bool calcValidPolar();
 
-private:
 	float myballast;
 	static float bal_percent;
 	float a0,a1,a2;
@@ -49,6 +46,7 @@ private:
 	float _circling_speed;
 	float _circling_sink;
 	float _stall_speed_ms;
+	bool _valid = false;
 };
 
 extern S2F Speed2Fly;

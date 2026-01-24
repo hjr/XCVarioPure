@@ -56,11 +56,6 @@ void S2F::modifyPolar(){
 	recalcSinkNSpeeds();
 }
 
-bool S2F::IsValid() const
-{
-	return (a2 < 0 && a1 > 0 && a0 < 0);
-}
-
 void S2F::recalculatePolar()
 {
 	ESP_LOGI(FNAME, "S2F::recalculatePolar() bugs: %f ", bugs.get());
@@ -86,6 +81,7 @@ void S2F::recalculatePolar()
 	a0 = a0 * ((bugs.get() + 100.0) / 100.0);
 	a1 = a1 * ((bugs.get() + 100.0) / 100.0);
 	a2 = a2 * ((bugs.get() + 100.0) / 100.0);
+    _valid = calcValidPolar();
 	ESP_LOGI(FNAME, "bugs:%d balo:%.1f%% a0=%f a1=%f  a2=%f s(80)=%f, s(160)=%f", (int)bugs.get(), myballast, a0, a1, a2, sink(80), sink(160));
 }
 
@@ -149,7 +145,16 @@ bool S2F::isPolarEqualTo(int idx)
 
 float S2F::bal_percent = 0;
 
-float S2F::getBallastPercent(){ return bal_percent; }
+float S2F::getBallastPercent() {
+    return bal_percent;
+}
+
+float S2F::circlingSink(float v) {
+    if (v > _stall_speed_ms * 3.6 * 0.6)
+        return _circling_sink;
+    else
+        return 0;
+}
 
 void S2F::calculateOverweight()
 {
@@ -196,15 +201,18 @@ float S2F::getVn( float v ){
 		return _stall_speed_ms;
 }
 
-// v_in : [kmh]
+bool S2F::calcValidPolar() {
+    return (a2 < 0 && a1 > 0 && a0 < 0);
+}
+
+// v_in : [kmh] fixme m/s?
 float S2F::sink( float v_in ) {
-	float v = v_in;
-	float v_stall = _stall_speed_ms * 3.6 * 0.9;
-	if ( v_in < v_stall || !IsValid() ){
+	float v = v_in/3.6f; // airspeed in meters per second
+	float v_stall = _stall_speed_ms * 0.9;
+	if ( v < v_stall || !IsValid() ){
 		// ESP_LOGI(FNAME,"S2F::sink, warning, airspeed %.1f below minimum speed %.1f km/h", v_in, v_stall );
 		return 0.0;
 	}
-	v = v/3.6; // airspeed in meters per second
 	float n=getN();
 	float sqn = std::sqrtf(n);
 	float s = a0*n*sqn + a1*v*n + a2*v*v*sqn;
