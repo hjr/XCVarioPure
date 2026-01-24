@@ -175,7 +175,7 @@ public:
                 if ( _filter ) {
                     fval = _filter->filter(value);
                 }
-                _nvsvar->set(fval, true, false);
+                _nvsvar->set(fval);
             }
         }
     }

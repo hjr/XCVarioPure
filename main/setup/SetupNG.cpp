@@ -247,7 +247,7 @@ SetupNG<float>			gross_weight( "GROSS_WGT", 350, true, SYNC_NONE, VOLATILE ); //
 SetupNG<float>  		bugs( "BUGS", 0.0, true, SYNC_BIDIR, VOLATILE, modifyBugs, QUANT_NONE, LIMITS(0.0, 50, 1));
 
 SetupNG<int>  			cruise_mode( "CRUISE", 0, false, SYNC_BIDIR, VOLATILE, change_cruise ); // use the CruiseMode wrapper to access and modify
-SetupNG<float>  		OAT( "OAT", -1000., false, SYNC_BIDIR, VOLATILE );   // outside air temperature
+SetupNG<float>  		OAT( "OAT", -1000., false, SYNC_BIDIR, VOLATILE );   // outside air temperature, sensor on any side
 SetupNG<float>  		swind_dir( "SWDD", 0.0, false, SYNC_FROM_MASTER, VOLATILE, resetSWindAge );
 SetupNG<float>  		swind_speed( "SWDS", 0.0, false, SYNC_FROM_MASTER, VOLATILE, resetSWindAge );
 SetupNG<float>  		swind_sideslip_lim( "SWSL", 2.0, false, SYNC_FROM_MASTER, PERSISTENT, nullptr, QUANT_NONE, LIMITS(0, 45.0, 0.1));
@@ -265,11 +265,11 @@ SetupNG<float>  		flap_pos( "FLPS", 0.0, false, SYNC_BIDIR, VOLATILE );
 SetupNG<float>  		altitude( "ALTI", 0.0, false, SYNC_FROM_MASTER, VOLATILE );
 SetupNG<float>  		altitude_isa( "ALT_ISA", 0.0, false, SYNC_FROM_MASTER, VOLATILE );
 SetupNG<float>  		ias( "IASV", 0.0, false, SYNC_FROM_MASTER, VOLATILE, calc_tas );
-SetupNG<float>  		tas( "TASV", 0.0, false, SYNC_NONE, VOLATILE );
+SetupNG<float>  		tas( "TASV", 0.0, false, SYNC_NONE, VOLATILE ); // derived from ias + OAT + altitude in calc_tas()
 SetupNG<float>  		gnd_speed( "GNDV", -1.0, false, SYNC_NONE, VOLATILE );
 SetupNG<float>  		te_alt( "TEALT", 0.0, false, SYNC_FROM_MASTER, VOLATILE, feed_te_alt );
-SetupNG<float>  		te_vario( "TEVA", 0.0, false, SYNC_NONE, VOLATILE );
-SetupNG<float>  		te_netto( "TENET", 0.0, false, SYNC_NONE, VOLATILE );
+SetupNG<float>  		te_vario( "TEVA", 0.0, false, SYNC_NONE, VOLATILE ); // derived from te_alt in VarioFilter
+SetupNG<float>  		te_netto( "TENET", 0.0, false, SYNC_NONE, VOLATILE ); // derived from te_alt in VarioFilter
 SetupNG<float>  		slip_angle( "SLANGLE", 0.0, false, SYNC_FROM_MASTER, VOLATILE );
 SetupNG<float>  		battery_voltage( "BATV", 0.0, false, SYNC_FROM_MASTER, VOLATILE );
 
