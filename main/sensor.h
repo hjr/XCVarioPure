@@ -33,7 +33,6 @@ union global_flags {
 
 class CANbus;
 class SerialLine;
-// class ESPRotary;
 class AnalogInput;
 class SetupRoot;
 class WatchDog_C;
@@ -55,8 +54,6 @@ extern float alt_external;
 
 extern int MyGliderPolarIndex;
 extern float meanClimb;
-
-// extern ESPRotary *Rotary;
 
 extern SemaphoreHandle_t spiMutex;
 

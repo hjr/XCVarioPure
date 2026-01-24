@@ -182,7 +182,7 @@ private:
   static vector_f gyro;
   static vector_f petal;
   static float  circle_omega;
-  static double kalXAngle, kalYAngle;
+  // static double kalXAngle, kalYAngle;
 
   static float fallbackToGyro();
   // static void RollPitchFromAccel(double *roll, double *pitch);

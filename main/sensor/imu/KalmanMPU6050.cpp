@@ -37,8 +37,8 @@ vector_f IMU::gyro(0,0,0);
 #define gyroX gyro.a
 #define gyroY gyro.b
 #define gyroZ gyro.c
-double IMU::kalXAngle = 0.0;
-double IMU::kalYAngle = 0.0;
+// double IMU::kalXAngle = 0.0;
+// double IMU::kalYAngle = 0.0;
 float  IMU::fused_yaw = 0;
 vector_f IMU::petal(0,0,0);
 float IMU::circle_omega = 0.f;
