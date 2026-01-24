@@ -278,9 +278,9 @@ void connected_devices_menu_create_interfaceCAN(SetupMenu *top)
     SetupMenuSelect *canmode = new SetupMenuSelect("Datarate", RST_NONE, update_can_datarate, &can_speed);
     top->addEntry(canmode);
     canmode->setHelp("Datarate on high speed serial CAN interace in kbit per second");
-    canmode->addEntry("250 kbit");
-    canmode->addEntry("500 kbit");
-    canmode->addEntry("1000 kbit (default)");
+    canmode->addEntry("250 kbit", CAN_SPEED_250KBIT);
+    canmode->addEntry("500 kbit", CAN_SPEED_500KBIT);
+    canmode->addEntry("1000 kbit (default)", CAN_SPEED_1MBIT);
 }
 
 void connected_devices_menu_create_interfaceOW(SetupMenu *top)

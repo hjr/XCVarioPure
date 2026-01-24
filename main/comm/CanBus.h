@@ -9,7 +9,6 @@ class DataLink;
 
 
 // There is no temperature control for XCV hardware < 23, GPIO Pin there is wired to CAN slope control
-#define HAS_MPU_TEMP_CONTROL (CAN && !CAN->hasSlopeSupport())
 
 // never change, nvs item (!)
 enum CanSpeed : uint8_t { CAN_SPEED_250KBIT = 1, CAN_SPEED_500KBIT, CAN_SPEED_1MBIT };
@@ -34,13 +33,12 @@ public:
     bool selfTest();
 
 private:
-	friend void TransmitTask(void *arg);
 	friend void canRxTask(void *arg);
 
 private:
     void recover();
 	bool sendData(int id, const char *msg, int length, int self = 0);
-	void driverInstall(twai_mode_t mode);
+	void driverInstall(twai_mode_t mode, bool slope_supp);
 	void driverUninstall();
 	gpio_num_t _tx_io;
 	gpio_num_t _rx_io;

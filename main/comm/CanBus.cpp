@@ -128,7 +128,7 @@ void CANbus::ConfigureIntf(int cfg)
 }
 
 // install/reinstall CAN driver in corresponding mode
-void CANbus::driverInstall(twai_mode_t mode) {
+void CANbus::driverInstall(twai_mode_t mode, bool slope_supp) {
     if (_initialized) {
         driverUninstall();
     }
@@ -136,8 +136,8 @@ void CANbus::driverInstall(twai_mode_t mode) {
     ESP_LOGI(FNAME, "default alerts %X", (unsigned int)g_config.alerts_enabled);
     // g_config.alerts_enabled = TWAI_ALERT_TX_FAILED | TWAI_ALERT_BUS_OFF | TWAI_ALERT_ABOVE_ERR_WARN | TWAI_ALERT_BUS_ERROR;
     g_config.alerts_enabled = TWAI_ALERT_ALL;
-    if (_slope_support) {
-        ESP_LOGI(FNAME, "_slope_support is TRUE");
+    if (slope_supp) {
+        ESP_LOGI(FNAME, "set slope support on");
         g_config.bus_off_io = _slope_ctrl;
     }
     g_config.rx_queue_len = 15;  // 1.5x the need of one NMEA sentence
@@ -184,7 +184,7 @@ void CANbus::driverInstall(twai_mode_t mode) {
     if (twai_start() == ESP_OK) {
         ESP_LOGI(FNAME, "Driver started");
         _initialized = true;
-        if (_slope_support) {
+        if (slope_supp) {
             gpio_set_direction(_slope_ctrl, GPIO_MODE_OUTPUT);
         }
     } else {
@@ -227,7 +227,7 @@ bool CANbus::begin()
 
     if ( ! _initialized )
     {
-        driverInstall(TWAI_MODE_NORMAL);
+        driverInstall(TWAI_MODE_NORMAL, _slope_support);
         terminate_receiver = false;
         xTaskCreate(&canRxTask, "canRxTask", 4096, this, 18, &rxTask);
     }
@@ -254,8 +254,7 @@ bool CANbus::selfTest()
     ESP_LOGI(FNAME, "CAN bus selftest");
 
     // Pretend slope control off and probe the reaction on GPIO 2 here
-    _slope_support = true; // this controles the driver installation
-    driverInstall(TWAI_MODE_NO_ACK);
+    driverInstall(TWAI_MODE_NO_ACK, true);
     bool res = false;
     int id = CANTEST_ID;
     delay(100);
