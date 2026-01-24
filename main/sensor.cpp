@@ -845,7 +845,7 @@ void system_startup(void *args){
                 ESP_LOGI(FNAME, "AbsP sensor data test PASSED, D: %f hPa", abs(ba_p - te_p));
                 logged_tests += passed_text;
             }
-            boot_screen->finish(2);
+            boot_screen->finish(1);
         } else {
             ESP_LOGI(FNAME, "Absolute pressure sensor TESTs failed");
         }
@@ -876,7 +876,7 @@ void system_startup(void *args){
             else
             {
                 logged_tests += passed_text;
-                boot_screen->finish(1);
+                boot_screen->finish(2);
             }
             SensorRegistry::registerSensor(asSensor);
         }
@@ -888,11 +888,15 @@ void system_startup(void *args){
             selftestPassed = false;
             asSensor = nullptr;
         }
-
-        // register IMU sensors
-        if ( accSensor ) SensorRegistry::registerSensor(accSensor);
-        if ( gyroSensor ) SensorRegistry::registerSensor(gyroSensor);
     }
+    else {
+        boot_screen->finish(1);
+        boot_screen->finish(2);
+    }
+
+    // register IMU sensors always, even on client XCVario
+    if ( accSensor ) SensorRegistry::registerSensor(accSensor);
+    if ( gyroSensor ) SensorRegistry::registerSensor(gyroSensor);
 
     // TE vario "sensor" always needed, but last in line
     bmpVario.setup();
