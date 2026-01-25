@@ -78,11 +78,19 @@ static void system_menu_create_hardware_type(SetupMenu *top);
 static void system_menu_create_hardware_rotary(SetupMenu *top);
 static void system_menu_create_hardware_ahrs(SetupMenu *top);
 static void system_menu_create_ahrs_calib(SetupMenu *top);
-static void system_menu_create_hardware_ahrs_lc(SetupMenu *top);
 static void system_menu_create_hardware_ahrs_parameter(SetupMenu *top);
 
 
 static char small_buf[32];
+
+static int set_parent_parent_dirty(SetupMenuSelect* p) {
+    p->getParent()->getParent()->setDirty();
+    return 0;
+}
+static int set_parent_dirty(SetupMenuSelect* p) {
+    p->getParent()->setDirty();
+    return 0;
+}
 
 int gload_reset(SetupMenuSelect *p) {
 	if ( p->getSelect() == 1 ) {
@@ -90,7 +98,7 @@ int gload_reset(SetupMenuSelect *p) {
 		gload_neg_max.set(0);
 		airspeed_max.set(0);
 		p->setSelect(0);
-		p->getParent()->setDirty();
+		set_parent_dirty(p);
 	}
 	return 0;
 }
@@ -157,13 +165,6 @@ int config_gear_warning(SetupMenuSelect *p) {
 	return 0;
 }
 
-int upd_screens(SetupMenuSelect *p)
-{
-	p->getParent()->getParent()->setDirty();
-	return 0;
-}
-
-
 int do_display_test(SetupMenuSelect *p) {
 	if (display_test.get()) {
 		MYUCG->setColor(0, 0, 0);
@@ -199,7 +200,7 @@ int select_battery_type(SetupMenuSelect *p) {
 			bat_full_volt.set(13.6); // 100% charge
 		break;
 	}
-	p->getParent()->setDirty();
+	set_parent_dirty(p);
 	return 0;
 }
 
@@ -850,30 +851,40 @@ static void options_menu_create_altimeter(SetupMenu *top) {
 	top->addEntry(alq);
 }
 
-void options_menu_create_flarm(SetupMenu *top) {
-	SetupMenuSelect *flarml = new SetupMenuSelect("Level Threshold", RST_NONE, nullptr, &flarm_warning);
-	flarml->setHelp(
-			"Level of FLARM alarm to enable: 1 is lowest (13-18 sec), 2 medium (9-12 sec), 3 highest (0-8 sec) until impact");
-	flarml->addEntry("Disable", 4);
-	flarml->addEntry("Level 1", 1);
-	flarml->addEntry("Level 2", 2);
-	flarml->addEntry("Level 3", 3);
-	top->addEntry(flarml);
+void options_menu_create_flarm(SetupMenu* top) {
+    if (top->getNrChilds() == 0) {
+        top->setDynContent();
 
-	SetupMenuValFloat *flarmt = new SetupMenuValFloat("Alarm Timeout", "sec", nullptr, false, &flarm_alarm_time);
-	flarmt->setHelp("The time FLARM alarm warning keeps displayed after alarm went off");
-	top->addEntry(flarmt);
+        SetupMenuSelect* flarml = new SetupMenuSelect("Level Threshold", RST_NONE, set_parent_dirty, &flarm_warning);
+        flarml->setHelp("Level of FLARM alarm to enable: 1 is lowest (13-18 sec), 2 medium (9-12 sec), 3 highest (0-8 sec) until impact");
+        flarml->addEntry("Disable", 4);
+        flarml->addEntry("Level 1", 1);
+        flarml->addEntry("Level 2", 2);
+        flarml->addEntry("Level 3", 3);
+        top->addEntry(flarml);
 
-	SetupMenuSelect *flarms = new SetupMenuSelect("Alarm Check", RST_NONE, startFlarmSimulation, nullptr, false, true);
-	flarms->setHelp("Simulate an airplane crossing from left to right with different alarm levels and vertical distance in 5 seconds");
-	flarms->addEntry("Cancel");
-	flarms->addEntry("Cross Deeper");
-	flarms->addEntry("Cross Higher");
-	flarms->addEntry("Head-on Deeper");
-	flarms->addEntry("Overtake Left");
-	flarms->addEntry("Cross Level");
-	flarms->addEntry("Circling Left");
-	top->addEntry(flarms);
+        SetupMenuValFloat* flarmt = new SetupMenuValFloat("Alarm Timeout", "sec", nullptr, false, &flarm_alarm_time);
+        flarmt->setHelp("The time FLARM alarm warning keeps displayed after alarm went off");
+        top->addEntry(flarmt);
+
+        SetupMenuSelect* flarms = new SetupMenuSelect("Alarm Check", RST_NONE, startFlarmSimulation, nullptr, false, true);
+        flarms->setHelp("Simulate an airplane crossing from left to right with different alarm levels and vertical distance in 5 seconds");
+        flarms->addEntry("Cancel");
+        flarms->addEntry("Cross Deeper");
+        flarms->addEntry("Cross Higher");
+        flarms->addEntry("Head-on Deeper");
+        flarms->addEntry("Overtake Left");
+        flarms->addEntry("Cross Level");
+        flarms->addEntry("Circling Left");
+        top->addEntry(flarms);
+    }
+    SetupMenuSelect *tmp_menu = static_cast<SetupMenuSelect*>(top->getEntry(2)); // alarm check
+	if ( flarm_warning.get() != 4 ) {
+		tmp_menu->unlock();
+	}
+	else {
+		tmp_menu->lock();
+	}
 }
 
 void screens_menu_create_extreme_records(SetupMenu *top) {
@@ -943,7 +954,7 @@ static void screens_menu_create_vario(SetupMenu *top) {
 }
 
 void screens_menu_create_gload(SetupMenu *top) {
-    SetupMenuSelect *glmod = new SetupMenuSelect("Screen Mode", RST_NONE, upd_screens, &screen_gmeter);
+    SetupMenuSelect *glmod = new SetupMenuSelect("Screen Mode", RST_NONE, set_parent_parent_dirty, &screen_gmeter);
     glmod->setHelp("Switch off G-Force screen, switch it 'On', or choose it as 'Primary' screen");
     glmod->addEntry(ENABLE_MODE[0].data());
     glmod->addEntry(ENABLE_MODE[1].data());
@@ -983,7 +994,7 @@ void screens_menu_create_gload(SetupMenu *top) {
 }
 
 void screens_menu_create_horizon(SetupMenu *top) {
-	SetupMenuSelect *horizon = new SetupMenuSelect("Horizon", RST_NONE, upd_screens, &screen_horizon);
+	SetupMenuSelect *horizon = new SetupMenuSelect("Horizon", RST_NONE, set_parent_parent_dirty, &screen_horizon);
 	horizon->mkEnable();
 	top->addEntry(horizon);
 }
