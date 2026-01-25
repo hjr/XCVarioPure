@@ -54,7 +54,7 @@ public:
 
 	static bool initSetup();  // returns false if at least one entry was blank
 	static char *getID();
-	static char *getDefaultID(bool enforce_four_diggits = false);
+	static char *getDefaultID();
 	static const char *getFixedID();
 	static SetupCommon * getMember( const char * key );
 	static bool syncEntry( int entry );

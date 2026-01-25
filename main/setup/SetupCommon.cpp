@@ -329,19 +329,14 @@ char * SetupCommon::getID()
 }
 
 // String from crc of MAC address to get a unique ID
-char * SetupCommon::getDefaultID(bool enforce_four_diggits) {
-	uint8_t mac[6];
-	unsigned long  crc = 0;
-	if ( esp_efuse_mac_get_default(mac) == ESP_OK ){
-		crc = mz_crc32(0L, mac, 6);
-	}
-	if( hardwareRevision.get() >= XCVARIO_21 || enforce_four_diggits){
-		sprintf( default_id, "%04d", int(crc % 10000) );
-	}
-	else{
-		sprintf( default_id, "%03d", int(crc % 1000));
-	}
-	return default_id;
+char* SetupCommon::getDefaultID() {
+    uint8_t mac[6];
+    unsigned long crc = 0;
+    if (esp_efuse_mac_get_default(mac) == ESP_OK) {
+        crc = mz_crc32(0L, mac, 6);
+    }
+    sprintf(default_id, "%04d", int(crc % 10000));
+    return default_id;
 }
 
 const char * SetupCommon::getFixedID() {

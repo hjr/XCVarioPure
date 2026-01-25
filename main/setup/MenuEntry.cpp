@@ -10,7 +10,6 @@
 #include "setup/SetupCommon.h"
 #include "Colors.h"
 #include "ESPAudio.h"
-#include "sensor.h"
 #include "AdaptUGC.h"
 #include "logdefnone.h"
 
@@ -63,14 +62,14 @@ void MenuEntry::menuPrintChar(char chr, int ln, int x) const {
     }
 }
 
-void MenuEntry::reBoot(){
-	delete AUDIO;
-	clear();
-	MYUCG->setPrintPos( 10, 50 );
-	MYUCG->print("...rebooting now" );
-	SetupCommon::commitDirty();
-	delay(800);
-	esp_restart();
+void MenuEntry::reBoot(int s) {
+    delete AUDIO;
+    clear();
+    MYUCG->setPrintPos(10, 50);
+    MYUCG->print("...rebooting now");
+    SetupCommon::commitDirty();
+    vTaskDelay(s * 1000 / portTICK_PERIOD_MS);
+    esp_restart();
 }
 
 // void MenuEntry::uprint( int x, int y, const char* str ) {
@@ -282,14 +281,12 @@ bool MenuEntry::showhelp(bool inln)
 	return ret;
 }
 
-void MenuEntry::clear()
-{
-	ESP_LOGI(FNAME,"MenuEntry clear() %s", _title.c_str() );
-	MYUCG->setColor(COLOR_BLACK);
-	MYUCG->drawBox(0, 0, dwidth, dheight);
-	MYUCG->setFont(ucg_font_ncenR14_hr);
-	MYUCG->setPrintPos( 1, 30 );
-	MYUCG->setColor(COLOR_WHITE);
+void MenuEntry::clear() {
+    MYUCG->setColor(COLOR_BLACK);
+    MYUCG->drawBox(0, 0, dwidth, dheight);
+    MYUCG->setFont(ucg_font_ncenR14_hr);
+    MYUCG->setPrintPos(1, 30);
+    MYUCG->setColor(COLOR_WHITE);
 }
 
 void MenuEntry::clearHelpLines() const

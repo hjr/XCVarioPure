@@ -77,7 +77,7 @@ public:
 	bool canInline() const;
 	int nrOfHelpLines() const;
 	bool showhelp(bool inln=false);
-	void clear();
+	static void clear();
 	void clearHelpLines() const;
 	const MenuEntry* findMenu(const char *title) const;
 	void menuPrintLn(const char* str, int sel, int x=1) const;
@@ -85,7 +85,7 @@ public:
 	// void uprint( int x, int y, const char* str );
 	void SavedDelay(bool showit=true);
 	void scheduleReboot() { _restart = true; }
-	void reBoot();
+	static void reBoot(int s=1);
 
 public:
 	static int16_t dwidth;

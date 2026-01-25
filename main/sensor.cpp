@@ -70,7 +70,6 @@
 #include <esp_task_wdt.h>
 #include <esp_task.h>
 #include <soc/sens_reg.h> // needed for adc pin reset
-#include <esp_sleep.h>
 #include <esp_system.h>
 #include <esp_wifi.h>
 #include <esp_flash.h>
@@ -687,6 +686,7 @@ void system_startup(void *args){
     }
 
     // Create CAN based on known HW revision (not the very first boot)
+    // this is why we need a second boot for the very first time
     if (hardwareRevision.get() >= XCVARIO_22) {
         ESP_LOGI(FNAME, "NOW add/test CAN");
         CANbus::createCAN();
@@ -728,7 +728,7 @@ void system_startup(void *args){
         ESP_LOGI(FNAME, "Use WiFi");
         wireless_id.assign("WLAN: ");
     }
-    if (!gflags.schedule_reboot && custom_wireless_id.get().id[0] == '\0')
+    if (custom_wireless_id.get().id[0] == '\0')
     {
         custom_wireless_id.set(SetupCommon::getDefaultID()); // Default ID created from MAC address CRC
     }
@@ -919,24 +919,24 @@ void system_startup(void *args){
 
     // 2021 series 3, or 2022 model with new digital poti CAT5171 also features CAN bus
     // do not move the check unless you know the sequence of HW detection
-    if (!CAN && AUDIO->haveCAT5171()) {
-        // fixme, shouldnt be the HW increased to 22 based on audio poti??
-        // check on CAN available, if 100% reliable this would only be a one shot need.
+    if (!CAN && AUDIO->haveCAT5171() && gflags.schedule_reboot) {
+        // first check on CAN available, if 100% reliable this would only be a one shot need.
         ESP_LOGI(FNAME, "probing CAN");
         CANbus::createCAN();
+        // the self test kills the IMU temp control, so we neet ro reboot
         if (CAN->selfTest()) {
-            // series 2023 has fixed slope control, prior slope bit for AHRS temperature control
+            // series 2023 has fixed slope control, use gpio for AHRS temperature control
             if (CAN->hasSlopeSupport()) {
-                if (hardwareRevision.get() < XCVARIO_22)
+                if (hardwareRevision.get() < XCVARIO_22) {
                     hardwareRevision.set(XCVARIO_22);  // XCV-22, CAN but no AHRS temperature control
+                }
             } else {
                 ESP_LOGI(FNAME, "CAN Bus selftest without RS control OK: set hardwareRevision (XCV-23)");
-                if (hardwareRevision.get() < XCVARIO_23)
+                if (hardwareRevision.get() < XCVARIO_23) {
                     hardwareRevision.set(XCVARIO_23);  // XCV-23, including AHRS temperature control
+                }
             }
         }
-        delete CAN;
-        CAN = nullptr;
     }
 
 	float bat = BatVoltage->get(false);
@@ -974,13 +974,10 @@ void system_startup(void *args){
 
 	// hardware components now got all detected
 	if ( gflags.schedule_reboot ) {
-		boot_screen->finish(3);
-		SetupCommon::commitDirty();
-		sleep(3);
-		esp_restart();
+		MenuEntry::reBoot(3);
 	}
 
-	Speed2Fly.begin();
+    Speed2Fly.begin();
 	Version myVersion;
 	ESP_LOGI(FNAME,"Program Version %s", myVersion.version() );
 	ESP_LOGI(FNAME,"\n\n%s", logged_tests.c_str());

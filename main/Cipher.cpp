@@ -94,7 +94,7 @@ static std::string Decrypt(std::string key, std::string plaintext) {
 
 Cipher::Cipher()
 {
-	_id.assign(SetupCommon::getDefaultID(true)); // four diggits ID
+	_id.assign(SetupCommon::getDefaultID()); // four diggits ID
 }
 
 void Cipher::initTest() {
