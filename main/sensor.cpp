@@ -206,7 +206,7 @@ static void toyFeed(int count) // Called at 5Hz from clientLoop or sensorloop
             ToyNmeaPrtcl->sendXcvGeneric();
             break;
         case OPENVARIO_P:
-            ToyNmeaPrtcl->sendOpenVario(baroP, dynamicP);
+            ToyNmeaPrtcl->sendOpenVario(baroP);
             break;
         case CAMBRIDGE_P:
             ToyNmeaPrtcl->sendCambridge();

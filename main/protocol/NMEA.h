@@ -124,7 +124,7 @@ public:
     void sendXcvRPYL();
     void sendXcvAPENV1();
     void sendXcvGeneric();
-    void sendOpenVario(float baro, float dp);
+    void sendOpenVario(pascal_t baro);
     void sendBorgelt();
     void sendCambridge();
     void sendSeeYouF();

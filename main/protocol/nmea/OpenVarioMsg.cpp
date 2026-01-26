@@ -24,7 +24,7 @@ const ParserEntry OpenVarioMsg::_pt[] = {
 };
 
 
-void NmeaPrtcl::sendOpenVario(float baro, float dp)
+void NmeaPrtcl::sendOpenVario(pascal_t baro)
 {
     if ( _dl.isBinActive() ) {
         return; // no NMEA output in binary mode
@@ -35,7 +35,7 @@ void NmeaPrtcl::sendOpenVario(float baro, float dp)
     char buffer[50];
     std::sprintf(buffer, "%0.1f", Units::pipe(baro, Units::hpa));
     msg->buffer += buffer;
-    std::sprintf(buffer, ",Q,%0.1f", dp);
+    std::sprintf(buffer, ",Q,%0.1f", Units::pipe(QNH.get(), Units::hpa));
     msg->buffer += buffer;
     std::sprintf(buffer, ",E,%0.1f", te_vario.get());
     msg->buffer += buffer;
