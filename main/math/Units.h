@@ -8,8 +8,6 @@
 
 enum class quantity_t : uint8_t;
 
-namespace Units {
-
 // ---------------------------------------------------------------------------
 // Base SI typedefs
 // ---------------------------------------------------------------------------
@@ -19,6 +17,8 @@ using pascal_t   = float;
 using kelvin_t   = float;
 using rad_t      = float;
 using seconds_t  = float;
+
+namespace Units {
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -31,9 +31,9 @@ constexpr float L             = 0.0065f;       // K/m
 constexpr float ft_per_m      = 3.28084f;
 constexpr float m_per_ft      = 1.0f / ft_per_m;
 constexpr float kmh_per_mps   = 3.6f;
-constexpr float mps_per_kmh   = 1.0f / 3.6f;
+constexpr float mps_per_kmh   = 1.0f / kmh_per_mps;
 constexpr float fpm_per_mps   = 196.8504f;
-constexpr float mps_per_fpm   = 1.0f / 196.8504f;
+constexpr float mps_per_fpm   = 1.0f / fpm_per_mps;
 constexpr float deg_per_rad   = 57.2957795f;
 constexpr float rad_per_deg   = 1.0f / deg_per_rad;
 

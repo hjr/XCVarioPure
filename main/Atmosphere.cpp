@@ -64,7 +64,7 @@ float Atmosphere::pascal2kmh(float pascal) {
     return std::sqrtf(2.f * pascal / 1.225f) * 3.6;
 }
 
-float Atmosphere::pascal2ms(float pascal) {
+mps_t Atmosphere::pascal2ms(pascal_t pascal) {
     if ( pascal < 0.0f ) {
         return 0.0f;
     }

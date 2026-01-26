@@ -1,5 +1,7 @@
 #pragma once
 
+#include "math/Units.h"
+
 /*
  * Methods for Athmosphere Model used in Aviation
  *
@@ -13,7 +15,7 @@ float TAS2(float ias, float altitude, float temp);
 // float CAS(float dp);
 float IAS(float tas, float alti, float temp);
 float pascal2kmh(float pascal);
-float pascal2ms(float pascal);
+mps_t pascal2ms(pascal_t pascal);
 float kmh2pascal(float kmh);
 float calcAltitude(float seaLevelPressure, float pressure);
 inline float calcAltitudeISA(float pressure) { return calcAltitude(1013.25f, pressure); }

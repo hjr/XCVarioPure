@@ -28,11 +28,11 @@ float LowPassFilter::filter(float input)
     return _last_output;
 }
 
-float AirSpeedFilter::filter(float input)
+mps_t AirSpeedFilter::filter(pascal_t input)
 {
-    float tmp = Atmosphere::pascal2kmh(_lpf.filter(input));  // fixme -> m/s
+    float tmp = Atmosphere::pascal2ms(_lpf.filter(input));
     // clamp to zero for speeds < 15km/h (to avoid noise around zero)
-    if ( tmp < 15.0f ) {
+    if ( tmp < Units::kmh_to_mps(15.0f) ) {
         tmp = 0.0f;
     }
     return tmp;

@@ -9,6 +9,7 @@
 
 #include "comm/Configuration.h"
 #include "Compass.h"
+#include "math/Units.h"
 #include "setup/SetupCommon.h"
 // #include "logdef.h" // do not include this in a header file
 
@@ -347,7 +348,7 @@ extern SetupNG<float>  		average_climb;
 extern SetupNG<float>  		flap_pos;
 extern SetupNG<float>  		altitude;
 extern SetupNG<float>  		altitude_isa;
-extern SetupNG<float>  		ias;
+extern SetupNG<mps_t>       ias;
 extern SetupNG<float>  		tas;
 extern SetupNG<float>  		gnd_speed;
 extern SetupNG<float>  		te_alt;

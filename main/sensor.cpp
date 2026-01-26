@@ -1144,6 +1144,7 @@ extern "C" void  app_main(void)
     }
     ESP_LOGI(FNAME,"Init all NVS Setup items");
 	SetupCommon::initSetup();
+    Units::setAll(); // set all units according to setup
 
 	// ESP_LOGI(FNAME,"Measure add %ucount", (unsigned int)cycle_count());
 

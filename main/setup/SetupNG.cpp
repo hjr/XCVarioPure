@@ -260,7 +260,7 @@ SetupNG<float>  		average_climb( "AVCL", 0.0, false, SYNC_NONE, VOLATILE );
 SetupNG<float>  		flap_pos( "FLPS", 0.0, false, SYNC_BIDIR, VOLATILE );
 SetupNG<float>  		altitude( "ALTI", 0.0, false, SYNC_FROM_MASTER, VOLATILE );
 SetupNG<float>  		altitude_isa( "ALT_ISA", 0.0, false, SYNC_FROM_MASTER, VOLATILE );
-SetupNG<float>  		ias( "IASV", 0.0, false, SYNC_FROM_MASTER, VOLATILE, calc_tas );
+SetupNG<mps_t>  		ias( "IASV", 0.0, false, SYNC_FROM_MASTER, VOLATILE, calc_tas );
 SetupNG<float>  		tas( "TASV", 0.0, false, SYNC_NONE, VOLATILE ); // derived from ias + OAT + altitude in calc_tas()
 SetupNG<float>  		gnd_speed( "GNDV", -1.0, false, SYNC_NONE, VOLATILE );
 SetupNG<float>  		te_alt( "TEALT", 0.0, false, SYNC_FROM_MASTER, VOLATILE, feed_te_alt );

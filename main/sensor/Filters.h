@@ -8,6 +8,8 @@
 
 #pragma once
 
+#include "math/Units.h"
+
 // Simple filter not knowing the signal history
 
 class SensorBase;
@@ -47,7 +49,7 @@ class AirSpeedFilter : public BaseFilterItf
 {
 public:
     explicit AirSpeedFilter(float alpha) : _lpf(alpha) {}
-    float filter(float input) override;
+    mps_t filter(pascal_t input) override;
 private:
     LowPassFilter _lpf;
 };
