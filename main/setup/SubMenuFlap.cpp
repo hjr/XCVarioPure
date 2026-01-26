@@ -279,7 +279,7 @@ void flap_levels_menu_create(SetupMenu* top) // dynamic!
 {
     SetupMenuValFloat *flgnd = static_cast<SetupMenuValFloat*>(top->getEntry(0));
     if ( ! flgnd ) {
-        new_level_speed = new SetupNG<float>("foo", 100.0f, false, SYNC_NONE, VOLATILE, nullptr, QUANT_HSPEED, &polar_speed_limits);
+        new_level_speed = new SetupNG<float>("foo", 100.0f, false, SYNC_NONE, VOLATILE, nullptr, quantity_t::QUANT_HSPEED, &polar_speed_limits);
         top->setDynContent();
         flgnd = new SetupMenuValFloat("Takeoff Flap",".", nullptr, false, &flap_takeoff  );
         flgnd->setHelp("Flap position to be set for takeoff");

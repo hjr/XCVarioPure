@@ -13,6 +13,7 @@
 #include "math/Units.h"
 #include "AdaptUGC.h"
 #include "sensor.h"
+#include "setup/SetupNG.h"
 #include "logdefnone.h"
 
 #include <cstdio>

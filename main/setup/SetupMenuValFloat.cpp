@@ -103,11 +103,11 @@ void SetupMenuValFloat::displayVal()
 // fixme use si units and adapt only the display to locales
 float SetupMenuValFloat::step( float instep ){
 	float step = 1.0;
-	if( _nvs->quantityType() == QUANT_ALT && alt_unit.get() == ALT_UNIT_FT )
+	if( _nvs->quantityType() == quantity_t::QUANT_ALT && alt_unit.get() == ALT_UNIT_FT )
 		step = 5.0;
 	else
 		step = instep;
-	if( _nvs->quantityType() == QUANT_VSPEED && vario_unit.get() == SPEED_UNIT_KNOTS )
+	if( _nvs->quantityType() == quantity_t::QUANT_VSPEED && vario_unit.get() == SPEED_UNIT_KNOTS )
 		step = Units::Vario2ms( instep*2 );
 	// ESP_LOGI(FNAME,"instep: %f, ut:%d ostep: %f", instep, _nvs->quantityType(), step );
 	return step;

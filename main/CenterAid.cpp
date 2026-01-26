@@ -11,6 +11,7 @@
 #include "protocol/Clock.h"
 #include "math/Trigonometry.h"
 #include "Flarm.h"
+#include "setup/SetupNG.h"
 #include "sensor.h"
 #include "AdaptUGC.h"
 #include "Colors.h"

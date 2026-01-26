@@ -16,6 +16,7 @@
 #include "math/Units.h"
 #include "Colors.h"
 #include "AdaptUGC.h"
+#include "setup/SetupNG.h"
 #include "logdefnone.h"
 
 #include <cmath>

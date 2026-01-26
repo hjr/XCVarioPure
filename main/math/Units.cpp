@@ -1,7 +1,7 @@
 
-#include "math/Units.h"
+#include "Units.h"
 
-#include "math/Floats.h"
+#include "Floats.h"
 #include "setup/SetupNG.h"
 #include "logdefnone.h"
 
@@ -364,27 +364,6 @@ float Units::mcval2knots(float mc)
 	return 0;
 }
 
-const char* Units::VarioUnit()
-{
-	if (vario_unit.get() == VARIO_UNIT_MS)
-	{
-		return ("m/s");
-	}
-	else if (vario_unit.get() == VARIO_UNIT_FPM)
-	{
-		return ("ft/m");
-	}
-	else if (vario_unit.get() == VARIO_UNIT_KNOTS)
-	{
-		return ("kt");
-	}
-	else
-	{
-		ESP_LOGE(FNAME, "Wrong unit for altitude");
-	}
-	return "nan";
-}
-
 const char* Units::QnhUnit(int unit)
 {
 	if (unit == -1)
@@ -406,31 +385,7 @@ const char* Units::QnhUnit(int unit)
 	return "nan";
 }
 
-const char* Units::VarioUnitLong(int unit)
-{
-	int u = unit;
-	if (u == -1)
-	{
-		u = vario_unit.get();
-	}
-	if (u == VARIO_UNIT_MS)
-	{
-		return ("m/s");
-	}
-	else if (u == VARIO_UNIT_FPM)
-	{
-		return ("x 100ft/m");
-	}
-	else if (u == VARIO_UNIT_KNOTS)
-	{
-		return ("knots");
-	}
-	else
-	{
-		ESP_LOGE(FNAME, "Wrong unit for altitude");
-	}
-	return "nan";
-}
+
 
 float Units::Altitude(float alt, int unit)
 {
@@ -521,73 +476,43 @@ const char* Units::AltitudeUnitMeterOrFeet(int unit)
 	return "nan";
 }
 
-const char* Units::DistanceUnit(int unit)
-{
-	int u = unit;
-	if (u == -1)
-	{
-		u = dst_unit.get();
-	}
-	if (u == DST_UNIT_M)
-	{ // kilometers km
-		return ("m");
-	}
-	else if (u == DST_UNIT_FT)
-	{ // hundreds feet
-		return ("ft");
-	}
-	else if (u == DST_UNIT_MILES)
-	{ // Miles mi
-		return ("mi");
-	}
-	else if (u == DST_UNIT_NAUTICAL_MILES)
-	{ // nautical miles
-		return ("nm");
-	}
-	else
-	{
-		ESP_LOGE(FNAME, "Wrong unit for distance %d", u);
-	}
-	return "nan";
-}
-
-float Units::value(float val, e_quantity_t u)
+float Units::value(float val, quantity_t u)
 {
 	switch (u)
 	{
-	case QUANT_NONE:
+	case quantity_t::QUANT_NONE:
 		return val;
-	case QUANT_TEMPERATURE:
+	case quantity_t::QUANT_TEMPERATURE:
 		return TemperatureUnit(val);
-	case QUANT_ALT:
+	case quantity_t::QUANT_ALT:
 		return Altitude(val);
-	case QUANT_HSPEED:
+	case quantity_t::QUANT_HSPEED:
 		return Speed(val);
-	case QUANT_VSPEED:
+	case quantity_t::QUANT_VSPEED:
 		return Vario(val);
-	case QUANT_QNH:
+	case quantity_t::QUANT_QNH:
 		return Qnh(val);
 	default:
 		return val;
 	}
 }
 
-const char* Units::unit(e_quantity_t u)
+const char* Units::unit(quantity_t u)
 {
 	switch (u)
 	{
-	case QUANT_NONE:
+	case quantity_t::QUANT_NONE:
 		return "";
-	case QUANT_TEMPERATURE:
-		return TemperatureUnitStr();
-	case QUANT_ALT:
-		return AltitudeUnit();
-	case QUANT_HSPEED:
-		return SpeedUnitStr();
-	case QUANT_VSPEED:
-		return VarioUnit();
-	case QUANT_QNH:
-		return QnhUnit();
+	case quantity_t::QUANT_TEMPERATURE:
+		return TempUnit->getName();
+	case quantity_t::QUANT_ALT:
+		return AltUnit->getName();
+	case quantity_t::QUANT_HSPEED:
+		return SpeedUnit->getName();
+	case quantity_t::QUANT_VSPEED:
+		return VarioUnit->getName();
+	case quantity_t::QUANT_QNH:
+		return PressureUnit->getName();
 	default:
 		return "";
 	}

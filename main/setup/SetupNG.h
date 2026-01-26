@@ -61,13 +61,13 @@ typedef enum e_netto_mode { NETTO_NORMAL, NETTO_RELATIVE } e_netto_mode_t;
 typedef enum e_screen_mode { SCREEN_OFF, SCREEN_DYNAMIC, SCREEN_ON, SCREEN_PRIMARY } e_screen_mode_t;
 enum e_windanalyser_mode { WA_OFF=0, WA_STRAIGHT=1, WA_CIRCLING=2, WA_BOTH=3, WA_EXTERNAL=4 }; // do nto change (bit-field)
 enum e_logging { LOGG_DISABLE, LOGG_WIND, LOGG_GYRO_MAG, LOGG_BOTH, LOGG_RAW_SENSOR_DATA }; // bit field (!)
-typedef enum { QUANT_NONE, QUANT_TEMPERATURE, QUANT_ALT, QUANT_HSPEED, QUANT_VSPEED, QUANT_QNH, QUANT_MASS } e_quantity_t;
-typedef enum e_temperature_unit { T_CELCIUS, T_FAHRENHEIT, T_KELVIN } e_temperature_unit_t;
-typedef enum e_alt_unit { ALT_UNIT_METER, ALT_UNIT_FT, ALT_UNIT_FL } e_alt_unit_t;
-typedef enum e_dst_unit { DST_UNIT_M, DST_UNIT_FT, DST_UNIT_MILES, DST_UNIT_NAUTICAL_MILES } e_dst_unit_t;
-typedef enum e_speed_unit { SPEED_UNIT_KMH, SPEED_UNIT_MPH, SPEED_UNIT_KNOTS } e_speed_unit_t;
-typedef enum e_vario_unit { VARIO_UNIT_MS, VARIO_UNIT_FPM, VARIO_UNIT_KNOTS } e_vario_unit_t;
-typedef enum e_qnh_unit { QNH_HPA, QNH_INHG } e_qnh_unit_t;
+enum class quantity_t : uint8_t { QUANT_NONE, QUANT_TEMPERATURE, QUANT_ALT, QUANT_HSPEED, QUANT_VSPEED, QUANT_QNH, QUANT_MASS };
+enum temperature_unit_t { T_CELCIUS, T_FAHRENHEIT, T_KELVIN };
+enum alt_unit_t { ALT_UNIT_METER, ALT_UNIT_FT, ALT_UNIT_FL };
+enum dst_unit_t { DST_UNIT_M, DST_UNIT_FT, DST_UNIT_MILES, DST_UNIT_NAUTICAL_MILES };
+enum speed_unit_t { SPEED_UNIT_KMH, SPEED_UNIT_MPH, SPEED_UNIT_KNOTS };
+enum vario_unit_t { VARIO_UNIT_MS, VARIO_UNIT_FPM, VARIO_UNIT_KNOTS };
+enum qnh_unit_t { QNH_HPA, QNH_INHG };
 typedef enum e_compasss_sensor_type { CS_DISABLE=0, CS_I2C=1, CS_CAN=3 } e_compasss_sensor_type_t;
 typedef enum e_sync { SYNC_NONE, SYNC_FROM_MASTER, SYNC_FROM_CLIENT, SYNC_BIDIR } e_sync_t;       // determines if data is synched from/to client. BIDIR means sync at commit from both sides
 typedef enum e_reset { RESET_NO, RESET_YES } e_reset_t;   // determines if data is reset to defaults on factory reset
@@ -131,7 +131,7 @@ class SetupNG: public SetupCommon
 {
 public:
 	SetupNG( const char *akey, T adefault, bool reset=true, e_sync_t sync=SYNC_NONE, e_volatility vol=PERSISTENT,
-			void (* action)()=nullptr, e_quantity_t quant = QUANT_NONE, const limits_t *l = nullptr) :
+			void (* action)()=nullptr, quantity_t quant = quantity_t::QUANT_NONE, const limits_t *l = nullptr) :
 		SetupCommon(akey),
 		_default(adefault),
 		_limt(l)
@@ -143,7 +143,7 @@ public:
 		flags._reset = reset;
 		flags._sync = sync;
 		flags._volatile = vol;
-		flags._quant = quant;
+		flags._quant = (uint8_t)quant;
 		_action = action;
 	}
 	virtual ~SetupNG() = default;
@@ -271,8 +271,8 @@ public:
 		return set( aval, dosync, doAct );
 	}
 
-	e_quantity_t quantityType() {
-		return (e_quantity_t)flags._quant;
+	quantity_t quantityType() {
+		return (quantity_t)flags._quant;
 	}
 
 	T getDefault() const { return _default; }

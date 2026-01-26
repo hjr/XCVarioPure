@@ -569,7 +569,7 @@ void IpsDisplay::initDisplay() {
     ucg->setFont(ucg_font_fub11_hr);
     ucg->setPrintPos(2, 50);
     ucg->setColor(COLOR_HEADER);
-    ucg->print(Units::VarioUnit());
+    ucg->print(VarioUnit->getName());
     if (TOPgauge) {
         TOPgauge->drawUnit();
     }

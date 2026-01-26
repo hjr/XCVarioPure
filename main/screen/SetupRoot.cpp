@@ -14,6 +14,7 @@
 #include "setup/SubMenuAudio.h"
 #include "setup/SubMenuDevices.h"
 #include "setup/SubMenuFlap.h"
+#include "setup/SetupNG.h"
 #include "IpsDisplay.h"
 #include "ESPAudio.h"
 #include "Flarm.h"

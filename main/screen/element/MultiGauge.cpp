@@ -100,11 +100,11 @@ void MultiGauge::drawUnit() const
         [[fallthrough]];
     case GAUGE_TAS_SPEED:
         if (!mode_str) mode_str = "TAS";
-        unit_str = Units::SpeedUnitStr();
+        unit_str = SpeedUnit->getName();
         break;
     case GAUGE_NETTO:
         mode_str = "NET";
-        unit_str = Units::VarioUnit();
+        unit_str = VarioUnit->getName();
         break;
     case MultiGauge::GAUGE_HEADING:
         mode_str = "HDG";

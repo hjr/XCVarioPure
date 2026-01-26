@@ -602,19 +602,23 @@ int varioAvChange(SetupMenuValFloat *p) {
 	return 0;
 }
 
-static int s2fModeChange(SetupMenuSelect *p) {
-	if ( S2FSWITCH ) {
-		S2FSWITCH->updateSwitchSetup();
-	}
-	return 0;
+static int s2fModeChange(SetupMenuSelect* p) {
+    if (S2FSWITCH) {
+        S2FSWITCH->updateSwitchSetup();
+    }
+    return 0;
 }
-static int s2fModeChangeF(SetupMenuValFloat *p) {
-	if ( S2FSWITCH ) {
-		S2FSWITCH->updateSwitchSetup();
-	}
-	return 0;
+static int s2fModeChangeF(SetupMenuValFloat* p) {
+    if (S2FSWITCH) {
+        S2FSWITCH->updateSwitchSetup();
+    }
+    return 0;
 }
 
+int unitChangeS(SetupMenuSelect* p) {
+    Units::setAll();
+    return 0;
+}
 void vario_menu_create_damping(SetupMenu *top) {
 	SetupMenuValFloat *vda = new SetupMenuValFloat("Damping", "sec", vario_setup, false, &vario_delay);
     vda->setExitAction(varioAvChange);
@@ -776,12 +780,12 @@ void vario_menu_create(SetupMenu *vae) {
 }
 
 void options_menu_create_units(SetupMenu *top) {
-	SetupMenuSelect *alu = new SetupMenuSelect("Altimeter", RST_NONE, nullptr, &alt_unit);
+	SetupMenuSelect *alu = new SetupMenuSelect("Altimeter", RST_NONE, unitChangeS, &alt_unit);
 	alu->addEntry("Meter (m)");
 	alu->addEntry("Feet (ft)");
 	alu->addEntry("FL (FL)");
 	top->addEntry(alu);
-	SetupMenuSelect *iau = new SetupMenuSelect("Airspeed", RST_NONE, nullptr, &ias_unit);
+	SetupMenuSelect *iau = new SetupMenuSelect("Airspeed", RST_NONE, unitChangeS, &ias_unit);
 	iau->addEntry("Kilom./hour (Km/h)");
 	iau->addEntry("Miles/hour (mph)");
 	iau->addEntry("Knots (kt)");
@@ -791,16 +795,16 @@ void options_menu_create_units(SetupMenu *top) {
 	vau->addEntry("Feet/min x 100 (fpm)");
 	vau->addEntry("Knots (kt)");
 	top->addEntry(vau);
-	SetupMenuSelect *teu = new SetupMenuSelect("Temperature", RST_NONE, nullptr, &temperature_unit);
-	teu->addEntry("Celcius");
+	SetupMenuSelect *teu = new SetupMenuSelect("Temperature", RST_NONE, unitChangeS, &temperature_unit);
+	teu->addEntry("Celsius");
 	teu->addEntry("Fahrenheit");
 	teu->addEntry("Kelvin");
 	top->addEntry(teu);
-	SetupMenuSelect *qnhi = new SetupMenuSelect("QNH", RST_NONE, nullptr, &qnh_unit);
+	SetupMenuSelect *qnhi = new SetupMenuSelect("QNH", RST_NONE, unitChangeS, &qnh_unit);
 	qnhi->addEntry("Hectopascal");
 	qnhi->addEntry("InchMercury");
 	top->addEntry(qnhi);
-	SetupMenuSelect *dst = new SetupMenuSelect("Distance", RST_NONE, nullptr, &dst_unit);
+	SetupMenuSelect *dst = new SetupMenuSelect("Distance", RST_NONE, unitChangeS, &dst_unit);
 	dst->addEntry("Meter (m)");
 	dst->addEntry("Feet (ft)");
 	top->addEntry(dst);

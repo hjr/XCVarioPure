@@ -22,6 +22,8 @@
 #include <string>
 #include <string_view>
 
+extern int unitChangeS(SetupMenuSelect* p);
+
 static void audio_menu_create_tonestyle(SetupMenu *top);
 static void audio_menu_create_deadband(SetupMenu *top);
 
@@ -100,22 +102,23 @@ static int applyAudioProfile(SetupMenuSelect *p)
 
 static int update_range_entry(SetupMenuValFloat *p)
 {
-    // ESP_LOGI(FNAME,"update_rentry vu:%s", Units::VarioUnit() );
+    ESP_LOGI(FNAME,"update_rentry vu:%s", VarioUnit->getName() );
     range0.assign("Fixed (5  ");
-    range0 += Units::VarioUnit();
+    range0 += VarioUnit->getName();
     range0 += ")";
     range1.assign("Fixed (10 ");
-    range1 += Units::VarioUnit();
+    range1 += VarioUnit->getName();
     range1 += ")";
     range2.assign("Variable (");
     range2 += std::to_string((int)(scale_range.get()));
     range2 += " ";
-    range2 += Units::VarioUnit();
+    range2 += VarioUnit->getName();
     range2 += ")";
     return 0;
 }
 int update_range_entry_s(SetupMenuSelect *p)
 {
+    unitChangeS(p);
     return update_range_entry(nullptr);
 }
 

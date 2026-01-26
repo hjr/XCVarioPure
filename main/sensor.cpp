@@ -1148,7 +1148,7 @@ extern "C" void  app_main(void)
 	// ESP_LOGI(FNAME,"Measure add %ucount", (unsigned int)cycle_count());
 
 	// Instance to a simple esp timer based clock
-	Clock *MY_CLOCK = new Clock(); // no need for delete, lives all time, only static methods used
+	[[maybe_unused]] Clock *MY_CLOCK = new Clock(); // no need for delete, lives all time, only static methods used
 
 	// Figure HW revision first
 	if( hardwareRevision.get() == HW_UNKNOWN ){  // per default we assume there is XCV-20

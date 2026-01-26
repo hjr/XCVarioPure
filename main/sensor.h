@@ -1,7 +1,6 @@
 #pragma once
 
 #include "math/vector_3d_fwd.h"
-#include "S2F.h"
 
 #include <freertos/FreeRTOS.h>
 #include <freertos/semphr.h>

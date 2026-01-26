@@ -71,3 +71,4 @@ protected:
 	int content_id;
 	const char *buzzword = nullptr;
 };
+

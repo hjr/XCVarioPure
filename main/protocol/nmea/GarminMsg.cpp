@@ -9,6 +9,7 @@
 #include "GarminMsg.h"
 
 #include "Flarm.h"
+#include "setup/SetupNG.h"
 #include "sensor.h"
 
 #include <logdefnone.h>

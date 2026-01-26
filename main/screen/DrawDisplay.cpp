@@ -27,6 +27,7 @@
 #include "sensor/imu/KalmanMPU6050.h"
 #include "ESPAudio.h"
 #include "Flarm.h"
+#include "S2F.h"
 #include "sensor.h"
 #include "protocol/WatchDog.h"
 #include "logdefnone.h"
