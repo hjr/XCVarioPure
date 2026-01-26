@@ -9,7 +9,8 @@
 #include "ds18b20.h"
 
 #include "comm/OneWireBus.h"
-#include "sensor.h"
+#include "math/Units.h"
+// #include "sensor.h"
 #include "setup/SetupNG.h"
 #include "logdefnone.h"
 
@@ -86,6 +87,7 @@ bool DS18B20::doRead(float &val)
 
     // 6. Decode temp
     val = (float)((scratch[1] << 8) | scratch[0]) / 16.0f;
+    val += 273.15f; // convert to Kelvin
     return true;
 }
 

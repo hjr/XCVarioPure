@@ -17,6 +17,11 @@ using pascal_t   = float;
 using kelvin_t   = float;
 using rad_t      = float;
 using seconds_t  = float;
+using hertz_t    = float;
+using newton_t   = float;
+using joule_t    = float;
+using watt_t     = float;
+using kilogram_t = float;
 
 namespace Units {
 
@@ -107,11 +112,15 @@ struct unit_t {
     constexpr float apply(float v) const {
         return v * scale + offset;
     }
+    constexpr float from(float v) const {
+        return (v - offset) / scale;
+    }
 	constexpr const char* getName() const {
 		return name.data();
 	}
 };
 
+// ---------------------------------------------------------------------------
 // length
 constexpr unit_t meter      { 1.0f, 0.0f, "m" };
 constexpr unit_t kilometer  { 0.001f, 0.0f, "km" };
@@ -137,13 +146,20 @@ constexpr unit_t inhg       { 0.000295299830714f, 0.0f, "inHg" };
 // temperature
 constexpr unit_t kelvin     { 1.0f, 0.0f, "K" };
 constexpr unit_t celsius    { 1.0f, -273.15f, "'C" };
-constexpr unit_t fahrenheit { 5.0f / 9.0f, -459.67f * 5.0f / 9.0f, "'F" };
+constexpr unit_t fahrenheit { 9.0f / 5.0f, -459.67f, "'F" };
 
-constexpr float convert(float value, const Units::unit_t& from, const Units::unit_t& to)
-{
+constexpr unit_t none       { 1.0f, 0.0f, "%" };
+
+constexpr inline float convert(float value, const Units::unit_t& from, const Units::unit_t& to) {
     return to.apply(value / from.scale - from.offset);
 }
-constexpr float to_display(float si_value, unit_t display);
+constexpr inline float pipe(float v, const unit_t& u) {
+    return u.apply(v);
+}
+constexpr inline float read(const unit_t& u, float v) {
+	return u.from(v);
+}
+
 void setAll();
 
 } // namespace Units
@@ -159,15 +175,12 @@ namespace Units
 {
 	float Speed(float as);
 	float Distance(float d);
-	int SpeedRounded(float as);
 	float kmh2knots(float kmh);
 	float kmh2ms(float kmh);
 	float ms2kmh(float ms);
 	float knots2kmh(float knots);
 	float Airspeed2Kmh(float as);
 	float ActualWingloadCorrection(float v);
-	float TemperatureUnit(float t);
-	const char* TemperatureUnitStr(int idx = -1);
 	float Vario(const float te);
 	float Qnh(float qnh);
 	int QnhRounded(float qnh);

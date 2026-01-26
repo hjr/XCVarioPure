@@ -50,6 +50,7 @@ class AirSpeedFilter : public BaseFilterItf
 public:
     explicit AirSpeedFilter(float alpha) : _lpf(alpha) {}
     mps_t filter(pascal_t input) override;
+    mps_t get() const override { return _lpf.get(); }
 private:
     LowPassFilter _lpf;
 };
@@ -59,7 +60,7 @@ class AltimeterFilter : public BaseFilterItf
 {
 public:
     AltimeterFilter() = default;
-    float filter(float input) override;
+    meter_t filter(meter_t input) override;
 };
 
 // // TE Variometer 

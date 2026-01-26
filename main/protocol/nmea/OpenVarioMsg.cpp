@@ -33,14 +33,14 @@ void NmeaPrtcl::sendOpenVario(float baro, float dp)
 
     msg->buffer = "$POV,P,";
     char buffer[50];
-    std::sprintf(buffer, "%0.1f", baro);
+    std::sprintf(buffer, "%0.1f", Units::pipe(baro, Units::hpa));
     msg->buffer += buffer;
     std::sprintf(buffer, ",Q,%0.1f", dp);
     msg->buffer += buffer;
     std::sprintf(buffer, ",E,%0.1f", te_vario.get());
     msg->buffer += buffer;
     if( OAT.getValid() ) {
-        std::sprintf(buffer, ",T,%0.1f", OAT.get());
+        std::sprintf(buffer, ",T,%0.1f", Units::pipe(OAT.get(), Units::celsius));
         msg->buffer += buffer;
     }
 

@@ -100,8 +100,8 @@ void NmeaPrtcl::sendStdXCVario(float baro, float dp)
     }
     Message *msg = newMessage();
 
-    float temp = OAT.get();
-    if ( temp < -1000.f) {
+    float temp = Units::pipe(OAT.get(), Units::celsius);
+    if ( temp < Units::pipe(-1000.f, Units::celsius) ) {
         temp = 0;
     }
 
@@ -111,7 +111,7 @@ void NmeaPrtcl::sendStdXCVario(float baro, float dp)
     msg->buffer += str;
     std::sprintf(str, ",%1.2f", MC.get());
     msg->buffer += str;
-    msg->buffer += ',' + std::to_string(bugs.get());
+    msg->buffer += ',' + std::to_string((int)bugs.get());
     msg->buffer += ',';
     if (XCVarioMsg::getXcvProtocolVersion() <= 1)
     {
@@ -121,9 +121,9 @@ void NmeaPrtcl::sendStdXCVario(float baro, float dp)
     msg->buffer += ',' + std::to_string(!VCMode.getCMode());
     std::sprintf(str, ",%2.1f", std::roundf(temp * 10.f) / 10.f);
     msg->buffer += str;
-    std::sprintf(str, ",%4.1f", QNH.get());
+    std::sprintf(str, ",%4.1f", Units::pipe(QNH.get(), Units::hpa));
     msg->buffer += str;
-    std::sprintf(str, ",%4.1f", baro);
+    std::sprintf(str, ",%4.1f", Units::pipe(baro, Units::hpa));
     msg->buffer += str;
     std::sprintf(str, ",%.1f", dp);
     msg->buffer += str;
@@ -180,7 +180,9 @@ void NmeaPrtcl::sendXcvAPENV1()
 
     msg->buffer = "$APENV1,";
     char str[50];
-    std::sprintf(str, "%d,%d,0,0,0,%d", fast_iroundf(Units::kmh2knots(ias.get())), fast_iroundf(Units::meters2feet(altitude.get())), fast_iroundf(Units::ms2fpm(te_vario.get())));
+    std::sprintf(str, "%d,%d,0,0,0,%d", fast_iroundf(Units::pipe(ias.get(), Units::kmh)), 
+                                        fast_iroundf(Units::pipe(altitude.get(), Units::foot)), 
+                                        fast_iroundf(Units::pipe(te_vario.get(), Units::fpm)));
     msg->buffer += str;
     msg->buffer += "*" + NMEA::CheckSum(msg->buffer.c_str()) + "\r\n";
     DEV::Send(msg);
@@ -202,13 +204,15 @@ void NmeaPrtcl::sendXcvGeneric()
     
     msg->buffer = "$PTAS1,";
     char str[50];
-    sprintf(str, "%d,0,%d,%d", fast_iroundf(Units::ms2knots(te_vario.get())*10.f)+200, fast_iroundf(Units::meters2feet(altitude_isa.get()))+2000, fast_iroundf(Units::kmh2knots(tas.get())) );
+    sprintf(str, "%d,0,%d,%d", fast_iroundf(Units::pipe(te_vario.get(), Units::kts)*10.f)+200, 
+                                fast_iroundf(Units::pipe(altitude_isa.get(), Units::foot))+2000, 
+                                fast_iroundf(Units::pipe(tas.get(), Units::kts)) );
     msg->buffer += str;
     msg->buffer += "*" + NMEA::CheckSum(msg->buffer.c_str()) + "\r\n";
     DEV::Send(msg);
 }
 
-void NmeaPrtcl::sendXCVCrewWeight(float w)
+void NmeaPrtcl::sendXCVCrewWeight(kilogram_t w)
 {
     if ( _dl.isBinActive() ) {
         return; // no NMEA output in binary mode
@@ -224,7 +228,7 @@ void NmeaPrtcl::sendXCVCrewWeight(float w)
 }
 
 
-void NmeaPrtcl::sendXCVEmptyWeight(float w)
+void NmeaPrtcl::sendXCVEmptyWeight(kilogram_t w)
 {
     if ( _dl.isBinActive() ) {
         return; // no NMEA output in binary mode
@@ -239,7 +243,7 @@ void NmeaPrtcl::sendXCVEmptyWeight(float w)
     }
 }
 
-void NmeaPrtcl::sendXCVWaterWeight(float w)
+void NmeaPrtcl::sendXCVWaterWeight(kilogram_t w)
 {
     if ( _dl.isBinActive() ) {
         return; // no NMEA output in binary mode
@@ -338,7 +342,7 @@ void NmeaPrtcl::sendXCVNmeaHDT( float heading )
       8) Checksum
 
  */
-void NmeaPrtcl::sendXCVNmeaMWV( float angle, float speed )
+void NmeaPrtcl::sendXCVNmeaMWV( float angle, mps_t speed )
 {
     if ( _dl.isBinActive() ) {
         return; // no NMEA output in binary mode
@@ -347,7 +351,7 @@ void NmeaPrtcl::sendXCVNmeaMWV( float angle, float speed )
 
     msg->buffer = "$WIMWV,";
     char str[32];
-    sprintf(str, "%3.1f,T,%3.1f,K,A", angle, speed);
+    sprintf(str, "%3.1f,T,%3.1f,K,A", angle, Units::pipe(speed, Units::kmh));
     ESP_LOGI(FNAME, "WIND: %3.1f°/%3.1f km/h", angle, speed);
     msg->buffer += str;
     msg->buffer += "*" + NMEA::CheckSum(msg->buffer.c_str()) + "\r\n";

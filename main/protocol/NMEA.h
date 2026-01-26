@@ -9,6 +9,7 @@
 #pragma once
 
 #include "ProtocolItf.h"
+#include "math/Units.h"
 
 #include <cstdint>
 #include <functional>
@@ -129,13 +130,13 @@ public:
     void sendSeeYouF();
     void sendSeeYouS();
     void sendSeeYouVal(float val, int idx);
-    void sendXCVCrewWeight(float w);
-    void sendXCVEmptyWeight(float w);
-    void sendXCVWaterWeight(float v);
+    void sendXCVCrewWeight(kilogram_t w);
+    void sendXCVEmptyWeight(kilogram_t w);
+    void sendXCVWaterWeight(kilogram_t v);
     void sendXCVVersion(int v);
     void sendXCVNmeaHDM(float heading);
     void sendXCVNmeaHDT(float heading);
-    void sendXCVNmeaMWV(float angle, float speed);
+    void sendXCVNmeaMWV(float angle, mps_t speed);
     void sendXCV(const char *str) const;
 
     // MagSens transmitter

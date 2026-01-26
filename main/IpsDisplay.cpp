@@ -717,12 +717,11 @@ void IpsDisplay::drawConnection( int16_t x, int16_t y )
 
 // accept temperature in deg C and display in configured unit
 // right-aligned value to x, incl. unit right of x
-void IpsDisplay::drawTemperature( int x, int y, float t ) {
+void IpsDisplay::drawTemperature( int x, int y, kelvin_t t ) {
 	ucg->setFont(ucg_font_fub14_hn, false);
 	char s[32];
 	if( t > -1000. ) {
-		float temp_unit = Units::TemperatureUnit( t );
-		sprintf(s, "%.1f ", std::roundf(temp_unit*10.f)/10.f );
+		sprintf(s, "%.1f ", std::roundf(TempUnit->apply(t)*10.f)/10.f );
 	}
 	else {
 		strcpy(s, "---");
@@ -750,7 +749,7 @@ void IpsDisplay::drawTemperature( int x, int y, float t ) {
 	}
 	ucg->setFont(ucg_font_fub11_hn, false);
 	ucg->setPrintPos(x+ucg->getStrWidth(s)+2,y-3);
-	ucg->printf("%s ", Units::TemperatureUnitStr(temperature_unit.get()));
+	ucg->printf("%s ", TempUnit->getName());
 }
 
 
@@ -860,7 +859,7 @@ void IpsDisplay::drawLoadDisplay( float loadFactor ){
 		
 		ucg->setFont(ucg_font_fub14_hr, true);
 		char buf[60];
-		sprintf( buf, "  %3d %s", Units::SpeedRounded(airspeed_max.get()), SpeedUnit->getName() );
+		sprintf( buf, "  %3d %s", fast_iroundf_positive(SpeedUnit->apply(airspeed_max.get())), SpeedUnit->getName() );
 		int16_t text_width = ucg->getStrWidth( buf );
 		ucg->setPrintPos(DISPLAY_W-10-text_width, LOAD_MIAS_POS+24);
 		ucg->print(buf);
@@ -998,7 +997,7 @@ void IpsDisplay::drawDisplay(float s2fd_kmh){
 
     // Temperature Value
 	uint8_t mputemp = (accSensor) ? accSensor->getTempStatus() : ImuSensor::MPU_T_UNKNOWN; 
-    float temp = OAT.get();
+    kelvin_t temp = OAT.get();
 	if( (((int)(temp*10) != tempalt) || (mputemp != siliconTempStatusOld)) && !(tick%12)) {
 		drawTemperature( 4, 30, temp );
 		tempalt=(int)(temp*10);

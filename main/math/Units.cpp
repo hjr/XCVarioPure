@@ -8,10 +8,6 @@
 namespace Units
 {
 
-constexpr float to_display(float si_value, Units::unit_t display)
-{
-    return display.apply(si_value);
-}
 
 void setAll()
 {
@@ -84,28 +80,6 @@ float Units::Distance(float d)
 	return d;
 }
 
-int Units::SpeedRounded(float as)
-{
-	float ret = 0;
-	if (ias_unit.get() == SPEED_UNIT_KMH)
-	{ // km/h
-		ret = as;
-	}
-	else if (ias_unit.get() == SPEED_UNIT_MPH)
-	{ // mph
-		ret = as * 0.621371;
-	}
-	else if (ias_unit.get() == SPEED_UNIT_KNOTS)
-	{ // knots
-		ret = as * 0.539957;
-	}
-	else
-	{
-		ESP_LOGE(FNAME, "Wrong unit for AS");
-	}
-	return fast_iroundf_positive(ret);
-}
-
 float Units::kmh2knots(float kmh)
 {
 	return (kmh / 1.852);
@@ -150,43 +124,6 @@ float Units::Airspeed2Kmh(float as)
 float Units::ActualWingloadCorrection(float v)
 {
 	return v * std::sqrtf(100.0 / (ballast.get() + 100.0)); // ballast is in percent overweight
-}
-
-float Units::TemperatureUnit(float t)
-{
-	if (temperature_unit.get() == T_CELCIUS)
-	{ // °C
-		return (t);
-	}
-	else if (temperature_unit.get() == T_FAHRENHEIT)
-	{ // °F
-		return ((t * 1.8) + 32);
-	}
-	else if (temperature_unit.get() == T_KELVIN)
-	{ // °K
-		return (t + 273.15);
-	}
-	else
-	{
-		return (t); // default °C
-	}
-}
-
-const char* Units::TemperatureUnitStr(int idx)
-{
-	if (idx == -1)
-	{
-		idx = temperature_unit.get();
-	}
-	if (idx == T_FAHRENHEIT)
-	{ // °F
-		return "'F";
-	}
-	else if (idx == T_KELVIN)
-	{ // °F
-		return "'K";
-	}
-	return "'C"; // default °C
 }
 
 float Units::Vario(const float te)
@@ -427,15 +364,15 @@ float Units::value(float val, quantity_t u)
 	case quantity_t::QUANT_NONE:
 		return val;
 	case quantity_t::QUANT_TEMPERATURE:
-		return TemperatureUnit(val);
+		return TempUnit->apply(val);
 	case quantity_t::QUANT_ALT:
-		return Altitude(val);
+		return AltUnit->apply(val);
 	case quantity_t::QUANT_HSPEED:
-		return Speed(val);
+		return SpeedUnit->apply(val);
 	case quantity_t::QUANT_VSPEED:
-		return Vario(val);
+		return VarioUnit->apply(val);
 	case quantity_t::QUANT_QNH:
-		return Qnh(val);
+		return PressureUnit->apply(val);
 	default:
 		return val;
 	}

@@ -60,7 +60,11 @@ dl_action_t SeeYouMsg::gen_query(NmeaPlugin *plg)
     bool write = NMEA::extractWord(sm->_frame, pos).c_str()[0] == 'W';
     if ( write ) {
         token = NMEA::extractWord(sm->_frame, sm->_word_start[2]);
-        NVS_ITEM[idx]->setCheckRange(std::stof(token));
+        float val = std::stof(token);
+        if ( idx == 3 ) { // QNH
+            val = Units::read(Units::hpa, val);
+        }
+        NVS_ITEM[idx]->setCheckRange(val);
         ESP_LOGI(FNAME, "SeeYou set value %.1f", NVS_ITEM[idx]->get());
     }
     else {
@@ -86,6 +90,9 @@ void send_attr(NmeaPrtcl &nmea, int attridx, float val)
     msg->buffer += ATTR_ITEM[attridx];
     msg->buffer += ",W,";
     char tmp[20];
+    if ( attridx == 3 ) { // QNH
+        val = Units::pipe(val, Units::hpa);
+    }
     std::sprintf(tmp, "%.1f", val);
     msg->buffer += tmp;
     msg->buffer += "*" + NMEA::CheckSum(msg->buffer.c_str()) + "\r\n";
@@ -131,7 +138,7 @@ void NmeaPrtcl::sendSeeYouF()
     msg->buffer += tmp;
     std::sprintf(tmp, ",%.1f", te_vario.get());
     msg->buffer += tmp;
-    std::sprintf(tmp, ",%.1f", ias.get());
+    std::sprintf(tmp, ",%.1f", Units::pipe(ias.get(), Units::kmh));
     msg->buffer += tmp;
     std::sprintf(tmp, ",%.1f", altitude.get());
     msg->buffer += tmp;
@@ -161,7 +168,7 @@ void NmeaPrtcl::sendSeeYouS()
 
     msg->buffer = "$PLXVS,";
     char tmp[50];
-    std::sprintf(tmp, "%.1f", OAT.get());
+    std::sprintf(tmp, "%.1f", Units::pipe(OAT.get(), Units::celsius));
     msg->buffer += tmp;
     std::sprintf(tmp, ",%1d", !VCMode.getCMode());
     msg->buffer += tmp;

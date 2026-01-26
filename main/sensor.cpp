@@ -270,9 +270,9 @@ void readSensors(void *pvParameters)
 
         // the SENS logging
         if (SetupCommon::isMaster()) {
-            float temp = OAT.get();
+            kelvin_t temp = OAT.get();
             if (!OAT.getValid()) {
-                temp = 15 - ((altitude.get() / 100) * 0.65);
+                temp = Units::isa_temperature(altitude.get());
                 // ESP_LOGW(FNAME,"T invalid, using 15 deg");
             }
             // ESP_LOGI(FNAME,"Start");
@@ -1015,9 +1015,9 @@ void system_startup(void *args){
                 ae = alt_external + (QNH.get() - 1013.25f) * 8.2296f; // fixme alt extr
             }
 
-            float baroP;
-			if (baroSensor->doRead(baroP)) {
-            	float qnh_best = Atmosphere::calcQNHPressure(baroP, ae);
+            float baro;
+			if (baroSensor->doRead(baro)) {
+            	float qnh_best = Atmosphere::calcQNHPressure(baro, ae);
             	QNH.set(qnh_best);
             	ESP_LOGI(FNAME, "Auto QNH (direkt) = %4.2f hPa", qnh_best);
 			}

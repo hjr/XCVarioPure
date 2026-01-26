@@ -47,16 +47,16 @@ void NmeaPrtcl::sendBorgelt()
     }
     Message* msg = newMessage();
 
-    float temp = OAT.getValid() ? OAT.get() : 0; 
-    float iaskn = Units::kmh2knots( ias.get() );
+    float temp = OAT.getValid() ? Units::pipe(OAT.get(), Units::celsius) : 0; 
+    float iaskn = Units::pipe(ias.get(), Units::kts);
 
     msg->buffer = "$PBB50,";
     char buffer[50];
-    std::sprintf(buffer, "%03d", fast_iroundf(Units::kmh2knots(tas.get())));
+    std::sprintf(buffer, "%03d", fast_iroundf(Units::pipe(tas.get(), Units::kts)));
     msg->buffer += buffer;
-    std::sprintf(buffer, ",%3.1f", Units::ms2knots(te_vario.get()));
+    std::sprintf(buffer, ",%3.1f", Units::pipe(te_vario.get(), Units::kts));
     msg->buffer += buffer;
-    std::sprintf(buffer, ",%1.1f", Units::mcval2knots(MC.get()));
+    std::sprintf(buffer, ",%1.1f", Units::pipe(MC.get(), Units::kts));
     msg->buffer += buffer;
     std::sprintf(buffer, ",%d", fast_iroundf(iaskn*iaskn));
     msg->buffer += buffer;

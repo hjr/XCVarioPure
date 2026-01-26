@@ -331,7 +331,7 @@ extern SetupNG<float>		gross_weight;
 extern SetupNG<float>  		bugs;
 
 extern SetupNG<int>  		cruise_mode;
-extern SetupNG<float>  		OAT;   // outside temperature
+extern SetupNG<kelvin_t>    OAT;   // outside temperature
 extern SetupNG<float>  		swind_dir;   // straight wind direction
 extern SetupNG<float>  		swind_speed;
 extern SetupNG<float>  		swind_sideslip_lim;
