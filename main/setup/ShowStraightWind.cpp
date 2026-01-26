@@ -21,7 +21,7 @@ Last update: 2021-04-18
 #include "ShowStraightWind.h"
 #include "setup/SetupNG.h"
 #include "AdaptUGC.h"
-#include "Units.h"
+#include "math/Units.h"
 
 #include "logdef.h"
 

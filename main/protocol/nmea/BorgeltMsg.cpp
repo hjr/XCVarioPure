@@ -11,7 +11,7 @@
 #include "comm/DataLink.h"
 #include "comm/Messages.h"
 #include "math/Floats.h"
-#include "Units.h"
+#include "math/Units.h"
 #include "setup/SetupNG.h"
 #include "setup/CruiseMode.h"
 #include "logdefnone.h"

@@ -12,7 +12,7 @@
 #include "protocol/nmea_util.h"
 #include "comm/DataLink.h"
 #include "comm/Messages.h"
-#include "Units.h"
+#include "math/Units.h"
 #include "setup/SetupNG.h"
 #include "logdefnone.h"
 
