@@ -44,10 +44,10 @@ void MultiGauge::draw()
     case GAUGE_TAS_SPEED:
     case GAUGE_GND_SPEED:
     case GAUGE_S2F:
-        fval = Units::Speed(_nvsvar->get());
+        fval = SpeedUnit->apply(_nvsvar->get());
         break;
     case GAUGE_NETTO:
-        fval = Units::Vario(_nvsvar->get()) * 10.f;
+        fval = VarioUnit->apply(_nvsvar->get()) * 10.f;
         break;
     case GAUGE_SLIP:
         fval = _nvsvar->get() * -10.f;

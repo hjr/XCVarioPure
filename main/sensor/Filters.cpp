@@ -15,6 +15,7 @@
 #include "setup/SetupNG.h"
 #include "math/Floats.h"
 #include "sensor.h"
+#include "logdef.h"
 
 #include <cmath>
 
@@ -40,7 +41,7 @@ mps_t AirSpeedFilter::filter(pascal_t input)
 
 float AltimeterFilter::filter(float input)
 {
-    float new_alt = Atmosphere::calcAltitudeISA(input);
+    float new_alt = Atmosphere::calcAltitudeISA(input*100);
     altitude_isa.set(new_alt);
     // fixme units need to move to display layer
 

@@ -10,17 +10,17 @@
 
 namespace Atmosphere {
 
-float TAS(float ias, float baro, float temp);
-float TAS2(float ias, float altitude, float temp);
+mps_t TAS(mps_t ias, meter_t altitude, kelvin_t temp);
+// float TAS2(float ias, float altitude, float temp);
 // float CAS(float dp);
-float IAS(float tas, float alti, float temp);
-float pascal2kmh(float pascal);
+mps_t IAS(mps_t tas, float alti, float temp);
+float pascal2kmh(pascal_t pascal);
 mps_t pascal2ms(pascal_t pascal);
-float kmh2pascal(float kmh);
+pascal_t kmh2pascal(float kmh);
 float calcAltitude(float seaLevelPressure, float pressure);
-inline float calcAltitudeISA(float pressure) { return calcAltitude(1013.25f, pressure); }
-float calcPressure(float seaLevelPressure, float alti);
-inline float calcPressureISA(float alti) { return calcPressure(1013.25f, alti); }
+inline meter_t calcAltitudeISA(pascal_t pressure) { return calcAltitude(Units::P0, pressure); }
+pascal_t calcPressure(pascal_t seaLevelPressure, meter_t alti);
+inline pascal_t calcPressureISA(meter_t alti) { return calcPressure(Units::P0, alti); }
 float calcQNHPressure(float pressure, float altitude);
 
 }; // namespace Atmosphere

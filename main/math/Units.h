@@ -11,7 +11,7 @@ enum class quantity_t : uint8_t;
 // ---------------------------------------------------------------------------
 // Base SI typedefs
 // ---------------------------------------------------------------------------
-using meters_t   = float;
+using meter_t    = float;
 using mps_t      = float;
 using pascal_t   = float;
 using kelvin_t   = float;
@@ -25,9 +25,10 @@ namespace Units {
 // ---------------------------------------------------------------------------
 constexpr float g0            = 9.80665f;      // m/s²
 constexpr float R_air         = 287.05f;       // J/(kg·K)
-constexpr float T0            = 288.15f;       // K
-constexpr float P0            = 101325.0f;     // Pa
-constexpr float L             = 0.0065f;       // K/m
+constexpr float rho0          = 1.225f;        // kg/m³ (ISA sea level)
+constexpr kelvin_t T0         = 288.15f;       // K
+constexpr pascal_t P0         = 101325.0f;     // Pa
+constexpr float L             = 0.0065f;       // K/m (ISA lapse rate)
 constexpr float ft_per_m      = 3.28084f;
 constexpr float m_per_ft      = 1.0f / ft_per_m;
 constexpr float kmh_per_mps   = 3.6f;
@@ -40,8 +41,8 @@ constexpr float rad_per_deg   = 1.0f / deg_per_rad;
 // ---------------------------------------------------------------------------
 // Length
 // ---------------------------------------------------------------------------
-inline meters_t ft_to_m(float ft)      { return ft * m_per_ft; }
-inline float    m_to_ft(meters_t m)    { return m * ft_per_m; }
+inline meter_t  ft_to_m(float ft)     { return ft * m_per_ft; }
+inline float    m_to_ft(meter_t m)    { return m * ft_per_m; }
 
 // ---------------------------------------------------------------------------
 // Speed
@@ -73,12 +74,12 @@ inline float rad_to_deg(rad_t rad)     { return rad * deg_per_rad; }
 // ---------------------------------------------------------------------------
 // ISA atmosphere (troposphere, up to ~11km)
 // ---------------------------------------------------------------------------
-inline pascal_t isa_pressure(meters_t h_m)
+inline pascal_t isa_pressure(meter_t h_m)
 {
     return P0 * powf(1.0f - (L * h_m) / T0, g0 / (R_air * L));
 }
 
-inline kelvin_t isa_temperature(meters_t h_m)
+inline kelvin_t isa_temperature(meter_t h_m)
 {
     return T0 - L * h_m;
 }
@@ -92,6 +93,8 @@ inline mps_t tas_from_q(pascal_t q, kelvin_t T)
     float rho = P0 / (R_air * T);
     return sqrtf(2.0f * q / rho);
 }
+
+
 
 // ---------------------------------------------------------------------------
 // Helper
@@ -109,7 +112,37 @@ struct unit_t {
 	}
 };
 
-constexpr float convert(float value, unit_t from, unit_t to);
+// length
+constexpr unit_t meter      { 1.0f, 0.0f, "m" };
+constexpr unit_t kilometer  { 0.001f, 0.0f, "km" };
+constexpr unit_t mile       { 0.000621371f, 0.0f, "mi" };
+constexpr unit_t naut_mile  { 0.000539957f, 0.0f, "nm" };
+// vertical length
+constexpr unit_t foot       { 3.2808399f, 0.0f, "ft" };
+constexpr unit_t flightlevel { 3.2808399f / 100.0f, 0.0f, "FL" }; // in hundreds of feet
+
+// speed
+constexpr unit_t mps        { 1.0f, 0.0f, "m/s" };
+constexpr unit_t kmh        { 3.6f, 0.0f, "kmh" };
+constexpr unit_t mph        { 2.2369363f, 0.0f, "mph" };
+constexpr unit_t kts        { 1.9438445f, 0.0f, "kt" };
+// vertical speed
+constexpr unit_t fpm        {196.850394f, 0.0f, "ft/m"};
+
+// pressure
+constexpr unit_t pascal     { 1.0f, 0.0f, "Pa" };
+constexpr unit_t hpa        { 0.01f, 0.0f, "hPa" };
+constexpr unit_t inhg       { 0.000295299830714f, 0.0f, "inHg" };
+
+// temperature
+constexpr unit_t kelvin     { 1.0f, 0.0f, "K" };
+constexpr unit_t celsius    { 1.0f, -273.15f, "'C" };
+constexpr unit_t fahrenheit { 5.0f / 9.0f, -459.67f * 5.0f / 9.0f, "'F" };
+
+constexpr float convert(float value, const Units::unit_t& from, const Units::unit_t& to)
+{
+    return to.apply(value / from.scale - from.offset);
+}
 constexpr float to_display(float si_value, unit_t display);
 void setAll();
 
@@ -135,7 +168,6 @@ namespace Units
 	float ActualWingloadCorrection(float v);
 	float TemperatureUnit(float t);
 	const char* TemperatureUnitStr(int idx = -1);
-	const char* SpeedUnitStr(int u = -1);
 	float Vario(const float te);
 	float Qnh(float qnh);
 	int QnhRounded(float qnh);

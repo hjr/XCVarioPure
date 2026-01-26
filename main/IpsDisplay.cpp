@@ -860,7 +860,7 @@ void IpsDisplay::drawLoadDisplay( float loadFactor ){
 		
 		ucg->setFont(ucg_font_fub14_hr, true);
 		char buf[60];
-		sprintf( buf, "  %3d %s", Units::SpeedRounded(airspeed_max.get()), Units::SpeedUnitStr() );
+		sprintf( buf, "  %3d %s", Units::SpeedRounded(airspeed_max.get()), SpeedUnit->getName() );
 		int16_t text_width = ucg->getStrWidth( buf );
 		ucg->setPrintPos(DISPLAY_W-10-text_width, LOAD_MIAS_POS+24);
 		ucg->print(buf);

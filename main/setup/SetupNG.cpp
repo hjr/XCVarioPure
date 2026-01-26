@@ -34,7 +34,7 @@
 #include "Atmosphere.h"
 #include "sensor/VarioFilter.h"
 #include "sensor/imu/ImuSensor.h"
-#include "logdefnone.h"
+#include "logdef.h"
 
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
@@ -152,8 +152,8 @@ void resetCWindAge() {
 static void calc_tas() {
     // IAS to TAS conversion
     if (OAT.getValid() && altitude.getValid()) {
-        tas.set(Atmosphere::TAS2(ias.get(), altitude.get(), OAT.get()));
-        ESP_LOGI(FNAME, "calc_tas: IAS=%.2f, Alt=%.2f, OAT=%.2f -> TAS=%.2f", ias.get(), altitude.get(), OAT.get(), tas.get());
+        tas.set(Atmosphere::TAS(ias.get(), altitude.get(), Units::convert(OAT.get(), Units::celsius, Units::kelvin)));
+        ESP_LOGI(FNAME, "calc_tas: IAS=%.2f, Alt=%.2f, OAT=%.2f -> TAS=%.2f", ias.get(), altitude.get(), Units::convert(OAT.get(), Units::celsius, Units::kelvin), tas.get());
     }
 }
 
@@ -258,10 +258,10 @@ SetupNG<float>  		mag_hdm( "HDM", -1.0, false, SYNC_FROM_MASTER, VOLATILE );
 SetupNG<float>  		mag_hdt( "HDT", -1.0, false, SYNC_FROM_MASTER, VOLATILE );
 SetupNG<float>  		average_climb( "AVCL", 0.0, false, SYNC_NONE, VOLATILE );
 SetupNG<float>  		flap_pos( "FLPS", 0.0, false, SYNC_BIDIR, VOLATILE );
-SetupNG<float>  		altitude( "ALTI", 0.0, false, SYNC_FROM_MASTER, VOLATILE );
-SetupNG<float>  		altitude_isa( "ALT_ISA", 0.0, false, SYNC_FROM_MASTER, VOLATILE );
+SetupNG<meter_t>  		altitude( "ALTI", 0.0, false, SYNC_FROM_MASTER, VOLATILE );
+SetupNG<meter_t>  		altitude_isa( "ALT_ISA", 0.0, false, SYNC_FROM_MASTER, VOLATILE );
 SetupNG<mps_t>  		ias( "IASV", 0.0, false, SYNC_FROM_MASTER, VOLATILE, calc_tas );
-SetupNG<float>  		tas( "TASV", 0.0, false, SYNC_NONE, VOLATILE ); // derived from ias + OAT + altitude in calc_tas()
+SetupNG<mps_t>  		tas( "TASV", 0.0, false, SYNC_NONE, VOLATILE ); // derived from ias + OAT + altitude in calc_tas()
 SetupNG<float>  		gnd_speed( "GNDV", -1.0, false, SYNC_NONE, VOLATILE );
 SetupNG<float>  		te_alt( "TEALT", 0.0, false, SYNC_FROM_MASTER, VOLATILE, feed_te_alt );
 SetupNG<float>  		te_vario( "TEVA", 0.0, false, SYNC_NONE, VOLATILE ); // derived from te_alt in VarioFilter
