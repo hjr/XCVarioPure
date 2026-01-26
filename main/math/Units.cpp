@@ -1,7 +1,73 @@
 
-#include "Units.h"
+#include "math/Units.h"
+
 #include "math/Floats.h"
+#include "setup/SetupNG.h"
 #include "logdefnone.h"
+
+namespace Units
+{
+// length
+constexpr unit_t meter      { 1.0f, 0.0f, "m" };
+constexpr unit_t kilometer  { 0.001f, 0.0f, "km" };
+constexpr unit_t mile       { 0.000621371f, 0.0f, "mi" };
+constexpr unit_t nautical_mile { 0.000539957f, 0.0f, "nm" };
+// vertical length
+constexpr unit_t foot       { 3.2808399f, 0.0f, "ft" };
+constexpr unit_t flightlevel { 3.2808399f / 100.0f, 0.0f, "FL" }; // in hundreds of feet
+
+// speed
+constexpr unit_t mps        { 1.0f, 0.0f, "m/s" };
+constexpr unit_t kmh        { 3.6f, 0.0f, "kmh" };
+constexpr unit_t mph        { 2.2369363f, 0.0f, "mph" };
+constexpr unit_t kts        { 1.9438445f, 0.0f, "kt" };
+// vertical speed
+constexpr unit_t fpm        {196.850394f, 0.0f, "ft/m"};
+
+// pressure
+constexpr unit_t pascal     { 1.0f, 0.0f, "Pa" };
+constexpr unit_t hpa        { 0.01f, 0.0f, "hPa" };
+constexpr unit_t inhg       { 0.000295299830714f, 0.0f, "inHg" };
+
+// temperature
+constexpr unit_t kelvin     { 1.0f, 0.0f, "K" };
+constexpr unit_t celsius    { 1.0f, -273.15f, "'C" };
+constexpr unit_t fahrenheit { 5.0f / 9.0f, -459.67f * 5.0f / 9.0f, "'F" };
+
+constexpr float convert(float value, Units::unit_t from, Units::unit_t to)
+{
+    return to.apply(value / from.scale - from.offset);
+}
+
+constexpr float to_display(float si_value, Units::unit_t display)
+{
+    return display.apply(si_value);
+}
+
+void setAll()
+{
+	AltUnit = (alt_unit.get() == ALT_UNIT_FT) ? &foot :
+              (alt_unit.get() == ALT_UNIT_FL) ? &flightlevel : &meter;
+	SpeedUnit = (ias_unit.get() == SPEED_UNIT_MPH) ? &mph :
+	            (ias_unit.get() == SPEED_UNIT_KNOTS) ? &kts : &kmh;
+	VarioUnit = (vario_unit.get() == VARIO_UNIT_KNOTS) ? &kts :
+                (vario_unit.get() == VARIO_UNIT_FPM) ? &fpm : &mps;
+	TempUnit = (temperature_unit.get() == T_FAHRENHEIT) ? &fahrenheit :
+               (temperature_unit.get() == T_KELVIN) ? &kelvin : &celsius;
+	DistanceUnit = (dst_unit.get() == DST_UNIT_FT) ? &foot :
+                   (dst_unit.get() == DST_UNIT_MILES) ? &mile :
+                   (dst_unit.get() == DST_UNIT_NAUTICAL_MILES) ? &nautical_mile : &meter;
+	PressureUnit = (qnh_unit.get() == QNH_INHG) ? &inhg : &hpa;
+}
+
+}
+
+const Units::unit_t *AltUnit;
+const Units::unit_t *SpeedUnit;
+const Units::unit_t *VarioUnit;
+const Units::unit_t *TempUnit;
+const Units::unit_t *DistanceUnit;
+const Units::unit_t *PressureUnit;
 
 float Units::Speed(float as)
 {
