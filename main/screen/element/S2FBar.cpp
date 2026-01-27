@@ -28,11 +28,16 @@ S2FBar::S2FBar(int16_t cx, int16_t cy, int16_t width, int16_t gap) :
     MYUCG->setFont(ucg_font_fub11_hn);
 }
 
-// v : IAS in configured unit
-// right-aligned to value in 25 font size, no unit
-void S2FBar::drawSpeed(float v)
+// v : IAS [m/s]
+// right-aligned to value in 25 font size, no unit displayed
+void S2FBar::drawSpeed(mps_t v)
 {
-	int airspeed = fast_iroundf(v);
+	int16_t airspeed = fast_iroundf(SpeedUnit->apply(v));
+    if ( airspeed == _prev_s2f_speed && !_dirty) {
+        return;
+    }
+
+    _prev_s2f_speed = airspeed;
     if ( _prev_s2f_level == 0 ) {
 	    MYUCG->setColor(COLOR_DGREEN);
     }
@@ -85,34 +90,40 @@ void S2FBar::drawArrow(int16_t x, int16_t y, int16_t level, bool del)
 
 // speed to fly delta given in kmh, s2fd > 0 means speed up
 // bars dice up 10 kmh steps
-void S2FBar::draw(int s2fd)
+void S2FBar::draw(mps_t s2fd, mps_t s2f_speed)
 {
-    int16_t level = s2fd / 10; // dice up into 10 kmh steps
+    int16_t level = s2fd / LEVEL_DELTA; // dice up into 10 kmh steps
 
     // draw max. three bars, then change color of the last one to red
     level = std::clamp((int)level, -4, 4);
     if ( _dirty ) {
         // force redraw of all
         _prev_s2f_level = 0;
-        _dirty = false;
     }
 
     // ESP_LOGI(FNAME,"s2fbar %d %d", s2fd, level);
-    if (level == _prev_s2f_level) {
-        return;
-    }
-    ESP_LOGI(FNAME,"S2FBar::draw s2fd: %d level: %d prev: %d", s2fd, level, _prev_s2f_level);
+    if (level != _prev_s2f_level) {
+        ESP_LOGI(FNAME,"S2FBar::draw s2fd: %d level: %d prev: %d", s2fd, level, _prev_s2f_level);
 
-    int16_t inc = (level - _prev_s2f_level > 0) ? 1 : -1;
-    for (int16_t i = _prev_s2f_level + ((_prev_s2f_level == 0 || _prev_s2f_level * inc > 0) ? inc : 0);
-         i != level + ((i * inc < 0) ? 0 : inc); i += inc)
-    {
-        if (i != 0)
+        int16_t inc = (level - _prev_s2f_level > 0) ? 1 : -1;
+        for (int16_t i = _prev_s2f_level + ((_prev_s2f_level == 0 || _prev_s2f_level * inc > 0) ? inc : 0);
+            i != level + ((i * inc < 0) ? 0 : inc); i += inc)
         {
-            drawArrow(_ref_x, _ref_y + (i > 0 ? 1 : -1) * _gap_h, i, i * inc < 0);
-            // ESP_LOGI(FNAME,"s2fbar draw %d,%d", i, (i*inc < 0)?0:inc);
+            if (i != 0)
+            {
+                drawArrow(_ref_x, _ref_y + (i > 0 ? 1 : -1) * _gap_h, i, i * inc < 0);
+                // ESP_LOGI(FNAME,"s2fbar draw %d,%d", i, (i*inc < 0)?0:inc);
+            }
         }
+        _dirty = true; // redraw number
+    }
+    _prev_s2f_level = level;
+
+
+    // draw additional speed value if given
+    if ( s2f_speed > 0.0f ) {
+        drawSpeed(s2f_speed);
     }
 
-    _prev_s2f_level = level;
+    _dirty = false;
 }

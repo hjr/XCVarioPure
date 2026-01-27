@@ -126,7 +126,6 @@ static int16_t LOAD_MIAS_POS = 0;
 AdaptUGC *IpsDisplay::ucg = 0;
 
 static int _ate = -1000;
-int IpsDisplay::s2falt = -1;
 int IpsDisplay::tempalt = -2000;
 
 uint8_t IpsDisplay::siliconTempStatusOld = ImuSensor::MPU_T_UNKNOWN;
@@ -591,7 +590,6 @@ void IpsDisplay::redrawValues()
 {
 	// ESP_LOGI(FNAME,"IpsDisplay::redrawValues()");
 	tempalt = -2000;
-	s2falt = -1;
 	flags.wireless_alive = false;
     if (MCgauge) {
         MCgauge->forceRedraw();
@@ -894,12 +892,11 @@ void IpsDisplay::drawDisplay(float s2fd_kmh){
 		screens_init |= INIT_DISPLAY_RETRO;
 	}
 	tick++;
-	// ESP_LOGI(FNAME,"drawDisplay  TE=%0.1f IAS:%d km/h", te, airspeed  );
 
 	// todo integrate better into screen element
-    float te_ms = te_vario.get();
-    float te_avg_ms = bmpVario.getAvgVario();
-    float polar_sink_ms = bmpVario.getPolarSink();
+    mps_t te_ms = te_vario.get();
+    mps_t te_avg_ms = bmpVario.getAvgVario();
+    mps_t polar_sink_ms = bmpVario.getPolarSink();
 	if ( VCMode.isNetto() ) {
 		te_ms -= polar_sink_ms;
 		te_avg_ms -= polar_sink_ms; // average
@@ -909,24 +906,17 @@ void IpsDisplay::drawDisplay(float s2fd_kmh){
 		te_avg_ms += Speed2Fly.circlingSink( ias.get() );
 	}
 
-	// Unit adaption for mph and knots
-	float s2f = Units::Speed( s2f_ideal.get() );
-	float s2fd = Units::Speed( s2fd_kmh );
-	// int airspeed = fast_iroundf_positive(Units::Airspeed( airspeed_kmh ));
-
     // average Climb
     if (!(tick % 2)) {
         MAINgauge->drawFigure(te_avg_ms);
     }
 
     // S2F bar
-    if ((s2falt != s2f || !(tick % 11)) && S2FBARgauge) {
+    if (!(tick % 11) && S2FBARgauge) {
         // static float s=0; // check the bar code
         // s2fd = sin(s) * 42.;
         // s+=0.04;
-        S2FBARgauge->draw(s2fd);
-        S2FBARgauge->drawSpeed(s2f);
-        s2falt = (int)s2f;
+        S2FBARgauge->draw(Speed2Fly.getDelta(), s2f_ideal.get());
     }
 
     // MC val
