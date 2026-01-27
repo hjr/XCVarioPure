@@ -85,8 +85,8 @@ void MenuEntry::SavedDelay(bool showit)
 		MYUCG->setPrintPos(1, dheight-3);
 		MYUCG->setColor( COLOR_WHITE );
 		MYUCG->print("Saved");
+		vTaskDelay(pdMS_TO_TICKS(650));
 	}
-	vTaskDelay(pdMS_TO_TICKS(800));
 }
 
 
