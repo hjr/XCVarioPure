@@ -17,19 +17,67 @@
 
 extern AdaptUGC *MYUCG;
 
+char SetupMenuValFloat::_val_str[50];
+
+
+static float valueAsQuantity(float val, quantity_t q)
+{
+	switch (q)
+	{
+	case quantity_t::QUANT_NONE:
+		return val;
+	case quantity_t::QUANT_TEMPERATURE:
+		return TempUnit->apply(Units::C_to_K(val));
+	case quantity_t::QUANT_ALT:
+		return AltUnit->apply(val);
+	case quantity_t::QUANT_HSPEED:
+		return SpeedUnit->apply(Units::kmh_to_mps(val));
+	case quantity_t::QUANT_VSPEED:
+		return VarioUnit->apply(val);
+	case quantity_t::QUANT_QNH:
+		return PressureUnit->apply(val);
+	default:
+		return val;
+	}
+}
+
+static const char* unitFromQuantity(quantity_t q)
+{
+	switch (q)
+	{
+	case quantity_t::QUANT_NONE:
+		return "";
+	case quantity_t::QUANT_TEMPERATURE:
+		return TempUnit->getName();
+	case quantity_t::QUANT_ALT:
+		return AltUnit->getName();
+	case quantity_t::QUANT_HSPEED:
+		return SpeedUnit->getName();
+	case quantity_t::QUANT_VSPEED:
+		return VarioUnit->getName();
+	case quantity_t::QUANT_QNH:
+		return PressureUnit->getName();
+	default:
+		return "";
+	}
+}
+
+
 SetupMenuValFloat::SetupMenuValFloat( const char* title, const char *unit, int (*action)( SetupMenuValFloat *p ), 
 	bool end_menu, SetupNG<float> *anvs, e_restart_mode_t restart, bool sync, bool live_update ) :
 	MenuEntry(title),
 	_action(action),
 	_nvs(anvs)
 {
-	// ESP_LOGI(FNAME,"SetupMenuValFloat( %s ) ", title.c_str() );
+	ESP_LOGI(FNAME,"SetupMenuValFloat( %s ) ", title );
 	_title.assign(title);
 	if( unit != 0 && *unit != '\0' ) {
 		_unit = unit;
+        ESP_LOGI(FNAME,"unit %s", _unit );
 	}
 	else if ( _nvs ) {
-		_unit = Units::unit( _nvs->quantityType() );
+		_unit = unitFromQuantity( _nvs->quantityType() );
+        ESP_LOGI(FNAME,"nvs unit %s", _unit );
 	}
 
 	assert(_nvs); // the implementation does not allow
@@ -57,7 +105,7 @@ void SetupMenuValFloat::enter()
 
 const char *SetupMenuValFloat::value() const
 {
-	float uval = Units::value( _value, _nvs->quantityType() );
+	float uval = valueAsQuantity( _value, _nvs->quantityType() );
 	// ESP_LOGI(FNAME,"value() ulen: %d val: %f, utype: %d unitval: %f", strlen( _unit ), _nvs->get(), _nvs->quantityType(), uval  );
 	sprintf(_val_str,"%0.*f %s   ", bits._precision, uval, _unit );
 	return _val_str;
@@ -100,17 +148,20 @@ void SetupMenuValFloat::displayVal()
 	}
 }
 
-// fixme use si units and adapt only the display to locales
-float SetupMenuValFloat::step( float instep ){
-	float step = 1.0;
-	if( _nvs->quantityType() == quantity_t::QUANT_ALT && alt_unit.get() == ALT_UNIT_FT )
-		step = 5.0;
-	else
-		step = instep;
-	if( _nvs->quantityType() == quantity_t::QUANT_VSPEED && vario_unit.get() == SPEED_UNIT_KNOTS )
-		step = Units::Vario2ms( instep*2 );
-	// ESP_LOGI(FNAME,"instep: %f, ut:%d ostep: %f", instep, _nvs->quantityType(), step );
-	return step;
+float SetupMenuValFloat::step(float instep) {
+    if (_nvs->hasLimits()) {
+        // use defined step if available
+        return _nvs->getStep();
+    }
+    // float step = 1.0;
+    // if( _nvs->quantityType() == quantity_t::QUANT_ALT && alt_unit.get() == (int)alt_unit_t::ALT_UNIT_FT )
+    // 	step = 5.0;
+    // else
+    // 	step = instep;
+    // if( _nvs->quantityType() == quantity_t::QUANT_VSPEED && vario_unit.get() == SPEED_UNIT_KNOTS )
+    // 	step = Units::Vario2ms( instep*2 );
+    // // ESP_LOGI(FNAME,"instep: %f, ut:%d ostep: %f", instep, _nvs->quantityType(), step );
+    return instep;
 }
 
 void SetupMenuValFloat::rot( int count )
@@ -124,7 +175,7 @@ void SetupMenuValFloat::rot( int count )
 	else if( _value > _max )
 		_value = _max;
 
-	_nvs->set(_value );
+	_nvs->set(_value, bits._live_update, bits._live_update );
 	displayVal();
 	if( _action != 0 ) {
 		(*_action)( this );

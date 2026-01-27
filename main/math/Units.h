@@ -190,13 +190,7 @@ namespace Units
 	float ms2fpm(float ms);
 	float Vario2ms(float var);
 	float mcval2knots(float mc);
-	const char *QnhUnit(int unit = -1);
-	float Altitude(float alt, int unit = -1);
 	float meters2feet(float m);
 	float feet2meters(float f);
 	float meters2FL(float m);
-	const char *AltitudeUnit(int unit = -1);
-	const char *AltitudeUnitMeterOrFeet(int unit = -1);
-	float value(float val, quantity_t u);
-	const char *unit(quantity_t u);
 };

@@ -34,7 +34,7 @@ public:
 
 private:
     float step( float instep );
-    mutable char _val_str[20]; // buffer for returned string
+    static char _val_str[50]; // buffer for returned string by value()
 	float _min = 0., _max = 1., _step = .1;
 	float _value_safe = 0;
 	const char *_unit = "";

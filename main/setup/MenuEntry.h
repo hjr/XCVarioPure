@@ -21,7 +21,7 @@ struct bitfield {
     bool _locked              :1; // cannot enter
     bool _is_inline           :1; // inline menu
 	bool _never_inline        :1; // never inline menu
-    bool _live_update         :1;
+    bool _live_update         :1; // update value on rotation
     uint8_t _precision        :4;
 };
 
