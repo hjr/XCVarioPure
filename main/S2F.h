@@ -7,45 +7,52 @@
 
 #pragma once
 
+#include "math/Units.h"
+#include "sensor/Filters.h"
 
+// #define S2F_Test 1
 
 class S2F {
 public:
-	S2F( );
-	~S2F();
+	S2F() = default;
+	~S2F() = default;
 	void begin();
-	void calculateOverweight();
 	void modifyPolar();
-	bool IsValid() const { return _valid;};
-	void recalculatePolar();
-	void change_ballast();
-	void change_mc();
+	// bool IsValid() const { return _valid;};
+	void changeBallast();
+	void changeMc();
+	void changeDamping();
 	void setPolar();
 	static bool isPolarEqualTo(int idx);
-	float speed( float st, bool circling=false );
-	float getStallSpeed() const { return _stall_speed_ms * 3.6; }
-	float sink( float v );
-	float minsink_speed() { return _min_sink_speed; };
-	void recalcSinkNSpeeds();
-	float circlingSink(float v);
-	float cw( float v );
+	mps_t calculate(mps_t net_vario, bool circling=false ); // call after sensor reads 10 Hz
+	mps_t getDelta() const { return _s2f_delta; }
+	mps_t getStallSpeed() const { return _stall_speed; }
+	mps_t sink( mps_t v );
+	mps_t minsink_speed() { return _min_sink_speed; };
+	mps_t circlingSink(mps_t v);
+	float cw( mps_t v );
+	void test(void);
 
 private:
+	void recalculatePolar();
+	void calculateOverweight();
+	void recalcSinkNSpeeds();
 	static float getBallastPercent();
-	void test( void );
 	float getN();
 	float getVn( float v );
 	bool calcValidPolar();
 
-	float myballast;
+	float myballast = 1.f;
 	static float bal_percent;
-	float a0,a1,a2;
-	float w0,w1,w2;
-	float _min_sink_speed;
-	float _min_sink;
-	float _circling_speed;
-	float _circling_sink;
-	float _stall_speed_ms;
+	float a0=0, a1=0, a2=0;
+	float w0=0, w1=0, w2=0;
+	mps_t _min_sink_speed = 0.f;
+	mps_t _min_sink = 0.f;
+	mps_t _circling_speed = 0.f;
+	mps_t _circling_sink = 0.f;
+	mps_t _stall_speed = 0.f;
+	mps_t _s2f_delta = 0.f;
+	LowPassFilter _lpf_delta{0.1f};
 	bool _valid = false;
 };
 

@@ -28,6 +28,7 @@
 #include <cstdio>
 #include <cstring>
 #include <cstdlib>
+#include <algorithm>
 
 //#define AUDIO_DEBUG 1
 
@@ -1150,15 +1151,11 @@ void Audio::dactask()
                 else {
                     // speed to fly is the parameter for audio
                     // map s2f_delta to -5..+5, instead of heaving another set of min/max variables.
-                    audio_value = -s2f_delta/10.0;
+                    ESP_LOGI(FNAME, "S2F delta: %.1f km/h", Speed2Fly.getDelta());
+                    audio_value = - Speed2Fly.getDelta() / Units::kmh2ms(10.f);
                     max = 5.0; // +/- 50km/h range
                 }
-                if( audio_value > max ) {
-                    audio_value = max;
-                } else if( audio_value < -max ) {
-                    audio_value = -max;
-                }
-
+                audio_value = std::clamp( audio_value, -max, max );
                 calculateFrequency(audio_value);
             }
         }

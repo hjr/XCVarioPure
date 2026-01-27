@@ -17,7 +17,7 @@
 extern AdaptUGC *MYUCG;
 
 
-void McCready::draw(float mc)
+void McCready::draw(mps_t mc)
 {
     if ( std::abs(mc-_mcval) > 0.05 || _dirty ) {
         _mcval = mc;
@@ -30,7 +30,7 @@ void McCready::draw(float mc)
             MYUCG->setFont(ucg_font_fub14_hn, false);
         }
         char s[32];
-        std::sprintf(s, "%1.1f", Units::Vario(mc) );
+        std::sprintf(s, "%1.1f", VarioUnit->apply(mc) );
         MYUCG->print(s);
         int16_t fl = MYUCG->getStrWidth(s);
         MYUCG->setFont(ucg_font_fub11_hr, false);

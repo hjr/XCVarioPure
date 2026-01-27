@@ -971,8 +971,12 @@ void system_startup(void *args){
 		MenuEntry::reBoot(3);
 	}
 
+    // Initialize the glider polar data and Speed2Fly calculation
     Speed2Fly.begin();
+#ifdef S2F_Test
     Speed2Fly.test();
+#endif
+
 	Version myVersion;
 	ESP_LOGI(FNAME,"Program Version %s", myVersion.version() );
 	ESP_LOGI(FNAME,"\n\n%s", logged_tests.c_str());

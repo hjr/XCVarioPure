@@ -112,11 +112,15 @@ int vario_setup(SetupMenuValFloat *p) {
 	return 0;
 }
 
+static int s2f_change_action(SetupMenuValFloat *p) {
+    Speed2Fly.changeDamping();
+    return 0;
+}
+
 static int set_rotary_increment(SetupMenuSelect *p) {
 	Rotary->updateIncrement(p->getSelect());
 	return 0;
 }
-
 
 int speedcal_change(SetupMenuValFloat *p) {
 	if (asSensor)
@@ -650,7 +654,7 @@ void vario_menu_create_meanclimb(SetupMenu *top) {
 }
 
 void vario_menu_create_s2f(SetupMenu *top) {
-	SetupMenuValFloat *vds2 = new SetupMenuValFloat("Damping", "sec", nullptr, false, &s2f_delay);
+	SetupMenuValFloat *vds2 = new SetupMenuValFloat("Damping", "sec", s2f_change_action, false, &s2f_delay);
 	vds2->setHelp("Time constant of S2F low pass filter");
 	top->addEntry(vds2);
 

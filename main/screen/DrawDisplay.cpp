@@ -152,7 +152,7 @@ void UiEventLoop(void *arg)
                     acceleration = 0.3; // limit acceleration effect to minimum 0.3g
                 }
                 // accelerated and ballast(ed) stall speed
-                float acc_stall = Speed2Fly.getStallSpeed() * sqrt(acceleration);
+                mps_t acc_stall = Speed2Fly.getStallSpeed() * sqrt(acceleration);
                 if (ias.get() < acc_stall && ias.get() > acc_stall * 0.7 && airborne.get()) {
                     if (!stall_warning_active) {
                         MBOX->pushMessage(4, "! STALL !", 20); // 20 sec

@@ -199,7 +199,7 @@ void PolarGauge::drawPolarSink(float a)
 
 void PolarGauge::drawAVG(){
     // average climb in [m/sec]
-    float avclimb = Units::Vario( average_climb.get() );
+    float avclimb = VarioUnit->apply(average_climb.get());
     float delta = avclimb - _old_avc;
 
     ESP_LOGI(FNAME, "drawAVG: av=%.2f delta=%.2f", avclimb, delta);
