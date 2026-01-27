@@ -318,7 +318,7 @@ SetupNG<float>  		mean_climb_major_change( "MEAN_CLMC", 0.5, true, SYNC_BIDIR, P
 SetupNG<float>  		airfield_elevation( "ELEVATION", NO_ELEVATION, true, SYNC_BIDIR, PERSISTENT, nullptr, quantity_t::QUANT_ALT, LIMITS(NO_ELEVATION, 3000, 1));
 SetupNG<float>  		s2f_deadband( "DEADBAND_S2F", 10.0, true, SYNC_BIDIR, PERSISTENT, nullptr, quantity_t::QUANT_HSPEED, LIMITS(.0, 25.0, 1));
 SetupNG<float>  		s2f_deadband_neg( "DB_S2F_NEG", -10.0, true, SYNC_BIDIR, PERSISTENT, nullptr, quantity_t::QUANT_HSPEED, LIMITS(-25.0, .0, 1));
-SetupNG<float>  		s2f_delay( "S2F_DELAY", 5.0, true, SYNC_BIDIR, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(0.10001, 10.0, 0.1));
+SetupNG<float>  		s2f_delay( "S2F_DELAY", 5.0, true, SYNC_BIDIR, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(2.0, 12.0, 0.5));
 SetupNG<float>  		factory_volt_adjust("FACT_VOLT_ADJ", 0.00815, false, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(-25.0, 25.0, 0.01));
 
 SetupNG<int>  			display_type( "DISPLAY_TYPE",  UNIVERSAL );
@@ -425,7 +425,7 @@ SetupNG<int>			vario_mode("VAMOD", CRUISE_ONLY_NETTO, true, SYNC_NONE, PERSISTEN
 SetupNG<int>			airspeed_sensor("PTYPE", AirspeedSensor::PS_NONE, false);
 SetupNG<int>			cruise_audio_mode("CAUDIO", 0 );
 SetupNG<int>			netto_mode("NETMOD", NETTO_RELATIVE, true, SYNC_NONE, PERSISTENT, change_cruise);  // regard polar sink
-SetupNG<float>			v_max("VMAX", 270, true, SYNC_FROM_MASTER, PERSISTENT, 0, quantity_t::QUANT_HSPEED, &polar_speed_limits);
+SetupNG<float>			v_max("VMAX", 270, true, SYNC_BIDIR, PERSISTENT, nullptr, quantity_t::QUANT_HSPEED, &polar_speed_limits);
 static const limits_t pos_g_limits = {1.0, 8.0, 0.1};
 static const limits_t neg_g_limits = {-8.0, -1.0, 0.1};
 SetupNG<float>			gload_pos_limit_low("GLOADPLL", 3, true, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, &pos_g_limits);
