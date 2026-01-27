@@ -17,8 +17,12 @@
 #include "logdefnone.h"
 
 #include <cstdio>
+#include <algorithm>
 
 extern AdaptUGC *MYUCG;
+
+static const Units::unit_t* AU[] = { &Units::meter, &Units::foot, &Units::flightlevel };
+static const int16_t QantTable[] = { 0, 2, 5, 10, 20 };
 
 Altimeter::Altimeter(int16_t cx, int16_t cy) :
     ScreenElement(cx, cy)
@@ -26,39 +30,17 @@ Altimeter::Altimeter(int16_t cx, int16_t cy) :
     MYUCG->setFont(ucg_font_fub25_hr, true);
     _char_width = MYUCG->getStrWidth("2");
     _char_height = MYUCG->getFontAscent() - MYUCG->getFontDescent() - 4;
-    _unit = _unit_drawn = alt_unit.get();
+    _unit = _unit_drawn = (alt_unit_t)alt_unit.get();
 }
 
 void Altimeter::drawUnit()
 {
-    // copy unit
-    _unit = _unit_drawn = alt_unit.get();
-
-    // decode quantization
-    switch (alt_quantization.get())
-    {
-    case ALT_QUANT_DISABLE:
-        _quant = 0;
-        break;
-    case ALT_QUANT_5:
-        _quant = 5;
-        break;
-    case ALT_QUANT_10:
-        _quant = 10;
-        break;
-    case ALT_QUANT_20:
-        _quant = 20;
-        break;
-    default:
-        _quant = 2;
-    }
-
     // 'm', 'ft', ..
     char s[16];
     MYUCG->setFont(ucg_font_fub11_hr, true);
     MYUCG->setColor( COLOR_HEADER );
     MYUCG->setPrintPos(_ref_x+5, _ref_y+3+16);
-    sprintf(s, "%s  ", Units::AltitudeUnit(_unit_drawn));
+    sprintf(s, "%s  ", AU[(int)_unit_drawn]->getName());
     MYUCG->print(s); // e.g. 'm', 'ft' ..
 
     // QNH, QFE
@@ -76,14 +58,15 @@ void Altimeter::drawUnit()
     MYUCG->print(dmode);
 
     // QNH number
-    float qnh = QNH.get();
+    pascal_t qnh = QNH.get();
     if( gflags.standard_setting == true ){
-        qnh = 1013;
+        qnh = Units::P0;
     }
+    qnh = PressureUnit->apply(qnh);
     if( qnh_unit.get() == QNH_INHG )
-        sprintf(s, "%.2f ", Units::Qnh(qnh));
+        sprintf(s, "%.2f ", qnh);
     else
-        sprintf(s, "%d ", Units::QnhRounded(qnh));
+        sprintf(s, "%d ", fast_iroundf_positive(qnh));
     MYUCG->setPrintPos(_ref_x+5, _ref_y+3-16);
     MYUCG->setColor( COLOR_WHITE );
     MYUCG->print(s);
@@ -110,28 +93,32 @@ void Altimeter::draw(float alt_m)
     // moment to take over a changed unit, or quant
     if (_dirty)
     {
-        drawUnit();
+        // copy unit
+        _unit = _unit_drawn = (alt_unit_t)alt_unit.get();
+
+        // decode quantization
+        _quant = QantTable[std::clamp(alt_quantization.get(), 0, 4)];
     }
 
     // unit conversion
-    int16_t unitalt = _unit;
+    alt_unit_t unitalt = _unit;
     if (gflags.standard_setting) // respect autotransition switch
     {
-        unitalt = ALT_UNIT_FL;
+        unitalt = alt_unit_t::ALT_UNIT_FL;
     }
-    if (_unit_drawn != unitalt) // update unit display on an autotransition
+    if (_unit_drawn != unitalt || _dirty) // update unit display on an autotransition
     {
         _unit_drawn = unitalt;
         _dirty = true; // need to draw all figures
         drawUnit();
     }
-    altitude = Units::Altitude(altitude, unitalt);
+    altitude = AltUnit->apply(altitude);
     ESP_LOGI(FNAME,"A3 %f", altitude);
     int alt = (int)(altitude);
 
     // track quantization
     int used_quant = _quant;
-    if (unitalt == ALT_UNIT_FL)
+    if (unitalt == alt_unit_t::ALT_UNIT_FL)
     {                   // may change dynamically in case of autotransition enabled
         used_quant = 1; // we use 1 for FL, this rolls smooth as slowly
     }

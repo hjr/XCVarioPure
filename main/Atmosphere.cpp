@@ -55,15 +55,15 @@ mps_t Atmosphere::TAS(mps_t ias, meter_t altitude, kelvin_t temp) {
 // }
 
 mps_t Atmosphere::IAS(mps_t tas, float alti, float temp) {
-    return (tas / std::sqrtf(1.225f / (calcPressureISA(alti) * 100.0f / (287.058f * (273.15f + temp)))));
+    return (tas / std::sqrtf(1.225f / (calcPressureISA(alti) * 100.0f / (287.058f * (Units::C2K + temp)))));
 }
 
-float Atmosphere::pascal2kmh(pascal_t baro) {
-    if ( baro < 0.0f ) {
-        return 0.0f;
-    }
-    return std::sqrtf(2.f * baro / 1.225f) * 3.6;
-}
+// float Atmosphere::pascal2kmh(pascal_t baro) {
+//     if ( baro < 0.0f ) {
+//         return 0.0f;
+//     }
+//     return std::sqrtf(2.f * baro / 1.225f) * 3.6;
+// }
 
 mps_t Atmosphere::pascal2ms(pascal_t baro) {
     if ( baro < 0.0f ) {
@@ -76,7 +76,7 @@ pascal_t Atmosphere::kmh2pascal(float kmh) {
     return ((kmh / 3.6) * (kmh / 3.6)) * 1.225 / 2.;
 }
 
-float Atmosphere::calcAltitude(float SeaLevel_Pres, float pressure) {
+float Atmosphere::calcAltitude(pascal_t SeaLevel_Pres, pascal_t pressure) {
     return (44330.0f * (1.0f - std::powf((float)(pressure) / SeaLevel_Pres, (1.0f / 5.255f))));
 }
 

@@ -42,7 +42,7 @@ public:
 	const char* name() const override { return "BME280_SPI"; }
 	bool probe() override;
 	bool setup() override;
-    bool selfTest( float& p, float& t ) override;
+    bool selfTest(float& t, pascal_t& p) override;
 
 	float readTemperature( bool& success ) override;
 	bool doRead(float &val) override;

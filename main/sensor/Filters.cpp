@@ -39,13 +39,12 @@ mps_t AirSpeedFilter::filter(pascal_t input)
     return tmp;
 }
 
-float AltimeterFilter::filter(float input)
+meter_t AltimeterFilter::filter(pascal_t input)
 {
-    float new_alt = Atmosphere::calcAltitudeISA(input*100);
+    meter_t new_alt = Atmosphere::calcAltitudeISA(input);
     altitude_isa.set(new_alt);
-    // fixme units need to move to display layer
 
-    if ( (alt_unit.get() == ALT_UNIT_FL) 
+    if ( ((alt_unit_t)alt_unit.get() == alt_unit_t::ALT_UNIT_FL) 
         || ((fl_auto_transition.get() == 1) 
             && ((int)Units::meters2FL(new_alt) + (int)gflags.standard_setting > transition_alt.get())) ) {
         // FL, always standard or above transition altitude

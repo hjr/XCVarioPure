@@ -104,7 +104,7 @@ std::string logged_tests;
 float baroP=0; // barometric pressure
 
 
-float dynamicP; // Pitot
+pascal_t dynamicP; // Pitot
 
 // global color variables for adaptable display variant
 uint8_t g_col_background; // black
@@ -122,8 +122,6 @@ global_flags gflags = {};
 
 int   ccp = 60;
 float alt_external;
-float as2f = 0;
-float s2f_delta = 0;
 
 const constexpr char passed_text[] = "PASSED\n";
 const constexpr char failed_text[] = "FAILED\n";
@@ -290,7 +288,7 @@ void readSensors(void *pvParameters)
                 vector_3d acc = accSensor->getHead();
                 vector_3d gyro = gyroSensor->getHead();
                 sprintf(log + pos, "%d.%03d,%d,%.3f,%.3f,%.3f,%.2f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f", (int)(tv.tv_sec % (60 * 60 * 24)),
-                        (int)(tv.tv_usec / 1000), delta, baroSensor->getHead(), teSensor->getHead(), asSensor->getHead(), temp, 
+                        (int)(tv.tv_usec / 1000), delta, baroSensor->getHead()/100.f, teSensor->getHead()/100.f, asSensor->getHead(), temp, 
                         acc.x, acc.y, acc.z, gyro.x, gyro.y, gyro.z);
                 if (theCompass) {
                     pos = strlen(log);
@@ -372,10 +370,10 @@ void readSensors(void *pvParameters)
 
         // Trace airborne status
 		if( (count % 5) == 0 ) {
-			if ( ! airborne.get() && (ias.get() >  Speed2Fly.getStallSpeed() + 7) ) {
+			if ( ! airborne.get() && (ias.get() >  Speed2Fly.getStallSpeed() * 1.1f) ) {
 				airborne.set(true);
 			}
-			else if ( airborne.get() && (ias.get() <  5) ) {
+			else if ( airborne.get() && (ias.get() <  Units::read(Units::kmh, 5.f)) ) {
 				if ( landed++ > 20 ) { // ias < 5 km/h for 10 seconds
 					airborne.set(false);
 				}
@@ -471,12 +469,7 @@ void readSensors(void *pvParameters)
 		}
 
         // Need to be done for client and main vario
-        as2f = Speed2Fly.speed(te_netto.get(), !VCMode.getCMode());
-
-        s2f_ideal.set(fast_iroundf(as2f));
-        // low pass damping
-        s2f_delta = s2f_delta + ((as2f - ias.get()) - s2f_delta) * (1 / (s2f_delay.get() * 10));
-        // ESP_LOGI( FNAME, "te: %f, polar_sink: %f, netto %f, s2f: %f  delta: %f", aTES2F, polar_sink, te_netto.get(), as2f, s2f_delta );
+        s2f_ideal.set(Speed2Fly.calculate(te_netto.get(), !VCMode.getCMode()));
 
         if (OneWIRE) {
             // read one wire sensors
@@ -786,6 +779,45 @@ void system_startup(void *args){
     if ( SetupCommon::isMaster() )
     {
         // Configure sensors only on master XCVario
+        // Configure airspeed sensor
+        asSensor = AirspeedSensor::autoSetup();
+        logged_tests += "AS " + std::string(asSensor->name()) +  " offset: ";
+        if (asSensor)
+        {
+            ESP_LOGI(FNAME, "AS Speed sensor %s self test PASSED", asSensor->name());
+            bool as_ok = asSensor->setup();
+            pascal_t p;
+            if (asSensor->doRead(p) && p > 60.f) {
+                dynamicP = p;
+            }
+            ias.set(Atmosphere::pascal2ms(dynamicP));
+
+            // Initialize the airborne status
+            airborne.set(ias.get() > Speed2Fly.getStallSpeed());
+
+            ESP_LOGI(FNAME, "Aispeed sensor current speed=%f", ias.get());
+            if (!as_ok && (ias.get() < Units::kmh_to_mps(50)))
+            {
+                MBOX->pushMessage(2, "AS Sensor: NEED ZERO");
+                logged_tests += failed_text;
+                selftestPassed = false;
+            }
+            else
+            {
+                logged_tests += passed_text;
+                boot_screen->finish(1);
+            }
+            SensorRegistry::registerSensor(asSensor);
+        }
+        else
+        {
+            ESP_LOGE(FNAME, "Error with air speed pressure sensor, no working sensor found!");
+            MBOX->pushMessage(2, "AS Sensor: NOT FOUND");
+            logged_tests += notfound_text;
+            selftestPassed = false;
+            asSensor = nullptr;
+        }
+
         // Configure pressure sensors
         ESP_LOGI(FNAME, "Absolute pressure sensors init, detect type of sensor type..");
         logged_tests += "Baro Sensor: ";
@@ -825,7 +857,7 @@ void system_startup(void *args){
         if (tetest && batest) {
             ESP_LOGI(FNAME, "Both absolute pressure sensor TESTs SUCCEEDED, now test deltas");
             logged_tests += "TE/Baro Sens. T d. <4'C: ";
-            if ((abs(ba_t - te_t) > 4.0) && (ias.get() < 50)) {  // each sensor has deviations, and new PCB has more heat sources
+            if ((abs(ba_t - te_t) > 400.0) && !airborne.get()) {  // each sensor has deviations, and new PCB has more heat sources
                 selftestPassed = false;
                 ESP_LOGE(FNAME, "Severe T delta > 4 °C between Baro and TE sensor: °C %f", abs(ba_t - te_t));
                 MBOX->pushMessage(1, "TE/Baro Temp: Unequal");
@@ -840,7 +872,7 @@ void system_startup(void *args){
                             // consider
             }
             logged_tests += "TE/Baro Sens. P d. <2hPa: ";
-            if ((abs(ba_p - te_p) > delta) && (ias.get() < 50)) {
+            if ((abs(ba_p - te_p) > delta) && !airborne.get()) {
                 selftestPassed = false;
                 ESP_LOGI(FNAME, "Abs p sensors deviation delta > 2.5 hPa between Baro and TE sensor: %f", abs(ba_p - te_p));
                 MBOX->pushMessage(1, "TE/Baro P: Unequal");
@@ -849,49 +881,11 @@ void system_startup(void *args){
                 ESP_LOGI(FNAME, "AbsP sensor data test PASSED, D: %f hPa", abs(ba_p - te_p));
                 logged_tests += passed_text;
             }
-            boot_screen->finish(1);
+            boot_screen->finish(2);
         } else {
             ESP_LOGI(FNAME, "Absolute pressure sensor TESTs failed");
         }
 
-        // Configure airspeed sensor
-        asSensor = AirspeedSensor::autoSetup();
-        logged_tests += "AS " + std::string(asSensor->name()) +  " offset: ";
-        if (asSensor)
-        {
-            ESP_LOGI(FNAME, "AS Speed sensor %s self test PASSED", asSensor->name());
-            bool as_ok = asSensor->setup();
-            float p;
-            if (asSensor->doRead(p) && p > 60.f) {
-                dynamicP = p;
-            }
-            ias.set(Atmosphere::pascal2kmh(dynamicP));
-
-            // Initialize the airborne status
-            airborne.set(ias.get() > Speed2Fly.getStallSpeed());
-
-            ESP_LOGI(FNAME, "Aispeed sensor current speed=%f", ias.get());
-            if (!as_ok && (ias.get() < 50))
-            {
-                MBOX->pushMessage(2, "AS Sensor: NEED ZERO");
-                logged_tests += failed_text;
-                selftestPassed = false;
-            }
-            else
-            {
-                logged_tests += passed_text;
-                boot_screen->finish(2);
-            }
-            SensorRegistry::registerSensor(asSensor);
-        }
-        else
-        {
-            ESP_LOGE(FNAME, "Error with air speed pressure sensor, no working sensor found!");
-            MBOX->pushMessage(2, "AS Sensor: NOT FOUND");
-            logged_tests += notfound_text;
-            selftestPassed = false;
-            asSensor = nullptr;
-        }
     }
     else {
         boot_screen->finish(1);
@@ -978,6 +972,7 @@ void system_startup(void *args){
 	}
 
     Speed2Fly.begin();
+    Speed2Fly.test();
 	Version myVersion;
 	ESP_LOGI(FNAME,"Program Version %s", myVersion.version() );
 	ESP_LOGI(FNAME,"\n\n%s", logged_tests.c_str());

@@ -11,9 +11,9 @@ class PressureSensor : public SensorTP<float>
     PressureSensor(SensorId id);
     virtual ~PressureSensor() {};
 
-    virtual bool selfTest(float& p, float& t) = 0;
+    virtual bool selfTest(float& t, pascal_t& p) = 0;
     virtual float readTemperature(bool& success) = 0;
-    float readAltitude(float qnh, bool& success);
+    pascal_t readAltitude(pascal_t qnh, bool& success);
 
     static PressureSensor* autoSetup(SensorId id);
 

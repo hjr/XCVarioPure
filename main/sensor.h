@@ -47,8 +47,6 @@ extern std::string logged_tests;
 
 extern AnalogInput *AnalogInWk;
 
-extern float as2f;
-extern float s2f_delta;
 extern float alt_external;
 
 extern int MyGliderPolarIndex;

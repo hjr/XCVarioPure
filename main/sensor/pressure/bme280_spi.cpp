@@ -232,7 +232,7 @@ bool BME280_SPI::doRead(float &val) {
 	}
 
 	uint32_t adc_P = readADC(0x77);
-	val=compensate_P((int32_t)adc_P) / 100.0;
+	val = compensate_P((int32_t)adc_P);
     // ESP_LOGI(FNAME,"--BMP280 readPressure, p=%lf", p);
 	return true;
 }
@@ -309,7 +309,7 @@ uint32_t BME280_SPI::compensate_H(int32_t adc_H) {
 
 //*******************************************************************
 
-bool BME280_SPI::selfTest( float& t, float &p ) {
+bool BME280_SPI::selfTest(float& t, pascal_t &p) {
 	uint8_t id = readID();
 	if( id != 0x58 ) {
 		ESP_LOGE(FNAME,"BMP280 Error, Chip ID reading failed BMP280 chip select pin %d read 0x%.2X (instead 0x58) ", _cs, id  );
@@ -337,14 +337,14 @@ bool BME280_SPI::selfTest( float& t, float &p ) {
 	p=0;
 	bool ok;
 	for( int i=0; i<10; i++ ){
-		float tmp;
+		pascal_t tmp;
 		doRead(tmp);
 		p += tmp;
 		// delay(100);
 	}
-	p=p/10;
+	p = p / 10.f;
 
-    return( true );
+    return true;
 }
 
 uint8_t BME280_SPI::readID()

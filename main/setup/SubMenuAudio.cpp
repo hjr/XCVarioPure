@@ -237,7 +237,7 @@ void audio_menu_create(SetupMenu *audio) {
         asida->addEntry(ENABLE_MODE[1].data(), 0); // inverted logic
         audio->addEntry(asida);
 
-        SetupMenuValFloat *dv = new SetupMenuValFloat("Default Volume", "%", show_vol_dflt, false, &default_volume);
+        SetupMenuValFloat *dv = new SetupMenuValFloat("Default Volume", "%", show_vol_dflt, false, &default_volume, RST_NONE, false, true);
         dv->setHelp("Default volume for Audio when device is switched on");
         audio->addEntry(dv);
 

@@ -11,8 +11,8 @@ namespace Units
 
 void setAll()
 {
-	AltUnit = (alt_unit.get() == ALT_UNIT_FT) ? &foot :
-              (alt_unit.get() == ALT_UNIT_FL) ? &flightlevel : &meter;
+	AltUnit = (alt_unit.get() == (int)alt_unit_t::ALT_UNIT_FT) ? &foot :
+              (alt_unit.get() == (int)alt_unit_t::ALT_UNIT_FL) ? &flightlevel : &meter;
 	SpeedUnit = (ias_unit.get() == SPEED_UNIT_MPH) ? &mph :
 	            (ias_unit.get() == SPEED_UNIT_KNOTS) ? &kts : &kmh;
 	VarioUnit = (vario_unit.get() == VARIO_UNIT_KNOTS) ? &kts :
@@ -126,54 +126,6 @@ float Units::ActualWingloadCorrection(float v)
 	return v * std::sqrtf(100.0 / (ballast.get() + 100.0)); // ballast is in percent overweight
 }
 
-float Units::Vario(const float te)
-{ // standard is m/s
-	if (vario_unit.get() == VARIO_UNIT_MS)
-	{
-		return (te);
-	}
-	else if (vario_unit.get() == VARIO_UNIT_FPM)
-	{
-		return (te * 1.9685);
-	}
-	else if (vario_unit.get() == VARIO_UNIT_KNOTS)
-	{
-		return (te * 1.94384); // knots
-	}
-	else
-	{
-		ESP_LOGE(FNAME, "Wrong unit for Vario");
-	}
-	return 0;
-}
-
-float Units::Qnh(float qnh)
-{ // standard is hPa
-	if (qnh_unit.get() == QNH_HPA)
-	{
-		return (qnh);
-	}
-	else if (qnh_unit.get() == QNH_INHG)
-	{
-		return (hPa2inHg(qnh));
-	}
-	else
-	{
-		ESP_LOGE(FNAME, "Wrong unit for Vario");
-	}
-	return 0;
-}
-
-int Units::QnhRounded(float qnh)
-{ // standard is hPa
-	float qnh_value = qnh;
-	if (qnh_unit.get() == QNH_INHG)
-	{
-		qnh_value = hPa2inHg(qnh);
-	}
-	return fast_iroundf_positive(qnh_value);
-}
-
 float Units::hPa2inHg(float hpa)
 { // standard is m/s
 	return (hpa * 0.02952998597817832);
@@ -245,59 +197,10 @@ float Units::mcval2knots(float mc)
 	return 0;
 }
 
-const char* Units::QnhUnit(int unit)
-{
-	if (unit == -1)
-	{
-		unit = qnh_unit.get();
-	}
-	if (unit == QNH_HPA)
-	{
-		return ("hPa");
-	}
-	else if (unit == QNH_INHG)
-	{
-		return ("inHg");
-	}
-	else
-	{
-		ESP_LOGE(FNAME, "Wrong unit for QNH");
-	}
-	return "nan";
-}
-
-
-
-float Units::Altitude(float alt, int unit)
-{
-	int u = unit;
-	if (u == -1)
-	{
-		u = alt_unit.get();
-	}
-	if (u == ALT_UNIT_METER)
-	{ // m
-		return (alt);
-	}
-	else if (u == ALT_UNIT_FT)
-	{ // feet
-		return (alt * 3.28084);
-	}
-	else if (u == ALT_UNIT_FL)
-	{ // FL
-		return (alt * 0.0328084);
-	}
-	else
-	{
-		ESP_LOGE(FNAME, "Wrong unit for altitude");
-	}
-	return 0;
-}
-
-float Units::meters2feet(float m)
-{
-	return (m * 3.28084);
-}
+// float Units::meters2feet(float m)
+// {
+// 	return (m * 3.28084);
+// }
 
 float Units::feet2meters(float f)
 {
@@ -307,54 +210,6 @@ float Units::feet2meters(float f)
 float Units::meters2FL(float m)
 {
 	return (m * 0.0328084);
-}
-
-const char* Units::AltitudeUnit(int unit)
-{
-	int u = unit;
-	if (u == -1)
-	{
-		u = alt_unit.get();
-	}
-	if (u == ALT_UNIT_METER)
-	{ // m
-		return ("m");
-	}
-	else if (u == ALT_UNIT_FT)
-	{ // feet
-		return ("ft");
-	}
-	else if (u == ALT_UNIT_FL)
-	{ // FL
-		return ("FL");
-	}
-	else
-	{
-		ESP_LOGE(FNAME, "Wrong unit for altitude %d", u);
-	}
-	return "nan";
-}
-
-const char* Units::AltitudeUnitMeterOrFeet(int unit)
-{
-	int u = unit;
-	if (u == -1)
-	{
-		u = alt_unit.get();
-	}
-	if (u == ALT_UNIT_METER)
-	{ // m
-		return ("m");
-	}
-	else if (u == ALT_UNIT_FT || u == ALT_UNIT_FL)
-	{ // feet
-		return ("ft");
-	}
-	else
-	{
-		ESP_LOGE(FNAME, "Wrong unit for altitude %d", u);
-	}
-	return "nan";
 }
 
 float Units::value(float val, quantity_t u)

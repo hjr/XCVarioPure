@@ -40,20 +40,20 @@ static void glider_menu_create_polarpoints(SetupMenu *top) {
 	wil->setHelp(
 			"Wingloading that corresponds to the 3 value pairs for speed/sink of polar");
 	top->addEntry(wil);
-	SetupMenuValFloat *pov1 = new SetupMenuValFloat("Speed 1", "km/h", nullptr, false, &polar_speed1);
+	SetupMenuValFloat *pov1 = new SetupMenuValFloat("Speed 1", "kmh", nullptr, false, &polar_speed1);
 	pov1->setHelp("Speed 1, near minimum sink from polar e.g. 80 km/h");
 	top->addEntry(pov1);
-	SetupMenuValFloat *pos1 = new SetupMenuValFloat("Sink  1", "m/s", nullptr, false, &polar_sink1);
+	SetupMenuValFloat *pos1 = new SetupMenuValFloat("Sink  1", "mps", nullptr, false, &polar_sink1);
 	top->addEntry(pos1);
-	SetupMenuValFloat *pov2 = new SetupMenuValFloat("Speed 2", "km/h", nullptr, false, &polar_speed2);
+	SetupMenuValFloat *pov2 = new SetupMenuValFloat("Speed 2", "kmh", nullptr, false, &polar_speed2);
 	pov2->setHelp("Speed 2 for a moderate cruise from polar e.g. 120 km/h");
 	top->addEntry(pov2);
-	SetupMenuValFloat *pos2 = new SetupMenuValFloat("Sink  2", "m/s", nullptr, false, &polar_sink2);
+	SetupMenuValFloat *pos2 = new SetupMenuValFloat("Sink  2", "mps", nullptr, false, &polar_sink2);
 	top->addEntry(pos2);
-	SetupMenuValFloat *pov3 = new SetupMenuValFloat("Speed 3", "km/h", nullptr, false, &polar_speed3);
+	SetupMenuValFloat *pov3 = new SetupMenuValFloat("Speed 3", "kmh", nullptr, false, &polar_speed3);
 	pov3->setHelp("Speed 3 for a fast cruise from polar e.g. 170 km/h");
 	top->addEntry(pov3);
-	SetupMenuValFloat *pos3 = new SetupMenuValFloat("Sink  3", "m/s", nullptr, false, &polar_sink3);
+	SetupMenuValFloat *pos3 = new SetupMenuValFloat("Sink  3", "mps", nullptr, false, &polar_sink3);
 	top->addEntry(pos3);
 
 	SetupMenuValFloat *staspe = new SetupMenuValFloat("Stall Speed", "", nullptr, false, &polar_stall_speed);

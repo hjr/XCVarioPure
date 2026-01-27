@@ -60,7 +60,7 @@ class AltimeterFilter : public BaseFilterItf
 {
 public:
     AltimeterFilter() = default;
-    meter_t filter(meter_t input) override;
+    meter_t filter(pascal_t input) override;
 };
 
 // // TE Variometer 

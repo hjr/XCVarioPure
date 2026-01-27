@@ -12,6 +12,8 @@
 
 #include <cstdint>
 
+enum class alt_unit_t : uint8_t;
+
 // altimeter screen element
 class Altimeter : public ScreenElement
 {
@@ -28,8 +30,8 @@ public:
 private: // attributes
     float _altflt = 0.;
     int   _alt_prev = 0;
-    int16_t _unit;
-    int16_t _unit_drawn;
+    alt_unit_t _unit;
+    alt_unit_t _unit_drawn;
     // for roling altimeter
 	int16_t _char_width;
 	int16_t _char_height;

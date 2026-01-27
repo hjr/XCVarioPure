@@ -38,14 +38,11 @@ dl_action_t CambridgeMsg::parseExcl_g(NmeaPlugin *plg)
     }
     else if (s[3] == 'm') {
         ESP_LOGI(FNAME,"parseNMEA, BORGELT, MC modification");
-        float mc = atof(s+4);
-        mc = mc*0.1;   // comes in knots*10, unify to knots
-        float mc_ms =  fast_iroundf(Units::knots2ms(mc)*10.f)/10.f; // hide rough knot resolution
-        // FIXME -> only SI units internally
-        if( vario_unit.get() == SPEED_UNIT_KNOTS )
-            mc_ms =  fast_iroundf(Units::knots2ms(mc)*100.f)/100.f; // higher resolution for knots
-        ESP_LOGI(FNAME,"New MC: %1.1f knots, %f m/s", mc, mc_ms );
-        MC.set( mc_ms );  // set mc in m/s
+        mps_t mc = atof(s+4) * 0.1;   // comes in knots*10, unify to knots
+        mc = Units::read(Units::kts, mc);
+        mc =  fast_iroundf(mc * 10.f) / 10.f; // hide rough knot resolution
+        ESP_LOGI(FNAME,"New MC: %f m/s", mc );
+        MC.set( mc ); // set mc in m/s
     }
     else if (s[3] == 'u') {
         int mybugs = 100 - atoi(s+4);
@@ -55,7 +52,7 @@ dl_action_t CambridgeMsg::parseExcl_g(NmeaPlugin *plg)
     else if (s[3] == 'q') {
         // nonstandard CAI 302 extension for QNH setting in XCVario in int or float e.g. 1013 or 1020.20
         ESP_LOGI(FNAME,"New QNH");
-        QNH.set( atof(s+4) );
+        QNH.set( Units::read(Units::hpa, atof(s+4)) );
     }
     return NOACTION;
 }
@@ -92,17 +89,17 @@ void NmeaPrtcl::sendCambridge()
 
     msg->buffer = "!w,0,0,0,0,";
     char buffer[50];
-    std::sprintf(buffer, "%d", int(altitude.get()+1000.5));
+    std::sprintf(buffer, "%d", int(altitude.get()+1000.5)); // m + 1000
     msg->buffer += buffer;
-    std::sprintf(buffer, ",%4.2f", QNH.get());
+    std::sprintf(buffer, ",%4.2f", Units::pipe(QNH.get(), Units::hpa)); // hpa
     msg->buffer += buffer;
-    std::sprintf(buffer, ",%d", int(Units::kmh2ms(tas.get())*100.f));
+    std::sprintf(buffer, ",%d", int(tas.get() * 100.f)); // 1/100 m/s
     msg->buffer += buffer;
-    std::sprintf(buffer, ",%d", int((Units::ms2knots(te_vario.get())*10.f)+200));
+    std::sprintf(buffer, ",%d", int((Units::pipe(te_vario.get(), Units::kts)*10.f)+200)); // 1/10 kts +200
     msg->buffer += buffer;
-    std::sprintf(buffer, ",0,0,%d", int(Units::mcval2knots(MC.get())*10));
+    std::sprintf(buffer, ",0,0,%d", int(Units::pipe(MC.get(), Units::kts)*10)); // 1/10 kts
     msg->buffer += buffer;
-    std::sprintf(buffer, ",%d", int((100*ballast_kg.get() / polar_max_ballast.get())));
+    std::sprintf(buffer, ",%d", int((100*ballast_kg.get() / polar_max_ballast.get()))); // % max allowed ballast
     msg->buffer += buffer;
     std::sprintf(buffer, ",%d", 100 - int(bugs.get()));
 

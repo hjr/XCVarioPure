@@ -60,16 +60,16 @@ dl_action_t XCVSimMsg::parse_Sens(NmeaPlugin *plg)
     }
     // int pos = word->at(2);
     int time = Clock::getMillis();
-    float tmp = atof(sm->_frame.c_str() + word->at(2));
+    float tmp = atof(sm->_frame.c_str() + word->at(2)) * 100.f; // convert to Pa
     baroSensor->pushToHistory(tmp, time);
 
-    tmp = atof(sm->_frame.c_str() + word->at(3));
+    tmp = atof(sm->_frame.c_str() + word->at(3)) * 100.f; // convert to Pa
     teSensor->pushToHistory(tmp, time);
 
     tmp = atof(sm->_frame.c_str() + word->at(4));
     asSensor->pushToHistory(tmp, time);
 
-    tmp = atof(sm->_frame.c_str() + word->at(5));
+    tmp = atof(sm->_frame.c_str() + word->at(5)) + Units::C2K; // convert to Kelvin
     OATSensor->pushToHistory(tmp, time);
 
     vector_f vtmp;

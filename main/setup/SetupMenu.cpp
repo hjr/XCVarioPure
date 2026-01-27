@@ -315,27 +315,24 @@ static int imu_calib(SetupMenuSelect *p) {
 	return 0;
 }
 
-int qnh_adj(SetupMenuValFloat *p) {
-	ESP_LOGI(FNAME,"qnh_adj %f", QNH.get() );
-	float alt = 0;
-	if (Flarm::validExtAlt() && alt_select.get() == AS_EXTERNAL) { // fixme
-		alt = alt_external + (QNH.get() - 1013.25) * 8.2296; // correct altitude according to ISA model = 27ft / hPa
-	} else {
-		alt = Atmosphere::calcAltitude(QNH.get(), baroSensor->getAVG(600));
-	}
-	ESP_LOGI(FNAME,"Setup BA alt=%f QNH=%f hPa", alt, QNH.get() );
-	MYUCG->setFont(ucg_font_fub25_hr, true);
-	const char *u = "m";
-	if (alt_unit.get() != 0) { // m
-		u = "ft";
-		alt = Units::meters2feet(alt);
-	}
-	MYUCG->setPrintPos(1, 120);
-	MYUCG->setColor( COLOR_WHITE );
-	MYUCG->printf("%5d %s  ", fast_iroundf(alt), u);
+int qnh_adj(SetupMenuValFloat* p) {
+    ESP_LOGI(FNAME, "qnh_adj %f", QNH.get());
+    float alt = 0;
+    if (Flarm::validExtAlt() && alt_select.get() == AS_EXTERNAL) {  // fixme
+        alt = alt_external + (QNH.get() - Units::P0) * 0.082296;    // correct altitude according to ISA model = 27ft / hPa
+    } else {
+        alt = Atmosphere::calcAltitude(QNH.get(), baroSensor->getAVG(600));
+    }
+    ESP_LOGI(FNAME, "Setup BA alt=%f QNH=%f Pa", alt, QNH.get());
+    MYUCG->setFont(ucg_font_fub25_hr, true);
+    alt = AltUnit->apply(alt);
 
-	MYUCG->setFont(ucg_font_ncenR14_hr);
-	return 0;
+    MYUCG->setPrintPos(1, 120);
+    MYUCG->setColor(COLOR_WHITE);
+    MYUCG->printf("%5d %s  ", fast_iroundf(alt), AltUnit->getName());
+
+    MYUCG->setFont(ucg_font_ncenR14_hr);
+    return 0;
 }
 
 // Battery Voltage Meter Calibration
@@ -1401,7 +1398,7 @@ void setup_create_root(SetupMenu *top) {
 		mc->setPrecision(1);
 		top->addEntry(mc);
 	} else {
-		SetupMenuValFloat *vol = new SetupMenuValFloat("Audio Volume", "%", nullptr, true, &audio_volume);
+		SetupMenuValFloat *vol = new SetupMenuValFloat("Audio Volume", "%", nullptr, true, &audio_volume, RST_NONE, false, true);
 		vol->setHelp("Audio volume level for variometer tone on internal and external speaker");
 		top->addEntry(vol);
 	}
@@ -1469,6 +1466,7 @@ SetupMenu* SetupMenu::createTopSetup() {
 
 SetupMenuValFloat* SetupMenu::createQNHMenu() {
 	SetupMenuValFloat *qnh = new SetupMenuValFloat("QNH", "", qnh_adj, true, &QNH);
+    qnh->setPrecision(2);
 	qnh->setHelp("QNH pressure value from ATC. On ground you may adjust to airfield altitude above MSL", 180);
 	return qnh;
 }

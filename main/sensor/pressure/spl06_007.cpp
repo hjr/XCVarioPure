@@ -106,7 +106,7 @@ float SPL06_007::readTemperature(bool& success) {
     return c0 * 0.5f + c1 * _traw / _scale_factor_t;
 }
 
-bool SPL06_007::selfTest( float& t, float& p ){
+bool SPL06_007::selfTest( float& t, pascal_t& p ){
 	uint8_t rdata = 0xFF;
 	vTaskDelay(pdMS_TO_TICKS(100)); // give first measurement time to settle
 	esp_err_t err = _bus->readByte(_address, 0x0D, &rdata );  // ID
@@ -117,7 +117,7 @@ bool SPL06_007::selfTest( float& t, float& p ){
 	ESP_LOGI(FNAME,"SPL06_007 selftest, scan for I2C address %02x PASSED, Product ID: %d, Revision ID:%d", _address, rdata>>4 , rdata&0x0F );
 	p = 0.;
 	for(int i=0; i<10;i++){
-        float tmp;
+        pascal_t tmp;
 		doRead(tmp);
 		p += tmp;
 		vTaskDelay(pdMS_TO_TICKS(50));
@@ -128,7 +128,7 @@ bool SPL06_007::selfTest( float& t, float& p ){
     t = readTemperature(ok);
 	ESP_LOGI(FNAME,"SPL06_007 selftest, p=%f t=%f", p, t );
 
-	if( p < 1200 && p > 0 ) {
+	if( p < 120000.f && p > 0.f ) {
 		ESP_LOGI(FNAME,"SPL06_007 selftest addr: %d PASSED, p=%f t=%f", _address, p, t );
 		return true;
 	}
@@ -158,7 +158,7 @@ bool SPL06_007::doRead(float &val)
                   + traw_sc * (c01 + praw_sc * (c11 + praw_sc * c21));
 
     tick++;
-	val = p / 100.f; // convert to mb
+	val = p;
     return true;
 }
 

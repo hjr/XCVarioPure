@@ -64,7 +64,7 @@ enum e_windanalyser_mode { WA_OFF=0, WA_STRAIGHT=1, WA_CIRCLING=2, WA_BOTH=3, WA
 enum e_logging { LOGG_DISABLE, LOGG_WIND, LOGG_GYRO_MAG, LOGG_BOTH, LOGG_RAW_SENSOR_DATA }; // bit field (!)
 enum class quantity_t : uint8_t { QUANT_NONE, QUANT_TEMPERATURE, QUANT_ALT, QUANT_HSPEED, QUANT_VSPEED, QUANT_QNH, QUANT_MASS };
 enum temperature_unit_t { T_CELCIUS, T_FAHRENHEIT, T_KELVIN };
-enum alt_unit_t { ALT_UNIT_METER, ALT_UNIT_FT, ALT_UNIT_FL };
+enum class alt_unit_t : uint8_t { ALT_UNIT_METER, ALT_UNIT_FT, ALT_UNIT_FL };
 enum dst_unit_t { DST_UNIT_M, DST_UNIT_FT, DST_UNIT_MILES, DST_UNIT_NAUTICAL_MILES };
 enum speed_unit_t { SPEED_UNIT_KMH, SPEED_UNIT_MPH, SPEED_UNIT_KNOTS };
 enum vario_unit_t { VARIO_UNIT_MS, VARIO_UNIT_FPM, VARIO_UNIT_KNOTS };
@@ -303,8 +303,8 @@ private:
 
 //////////////////////////
 // configuration variables
-extern SetupNG<float> 		MC;
-extern SetupNG<float> 		QNH;
+extern SetupNG<mps_t> 		MC;
+extern SetupNG<pascal_t> 	QNH;
 extern SetupNG<float> 		polar_wingload;
 
 extern SetupNG<float> 		polar_speed1;
@@ -319,15 +319,15 @@ extern SetupNG<float> 		polar_max_ballast;
 extern SetupNG<float> 		polar_wingarea;
 
 extern SetupNG<float>  		speedcal;
-extern SetupNG<float>  		vario_delay;
-extern SetupNG<float>  		vario_av_delay;
-extern SetupNG<float>  		scale_range;
+extern SetupNG<seconds_t>  	vario_delay;
+extern SetupNG<seconds_t>  	vario_av_delay;
+extern SetupNG<mps_t>  		scale_range;
 extern SetupNG<int>			log_scale;
 extern SetupNG<float>  		ballast;
 extern SetupNG<float>  		ballast_kg;
-extern SetupNG<float>		empty_weight;
-extern SetupNG<float>		crew_weight;
-extern SetupNG<float>		gross_weight;
+extern SetupNG<kilogram_t>	empty_weight;
+extern SetupNG<kilogram_t>	crew_weight;
+extern SetupNG<kilogram_t>	gross_weight;
 extern SetupNG<float>  		bugs;
 
 extern SetupNG<int>  		cruise_mode;

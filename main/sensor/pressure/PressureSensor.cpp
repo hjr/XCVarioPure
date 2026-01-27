@@ -43,7 +43,7 @@ PressureSensor::PressureSensor(SensorId id) : SensorTP<float>((id == SensorId::S
     // }
 }
 
-float PressureSensor::readAltitude(float qnh, bool& success) {
+pascal_t PressureSensor::readAltitude(pascal_t qnh, bool& success) {
     success = getHeadValid();
     return Atmosphere::calcAltitude( qnh, getHead() );
 }

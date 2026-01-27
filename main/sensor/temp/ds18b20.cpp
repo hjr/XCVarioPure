@@ -87,7 +87,7 @@ bool DS18B20::doRead(float &val)
 
     // 6. Decode temp
     val = (float)((scratch[1] << 8) | scratch[0]) / 16.0f;
-    val += 273.15f; // convert to Kelvin
+    val += Units::C2K; // convert to Kelvin
     return true;
 }
 

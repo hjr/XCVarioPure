@@ -31,7 +31,8 @@ namespace Units {
 constexpr float g0            = 9.80665f;      // m/s²
 constexpr float R_air         = 287.05f;       // J/(kg·K)
 constexpr float rho0          = 1.225f;        // kg/m³ (ISA sea level)
-constexpr kelvin_t T0         = 288.15f;       // K
+constexpr kelvin_t T0         = 288.15f;       // K (alias 15°C)
+constexpr kelvin_t C2K 		  = 273.15f;       // K (0°C)
 constexpr pascal_t P0         = 101325.0f;     // Pa
 constexpr float L             = 0.0065f;       // K/m (ISA lapse rate)
 constexpr float ft_per_m      = 3.28084f;
@@ -52,8 +53,8 @@ inline float    m_to_ft(meter_t m)    { return m * ft_per_m; }
 // ---------------------------------------------------------------------------
 // Speed
 // ---------------------------------------------------------------------------
-inline mps_t kmh_to_mps(float kmh)     { return kmh * mps_per_kmh; }
-inline float mps_to_kmh(mps_t mps)     { return mps * kmh_per_mps; }
+inline constexpr mps_t kmh_to_mps(float kmh)     { return kmh * mps_per_kmh; }
+inline constexpr float mps_to_kmh(mps_t mps)     { return mps * kmh_per_mps; }
 
 inline mps_t fpm_to_mps(float fpm)     { return fpm * mps_per_fpm; }
 inline float mps_to_fpm(mps_t mps)     { return mps * fpm_per_mps; }
@@ -67,8 +68,8 @@ inline float    pa_to_hpa(pascal_t pa) { return pa * 0.01f; }
 // ---------------------------------------------------------------------------
 // Temperature
 // ---------------------------------------------------------------------------
-inline kelvin_t C_to_K(float c)        { return c + 273.15f; }
-inline float    K_to_C(kelvin_t k)     { return k - 273.15f; }
+inline kelvin_t C_to_K(float c)        { return c + C2K; }
+inline float    K_to_C(kelvin_t k)     { return k - C2K; }
 
 // ---------------------------------------------------------------------------
 // Angles
@@ -145,7 +146,7 @@ constexpr unit_t inhg       { 0.000295299830714f, 0.0f, "inHg" };
 
 // temperature
 constexpr unit_t kelvin     { 1.0f, 0.0f, "K" };
-constexpr unit_t celsius    { 1.0f, -273.15f, "'C" };
+constexpr unit_t celsius    { 1.0f, -C2K, "'C" };
 constexpr unit_t fahrenheit { 9.0f / 5.0f, -459.67f, "'F" };
 
 constexpr unit_t none       { 1.0f, 0.0f, "%" };
@@ -181,9 +182,6 @@ namespace Units
 	float knots2kmh(float knots);
 	float Airspeed2Kmh(float as);
 	float ActualWingloadCorrection(float v);
-	float Vario(const float te);
-	float Qnh(float qnh);
-	int QnhRounded(float qnh);
 	float hPa2inHg(float hpa);
 	float inHg2hPa(float inhg);
 	float knots2ms(float knots);
