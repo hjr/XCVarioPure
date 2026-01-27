@@ -454,7 +454,7 @@ void IpsDisplay::initDisplay() {
         int16_t scale_geometry = (display_orientation.get() == DISPLAY_NINETY) ? 120 : 90;
         MAINgauge = new PolarGauge(AMIDX, AMIDY, scale_geometry, DISPLAY_H / 2 - 20, PolarGauge::VARIO);
     }
-    MAINgauge->setUnit(Units::Vario(1.));
+    MAINgauge->setUnit(VarioUnit->scale);
     MAINgauge->setRange(scale_range.get(), 0.f, log_scale.get());
     MAINgauge->setColor(VN_COLOR_RED); // fixme temp needle_color.get());
     if (vario_mc_gauge.get()) {
@@ -885,8 +885,7 @@ float getHeading() { // fixme move to compass
 }
 
 // fixme arg not needed on stack
-void IpsDisplay::drawDisplay(float s2fd_kmh){
-	// ESP_LOGI(FNAME,"drawDisplay polar_sink: %f AVario: %f m/s", polar_sink_ms, ate_ms );
+void IpsDisplay::drawDisplay(){
 	if( !(screens_init & INIT_DISPLAY_RETRO) ){
 		initDisplay();
 		screens_init |= INIT_DISPLAY_RETRO;

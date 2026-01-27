@@ -63,7 +63,7 @@ public:
 	static void setGlobalColors();
 	static void writeText( int line, const char *text );
 	static void writeText( int line, std::string &text );
-	static void drawDisplay(float s2fd);
+	static void drawDisplay();
 
 	static void drawLoadDisplay( float loadFactor );
 	static void drawLoadDisplayTexts();
