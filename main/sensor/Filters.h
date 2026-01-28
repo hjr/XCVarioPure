@@ -19,6 +19,7 @@ class BaseFilterItf
 public:
     virtual ~BaseFilterItf() = default;
     virtual float filter(float input) = 0;
+    virtual float get() const { return 0.0f; }
 };
 
 // A simple low-pass filter (exponential moving average)
@@ -38,6 +39,7 @@ public:
     void setAlpha(float alpha) { _alpha = alpha; }
     float getAlpha() const { return _alpha; }
     float filter(float input) override;
+    float get() const override { return _last_output; }
 private:
     float _alpha;
     float _last_output;

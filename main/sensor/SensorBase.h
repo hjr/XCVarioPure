@@ -256,10 +256,16 @@ public:
     // }
 
     // Get latest reading directly.
-    inline T getHead() const {
+    T getHead() const {
         return _history.getHead();
     }
-    inline T* getHeadPtr() const {
+    T getHeadFiltered() const {
+        if ( _filter ) {
+            return _filter->get();
+        }
+        return _history.getHead();
+    }
+    T* getHeadPtr() const {
         return _history.getHeadPtr();
     }
     bool getHeadValid() const {
