@@ -21,7 +21,7 @@
 #include <cmath>
 #include <algorithm>
 
-#define FILTER 1
+#define FILTER 3
 
 VarioFilter bmpVario; // static instance of it
 
@@ -44,8 +44,8 @@ void VarioFilter::init(meter_t alt)
 
 struct VarioKF {
     // State
-    float h;     // altitude [m]
-    float v;     // vertical speed [m/s]
+    meter_t h;  // altitude [m]
+    mps_t   v;  // vertical speed [m/s]
 
     // Covariance
     float P00, P01, P10, P11;
@@ -54,19 +54,22 @@ struct VarioKF {
     float R;     // measurement noise
     float sigma_a;
 
-    void init(float h0) {
+    void init(meter_t h0) {
         h = h0;
         v = 0.0f;
 
-        P00 = 10.0f;
-        P11 = 1.0f;
+        P00 = 1.0f;
+        P11 = 0.0025f;
         P01 = P10 = 0.0f;
 
-        R = 0.11;
-        sigma_a = sqrt(R);
+        R = 0.3f * 0.3f;    // baro ~30cm RMS
+        setTau(vario_delay.get());
+    }
+    void setTau(float tau) {
+        sigma_a = sqrtf(2.0f / tau);
     }
 
-    void predict(float dt) {
+    void predict(seconds_t dt) {
         // State prediction
         h += v * dt;
 
@@ -92,9 +95,9 @@ struct VarioKF {
         P11 = P11_;
     }
 
-    void update(float z) {
+    void update(meter_t z) {
         // Innovation
-        float y = z - h;
+        meter_t y = z - h;
         float S = P00 + R;
 
         // Kalman gain
@@ -130,6 +133,7 @@ void VarioFilter::configChange() {
     // vario needle damping
     _te_filter_idx = fast_iroundf(vario_delay.get() * 10.0f / 3);
     _lpf.setAlpha(1.f / (vario_delay.get() * 10.f + 0.1f));
+    vkf.setTau(vario_delay.get()); // KF
     // vario averager damping
     _avg_filter_idx = (vario_av_delay.get() / 0.1) - 1;
     ESP_LOGI(FNAME, "configChange damping:%f filter_len:%d", _lpf.getAlpha(), _avg_filter_idx);
@@ -299,23 +303,22 @@ void VarioFilter::postProcess() {
 #elif defined(FILTER) && FILTER == 3
 void VarioFilter::postProcess() {
     vkf.predict(0.1);
-    float innov = getHead() - vkf.h;
-    // if (fabsf(innov) > 5.0f) {
-    //     // reject baro glitch
-    //     ESP_LOGE(FNAME, "VarioFilter: large innov %f, rejecting update", innov);
-    //     return;
-    // }
+    meter_t innov = getHead() - vkf.h;
+    if (fabsf(innov) > 60.0f) { // rejct innovation larger than 60m/s
+        // reject baro glitch
+        ESP_LOGE(FNAME, "VarioFilter: large innov %f, rejecting update", innov);
+        return;
+    }
     vkf.R = 0.25 * (1 + fabsf(innov));
     vkf.R = std::clamp(vkf.R, 0.05f, 1.0f);
 
     vkf.update(getHead());
-    ESP_LOGI(FNAME, "VKF: predict: %f innov:%f R:%f update: %f", vkf.h, innov, vkf.R, vkf.v);
-    if (fabsf(innov) < 5.0f) {
-        // te_vario.set(vkf.v);
-        te_vario.set(_lpf.filter(vkf.v));
+    // ESP_LOGI(FNAME, "VKF: predict: %f innov:%f R:%f update: %f", vkf.h, innov, vkf.R, vkf.v);
+    // if (fabsf(innov) < 6.0f) {
+        te_vario.set(vkf.v);
         _polar_sink = Speed2Fly.sink(ias.get());
         te_netto.set(vkf.v - _polar_sink);
-    }
+    // }
 
     if (_history.level() > _avg_filter_idx) {
         _avg_vario = (getHead() - _history[_avg_filter_idx]) * (10.f / (_avg_filter_idx + 1));  // in m/s
