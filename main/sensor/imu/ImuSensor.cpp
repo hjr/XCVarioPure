@@ -34,7 +34,7 @@ mpud::MPU myMPU; // TODO as optional resource
 // for heat control
 struct PIController {
     const float Kp = 0.3f;
-    const float Ki = 0.02f;
+    const float Ki = 0.033f;
     const float dt = 1.0f; // seconds
     float I  = 0.0f;
 
