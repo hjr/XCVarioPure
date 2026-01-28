@@ -325,7 +325,7 @@ int qnh_adj(SetupMenuValFloat* p) {
     if (Flarm::validExtAlt() && alt_select.get() == AS_EXTERNAL) {  // fixme
         alt = alt_external + (QNH.get() - Units::P0) * 0.082296;    // correct altitude according to ISA model = 27ft / hPa
     } else {
-        alt = Atmosphere::calcAltitude(QNH.get(), baroSensor->getAVG(600));
+        alt = (baroSensor) ? Atmosphere::calcAltitude(QNH.get(), baroSensor->getAVG(600)) : altitude.get();
     }
     ESP_LOGI(FNAME, "Setup BA alt=%f QNH=%f Pa", alt, QNH.get());
     MYUCG->setFont(ucg_font_fub25_hr, true);
