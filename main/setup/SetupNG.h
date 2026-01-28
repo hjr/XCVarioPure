@@ -319,8 +319,8 @@ extern SetupNG<float> 		polar_max_ballast;
 extern SetupNG<float> 		polar_wingarea;
 
 extern SetupNG<float>  		speedcal;
-extern SetupNG<seconds_t>  	vario_delay;
-extern SetupNG<seconds_t>  	vario_av_delay;
+extern SetupNG<second_t>  	vario_delay;
+extern SetupNG<second_t>  	vario_av_delay;
 extern SetupNG<mps_t>  		scale_range;
 extern SetupNG<int>			log_scale;
 extern SetupNG<float>  		ballast;

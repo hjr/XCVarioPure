@@ -231,8 +231,8 @@ SetupNG<float> 			polar_max_ballast( "POLAR_MAX_BAL",  80, true, SYNC_BIDIR, PER
 SetupNG<float> 			polar_wingarea( "POLAR_WINGAREA", 10.5, true, SYNC_BIDIR, PERSISTENT, change_ballast, quantity_t::QUANT_NONE, LIMITS(0, 50, 0.1));
 
 SetupNG<float>  		speedcal( "SPEEDCAL", 0.0, true, SYNC_BIDIR, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(-100, 100, 1));
-SetupNG<seconds_t>  	vario_delay( "VARIO_DELAY", 3.0, true, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(2.0, 10.0, 0.1));
-SetupNG<seconds_t>  	vario_av_delay( "VARIO_AV_DELAY", 20.0, true, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(7.0, 50.0, 1)); // changed to 20 seconds (quasi standard) what equals to a half circle
+SetupNG<second_t>  	vario_delay( "VARIO_DELAY", 3.0, true, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(2.0, 10.0, 0.1));
+SetupNG<second_t>  	vario_av_delay( "VARIO_AV_DELAY", 20.0, true, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(7.0, 50.0, 1)); // changed to 20 seconds (quasi standard) what equals to a half circle
 SetupNG<mps_t>  		scale_range( "VARIO_RANGE", 5.0, true, SYNC_NONE, PERSISTENT, 0, quantity_t::QUANT_VSPEED, LIMITS(1.0, 30.0, 1));
 SetupNG<int>			log_scale( "LOG_SCALE", 0 );
 SetupNG<float>  		ballast( "BALLAST" , 0.0, true, SYNC_NONE, VOLATILE, 0 );  // ballast increase from reference weight in %
