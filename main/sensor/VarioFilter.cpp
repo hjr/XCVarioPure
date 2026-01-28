@@ -28,6 +28,20 @@ VarioFilter bmpVario; // static instance of it
 constexpr int DUTY_CYCLE_MS = 100; // 10Hz
 static float vario_buffer[ (SENSOR_HISTORY_DURATION_MS / DUTY_CYCLE_MS) + 1 ]; // history buffer for airspeed sensor
 
+// Data and dtructures for different filter variants
+static meter_t averageAlt = 0.f;
+static meter_t Altitude = 0.f;
+static meter_t predictAlt = 0.f;
+static meter_t lastAltitude = 0.f;
+
+void VarioFilter::init(meter_t alt)
+{
+    averageAlt = alt;
+    Altitude = alt;
+    predictAlt = alt;
+    lastAltitude = alt;
+}
+
 struct VarioKF {
     // State
     float h;     // altitude [m]
@@ -131,7 +145,10 @@ bool VarioFilter::setup() {
         // mark as essential sensor to be able to simulate
         _id = _id | SensorId::EssentialSensor;
     }
-    vkf.init(altitude.get());
+
+    ESP_LOGI(FNAME, "VarioFilter setup as %s sensor with alt %f", (isLocalSensor(_id) ? "local" : "remote"), altitude.get());
+    init(altitude.get());
+    vkf.init(altitude.get()); // KF
     configChange();
     return true;
 }
@@ -141,21 +158,21 @@ bool VarioFilter::setup() {
 // a total energy compensated altitude.
 bool VarioFilter::doRead(float& val) {
     float curr_altitude;
-    float qnh = QNH.get();
+    pascal_t qnh = QNH.get();
     if (te_comp_enable.get() == TE_TEK_EPOT) {
         curr_altitude = altitude.get();  // already read
         if (!altitude.getValid() || std::isnan(curr_altitude)) {
             curr_altitude = getHead();  // ignore readout when failed
         }
-        float mps = tas.get() / 3.6;  // m/s
-        float cw = Speed2Fly.cw(mps);
-        float ealt = ((((mps * mps) / 19.62) * (1 + (te_comp_adjust.get() / 100.0)))) * (1 - cw);  // Ekin ~ h = v²/2g  * adjust * (1-cw)
+        mps_t ta_speed = tas.get();  // m/s
+        float cw = Speed2Fly.cw(ta_speed);
+        float ealt = ((((ta_speed * ta_speed) / 19.62) * (1 + (te_comp_adjust.get() / 100.0)))) * (1 - cw);  // Ekin ~ h = v²/2g  * adjust * (1-cw)
         curr_altitude += ealt;
         ESP_LOGD(FNAME, "Energy Alt @%0.1f km/h: %0.1f cw: %f", tas.get(), ealt, cw);
     } else if (te_comp_enable.get() == TE_TEK_PRESSURE) {
-        float barP = baroSensor->getHead();
-        float dynP = asSensor->getHead();
-        curr_altitude = Atmosphere::calcAltitude(qnh, barP - (dynP / 100.0) * (1 + (te_comp_adjust.get() / 100.0)));  // subtract PI pressure like TEK probe does
+        pascal_t barP = baroSensor->getHead();
+        pascal_t dynP = asSensor->getHead();
+        curr_altitude = Atmosphere::calcAltitude(qnh, (barP - dynP) * (1 + (te_comp_adjust.get() / 100.0)));  // subtract PI pressure like TEK probe does
         // ESP_LOGI(FNAME,"TE alt: %4.3f m, ST: %.1f PI: %.1f", _currentAlt, barP, (dynP*100) );
     } else {  // TE_TEK_PROBE
         bool success;
@@ -180,21 +197,17 @@ bool VarioFilter::doRead(float& val) {
 #if defined(FILTER) && FILTER == 0
 void VarioFilter::postProcess() {
     static float _errorval = 1.6;
-    static float averageAlt = 0.f;
-    static float Altitude = 0.f;
-    static float predictAlt = 0.f;
-    static float lastAltitude = 0.f;
-    static float _TEF = 0.f;
+    static mps_t _TEF = 0.f;
     static int N = 0;
-    static float _avgTE = 0.f;
+    static mps_t _avgTE = 0.f;
 
     N++;
 	// ESP_LOGI(FNAME,"TE alt: %4.3f m, ST: %.1f PI: %.1f", _currentAlt, barP, (dynP*100) );
-    float curr_altitude = getHead();
+    meter_t curr_altitude = getHead();
 	averageAlt += (curr_altitude - averageAlt) * 0.1;
-	float adiff = curr_altitude - Altitude;
+	meter_t adiff = curr_altitude - Altitude;
 	// ESP_LOGI(FNAME,"VarioFilter new alt %0.1f err %0.1f", _currentAlt, err);
-	float diff = (abs(adiff) * 1000) + 1;
+	meter_t diff = (abs(adiff) * 1000) + 1;
 	if(diff > 1000000){  // more than 100 m altitude diff in 0.1 second not plausible ( > 400 km/h vertical ) -> handled by Kalman filter
 		 ESP_LOGW(FNAME,"TE sensor delta OOB: %f m", diff/10000 );
 	}
@@ -202,10 +215,10 @@ void VarioFilter::postProcess() {
 	averageAlt += (curr_altitude - averageAlt) * 0.1;
 	float kg = (diff / (err*_errorval + diff)) * 0.2;
 	Altitude += (adiff) * kg;
-	float altDiff = Altitude - lastAltitude;
+	meter_t altDiff = Altitude - lastAltitude;
 	// ESP_LOGI(FNAME," altDiff %0.1f diff %0.1f", TE, diff);
 	lastAltitude = Altitude;
-	float TEAVG = TEavg( altDiff / 0.1 ); // in m/s
+	mps_t TEAVG = TEavg( altDiff / 0.1 ); // in m/s
 	predictAlt = Altitude + (TEAVG * 0.1);
 	_TEF += ((TEAVG - _TEF)) * _lpf.getAlpha();
 
@@ -221,9 +234,9 @@ void VarioFilter::postProcess() {
 #elif defined(FILTER) && FILTER == 1
 void VarioFilter::postProcess() {
     // TE vario calculation
-    float te = 0.f;
+    pascal_t te = 0.f;
     if (_history.level() > _te_filter_idx) {
-        float tecurr = getHead();
+        pascal_t tecurr = getHead();
         te = (tecurr - _history[1]) * 10.f;  // in m/s
     }
     te_vario.set(_lpf.filter(te));
@@ -231,13 +244,9 @@ void VarioFilter::postProcess() {
     te_netto.set(te - _polar_sink);
 
     constexpr const float errorval = 1.6;
-    static float averageAlt = 0.f;
-    static float Altitude = 0.f;
-    static float predictAlt = 0.f;
-    static float lastAltitude = 0.f;
     static float _TEF = 0.f;
 
-    float curr_altitude = getHead();
+    meter_t curr_altitude = getHead();
 	averageAlt += (curr_altitude - averageAlt) * 0.1;
 	float adiff = curr_altitude - Altitude;
 	// ESP_LOGI(FNAME,"VarioFilter new alt %0.1f err %0.1f", _currentAlt, err);
@@ -271,7 +280,7 @@ void VarioFilter::postProcess() {
 #elif defined(FILTER) && FILTER == 2
 void VarioFilter::postProcess() {
     // TE vario calculation
-    float te = 0.f;
+    mps_t te = 0.f;
     if (_history.level() > _te_filter_idx) {
         float tecurr = getHead();
         te = (tecurr - _history[1]) * 10.f;  // in m/s

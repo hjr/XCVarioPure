@@ -34,7 +34,7 @@
 #include "Atmosphere.h"
 #include "sensor/VarioFilter.h"
 #include "sensor/imu/ImuSensor.h"
-#include "logdef.h"
+#include "logdefnone.h"
 
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>

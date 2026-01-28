@@ -37,6 +37,7 @@ class VarioFilter final : public SensorTP<float> {
     // float readCuralt() { return _currentAlt; };   // get current Altitude
 
    private:
+    void init(meter_t alt);
     Average<34, float, float> TEavg;
 	Average<60, float, float> avgTE;
     int16_t _te_filter_idx;
