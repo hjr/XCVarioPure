@@ -69,7 +69,7 @@ struct VarioKF {
         sigma_a = sqrtf(2.0f / tau);
     }
 
-    void predict(seconds_t dt) {
+    void predict(second_t dt) {
         // State prediction
         h += v * dt;
 
@@ -302,13 +302,20 @@ void VarioFilter::postProcess() {
 }
 #elif defined(FILTER) && FILTER == 3
 void VarioFilter::postProcess() {
-    vkf.predict(0.1);
-    meter_t innov = getHead() - vkf.h;
-    if (fabsf(innov) > 60.0f) { // rejct innovation larger than 60m/s
-        // reject baro glitch
-        ESP_LOGE(FNAME, "VarioFilter: large innov %f, rejecting update", innov);
-        return;
+    uint32_t now = Clock::getMillis();
+    second_t dt = 0.1f;
+    if (now - _prev_time > 200) {
+        dt = (now - _prev_time) / 1000.0f;
+        ESP_LOGI(FNAME, "VKF: init timing: %f", dt);
     }
+    vkf.predict(dt);
+    _prev_time = now;
+    meter_t innov = getHead() - vkf.h;
+    // if (fabsf(innov) > 60.0f) { // rejct innovation larger than 60m/s
+    //     // reject baro glitch
+    //     ESP_LOGE(FNAME, "VarioFilter: large innov %f, rejecting update", innov);
+    //     return;
+    // }
     vkf.R = 0.25 * (1 + fabsf(innov));
     vkf.R = std::clamp(vkf.R, 0.05f, 1.0f);
 
