@@ -132,17 +132,17 @@ void NmeaPrtcl::sendSeeYouF()
     msg->buffer += tmp;
     std::sprintf(tmp, ",%.1f", IMU::getGliderAccelX());
     msg->buffer += tmp;
-    std::sprintf(tmp, ",%.1f", IMU::getGliderAccelY());
+    std::sprintf(tmp, ",%.1f", -IMU::getGliderAccelY());
     msg->buffer += tmp;
-    std::sprintf(tmp, ",%.1f", IMU::getGliderAccelZ());
+    std::sprintf(tmp, ",%.1f", -IMU::getGliderAccelZ());
     msg->buffer += tmp;
     std::sprintf(tmp, ",%.1f", te_vario.get());
     msg->buffer += tmp;
-    std::sprintf(tmp, ",%.1f", Units::pipe(ias.get(), Units::kmh));
+    std::sprintf(tmp, ",%.1f", ias.get());
     msg->buffer += tmp;
     std::sprintf(tmp, ",%.1f", altitude.get());
     msg->buffer += tmp;
-    std::sprintf(tmp, ",%1d", !VCMode.getCMode());
+    std::sprintf(tmp, ",%1d", VCMode.getCMode());
 
     msg->buffer += "*" + NMEA::CheckSum(msg->buffer.c_str()) + "\r\n";
     ESP_LOGD(FNAME, "SeeYouF %s", msg->buffer.c_str());
@@ -170,7 +170,7 @@ void NmeaPrtcl::sendSeeYouS()
     char tmp[50];
     std::sprintf(tmp, "%.1f", Units::pipe(OAT.get(), Units::celsius));
     msg->buffer += tmp;
-    std::sprintf(tmp, ",%1d", !VCMode.getCMode());
+    std::sprintf(tmp, ",%1d", VCMode.getCMode());
     msg->buffer += tmp;
     std::sprintf(tmp, ",%.1f", battery_voltage.get());
     msg->buffer += tmp;
