@@ -892,10 +892,6 @@ void system_startup(void *args){
         boot_screen->finish(2);
     }
 
-    // TE vario "sensor" always needed, but last in line
-    bmpVario.setup();
-    SensorRegistry::registerSensor(&bmpVario);
-
     AUDIO->applySetup();
     if (audio_mute_gen.get() != AUDIO_OFF) {
         ESP_LOGI(FNAME, "Audio begin");
@@ -977,49 +973,49 @@ void system_startup(void *args){
     Speed2Fly.test();
 #endif
 
-	Version myVersion;
-	ESP_LOGI(FNAME,"Program Version %s", myVersion.version() );
-	ESP_LOGI(FNAME,"\n\n%s", logged_tests.c_str());
-	if( !selftestPassed )
-	{
-		ESP_LOGI(FNAME,"\n\n\nSelftest failed, see above LOG for Problems\n\n\n");
-		MBOX->pushMessage(2, "Selftest FAILED", ScreenMsg::CONFIRM);
-        if ( ! airborne.get() ) { AUDIO->startSound(AUDIO_FAIL_SOUND); }
-	}
-	else{
-		ESP_LOGI(FNAME,"\n\n\n*****  Selftest PASSED  ********\n\n\n");
-		boot_screen->finish(3); // signal self tests passed
-        if ( ! airborne.get()) { AUDIO->startSound(AUDIO_CHECK_SOUND); }
-	}
+    Version myVersion;
+    ESP_LOGI(FNAME, "Program Version %s", myVersion.version());
+    ESP_LOGI(FNAME, "\n\n%s", logged_tests.c_str());
+    if (!selftestPassed) {
+        ESP_LOGI(FNAME, "\n\n\nSelftest failed, see above LOG for Problems\n\n\n");
+        MBOX->pushMessage(2, "Selftest FAILED", ScreenMsg::CONFIRM);
+        if (!airborne.get()) {
+            AUDIO->startSound(AUDIO_FAIL_SOUND);
+        }
+    } else {
+        ESP_LOGI(FNAME, "\n\n\n*****  Selftest PASSED  ********\n\n\n");
+        boot_screen->finish(3);  // signal self tests passed
+        if (!airborne.get()) {
+            AUDIO->startSound(AUDIO_CHECK_SOUND);
+        }
+    }
 
-	if( Rotary->readBootupStatus() )
-	{
-		LeakTest::start( baroSensor, teSensor, asSensor );
-	}
+    if (Rotary->readBootupStatus()) {
+        LeakTest::start(baroSensor, teSensor, asSensor);
+    }
 
-	// Set QNH from setup Airfiled elevation, when ! Second && ! airborn
-	if( ! SetupCommon::isClient() && ! airborne.get() ) {
+    // Set QNH from setup Airfiled elevation, when ! Second && ! airborn
+    if (!SetupCommon::isClient() && !airborne.get()) {
+        // remove logo
+        sleep(1);
+        BootUpScreen::terminate();
 
-		// remove logo
-		sleep(1);
-		BootUpScreen::terminate();
-
-		ESP_LOGI(FNAME,"Master Mode: QNH Autosetup, IAS=%3f (<50 km/h)", ias.get() );
-		// QNH autosetup
-		float ae = airfield_elevation.get();
-		ESP_LOGI(FNAME, "Airfield Elevation = %4.1f m", ae);
-		if (ae > NO_ELEVATION) {
+        ESP_LOGI(FNAME, "Master Mode: QNH Autosetup, IAS=%3f (<50 km/h)", ias.get());
+        // QNH autosetup
+        float ae = airfield_elevation.get();
+        ESP_LOGI(FNAME, "Airfield Elevation = %4.1f m", ae);
+        if (ae > NO_ELEVATION) {
             if (Flarm::validExtAlt() && alt_select.get() == AS_EXTERNAL) {
                 // correct altitude according to ISA model = 27ft / hPa
-                ae = alt_external + (QNH.get() - 1013.25f) * 8.2296f; // fixme alt extr
+                ae = alt_external + (QNH.get() - 1013.25f) * 8.2296f;  // fixme alt extr
             }
 
             float baro;
-			if (baroSensor->doRead(baro)) {
-            	float qnh_best = Atmosphere::calcQNHPressure(baro, ae);
-            	QNH.set(qnh_best);
-            	ESP_LOGI(FNAME, "Auto QNH (direkt) = %4.2f hPa", qnh_best);
-			}
+            if (baroSensor->doRead(baro)) {
+                float qnh_best = Atmosphere::calcQNHPressure(baro, ae);
+                QNH.set(qnh_best);
+                ESP_LOGI(FNAME, "Auto QNH (direkt) = %4.2f hPa", qnh_best);
+            }
         }
         Display->clear();
 
@@ -1035,41 +1031,50 @@ void system_startup(void *args){
         // airfield use case
         // Glider polar set?
         ESP_LOGI(FNAME, "Check glider polar configuration %d, unchanged %d", glider_type.get(), S2F::isPolarEqualTo(MyGliderPolarIndex));
-        if ( ! glider_polar_configured ) {
+        if (!glider_polar_configured) {
             screenEvent = ScreenEvent(ScreenEvent::POLAR_CONFIG).raw;
             xQueueSend(uiEventQueue, &screenEvent, 0);
         }
         // QNH adjust screen, always
         screenEvent = ScreenEvent(ScreenEvent::QNH_ADJUST).raw;
         xQueueSend(uiEventQueue, &screenEvent, 0);
-        if ( ballast_kg.get() > 0 ) {
+        if (ballast_kg.get() > 0) {
             // ballast set when boot-up, get a user confirmation
             screenEvent = ScreenEvent(ScreenEvent::BALLAST_CONFIRM).raw;
             xQueueSend(uiEventQueue, &screenEvent, 0);
         }
 
-    }
-	else {
-		if ( SetupCommon::isClient() ) {
-			bool already_connected = false;
-			Device *dev = DEVMAN->getDevice(XCVARIOFIRST_DEV);
-			if ( dev ) {
-				NmeaPlugin *plg = dev->_link->getNmeaPlugin(XCVSYNC_P);
-				if ( plg ) {
-					already_connected = static_cast<XCVSyncMsg*>(plg)->syncStarted();
-				}
-			}
-			if ( ! already_connected ) {
-				// just sit, wait, show a little message
-				MBOX->pushMessage(1, "Waiting for XCV Master");
-				ESP_LOGI(FNAME,"Client Mode: Wait for Master XCVario %p", dev);
-			}
-		}
+    } else {
+        if (SetupCommon::isClient()) {
+            bool already_connected = false;
+            Device* dev = DEVMAN->getDevice(XCVARIOFIRST_DEV);
+            if (dev) {
+                NmeaPlugin* plg = dev->_link->getNmeaPlugin(XCVSYNC_P);
+                if (plg) {
+                    already_connected = static_cast<XCVSyncMsg*>(plg)->syncStarted();
+                }
+            }
+            if (!already_connected) {
+                // just sit, wait, show a little message
+                MBOX->pushMessage(1, "Waiting for XCV Master");
+                ESP_LOGI(FNAME, "Client Mode: Wait for Master XCVario %p", dev);
+            }
+        }
 
-		BootUpScreen::terminate();
-		Display->clear();
-	}
-	Rotary->begin();
+        BootUpScreen::terminate();
+        Display->clear();
+    }
+
+    // Finally setup the vario filter. It needs a first valid altimeter reading to not "freak-out"
+    // This is provided from the baro sensor, or from the master XCVario via CAN bus
+    if ( baroSensor ) {
+        baroSensor->update(Clock::getMillis()); // enforce a first reading cycle
+    }
+    // TE vario "sensor" always needed, but last in line
+    bmpVario.setup();
+    SensorRegistry::registerSensor(&bmpVario);
+
+	Rotary->begin(); // now accept regular user input
 
 
 	// Wind calculation
