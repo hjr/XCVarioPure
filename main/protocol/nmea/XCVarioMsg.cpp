@@ -182,7 +182,7 @@ void NmeaPrtcl::sendXcvAPENV1()
     char str[50];
     std::sprintf(str, "%d,%d,0,0,0,%d", fast_iroundf(Units::pipe(ias.get(), Units::kmh)), 
                                         fast_iroundf(Units::pipe(altitude.get(), Units::foot)), 
-                                        fast_iroundf(Units::pipe(te_vario.get(), Units::fpm)));
+                                        fast_iroundf(Units::pipe(te_vario.get(), Units::hfpm)));
     msg->buffer += str;
     msg->buffer += "*" + NMEA::CheckSum(msg->buffer.c_str()) + "\r\n";
     DEV::Send(msg);

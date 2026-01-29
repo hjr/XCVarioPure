@@ -16,7 +16,7 @@ void setAll()
 	SpeedUnit = (ias_unit.get() == SPEED_UNIT_MPH) ? &mph :
 	            (ias_unit.get() == SPEED_UNIT_KNOTS) ? &kts : &kmh;
 	VarioUnit = (vario_unit.get() == VARIO_UNIT_KNOTS) ? &kts :
-                (vario_unit.get() == VARIO_UNIT_FPM) ? &fpm : &mps;
+                (vario_unit.get() == VARIO_UNIT_FPM) ? &hfpm : &mps;
 	TempUnit = (temperature_unit.get() == T_FAHRENHEIT) ? &fahrenheit :
                (temperature_unit.get() == T_KELVIN) ? &kelvin : &celsius;
 	DistanceUnit = (dst_unit.get() == DST_UNIT_FT) ? &foot :

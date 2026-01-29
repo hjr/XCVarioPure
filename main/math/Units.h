@@ -35,14 +35,14 @@ constexpr kelvin_t T0         = 288.15f;       // K (alias 15°C)
 constexpr kelvin_t C2K 		  = 273.15f;       // K (0°C)
 constexpr pascal_t P0         = 101325.0f;     // Pa
 constexpr float L             = 0.0065f;       // K/m (ISA lapse rate)
-constexpr float ft_per_m      = 3.28084f;
+constexpr float ft_per_m      = 3.2808399f;    // feet per meter
 constexpr float m_per_ft      = 1.0f / ft_per_m;
 constexpr float kmh_per_mps   = 3.6f;
 constexpr float mps_per_kmh   = 1.0f / kmh_per_mps;
-constexpr float knots_per_mps = 1.94384f;
+constexpr float knots_per_mps = 1.9438445f;
 constexpr float mps_per_knots = 1.0f / knots_per_mps;
-constexpr float fpm_per_mps   = 196.8504f;
-constexpr float mps_per_fpm   = 1.0f / fpm_per_mps;
+constexpr float hfpm_per_mps  = 1.96850394f;   // 100 feet per minute
+constexpr float mps_per_hfpm  = 1.0f / hfpm_per_mps;
 constexpr float deg_per_rad   = 57.2957795f;
 constexpr float rad_per_deg   = 1.0f / deg_per_rad;
 
@@ -61,26 +61,26 @@ inline constexpr float mps_to_kmh(mps_t mps)     { return mps * kmh_per_mps; }
 inline constexpr mps_t knots_to_mps(float knots)   { return knots * mps_per_knots; }
 inline constexpr float mps_to_knots(mps_t mps)     { return mps * knots_per_mps; }
 
-inline mps_t fpm_to_mps(float fpm)     { return fpm * mps_per_fpm; }
-inline float mps_to_fpm(mps_t mps)     { return mps * fpm_per_mps; }
+inline constexpr mps_t hfpm_to_mps(float hfpm)   { return hfpm * mps_per_hfpm; }
+inline constexpr float mps_to_hfpm(mps_t mps)    { return mps * hfpm_per_mps; }
 
 // ---------------------------------------------------------------------------
 // Pressure
 // ---------------------------------------------------------------------------
-inline pascal_t hpa_to_pa(float hpa)   { return hpa * 100.0f; }
-inline float    pa_to_hpa(pascal_t pa) { return pa * 0.01f; }
+inline constexpr pascal_t hpa_to_pa(float hpa)   { return hpa * 100.0f; }
+inline constexpr float    pa_to_hpa(pascal_t pa) { return pa * 0.01f; }
 
 // ---------------------------------------------------------------------------
 // Temperature
 // ---------------------------------------------------------------------------
-inline kelvin_t C_to_K(float c)        { return c + C2K; }
+inline constexpr kelvin_t C_to_K(float c)        { return c + C2K; }
 inline float    K_to_C(kelvin_t k)     { return k - C2K; }
 
 // ---------------------------------------------------------------------------
 // Angles
 // ---------------------------------------------------------------------------
-inline rad_t deg_to_rad(float deg)     { return deg * rad_per_deg; }
-inline float rad_to_deg(rad_t rad)     { return rad * deg_per_rad; }
+inline constexpr rad_t deg_to_rad(float deg)     { return deg * rad_per_deg; }
+inline constexpr float rad_to_deg(rad_t rad)     { return rad * deg_per_rad; }
 
 // ---------------------------------------------------------------------------
 // ISA atmosphere (troposphere, up to ~11km)
@@ -133,16 +133,16 @@ constexpr unit_t kilometer  { 0.001f, 0.0f, "km" };
 constexpr unit_t mile       { 0.000621371f, 0.0f, "mi" };
 constexpr unit_t naut_mile  { 0.000539957f, 0.0f, "nm" };
 // vertical length
-constexpr unit_t foot       { 3.2808399f, 0.0f, "ft" };
-constexpr unit_t flightlevel { 3.2808399f / 100.0f, 0.0f, "FL" }; // in hundreds of feet
+constexpr unit_t foot       { ft_per_m, 0.0f, "ft" };
+constexpr unit_t flightlevel { ft_per_m / 100.0f, 0.0f, "FL" }; // in hundreds of feet
 
 // speed
 constexpr unit_t mps        { 1.0f, 0.0f, "m/s" };
-constexpr unit_t kmh        { 3.6f, 0.0f, "kmh" };
+constexpr unit_t kmh        { kmh_per_mps, 0.0f, "kmh" };
 constexpr unit_t mph        { 2.2369363f, 0.0f, "mph" };
-constexpr unit_t kts        { 1.9438445f, 0.0f, "kt" };
+constexpr unit_t kts        { knots_per_mps, 0.0f, "kt" };
 // vertical speed
-constexpr unit_t fpm        {196.850394f, 0.0f, "ftm"};
+constexpr unit_t hfpm       {hfpm_per_mps, 0.0f, "ftm"}; // 100 feet per minute
 
 // pressure
 constexpr unit_t pascal     { 1.0f, 0.0f, "Pa" };
