@@ -184,7 +184,7 @@ bool VarioFilter::doRead(float& val) {
     }
 
     // linear prediction and innovation gating
-    const float max_10thsec_step = 6.0f;  // max 60 m/s vertical speed
+    const float max_10thsec_step = 8.0f;  // max 80 m/s vertical speed
     if (accept(curr_altitude, max_10thsec_step)) {
         val = curr_altitude;
         // ESP_LOGI(FNAME, "VarioFilter: accepted alt %f", curr_altitude);
