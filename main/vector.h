@@ -18,6 +18,8 @@
 #ifndef VECTOR_H
 #define VECTOR_H
 
+#include "math/Units.h"
+
 /**
  * \class Vector
  *
@@ -80,7 +82,7 @@ public:
     /**
      * set the angle in degrees  and the speed
      */
-    void setAngleAndSpeed(const int angle, const float&);
+    // void setAngleAndSpeed(const int angle, const mps_t& spd);
 
     /**
      * set the angle in radian
@@ -91,14 +93,12 @@ public:
      * Set the speed. Expected unit is meter per second.
      */
     void setSpeedKmh(const float kmh);
-    void setSpeedMps(const float mps);
+    void setSpeed(const mps_t mps);
 
     /**
      * @return The speed
      */
-    float getSpeed();  // in internal units of Kmh
-
-    float getSpeedMps();
+    mps_t getSpeed();  // in internal units of m/s
 
     /**
      * @return The speed in Y (longitude) direction
@@ -237,7 +237,7 @@ protected: // Protected attributes
     /**
      * float in mps
      */
-    float _speed;
+    mps_t _speed;
 
 private:
     /**

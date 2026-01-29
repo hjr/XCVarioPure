@@ -23,25 +23,25 @@ int Flarm::_numSat=0;
 
 
 
-bool Flarm::getGPS( float &gndSpeedKmh, float &gndTrack ) {
-    if( myGPS_OK ) {
-        gndSpeedKmh = Units::knots2kmh(gndSpeedKnots);
-        gndTrack = gndCourse;
-        return true;
-    }
-    else{
-        return false;
-    }
-}
-bool Flarm::getGPSknots( float &gndSpeed ) {
-        if( myGPS_OK ) {
-            gndSpeed = gndSpeedKnots;
-            return true;
-        }
-        else{
-            return false;
-        }
-}
+// bool Flarm::getGPS( mps_t &gndSpeed, float &gndTrack ) {
+//     if( myGPS_OK ) {
+//         gndSpeed = Units::knots_to_mps(gndSpeedKnots);
+//         gndTrack = gndCourse;
+//         return true;
+//     }
+//     else{
+//         return false;
+//     }
+// }
+// bool Flarm::getGPSknots( float &gndSpeed ) {
+//         if( myGPS_OK ) {
+//             gndSpeed = gndSpeedKnots;
+//             return true;
+//         }
+//         else{
+//             return false;
+//         }
+// }
 
 
 void Flarm::setConfirmed()

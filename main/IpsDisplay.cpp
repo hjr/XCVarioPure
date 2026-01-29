@@ -506,6 +506,7 @@ void IpsDisplay::initDisplay() {
     WNDgauge->enableWindIndicator(wind_enable.get() > WA_OFF, wind_enable.get() == WA_EXTERNAL);
     WNDgauge->setWindRef(wind_reference.get());
     WNDgauge->setColor(needle_color.get());
+    WNDgauge->setUnit(SpeedUnit->scale);
 
     if (vario_centeraid.get()) {
         CenterAid::create(*WNDgauge);
@@ -951,25 +952,23 @@ void IpsDisplay::drawDisplay(){
             // idir += abs(sin(d)) + 2;
             // ival = int((wval+d))%120;
 
-            int16_t wdir = -1, idir = -1;
-            int16_t wval = 0, ival = 0;
-            int16_t ageStraight;
-            int16_t ageCircling;
+            int16_t wdir = -1, inst_dir = -1;
+            mps_t wval = 0, inst_val = 0;
             if (wind_enable.get() & WA_BOTH) {
-                if (straightWind && !straightWind->getWind(&wdir, &wval, &ageStraight)) {
+                if (straightWind && !straightWind->getWind(&wdir, &wval)) {
                     wdir = -1;
                 }
 
-                if (circleWind && !circleWind->getWind(&wdir, &wval, &ageCircling)) {
+                if (circleWind && !circleWind->getWind(&wdir, &wval)) {
                     wdir = -1;
                 }
             } else {
-                idir = extwind_inst_dir.get();
-                ival = extwind_inst_speed.get();
+                inst_dir = extwind_inst_dir.get();
+                inst_val = extwind_inst_speed.get();
                 wdir = extwind_sptc_dir.get();
                 wval = extwind_sptc_speed.get();
             }
-            WNDgauge->drawWind(wdir, wval, idir, ival);
+            WNDgauge->drawWind(wdir, wval, inst_dir, inst_val);
         }
     }
 

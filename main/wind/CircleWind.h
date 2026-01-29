@@ -52,7 +52,7 @@ public:
   t_circling getFlightMode() const { return flightMode; };
 
   // Calculate flightmode from heading diff if circling is left or right
-  void calcFlightMode(float diff, float speed);
+  void calcFlightMode(float diff, mps_t speed);
 
   // Called if a new sample is available in the sample list.
   void setNewSample(Vector flarm_vector) { flarmVec = flarm_vector; };
@@ -66,15 +66,15 @@ public:
   // Called, if the GPS status has changed.
   void setGpsStatus(bool newStatus);
 
-  void newWind(float angle, float speed);
+  void newWind(float angle, mps_t speed);
 
-  static bool getWind(int16_t *dir, int16_t *speed, int16_t *age);
+  static bool getWind(int16_t *dir, mps_t *speed);
 
   float getNumCircles() const { return circleCount + (circleDegrees / 360.0); }
   int getSatCnt() const { return satCnt; }
   bool getGpsStatus() const { return gpsStatus; }
   float getAngle() { return result.getAngleDeg(); }
-  float getSpeed() { return result.getSpeed(); }
+  mps_t getSpeed() { return result.getSpeed(); }
   int getAge() const { return _age; }
   static void resetAge();
   int getQuality() const { return rint(100.0 - jitter); } // 0..100 %
@@ -105,7 +105,7 @@ private:
   uint8_t turn_right;
   uint8_t fly_straight;
   float lastWindDir;
-  float lastWindSpeed;
+  mps_t lastWindSpeed;
   Vector flarmVec;
 };
 

@@ -63,7 +63,7 @@ void ShowStraightWind::display(int mode)
 		sprintf( buffer, "AS C/F: %+3.3f %%/%3.3f %%  ", (straightWind->getAsCorrection()-1.0)*100, (wind_as_calibration.get()-1.0)*100 );
 		menuPrintLn(buffer, i++);
 
-		sprintf( buffer, "Last Wind : %3.1f°/%2.1f   ", straightWind->getAngle(), Units::Speed( straightWind->getSpeed()) );
+		sprintf( buffer, "Last Wind : %3.1f°/%2.1f   ", straightWind->getAngle(), SpeedUnit->apply(straightWind->getSpeed()) );
 		menuPrintLn(buffer, i++);
 
 		sprintf( buffer, "MH/Dev: %3.2f/%+3.2f   ", straightWind->getMH(), straightWind->getDeviation() );

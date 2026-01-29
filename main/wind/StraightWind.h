@@ -9,10 +9,13 @@
  */
 #pragma once
 
-#include <sys/time.h>
 #include "vector.h"
+#include "math/Units.h"
+
+#include <sys/time.h>
 #include <list>
 
+// #define Wind_Test 1
 
 class StraightWind
 {
@@ -24,14 +27,6 @@ public:
 
 	void tick();
 
-	// Get time in ms since 1.1.1970
-	static uint64_t getMsTime()
-	{
-		struct timeval tv;
-		gettimeofday( &tv, nullptr );
-		return ( tv.tv_sec * 1000 ) + ( tv.tv_usec / 1000 );
-	}
-
 	// Measurement cycle for wind calculation in straight flight. Should be
 	// triggered periodically, maybe once per second.
 	// Returns true, if a new wind was calculated.
@@ -39,17 +34,17 @@ public:
 
 	// Return the last calculated wind. If return result is true, the wind data
 	// are valid otherwise false.
-	static bool getWind(int16_t *direction, int16_t *speed, int16_t *age );
+	static bool getWind(int16_t *direction, mps_t *speed);
 
-	void setWind( float direction, float speed ){
+	void setWind( float direction, mps_t speed ){
 		windDir = direction;
 		windSpeed = speed;
 		_age = 0;
 	}
 
-	void calculateWind( float tc, float gs, float th, float tas, float deviation  );
-	static void calculateSpeedAndAngle( float angle1, float speed1, float angle2, float speed2, float& speed, float& angle );
-	void newCirclingWind( float angle, float speed );
+	void calculateWind( float tc, mps_t gs, float th, mps_t tas, float deviation  );
+	static void calculateSpeedAndAngle( float angle1, mps_t speed1, float angle2, mps_t speed2, mps_t& speed, float& angle );
+	void newCirclingWind( float angle, mps_t speed );
 	void test();
 	int getAge() { return _age; }
 	static void resetAge() { _age = 0; }
@@ -62,16 +57,16 @@ public:
 	const char *getStatus() { return status; }
 
 private:
-	float averageTas;         // TAS in km/h
+	mps_t averageTas;         // TAS
 	float averageTH;          // sum of Compass true heading
 	float averageTC;          // sum of GPS heading (true course)
-	float averageGS;		   // average ground speed
+	mps_t averageGS;		  // average ground speed
 	float windDir;            // calculated wind direction
-	float windSpeed;          // calculated wind speed in Km/h
+	mps_t windSpeed;          // calculated wind speed
 	bool   lowAirspeed;
 	float  circlingWindDir;
 	float  circlingWindDirReverse;
-	float  circlingWindSpeed;
+	mps_t  circlingWindSpeed;
 	int    circlingWindAge;
 	float  airspeedCorrection;
 	static int16_t _age;
@@ -82,7 +77,7 @@ private:
 	const char *status;
 	float  jitter;
 	std::list<Vector> windVectors;
-	float newWindSpeed;
+	mps_t newWindSpeed;
 	float newWindDir;
 	float slipAverage;
 	float lastHeading;

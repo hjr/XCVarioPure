@@ -67,7 +67,7 @@ CircleWind::CircleWind()
 	// Initialization
     status = "idle";
 	minVector.setSpeedKmh( 370.0 );
-	maxVector.setSpeedKmh( 0.0 );
+	maxVector.setSpeed( 0.0 );
 }
 
 CircleWind::~CircleWind()
@@ -119,9 +119,9 @@ void CircleWind::newSample()
 	}
 }
 
-void CircleWind::calcFlightMode( float headingDiff, float speed ){
+void CircleWind::calcFlightMode( float headingDiff, mps_t speed ){
 	// ESP_LOGI(FNAME,"calcFlightMode head diff:%3.2f gs:%3.2f", headingDiff, speed  );
-	if( speed < 25 ){
+	if( speed < Units::kmh_to_mps(25) ){
 		if( flightMode != undefined ) {
 			newFlightMode( undefined );
 			flightMode = undefined;
@@ -189,15 +189,16 @@ const char * CircleWind::getFlightModeStr() const
 		return "undefined";
 }
 
-bool CircleWind::getWind(int16_t *dir, int16_t *speed, int16_t *age)
+bool CircleWind::getWind(int16_t *dir, mps_t *speed)
 {
 	*dir = fast_iroundf(cwind_dir.get());
-	*speed = fast_iroundf_positive(cwind_speed.get());
-	*age = _age;
-	if( _age < 7200 )
+	*speed = cwind_speed.get();
+	if( _age < 7200 ) {
 		return true;
-	else
+	}
+	else {
 		return false;
+	}
 }
 
 void CircleWind::resetAge(){
@@ -232,7 +233,7 @@ void CircleWind::_calcWind()
 	result.setAngle( Vector::normalizeDeg((Vector::normalizeDeg180(maxVector.getAngleDeg()) + Vector::normalizeDeg180(minVector.getAngleDeg())) / 2.0) );
 
 	// The speed of the wind is half the difference between the minimum and the maximum speeds.
-	result.setSpeedKmh( (maxVector.getSpeed() - minVector.getSpeed()) / 2.0 );
+	result.setSpeed( (maxVector.getSpeed() - minVector.getSpeed()) / 2.0 );
 
 	// Let the world know about our measurement!
 	ESP_LOGI(FNAME,"### RAW CircleWind: %3.1f°/%.1fKm/h", result.getAngleDeg(), result.getSpeed() );
@@ -242,7 +243,7 @@ void CircleWind::_calcWind()
 
 // Jitter in the signal leads to higher windspeed measures as delta's grow
 // The new algorithm considers jitter and corrects windspeed according to measured jitter value
-void CircleWind::newWind( float angle, float speed ){
+void CircleWind::newWind( float angle, mps_t speed ){
 	ESP_LOGI(FNAME,"New Wind Vector angle %.1f speed %.1f", angle, speed );
 
 	windVectors.push_back( Vector( angle, speed ) );
@@ -269,7 +270,7 @@ void CircleWind::newWind( float angle, float speed ){
 		cwind_speed.set( (int)(windspeed+0.5) );
 	}
 	float deltaDir = abs( Vector::angleDiffDeg( lastWindDir, angle ) );
-	float deltaSpeed = abs( lastWindSpeed - speed );
+	mps_t deltaSpeed = abs( lastWindSpeed - speed );
 	lastWindDir = angle;
 	lastWindSpeed = speed;
 
@@ -296,7 +297,7 @@ void CircleWind::restartCycle( bool clean ){
 	circleDegrees = 0;
 	lastHeading   = -1;
 	minVector.setSpeedKmh( 370.0 );
-	maxVector.setSpeedKmh( 0.0 );
+	maxVector.setSpeed( 0.0 );
 }
 
 void CircleWind::newConstellation( int numSat )

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "math/vector_3d_fwd.h"
+#include "math/Units.h"
 
 #include <freertos/FreeRTOS.h>
 #include <freertos/semphr.h>
@@ -47,10 +48,9 @@ extern std::string logged_tests;
 
 extern AnalogInput *AnalogInWk;
 
-extern float alt_external;
+extern meter_t alt_external;
 
 extern int MyGliderPolarIndex;
-extern float meanClimb;
 
 extern SemaphoreHandle_t spiMutex;
 

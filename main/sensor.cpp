@@ -121,7 +121,7 @@ uint8_t gyro_flash_savings=0;
 global_flags gflags = {};
 
 int   ccp = 60;
-float alt_external;
+meter_t alt_external;
 
 const constexpr char passed_text[] = "PASSED\n";
 const constexpr char failed_text[] = "FAILED\n";

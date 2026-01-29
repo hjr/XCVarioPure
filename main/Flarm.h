@@ -16,8 +16,8 @@ class Flarm {
 	friend class FlarmScreen;
 public:
 	static int alarmLevel(){ return AlarmLevel; };
-	static bool getGPS( float &gndSpeedKmh, float &gndTrack );
-	static bool getGPSknots( float &gndSpeed );
+	// static bool getGPS( mps_t &gndSpeed, float &gndTrack );
+	// static bool getGPSknots( float &gndSpeed );
 	static bool gpsStatus() { return myGPS_OK; }
 	static float getGndSpeedKnots() { return gndSpeedKnots; }
 	static float getGndCourse() { return gndCourse; }

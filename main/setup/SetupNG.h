@@ -333,14 +333,14 @@ extern SetupNG<float>  		bugs;
 extern SetupNG<int>  		cruise_mode;
 extern SetupNG<kelvin_t>    OAT;   // outside temperature
 extern SetupNG<float>  		swind_dir;   // straight wind direction
-extern SetupNG<float>  		swind_speed;
+extern SetupNG<mps_t>  		swind_speed;
 extern SetupNG<float>  		swind_sideslip_lim;
 extern SetupNG<float>  		cwind_dir;   // cirling wind direction
-extern SetupNG<float>  		cwind_speed;
+extern SetupNG<mps_t>  		cwind_speed;
 extern SetupNG<int>  		extwind_sptc_dir; // synoptic and
-extern SetupNG<int>  		extwind_sptc_speed;
+extern SetupNG<mps_t>  		extwind_sptc_speed;
 extern SetupNG<int>  		extwind_inst_dir; // instant external wind
-extern SetupNG<int>  		extwind_inst_speed;
+extern SetupNG<mps_t>  		extwind_inst_speed;
 extern SetupNG<int>  		extwind_status;
 extern SetupNG<float>  		mag_hdm;
 extern SetupNG<float>  		mag_hdt;
@@ -350,7 +350,7 @@ extern SetupNG<meter_t>  	altitude;
 extern SetupNG<meter_t>  	altitude_isa;
 extern SetupNG<mps_t>       ias;
 extern SetupNG<mps_t>  		tas;
-extern SetupNG<float>  		gnd_speed;
+extern SetupNG<mps_t>  		gnd_speed;
 extern SetupNG<float>  		te_alt;
 extern SetupNG<float>  		te_vario;
 extern SetupNG<float>  		te_netto;

@@ -10,6 +10,7 @@
 
 #include "ScreenElement.h"
 #include "math/Trigonometry.h"
+#include "math/Units.h"
 
 class ArrowIndicator;
 class WindIndicator;
@@ -63,7 +64,7 @@ public:
     void drawPolarSink(float a);
     void drawAVG();
     void drawFigure(float a);
-    void drawWind(int16_t wdir, int16_t wval, int16_t idir, int16_t ival);
+    void drawWind(int16_t wdir, mps_t wval, int16_t idir, mps_t ival);
     using BowColorIdx = enum { GREEN, BLUE, ORANGE, RED };
     void colorRange(float from, float to, int16_t color);
     void drawScale(float at = -1000.);

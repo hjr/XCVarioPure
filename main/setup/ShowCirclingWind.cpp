@@ -64,7 +64,7 @@ void ShowCirclingWind::display(int mode)
 		sprintf( buffer, "Number of Circles : %2.2f  ", circleWind->getNumCircles() );
 		menuPrintLn(buffer, i++);
 
-		sprintf( buffer, "Last Wind : %3.1f°/%2.1f  ", circleWind->getAngle(), Units::Speed( circleWind->getSpeed()) );
+		sprintf( buffer, "Last Wind : %3.1f°/%2.1f  ", circleWind->getAngle(), SpeedUnit->apply(circleWind->getSpeed()) );
 		menuPrintLn(buffer, i++);
 
 		sprintf( buffer, "Wind Age : %d sec   ", circleWind->getAge() );

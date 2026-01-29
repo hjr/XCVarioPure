@@ -236,7 +236,7 @@ void PolarGauge::drawFigure(float a)
     }
 }
 
-void PolarGauge::drawWind(int16_t wdir, int16_t wval, int16_t idir, int16_t ival)
+void PolarGauge::drawWind(int16_t wdir, mps_t wval_par, int16_t idir, mps_t ival_par)
 {
     int16_t heading = 0;
 
@@ -244,7 +244,7 @@ void PolarGauge::drawWind(int16_t wdir, int16_t wval, int16_t idir, int16_t ival
         heading = fast_iroundf(getHeading());
     }
 
-    wval *= _unit_fac;
+    int16_t wval = wval_par * _unit_fac;
     wdir -= heading;
     // ESP_LOGI(FNAME,"PW  d:%d - %d", wdir%360, wval);
     if ( _wind_avg ) {
@@ -253,7 +253,7 @@ void PolarGauge::drawWind(int16_t wdir, int16_t wval, int16_t idir, int16_t ival
         }
     }
 
-    ival *= _unit_fac;
+    int16_t ival = ival_par * _unit_fac;
     idir -= heading;
     if ( _wind_live ) {
         if (_dirty || _wind_live->changed(idir, ival)

@@ -27,8 +27,6 @@
 #include "Compass.h"
 #include "Flarm.h"
 #include "setup/SetupNG.h"
-#include "math/Units.h"
-#include "sensor.h"
 #include "sensor.h"
 #include "sensor/imu/KalmanMPU6050.h"
 #include "math/Trigonometry.h"
@@ -83,12 +81,14 @@ void StraightWind::tick(){
 	_tick++;
 }
 
-bool StraightWind::getWind(int16_t *direction, int16_t *speed, int16_t *age )
+bool StraightWind::getWind(int16_t *direction, mps_t *speed)
 {
 	*direction = fast_iroundf(swind_dir.get());
-	*speed = fast_iroundf_positive(swind_speed.get());
-	*age = _age;
-	return ( true );
+	*speed = swind_speed.get();
+	if( _age < 7200 )
+		return true;
+	else
+		return false;
 }
 
 /**
@@ -122,26 +122,26 @@ bool StraightWind::calculateWind()
 	}
 
 	// Get current ground speed in km/h
-	float cgs = Units::knots2kmh( Flarm::getGndSpeedKnots() );
+	mps_t cgs = Units::knots_to_mps( Flarm::getGndSpeedKnots() );
 
 	// Get current TAS in km/h
-	float ctas = tas.get();
+	mps_t ctas = tas.get();
 
 	// Check, if we have a AS value > minimum, default is 25 km/h.
 	// If GS is nearly zero, the measurement makes also sense (wave), hence if we are not flying it doesn't
-	const float wind_as_min = 25.;
+	const mps_t wind_as_min = Units::kmh_to_mps(25.f);
 
-	if( ctas < Units::Airspeed2Kmh( wind_as_min ) )
+	if( ctas < wind_as_min )
 	{
 		// We start a new measurement cycle.
 		if( !lowAirspeed ) {
-			ESP_LOGI(FNAME,"Low Airspeed, stop wind calculation, AS %3.1f  < %3.1f Kmh", ctas,  Units::Airspeed2Kmh( wind_as_min ) );
+			ESP_LOGI(FNAME,"Low Airspeed, stop wind calculation, AS %3.1f  < %3.1f Kmh", Units::pipe(ctas, Units::kmh),  Units::pipe(wind_as_min, Units::kmh) );
 			lowAirspeed = true;
 		}
 		status="Low AS";
 	}else{
 		if( lowAirspeed ) {
-			ESP_LOGI(FNAME,"Airspeed OK, start wind calculation, AS %3.1f  < %3.1f Kmh", ctas,  Units::Airspeed2Kmh( wind_as_min ) );
+			ESP_LOGI(FNAME,"Airspeed OK, start wind calculation, AS %3.1f  < %3.1f Kmh", Units::pipe(ctas, Units::kmh),  Units::pipe(wind_as_min, Units::kmh) );
 			lowAirspeed = false;
 		}
 	}
@@ -221,7 +221,7 @@ bool StraightWind::calculateWind()
 // wind direction calculation taken from here:
 // view-source:http://www.owoba.de/fliegerei/flugrechner.html
 // direction in degrees of third vector in windtriangle
-void StraightWind::calculateSpeedAndAngle( float angle1, float speed1, float angle2, float speed2, float& speed, float& angle ){
+void StraightWind::calculateSpeedAndAngle( float angle1, mps_t speed1, float angle2, mps_t speed2, mps_t& speed, float& angle ){
 	float tcrad = deg2rad( angle1 );
 	float thrad = deg2rad( angle2 );
 	float wca = Vector::angleDiff( thrad, tcrad );
@@ -236,10 +236,10 @@ void StraightWind::calculateSpeedAndAngle( float angle1, float speed1, float ang
 float StraightWind::getAngle() { return swind_dir.get(); };
 float StraightWind::getSpeed() { return swind_speed.get(); };
 
-void StraightWind::calculateWind( float tc, float gs, float th, float tas, float deviation  ){
+void StraightWind::calculateWind( float tc, mps_t gs, float th, mps_t tas, float deviation  ){
 	// ESP_LOGI(FNAME,"calculateWind: TC:%3.1f GS:%3.1f TH:%3.1f TAS:%3.1f Dev:%2.2f", tc, gs, th, tas, deviation );
 	// Wind correction angle WCA
-	if( gs < 5 ){
+	if( gs < Units::kmh_to_mps(5.f) ){
 		tc = th;   // what will deliver heading and airspeed for wind
 	}
 	// Wind speed
@@ -271,7 +271,7 @@ void StraightWind::calculateWind( float tc, float gs, float th, float tas, float
 			status = "OLD CIRC WIND";
 			ESP_LOGI(FNAME,"Circling Wind exired");
 		}else{
-			float airspeed = 0;
+			mps_t airspeed = 0;
 			float heading = 0;
 			Vector wind( circlingWindDir, circlingWindSpeed );
 			Vector groundTrack( tc, gs );
@@ -318,7 +318,7 @@ void StraightWind::calculateWind( float tc, float gs, float th, float tas, float
 
 	Vector v;
 	v.setAngle( newWindDir );
-	v.setSpeedKmh( newWindSpeed );
+	v.setSpeed( newWindSpeed );
 
 	windVectors.push_back( v );
 	while( windVectors.size() > wind_filter_lowpass.get() ){
@@ -345,7 +345,7 @@ void StraightWind::calculateWind( float tc, float gs, float th, float tas, float
 }
 
 
-void StraightWind::newCirclingWind( float angle, float speed ){
+void StraightWind::newCirclingWind( float angle, mps_t speed ){
 	ESP_LOGI(FNAME,"New good circling wind %3.2f°/%3.2f", angle, speed );
 	circlingWindDir = angle;
 	circlingWindDirReverse = Vector::reverseBearing( angle );      // revers windvector
@@ -354,32 +354,35 @@ void StraightWind::newCirclingWind( float angle, float speed ){
 	circlingWindAge = 0;
 }
 
+#ifdef Wind_Test
+
 void StraightWind::test()
 {    // Class Test, check here the results: http://www.owoba.de/fliegerei/flugrechner.html
-	calculateWind( 90, 100, 0, 100, 0 );
-	if( int( windSpeed ) != 141 || int(windDir +0.5) != 135 ) {
+	calculateWind( 90, Units::kmh_to_mps(100), 0, Units::kmh_to_mps(100), 0 );
+	if( int( windSpeed ) != 141/3.6 || int(windDir +0.5) != 135/3.6 ) {
 		ESP_LOGI(FNAME,"Failed");
 	}
-	calculateWind( 270, 100, 0, 100, 0 );
-	if( int( windSpeed ) != 141 || int(windDir +0.5) != 225 ) {
+	calculateWind( 270, Units::kmh_to_mps(100), 0, Units::kmh_to_mps(100), 0 );
+	if( int( windSpeed ) != 141/3.6 || int(windDir +0.5) != 225/3.6 ) {
 		ESP_LOGI(FNAME,"Failed");
 	}
-	calculateWind( 0, 100, 90, 100, 0 );
-	if( int( windSpeed ) != 141 || int(windDir +0.5) != 315 ) {
+	calculateWind( 0, Units::kmh_to_mps(100), 90, Units::kmh_to_mps(100), 0 );
+	if( int( windSpeed ) != 141/3.6 || int(windDir +0.5) != 315/3.6 ) {
 		ESP_LOGI(FNAME,"Failed");
 	}
-	calculateWind( 0, 100, 270, 100, 0 );
-	if( int( windSpeed ) != 141 || int(windDir +0.5) != 45 ) {
-		ESP_LOGI(FNAME,"Failed");
-	}
-
-	calculateWind( 90, 100, 180, 100, 0 );
-	if( int( windSpeed ) != 141 || int(windDir +0.5) != 45 ) {
+	calculateWind( 0, Units::kmh_to_mps(100), 270, Units::kmh_to_mps(100), 0 );
+	if( int( windSpeed ) != 141/3.6 || int(windDir +0.5) != 45/3.6 ) {
 		ESP_LOGI(FNAME,"Failed");
 	}
 
-	calculateWind( 180, 100, 270, 100, 0 );
-	if( int( windSpeed ) != 141 || int(windDir +0.5) != 135  ) {
+	calculateWind( 90, Units::kmh_to_mps(100), 180, Units::kmh_to_mps(100), 0 );
+	if( int( windSpeed ) != 141/3.6 || int(windDir +0.5) != 45/3.6 ) {
+		ESP_LOGI(FNAME,"Failed");
+	}
+
+	calculateWind( 180, Units::kmh_to_mps(100), 270, Units::kmh_to_mps(100), 0 );
+	if( int( windSpeed ) != 141/3.6 || int(windDir +0.5) != 135/3.6  ) {
 		ESP_LOGI(FNAME,"Failed");
 	}
 }
+#endif

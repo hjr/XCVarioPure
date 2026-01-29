@@ -98,6 +98,9 @@ void WindCalcTask::createWindResources()
             if ( ! straightWind ) {
                 straightWind = new StraightWind();
                 straightWind->begin();
+#ifdef Wind_Test
+                straightWind->test();
+#endif
             }
         }
         else if ( ! (wind_enable.get() & WA_STRAIGHT) && straightWind ) {

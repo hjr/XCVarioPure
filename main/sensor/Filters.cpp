@@ -43,10 +43,11 @@ meter_t AltimeterFilter::filter(pascal_t input)
 {
     meter_t new_alt = Atmosphere::calcAltitudeISA(input);
     altitude_isa.set(new_alt);
+    // fixme no units here!
 
     if ( ((alt_unit_t)alt_unit.get() == alt_unit_t::ALT_UNIT_FL) 
         || ((fl_auto_transition.get() == 1) 
-            && ((int)Units::meters2FL(new_alt) + (int)gflags.standard_setting > transition_alt.get())) ) {
+            && ((int)Units::pipe(new_alt, Units::flightlevel) + (int)gflags.standard_setting > transition_alt.get())) ) {
         // FL, always standard or above transition altitude
         gflags.standard_setting = true;
     } else {

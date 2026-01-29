@@ -39,6 +39,8 @@ constexpr float ft_per_m      = 3.28084f;
 constexpr float m_per_ft      = 1.0f / ft_per_m;
 constexpr float kmh_per_mps   = 3.6f;
 constexpr float mps_per_kmh   = 1.0f / kmh_per_mps;
+constexpr float knots_per_mps = 1.94384f;
+constexpr float mps_per_knots = 1.0f / knots_per_mps;
 constexpr float fpm_per_mps   = 196.8504f;
 constexpr float mps_per_fpm   = 1.0f / fpm_per_mps;
 constexpr float deg_per_rad   = 57.2957795f;
@@ -55,6 +57,9 @@ inline float    m_to_ft(meter_t m)    { return m * ft_per_m; }
 // ---------------------------------------------------------------------------
 inline constexpr mps_t kmh_to_mps(float kmh)     { return kmh * mps_per_kmh; }
 inline constexpr float mps_to_kmh(mps_t mps)     { return mps * kmh_per_mps; }
+
+inline constexpr mps_t knots_to_mps(float knots)   { return knots * mps_per_knots; }
+inline constexpr float mps_to_knots(mps_t mps)     { return mps * knots_per_mps; }
 
 inline mps_t fpm_to_mps(float fpm)     { return fpm * mps_per_fpm; }
 inline float mps_to_fpm(mps_t mps)     { return mps * fpm_per_mps; }
@@ -137,7 +142,7 @@ constexpr unit_t kmh        { 3.6f, 0.0f, "kmh" };
 constexpr unit_t mph        { 2.2369363f, 0.0f, "mph" };
 constexpr unit_t kts        { 1.9438445f, 0.0f, "kt" };
 // vertical speed
-constexpr unit_t fpm        {196.850394f, 0.0f, "ft/m"};
+constexpr unit_t fpm        {196.850394f, 0.0f, "ftm"};
 
 // pressure
 constexpr unit_t pascal     { 1.0f, 0.0f, "Pa" };
@@ -172,25 +177,3 @@ extern const Units::unit_t *TempUnit;
 extern const Units::unit_t *DistanceUnit;
 extern const Units::unit_t *PressureUnit;
 
-namespace Units
-{
-	float Speed(float as);
-	float Distance(float d);
-	float kmh2knots(float kmh);
-	float kmh2ms(float kmh);
-	float ms2kmh(float ms);
-	float knots2kmh(float knots);
-	float Airspeed2Kmh(float as);
-	float ActualWingloadCorrection(float v);
-	float hPa2inHg(float hpa);
-	float inHg2hPa(float inhg);
-	float knots2ms(float knots);
-	float ms2knots(float knots);
-	float ms2mph(float ms);
-	float ms2fpm(float ms);
-	float Vario2ms(float var);
-	float mcval2knots(float mc);
-	float meters2feet(float m);
-	float feet2meters(float f);
-	float meters2FL(float m);
-};

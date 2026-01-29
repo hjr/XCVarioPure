@@ -13,6 +13,7 @@
 #include "wind/WindCalcTask.h"
 #include "protocol/Clock.h"
 #include "setup/SetupNG.h"
+#include "math/Units.h"
 #include "sensor.h"
 #include "logdef.h"
 
@@ -90,7 +91,7 @@ dl_action_t GpsMsg::parseGPRMC(NmeaPlugin *plg)
     // ESP_LOGI(FNAME,"parseGPRMC() GPS: %d, Speed: %3.1f knots, Track: %3.1f° warn:%c", Flarm::myGPS_OK, Flarm::gndSpeedKnots, Flarm::gndCourse, warn  );
     // ESP_LOGI(FNAME,"GP%s, GPS_OK:%d warn:%c T:%s D:%s", gprmc+3, myGPS_OK, warn, time, date  );
     // set the GND speed
-    float gndspeed = Units::knots2kmh(Flarm::gndSpeedKnots);
+    mps_t gndspeed = Units::knots_to_mps(Flarm::gndSpeedKnots);
     gnd_speed.set(gndspeed);
 
     Flarm::myGPS_OK = (warn == 'A');

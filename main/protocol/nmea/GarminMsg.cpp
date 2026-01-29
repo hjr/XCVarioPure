@@ -33,7 +33,7 @@ dl_action_t GarminMsg::parsePGRMZ(NmeaPlugin *plg)
 
     if ( word->size() == 4 && sm->_frame.at(word->at(1)) == 'F' ) {
         int alt1013_ft = atoi(sm->_frame.c_str()+word->at(0));
-        alt_external = Units::feet2meters(alt1013_ft );
+        alt_external = Units::read(Units::foot, alt1013_ft);
         ESP_LOGI(FNAME, "PGRMZ %d: ALT(1013):%5.0f m", alt1013_ft, alt_external);
         Flarm::ext_alt_timer = 10; // Fall back to internal Barometer after 10 seconds
     }

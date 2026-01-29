@@ -1152,7 +1152,7 @@ void Audio::dactask()
                     // speed to fly is the parameter for audio
                     // map s2f_delta to -5..+5, instead of heaving another set of min/max variables.
                     ESP_LOGI(FNAME, "S2F delta: %.1f km/h", Speed2Fly.getDelta());
-                    audio_value = - Speed2Fly.getDelta() / Units::kmh2ms(10.f);
+                    audio_value = - Speed2Fly.getDelta() / Units::kmh_to_mps(10.f);
                     max = 5.0; // +/- 50km/h range
                 }
                 audio_value = std::clamp( audio_value, -max, max );

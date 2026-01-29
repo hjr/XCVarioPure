@@ -159,8 +159,7 @@ void SetupRoot::rot(int count)
     // ESP_LOGI(FNAME,"root: rot");
     if (rot_default.get() == 1) {
         // MC Value
-        float step = Units::Vario2ms(0.1);
-        MC.setCheckRange(MC.get() + step * count);
+        MC.setCheckRange(MC.get() + 0.1 * count);
     }
     else {
         // Volume
