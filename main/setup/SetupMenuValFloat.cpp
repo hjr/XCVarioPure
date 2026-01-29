@@ -148,27 +148,11 @@ void SetupMenuValFloat::displayVal()
 	}
 }
 
-float SetupMenuValFloat::step(float instep) {
-    if (_nvs->hasLimits()) {
-        // use defined step if available
-        return _nvs->getStep();
-    }
-    // float step = 1.0;
-    // if( _nvs->quantityType() == quantity_t::QUANT_ALT && alt_unit.get() == (int)alt_unit_t::ALT_UNIT_FT )
-    // 	step = 5.0;
-    // else
-    // 	step = instep;
-    // if( _nvs->quantityType() == quantity_t::QUANT_VSPEED && vario_unit.get() == SPEED_UNIT_KNOTS )
-    // 	step = Units::Vario2ms( instep*2 );
-    // // ESP_LOGI(FNAME,"instep: %f, ut:%d ostep: %f", instep, _nvs->quantityType(), step );
-    return instep;
-}
-
 void SetupMenuValFloat::rot( int count )
 {
 	// ESP_LOGI(FNAME,"val rot %d times ", count );
 	_value = _nvs->get();
-	_value += step(_step) * count;
+	_value += _step * count;
 
 	if( _value < _min )
 		_value = _min;
