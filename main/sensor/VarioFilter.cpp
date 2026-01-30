@@ -14,6 +14,7 @@
 #include "Atmosphere.h"
 #include "math/Floats.h"
 #include "S2F.h"
+#include "AverageVario.h"
 #include "setup/SetupNG.h"
 #include "logdef.h"
 
@@ -26,7 +27,7 @@
 VarioFilter bmpVario; // static instance of it
 
 constexpr int DUTY_CYCLE_MS = 100; // 10Hz
-static float vario_buffer[ (SENSOR_HISTORY_DURATION_MS / DUTY_CYCLE_MS) + 1 ]; // history buffer for airspeed sensor
+static mps_t vario_buffer[ (SENSOR_HISTORY_DURATION_MS / DUTY_CYCLE_MS) + 1 ]; // history buffer for airspeed sensor
 
 // Data and dtructures for different filter variants
 static meter_t averageAlt = 0.f;
@@ -234,6 +235,7 @@ void VarioFilter::postProcess() {
 		_avg_vario = avgTE( _TEF );
 		// ESP_LOGI(FNAME," _avgTE: %f ", _avg_vario);
 	}
+    AverageVario::newSample(_TEF);
 }
 #elif defined(FILTER) && FILTER == 1
 void VarioFilter::postProcess() {
@@ -248,7 +250,7 @@ void VarioFilter::postProcess() {
     te_netto.set(te - _polar_sink);
 
     constexpr const float errorval = 1.6;
-    static float _TEF = 0.f;
+    static mps_t _TEF = 0.f;
 
     meter_t curr_altitude = getHead();
 	averageAlt += (curr_altitude - averageAlt) * 0.1;
@@ -280,6 +282,7 @@ void VarioFilter::postProcess() {
         _avg_vario = (getHead() - _history[_avg_filter_idx]) * (10.f / (_avg_filter_idx + 1));  // in m/s
         // ESP_LOGI(FNAME, "VarioFilter: H:%f 1:%f avg:%f", getHead(), _history[_avg_filter_idx], avg);
     }
+    AverageVario::newSample( _TEF );
 }
 #elif defined(FILTER) && FILTER == 2
 void VarioFilter::postProcess() {
@@ -299,6 +302,7 @@ void VarioFilter::postProcess() {
         _avg_vario = (getHead() - _history[_avg_filter_idx]) * (10.f / (_avg_filter_idx + 1));  // in m/s
         // ESP_LOGI(FNAME, "VarioFilter: H:%f 1:%f avg:%f", getHead(), _history[_avg_filter_idx], avg);
     }
+    AverageVario::newSample(_lpf.get());
 }
 #elif defined(FILTER) && FILTER == 3
 void VarioFilter::postProcess() {
@@ -331,7 +335,7 @@ void VarioFilter::postProcess() {
         _avg_vario = (getHead() - _history[_avg_filter_idx]) * (10.f / (_avg_filter_idx + 1));  // in m/s
         // ESP_LOGI(FNAME, "VarioFilter: H:%f 1:%f avg:%f", getHead(), _history[_avg_filter_idx], avg);
     }
-
+    AverageVario::newSample(vkf.v);
 }
 #endif
 
