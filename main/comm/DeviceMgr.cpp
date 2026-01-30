@@ -69,6 +69,7 @@ static const RoutingTarget xcv_proxy_routes[] = {
 static const std::pair<RoutingTarget, const RoutingTarget*> Routes[] = {
     { RoutingTarget(FLARM_DEV, S1_RS232, 0), flarm_routes },
     { RoutingTarget(FLARM_DEV, S2_RS232, 0), flarm_routes },
+    { RoutingTarget(FLARM_DEV, BT_SPP, 0), flarm_routes },
     { RoutingTarget(FLARM_DEV, CAN_BUS, 0), flarm_proxy_routes },
     { RoutingTarget(RADIO_REMOTE_DEV, NO_PHY, 0), radio_routes },
     { RoutingTarget(NAVI_DEV, NO_PHY, 0), navi_routes },
@@ -107,8 +108,9 @@ constexpr std::pair<DeviceId, DeviceAttributes> DEVATTR[] = {
     {DeviceId::ANEMOI_DEV, {"Anemoi", {{S1_RS232, S2_RS232}}, {{ANEMOI_P}, 1}, 0, IS_SEL, &anemoi_devsetup}},
     {DeviceId::ANEMOI_DEV, {"", {{S2_RS232}}, {{ANEMOI_P}, 1}, 0, 0, nullptr}},
     {DeviceId::CANREGISTRAR_DEV, {"Auto-connect", {{CAN_BUS}}, {{REGISTRATION_P}, 1}, CAN_REG_PORT, 0, nullptr}},
-    {DeviceId::FLARM_DEV,  {"Flarm", {{S1_RS232, S2_RS232}}, {{FLARM_P, FLARMBIN_P}, 2}, 0, IS_SEL, &flarm_devsetup}},
+    {DeviceId::FLARM_DEV,  {"Flarm", {{S1_RS232, S2_RS232, BT_SPP}}, {{FLARM_P, FLARMBIN_P}, 2}, 0, IS_SEL, &flarm_devsetup}},
     {DeviceId::FLARM_DEV,  {"", {{S2_RS232}}, {{FLARM_P, FLARMBIN_P}, 2}, 0, 0, nullptr}},
+    {DeviceId::FLARM_DEV,  {"", {{BT_SPP}}, {{FLARM_P}, 1}, 0, 0, nullptr}},
     // {DeviceId::FLARM_DEV,  {"", {{XCVPROXY}}, {{FLARM_P, FLARMBIN_P}, 2}, 0, 0, nullptr}},
     {DeviceId::JUMBO_DEV,  {"jumbo putzi", {{CAN_BUS}}, {{JUMBOCMD_P}, 1} , 0, 0, nullptr}}, // auto reg
     {DeviceId::XCVARIOFIRST_DEV, {"Master XCV", {{WIFI_APSTA, S2_RS232}}, {{XCVSYNC_P}, 1}, 8884, IS_SEL|SECOND_ONLY, &master_devsetup}}, // CAN_BUS auto reg

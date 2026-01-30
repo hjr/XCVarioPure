@@ -215,16 +215,18 @@ dl_action_t FlarmMsg::parsePFLAX(NmeaPlugin *plg)
             if ( SetupCommon::isMaster() && !gflags.inSimulationMode ) {
                 // XCV extension to switch to simulation mode
                 ESP_LOGI(FNAME,"enter SIMULATION MODE");
+                // replace the temp sensor with a virtual one
                 DEVMAN->removeDevice(TEMPSENS_DEV);
                 DEVMAN->addDevice(TEMPSENS_DEV, NO_ONE, 0, 0, NO_PHY);
+                // disable real sensors
                 SensorRegistry::enterSimMode();
+                // add the XCVSimMsg NMEA plugin to the same data link / protocol instance
                 nmea.addPlugin(new XCVSimMsg(nmea));
                 gflags.inSimulationMode = true;
                 MBOX->pushMessage(1, "Simulation Mode");
             }
-            else if ( gflags.inSimulationMode) {
+            if ( gflags.inSimulationMode) {
                 // time jump, reset clock
-                // Clock::sim();
                 if ( word->size() >= 2 ) {
                     int speed = atoi(sm->_frame.c_str() + word->at(1));
                     ESP_LOGI(FNAME,"Set SIM speed %d", speed);
