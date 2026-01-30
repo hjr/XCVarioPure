@@ -17,7 +17,7 @@ public:
 	S2F() = default;
 	~S2F() = default;
 	void begin();
-	void modifyPolar();
+	void changePolar();
 	// bool IsValid() const { return _valid;};
 	void changeBallast();
 	void changeMc();

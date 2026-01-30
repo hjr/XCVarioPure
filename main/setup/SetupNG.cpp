@@ -120,12 +120,12 @@ void polar_update(){
 	Speed2Fly.setPolar();
 }
 
-void modifyPolar() {
-	Speed2Fly.modifyPolar();
+static void change_polar() {
+    Speed2Fly.changePolar();
 }
 
-static void modifyBugs() {
-    modifyPolar();
+static void change_bugs() {
+    change_polar();
     ProtocolItf *prtcl = DEVMAN->getProtocol(NAVI_DEV, SEEYOU_P);
     if ( prtcl ) {
         (static_cast<NmeaPrtcl*>(prtcl))->sendSeeYouVal(bugs.get(), SeeYouMsg::BUGS_VAL);
@@ -229,28 +229,28 @@ SetupNG<mps_t>          MC(  "MacCready", 0.5, true, SYNC_BIDIR, PERSISTENT, cha
 SetupNG<pascal_t>  		QNH( "QNH", 101325., true, SYNC_BIDIR, PERSISTENT, changeQnh, quantity_t::QUANT_QNH, LIMITS(90000., 110000., 6.0) );
 SetupNG<float> 			polar_wingload( "POLAR_WINGLOAD", 34.40, true, SYNC_BIDIR, PERSISTENT, change_ballast, quantity_t::QUANT_NONE, LIMITS(10.0, 100.0, 0.1) );
 const limits_t polar_speed_limits = {0.0, 450.0, 1};
-SetupNG<float> 			polar_speed1( "POLAR_SPEED1",   80, true, SYNC_BIDIR, PERSISTENT, modifyPolar, quantity_t::QUANT_NONE, &polar_speed_limits);
+SetupNG<kmh_t> 			polar_speed1( "POLAR_SPEED1",   80, true, SYNC_BIDIR, PERSISTENT, change_polar, quantity_t::QUANT_NONE, &polar_speed_limits);
 const limits_t polar_sink_limits = {-6.0, 0.0, 0.01};
-SetupNG<mps_t> 			polar_sink1( "POLAR_SINK1",    -0.66, true, SYNC_BIDIR, PERSISTENT, modifyPolar, quantity_t::QUANT_NONE, &polar_sink_limits);
-SetupNG<float> 			polar_speed2( "POLAR_SPEED2",   125, true, SYNC_BIDIR, PERSISTENT, modifyPolar, quantity_t::QUANT_NONE, &polar_speed_limits);
-SetupNG<mps_t> 			polar_sink2( "POLAR_SINK2",    -0.97, true, SYNC_BIDIR, PERSISTENT, modifyPolar, quantity_t::QUANT_NONE, &polar_sink_limits);
-SetupNG<float> 			polar_speed3( "POLAR_SPEED3",   175, true, SYNC_BIDIR, PERSISTENT, modifyPolar, quantity_t::QUANT_NONE, &polar_speed_limits);
-SetupNG<mps_t> 			polar_sink3( "POLAR_SINK3",    -2.24, true, SYNC_BIDIR, PERSISTENT, modifyPolar, quantity_t::QUANT_NONE, &polar_sink_limits);
-SetupNG<float>			polar_stall_speed( "STALL_SPEED", 0, true, SYNC_BIDIR, PERSISTENT, modifyPolar, quantity_t::QUANT_HSPEED, &polar_speed_limits);
-SetupNG<float> 			polar_max_ballast( "POLAR_MAX_BAL",  80, true, SYNC_BIDIR, PERSISTENT, change_ballast, quantity_t::QUANT_MASS, LIMITS(0, 500, 1));
+SetupNG<mps_t> 			polar_sink1( "POLAR_SINK1",    -0.66, true, SYNC_BIDIR, PERSISTENT, change_polar, quantity_t::QUANT_NONE, &polar_sink_limits);
+SetupNG<kmh_t> 			polar_speed2( "POLAR_SPEED2",   125, true, SYNC_BIDIR, PERSISTENT, change_polar, quantity_t::QUANT_NONE, &polar_speed_limits);
+SetupNG<mps_t> 			polar_sink2( "POLAR_SINK2",    -0.97, true, SYNC_BIDIR, PERSISTENT, change_polar, quantity_t::QUANT_NONE, &polar_sink_limits);
+SetupNG<kmh_t> 			polar_speed3( "POLAR_SPEED3",   175, true, SYNC_BIDIR, PERSISTENT, change_polar, quantity_t::QUANT_NONE, &polar_speed_limits);
+SetupNG<mps_t> 			polar_sink3( "POLAR_SINK3",    -2.24, true, SYNC_BIDIR, PERSISTENT, change_polar, quantity_t::QUANT_NONE, &polar_sink_limits);
+SetupNG<kmh_t>			polar_stall_speed( "STALL_SPEED", 0, true, SYNC_BIDIR, PERSISTENT, change_polar, quantity_t::QUANT_HSPEED, &polar_speed_limits);
+SetupNG<kilogram_t> 	polar_max_ballast( "POLAR_MAX_BAL",  80, true, SYNC_BIDIR, PERSISTENT, change_ballast, quantity_t::QUANT_MASS, LIMITS(0, 500, 1));
 SetupNG<float> 			polar_wingarea( "POLAR_WINGAREA", 10.5, true, SYNC_BIDIR, PERSISTENT, change_ballast, quantity_t::QUANT_NONE, LIMITS(0, 50, 0.1));
 
 SetupNG<float>  		speedcal( "SPEEDCAL", 0.0, true, SYNC_BIDIR, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(-100, 100, 1));
-SetupNG<second_t>  	vario_delay( "VARIO_DELAY", 3.0, true, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(2.0, 10.0, 0.1));
-SetupNG<second_t>  	vario_av_delay( "VARIO_AV_DELAY", 20.0, true, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(7.0, 50.0, 1)); // changed to 20 seconds (quasi standard) what equals to a half circle
+SetupNG<second_t>  		vario_delay( "VARIO_DELAY", 3.0, true, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(2.0, 10.0, 0.1));
+SetupNG<second_t>  		vario_av_delay( "VARIO_AV_DELAY", 20.0, true, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(7.0, 50.0, 1)); // changed to 20 seconds (quasi standard) what equals to a half circle
 SetupNG<mps_t>  		scale_range( "VARIO_RANGE", 5.0, true, SYNC_NONE, PERSISTENT, 0, quantity_t::QUANT_VSPEED, LIMITS(1.0, 30.0, 1));
 SetupNG<int>			log_scale( "LOG_SCALE", 0 );
 SetupNG<float>  		ballast( "BALLAST" , 0.0, true, SYNC_NONE, VOLATILE, 0 );  // ballast increase from reference weight in %
-SetupNG<float>  		ballast_kg( "BAL_KG" , 0.0, true, SYNC_BIDIR, PERSISTENT, change_bal_water, quantity_t::QUANT_MASS, LIMITS(0.0, 500, 1));
+SetupNG<kilogram_t>  	ballast_kg( "BAL_KG" , 0.0, true, SYNC_BIDIR, PERSISTENT, change_bal_water, quantity_t::QUANT_MASS, LIMITS(0.0, 500, 1));
 SetupNG<kilogram_t>		empty_weight( "EMPTY_WGT", 361.2, true, SYNC_BIDIR, PERSISTENT, change_empty_weight, quantity_t::QUANT_MASS, LIMITS(0, 1000, 1));
 SetupNG<kilogram_t>		crew_weight( "CREW_WGT", 80, true, SYNC_BIDIR, PERSISTENT, change_crew_weight, quantity_t::QUANT_MASS, LIMITS(0, 300, 1));
 SetupNG<kilogram_t>		gross_weight( "GROSS_WGT", 350, true, SYNC_NONE, VOLATILE ); // derived from above
-SetupNG<float>  		bugs( "BUGS", 0.0, true, SYNC_BIDIR, VOLATILE, modifyBugs, quantity_t::QUANT_NONE, LIMITS(0.0, 50, 1));
+SetupNG<float>  		bugs( "BUGS", 0.0, true, SYNC_BIDIR, VOLATILE, change_bugs, quantity_t::QUANT_NONE, LIMITS(0.0, 50, 1));
 
 SetupNG<int>  			cruise_mode( "CRUISE", 0, false, SYNC_BIDIR, VOLATILE, change_cruise ); // use the CruiseMode wrapper to access and modify
 SetupNG<kelvin_t>  		OAT( "OAT", -1000., false, SYNC_BIDIR, VOLATILE );   // outside air temperature, sensor on any side

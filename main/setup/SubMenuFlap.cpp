@@ -172,7 +172,7 @@ static int select_level_action(SetupMenuChar *p)
 }
 static int select_speed_action(SetupMenuValFloat *p)
 {
-    ESP_LOGI(FNAME,"action speed %.1f", p->getFloat());
+    ESP_LOGI(FNAME,"action speed %.1f", p->getNVSVal());
     new_level_complete |= 0x2;
     if ( new_level_complete == 0x3 ) {
         p->getParent()->getEntry(2)->unlock();
@@ -203,8 +203,7 @@ static void flap_menu_add_level(SetupMenu *top) // dynamic!
         top->addEntry( flab );
 
         // the minimum speed
-        SetupMenuValFloat *minspeed = new SetupMenuValFloat("Minimum Speed", "kmh", nullptr, false, new_level_speed);
-        minspeed->setExitAction(select_speed_action);
+        SetupMenuValFloat *minspeed = new SetupMenuValFloat("Minimum Speed", "kmh", select_speed_action, false, new_level_speed);
         top->addEntry( minspeed );
 
         // confirmation
@@ -232,8 +231,8 @@ static int level_label_action(SetupMenuChar *p)
 }
 static int level_speed_action(SetupMenuValFloat *p)
 {
-    ESP_LOGI(FNAME,"level_speed_action %.1f", p->getFloat());
-    FLAP->setSpeed(p->getParent()->getContId(), p->getFloat() );
+    ESP_LOGI(FNAME,"level_speed_action %.1f", p->getNVSVal());
+    FLAP->setSpeed(p->getParent()->getContId(), p->getNVSVal() );
     FLAP->modLevels();
     p->getParent()->getParent()->setDirty();
     return 0;
@@ -264,8 +263,7 @@ static void one_flap_level(SetupMenu *top) // dynamic!
         top->addEntry( flab );
 
         // the minimum speed
-        SetupMenuValFloat *minspeed = new SetupMenuValFloat("Minimum Speed", "kmh", nullptr, false, FLAP->getSpeedNVS(lid)  );
-        minspeed->setExitAction(level_speed_action);
+        SetupMenuValFloat *minspeed = new SetupMenuValFloat("Minimum Speed", "kmh", level_speed_action, false, FLAP->getSpeedNVS(lid)  );
         top->addEntry( minspeed );
 
         // remove level

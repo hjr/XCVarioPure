@@ -15,6 +15,8 @@
 #include "sensor.h"
 #include "logdefnone.h"
 
+#include <algorithm>
+
 extern AdaptUGC *MYUCG;
 
 char SetupMenuValFloat::_val_str[50];
@@ -64,7 +66,7 @@ static const char* unitFromQuantity(quantity_t q)
 
 
 SetupMenuValFloat::SetupMenuValFloat( const char* title, const char *unit, int (*action)( SetupMenuValFloat *p ), 
-	bool end_menu, SetupNG<float> *anvs, e_restart_mode_t restart, bool sync, bool live_update ) :
+	bool end_menu, SetupNG<float> *anvs, e_restart_mode_t restart, bool live_update) :
 	MenuEntry(title),
 	_action(action),
 	_nvs(anvs)
@@ -99,7 +101,7 @@ SetupMenuValFloat::SetupMenuValFloat( const char* title, const char *unit, int (
 
 void SetupMenuValFloat::enter()
 {
-	_value_safe = _value;
+	_value_safe = _value = _nvs->get();
 	MenuEntry::enter();
 }
 
@@ -148,22 +150,19 @@ void SetupMenuValFloat::displayVal()
 	}
 }
 
-void SetupMenuValFloat::rot( int count )
-{
-	// ESP_LOGI(FNAME,"val rot %d times ", count );
-	_value = _nvs->get();
-	_value += _step * count;
+void SetupMenuValFloat::rot(int count) {
+    // ESP_LOGI(FNAME,"val rot %d times ", count );
+    _value += _step * count;
+    _value = std::clamp(_value, _min, _max);
 
-	if( _value < _min )
-		_value = _min;
-	else if( _value > _max )
-		_value = _max;
+    if (bits._live_update) {
+        _nvs->set(_value, false, false);
+        if (_action != 0) {
+            (*_action)(this);
+        }
+    }
 
-	_nvs->set(_value, bits._live_update, bits._live_update );
-	displayVal();
-	if( _action != 0 ) {
-		(*_action)( this );
-	}
+    displayVal();
 }
 
 void SetupMenuValFloat::longPress()
@@ -175,13 +174,16 @@ void SetupMenuValFloat::press()
 {
 	ESP_LOGI(FNAME,"SetupMenuValFloat value: %f", _value );
 	ESP_LOGI(FNAME,"Check if _value: %f != _value_safe: %f", _value, _value_safe );
-	if ( _exit_action ) {
-		_exit_action( this );
-	}
+
+	// if ( _exit_action ) {
+	// 	_exit_action( this );
+	// }
 
 	if( _value != _value_safe ){
 		_nvs->set( _value );
-		_nvs->commit();
+        if (_action != 0) {
+           (*_action)(this);
+        }
 		if ( helptext ) {
 			SavedDelay();
 		}

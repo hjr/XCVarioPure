@@ -107,9 +107,9 @@ int compass_ena(SetupMenuSelect *p) {
 	return 0;
 }
 
-int vario_setup(SetupMenuValFloat *p) {
-	bmpVario.configChange();
-	return 0;
+static int vario_setup(SetupMenuValFloat* p) {
+    bmpVario.configChange();
+    return 0;
 }
 
 static int s2f_change_action(SetupMenuValFloat *p) {
@@ -231,7 +231,7 @@ static int add_key(SetupMenuChar *p) {
 
 static int imu_gaa(SetupMenuValFloat *f) {
 	if (accSensor && !(imu_reference.get() == Quaternion())) {
-		accSensor->applyImuReference(f->_value, imu_reference.get());
+		accSensor->applyImuReference(f->get(), imu_reference.get());
 	}
 	return 0;
 }
@@ -350,16 +350,10 @@ int factv_adj(SetupMenuValFloat *p) {
 	return 0;
 }
 
-int water_adj(SetupMenuValFloat *p) {
-	if ( ballast_kg.get() > polar_max_ballast.get() ) {
-		ballast_kg.set(polar_max_ballast.get());
-	}
-	else if ( ballast_kg.get() < 0 ) {
-		ballast_kg.set(0);
-	}
-	p->setMax(polar_max_ballast.get());
-	start_weight_adj(p);
-	return 0;
+static int water_adj(SetupMenuValFloat* p) {
+    p->set(std::clamp(p->get(), 0.0f, polar_max_ballast.get()));
+    start_weight_adj(p);
+    return 0;
 }
 
 int wiper_button(SetupAction *p) {
@@ -367,10 +361,6 @@ int wiper_button(SetupAction *p) {
 
 	ESP_LOGI(FNAME, "wipe %d", p->getCode());
 	jumbo->sendJPShortPress(p->getCode());
-	return 0;
-}
-
-int bug_adj(SetupMenuValFloat *p) {
 	return 0;
 }
 
@@ -597,12 +587,6 @@ int deviceDumpAction(SetupAction *p)
 	return 0;
 }
 
-int varioAvChange(SetupMenuValFloat *p) {
-	// ESP_LOGI(FNAME,"varioAvChange() %f", vario_av_delay.get() );
-	bmpVario.configChange();
-	return 0;
-}
-
 static int s2fModeChange(SetupMenuSelect* p) {
     if (S2FSWITCH) {
         S2FSWITCH->updateSwitchSetup();
@@ -610,10 +594,7 @@ static int s2fModeChange(SetupMenuSelect* p) {
     return 0;
 }
 static int s2fModeChangeF(SetupMenuValFloat* p) {
-    if (S2FSWITCH) {
-        S2FSWITCH->updateSwitchSetup();
-    }
-    return 0;
+    return s2fModeChange(nullptr);
 }
 
 int unitChangeS(SetupMenuSelect* p) {
@@ -622,12 +603,10 @@ int unitChangeS(SetupMenuSelect* p) {
 }
 void vario_menu_create_damping(SetupMenu *top) {
 	SetupMenuValFloat *vda = new SetupMenuValFloat("Damping", "sec", vario_setup, false, &vario_delay);
-    vda->setExitAction(varioAvChange);
 	vda->setHelp("Response time, time constant of Vario low pass filter");
 	top->addEntry(vda);
 
-	SetupMenuValFloat *vdav = new SetupMenuValFloat("Averager", "sec", nullptr, false, &vario_av_delay);
-    vdav->setExitAction(varioAvChange);
+	SetupMenuValFloat *vdav = new SetupMenuValFloat("Averager", "sec", vario_setup, false, &vario_av_delay);
 	vdav->setHelp("Response time, time constant of digital Average Vario Display");
 	top->addEntry(vdav);
 }
@@ -698,8 +677,7 @@ void vario_menu_create_s2f(SetupMenu *top) {
 	top->addEntry(s2f_gyro);
 	s2f_gyro->setHelp("Turnrate for the AutoTurnrate switch");
 
-	SetupMenuValFloat *s2flag = new SetupMenuValFloat("Switch Lag", "sec", nullptr, false, &s2f_auto_lag);
-    s2flag->setExitAction(s2fModeChangeF);
+	SetupMenuValFloat *s2flag = new SetupMenuValFloat("Switch Lag", "sec", s2fModeChangeF, false, &s2f_auto_lag);
 	s2flag->setHelp("Lag to delay the auto switch event (2-20sec)");
 	top->addEntry(s2flag);
 }
@@ -732,7 +710,6 @@ void wiper_menu_create(SetupMenu *top) {
 
 void bugs_item_create(SetupMenu *top) {
 	SetupMenuValFloat *bgs = new SetupMenuValFloat("Bugs", "%", nullptr, true, &bugs);
-    bgs->setExitAction(bug_adj);
 	bgs->setHelp("Percent degradation of gliding performance due to bugs contamination");
 	top->addEntry(bgs);
 }
@@ -740,8 +717,7 @@ void bugs_item_create(SetupMenu *top) {
 void vario_menu_create(SetupMenu *vae) {
 	ESP_LOGI(FNAME,"SetupMenu::vario_menu_create( %p )", vae );
 
-	SetupMenuValFloat *vga = new SetupMenuValFloat("Range", "", nullptr, true, &scale_range);
-    vga->setExitAction(audio_setup_f);
+	SetupMenuValFloat *vga = new SetupMenuValFloat("Range", "", audio_setup_f, true, &scale_range);
 	vga->setHelp("Upper and lower value for Vario scale range");
 	vga->setPrecision(0);
 	vae->addEntry(vga);
@@ -812,8 +788,7 @@ void options_menu_create_units(SetupMenu *top) {
 }
 
 static void system_menu_create_airspeed(SetupMenu *top) {
-	SetupMenuValFloat *spc = new SetupMenuValFloat("AS Calibration", "%", nullptr, false, &speedcal);
-    spc->setExitAction(speedcal_change);
+	SetupMenuValFloat *spc = new SetupMenuValFloat("AS Calibration", "%", speedcal_change, false, &speedcal);
 	spc->setHelp("Calibration of airspeed sensor (AS). Normally not needed, unless the pressure probe has a systematic error");
 	top->addEntry(spc);
 
@@ -1194,15 +1169,14 @@ void system_menu_create_hardware_rotary(SetupMenu *top) {
 	roinc->addEntry("1 indent", 1);
 	roinc->addEntry("2 indent", 2);
 
-	// Rotary Default
-	SetupMenuSelect *rd = new SetupMenuSelect("Primary Use", RST_ON_EXIT, nullptr, &rot_default);
-	top->addEntry(rd);
-	rd->setHelp(
-			"Select value to be altered at rotary movement outside of setup menu (reboots)");
-	rd->addEntry("Volume");
-	rd->addEntry("MC Value");
+    // Rotary Default
+    SetupMenuSelect* rd = new SetupMenuSelect("Primary Use", RST_NONE, nullptr, &rot_default);
+    top->addEntry(rd);
+    rd->setHelp("Select value to be altered at rotary movement outside of setup menu (reboots)");
+    rd->addEntry("Volume");
+    rd->addEntry("MC Value");
 
-	SetupMenuSelect *sact = new SetupMenuSelect("Enter Setup by", RST_NONE, nullptr, &menu_long_press);
+    SetupMenuSelect *sact = new SetupMenuSelect("Enter Setup by", RST_NONE, nullptr, &menu_long_press);
 	top->addEntry(sact);
 	sact->setHelp("Activate setup menu either by short or long button press");
 	sact->addEntry("Short Press");
@@ -1217,8 +1191,7 @@ void system_menu_create_ahrs_calib(SetupMenu *top) {
 	ahrs_calib_collect->addEntry("Start");
 	ahrs_calib_collect->addEntry("Reset");
 
-	SetupMenuValFloat *ahrs_ground_aa = new SetupMenuValFloat("Ground angle of attack", "°", nullptr, false, &glider_ground_aa);
-    ahrs_ground_aa->setExitAction(imu_gaa);
+	SetupMenuValFloat *ahrs_ground_aa = new SetupMenuValFloat("Ground angle of attack", "°", imu_gaa, false, &glider_ground_aa);
 	ahrs_ground_aa->setHelp(
 			"Angle of attack with tail skid on the ground to adjust the AHRS reference. Change this any time to correct the AHRS horizon level.");
 	ahrs_ground_aa->setPrecision(0);
@@ -1402,7 +1375,7 @@ void setup_create_root(SetupMenu *top) {
 		mc->setPrecision(1);
 		top->addEntry(mc);
 	} else {
-		SetupMenuValFloat *vol = new SetupMenuValFloat("Audio Volume", "%", nullptr, true, &audio_volume, RST_NONE, false, true);
+		SetupMenuValFloat *vol = new SetupMenuValFloat("Audio Volume", "%", nullptr, true, &audio_volume, RST_NONE, true);
 		vol->setHelp("Audio volume level for variometer tone on internal and external speaker");
 		top->addEntry(vol);
 	}
@@ -1420,7 +1393,7 @@ void setup_create_root(SetupMenu *top) {
 	SetupMenuValFloat *bal = SetupMenu::createBallastMenu();
 	top->addEntry(bal);
 
-	SetupMenuValFloat *crewball = new SetupMenuValFloat("Crew Weight", "kg", start_weight_adj, false, &crew_weight);
+	SetupMenuValFloat *crewball = new SetupMenuValFloat("Crew Weight", "kg", start_weight_adj, false, &crew_weight, RST_NONE, true);
 	crewball->setPrecision(0);
 	crewball->setHelp(
 			"Weight of the pilot(s) including parachute (everything on top of the empty weight apart from ballast)");
@@ -1469,22 +1442,23 @@ SetupMenu* SetupMenu::createTopSetup() {
 }
 
 SetupMenuValFloat* SetupMenu::createQNHMenu() {
-	SetupMenuValFloat *qnh = new SetupMenuValFloat("QNH", "", qnh_adj, true, &QNH);
+	SetupMenuValFloat *qnh = new SetupMenuValFloat("QNH", "", qnh_adj, true, &QNH, RST_NONE, true);
     qnh->setPrecision(2);
 	qnh->setHelp("QNH pressure value from ATC. On ground you may adjust to airfield altitude above MSL", 180);
 	return qnh;
 }
 
 SetupMenuValFloat* SetupMenu::createBallastMenu() {
-    SetupMenuValFloat *bal = new SetupMenuValFloat("Ballast", "litre", water_adj, true, &ballast_kg);
+    SetupMenuValFloat *bal = new SetupMenuValFloat("Ballast", "litre", water_adj, true, &ballast_kg, RST_NONE, true);
     bal->setHelp("Amount of water ballast added to the over all weight");
     bal->setPrecision(0);
     bal->setNeverInline();
+    bal->setMax(polar_max_ballast.get());
     return bal;
 }
 
 SetupMenuValFloat* SetupMenu::createVoltmeterAdjustMenu() {
-	SetupMenuValFloat *met_adj = new SetupMenuValFloat("Voltmeter Adjust", "%", factv_adj, false, &factory_volt_adjust, RST_NONE, false, true);
+	SetupMenuValFloat *met_adj = new SetupMenuValFloat("Voltmeter Adjust", "%", factv_adj, false, &factory_volt_adjust, RST_NONE, true);
 	met_adj->setHelp("Factory fine adjust voltmeter");
 	met_adj->setNeverInline();
 	return met_adj;

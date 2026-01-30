@@ -236,13 +236,14 @@ public:
 	T get() const { return _value; }
 
 	bool set( T aval, bool dosync=true, bool doAct=true ) {
-		if( _value == aval ){
+		if( _value == aval && !dosync && !doAct) {
 			// ESP_LOGI(FNAME,"Value already in config: %s(%s)", _key.data(), getValueAsStr().c_str() );
 			return( true );
 		}
 		_value = aval;
 		flags._valid = true;
 		if ( dosync ) {
+			// ESP_LOGI( FNAME,"Syncing %s after set", _key.data());
 			sync();
 		}
 		if( doAct ){
@@ -307,15 +308,15 @@ extern SetupNG<mps_t> 		MC;
 extern SetupNG<pascal_t> 	QNH;
 extern SetupNG<float> 		polar_wingload;
 
-extern SetupNG<float> 		polar_speed1;
+extern SetupNG<kmh_t> 		polar_speed1;
 
-extern SetupNG<float> 		polar_sink1;
-extern SetupNG<float> 		polar_speed2;
-extern SetupNG<float> 		polar_sink2;
-extern SetupNG<float> 		polar_speed3;
-extern SetupNG<float> 		polar_sink3;
-extern SetupNG<float>		polar_stall_speed;
-extern SetupNG<float> 		polar_max_ballast;
+extern SetupNG<mps_t> 		polar_sink1;
+extern SetupNG<kmh_t> 		polar_speed2;
+extern SetupNG<mps_t> 		polar_sink2;
+extern SetupNG<kmh_t> 		polar_speed3;
+extern SetupNG<mps_t> 		polar_sink3;
+extern SetupNG<kmh_t>		polar_stall_speed;
+extern SetupNG<kilogram_t> 	polar_max_ballast;
 extern SetupNG<float> 		polar_wingarea;
 
 extern SetupNG<float>  		speedcal;
@@ -324,7 +325,7 @@ extern SetupNG<second_t>  	vario_av_delay;
 extern SetupNG<mps_t>  		scale_range;
 extern SetupNG<int>			log_scale;
 extern SetupNG<float>  		ballast;
-extern SetupNG<float>  		ballast_kg;
+extern SetupNG<kilogram_t>  ballast_kg;
 extern SetupNG<kilogram_t>	empty_weight;
 extern SetupNG<kilogram_t>	crew_weight;
 extern SetupNG<kilogram_t>	gross_weight;

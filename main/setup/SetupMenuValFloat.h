@@ -15,7 +15,7 @@ class SetupMenuValFloat:  public MenuEntry {
 public:
 	SetupMenuValFloat() : MenuEntry("") { _unit = ""; };
 	SetupMenuValFloat(  const char *title, const char *unit, int (*action)(SetupMenuValFloat *p), 
-		bool end_menu, SetupNG<float> *anvs, e_restart_mode_t restart=RST_NONE, bool sync=false, bool life_update=false );
+		bool end_menu, SetupNG<float> *anvs, e_restart_mode_t restart=RST_NONE, bool life_update=false);
 	virtual ~SetupMenuValFloat() = default;
 	void enter() override;
 	void display(int mode=0) override;
@@ -23,14 +23,14 @@ public:
 	void displayVal();
 	void setPrecision( int prec );
 	const char *value() const override;
-	float getFloat() const { return _nvs->get(); }
+	float getNVSVal() const { return _nvs->get(); }
+	float get() const { return _value; }
+	void set( float val ) { _value = val; }
 	void rot( int count );
 	void press();
 	void longPress();
 	void setStep( float val ) { _step = val; };
 	void setMax( float max ) { _max = max; };
-	void setExitAction( int (*ea)( SetupMenuValFloat *p ) ) { _exit_action = ea; };
-	float _value = .0;
 
 private:
     float step( float instep );
@@ -39,6 +39,6 @@ private:
 	float _value_safe = 0;
 	const char *_unit = "";
 	int (*_action)( SetupMenuValFloat *p );
-	int (*_exit_action)( SetupMenuValFloat *p ) = nullptr;
 	SetupNG<float> *_nvs;
+	float _value = .0;
 };

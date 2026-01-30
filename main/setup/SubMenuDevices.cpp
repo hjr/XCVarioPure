@@ -79,9 +79,9 @@ static SetupMenuCreator_t get_itf_menu_creator(InterfaceId iid)
     return nullptr;
 }
 
-int update_wifi_power(SetupMenuValFloat *p)
+static int update_wifi_power(SetupMenuValFloat *p)
 {
-    ESP_ERROR_CHECK(esp_wifi_set_max_tx_power(int(wifi_max_power.get() * 80.0 / 100.0)));
+    ESP_ERROR_CHECK(esp_wifi_set_max_tx_power(int(p->get() * 80.0 / 100.0)));
     return 0;
 }
 
@@ -120,8 +120,7 @@ static void options_menu_custom_id(SetupMenu *top)
 
 static void connected_devices_menu_create_wifi(SetupMenu *top)
 {
-    SetupMenuValFloat *wifip = new SetupMenuValFloat("WIFI Power", "%", nullptr, false, &wifi_max_power);
-    wifip->setExitAction(update_wifi_power);
+    SetupMenuValFloat *wifip = new SetupMenuValFloat("WIFI Power", "%", update_wifi_power, false, &wifi_max_power);
     wifip->setPrecision(0);
     wifip->setHelp("Maximum Wifi Power to be used 10..100% or 2..20dBm");
     top->addEntry(wifip);

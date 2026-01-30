@@ -90,7 +90,7 @@ void glider_menu_create(SetupMenu *top) {
 		SetupMenuValFloat *wingarea = new SetupMenuValFloat("Wing Area", "m2", nullptr, false, &polar_wingarea);
 		top->addEntry(wingarea);
 
-		SetupMenuValFloat *fixball = new SetupMenuValFloat("Empty Weight", "kg", start_weight_adj, false, &empty_weight);
+		SetupMenuValFloat *fixball = new SetupMenuValFloat("Empty Weight", "kg", start_weight_adj, false, &empty_weight, RST_NONE, true);
 		fixball->setPrecision(0);
 		fixball->setHelp("Net rigged weight of the glider, according to the weight and balance plan");
 		fixball->setNeverInline();

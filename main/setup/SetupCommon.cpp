@@ -142,7 +142,7 @@ bool SetupCommon::sync(){
 		( (!syncProto->isMaster() && flags._sync == SYNC_FROM_CLIENT)
 			|| (syncProto->isMaster() && flags._sync == SYNC_FROM_MASTER)
 			|| flags._sync == SYNC_BIDIR ) ) {
-		// ESP_LOGI( FNAME,"Now sync %s", _key.data());
+		ESP_LOGI( FNAME,"Now sync %s", _key.data());
 		syncProto->sendItem(_key.data(), typeName(), getPtr(), getSize() );
 		return true;
 

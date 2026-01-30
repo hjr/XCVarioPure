@@ -33,7 +33,7 @@ void S2F::begin(){
     changeDamping();
 }
 
-void S2F::modifyPolar(){
+void S2F::changePolar(){
 	recalculatePolar();
 	recalcSinkNSpeeds();
 }
@@ -47,9 +47,9 @@ void S2F::changeBallast()
 	ESP_LOGI(FNAME,"Crew weight     : %.1f kg", crew_weight.get());
 	ESP_LOGI(FNAME,"Water Ballast   : %.1f kg", ballast_kg.get());
 	ESP_LOGI(FNAME,"Gross weight    : %.1f kg", gross_weight.get());
-	[[maybe_unused]] float max_bal = polar_max_ballast.get();
-	if( (int)(polar_max_ballast.get()) == 0 ) { // We use 100 liters as default once its not with the polar
-		max_bal = 100;
+	float max_bal = polar_max_ballast.get();
+	if ( (int)(max_bal) == 0 ) { // We use 100 liters as default once its not with the polar
+		max_bal = 100.f;
 	}
 	ESP_LOGI(FNAME,"Max ballast %.1f", max_bal );
 	calculateOverweight();
@@ -92,7 +92,7 @@ void S2F::setPolar()
 		(static_cast<NmeaPrtcl*>(prtcl))->sendXCVEmptyWeight(empty_weight.get());
 	}
 	ESP_LOGI(FNAME,"Reference weight:%.1f, new empty_weight: %.1f", (p.wingload * p.wingarea), empty_weight.get() );
-	modifyPolar();
+	changePolar();
 }
 
 // compare the used polar two the original one from polar store
