@@ -120,11 +120,11 @@ public:
 
 
     // XCVario transmitter routines
-    void sendStdXCVario(float baro, float dp);
+    void sendStdXCVario();
     void sendXcvRPYL();
     void sendXcvAPENV1();
     void sendXcvGeneric();
-    void sendOpenVario(pascal_t baro);
+    void sendOpenVario();
     void sendBorgelt();
     void sendCambridge();
     void sendSeeYouF();

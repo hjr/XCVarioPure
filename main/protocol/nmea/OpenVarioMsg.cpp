@@ -24,7 +24,7 @@ const ParserEntry OpenVarioMsg::_pt[] = {
 };
 
 
-void NmeaPrtcl::sendOpenVario(pascal_t baro)
+void NmeaPrtcl::sendOpenVario()
 {
     if ( _dl.isBinActive() ) {
         return; // no NMEA output in binary mode
@@ -33,9 +33,9 @@ void NmeaPrtcl::sendOpenVario(pascal_t baro)
 
     msg->buffer = "$POV,P,";
     char buffer[50];
-    std::sprintf(buffer, "%0.1f", Units::pipe(baro, Units::hpa));
+    std::sprintf(buffer, "%0.1f", Units::pipe(statp.get(), Units::hpa));
     msg->buffer += buffer;
-    std::sprintf(buffer, ",Q,%0.1f", Units::pipe(QNH.get(), Units::hpa));
+    std::sprintf(buffer, ",Q,%0.1f", dynp.get()); // dyn pressure in pascal
     msg->buffer += buffer;
     std::sprintf(buffer, ",E,%0.1f", te_vario.get());
     msg->buffer += buffer;

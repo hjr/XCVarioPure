@@ -21,7 +21,6 @@ union global_flags {
     struct {
         uint16_t inSetup : 1;
         uint16_t ahrsKeyValid : 1;
-        uint16_t standard_setting : 1;
         uint16_t gear_warn_external : 1;
         uint16_t schedule_reboot : 1;
         uint16_t first_devices_run : 1;

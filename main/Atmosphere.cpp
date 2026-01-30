@@ -6,86 +6,51 @@
 // @ 22.8 degree: 0.997585
 // earth gravity: 9.0807 m/s^2
 // and standard ICAO air density with 1.225 kg/m3 there is:
-// V(km/h) = sqrt(2*( <mmH2O> * 0.997585 * 9.807  )/1.225) * 3.6
+// V(m/s) = sqrt(2*( <mmH2O> * 0.997585 * 9.807 ) / 1.225)
 
-//   Speed
-// mmH2O m/s	km/h
-// 100	 40,0	143,9
-// 105          147,4
-// 110	 41,9	150,9
-// 116	 43,0	155,0
-// 120	 43,8	157,6
-// 130	 45,6	164,0
-// 140	 47,3	170,2
 
-// Standard Atmosphere Equations:
-//
-// p0 = air pressure at sea level
-//
-// ℎ = altitude above sea level
-// 
-// 𝑇 = 288,15𝐾
-//
-// T0 = 288,15K
-//
-// 𝑔 = 9,80665 𝑚/s^2
-//
-// 𝑀 = 0,0289644 𝑘𝑔/𝑚𝑜𝑙
-//
-// 𝑅 = 8,3144598 𝐽/(𝑚𝑜𝑙⋅𝐾)
-//
-// Exponent:
-// E = R⋅L/g⋅M ≈ 5,255
-//
-// p = p0​⋅(1−​L⋅h/T0​)^E
-//
-
-mps_t Atmosphere::TAS(mps_t ias, meter_t altitude, kelvin_t temp) {
-    pascal_t p = calcPressureISA(altitude);
-    return ias * sqrtf( (Units::rho0 * Units::R_air * temp) / p );
+mps_t Atmosphere::TAS(mps_t ias, pascal_t sp, kelvin_t temp) {
+    return ias * sqrtf( (Units::rho0 * Units::R_air * temp) / sp );
 }
+
+// True Airspeed from dynamic pressure (incompressible, low Mach)
+// q = 0.5 * rho * v²
+mps_t TasFromDp(pascal_t q, kelvin_t temp)
+{
+    float rho = Units::P0 / (Units::R_air * temp);
+    return sqrtf(2.0f * q / rho);
+}
+
 
 // TAS=IAS/sqrt( 288.15/(T+273.15) * (P/1013.25) )
 // float Atmosphere::TAS2(float ias, float altitude, float temp) {
 //     return (ias / std::sqrtf(288.15 / (temp + 273.15) * (calcPressureISA(altitude) / 1013.25)));
 // }
 
-// float Atmosphere::CAS(float dp) {
-//     return (1225.0 * std::sqrtf(5.0f * (std::powf((dp / 101325.0f) + 1.0, (2.0 / 7)) - 1.0)));
-// }
-
-mps_t Atmosphere::IAS(mps_t tas, float alti, float temp) {
-    return (tas / std::sqrtf(1.225f / (calcPressureISA(alti) * 100.0f / (287.058f * (Units::C2K + temp)))));
+mps_t Atmosphere::IAS(mps_t tas, pascal_t sp, kelvin_t temp) {
+    return tas / std::sqrtf(Units::rho0 / (sp / (Units::R_air * temp)));
 }
 
-// float Atmosphere::pascal2kmh(pascal_t baro) {
-//     if ( baro < 0.0f ) {
-//         return 0.0f;
-//     }
-//     return std::sqrtf(2.f * baro / 1.225f) * 3.6;
-// }
-
-mps_t Atmosphere::pascal2ms(pascal_t baro) {
-    if ( baro < 0.0f ) {
+mps_t Atmosphere::pascal2ms(pascal_t pressure) {
+    if ( pressure < 0.0f ) {
         return 0.0f;
     }
-    return std::sqrtf(2.f * baro / 1.225f);
+    return std::sqrtf(2.f * pressure / Units::rho0);
 }
 
-pascal_t Atmosphere::kmh2pascal(float kmh) {
-    return ((kmh / 3.6) * (kmh / 3.6)) * 1.225 / 2.;
+pascal_t Atmosphere::ms2pascal(mps_t speed) {
+    return (speed * speed) * Units::rho0 / 2.;
 }
 
-float Atmosphere::calcAltitude(pascal_t SeaLevel_Pres, pascal_t pressure) {
-    return (44330.0f * (1.0f - std::powf((float)(pressure) / SeaLevel_Pres, (1.0f / 5.255f))));
+meter_t Atmosphere::calcAltitude(pascal_t SeaLevel_Pres, pascal_t pressure) {
+    return (Units::T0divL * (1.0f - std::powf(pressure / SeaLevel_Pres, 1.0f / Units::g0divRxL)));
 }
 
 // respect temp laps 6.5 K / km
 pascal_t Atmosphere::calcPressure(pascal_t seaLevelPressure, meter_t altitude) {
-    return (seaLevelPressure * std::powf((1.0f - ((float)(altitude) / 44330.76923f)), 5.255f));
-    // return seaLevelPressure * std::powf(1.0f - (Units::L * altitude) / Units::T0, 5.25588f);
+    return seaLevelPressure * std::powf(1.0f - (altitude / Units::T0divL), Units::g0divRxL);
 }
 
-float Atmosphere::calcQNHPressure(float pressure, float altitude) {
+pascal_t Atmosphere::calcQNHPressure(pascal_t pressure, meter_t altitude) {
     return pressure / std::powf((1.0f - (Units::L * altitude) / Units::T0), 5.255f);
 }

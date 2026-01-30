@@ -100,12 +100,6 @@ SerialLine *S2 = NULL;
 // boot log
 std::string logged_tests;
 
-// global variables
-float baroP=0; // barometric pressure
-
-
-pascal_t dynamicP; // Pitot
-
 // global color variables for adaptable display variant
 uint8_t g_col_background; // black
 uint8_t g_col_highlight;
@@ -204,13 +198,13 @@ static void toyFeed(int count) // Called at 5Hz from clientLoop or sensorloop
             ToyNmeaPrtcl->sendXcvGeneric();
             break;
         case OPENVARIO_P:
-            ToyNmeaPrtcl->sendOpenVario(baroP);
+            ToyNmeaPrtcl->sendOpenVario();
             break;
         case CAMBRIDGE_P:
             ToyNmeaPrtcl->sendCambridge();
             break;
         case XCVARIO_P:
-            ToyNmeaPrtcl->sendStdXCVario(baroP, dynamicP);
+            ToyNmeaPrtcl->sendStdXCVario();
             break;
         case SEEYOU_P:
             ToyNmeaPrtcl->sendSeeYouF();
@@ -303,25 +297,7 @@ void readSensors(void *pvParameters)
             }
         }
 
-        // float iasraw = Atmosphere::pascal2kmh( dynamicP );
-		// if( baroP != 0 )
-		// 	tasraw =  Atmosphere::TAS( iasraw , baroP, T);  // True airspeed in km/h
-
-		// // ESP_LOGI("FNAME","P: %f  IAS:%f", dynamicP, iasraw );
-
-		// static float new_ias = 0;
-		// new_ias = ias.get() + (iasraw - ias.get())*0.25;
-		// if( (int( ias.get()+0.5 ) != int( new_ias+0.5 ) ) || !(count%20) ){
-		// 	ias.set( new_ias );  // low pass filter
-		// }
-
-		// // ESP_LOGI("FNAME","P: %f  IAS:%f IASF: %d", dynamicP, iasraw, ias );
-		// tas += (tasraw-tas)*0.25;       // low pass filter
-		// // ESP_LOGI(FNAME,"IAS=%f, T=%f, TAS=%f baroP=%f", ias, T, tas, baroP );
-
-		// // Slip angle estimation
-		// float as = tas/3.6;                  // tas in m/s
-		// const float K = 4000 * 180/M_PI;      // airplane constant and Ay correction factor
+        // fixme set slip angle
 		// if( tas > 25.0 ){
 		// 	slip_angle.set(slip_angle.get() + ((IMU::getGliderAccelY()*K / (as*as)) - slip_angle.get())*0.12);   // with atan(x) = x for small x
 		// 	// ESP_LOGI(FNAME,"AS: %f m/s, CURSL: %f°, SLIP: %f", as, IMU::getGliderAccelY()*K / (as*as), slip_angle.get() );
@@ -333,40 +309,6 @@ void readSensors(void *pvParameters)
 			AverageVario::recalcAvgClimb();
 		}
 		if (FLAP && FLAP->haveAdcSensor()) { FLAP->progress(); }
-
-		// ESP_LOGI(FNAME,"Baro Pressure: %4.3f", baroP );
-		// float altSTD = 0;
-		// if( Flarm::validExtAlt() && alt_select.get() == AS_EXTERNAL )
-		// 	altSTD = alt_external;
-		// else
-		// 	altSTD = Atmosphere::calcAltitudeISA( baroP );
-		// float new_alt = 0;
-		// if( alt_select.get() == AS_TE_SENSOR ) // TE
-		// 	new_alt = bmpVario.readAVGalt();
-		// else if( alt_select.get() == AS_BARO_SENSOR  || alt_select.get() == AS_EXTERNAL ){ // Baro or external
-		// 	if(  alt_unit.get() == ALT_UNIT_FL ) { // FL, always standard
-		// 		new_alt = altSTD;
-		// 		gflags.standard_setting = true;
-		// 		// ESP_LOGI(FNAME,"au: %d", alt_unit.get() );
-		// 	}else if( (fl_auto_transition.get() == 1) && ((int)Units::meters2FL( altSTD ) + (int)(gflags.standard_setting) > transition_alt.get() ) ) { // above transition altitude
-		// 		new_alt = altSTD;
-		// 		gflags.standard_setting = true;
-		// 		// ESP_LOGI(FNAME,"auto:%d alts:%f ss:%d ta:%f", fl_auto_transition.get(), altSTD, gflags.standard_setting, transition_alt.get() );
-		// 	}
-		// 	else {
-		// 		if( Flarm::validExtAlt() && alt_select.get() == AS_EXTERNAL )
-		// 			new_alt = altSTD + ( QNH.get()- 1013.25)*8.2296;  // correct altitude according to ISA model = 27ft / hPa
-		// 		else
-		// 			new_alt = Atmosphere::calcAltitude( QNH.get(), baroP );
-		// 		gflags.standard_setting = false;
-		// 		// ESP_LOGI(FNAME,"QNH %f baro: %f alt: %f SS:%d", QNH.get(), baroP, alt, gflags.standard_setting  );
-		// 	}
-		// }
-		// // if( (int( new_alt +0.5 ) != int( altitude.get() +0.5 )) || !(count%20) ){
-		// 	// ESP_LOGI(FNAME,"New Altitude: %.1f", new_alt );
-		 	// altitude.set( new_alt );
-		// // }
-
 
         // Trace airborne status
 		if( (count % 5) == 0 ) {
@@ -642,7 +584,7 @@ void system_startup(void *args){
         }
         delete boot_screen; // screen now belongs to OTA
         MenuRoot->begin(new OTA());
-        return;
+        return; // never coming here
     }
 
     // Show configured glider polar
@@ -788,15 +730,14 @@ void system_startup(void *args){
             bool as_ok = asSensor->setup();
             pascal_t p;
             if (asSensor->doRead(p) && p > 60.f) {
-                dynamicP = p;
+                ias.set(Atmosphere::pascal2ms(p)); // initial ias from sensor
             }
-            ias.set(Atmosphere::pascal2ms(dynamicP));
 
             // Initialize the airborne status
             airborne.set(ias.get() > Speed2Fly.getStallSpeed());
 
             ESP_LOGI(FNAME, "Aispeed sensor current speed=%f", ias.get());
-            if (!as_ok && (ias.get() < Units::kmh_to_mps(50)))
+            if (!as_ok && (ias.get() < Units::kmh_to_mps(35)))
             {
                 MBOX->pushMessage(2, "AS Sensor: NEED ZERO");
                 logged_tests += failed_text;
@@ -1002,7 +943,7 @@ void system_startup(void *args){
 
         ESP_LOGI(FNAME, "Master Mode: QNH Autosetup, IAS=%3f (<50 km/h)", ias.get());
         // QNH autosetup
-        float ae = airfield_elevation.get();
+        meter_t ae = airfield_elevation.get();
         ESP_LOGI(FNAME, "Airfield Elevation = %4.1f m", ae);
         if (ae > NO_ELEVATION) {
             if (Flarm::validExtAlt() && alt_select.get() == AS_EXTERNAL) {
@@ -1010,9 +951,9 @@ void system_startup(void *args){
                 ae = alt_external + (QNH.get() - 1013.25f) * 8.2296f;  // fixme alt extr
             }
 
-            float baro;
+            pascal_t baro;
             if (baroSensor->doRead(baro)) {
-                float qnh_best = Atmosphere::calcQNHPressure(baro, ae);
+                pascal_t qnh_best = Atmosphere::calcQNHPressure(baro, ae);
                 QNH.set(qnh_best);
                 ESP_LOGI(FNAME, "Auto QNH (direkt) = %4.2f hPa", qnh_best);
             }

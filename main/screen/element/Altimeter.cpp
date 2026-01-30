@@ -46,7 +46,7 @@ void Altimeter::drawUnit()
     // QNH, QFE
     MYUCG->setPrintPos(_ref_x+5, _ref_y+3);
     const char *dmode = "";
-    if (gflags.standard_setting) {
+    if (_isa_alt) {
         dmode = "STD ";
     }
     else if (alt_display_mode.get() == MODE_QFE) {
@@ -59,7 +59,7 @@ void Altimeter::drawUnit()
 
     // QNH number
     pascal_t qnh = QNH.get();
-    if( gflags.standard_setting == true ){
+    if( _isa_alt ) {
         qnh = Units::P0;
     }
     qnh = PressureUnit->apply(qnh);
@@ -76,14 +76,24 @@ void Altimeter::drawUnit()
 // right-aligned to value, unit optional behind
 // altidude >0 and <0 are displayed correctly with last two digits rolling accoring to their fraction to the right
 // > [m] QNH
-void Altimeter::draw(float alt_m)
+void Altimeter::draw(meter_t alt_input)
 {
     // ESP_LOGI(FNAME,"draw alt %f", altitude);
-    // check on the rendered value for change
 
+    if ( ((alt_unit_t)alt_unit.get() == alt_unit_t::ALT_UNIT_FL) 
+        || ((fl_auto_transition.get() == 1) 
+            && ((int)Units::pipe(alt_input, Units::flightlevel) + int(_isa_alt) > transition_alt.get())) ) {
+        // FL, always standard or above transition altitude
+        _isa_alt = true; // -> show alitude in FL
+    } else {
+        _isa_alt = false;
+    }
+
+    // check on the rendered value for change
     // apply mode
-    ESP_LOGI(FNAME,"A1 %f", alt_m);
-    float altitude = _altflt += (alt_m - _altflt) * 0.1; // a bit lowpass make sense, any jitter would mess up tape display readability
+    ESP_LOGI(FNAME,"A1 %f", alt_input);
+    // a bit lowpass make sense, any jitter would mess up tape display readability
+    meter_t altitude = _alt_lpf.filter(_isa_alt ? altitude_isa.get() : alt_input);
     ESP_LOGI(FNAME,"A2 %f", altitude);
     if (alt_display_mode.get() == MODE_QFE)
     {
@@ -102,17 +112,17 @@ void Altimeter::draw(float alt_m)
 
     // unit conversion
     alt_unit_t unitalt = _unit;
-    if (gflags.standard_setting) // respect autotransition switch
+    if (_isa_alt)  // respect autotransition switch
     {
         unitalt = alt_unit_t::ALT_UNIT_FL;
     }
-    if (_unit_drawn != unitalt || _dirty) // update unit display on an autotransition
+    if (_unit_drawn != unitalt || _dirty)  // update unit display on an autotransition
     {
         _unit_drawn = unitalt;
-        _dirty = true; // need to draw all figures
+        _dirty = true;  // need to draw all figures
         drawUnit();
     }
-    altitude = AltUnit->apply(altitude);
+    altitude = _isa_alt ? Units::flightlevel.apply(altitude) : AltUnit->apply(altitude);
     ESP_LOGI(FNAME,"A3 %f", altitude);
     int alt = (int)(altitude);
 
@@ -126,7 +136,9 @@ void Altimeter::draw(float alt_m)
     if (used_quant) {
         alt = (int)(altitude * (20.0 / used_quant)); // respect difference according to choosen quantisation
     }
-    // the dirty criterion
+
+    //////////////////////
+    // finally the dirty criterion
     if (alt == _alt_prev && !_dirty) { return; }
     _alt_prev = alt;
 
@@ -159,11 +171,11 @@ void Altimeter::draw(float alt_m)
         int nr_rolling_digits = (used_quant > 9) ? 2 : 1; // maximum two rolling last digits
 
         // Quantized altitude, strip and save sign
-        float alt_f = std::abs(altitude);           // float altitude w/o sign
+        meter_t alt_f = std::abs(altitude);           // float altitude w/o sign
         int sign = std::signbit(altitude) ? -1 : 1; // interger sign of the altitude
         alt = (int)(alt_f);                         // to integer truncated altitude
         alt = ((alt + used_quant / 2) / used_quant) * used_quant;
-        float fraction = (alt_f + used_quant / 2 - alt) / used_quant;
+        meter_t fraction = (alt_f + used_quant / 2 - alt) / used_quant;
         int mod = (nr_rolling_digits == 2) ? 100 : 10; // mod = pow10(nr_rolling_digits);
         int alt_leadpart = alt / (mod * 10);           // left remaining part of altitude
         s[len - nr_rolling_digits] = '\0';

@@ -46,25 +46,6 @@ private:
 };
 
 
-// A air speed converter and low-pass filter
-class AirSpeedFilter : public BaseFilterItf
-{
-public:
-    explicit AirSpeedFilter(float alpha) : _lpf(alpha) {}
-    mps_t filter(pascal_t input) override;
-    mps_t get() const override { return _lpf.get(); }
-private:
-    LowPassFilter _lpf;
-};
-
-// Altimeter 
-class AltimeterFilter : public BaseFilterItf
-{
-public:
-    AltimeterFilter() = default;
-    meter_t filter(pascal_t input) override;
-};
-
 // // TE Variometer 
 // class TEVariometerFilter : public BaseFilterItf
 // {

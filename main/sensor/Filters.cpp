@@ -29,33 +29,6 @@ float LowPassFilter::filter(float input)
     return _last_output;
 }
 
-mps_t AirSpeedFilter::filter(pascal_t input)
-{
-    float tmp = Atmosphere::pascal2ms(_lpf.filter(input));
-    // clamp to zero for speeds < 15km/h (to avoid noise around zero)
-    if ( tmp < Units::kmh_to_mps(15.0f) ) {
-        tmp = 0.0f;
-    }
-    return tmp;
-}
-
-meter_t AltimeterFilter::filter(pascal_t input)
-{
-    meter_t new_alt = Atmosphere::calcAltitudeISA(input);
-    altitude_isa.set(new_alt);
-    // fixme no units here!
-
-    if ( ((alt_unit_t)alt_unit.get() == alt_unit_t::ALT_UNIT_FL) 
-        || ((fl_auto_transition.get() == 1) 
-            && ((int)Units::pipe(new_alt, Units::flightlevel) + (int)gflags.standard_setting > transition_alt.get())) ) {
-        // FL, always standard or above transition altitude
-        gflags.standard_setting = true;
-    } else {
-        new_alt = Atmosphere::calcAltitude(QNH.get(), input);
-        gflags.standard_setting = false;
-    }
-    return new_alt;
-}
 
 // float TEVariometerFilter::filter(float input) {
 

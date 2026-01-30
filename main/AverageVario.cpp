@@ -2,19 +2,19 @@
 
 #include "setup/SetupNG.h"
 
-// #include "logdefnone.h"
+#include "logdefnone.h"
 
 
-float AverageVario::averageClimbSec;
-float AverageVario::averageClimb;
-std::array<float, 10> AverageVario::avClimb100MSec;
-std::array<float, 60> AverageVario::avClimbSec;
-std::list<float> AverageVario::avClimbMin;
+mps_t AverageVario::averageClimbSec;
+mps_t AverageVario::averageClimb;
+std::array<mps_t, 10> AverageVario::avClimb100MSec;
+std::array<mps_t, 60> AverageVario::avClimbSec;
+std::list<mps_t> AverageVario::avClimbMin;
 int AverageVario::avindex100MSec;
 int AverageVario::avindexSec;
 int AverageVario::samples;
 
-float AverageVario::readAvgClimb() {
+mps_t AverageVario::readAvgClimb() {
 	return average_climb.get();
 }
 
@@ -27,7 +27,7 @@ void AverageVario::begin(){
 }
 
 void AverageVario::recalcAvgClimb() {
-	float ac = 0;
+	mps_t ac = 0;
 	int ns=0;
 	for( auto it=avClimbMin.begin(); it != avClimbMin.end(); it++ ) {
 		// ESP_LOGI(FNAME,"MST pM= %2.2f", *it  );
@@ -43,17 +43,18 @@ void AverageVario::recalcAvgClimb() {
 }
 
 
-void AverageVario::newSample( float te ){  // to be called every 0.1 Second (100 mS)
+void AverageVario::newSample( mps_t te ){  // to be called every 0.1 Second (100 mS)
 	samples++;
-	float te_positive = 0.0;
-	if( te > 0 )
+	mps_t te_positive = 0.0;
+	if( te > 0 ) {
 		te_positive = te;
+	}
 	avClimb100MSec[avindex100MSec] = te_positive;
 	avindex100MSec++;
 	if( avindex100MSec >= 10 ) {  // 0..9
 		// every second sum up all 100mS samples, then store in second
 		avindex100MSec = 0;
-		float acms=0.0;
+		mps_t acms=0.0;
 		for( int i=0; i<10; i++ ){ // 0..9
 			acms += avClimb100MSec[i];
 		}
@@ -65,7 +66,7 @@ void AverageVario::newSample( float te ){  // to be called every 0.1 Second (100
 			// every minute, or what is setup in mean climb period
 			if( avindexSec >= 60 ) { // 0..59
 				avindexSec = 0;
-				float acs=0.0;
+				mps_t acs=0.0;
 				for( int i=0; i<60; i++ ) {
 					acs +=  avClimbSec[i];
 				}

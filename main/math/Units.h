@@ -13,6 +13,7 @@ enum class quantity_t : uint8_t;
 // ---------------------------------------------------------------------------
 using meter_t    = float;
 using mps_t      = float;
+using kmh_t      = float;
 using pascal_t   = float;
 using kelvin_t   = float;
 using rad_t      = float;
@@ -29,12 +30,14 @@ namespace Units {
 // Constants
 // ---------------------------------------------------------------------------
 constexpr float g0            = 9.80665f;      // m/s²
-constexpr float R_air         = 287.05f;       // J/(kg·K)
+constexpr float R_air         = 287.058f;      // J/(kg·K)
 constexpr float rho0          = 1.225f;        // kg/m³ (ISA sea level)
-constexpr kelvin_t T0         = 288.15f;       // K (alias 15°C)
+constexpr kelvin_t T0         = 288.15f;       // K (alias 15°C, ISA temp on sea level)
 constexpr kelvin_t C2K 		  = 273.15f;       // K (0°C)
 constexpr pascal_t P0         = 101325.0f;     // Pa
 constexpr float L             = 0.0065f;       // K/m (ISA lapse rate)
+constexpr meter_t T0divL      = T0 / L;        // 44330.76923 m
+constexpr float g0divRxL      = g0 / (R_air * L); // 5.25588f, exponent for ISA pressure formula
 constexpr float ft_per_m      = 3.2808399f;    // feet per meter
 constexpr float m_per_ft      = 1.0f / ft_per_m;
 constexpr float kmh_per_mps   = 3.6f;
@@ -74,7 +77,7 @@ inline constexpr float    pa_to_hpa(pascal_t pa) { return pa * 0.01f; }
 // Temperature
 // ---------------------------------------------------------------------------
 inline constexpr kelvin_t C_to_K(float c)        { return c + C2K; }
-inline float    K_to_C(kelvin_t k)     { return k - C2K; }
+inline constexpr float    K_to_C(kelvin_t k)     { return k - C2K; }
 
 // ---------------------------------------------------------------------------
 // Angles
@@ -85,26 +88,10 @@ inline constexpr float rad_to_deg(rad_t rad)     { return rad * deg_per_rad; }
 // ---------------------------------------------------------------------------
 // ISA atmosphere (troposphere, up to ~11km)
 // ---------------------------------------------------------------------------
-inline pascal_t isa_pressure(meter_t h_m)
-{
-    return P0 * powf(1.0f - (L * h_m) / T0, g0 / (R_air * L));
-}
-
 inline kelvin_t isa_temperature(meter_t h_m)
 {
     return T0 - L * h_m;
 }
-
-// ---------------------------------------------------------------------------
-// True Airspeed from dynamic pressure (incompressible, low Mach)
-// q = 0.5 * rho * v²
-// ---------------------------------------------------------------------------
-inline mps_t tas_from_q(pascal_t q, kelvin_t T)
-{
-    float rho = P0 / (R_air * T);
-    return sqrtf(2.0f * q / rho);
-}
-
 
 
 // ---------------------------------------------------------------------------
@@ -150,7 +137,7 @@ constexpr unit_t hpa        { 0.01f, 0.0f, "hPa" };
 constexpr unit_t inhg       { 0.000295299830714f, 0.0f, "inHg" };
 
 // temperature
-constexpr unit_t kelvin     { 1.0f, 0.0f, "K" };
+constexpr unit_t kelvin     { 1.0f, 0.0f, "'K" };
 constexpr unit_t celsius    { 1.0f, -C2K, "'C" };
 constexpr unit_t fahrenheit { 9.0f / 5.0f, -459.67f, "'F" };
 

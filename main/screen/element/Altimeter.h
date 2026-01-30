@@ -9,6 +9,8 @@
 #pragma once
 
 #include "ScreenElement.h"
+#include "sensor/Filters.h"
+#include "math/Units.h"
 
 #include <cstdint>
 
@@ -25,11 +27,12 @@ public:
 
     void setRef(int16_t x, int16_t y) { _ref_x=x; _ref_y=y; }
     void drawUnit();
-    void draw(float mc);
+    void draw(meter_t alt);
 
 private: // attributes
-    float _altflt = 0.;
+    LowPassFilter _alt_lpf{0.15f};
     int   _alt_prev = 0;
+    bool  _isa_alt = false;
     alt_unit_t _unit;
     alt_unit_t _unit_drawn;
     // for roling altimeter

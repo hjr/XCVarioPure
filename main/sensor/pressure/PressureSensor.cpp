@@ -34,8 +34,7 @@ PressureSensor::PressureSensor(SensorId id) : SensorTP<float>((id == SensorId::S
 {
     _id = id | SensorId::LocalSensor;
     if (id == SensorId::STATIC_PRESSURE) {
-        setNVSVar(&altitude);
-        setFilter(new AltimeterFilter());
+        setNVSVar(&statp);
     }
     // else {
     //     setNVSVar(&te_vario);

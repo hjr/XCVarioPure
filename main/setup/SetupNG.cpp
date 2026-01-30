@@ -148,12 +148,22 @@ void resetCWindAge() {
 		CircleWind::resetAge();
 	}
 }
+static void calc_altis() {
+	altitude.set( Atmosphere::calcAltitude(QNH.get(), statp.get()) );
+	altitude_isa.set( Atmosphere::calcAltitudeISA(statp.get()) );
+}
+static void calc_speeds() {
+    float tmp = Atmosphere::pascal2ms(dynp.get());
+    // clamp to zero for speeds < 15km/h (to avoid noise around zero)
+    if ( tmp < Units::kmh_to_mps(15.0f) ) {
+        tmp = 0.0f;
+    }
+    ias.set(tmp);
 
-static void calc_tas() {
     // IAS to TAS conversion
-    if (OAT.getValid() && altitude.getValid()) {
-        tas.set(Atmosphere::TAS(ias.get(), altitude.get(), OAT.get()));
-        ESP_LOGI(FNAME, "calc_tas: IAS=%.2f, Alt=%.2f, OAT=%.2f -> TAS=%.2f", ias.get(), altitude.get(), OAT.get(), tas.get());
+    if (OAT.getValid() && statp.getValid()) {
+        tas.set(Atmosphere::TAS(ias.get(), statp.get(), OAT.get()));
+        ESP_LOGI(FNAME, "calc_speeds: IAS=%.2f, statp=%.2f, OAT=%.2f -> TAS=%.2f", ias.get(), statp.get(), OAT.get(), tas.get());
     }
 }
 
@@ -258,14 +268,16 @@ SetupNG<float>  		mag_hdm( "HDM", -1.0, false, SYNC_FROM_MASTER, VOLATILE );
 SetupNG<float>  		mag_hdt( "HDT", -1.0, false, SYNC_FROM_MASTER, VOLATILE );
 SetupNG<float>  		average_climb( "AVCL", 0.0, false, SYNC_NONE, VOLATILE );
 SetupNG<float>  		flap_pos( "FLPS", 0.0, false, SYNC_BIDIR, VOLATILE );
-SetupNG<meter_t>  		altitude( "ALTI", 0.0, false, SYNC_FROM_MASTER, VOLATILE );
-SetupNG<meter_t>  		altitude_isa( "ALT_ISA", 0.0, false, SYNC_FROM_MASTER, VOLATILE );
-SetupNG<mps_t>  		ias( "IASV", 0.0, false, SYNC_FROM_MASTER, VOLATILE, calc_tas );
-SetupNG<mps_t>  		tas( "TASV", 0.0, false, SYNC_NONE, VOLATILE ); // derived from ias + OAT + altitude in calc_tas()
+SetupNG<pascal_t>  		statp( "STAT", 0.0, false, SYNC_FROM_MASTER, VOLATILE, calc_altis );
+SetupNG<pascal_t>  		dynp( "DYNP", 0.0, false, SYNC_FROM_MASTER, VOLATILE, calc_speeds );
+SetupNG<meter_t>  		altitude( "ALTI", 0.0, false, SYNC_NONE, VOLATILE ); // derived from statp
+SetupNG<meter_t>  		altitude_isa( "ALT_ISA", 0.0, false, SYNC_NONE, VOLATILE ); // derived from statp
+SetupNG<mps_t>  		ias( "IASV", 0.0, false, SYNC_NONE, VOLATILE); // derived from dynp in calc_speeds()
+SetupNG<mps_t>  		tas( "TASV", 0.0, false, SYNC_NONE, VOLATILE ); // derived from ias + OAT + altitude in calc_speeds()
 SetupNG<mps_t>  		gnd_speed( "GNDV", -1.0, false, SYNC_NONE, VOLATILE );
-SetupNG<float>  		te_alt( "TEALT", 0.0, false, SYNC_FROM_MASTER, VOLATILE, feed_te_alt );
-SetupNG<float>  		te_vario( "TEVA", 0.0, false, SYNC_NONE, VOLATILE ); // derived from te_alt in VarioFilter
-SetupNG<float>  		te_netto( "TENET", 0.0, false, SYNC_NONE, VOLATILE ); // derived from te_alt in VarioFilter
+SetupNG<meter_t>  		te_alt( "TEALT", 0.0, false, SYNC_FROM_MASTER, VOLATILE, feed_te_alt );
+SetupNG<mps_t>  		te_vario( "TEVA", 0.0, false, SYNC_NONE, VOLATILE ); // derived from te_alt in VarioFilter
+SetupNG<mps_t>  		te_netto( "TENET", 0.0, false, SYNC_NONE, VOLATILE ); // derived from te_alt in VarioFilter
 SetupNG<float>  		slip_angle( "SLANGLE", 0.0, false, SYNC_FROM_MASTER, VOLATILE );
 SetupNG<float>  		battery_voltage( "BATV", 0.0, false, SYNC_FROM_MASTER, VOLATILE );
 
@@ -274,9 +286,9 @@ SetupNG<int>  			mags_alive( "AL_MAGS", ALIVE_NONE, false, SYNC_NONE, VOLATILE )
 SetupNG<int>  			flarm_alive( "AL_FLARM", ALIVE_NONE, false, SYNC_NONE, VOLATILE );
 SetupNG<int>  			airborne("AIRBORNE", 0, false, SYNC_FROM_MASTER, VOLATILE, &ch_airborne_state);
 
-SetupNG<float>  		s2f_ideal( "S2F_IDEAL", 100.0, false, SYNC_NONE, VOLATILE);
+SetupNG<mps_t>  		s2f_ideal( "S2F_IDEAL", 27.778, false, SYNC_NONE, VOLATILE);
 SetupNG<int>  			s2f_switch_mode( "AUDIO_MODE", AM_MANUALLY, false, SYNC_BIDIR, PERSISTENT );
-SetupNG<float>  		s2f_threshold( "S2F_SPEED", 100.0, true, SYNC_BIDIR, PERSISTENT, nullptr, quantity_t::QUANT_HSPEED, LIMITS(20.0, 250.0, 1.0));
+SetupNG<kmh_t>  		s2f_threshold( "S2F_SPEED", 120.0, true, SYNC_BIDIR, PERSISTENT, nullptr, quantity_t::QUANT_HSPEED, LIMITS(20.0, 250.0, 1.0));
 SetupNG<float>  		s2f_flap_pos( "S2F_FLAP", 1, true, SYNC_BIDIR, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(-3, 3, 0.1));
 static const limits_t percentage_limits = {0, 100, 1.0};
 SetupNG<float>  		s2f_gyro_deg( "S2F_GYRO", 10, true, SYNC_BIDIR, PERSISTENT, nullptr, quantity_t::QUANT_NONE, &percentage_limits);
@@ -299,7 +311,7 @@ SetupNG<float>  		deadband_neg("DEADBAND_NEG" , -0.3, true, SYNC_BIDIR, PERSISTE
 
 SetupNG<float>  		wifi_max_power( "WIFI_MP" , 50, true, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(10.0, 100.0, 5.0));
 SetupNG<int>  			factory_reset( "FACTORY_RES" , 0 );
-SetupNG<int>  			alt_select( "ALT_SELECT" , AS_BARO_SENSOR );
+SetupNG<int>  			alt_select( "ALT_SELECT" , AS_BARO_SENSOR ); // fixme not functional right now
 SetupNG<int>  			fl_auto_transition( "FL_AUTO" , 0 );
 SetupNG<int>  			alt_display_mode( "ALT_DISP_MODE" , Altimeter::MODE_QNH );
 SetupNG<float>  		transition_alt( "TRANS_ALT", 50, true, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(0, 400, 10)); // Transition Altitude
@@ -315,7 +327,7 @@ SetupNG<float>  		core_climb_period( "CORE_CLIMB_P" , 60, true, SYNC_BIDIR, PERS
 SetupNG<float>  		core_climb_min( "CORE_CLIMB_MIN" , 0.5, true, SYNC_BIDIR, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(0.0, 2.0, 0.1));
 SetupNG<float>  		core_climb_history( "CORE_CLIMB_HIST" , 45, true, SYNC_BIDIR, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(1, 300, 1));
 SetupNG<float>  		mean_climb_major_change( "MEAN_CLMC", 0.5, true, SYNC_BIDIR, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(0.1, 5.0, 0.1));
-SetupNG<float>  		airfield_elevation( "ELEVATION", NO_ELEVATION, true, SYNC_BIDIR, PERSISTENT, nullptr, quantity_t::QUANT_ALT, LIMITS(NO_ELEVATION, 3000, 1));
+SetupNG<meter_t>  		airfield_elevation( "ELEVATION", NO_ELEVATION, true, SYNC_BIDIR, PERSISTENT, nullptr, quantity_t::QUANT_ALT, LIMITS(NO_ELEVATION, 3000, 1));
 SetupNG<float>  		s2f_deadband( "DEADBAND_S2F", 10.0, true, SYNC_BIDIR, PERSISTENT, nullptr, quantity_t::QUANT_HSPEED, LIMITS(.0, 25.0, 1));
 SetupNG<float>  		s2f_deadband_neg( "DB_S2F_NEG", -10.0, true, SYNC_BIDIR, PERSISTENT, nullptr, quantity_t::QUANT_HSPEED, LIMITS(-25.0, .0, 1));
 SetupNG<float>  		s2f_delay( "S2F_DELAY", 5.0, true, SYNC_BIDIR, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(2.0, 12.0, 0.5));

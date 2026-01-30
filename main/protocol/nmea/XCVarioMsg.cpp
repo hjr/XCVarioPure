@@ -93,7 +93,7 @@ const ParserEntry XCVarioMsg::_pt[] = {
     Y.YY:   acceleration in Y-Axis,
     Z.ZZ:   acceleration in Z-Axis,
 */
-void NmeaPrtcl::sendStdXCVario(float baro, float dp)
+void NmeaPrtcl::sendStdXCVario()
 {
     if ( _dl.isBinActive() ) {
         return; // no NMEA output in binary mode
@@ -123,9 +123,9 @@ void NmeaPrtcl::sendStdXCVario(float baro, float dp)
     msg->buffer += str;
     std::sprintf(str, ",%4.1f", Units::pipe(QNH.get(), Units::hpa));
     msg->buffer += str;
-    std::sprintf(str, ",%4.1f", Units::pipe(baro, Units::hpa));
+    std::sprintf(str, ",%4.1f", Units::pipe(statp.get(), Units::hpa));
     msg->buffer += str;
-    std::sprintf(str, ",%.1f", dp);
+    std::sprintf(str, ",%.1f", dynp.get());
     msg->buffer += str;
 
     // optional IMU additions

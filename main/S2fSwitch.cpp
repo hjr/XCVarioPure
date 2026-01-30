@@ -134,7 +134,7 @@ void S2fSwitch::updateSwitchSetup()
 // auto switch filter
 bool Speed()
 {
-    if (ias.get() < s2f_threshold.get())
+    if (ias.get() < Units::kmh_to_mps(s2f_threshold.get()))
     {
         return false; // vario mode
     }
