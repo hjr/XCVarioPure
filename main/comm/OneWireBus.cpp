@@ -214,6 +214,7 @@ bool OneWireBus::groupUpdate(uint32_t now_ms)
             continue;
         }
         sensor->pushToHistory(val, sensor->getConvertStartMs());
+        sensor->publishNVS();
 
         ESP_LOGI(FNAME, "OW sensor %016llX: %umsec %.2f", sensor->getAddress(), (unsigned)sensor->getConvertStartMs(), val);
     }

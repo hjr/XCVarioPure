@@ -155,13 +155,18 @@ public:
             return false;
         }
 
+        // Read sensor && store in history
         T value;
         if (doRead(value)) {
             pushToHistory(value, now_ms);
-            return true;
+
+            // Publish on black board NVS variable if linked
+            publishNVS();
+        } else {
+            // ESP_LOGE(FNAME, "Sensor %s read NAN", name());
+            pushToHistory(_invalid, now_ms);
         }
-        // ESP_LOGE(FNAME, "Sensor %s read NAN", name());
-        pushToHistory(_invalid, now_ms);
+
         return true;
     }
 
@@ -169,11 +174,15 @@ public:
     void pushToHistory(const T& value, uint32_t now_ms) {
         _last_update_time_ms = now_ms;
         _history.push(value);
+    }
+
+    // Publish on black board NVS variable
+    void publishNVS() {
         if constexpr (std::is_same_v<T, float>) { // only for float types
             if (_nvsvar) {
-                float fval = value;
+                float fval = _history.getHead();
                 if ( _filter ) {
-                    fval = _filter->filter(value);
+                    fval = _filter->filter(fval);
                 }
                 _nvsvar->set(fval);
             }
