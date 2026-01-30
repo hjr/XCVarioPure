@@ -211,7 +211,6 @@ float BME280_SPI::readTemperature( bool& success ){ // todo need to be cached
 
 //***************BME280 ****************************
 bool BME280_SPI::doRead(float &val) {
-	bool ok=false;
 	if( init_err ){
 		return false;
 	}
@@ -219,7 +218,6 @@ bool BME280_SPI::doRead(float &val) {
 	bool success;
 	readTemperature( success );
 	int loop = 0;
-	ok = true;
 	while( !success && loop < 100) {  // workaround as first read after others access SPI reads zero
 		vTaskDelay(pdMS_TO_TICKS(1));
 		readTemperature( success );
@@ -335,7 +333,6 @@ bool BME280_SPI::selfTest(float& t, pascal_t &p) {
 		return( false );
 	}
 	p=0;
-	bool ok;
 	for( int i=0; i<10; i++ ){
 		pascal_t tmp;
 		doRead(tmp);
