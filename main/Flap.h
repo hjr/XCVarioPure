@@ -8,6 +8,8 @@
 
 #pragma once
 
+#include "math/Units.h"
+
 #include <cmath>
 #include <vector>
 
@@ -46,16 +48,16 @@ class SetupNG;
 
 struct FlapLevel
 {
-    float nvs_speed;
-    float prep_speed;
-    float speed_delta;
+    mps_t nvs_speed;
+    mps_t prep_speed;
+    mps_t speed_delta;
     union {
         char label[4];
         int label_int;
     };
     int sensval;
     int sens_delta;
-    FlapLevel(float s, int label_int, int sv) : nvs_speed(s), prep_speed(0.), speed_delta(0.), label_int(label_int), sensval(sv), sens_delta(0) {}
+    FlapLevel(mps_t s, int label_int, int sv) : nvs_speed(s), prep_speed(0.), speed_delta(0.), label_int(label_int), sensval(sv), sens_delta(0) {}
     // FlapLevel(float s, const char *lc, int sv) : nvs_speed(s), prep_speed(0.), speed_delta(0.), sensval(sv), sens_delta(0) {
     //     std::strncpy(label, lc, 4);
     //     label[3] = '\0';
@@ -77,13 +79,13 @@ public:
     static Flap *theFlap();
 
     // config access
-    static SetupNG<float> *getSpeedNVS(int idx);
+    static SetupNG<mps_t> *getSpeedNVS(int idx);
     static SetupNG<int> *getLblNVS(int idx);
     static SetupNG<int> *getSensNVS(int idx);
     const FlapLevel *getFL(int idx) const { return (idx < flevel.size()) ? &flevel[idx] : &dummy; }
     void setSensCal(int idx, int val);
     void setLabel(int idx, const char *lab);
-    void setSpeed(int idx, float spd);
+    void setSpeed(int idx, mps_t spd);
     void prepLevels();
     void modLevels();
     void reLoadLevels();
@@ -94,16 +96,16 @@ public:
     void progress();
 
     // recommendations
-    float getOptimum(float speed) const;
-    float getSpeedBand(float wkf, float &maxv) const;
-    float getSpeed(float wkf) const;
+    float getOptimum(mps_t speed) const;
+    mps_t getSpeedBand(float wkf, mps_t &maxv) const;
+    mps_t getSpeed(float wkf) const;
     float getFlapPosition() const;
 
     // sensor access
     static bool sensAvailable();
     bool haveAdcSensor() const { return sensorAdc != nullptr; }
     void configureADC();
-    unsigned int getSensorRaw() const;
+    int getSensorRaw() const;
     int getNrPositions() const { return flevel.size(); }
     static constexpr const int MAX_NR_POS = 7;
 

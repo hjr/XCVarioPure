@@ -13,8 +13,9 @@
 #include "AdaptUGC.h"
 #include "ESPAudio.h"
 #include "setup/SetupNG.h"
-#include "logdefnone.h"
+#include "logdef.h"
 #include "math/Floats.h"
+#include "math/Units.h"
 
 #include <cstdio>
 
@@ -24,17 +25,17 @@ constexpr const int16_t BOX_WIDTH  = 28;
 // constexpr const int16_t BOX_LENGTH = 100; // w/o corners
 constexpr const int16_t BOX_CORNER = 8;
 constexpr const int16_t LABEL_SPACING = 40;
-// constexpr const float   PIX_PER_KMH = ((float)(BOX_LENGTH)-2*BOX_CORNER) / (26.f + std::max(BOX_LENGTH-100, 0))/30.f; // km/h range on flap box
+// constexpr const float   PIX_PER_MPS = ((float)(BOX_LENGTH)-2*BOX_CORNER) / (Units::kmh_to_mps(26.f) + std::max(BOX_LENGTH-100, 0)/Units::kmh_to_mps(30.f)); // m/s range on flap box
 constexpr const int     SOUND_LATENCY = 5; // frames
 
 int16_t FlapsBox::BOX_LENGTH = 100;
-float   FlapsBox::PIX_PER_KMH = 3.23f;
+float   FlapsBox::PIX_PER_MPS = 11.628f;
 
 FBoxStateHash::FBoxStateHash(float f, float minvd, float maxvd) :
     wkidx10( fast_iroundf(f*10.) )
 {
-    top_pix = static_cast<int16_t>(minvd * FlapsBox::PIX_PER_KMH);
-    bottom_pix = static_cast<int16_t>(maxvd * FlapsBox::PIX_PER_KMH);
+    top_pix = static_cast<int16_t>(minvd * FlapsBox::PIX_PER_MPS);
+    bottom_pix = static_cast<int16_t>(maxvd * FlapsBox::PIX_PER_MPS);
     top_exseed = (bottom_pix < -FlapsBox::BOX_LENGTH/2) ? 1 : 0;
     bottom_exseed = (top_pix > FlapsBox::BOX_LENGTH/2) ? 1 : 0;
 }
@@ -74,7 +75,8 @@ FlapsBox::FlapsBox(Flap* flap, int16_t cx, int16_t cy, bool vertical) :
 void FlapsBox::setLength(int16_t length)
 {
     BOX_LENGTH = length;
-    PIX_PER_KMH = ((float)(BOX_LENGTH)-2*BOX_CORNER) / (26.f + std::max(BOX_LENGTH-100, 0)/30.f); // km/h range on flap box
+    PIX_PER_MPS = ((float)(BOX_LENGTH)-2*BOX_CORNER) / (Units::kmh_to_mps(26.f) + std::max(BOX_LENGTH-100, 0)/Units::kmh_to_mps(30.f)); // 30 km/h range on half flap box
+    ESP_LOGI(FNAME, "setLength %d, PIX_PER_MPS %.3f", BOX_LENGTH, PIX_PER_MPS);
 }
 
 void FlapsBox::drawLabels(FBoxStateHash cs)
@@ -190,8 +192,8 @@ void FlapsBox::draw(float ias)
     if ( _dirty ) {
         MYUCG->setColor(COLOR_HEADER);
         MYUCG->drawRFrame(_ref_x, _ref_y-BOX_LENGTH/2-BOX_CORNER, BOX_WIDTH, BOX_LENGTH + 2*BOX_CORNER, BOX_CORNER);
-        MYUCG->drawDisc(_ref_x, _ref_y + 10*PIX_PER_KMH, 3, UCG_DRAW_ALL);
-        MYUCG->drawDisc(_ref_x, _ref_y - 10*PIX_PER_KMH, 3, UCG_DRAW_ALL);
+        MYUCG->drawDisc(_ref_x, _ref_y + 10*PIX_PER_MPS, 3, UCG_DRAW_ALL);
+        MYUCG->drawDisc(_ref_x, _ref_y - 10*PIX_PER_MPS, 3, UCG_DRAW_ALL);
         MYUCG->setColor(COLOR_WHITE);
         MYUCG->drawDisc(_ref_x, _ref_y, 3, UCG_DRAW_ALL);
     }
@@ -206,7 +208,7 @@ void FlapsBox::draw(float ias)
     // damp speed of indicator to make it good readable
     _flaps_position = _flaps_position + (wktarget - _flaps_position) * 0.2f;
 
-    float minv, maxv;
+    mps_t minv, maxv;
     minv = _flap->getSpeedBand(_flaps_position, maxv);
     if ( airborne.get() == false ) {
         // on ground, set a virtual green band for the correct start position (ias "0km/h")

@@ -21,26 +21,27 @@ extern AdaptUGC *MYUCG;
 
 char SetupMenuValFloat::_val_str[50];
 
-
-static float valueAsQuantity(float val, quantity_t q)
-{
-	switch (q)
-	{
-	case quantity_t::QUANT_NONE:
-		return val;
-	case quantity_t::QUANT_TEMPERATURE:
-		return TempUnit->apply(Units::C_to_K(val));
-	case quantity_t::QUANT_ALT:
-		return AltUnit->apply(val);
-	case quantity_t::QUANT_HSPEED:
-		return SpeedUnit->apply(Units::kmh_to_mps(val));
-	case quantity_t::QUANT_VSPEED:
-		return VarioUnit->apply(val);
-	case quantity_t::QUANT_QNH:
-		return PressureUnit->apply(val);
-	default:
-		return val;
-	}
+static float valueAsQuantity(float val, quantity_t q) {
+    switch (q) {
+        case quantity_t::QUANT_NONE:
+            return val;
+        case quantity_t::QUANT_TEMPERATURE:
+            return TempUnit->apply(Units::C_to_K(val));
+        case quantity_t::QUANT_ALT:
+            return AltUnit->apply(val);
+        case quantity_t::QUANT_HSPEED:
+            return SpeedUnit->apply(val);
+        case quantity_t::QUANT_HSLEGACY:
+            return SpeedUnit->apply(Units::kmh_to_mps(val));
+        case quantity_t::QUANT_VSPEED:
+            return VarioUnit->apply(val);
+        case quantity_t::QUANT_QNH:
+            return PressureUnit->apply(val);
+        // case quantity_t::QUANT_MASS:
+        // case quantity_t::QUANT_TIME:
+        default:
+            return val;
+    }
 }
 
 static const char* unitFromQuantity(quantity_t q)
@@ -54,6 +55,7 @@ static const char* unitFromQuantity(quantity_t q)
 	case quantity_t::QUANT_ALT:
 		return AltUnit->getName();
 	case quantity_t::QUANT_HSPEED:
+    case quantity_t::QUANT_HSLEGACY:
 		return SpeedUnit->getName();
 	case quantity_t::QUANT_VSPEED:
 		return VarioUnit->getName();

@@ -71,6 +71,6 @@ private: // attributes
     int16_t _LFH;
 public:
     static int16_t BOX_LENGTH;
-    static float   PIX_PER_KMH;
+    static float   PIX_PER_MPS;
 };
 

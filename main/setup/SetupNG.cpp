@@ -236,7 +236,7 @@ SetupNG<kmh_t> 			polar_speed2( "POLAR_SPEED2",   125, true, SYNC_BIDIR, PERSIST
 SetupNG<mps_t> 			polar_sink2( "POLAR_SINK2",    -0.97, true, SYNC_BIDIR, PERSISTENT, change_polar, quantity_t::QUANT_NONE, &polar_sink_limits);
 SetupNG<kmh_t> 			polar_speed3( "POLAR_SPEED3",   175, true, SYNC_BIDIR, PERSISTENT, change_polar, quantity_t::QUANT_NONE, &polar_speed_limits);
 SetupNG<mps_t> 			polar_sink3( "POLAR_SINK3",    -2.24, true, SYNC_BIDIR, PERSISTENT, change_polar, quantity_t::QUANT_NONE, &polar_sink_limits);
-SetupNG<kmh_t>			polar_stall_speed( "STALL_SPEED", 0, true, SYNC_BIDIR, PERSISTENT, change_polar, quantity_t::QUANT_HSPEED, &polar_speed_limits);
+SetupNG<kmh_t>			polar_stall_speed( "STALL_SPEED", 0, true, SYNC_BIDIR, PERSISTENT, change_polar, quantity_t::QUANT_HSLEGACY, &polar_speed_limits);
 SetupNG<kilogram_t> 	polar_max_ballast( "POLAR_MAX_BAL",  80, true, SYNC_BIDIR, PERSISTENT, change_ballast, quantity_t::QUANT_MASS, LIMITS(0, 500, 1));
 SetupNG<float> 			polar_wingarea( "POLAR_WINGAREA", 10.5, true, SYNC_BIDIR, PERSISTENT, change_ballast, quantity_t::QUANT_NONE, LIMITS(0, 50, 0.1));
 
@@ -288,7 +288,7 @@ SetupNG<int>  			airborne("AIRBORNE", 0, false, SYNC_FROM_MASTER, VOLATILE, &ch_
 
 SetupNG<mps_t>  		s2f_ideal( "S2F_IDEAL", 27.778, false, SYNC_NONE, VOLATILE);
 SetupNG<int>  			s2f_switch_mode( "AUDIO_MODE", AM_MANUALLY, false, SYNC_BIDIR, PERSISTENT );
-SetupNG<kmh_t>  		s2f_threshold( "S2F_SPEED", 120.0, true, SYNC_BIDIR, PERSISTENT, nullptr, quantity_t::QUANT_HSPEED, LIMITS(20.0, 250.0, 1.0));
+SetupNG<kmh_t>  		s2f_threshold( "S2F_SPEED", 120.0, true, SYNC_BIDIR, PERSISTENT, nullptr, quantity_t::QUANT_HSLEGACY, LIMITS(20.0, 250.0, 1.0));
 SetupNG<float>  		s2f_flap_pos( "S2F_FLAP", 1, true, SYNC_BIDIR, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(-3, 3, 0.1));
 static const limits_t percentage_limits = {0, 100, 1.0};
 SetupNG<float>  		s2f_gyro_deg( "S2F_GYRO", 10, true, SYNC_BIDIR, PERSISTENT, nullptr, quantity_t::QUANT_NONE, &percentage_limits);
@@ -328,22 +328,23 @@ SetupNG<float>  		core_climb_min( "CORE_CLIMB_MIN" , 0.5, true, SYNC_BIDIR, PERS
 SetupNG<float>  		core_climb_history( "CORE_CLIMB_HIST" , 45, true, SYNC_BIDIR, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(1, 300, 1));
 SetupNG<float>  		mean_climb_major_change( "MEAN_CLMC", 0.5, true, SYNC_BIDIR, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(0.1, 5.0, 0.1));
 SetupNG<meter_t>  		airfield_elevation( "ELEVATION", NO_ELEVATION, true, SYNC_BIDIR, PERSISTENT, nullptr, quantity_t::QUANT_ALT, LIMITS(NO_ELEVATION, 3000, 1));
-SetupNG<float>  		s2f_deadband( "DEADBAND_S2F", 10.0, true, SYNC_BIDIR, PERSISTENT, nullptr, quantity_t::QUANT_HSPEED, LIMITS(.0, 25.0, 1));
-SetupNG<float>  		s2f_deadband_neg( "DB_S2F_NEG", -10.0, true, SYNC_BIDIR, PERSISTENT, nullptr, quantity_t::QUANT_HSPEED, LIMITS(-25.0, .0, 1));
-SetupNG<float>  		s2f_delay( "S2F_DELAY", 5.0, true, SYNC_BIDIR, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(2.0, 12.0, 0.5));
+SetupNG<float>  		s2f_deadband( "DEADBAND_S2F", 10.0, true, SYNC_BIDIR, PERSISTENT, nullptr, quantity_t::QUANT_HSLEGACY, LIMITS(.0, 25.0, 1));
+SetupNG<float>  		s2f_deadband_neg( "DB_S2F_NEG", -10.0, true, SYNC_BIDIR, PERSISTENT, nullptr, quantity_t::QUANT_HSLEGACY, LIMITS(-25.0, .0, 1));
+SetupNG<float>  		s2f_delay( "S2F_DELAY", 5.0, true, SYNC_BIDIR, PERSISTENT, nullptr, quantity_t::QUANT_TIME, LIMITS(2.0, 12.0, 0.5));
 SetupNG<float>  		factory_volt_adjust("FACT_VOLT_ADJ", 0.00815, false, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(-25.0, 25.0, 0.01));
 
 SetupNG<int>  			display_type( "DISPLAY_TYPE",  UNIVERSAL );
 SetupNG<int>  			display_test( "DISPLAY_TEST", 0, false, SYNC_NONE, VOLATILE );
 SetupNG<int>  			display_orientation("DISPLAY_ORIENT" , DISPLAY_NORMAL, true, SYNC_NONE, PERSISTENT, chg_display_orientation );
 SetupNG<int>  			flapbox_enable( "FLAP_ENABLE", 0, true, SYNC_NONE, PERSISTENT, flap_act);
-SetupNG<float>  		wk_speed_0( "WK_SPD_0", 0, false, SYNC_BIDIR, PERSISTENT, flap_update_act, quantity_t::QUANT_HSPEED, &polar_speed_limits);
-SetupNG<float>  		wk_speed_1( "WK_SPD_1", 0, false, SYNC_BIDIR, PERSISTENT, flap_update_act, quantity_t::QUANT_HSPEED, &polar_speed_limits);
-SetupNG<float>  		wk_speed_2( "WK_SPD_2", 0, false, SYNC_BIDIR, PERSISTENT, flap_update_act, quantity_t::QUANT_HSPEED, &polar_speed_limits);
-SetupNG<float>  		wk_speed_3( "WK_SPD_3", 0, false, SYNC_BIDIR, PERSISTENT, flap_update_act, quantity_t::QUANT_HSPEED, &polar_speed_limits);
-SetupNG<float>  		wk_speed_4( "WK_SPD_4", 0, false, SYNC_BIDIR, PERSISTENT, flap_update_act, quantity_t::QUANT_HSPEED, &polar_speed_limits);
-SetupNG<float>  		wk_speed_5( "WK_SPD_5", 0, false, SYNC_BIDIR, PERSISTENT, flap_update_act, quantity_t::QUANT_HSPEED, &polar_speed_limits);
-SetupNG<float>  		wk_speed_6( "WK_SPD_6", 0, false, SYNC_BIDIR, PERSISTENT, flap_update_act, quantity_t::QUANT_HSPEED, &polar_speed_limits);
+const limits_t polar_mps_limits = {0.0, 450.0/3.6, .278};
+SetupNG<mps_t>  		wk_speed_0( "WK_SPD_0", 0, false, SYNC_BIDIR, PERSISTENT, flap_update_act, quantity_t::QUANT_HSPEED, &polar_mps_limits);
+SetupNG<mps_t>  		wk_speed_1( "WK_SPD_1", 0, false, SYNC_BIDIR, PERSISTENT, flap_update_act, quantity_t::QUANT_HSPEED, &polar_mps_limits);
+SetupNG<mps_t>  		wk_speed_2( "WK_SPD_2", 0, false, SYNC_BIDIR, PERSISTENT, flap_update_act, quantity_t::QUANT_HSPEED, &polar_mps_limits);
+SetupNG<mps_t>  		wk_speed_3( "WK_SPD_3", 0, false, SYNC_BIDIR, PERSISTENT, flap_update_act, quantity_t::QUANT_HSPEED, &polar_mps_limits);
+SetupNG<mps_t>  		wk_speed_4( "WK_SPD_4", 0, false, SYNC_BIDIR, PERSISTENT, flap_update_act, quantity_t::QUANT_HSPEED, &polar_mps_limits);
+SetupNG<mps_t>  		wk_speed_5( "WK_SPD_5", 0, false, SYNC_BIDIR, PERSISTENT, flap_update_act, quantity_t::QUANT_HSPEED, &polar_mps_limits);
+SetupNG<mps_t>  		wk_speed_6( "WK_SPD_6", 0, false, SYNC_BIDIR, PERSISTENT, flap_update_act, quantity_t::QUANT_HSPEED, &polar_mps_limits);
 SetupNG<int>  			alt_unit( "ALT_UNIT", (int)alt_unit_t::ALT_UNIT_METER );
 SetupNG<int>  			alt_quantization( "ALT_QUANT", Altimeter::ALT_QUANT_10 );
 SetupNG<int>  			ias_unit( "IAS_UNIT", SPEED_UNIT_KMH );
@@ -430,14 +431,14 @@ SetupNG<int> 			wk_label_3( "WK_LBL_3", 0, false, SYNC_BIDIR, PERSISTENT, flap_u
 SetupNG<int> 			wk_label_4( "WK_LBL_4", 0, false, SYNC_BIDIR, PERSISTENT, flap_update_act );
 SetupNG<int> 			wk_label_5( "WK_LBL_5", 0, false, SYNC_BIDIR, PERSISTENT, flap_update_act );
 SetupNG<int> 			wk_label_6( "WK_LBL_6", 0, false, SYNC_BIDIR, PERSISTENT, flap_update_act );
-SetupNG<float>       	flap_takeoff("FLAPTO", 0,  false, SYNC_BIDIR, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(0, 6, 1));
+SetupNG<float> 			flap_takeoff("FLAPTO", 0,  false, SYNC_BIDIR, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(0, 6, 1));
 SetupNG<int> 			audio_mute_sink( "AUDISS", 0 );
 SetupNG<int> 			audio_mute_gen( "AUDISG", AUDIO_ON );
 SetupNG<int>			vario_mode("VAMOD", CRUISE_ONLY_NETTO, true, SYNC_NONE, PERSISTENT, change_cruise);  // switch to netto mode when cruising
 SetupNG<int>			airspeed_sensor("PTYPE", AirspeedSensor::PS_NONE, false);
 SetupNG<int>			cruise_audio_mode("CAUDIO", 0 );
 SetupNG<int>			netto_mode("NETMOD", NETTO_RELATIVE, true, SYNC_NONE, PERSISTENT, change_cruise);  // regard polar sink
-SetupNG<float>			v_max("VMAX", 270, true, SYNC_BIDIR, PERSISTENT, nullptr, quantity_t::QUANT_HSPEED, &polar_speed_limits);
+SetupNG<kmh_t>			v_max("VMAX", 270, true, SYNC_BIDIR, PERSISTENT, nullptr, quantity_t::QUANT_HSLEGACY, &polar_speed_limits);
 static const limits_t pos_g_limits = {1.0, 8.0, 0.1};
 static const limits_t neg_g_limits = {-8.0, -1.0, 0.1};
 SetupNG<float>			gload_pos_limit_low("GLOADPLL", 3, true, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, &pos_g_limits);

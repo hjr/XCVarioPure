@@ -62,7 +62,7 @@ typedef enum e_netto_mode { NETTO_NORMAL, NETTO_RELATIVE } e_netto_mode_t;
 typedef enum e_screen_mode { SCREEN_OFF, SCREEN_DYNAMIC, SCREEN_ON, SCREEN_PRIMARY } e_screen_mode_t;
 enum e_windanalyser_mode { WA_OFF=0, WA_STRAIGHT=1, WA_CIRCLING=2, WA_BOTH=3, WA_EXTERNAL=4 }; // do nto change (bit-field)
 enum e_logging { LOGG_DISABLE, LOGG_WIND, LOGG_GYRO_MAG, LOGG_BOTH, LOGG_RAW_SENSOR_DATA }; // bit field (!)
-enum class quantity_t : uint8_t { QUANT_NONE, QUANT_TEMPERATURE, QUANT_ALT, QUANT_HSPEED, QUANT_VSPEED, QUANT_QNH, QUANT_MASS };
+enum class quantity_t : uint8_t { QUANT_NONE, QUANT_TEMPERATURE, QUANT_ALT, QUANT_HSPEED, QUANT_HSLEGACY, QUANT_VSPEED, QUANT_QNH, QUANT_MASS, QUANT_TIME };
 enum temperature_unit_t { T_CELCIUS, T_FAHRENHEIT, T_KELVIN };
 enum class alt_unit_t : uint8_t { ALT_UNIT_METER, ALT_UNIT_FT, ALT_UNIT_FL };
 enum dst_unit_t { DST_UNIT_M, DST_UNIT_FT, DST_UNIT_MILES, DST_UNIT_NAUTICAL_MILES };
@@ -126,6 +126,7 @@ struct limits_t
     return &_lim; \
 }())
 extern const limits_t polar_speed_limits;
+extern const limits_t polar_mps_limits;
 
 template<typename T>
 class SetupNG: public SetupCommon
@@ -416,13 +417,13 @@ extern SetupNG<int>  		display_type;
 extern SetupNG<int>  		display_test;
 extern SetupNG<int>  		display_orientation;
 extern SetupNG<int>  		flapbox_enable;
-extern SetupNG<float>  		wk_speed_0;
-extern SetupNG<float>  		wk_speed_1;
-extern SetupNG<float>  		wk_speed_2;
-extern SetupNG<float>  		wk_speed_3;
-extern SetupNG<float>  		wk_speed_4;
-extern SetupNG<float>  		wk_speed_5;
-extern SetupNG<float>  		wk_speed_6;
+extern SetupNG<mps_t>  		wk_speed_0;
+extern SetupNG<mps_t>  		wk_speed_1;
+extern SetupNG<mps_t>  		wk_speed_2;
+extern SetupNG<mps_t>  		wk_speed_3;
+extern SetupNG<mps_t>  		wk_speed_4;
+extern SetupNG<mps_t>  		wk_speed_5;
+extern SetupNG<mps_t>  		wk_speed_6;
 extern SetupNG<int>  		alt_unit;
 extern SetupNG<int>  		alt_quantization;
 extern SetupNG<int>  		ias_unit;
@@ -509,14 +510,14 @@ extern SetupNG<int> 		wk_label_3;
 extern SetupNG<int> 		wk_label_4;
 extern SetupNG<int> 		wk_label_5;
 extern SetupNG<int> 		wk_label_6;
-extern SetupNG<float>       flap_takeoff;
+extern SetupNG<float> 		flap_takeoff;
 extern SetupNG<int> 		audio_mute_sink;
 extern SetupNG<int> 		audio_mute_gen;
 extern SetupNG<int>			vario_mode;
 extern SetupNG<int>			airspeed_sensor;
 extern SetupNG<int>			cruise_audio_mode;
 extern SetupNG<int>			netto_mode;
-extern SetupNG<float>		v_max;
+extern SetupNG<kmh_t>		v_max;
 
 extern SetupNG<float>		gload_pos_limit_low;
 extern SetupNG<float>		gload_neg_limit_low;

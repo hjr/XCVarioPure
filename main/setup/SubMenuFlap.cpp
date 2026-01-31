@@ -25,7 +25,7 @@
 extern AdaptUGC *MYUCG;
 
 static int new_level_label;
-static SetupNG<float> *new_level_speed = nullptr;
+static SetupNG<mps_t> *new_level_speed = nullptr;
 static int8_t new_level_complete;
 
 static std::string flap_level_menu[Flap::MAX_NR_POS];
@@ -172,7 +172,7 @@ static int select_level_action(SetupMenuChar *p)
 }
 static int select_speed_action(SetupMenuValFloat *p)
 {
-    ESP_LOGI(FNAME,"action speed %.1f", p->getNVSVal());
+    ESP_LOGI(FNAME,"action speed %.1f", p->get());
     new_level_complete |= 0x2;
     if ( new_level_complete == 0x3 ) {
         p->getParent()->getEntry(2)->unlock();
@@ -203,7 +203,9 @@ static void flap_menu_add_level(SetupMenu *top) // dynamic!
         top->addEntry( flab );
 
         // the minimum speed
-        SetupMenuValFloat *minspeed = new SetupMenuValFloat("Minimum Speed", "kmh", select_speed_action, false, new_level_speed);
+        SetupMenuValFloat *minspeed = new SetupMenuValFloat("Minimum Speed", "", select_speed_action, false, new_level_speed);
+        minspeed->setHelp("Minimum speed for the flap level's speed band");
+        minspeed->setPrecision(0);
         top->addEntry( minspeed );
 
         // confirmation
@@ -232,7 +234,7 @@ static int level_label_action(SetupMenuChar *p)
 static int level_speed_action(SetupMenuValFloat *p)
 {
     ESP_LOGI(FNAME,"level_speed_action %.1f", p->getNVSVal());
-    FLAP->setSpeed(p->getParent()->getContId(), p->getNVSVal() );
+    FLAP->setSpeed(p->getParent()->getContId(), p->getNVSVal());
     FLAP->modLevels();
     p->getParent()->getParent()->setDirty();
     return 0;
@@ -263,7 +265,9 @@ static void one_flap_level(SetupMenu *top) // dynamic!
         top->addEntry( flab );
 
         // the minimum speed
-        SetupMenuValFloat *minspeed = new SetupMenuValFloat("Minimum Speed", "kmh", level_speed_action, false, FLAP->getSpeedNVS(lid)  );
+        SetupMenuValFloat *minspeed = new SetupMenuValFloat("Minimum Speed", "", level_speed_action, false, FLAP->getSpeedNVS(lid) );
+        minspeed->setHelp("Minimum speed for the flap level's speed band");
+        minspeed->setPrecision(0);
         top->addEntry( minspeed );
 
         // remove level
@@ -277,7 +281,7 @@ void flap_levels_menu_create(SetupMenu* top) // dynamic!
 {
     SetupMenuValFloat *flgnd = static_cast<SetupMenuValFloat*>(top->getEntry(0));
     if ( ! flgnd ) {
-        new_level_speed = new SetupNG<float>("foo", 100.0f, false, SYNC_NONE, VOLATILE, nullptr, quantity_t::QUANT_HSPEED, &polar_speed_limits);
+        new_level_speed = new SetupNG<mps_t>("foo", 27.78f, false, SYNC_NONE, VOLATILE, nullptr, quantity_t::QUANT_HSPEED, &polar_mps_limits);
         top->setDynContent();
         flgnd = new SetupMenuValFloat("Takeoff Flap",".", nullptr, false, &flap_takeoff  );
         flgnd->setHelp("Flap position to be set for takeoff");
@@ -309,7 +313,7 @@ void flap_levels_menu_create(SetupMenu* top) // dynamic!
         flap_level_menu[level] += ". Level ";
         flap_level_menu[level] += lev->label;
         SetupMenu *levmenu = new SetupMenu(flap_level_menu[level].c_str(), one_flap_level, level);
-        flap_level_buzz[level] = std::to_string(static_cast<int>(lev->nvs_speed)) + " kmh";
+        flap_level_buzz[level] = std::to_string(static_cast<int>(SpeedUnit->apply(lev->nvs_speed))) + " " + SpeedUnit->getName();
         levmenu->setBuzzword(flap_level_buzz[level].data());
         top->addEntry(levmenu);
     }

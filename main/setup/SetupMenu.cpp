@@ -429,14 +429,15 @@ void SetupMenu::display(int mode)
 		
 		// Menu entry
 		MYUCG->setColor(COLOR_WHITE);
-		if ( ! child->isLeaf()  || child->value() ) {
+        const char *cv = child->value();
+		if ( ! child->isLeaf()  || cv ) {
 			MYUCG->setColor(COLOR_BBLUE);
 		}
 		menuPrintLn(child->getTitle(), i+1);
 
 		// Optional value or detail
 		// ESP_LOGI(FNAME,"Child Title: %s - %p", child->getTitle(), child->value() );
-		if (child->value() && *child->value() != '\0')
+		if (cv && *cv != '\0')
 		{
 			// Detail seperator
 			const char *sep = "> ";
@@ -451,8 +452,8 @@ void SetupMenu::display(int mode)
 			} else {
 				MYUCG->setColor(COLOR_HEADER_LIGHT);
 			}
-			menuPrintLn(child->value(), i+1, 1 + entry_len + MYUCG->getStrWidth(sep));
-			ESP_LOGI(FNAME,"Child V: %s",child->value() );
+			menuPrintLn(cv, i+1, 1 + entry_len + MYUCG->getStrWidth(sep));
+			ESP_LOGI(FNAME,"Child V: %s", cv );
 		}
 		// ESP_LOGI(FNAME,"Child: %s y=%d",child->getTitle() ,y );
 	}

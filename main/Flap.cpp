@@ -14,7 +14,7 @@
 #include <algorithm>
 
 
-constexpr float GENERAL_V_MIN = 50;
+constexpr mps_t GENERAL_V_MIN = Units::kmh_to_mps(50);
 
 Flap* Flap::_instance = nullptr;
 Flap* FLAP = nullptr;
@@ -25,10 +25,10 @@ FlapLevel Flap::dummy = {.0, (int)('x'<<24), 0};
 // all nvs setup data enumerable
 struct FLConf
 {
-    SetupNG<float> *speed;
+    SetupNG<kmh_t> *speed;
     SetupNG<int>   *label;
     SetupNG<int>   *sensval;
-    constexpr FLConf(SetupNG<float> *s, SetupNG<int> *l, SetupNG<int> *sv) : speed(s), label(l), sensval(sv) {}
+    constexpr FLConf(SetupNG<kmh_t> *s, SetupNG<int> *l, SetupNG<int> *sv) : speed(s), label(l), sensval(sv) {}
     const char *getLabel() const {
         return (const char *)(label->getPtr());
     }
@@ -78,7 +78,7 @@ Flap *Flap::theFlap() {
 }
 
 // setup API
-SetupNG<float> *Flap::getSpeedNVS(int idx)
+SetupNG<kmh_t> *Flap::getSpeedNVS(int idx)
 {
     return FL_STORE[idx].speed;
 }
@@ -102,7 +102,7 @@ void Flap::setLabel(int idx, const char *lab) {
         flevel[idx].label[3] = '\0';
     }
 }
-void Flap::setSpeed(int idx, float spd) {
+void Flap::setSpeed(int idx, mps_t spd) {
     if (idx < flevel.size()) {
         flevel[idx].nvs_speed = spd;
     }
@@ -180,9 +180,7 @@ void Flap::removeLevel(int idx)
 // 10 Hz update
 void Flap::progress() {
     if ( sensorAdc ) {
-        int wkraw = getSensorRaw();
-        if (wkraw > 4096)
-            wkraw = 4096;
+        int wkraw = std::clamp(getSensorRaw(), -1, 4096);
         if (wkraw < 0) {
             // drop erratic negative readings
             ESP_LOGW(FNAME, "negative flap sensor reading: %d", wkraw);
@@ -212,13 +210,13 @@ void Flap::progress() {
 // the core API functions for wk recommendations
 /////////////////////////////////////////////////
 
-float Flap::getOptimum(float spd) const {
+float Flap::getOptimum(mps_t spd) const {
     // Correct for current g load
     g_force += (IMU::getGliderAccelZ() - g_force) * 0.5;
     if (g_force < 0.3) {
         g_force = 0.3; // Ignore meaningless values below 0.3g
     }
-    float g_speed = spd / sqrtf(g_force); // reduce current speed, instead of increase switch points
+    mps_t g_speed = spd / sqrtf(g_force); // reduce current speed, instead of increase switch points
     // ESP_LOGI(FNAME, "g force: %.1f, g corrected speed: %3.1f", g_force, g_speed);
 
     int wki = 0; // find the wk index one index above the current speed
@@ -247,7 +245,7 @@ float Flap::getOptimum(float spd) const {
     } else if (wkf > flevel.size() - 1) {
         wkf = flevel.size() - 1;
     }
-    ESP_LOGI(FNAME, "opt: g-ias:%.1f wki:%d wkf:%.1f", g_speed, wki, wkf);
+    ESP_LOGI(FNAME, "opt: g-ias:%.1fmps wki:%d wkf:%.1f", g_speed, wki, wkf);
     return wkf;
 }
 
@@ -257,9 +255,9 @@ static int getWkIndex(float wkf) {
 
 // get speed band for given flap position wk
 // 0 < wk < (# positions - 1)
-float Flap::getSpeedBand(float wkf, float &maxv) const
+mps_t Flap::getSpeedBand(float wkf, mps_t &maxv) const
 {
-    float minv = 0.;
+    mps_t minv = 0.;
     maxv = 0.;
 
     // pick min/max speeds for given flap position index
@@ -278,15 +276,15 @@ float Flap::getSpeedBand(float wkf, float &maxv) const
         // assuming linear interpolation between flap positions
         // map band so that at a full flap position
         // the speed band is centered between the two flap speeds (no shift)
-        float shift = (wkf - wki) * flevel[wki].speed_delta;
+        mps_t shift = (wkf - wki) * flevel[wki].speed_delta;
         minv += shift;
         maxv += shift;
-        ESP_LOGI(FNAME,"shift:%.1f center speed:%.1f", shift, (minv + maxv)/2);
+        ESP_LOGI(FNAME,"shift:%.1f center speed:%.1fmps", shift, (minv + maxv)/2);
     }
     return minv;
 }
 
-float Flap::getSpeed(float wkf) const
+mps_t Flap::getSpeed(float wkf) const
 {
     int wki = getWkIndex(wkf);
     if ( wki < flevel.size() ) {
@@ -337,7 +335,7 @@ void Flap::configureADC() {
     }
 }
 
-unsigned int Flap::getSensorRaw() const
+int Flap::getSensorRaw() const
 {
     return sensorAdc ? sensorAdc->getRaw() : 0;
 }
@@ -354,13 +352,13 @@ bool Flap::initFromNVS()
     flevel.clear();
     for (int i = 0; i < MAX_NR_POS; i++)
     {
-        float nvsspeed = FL_STORE[i].speed->get();
+        mps_t nvsspeed = FL_STORE[i].speed->get();
         if (nvsspeed > 0)
         {
             // a valid entry
             if ( i == MAX_NR_POS-1 && nvsspeed >= flevel.back().nvs_speed ) {
                 // last entry must be slower than previous
-                nvsspeed = std::max(flevel.back().nvs_speed - 20.0f, 0.f);
+                nvsspeed = std::max(flevel.back().nvs_speed - Units::kmh_to_mps(20.0f), 0.f);
             }
             flevel.push_back(FlapLevel{nvsspeed, FL_STORE[i].getLabelInt(), FL_STORE[i].sensval->get()});
             ESP_LOGI( FNAME, "new flap level %d %s: %.1f (%d)", i, FL_STORE[i].getLabel(), nvsspeed, FL_STORE[i].sensval->get() );
@@ -387,10 +385,10 @@ bool Flap::initFromNVS()
             ESP_LOGI( FNAME, "found old flap range %.1f to %.1f, levels %d", flstart, flend, end ); 
             int old_iter = flstart + 3;
             for ( int i=0; i<end; i++ ) {
-                float nvsspeed;
+                kmh_t nvsspeed;
                 bool good = SetupCommon::getOldFloat( old_speed[old_iter], nvsspeed );
                 if ( ! good && old_iter == 6 ) {
-                    nvsspeed = GENERAL_V_MIN; // last position default
+                    nvsspeed = Units::mps_to_kmh(GENERAL_V_MIN); // last position default
                     good = true;
                 }
                 int lblidx;
@@ -401,7 +399,7 @@ bool Flap::initFromNVS()
                     int ilabel;
                     std::strncpy((char*)&ilabel,flap_labels[lblidx].data(), 4);
                     ((char*)&ilabel)[3] = '\0';
-                    flevel.push_back( FlapLevel{ nvsspeed, ilabel, sensval } );
+                    flevel.push_back( FlapLevel{ Units::kmh_to_mps(nvsspeed), ilabel, sensval } );
                     ESP_LOGI( FNAME, "migrated old flap level %d %s: %.1f (%d)", i, (char*)&ilabel, nvsspeed, sensval );
                 }
                 old_iter++;
@@ -423,7 +421,7 @@ void Flap::saveToNVS()
         if ( i < (int)flevel.size() )
         {
             // speed
-            if ( FL_STORE[i].speed->get() != flevel[i].nvs_speed ) {
+            if ( ! floatEqualFast(FL_STORE[i].speed->get(), flevel[i].nvs_speed) ) {
                 FL_STORE[i].speed->set( flevel[i].nvs_speed, true, false ); // synch, but no action
             }
             // label
