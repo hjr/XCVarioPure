@@ -11,7 +11,7 @@
 #include "math/Trigonometry.h"
 #include "setup/SetupNG.h"
 #include "comm/CanBus.h"
-#include "logdefnone.h"
+#include "logdef.h"
 
 #include "driver/ledc.h"
 

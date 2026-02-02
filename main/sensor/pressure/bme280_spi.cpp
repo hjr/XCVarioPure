@@ -79,6 +79,27 @@ BME280_SPI::BME280_SPI(SensorId id) :
 	init_err = false;
 	// _avg_alt = 0;
 	// _avg_alt_std = 0;
+	// SPI device configuration
+	spi_device_interface_config_t devcfg = {
+			.command_bits = 0,
+			.address_bits = 8,
+			.dummy_bits = 0,
+			.mode = 3,
+			.clock_source = SPI_CLK_SRC_DEFAULT,
+			.duty_cycle_pos = 0,
+			.cs_ena_pretrans = 0,
+			.cs_ena_posttrans = 0,
+			.clock_speed_hz = _freq,
+			.input_delay_ns = 0,
+			.sample_point = SPI_SAMPLING_POINT_PHASE_0,
+			.spics_io_num = _cs,
+			.flags = 0,
+			.queue_size = 1, // Transaction queue size
+			.pre_cb = NULL,	 // Pre-transaction callback
+			.post_cb = NULL	 // Post-transaction callback
+	};
+
+	ESP_ERROR_CHECK(spi_bus_add_device(SPI3_HOST, &devcfg, &spi));
 }
 
 // bool BME280_SPI::setSPIBus(gpio_num_t sclk, gpio_num_t mosi, gpio_num_t miso, uint32_t freq)
@@ -102,28 +123,6 @@ bool BME280_SPI::probe()
 
 //****************BME280_SPI*************************************************
 bool BME280_SPI::setup(){
-
-	// SPI device configuration
-	spi_device_interface_config_t devcfg = {
-		.command_bits = 0,
-		.address_bits = 8,
-		.dummy_bits = 0,
-		.mode = 3,
-		.clock_source = SPI_CLK_SRC_DEFAULT,
-		.duty_cycle_pos = 0,
-		.cs_ena_pretrans = 0,
-		.cs_ena_posttrans = 0,
-		.clock_speed_hz = _freq,
-		.input_delay_ns = 0,
-		.sample_point = SPI_SAMPLING_POINT_PHASE_0,
-		.spics_io_num = _cs,
-		.flags = 0,
-		.queue_size = 1, // Transaction queue size
-		.pre_cb = NULL,	 // Pre-transaction callback
-		.post_cb = NULL	 // Post-transaction callback
-	};
-	ESP_ERROR_CHECK(spi_bus_add_device(SPI3_HOST, &devcfg, &spi));
-
 	uint8_t spi3or4 = 0; //SPI 3wire or 4wire, 0=4wire, 1=3wire
 	uint8_t ctrl_meas = (c_osrs_t << 5) | (c_osrs_p << 2) | c_Mode;
 	uint8_t config    = (c_sb << 5) | (c_filter << 2) | spi3or4;
