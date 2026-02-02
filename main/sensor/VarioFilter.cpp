@@ -59,12 +59,18 @@ struct VarioKF {
         h = h0;
         v = 0.0f;
 
-        P00 = 1.0f;
-        P11 = 0.0025f;
+        P00 = 0.01f; // trust the initial set altitude
+        P11 = 0.001f;
         P01 = P10 = 0.0f;
 
         R = 0.3f * 0.3f;    // baro ~30cm RMS
         setTau(vario_delay.get());
+        
+        // settle the filter before display a first value
+        for (int i = 0; i < 10; i++) {
+            predict(0.1f);
+            update(h0);
+        }
     }
     void setTau(float tau) {
         sigma_a = sqrtf(2.0f / tau);
