@@ -52,7 +52,6 @@ BME280_SPI::BME280_SPI(SensorId id) :
 	_mosi(SPI_MOSI),
 	_miso(SPI_MISO),
 	_cs((id == SensorId::STATIC_PRESSURE) ? CS_bme280BA : CS_bme280TE),
-	_freq(FREQ_BMP_SPI * ((100.0 + display_clock_adj.get())/100.0))
 {
 	_t_fine = 0;
 	_dig_T1 = 0;
@@ -89,7 +88,7 @@ BME280_SPI::BME280_SPI(SensorId id) :
 			.duty_cycle_pos = 0,
 			.cs_ena_pretrans = 0,
 			.cs_ena_posttrans = 0,
-			.clock_speed_hz = _freq,
+			.clock_speed_hz = int(FREQ_BMP_SPI * ((100.0 + display_clock_adj.get())/100.0)),
 			.input_delay_ns = 0,
 			.sample_point = SPI_SAMPLING_POINT_PHASE_0,
 			.spics_io_num = _cs,

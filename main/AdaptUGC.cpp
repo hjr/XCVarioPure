@@ -9,6 +9,7 @@
 #include <eglib/hal/four_wire_spi/esp32/esp32_ili9341.h>
 #include <driver/spi_master.h>
 
+#define FREQ_UGC_SPI 13111111  // *3 for SPI display clock, /2 for BMP pressure sensor clock
 
 static eglib_t myeglib;
 
@@ -143,7 +144,7 @@ void  AdaptUGC::begin() {
 		ili9341_config.width = 320;
 		ili9341_config.height = 240;
 	}
-	esp32_ili9341_config.freq = rint( FREQ_BMP_SPI * 3 * ((100.0 + display_clock_adj.get())/100.0));
+	esp32_ili9341_config.freq = rint( FREQ_UGC_SPI * 3 * ((100.0 + display_clock_adj.get())/100.0));
 	ESP_LOGI(FNAME, "eglib_Send() &eglib:%x  hal-driv:%x config:%x  clk:%.3f MHz\n", (unsigned int)eglib, (unsigned int)&esp32_ili9341, (unsigned int)&esp32_ili9341_config, (double)(esp32_ili9341_config.freq/1000000.0) );
 	eglib_Init( &myeglib, &esp32_ili9341, &esp32_ili9341_config, &ili9341, &ili9341_config );
 	if ( display_orientation.get() == DISPLAY_NINETY ) {

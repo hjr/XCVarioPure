@@ -6,8 +6,6 @@
 #include <cstring>
 
 
-#define FREQ_BMP_SPI 13111111  // *3 for SPI display clock, /2 for BMP pressure sensor clock
-
 // later we want to get rid of UGC, so lets add all needed API definitions here
 
 typedef struct _ucg_color_t
