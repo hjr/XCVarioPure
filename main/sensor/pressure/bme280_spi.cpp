@@ -209,14 +209,13 @@ float BME280_SPI::readHumidity() {
 }
 
 int32_t BME280_SPI::compensate_T(int32_t adc_T) {
-    int32_t var1, var2, T;
+    int32_t var1, var2;
 
     var1 = (((adc_T >> 3) - (int32_t(_dig_T1) << 1)) * int32_t(_dig_T2)) >> 11;
     var2 = (((((adc_T >> 4) - int32_t(_dig_T1)) * ((adc_T >> 4) - int32_t(_dig_T1))) >> 12) * int32_t(_dig_T3)) >> 14;
 
     _t_fine = var1 + var2;
-    T = (_t_fine * 5 + 128) >> 8;
-    return T;
+    return (_t_fine * 5 + 128) >> 8;
 }
 
 uint32_t BME280_SPI::compensate_P(int32_t adc_P) {
@@ -265,39 +264,41 @@ uint32_t BME280_SPI::compensate_H(int32_t adc_H) {
 
 //*******************************************************************
 
-bool BME280_SPI::selfTest(float& t, pascal_t& p) {
+bool BME280_SPI::selfTest(celsius_t& t, pascal_t& p) {
     uint8_t id = readID();
     if (id != 0x58) {
         ESP_LOGE(FNAME, "BMP280 Error, Chip ID reading failed BMP280 chip select pin %d read 0x%.2X (instead 0x58) ", _cs, id);
-        return (false);
-    }
-    bool success = false;
-    double temp = 0;
-    for (int i = 0; i < 10; i++) {
-        temp += readTemperature(success);
-        // delay(100);
-    }
-    t = (float)(temp / 10);
-    if (success == false) {
-        ESP_LOGE(FNAME, "BMP280 Error, Temperatur reading BMP280 failed, invalid readout");
-        return (false);
-    }
-    if ((t < -32.0) || (t > 70.0)) {
-        ESP_LOGW(FNAME, "HW Error, Temperatur value reading BMP280 at normal condition (20 °C +-10) out of bounds readout T=%f", (float)t);
-        return (false);
+        return false;
     }
     if (!_initialized) {
         ESP_LOGE(FNAME, "BMP280 Error, initialisation invalid response from device");
-        return (false);
+        return false;
     }
+    bool success;
     p = 0;
     for (int i = 0; i < 10; i++) {
-        pascal_t tmp;
-        doRead(tmp);
-        p += tmp;
-        // delay(100);
+        pascal_t tmp_p;
+        success = doRead(tmp_p);
+        pushToHistory(tmp_p, Clock::getMillis());
+        if ( ! success ) break;
+        p += tmp_p;
+        vTaskDelay(pdMS_TO_TICKS(70));
+    }
+    if ( ! success ) {
+        ESP_LOGE(FNAME, "BMP280 Error, pressure reading BMP280 failed, invalid readout");
+        return false;
     }
     p = p / 10.f;
+
+    t = readTemperature(success);
+    if ( ! success ) {
+        ESP_LOGE(FNAME, "BMP280 Error, Temperatur reading BMP280 failed, invalid readout");
+        return false;
+    }
+    if ((t < -32.0) || (t > 70.0)) {
+        ESP_LOGW(FNAME, "HW Error, Temperatur value reading BMP280 at normal condition (20 °C +-10) out of bounds readout T=%f", (float)t);
+        return false;
+    }
 
     return true;
 }

@@ -14,7 +14,7 @@
 SensorBase::SensorBase(int ums) : _update_interval_ms(ums), _latency_ms(0), _last_update_time_ms(0),
     _id(SensorId::NONE)
 {
-    // Pls register sensors as needed in the sensor loop and in the proper order
+    // Pls register sensors as needed for the read-sensor loop and in the proper order
     // SensorRegistry::registerSensor(this);
 }
 

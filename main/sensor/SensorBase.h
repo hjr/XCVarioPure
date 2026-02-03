@@ -207,7 +207,7 @@ public:
             samples++;
             ts -= _update_interval_ms;
         }
-
+        // ESP_LOGI(FNAME, "getAVG: count=%d samples=%d", count, samples);
         if (samples == 0) {
             return T{};
         }

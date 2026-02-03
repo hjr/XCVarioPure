@@ -24,10 +24,10 @@ PressureSensor *baroSensor = nullptr;
 PressureSensor *teSensor = nullptr;
 
 constexpr int DUTY_CYCLE_MS = 100; // 100ms cycle time for pressure sensors
-static float pstat_buffer[ (SENSOR_HISTORY_DURATION_MS / DUTY_CYCLE_MS) + 1 ];
-static float te_buffer[ (SENSOR_HISTORY_DURATION_MS / DUTY_CYCLE_MS) + 1 ];
+static pascal_t pstat_buffer[ (SENSOR_HISTORY_DURATION_MS / DUTY_CYCLE_MS) + 1 ];
+static pascal_t te_buffer[ (SENSOR_HISTORY_DURATION_MS / DUTY_CYCLE_MS) + 1 ];
 
-PressureSensor::PressureSensor(SensorId id) : SensorTP<float>((id == SensorId::STATIC_PRESSURE) ? pstat_buffer : te_buffer, DUTY_CYCLE_MS)
+PressureSensor::PressureSensor(SensorId id) : SensorTP<pascal_t>((id == SensorId::STATIC_PRESSURE) ? pstat_buffer : te_buffer, DUTY_CYCLE_MS)
 {
     _id = id | SensorId::LocalSensor;
     if (id == SensorId::STATIC_PRESSURE) {

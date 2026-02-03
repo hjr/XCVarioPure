@@ -32,57 +32,54 @@ altitude calculation by open source community on github.
 #include <driver/gpio.h>
 #include <driver/spi_master.h>
 
+class BME280_SPI : public PressureSensor {
+   public:
+    BME280_SPI(SensorId id);
 
-class BME280_SPI: public PressureSensor
-{
-public:
-	BME280_SPI(SensorId id);
+    const char* name() const override { return "BME280_SPI"; }
+    bool probe() override;
+    bool setup() override;
+    bool selfTest(celsius_t& t, pascal_t& p) override;
 
-	const char* name() const override { return "BME280_SPI"; }
-	bool probe() override;
-	bool setup() override;
-    bool selfTest(float& t, pascal_t& p) override;
+    celsius_t readTemperature(bool& success) override;
+    bool doRead(pascal_t& val) override;
+    float readHumidity();
 
-	celsius_t readTemperature( bool& success ) override;
-	bool doRead(pascal_t &val) override;
-	float readHumidity();
+   private:
+    uint8_t readID();
+    void WriteRegister(uint8_t reg_address, uint8_t data);
+    void readCalibration(void);
+    int32_t compensate_T(int32_t adc_T);
+    uint32_t compensate_P(int32_t adc_P);
+    uint32_t compensate_H(int32_t adc_H);
+    uint32_t readADC(uint8_t reg);
+    uint16_t read16bit(uint8_t reg);
+    // uint8_t read8bit(uint8_t reg);
 
-private:
-	uint8_t readID();
-	void WriteRegister(uint8_t reg_address, uint8_t data);
-	void readCalibration(void);
-	int32_t compensate_T(int32_t adc_T);
-	uint32_t compensate_P(int32_t adc_P);
-	uint32_t compensate_H(int32_t adc_H);
-	uint32_t readADC(uint8_t reg);
-	uint16_t read16bit(uint8_t reg);
-	// uint8_t read8bit(uint8_t reg);
+   private:
+    gpio_num_t _cs;
+    int32_t _t_fine;
 
+    uint16_t _dig_T1;
+    int16_t _dig_T2;
+    int16_t _dig_T3;
 
-private:
-	gpio_num_t _cs;
-	int32_t  _t_fine;
+    uint16_t _dig_P1;
+    int16_t _dig_P2;
+    int16_t _dig_P3;
+    int16_t _dig_P4;
+    int16_t _dig_P5;
+    int16_t _dig_P6;
+    int16_t _dig_P7;
+    int16_t _dig_P8;
+    int16_t _dig_P9;
 
-	uint16_t _dig_T1;
-	int16_t  _dig_T2;
-	int16_t  _dig_T3;
-
-	uint16_t _dig_P1;
-	int16_t  _dig_P2;
-	int16_t  _dig_P3;
-	int16_t  _dig_P4;
-	int16_t  _dig_P5;
-	int16_t  _dig_P6;
-	int16_t  _dig_P7;
-	int16_t  _dig_P8;
-	int16_t  _dig_P9;
-
-	uint8_t _dig_H1;
-	int16_t _dig_H2;
-	uint8_t _dig_H3;
-	int16_t _dig_H4;
-	int16_t _dig_H5;
-	int8_t  _dig_H6;
+    uint8_t _dig_H1;
+    int16_t _dig_H2;
+    uint8_t _dig_H3;
+    int16_t _dig_H4;
+    int16_t _dig_H5;
+    int8_t _dig_H6;
 
     bool _initialized = false;
     spi_device_handle_t spi;

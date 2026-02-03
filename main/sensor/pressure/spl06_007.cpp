@@ -107,35 +107,36 @@ celsius_t SPL06_007::readTemperature(bool& success) {
 }
 
 bool SPL06_007::selfTest( celsius_t& t, pascal_t& p ){
-	uint8_t rdata = 0xFF;
-	vTaskDelay(pdMS_TO_TICKS(100)); // give first measurement time to settle
-	esp_err_t err = _bus->readByte(_address, 0x0D, &rdata );  // ID
-	if( err != ESP_OK ){
-		ESP_LOGE(FNAME,"Error I2C read, status :%d", err );
-		return false;
-	}
-	ESP_LOGI(FNAME,"SPL06_007 selftest, scan for I2C address %02x PASSED, Product ID: %d, Revision ID:%d", _address, rdata>>4 , rdata&0x0F );
-	p = 0.;
-	for(int i=0; i<10;i++){
+    uint8_t rdata = 0xFF;
+    vTaskDelay(pdMS_TO_TICKS(100));                          // give first measurement time to settle
+    esp_err_t err = _bus->readByte(_address, 0x0D, &rdata);  // ID
+    if (err != ESP_OK) {
+        ESP_LOGE(FNAME, "Error I2C read, status :%d", err);
+        return false;
+    }
+    ESP_LOGI(FNAME, "SPL06_007 selftest, scan for I2C address %02x PASSED, Product ID: %d, Revision ID:%d", _address, rdata >> 4,
+             rdata & 0x0F);
+    p = 0.;
+    for (int i = 0; i < 10; i++) {
         pascal_t tmp;
-		doRead(tmp);
-		p += tmp;
-		vTaskDelay(pdMS_TO_TICKS(50));
-	}
+        doRead(tmp);
+        pushToHistory(tmp, Clock::getMillis());
+        p += tmp;
+        vTaskDelay(pdMS_TO_TICKS(50));
+    }
     p = p / 10.;
-	t = 0.;
-	bool ok;
+    t = 0.;
+    bool ok;
     t = readTemperature(ok);
-	ESP_LOGI(FNAME,"SPL06_007 selftest, p=%f t=%f", p, t );
+    ESP_LOGI(FNAME, "SPL06_007 selftest, p=%f t=%f", p, t);
 
-	if( p < 120000.f && p > 0.f ) {
-		ESP_LOGI(FNAME,"SPL06_007 selftest addr: %d PASSED, p=%f t=%f", _address, p, t );
-		return true;
-	}
-	else{
-		ESP_LOGI(FNAME,"SPL06_007 selftest addr: %d FAILED, p=%f t=%f", _address, p, t );
-		return false;
-	}
+    if (p < 120000.f && p > 0.f) {
+        ESP_LOGI(FNAME, "SPL06_007 selftest addr: %d PASSED, p=%f t=%f", _address, p, t);
+        return true;
+    } else {
+        ESP_LOGI(FNAME, "SPL06_007 selftest addr: %d FAILED, p=%f t=%f", _address, p, t);
+        return false;
+    }
 }
 
 bool SPL06_007::doRead(pascal_t &val)
