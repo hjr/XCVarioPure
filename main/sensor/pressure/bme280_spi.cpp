@@ -195,7 +195,7 @@ bool BME280_SPI::doRead(pascal_t& val) {
 
     uint32_t adc_P = readADC(0x77);
     val = compensate_P(adc_P);  // use magic _t_fine variable (!!!)
-    // ESP_LOGI(FNAME,"--BMP280 readPressure, p=%lf", p);
+    ESP_LOGI(FNAME,"--BMP280 readPressure, p=%lf", val);
     return true;
 }
 
@@ -273,9 +273,10 @@ bool BME280_SPI::selfTest(float& t, pascal_t& p) {
     }
     bool success = false;
     double temp = 0;
+    delay(200);
     for (int i = 0; i < 10; i++) {
         temp += readTemperature(success);
-        // delay(100);
+        delay(10);
     }
     t = (float)(temp / 10);
     if (success == false) {
@@ -295,7 +296,7 @@ bool BME280_SPI::selfTest(float& t, pascal_t& p) {
         pascal_t tmp;
         doRead(tmp);
         p += tmp;
-        // delay(100);
+        delay(10);
     }
     p = p / 10.f;
 
