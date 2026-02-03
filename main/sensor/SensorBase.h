@@ -173,7 +173,6 @@ public:
         _last_update_time_ms = now_ms;
         _history.push(value);
     }
-
     // Publish on black board NVS variable
     void publishNVS() {
         if constexpr (std::is_same_v<T, float>) { // only for float types

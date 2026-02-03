@@ -19,10 +19,6 @@
 
 #include <cmath>
 
-void LowPassFilter::reset(float init_val)
-{
-    _last_output = init_val;
-}
 float LowPassFilter::filter(float input)
 {
     _last_output = _alpha * (input - _last_output) + _last_output;

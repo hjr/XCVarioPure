@@ -65,13 +65,7 @@ struct VarioKF {
 
         R = 0.3f * 0.3f;    // baro ~30cm RMS
         setTau(vario_delay.get());
-        
-        // settle the filter before display a first value
-        for (int i = 0; i < 10; i++) {
-            predict(0.1f);
-            update(h0);
-        }
-    }
+   }
     void setTau(float tau) {
         sigma_a = sqrtf(2.0f / tau);
     }
@@ -125,6 +119,7 @@ struct VarioKF {
         P01 = P01_;
         P10 = P10_;
         P11 = P11_;
+        // ESP_LOGI(FNAME, "VKF(%.3f/%.3f/%.3f/%.3f): pre: %.3f err:%f R:%.3f up: %.3f", P00, P01, P10,  P11, h, y, R, v);
     }
 };
 
@@ -159,8 +154,11 @@ bool VarioFilter::setup() {
 
     ESP_LOGI(FNAME, "VarioFilter setup as %s sensor with alt %f", (isLocalSensor(_id) ? "local" : "remote"), altitude.get());
     init(altitude.get());
-    vkf.init(altitude.get()); // KF
     configChange();
+    meter_t h0 = altitude.get();
+    vkf.init(h0); // KF
+    _filter->reset(h0); // reset the te_alt filter before entering the sensor loop
+    _prev_time = Clock::getMillis();
     return true;
 }
 
@@ -320,18 +318,19 @@ void VarioFilter::postProcess() {
     }
     vkf.predict(dt);
     _prev_time = now;
-    meter_t innov = getHead() - vkf.h;
-    // if (fabsf(innov) > 60.0f) { // rejct innovation larger than 60m/s
+    meter_t pred_err = getHead() - vkf.h;
+    // if (fabsf(pred_err) > 60.0f) { // rejct innovation larger than 60m/s
     //     // reject baro glitch
-    //     ESP_LOGE(FNAME, "VarioFilter: large innov %f, rejecting update", innov);
+    //     ESP_LOGE(FNAME, "VarioFilter: large pred_err %f, rejecting update", pred_err);
     //     return;
     // }
-    vkf.R = 0.25 * (1 + fabsf(innov));
+    vkf.R = 0.25 * (1 + fabsf(pred_err));
     vkf.R = std::clamp(vkf.R, 0.05f, 1.0f);
 
     vkf.update(getHead());
-    // ESP_LOGI(FNAME, "VKF: predict: %f innov:%f R:%f update: %f", vkf.h, innov, vkf.R, vkf.v);
-    // if (fabsf(innov) < 6.0f) {
+    // if ( fabs( vkf.v ) > 20.0f )
+        // ESP_LOGI(FNAME, "VKF(%.3f/%.3f/%.3f/%.3f): pre: %.3f inn:%f R:%.3f up: %.3f", vkf.P00, vkf.P01, vkf.P10, vkf. P11, vkf.h, pred_err, vkf.R, vkf.v);
+    // if (fabsf(pred_err) < 6.0f) {
         te_vario.set(vkf.v);
         _polar_sink = Speed2Fly.sink(ias.get());
         te_netto.set(vkf.v - _polar_sink);

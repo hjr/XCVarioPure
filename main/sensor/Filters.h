@@ -18,6 +18,7 @@ class BaseFilterItf
 {
 public:
     virtual ~BaseFilterItf() = default;
+    virtual void reset(float init_val) = 0;
     virtual float filter(float input) = 0;
     virtual float get() const { return 0.0f; }
 };
@@ -29,15 +30,17 @@ public:
 // alpha = dt / (tau + dt)
 // with tau => N/2 * dt
 // in samples:
-// alpha = 2 / (N + 1)
-//
+// alpha = 2 / (N + 2)
+// example for tau = 3sec and dt = 0.1sec:
+// N = (tau/dt) * 2 = 60 samples
+// alpha = 2 / (60 + 2) = 0.032258
 class LowPassFilter : public BaseFilterItf
 {
 public:
     explicit LowPassFilter(float alpha) : _alpha(alpha), _last_output(0.0f) {}
-    void reset(float init_val);
     void setAlpha(float alpha) { _alpha = alpha; }
     float getAlpha() const { return _alpha; }
+    void reset(float init_val) override { _last_output = init_val; }
     float filter(float input) override;
     float get() const override { return _last_output; }
 private:

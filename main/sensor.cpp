@@ -1009,38 +1009,35 @@ void system_startup(void *args){
 
     // Finally setup the vario filter. It needs a first valid altimeter reading to not "freak-out"
     // This is provided from the baro sensor, or from the master XCVario via CAN bus
-    if ( baroSensor ) {
-        baroSensor->update(Clock::getMillis()); // enforce a first reading cycle
+    if ( baroSensor && teSensor && asSensor ) {
+        // enforce a first reading cycle
+        baroSensor->update(Clock::getMillis());
+        teSensor->update(Clock::getMillis());
+        asSensor->update(Clock::getMillis());
     }
     // TE vario "sensor" always needed, but last in line
     bmpVario.setup();
     SensorRegistry::registerSensor(&bmpVario);
 
-	Rotary->begin(); // now accept regular user input
+    Rotary->begin();  // now accept regular user input
 
+    // Wind calculation
+    WindCalcTask::createWindResources();
 
-	// Wind calculation
-	WindCalcTask::createWindResources();
+    // Init the vario screens
+    SetupRoot::initScreens();
 
-	// Init the vario screens
-	SetupRoot::initScreens();
+    if (flapbox_enable.get()) {
+        FLAP = Flap::theFlap();  // check on FLAP pointer further on
+    }
+    if (hardwareRevision.get() != XCVARIO_20) {
+        gpio_pullup_en(GPIO_NUM_34);  // fixme gear warning input
+    }
 
-	if ( flapbox_enable.get() ) {
-		FLAP = Flap::theFlap(); // check on FLAP pointer further on
-	}
-	if( hardwareRevision.get() != XCVARIO_20 ){
-		gpio_pullup_en( GPIO_NUM_34 ); // fixme gear warning input
-	}
+    // enter normal operation
+    xTaskCreate(&readSensors, "readSensors", 5120, NULL, 12, NULL);
 
-	// enter normal operation
-	// if( SetupCommon::isClient() ){
-	// 	xTaskCreate(&clientLoop, "clientLoop", 4096, NULL, 11, NULL);
-	// }
-	// else {
-		xTaskCreate(&readSensors, "readSensors", 5120, NULL, 12, NULL);
-	// }
-
-	VCMode.updateCache(); // correct initialization
+    VCMode.updateCache();  // correct initialization
     AUDIO->initVarioVoice();
 }
 
