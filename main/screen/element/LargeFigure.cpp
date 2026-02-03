@@ -46,7 +46,7 @@ void LargeFigure::draw(float val) {
             sprintf(s, "99");
         }
         int16_t tmp = MYUCG->getStrWidth(s)/2;
-        if (val < 0.f) {
+        if (val < -0.05f) {
             MYUCG->setColor(COLOR_BBLUE);
         } else {
             MYUCG->setColor(COLOR_WHITE);
