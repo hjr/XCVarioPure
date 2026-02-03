@@ -61,27 +61,27 @@ dl_action_t XCVSimMsg::parse_Sens(NmeaPlugin *plg)
     // int pos = word->at(2);
     int time = Clock::getMillis();
     float tmp = atof(sm->_frame.c_str() + word->at(2)) * 100.f; // convert to Pa
-    baroSensor->pushToHistory(tmp, time);
+    baroSensor->pushAndPublish(tmp, time);
 
     tmp = atof(sm->_frame.c_str() + word->at(3)) * 100.f; // convert to Pa
-    teSensor->pushToHistory(tmp, time);
+    teSensor->pushAndPublish(tmp, time);
 
     tmp = atof(sm->_frame.c_str() + word->at(4));
-    asSensor->pushToHistory(tmp, time);
+    asSensor->pushAndPublish(tmp, time);
 
     tmp = atof(sm->_frame.c_str() + word->at(5)) + Units::C2K; // convert to Kelvin
-    OATSensor->pushToHistory(tmp, time);
+    OATSensor->pushAndPublish(tmp, time);
 
     vector_f vtmp;
     vtmp.x = atof(sm->_frame.c_str() + word->at(6));
     vtmp.y = atof(sm->_frame.c_str() + word->at(7));
     vtmp.z = atof(sm->_frame.c_str() + word->at(8));
-    if ( accSensor ) accSensor->pushToHistory(vtmp, time);
+    if ( accSensor ) accSensor->pushAndPublish(vtmp, time);
 
     vtmp.x = atof(sm->_frame.c_str() + word->at(9));
     vtmp.y = atof(sm->_frame.c_str() + word->at(10));
     vtmp.z = atof(sm->_frame.c_str() + word->at(11));
-    if ( gyroSensor ) gyroSensor->pushToHistory(vtmp, time);
+    if ( gyroSensor ) gyroSensor->pushAndPublish(vtmp, time);
 
     return NOACTION; // never forward the simulation
 }

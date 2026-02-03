@@ -34,7 +34,7 @@ void GpsVSensor::inject(float lat, float lon)
     v.z = _alt;
     _alt = 0.f;
     int time = Clock::getMillis();
-    pushToHistory(v, time);
+    pushAndPublish(v, time);
     if ( _lat_ref == 0.f && _lon_ref == 0.f ) {
         _lat_ref = lat;
         _lon_ref = lon;

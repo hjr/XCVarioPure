@@ -25,7 +25,6 @@ class VarioFilter final : public SensorTP<float> {
     bool doRead(float& val) override;
     void postProcess() override;
 
-    void inject(float te_alt);  // te raw feed from master
     void configChange();
     float getAvgVario() const { return _avg_vario; }
     float getPolarSink() const { return _polar_sink; }

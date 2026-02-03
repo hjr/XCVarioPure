@@ -168,7 +168,7 @@ static void calc_speeds() {
 }
 
 static void feed_te_alt() {
-    bmpVario.inject(te_alt.get());
+    bmpVario.pushToHistory(te_alt.get(), Clock::getMillis());
 }
 
 void change_volume() {

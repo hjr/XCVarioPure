@@ -14,7 +14,7 @@
 GyroMPU6050::GyroMPU6050() : ImuSensor(SensorId::GYRO_INERTIAL | SensorId::LocalSensor)
 {
     // push a single previous value
-    pushToHistory(vector_f(0,0,0), 0);
+    pushAndPublish(vector_f(0,0,0), 0);
 }
 
 bool GyroMPU6050::doRead(vector_f& val) {

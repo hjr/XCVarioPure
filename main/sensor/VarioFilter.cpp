@@ -344,8 +344,3 @@ void VarioFilter::postProcess() {
     AverageVario::newSample(vkf.v);
 }
 #endif
-
-void VarioFilter::inject(float te_alt) {
-    int time = Clock::getMillis();
-    pushToHistory(te_alt, time);
-}

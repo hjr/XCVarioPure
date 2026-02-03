@@ -158,10 +158,8 @@ public:
         // Read sensor && store in history
         T value;
         if (doRead(value)) {
-            pushToHistory(value, now_ms);
-
             // Publish on black board NVS variable if linked
-            publishNVS();
+            pushAndPublish(value, now_ms);
         } else {
             // ESP_LOGE(FNAME, "Sensor %s read NAN", name());
             pushToHistory(_invalid, now_ms);
@@ -187,6 +185,10 @@ public:
                 _nvsvar->set(fval);
             }
         }
+    }
+    inline void pushAndPublish(const T& value, uint32_t now_ms) {
+        pushToHistory(value, now_ms);
+        publishNVS();
     }
 
     // get average of the last X milli seconds

@@ -213,8 +213,7 @@ bool OneWireBus::groupUpdate(uint32_t now_ms)
             ESP_LOGE(FNAME, "Failed to read sensor %016llX", sensor->getAddress());
             continue;
         }
-        sensor->pushToHistory(val, sensor->getConvertStartMs());
-        sensor->publishNVS();
+        sensor->pushAndPublish(val, sensor->getConvertStartMs());
 
         ESP_LOGI(FNAME, "OW sensor %016llX: %umsec %.2f", sensor->getAddress(), (unsigned)sensor->getConvertStartMs(), val);
     }
