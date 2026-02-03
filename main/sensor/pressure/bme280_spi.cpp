@@ -6,21 +6,21 @@
 
 #include "../SensorMgr.h"
 #include "sensor.h"
-#include "logdef.h"
-
+#include "logdefnone.h"
 
 #include <cstdint>
+#include <algorithm>
 
 #define CS_bme280BA GPIO_NUM_26   // before CS pin 33
 #define CS_bme280TE GPIO_NUM_33   // before CS pin 26
 #define FREQ_BMP_SPI 6555556 // for SPI BMP pressure sensor clock
 
-#define c_sb      0   //stanby 0: 0,5 mS 1: 62,5 mS 2: 125 mS
-#define c_filter  0   //filter O = off
-#define c_osrs_t  5   //OverSampling Temperature
-#define c_osrs_p  5   //OverSampling Pressure (5:x16 4:x8, 3:x4 2:x2 )
-#define c_osrs_h  0   //OverSampling Humidity x4
-#define c_Mode    3   //Normal mode
+#define c_sb      0   // stanby 0: 0,5 mS 1: 62,5 mS 2: 125 mS
+#define c_filter  0   // filter O = off
+#define c_osrs_t  5   // OverSampling Temperature
+#define c_osrs_p  5   // OverSampling Pressure (5:x16 4:x8, 3:x4 2:x2 )
+#define c_osrs_h  0   // OverSampling Humidity x4
+#define c_Mode    3   // Normal mode
 
 static spi_transaction_t ta = {
 	.flags = SPI_TRANS_USE_RXDATA | SPI_TRANS_USE_TXDATA,
@@ -94,63 +94,57 @@ bool BME280_SPI::probe()
 }
 
 
-//****************BME280_SPI*************************************************
-bool BME280_SPI::setup(){
-	uint8_t spi3or4 = 0; //SPI 3wire or 4wire, 0=4wire, 1=3wire
-	uint8_t ctrl_meas = (c_osrs_t << 5) | (c_osrs_p << 2) | c_Mode;
-	uint8_t config    = (c_sb << 5) | (c_filter << 2) | spi3or4;
-	uint8_t ctrl_hum  = c_osrs_h;
+bool BME280_SPI::setup() {
+    uint8_t spi3or4 = 0;  // SPI 3wire or 4wire, 0=4wire, 1=3wire
+    uint8_t ctrl_meas = (c_osrs_t << 5) | (c_osrs_p << 2) | c_Mode;
+    uint8_t config = (c_sb << 5) | (c_filter << 2) | spi3or4;
+    uint8_t ctrl_hum = c_osrs_h;
 
-	WriteRegister(0xE0, 0xB6); //reset device
-	vTaskDelay(pdMS_TO_TICKS(20));
-	int id = readID();
-	int count = 0;
-	while( (id != 0x58) && (count < 20) ) {
-		id = readID();
-		vTaskDelay(pdMS_TO_TICKS(20));
-		count++;
-	}
-	if( count == 500 ) {
-		ESP_LOGE(FNAME,"Error init BMP280 CS=%d", _cs );
-		init_err = true;
-	}
-	else {
-		ESP_LOGI(FNAME,"BMP280 ID = %02x", id );
-	}
-	WriteRegister(0xF2, ctrl_hum);
-	WriteRegister(0xF4, ctrl_meas);
-	WriteRegister(0xF5, config);
-	vTaskDelay(pdMS_TO_TICKS(20));
-	readCalibration();
-	if( _dig_T2 == 0 && _dig_T2 == 0 ) {
-		vTaskDelay(pdMS_TO_TICKS(20));
-		readCalibration();
-		ESP_LOGI(FNAME,"BMP280 Calibration Data read retry CS: %d ", _cs);
-	}
-	if( _dig_T2 == 0 && _dig_T2 == 0 ) {
-		ESP_LOGE(FNAME,"BMP280 Calibration Data Error  CS: %d !", _cs);
-		init_err = true;
-	}
-	return init_err;
+    WriteRegister(0xE0, 0xB6);  // reset device
+    vTaskDelay(pdMS_TO_TICKS(20));
+    int id = readID();
+    int count = 0;
+    while ((id != 0x58) && (count < 20)) {
+        id = readID();
+        vTaskDelay(pdMS_TO_TICKS(20));
+        count++;
+    }
+    if (count == 500) {
+        ESP_LOGE(FNAME, "Error init BMP280 CS=%d", _cs);
+    } else {
+        ESP_LOGI(FNAME, "BMP280 ID = %02x", id);
+        _initialized = true;
+    }
+    WriteRegister(0xF2, ctrl_hum);
+    WriteRegister(0xF4, ctrl_meas);
+    WriteRegister(0xF5, config);
+    vTaskDelay(pdMS_TO_TICKS(20));
+    readCalibration();
+    if (_dig_T2 == 0 && _dig_T2 == 0) {
+        vTaskDelay(pdMS_TO_TICKS(20));
+        readCalibration();
+        ESP_LOGI(FNAME, "BMP280 Calibration Data read retry CS: %d ", _cs);
+    }
+    if (_dig_T2 == 0 && _dig_T2 == 0) {
+        ESP_LOGE(FNAME, "BMP280 Calibration Data Error  CS: %d !", _cs);
+        _initialized = false;
+    }
+    return _initialized;
 }
 
-//***************BME280 ****************************
 void BME280_SPI::WriteRegister(uint8_t reg_address, uint8_t data) {
-	xSemaphoreTake(spiMutex,portMAX_DELAY );
-	ta.addr =  reg_address & 0x7F;   // Bit 7 != 0 for Write operation!
-	ta.tx_data[0] = data;
-	ta.length = 8; // Total length in bits
-	// Perform the SPI transaction
-	esp_err_t ret = spi_device_transmit(spi, &ta);
-	if (ret != ESP_OK)
-	{
-		ESP_LOGI(FNAME, "Failed to write register: %s\n", esp_err_to_name(ret));
-	}
-
-	xSemaphoreGive(spiMutex);
+    ta.addr = reg_address & 0x7F;  // Bit 7 != 0 for Write operation!
+    ta.tx_data[0] = data;
+    ta.length = 8;  // Total length in bits
+    // Perform the SPI transaction
+    xSemaphoreTake(spiMutex, portMAX_DELAY);
+    esp_err_t ret = spi_device_transmit(spi, &ta);
+    xSemaphoreGive(spiMutex);
+    if (ret != ESP_OK) {
+        ESP_LOGI(FNAME, "Failed to write register: %s\n", esp_err_to_name(ret));
+    }
 }
 
-//*******************************************************
 void BME280_SPI::readCalibration(void) {
 	// ESP_LOGI(FNAME,"BME280_ESP32_SPI::readCalibration");
 	_dig_T1 = read16bit(0x88);
@@ -171,206 +165,190 @@ void BME280_SPI::readCalibration(void) {
 	_dig_P9 = (int16_t)read16bit(0x9E);
 }
 
-//***************BME280 ****************************
-float BME280_SPI::readTemperature( bool& success ){ // todo need to be cached
-	int32_t adc_T = readADC(0x7A);
-	success = (adc_T != 0);
-	float t=compensate_T(adc_T) / 100.0;
-	// ESP_LOGI(FNAME, "BMP280 read Temp=%0.1f (raw)=%d CS=%d", t, adc_T, _cs );
-	// ESP_LOGI(FNAME,"   Calibration  CS %d  T1 %d T2 %02x T3 %02x", _cs, _dig_T1, _dig_T2, _dig_T3);
-	return t;
+celsius_t BME280_SPI::readTemperature(bool& success) {
+    int32_t adc_T = readADC(0x7A);
+    success = (adc_T != 0);
+    celsius_t t = compensate_T(adc_T) / 100.0;
+    // ESP_LOGI(FNAME, "BMP280 read Temp=%0.1f (raw)=%d CS=%d", t, adc_T, _cs );
+    // ESP_LOGI(FNAME,"   Calibration  CS %d  T1 %d T2 %02x T3 %02x", _cs, _dig_T1, _dig_T2, _dig_T3);
+    return t;
 }
 
-//***************BME280 ****************************
-bool BME280_SPI::doRead(float &val) {
-	if( init_err ){
-		return false;
-	}
-	// ESP_LOGI(FNAME,"++BMP280 readPressure cs:%d", _cs);
-	bool success;
-	readTemperature( success );
-	int loop = 0;
-	while( !success && loop < 100) {  // workaround as first read after others access SPI reads zero
-		vTaskDelay(pdMS_TO_TICKS(1));
-		readTemperature( success );
-		loop++;
-	}
-	if( loop == 100 ){
-		ESP_LOGE(FNAME,"Error reading temp BMP280 CS: %d !", _cs );
-		val = NAN;
-		return false;
-	}
+bool BME280_SPI::doRead(pascal_t& val) {
+    if (!_initialized) {
+        return false;
+    }
+    // ESP_LOGI(FNAME,"++BMP280 readPressure cs:%d", _cs);
+    bool success;
+    readTemperature(success);  // set magic _t_fine variable
+    int loop = 0;
+    while (!success && loop < 100) {  // workaround as first read after others access SPI reads zero
+        vTaskDelay(pdMS_TO_TICKS(1));
+        readTemperature(success);
+        loop++;
+    }
+    if (loop == 100) {
+        ESP_LOGE(FNAME, "Error reading temp BMP280 CS: %d !", _cs);
+        val = NAN;
+        return false;
+    }
 
-	uint32_t adc_P = readADC(0x77);
-	val = compensate_P((int32_t)adc_P);
+    uint32_t adc_P = readADC(0x77);
+    val = compensate_P(adc_P);  // use magic _t_fine variable (!!!)
     // ESP_LOGI(FNAME,"--BMP280 readPressure, p=%lf", p);
-	return true;
+    return true;
 }
 
-//***************BME280****************************
-float BME280_SPI::readHumidity(){
-	// ESP_LOGI(FNAME,"++BMP280 readHumidity");
-	bool success;
-	readTemperature( success );
+float BME280_SPI::readHumidity() {
+    // ESP_LOGI(FNAME,"++BMP280 readHumidity");
+    bool success;
+    readTemperature(success);  // set magic _t_fine variable
 
-	int32_t adc_H = read16bit(0x7D);
-	return compensate_H(adc_H) / 1024.0f;
+    int32_t adc_H = read16bit(0x7D);
+    return compensate_H(adc_H) / 1024.0f;
 }
 
-//*******************************************
 int32_t BME280_SPI::compensate_T(int32_t adc_T) {
-	int32_t var1, var2, T;
+    int32_t var1, var2, T;
 
-	var1 = ((((adc_T >> 3) - ((int32_t)_dig_T1<<1))) * ((int32_t)_dig_T2)) >> 11;
-	var2 = (((((adc_T >> 4) - ((int32_t)_dig_T1)) * ((adc_T>>4) - ((int32_t)_dig_T1))) >> 12) * ((int32_t)_dig_T3)) >> 14;
+    var1 = (((adc_T >> 3) - (int32_t(_dig_T1) << 1)) * int32_t(_dig_T2)) >> 11;
+    var2 = (((((adc_T >> 4) - int32_t(_dig_T1)) * ((adc_T >> 4) - int32_t(_dig_T1))) >> 12) * int32_t(_dig_T3)) >> 14;
 
-	_t_fine = var1 + var2;
-	T = (_t_fine * 5 + 128) >> 8;
-	return T;
+    _t_fine = var1 + var2;
+    T = (_t_fine * 5 + 128) >> 8;
+    return T;
 }
 
-//*******************************************
 uint32_t BME280_SPI::compensate_P(int32_t adc_P) {
+    int32_t var1, var2;
+    uint32_t P;
 
-	int32_t var1, var2;
-	uint32_t P;
+    var1 = (_t_fine >> 1) - 64000;
+    var2 = (((var1 >> 2) * (var1 >> 2)) >> 11) * int32_t(_dig_P6);
+    var2 = var2 + ((var1 * int32_t(_dig_P5)) << 1);
+    var2 = (var2 >> 2) + (int32_t(_dig_P4) << 16);
+    var1 = (((_dig_P3 * (((var1 >> 2) * (var1 >> 2)) >> 13)) >> 3) + ((int32_t(_dig_P2) * var1) >> 1)) >> 18;
+    var1 = ((((32768 + var1)) * ((int32_t)_dig_P1)) >> 15);
 
-	var1 = (((int32_t)_t_fine)>>1) - (int32_t)64000;
-	var2 = (((var1>>2) * (var1>>2)) >> 11) * ((int32_t)_dig_P6);
-	var2 = var2 + ((var1*((int32_t)_dig_P5))<<1);
-	var2 = (var2>>2)+(((int32_t)_dig_P4)<<16);
-	var1 = (((_dig_P3 * (((var1>>2)*(var1>>2)) >> 13)) >>3) + ((((int32_t)_dig_P2) * var1)>>1))>>18;
-	var1 = ((((32768+var1))*((int32_t)_dig_P1))>>15);
+    if (var1 == 0) {
+        return 0;
+    }
 
-	if (var1 == 0) {
-		return 0;
-	}
+    P = (uint32_t(int32_t(1048576) - adc_P) - (var2 >> 12)) * 3125;
 
-	P = (((uint32_t)(((int32_t)1048576)-adc_P)-(var2>>12)))*3125;
-
-	if(P<0x80000000) {
-		P = (P << 1) / ((uint32_t) var1);
-	}else{
-		P = (P / (uint32_t)var1) * 2;
-	}
+    if (P < 0x80000000) {
+        P = (P << 1) / uint32_t(var1);
+    } else {
+        P = (P / uint32_t(var1)) * 2;
+    }
     // ESP_LOGI(FNAME,"compensate P T=%0.1f  adcP=%0.1f", (float)((_t_fine * 5 + 128) >> 8), (float)(P));
 
-	var1 = (((int32_t)_dig_P9) * ((int32_t)(((P>>3) * (P>>3))>>13)))>>12;
-	var2 = (((int32_t)(P>>2)) * ((int32_t)_dig_P8))>>13;
-	P = (uint32_t)((int32_t)P + ((var1 + var2 + _dig_P7) >> 4));
+    var1 = (int32_t(_dig_P9) * int32_t(((P >> 3) * (P >> 3)) >> 13)) >> 12;
+    var2 = (int32_t(P >> 2) * int32_t(_dig_P8)) >> 13;
+    P = uint32_t((int32_t)P + ((var1 + var2 + int32_t(_dig_P7)) >> 4));
 
-	return P;
+    return P;
 }
-//*******************************************
+
 uint32_t BME280_SPI::compensate_H(int32_t adc_H) {
-	int32_t v_x1;
+    int32_t v_x1;
 
-	v_x1 = (_t_fine - ((int32_t)76800));
-	v_x1 = (((((adc_H << 14) -(((int32_t)_dig_H4) << 20) - (((int32_t)_dig_H5) * v_x1)) +
-			((int32_t)16384)) >> 15) * (((((((v_x1 * ((int32_t)_dig_H6)) >> 10) *
-					(((v_x1 * ((int32_t)_dig_H3)) >> 11) + ((int32_t) 32768))) >> 10) + ((int32_t)2097152)) *
-					((int32_t) _dig_H2) + 8192) >> 14));
-	v_x1 = (v_x1 - (((((v_x1 >> 15) * (v_x1 >> 15)) >> 7) * ((int32_t)_dig_H1)) >> 4));
-	v_x1 = (v_x1 < 0 ? 0 : v_x1);
-	v_x1 = (v_x1 > 419430400 ? 419430400 : v_x1);
+    v_x1 = _t_fine - 76800;
+    v_x1 = (((((adc_H << 14) - (int32_t(_dig_H4) << 20) - (int32_t(_dig_H5) * v_x1)) + int32_t(16384)) >> 15) *
+            (((((((v_x1 * int32_t(_dig_H6)) >> 10) * (((v_x1 * int32_t(_dig_H3)) >> 11) + 32768)) >> 10) + 2097152) *
+              int32_t(_dig_H2) + 8192) >> 14));
+    v_x1 = (v_x1 - (((((v_x1 >> 15) * (v_x1 >> 15)) >> 7) * int32_t(_dig_H1)) >> 4));
+    v_x1 = std::clamp(v_x1, int32_t(0), int32_t(419430400));
 
-	return (uint32_t)(v_x1 >> 12);
+    return v_x1 >> 12;
 }
 
 //*******************************************************************
 
-bool BME280_SPI::selfTest(float& t, pascal_t &p) {
-	uint8_t id = readID();
-	if( id != 0x58 ) {
-		ESP_LOGE(FNAME,"BMP280 Error, Chip ID reading failed BMP280 chip select pin %d read 0x%.2X (instead 0x58) ", _cs, id  );
-		return( false );
-	}
-	bool success = false;
-	double temp=0;
-	for( int i=0; i<10; i++ ){
-		temp += readTemperature(success);
-		// delay(100);
-	}
-	t = (float)(temp/10);
-	if( success == false ) {
-		ESP_LOGE(FNAME,"BMP280 Error, Temperatur reading BMP280 failed, invalid readout");
-		return( false );
-	}
-	if( (t < -32.0) || (t  > 70.0) ) {
-		ESP_LOGW(FNAME,"HW Error, Temperatur value reading BMP280 at normal condition (20 °C +-10) out of bounds readout T=%f", (float)t );
-		return( false );
-	}
-	if( init_err ) {
-		ESP_LOGE(FNAME,"BMP280 Error, initialisation invalid response from device");
-		return( false );
-	}
-	p=0;
-	for( int i=0; i<10; i++ ){
-		pascal_t tmp;
-		doRead(tmp);
-		p += tmp;
-		// delay(100);
-	}
-	p = p / 10.f;
+bool BME280_SPI::selfTest(float& t, pascal_t& p) {
+    uint8_t id = readID();
+    if (id != 0x58) {
+        ESP_LOGE(FNAME, "BMP280 Error, Chip ID reading failed BMP280 chip select pin %d read 0x%.2X (instead 0x58) ", _cs, id);
+        return (false);
+    }
+    bool success = false;
+    double temp = 0;
+    for (int i = 0; i < 10; i++) {
+        temp += readTemperature(success);
+        // delay(100);
+    }
+    t = (float)(temp / 10);
+    if (success == false) {
+        ESP_LOGE(FNAME, "BMP280 Error, Temperatur reading BMP280 failed, invalid readout");
+        return (false);
+    }
+    if ((t < -32.0) || (t > 70.0)) {
+        ESP_LOGW(FNAME, "HW Error, Temperatur value reading BMP280 at normal condition (20 °C +-10) out of bounds readout T=%f", (float)t);
+        return (false);
+    }
+    if (!_initialized) {
+        ESP_LOGE(FNAME, "BMP280 Error, initialisation invalid response from device");
+        return (false);
+    }
+    p = 0;
+    for (int i = 0; i < 10; i++) {
+        pascal_t tmp;
+        doRead(tmp);
+        p += tmp;
+        // delay(100);
+    }
+    p = p / 10.f;
 
     return true;
 }
 
-uint8_t BME280_SPI::readID()
-{
-	ta.addr = 0xD0 | 0x80;
-	ta.length = 8; // Total transaction length in bits
-	// Perform the SPI transaction
-	xSemaphoreTake(spiMutex,portMAX_DELAY );
-	esp_err_t ret = spi_device_transmit(spi, &ta);
-	xSemaphoreGive(spiMutex);
-	if (ret != ESP_OK)
-	{
-		ESP_LOGE(FNAME, "SPI Read failed: %s", esp_err_to_name(ret));
-		return 0; // Return 0 on error
-	}
+uint8_t BME280_SPI::readID() {
+    ta.addr = 0xD0 | 0x80;
+    ta.length = 8;  // Total transaction length in bits
+    // Perform the SPI transaction
+    xSemaphoreTake(spiMutex, portMAX_DELAY);
+    esp_err_t ret = spi_device_transmit(spi, &ta);
+    xSemaphoreGive(spiMutex);
+    if (ret != ESP_OK) {
+        ESP_LOGE(FNAME, "SPI Read failed: %s", esp_err_to_name(ret));
+        return 0;  // Return 0 on error
+    }
 
-	ESP_LOGI(FNAME,"BMP280 Chip ID: %02x, cs=%d", ta.rx_data[0], _cs );
-	return ta.rx_data[0];
+    ESP_LOGI(FNAME, "BMP280 Chip ID: %02x, cs=%d", ta.rx_data[0], _cs);
+    return ta.rx_data[0];
 }
 
-//***************BME280****************************
-uint32_t BME280_SPI::readADC(uint8_t reg)
-{
-	ta.addr =  reg | 0x80;
-	ta.length = 24;
+uint32_t BME280_SPI::readADC(uint8_t reg) {
+    ta.addr = reg | 0x80;
+    ta.length = 24;
 
-	xSemaphoreTake(spiMutex, portMAX_DELAY);
-	esp_err_t ret = spi_device_transmit(spi, &ta);
-	xSemaphoreGive(spiMutex);
-	if (ret != ESP_OK)
-	{
-		ESP_LOGE("SPI", "SPI read failed: %s", esp_err_to_name(ret));
-		return 0;
-	}
-	return ((uint32_t)ta.rx_data[0] << 12) | ((uint32_t)ta.rx_data[1] << 4) | ((uint32_t)ta.rx_data[2] >> 4); // msb+lsb+xlsb=19bit
+    xSemaphoreTake(spiMutex, portMAX_DELAY);
+    esp_err_t ret = spi_device_transmit(spi, &ta);
+    xSemaphoreGive(spiMutex);
+    if (ret != ESP_OK) {
+        ESP_LOGE("SPI", "SPI read failed: %s", esp_err_to_name(ret));
+        return 0;
+    }
+    return ((uint32_t)ta.rx_data[0] << 12) | ((uint32_t)ta.rx_data[1] << 4) | ((uint32_t)ta.rx_data[2] >> 4);  // msb+lsb+xlsb=19bit
 }
 
-//***************BME280****************************
-uint16_t BME280_SPI::read16bit(uint8_t reg)
-{
-	ta.addr =  reg | 0x80; // 0xFD Humidity msb read =bit 7 high
-	ta.length = 16;
+uint16_t BME280_SPI::read16bit(uint8_t reg) {
+    ta.addr = reg | 0x80;  // 0xFD Humidity msb read =bit 7 high
+    ta.length = 16;
 
-	xSemaphoreTake(spiMutex,portMAX_DELAY );
-	// Perform the SPI transaction
-	esp_err_t ret = spi_device_transmit(spi, &ta);
-	xSemaphoreGive(spiMutex);
-	if (ret != ESP_OK)
-	{
-		ESP_LOGE(FNAME, "Failed to read 16-bit value: %s", esp_err_to_name(ret));
-		return 0;
-	}
+    // Perform the SPI transaction
+    xSemaphoreTake(spiMutex, portMAX_DELAY);
+    esp_err_t ret = spi_device_transmit(spi, &ta);
+    xSemaphoreGive(spiMutex);
+    if (ret != ESP_OK) {
+        ESP_LOGE(FNAME, "Failed to read 16-bit value: %s", esp_err_to_name(ret));
+        return 0;
+    }
 
-	// Combine the received bytes into a 16-bit value (big-endian order)
-	uint16_t value = (ta.rx_data[1] << 8) | ta.rx_data[0];
-	ESP_LOGV(FNAME,"read 16bit: %04x", value );
-	return value;
+    // Combine the received bytes into a 16-bit value (big-endian order)
+    uint16_t value = (ta.rx_data[1] << 8) | ta.rx_data[0];
+    ESP_LOGV(FNAME, "read 16bit: %04x", value);
+    return value;
 }
 
 // uint8_t BME280_SPI::read8bit(uint8_t reg) {

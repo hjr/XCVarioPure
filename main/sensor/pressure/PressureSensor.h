@@ -13,7 +13,7 @@ class PressureSensor : public SensorTP<float>
 
     virtual bool selfTest(float& t, pascal_t& p) = 0;
     virtual float readTemperature(bool& success) = 0;
-    pascal_t readAltitude(pascal_t qnh, bool& success);
+    meter_t readAltitude(pascal_t qnh, bool& success);
 
     static PressureSensor* autoSetup(SensorId id);
 };

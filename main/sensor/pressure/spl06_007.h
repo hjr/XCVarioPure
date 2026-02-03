@@ -15,9 +15,9 @@ class SPL06_007 : public PressureSensor {
     const char* name() const override { return "SPL06_007"; }
     bool probe() override;
     bool setup() override;
-    bool selfTest(float& t, pascal_t& p) override;
-    bool doRead(float &val) override;
-    float readTemperature(bool& success) override;
+    bool selfTest(celsius_t& t, pascal_t& p) override;
+    bool doRead(pascal_t &val) override;
+    celsius_t readTemperature(bool& success) override;
 
    private:
     bool get_raw(int32_t& val, int32_t* tvalptr);

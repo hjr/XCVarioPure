@@ -2,6 +2,7 @@
 #include "spl06_007.h"
 
 #include "../SensorMgr.h"
+#include "Units.h"
 #include "logdefnone.h"
 
 #include <I2Cbus.hpp>
@@ -49,16 +50,16 @@ bool SPL06_007::setup() {
         return false;
     }
 
-    // Mandatory wait time for calib data to be ready
     uint8_t status = 0xff;
     for (int i = 0; i < 10; i++) {
+        // mandatory wait time for calib data to be ready
+        vTaskDelay(pdMS_TO_TICKS(10));
         err = _bus->readByte(_address, 0x08, &status);
         if (err == ESP_OK) {
             if (status & 0x80) {
                 break;
             }
         }
-        vTaskDelay(pdMS_TO_TICKS(10));
     }
     if (!(status & 0x80)) {
         ESP_LOGW(FNAME, "Coefficients not ready, status byte %02x", status);
@@ -100,12 +101,12 @@ bool SPL06_007::setup() {
     return true;
 }
 
-float SPL06_007::readTemperature(bool& success) {
+celsius_t SPL06_007::readTemperature(bool& success) {
     success = true;
     return c0 * 0.5f + c1 * _traw / _scale_factor_t;
 }
 
-bool SPL06_007::selfTest( float& t, pascal_t& p ){
+bool SPL06_007::selfTest( celsius_t& t, pascal_t& p ){
 	uint8_t rdata = 0xFF;
 	vTaskDelay(pdMS_TO_TICKS(100)); // give first measurement time to settle
 	esp_err_t err = _bus->readByte(_address, 0x0D, &rdata );  // ID
@@ -137,7 +138,7 @@ bool SPL06_007::selfTest( float& t, pascal_t& p ){
 	}
 }
 
-bool SPL06_007::doRead(float &val)
+bool SPL06_007::doRead(pascal_t &val)
 {
     int32_t *t_rawptr = nullptr;
     int32_t p_raw;
@@ -150,8 +151,8 @@ bool SPL06_007::doRead(float &val)
         val = NAN;
         return false;
     }
-	float praw_sc = p_raw / _scale_factor_p;
-	float traw_sc = _traw / _scale_factor_t;
+    float praw_sc = p_raw / _scale_factor_p;
+    float traw_sc = _traw / _scale_factor_t;
 
     val = c00 + praw_sc * (c10 + praw_sc * (c20 + praw_sc * c30)) 
                   + traw_sc * (c01 + praw_sc * (c11 + praw_sc * c21));

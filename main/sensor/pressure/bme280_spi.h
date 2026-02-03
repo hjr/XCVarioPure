@@ -43,12 +43,12 @@ public:
 	bool setup() override;
     bool selfTest(float& t, pascal_t& p) override;
 
-	float readTemperature( bool& success ) override;
-	bool doRead(float &val) override;
+	celsius_t readTemperature( bool& success ) override;
+	bool doRead(pascal_t &val) override;
 	float readHumidity();
-	uint8_t readID();
 
 private:
+	uint8_t readID();
 	void WriteRegister(uint8_t reg_address, uint8_t data);
 	void readCalibration(void);
 	int32_t compensate_T(int32_t adc_T);
@@ -83,7 +83,7 @@ private:
 	int16_t _dig_H4;
 	int16_t _dig_H5;
 	int8_t  _dig_H6;
-	bool init_err;
-	spi_device_handle_t spi;
-};
 
+    bool _initialized = false;
+    spi_device_handle_t spi;
+};

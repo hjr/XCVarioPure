@@ -16,6 +16,7 @@ using mps_t      = float;
 using kmh_t      = float;
 using pascal_t   = float;
 using kelvin_t   = float;
+using celsius_t  = float;
 using rad_t      = float;
 using second_t   = float;
 using hertz_t    = float;
