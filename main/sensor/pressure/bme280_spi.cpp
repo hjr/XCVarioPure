@@ -4,24 +4,12 @@
  */
 #include "bme280_spi.h"
 
-#include "Atmosphere.h"
 #include "../SensorMgr.h"
 #include "sensor.h"
 #include "logdef.h"
 
-#include <freertos/FreeRTOS.h>
-#include <freertos/semphr.h>
 
 #include <cstdint>
-
-/*
-BMP:
-    SCK - This is the SPI Clock pin, its an input to the chip
-    SDO - this is the Serial Data Out / Master In Slave Out pin (MISO), for data sent from the BMP183 to your processor
-    SDI - this is the Serial Data In / Master Out Slave In pin (MOSI), for data sent from your processor to the BME280
-    CS - this is the Chip Select pin, drop it low to start an SPI transaction. Its an input to the chip
- */
-
 
 #define CS_bme280BA GPIO_NUM_26   // before CS pin 33
 #define CS_bme280TE GPIO_NUM_33   // before CS pin 26
@@ -47,9 +35,6 @@ static spi_transaction_t ta = {
 
 
 BME280_SPI::BME280_SPI(SensorId id) :
-	_sclk(SPI_SCLK),
-	_mosi(SPI_MOSI),
-	_miso(SPI_MISO),
 	PressureSensor(id | SensorId::LocalSensor),
 	_cs((id == SensorId::STATIC_PRESSURE) ? CS_bme280BA : CS_bme280TE)
 {
@@ -74,10 +59,7 @@ BME280_SPI::BME280_SPI(SensorId id) :
 	_dig_H4 = 0;
 	_dig_H5 = 0;
 	_dig_H6 = 0;
-	// exponential_average = 0;
-	init_err = false;
-	// _avg_alt = 0;
-	// _avg_alt_std = 0;
+
 	// SPI device configuration
 	spi_device_interface_config_t devcfg = {
 			.command_bits = 0,
@@ -101,14 +83,6 @@ BME280_SPI::BME280_SPI(SensorId id) :
 	ESP_ERROR_CHECK(spi_bus_add_device(SPI3_HOST, &devcfg, &spi));
 }
 
-// bool BME280_SPI::setSPIBus(gpio_num_t sclk, gpio_num_t mosi, gpio_num_t miso, uint32_t freq)
-// {
-// 	_sclk = sclk;
-// 	_mosi = mosi;
-// 	_miso = miso;
-// 	_freq = freq;
-// 	return true;
-// }
 
 bool BME280_SPI::probe()
 {
@@ -399,31 +373,18 @@ uint16_t BME280_SPI::read16bit(uint8_t reg)
 	return value;
 }
 
-//***************BME280****************************
-uint8_t BME280_SPI::read8bit(uint8_t reg) {
-	ta.addr =  reg | 0x80;
-	ta.length = 8;
+// uint8_t BME280_SPI::read8bit(uint8_t reg) {
+//     ta.addr = reg | 0x80;
+//     ta.length = 8;
 
-	xSemaphoreTake(spiMutex,portMAX_DELAY );
-	esp_err_t ret = spi_device_transmit(spi, &ta);
-	xSemaphoreGive(spiMutex);
-	if (ret != ESP_OK)
-	{
-		ESP_LOGE(FNAME, "Failed to read 16-bit value: %s", esp_err_to_name(ret));
-		return 0;
-	}
+//     xSemaphoreTake(spiMutex, portMAX_DELAY);
+//     esp_err_t ret = spi_device_transmit(spi, &ta);
+//     xSemaphoreGive(spiMutex);
+//     if (ret != ESP_OK) {
+//         ESP_LOGE(FNAME, "Failed to read 16-bit value: %s", esp_err_to_name(ret));
+//         return 0;
+//     }
 
-	ESP_LOGI(FNAME,"read 8bit: %02x", ta.rx_data[0] );
-	return ta.rx_data[0];
-}
-
-// float BME280_SPI::readPressureAVG( float alpha ){
-// 	if( init_err )
-// 		return 0.0;
-//     float newval = doRead();
-// 	if ( exponential_average == 0 ){
-// 		exponential_average = newval;
-// 	}
-// 	exponential_average = exponential_average + alpha*(newval - exponential_average);
-// 	return exponential_average;
+//     ESP_LOGI(FNAME, "read 8bit: %02x", ta.rx_data[0]);
+//     return ta.rx_data[0];
 // }

@@ -37,8 +37,7 @@ class BME280_SPI: public PressureSensor
 {
 public:
 	BME280_SPI(SensorId id);
-	void setBus( I2C_t *_theBus ) {};  // for future
-	// bool setSPIBus(gpio_num_t sclk, gpio_num_t mosi, gpio_num_t miso, uint32_t freq );
+
 	const char* name() const override { return "BME280_SPI"; }
 	bool probe() override;
 	bool setup() override;
@@ -46,7 +45,6 @@ public:
 
 	float readTemperature( bool& success ) override;
 	bool doRead(float &val) override;
-	// float readPressureAVG( float alpha=0.1 );
 	float readHumidity();
 	uint8_t readID();
 
@@ -58,15 +56,11 @@ private:
 	uint32_t compensate_H(int32_t adc_H);
 	uint32_t readADC(uint8_t reg);
 	uint16_t read16bit(uint8_t reg);
-	uint8_t read8bit(uint8_t reg);
-	// double _avg_alt;
-	// double _avg_alt_std;
+	// uint8_t read8bit(uint8_t reg);
 
 
 private:
-	gpio_num_t _sclk, _mosi, _miso;
 	gpio_num_t _cs;
-	int _freq;
 	int32_t  _t_fine;
 
 	uint16_t _dig_T1;
@@ -89,7 +83,6 @@ private:
 	int16_t _dig_H4;
 	int16_t _dig_H5;
 	int8_t  _dig_H6;
-	// double exponential_average;
 	bool init_err;
 	spi_device_handle_t spi;
 };

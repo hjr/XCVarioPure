@@ -16,9 +16,6 @@ class PressureSensor : public SensorTP<float>
     pascal_t readAltitude(pascal_t qnh, bool& success);
 
     static PressureSensor* autoSetup(SensorId id);
-
-   protected:
-    // float _multiplier = 1.0f;
 };
 
 extern PressureSensor *baroSensor;

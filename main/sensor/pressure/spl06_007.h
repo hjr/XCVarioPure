@@ -12,7 +12,6 @@ class SPL06_007 : public PressureSensor {
    public:
     SPL06_007(SensorId id);
     virtual ~SPL06_007() {};
-    bool setSPIBus(gpio_num_t _sclk, gpio_num_t _mosi, gpio_num_t _miso, uint32_t _freq) { return true; };
     const char* name() const override { return "SPL06_007"; }
     bool probe() override;
     bool setup() override;

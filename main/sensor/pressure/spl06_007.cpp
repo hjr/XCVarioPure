@@ -1,7 +1,6 @@
 
 #include "spl06_007.h"
 
-#include "Atmosphere.h"
 #include "../SensorMgr.h"
 #include "logdefnone.h"
 
@@ -154,11 +153,10 @@ bool SPL06_007::doRead(float &val)
 	float praw_sc = p_raw / _scale_factor_p;
 	float traw_sc = _traw / _scale_factor_t;
 
-    float p = c00 + praw_sc * (c10 + praw_sc * (c20 + praw_sc * c30)) 
+    val = c00 + praw_sc * (c10 + praw_sc * (c20 + praw_sc * c30)) 
                   + traw_sc * (c01 + praw_sc * (c11 + praw_sc * c21));
 
     tick++;
-	val = p;
     return true;
 }
 
