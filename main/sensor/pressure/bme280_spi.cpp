@@ -195,7 +195,7 @@ bool BME280_SPI::doRead(pascal_t& val) {
 
     uint32_t adc_P = readADC(0x77);
     val = compensate_P(adc_P);  // use magic _t_fine variable (!!!)
-    // ESP_LOGI(FNAME,"--BMP280 readPressure, p=%lf", p);
+    ESP_LOGI(FNAME,"--BMP280 readPressure, p=%lf", val);
     return true;
 }
 
