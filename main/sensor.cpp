@@ -764,7 +764,8 @@ void system_startup(void *args){
         logged_tests += "Baro Sensor: ";
         baroSensor = PressureSensor::autoSetup(SensorId::STATIC_PRESSURE);
         bool batest = true;
-        float ba_t, ba_p, te_t, te_p;
+        celsius_t ba_t, te_t;
+        pascal_t ba_p, te_p;
         if (baroSensor) {
             if (!baroSensor->selfTest(ba_t, ba_p)) {
                 ESP_LOGE(FNAME, "HW Error: Self test Barometric Pressure Sensor failed!");
@@ -807,19 +808,19 @@ void system_startup(void *args){
                 ESP_LOGI(FNAME, "Abs p sensors temp. delta test PASSED, delta: %f °C", abs(ba_t - te_t));
                 logged_tests += passed_text;
             }
-            float delta = 2.5;  // in factory we test at normal temperature, so temperature change is ignored.
+            pascal_t delta = Units::hpa_to_pa(2.5); // in factory we test at normal temperature, so temperature change is ignored.
             if (abs(factory_volt_adjust.get() - 0.00815) < 0.00001) {
-                delta += 1.8;  // plus 1.5 Pa per Kelvin, for 60K T range = 90 Pa or 0.9 hPa per Sensor, for both there is 2.5 plus 1.8 hPa to
-                            // consider
+                delta += Units::hpa_to_pa(1.8);    // plus 1.5 Pa per Kelvin, for 60K T range = 90 Pa or 0.9 hPa per Sensor, 
+                                                        // for both there is 2.5 plus 1.8 hPa to consider
             }
             logged_tests += "TE/Baro Sens. P d. <2hPa: ";
             if ((abs(ba_p - te_p) > delta) && !airborne.get()) {
                 selftestPassed = false;
-                ESP_LOGI(FNAME, "Abs p sensors deviation delta > 2.5 hPa between Baro and TE sensor: %f", abs(ba_p - te_p));
+                ESP_LOGI(FNAME, "Abs p sensors deviation delta > 2.5 hPa between Baro and TE sensor: %f", Units::pa_to_hpa(abs(ba_p - te_p)));
                 MBOX->pushMessage(1, "TE/Baro P: Unequal");
                 logged_tests += failed_text;
             } else {
-                ESP_LOGI(FNAME, "AbsP sensor data test PASSED, D: %f hPa", abs(ba_p - te_p));
+                ESP_LOGI(FNAME, "AbsP sensor data test PASSED, D: %f hPa", Units::pa_to_hpa(abs(ba_p - te_p)));
                 logged_tests += passed_text;
             }
             boot_screen->finish(2);
