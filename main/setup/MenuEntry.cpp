@@ -18,7 +18,7 @@
 extern AdaptUGC *MYUCG;
 
 MenuEntry* MenuEntry::selected = nullptr;
-bool MenuEntry::_restart = false;
+uint8_t MenuEntry::_restart = 0;
 int16_t MenuEntry::cur_indent;
 int16_t MenuEntry::cur_row;
 int16_t MenuEntry::dwidth;

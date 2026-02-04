@@ -8,6 +8,7 @@
 
 #include "SubMenuDevices.h"
 
+#include "InterfaceCtrl.h"
 #include "setup/SetupMenu.h"
 #include "setup/SetupMenuSelect.h"
 #include "setup/SetupMenuChar.h"
@@ -291,9 +292,11 @@ void connected_devices_menu_create_interfaceOW(SetupMenu *top)
 //
 // Devices
 //
-static bool remove_dev(DeviceId did) // true if restart is needed
+
+// return value != 0 if restart is needed
+static uint8_t remove_dev(DeviceId did)
 {
-    bool ret = false;
+    uint8_t ret = 0;
     InterfaceId iid = NO_PHY;
     Device *rmdev = DEVMAN->getDevice(did);
     if ( rmdev ) {
@@ -318,9 +321,10 @@ static int remove_device(SetupMenuSelect *p)
 {
     if ( p->getSelect() == 1 ) {
         DeviceId did = (DeviceId)p->getParent()->getContId(); // dev id to remove
-        if ( remove_dev(did) ) {
+        uint8_t ret = remove_dev(did);
+        if ( ret ) {
             // restart needed
-            p->scheduleReboot();
+            p->scheduleReboot(ret);
         }
         p->getParent()->getParent()->setDirty();
     }
@@ -391,7 +395,7 @@ static int select_interface_action(SetupMenuSelect *p)
     }
     return 0;
 }
-static void create_dev(DeviceId did, InterfaceId iid)
+static uint8_t create_dev(DeviceId did, InterfaceId iid)
 {
     ESP_LOGI(FNAME,"create dev id %d interface id %d", did, iid);
 
@@ -400,6 +404,7 @@ static void create_dev(DeviceId did, InterfaceId iid)
     ESP_LOGI(FNAME,"dev attr name %s", da.name.data());
     ESP_LOGI(FNAME,"dev attr nr of protos %d nr of itfs %d", da.prcols.getExtra(), da.itfs.getExtra());
 
+    Device* dev = nullptr;
     if ( da.prcols.getExtra() > 0 ) {
         for (int i=0; i<da.prcols.getExtra(); ++i) {
             ProtocolType pid = da.prcols.proto(i);
@@ -409,15 +414,22 @@ static void create_dev(DeviceId did, InterfaceId iid)
             }
             if ( pid != NO_ONE ) {
                 ESP_LOGI(FNAME,"add protocol %d for device id %d", pid, did);
-                DEVMAN->addDevice(did, pid, da.port, da.port, iid, true);
+                dev = DEVMAN->addDevice(did, pid, da.port, da.port, iid, true);
             }
         }
     }
     else {
         // no protocol, just add device (eg OW temp sensor)
-        DEVMAN->addDevice(did, NO_ONE, da.port, da.port, iid, true);
+        dev = DEVMAN->addDevice(did, NO_ONE, da.port, da.port, iid, true);
     }
-    CANPeerCaps::updateCapsFromDev(did, true);
+    if ( dev ) {
+        ESP_LOGI(FNAME, "Created device %d on itf %d", did, iid);
+        CANPeerCaps::updateCapsFromDev(did, true);
+        if ( iid == BT_SPP || iid == BT_LE ) return RESTART_BT_CHANGE;
+        if ( iid == WIFI_APSTA ) return RESTART_WIFI_CHANGE;
+
+    }
+    return 0;
 }
 static int create_device_action(SetupMenuSelect *p)
 {
@@ -427,11 +439,12 @@ static int create_device_action(SetupMenuSelect *p)
             // Enforce the proper interface configuration then
             DeviceManager::EnforceIntfConfig(new_interface, new_device);
         }
-        create_dev(new_device, new_interface);
+        uint8_t ret = create_dev(new_device, new_interface);
         // make sure there is a flarm host for any navi 
         if ( new_device == NAVI_DEV ) {
-            create_dev(FLARM_HOST_DEV, new_interface);
+            ret |= create_dev(FLARM_HOST_DEV, new_interface);
         }
+        p->unscheduleReboot(ret); // option to clear a previous scheduled reboot
         p->getParent()->getParent()->setDirty();
     }
     p->setTerminateMenu();

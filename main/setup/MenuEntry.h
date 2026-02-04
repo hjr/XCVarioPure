@@ -25,6 +25,11 @@ struct bitfield {
     uint8_t _precision        :4;
 };
 
+// restart bit field
+constexpr uint8_t RESTART_SCHEDULED = 0x80;
+constexpr uint8_t RESTART_BT_CHANGE = 0x01; // because of BT change
+constexpr uint8_t RESTART_WIFI_CHANGE = 0x02; // because of WIFI change
+
 
 class PressureSensor;
 class SetupMenu;
@@ -84,7 +89,8 @@ public:
 	void menuPrintChar(char chr, int ln, int x) const;
 	// void uprint( int x, int y, const char* str );
 	void SavedDelay(bool showit=true);
-	void scheduleReboot() { _restart = true; }
+	void scheduleReboot(uint8_t r = 0x80) { _restart |= r; }
+	void unscheduleReboot(uint8_t r) { _restart &= ~r; }
 	static void reBoot(int s=1);
 
 public:
@@ -92,7 +98,7 @@ public:
 	static int16_t dheight;
 
 protected:
-	static bool _restart;
+	static uint8_t _restart; // restart bit field. 0x80 = scheduled, 0x01 = because of BT change, 0x02 = because of WIFI change
 
 protected:
 	SetupMenu  *_parent = nullptr;
