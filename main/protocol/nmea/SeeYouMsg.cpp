@@ -8,15 +8,15 @@
 
 #include "SeeYouMsg.h"
 #include "protocol/nmea_util.h"
+#include "protocol/Clock.h"
 #include "comm/DataLink.h"
 #include "comm/Messages.h"
 #include "setup/SetupNG.h"
 #include "setup/CruiseMode.h"
 #include "sensor/imu/KalmanMPU6050.h"
 #include "math/Units.h"
-#include "logdef.h"
+#include "logdefnone.h"
 
-#include <cmath>
 #include <string_view>
 
 // The Naviter/SeeYou protocol parser.
@@ -128,21 +128,24 @@ void NmeaPrtcl::sendSeeYouF()
     char tmp[50];
     struct timeval tv;
     gettimeofday(&tv, NULL);
-    std::sprintf(tmp, "%d.%03d", (int)(tv.tv_sec - 315964800), (int)(tv.tv_usec / 1000));
+    std::sprintf(tmp, "%d.%03d,", (int)(tv.tv_sec - 315964800), (int)(tv.tv_usec / 1000));
+    // int32_t ms_midnight = Clock::getMilisMidnightUTC();
+    // std::sprintf(tmp, "%ld.%03ld,", ms_midnight / 1000, ms_midnight % 1000);
     msg->buffer += tmp;
-    std::sprintf(tmp, ",%.1f", IMU::getGliderAccelX());
+    std::sprintf(tmp, "%.1f,", IMU::getGliderAccelX());
     msg->buffer += tmp;
-    std::sprintf(tmp, ",%.1f", -IMU::getGliderAccelY());
+    std::sprintf(tmp, "%.1f,", -IMU::getGliderAccelY());
     msg->buffer += tmp;
-    std::sprintf(tmp, ",%.1f", -IMU::getGliderAccelZ());
+    std::sprintf(tmp, "%.1f,", -IMU::getGliderAccelZ());
     msg->buffer += tmp;
-    std::sprintf(tmp, ",%.1f", te_vario.get());
+    std::sprintf(tmp, "%.1f,", te_vario.get());
     msg->buffer += tmp;
-    std::sprintf(tmp, ",%.1f", ias.get());
+    std::sprintf(tmp, "%.1f,", ias.get());
     msg->buffer += tmp;
-    std::sprintf(tmp, ",%.1f", altitude.get());
+    std::sprintf(tmp, "%.1f,", altitude.get());
     msg->buffer += tmp;
-    std::sprintf(tmp, ",%1d", VCMode.getCMode());
+    std::sprintf(tmp, "%1d,", VCMode.getCMode());
+    msg->buffer += tmp;
 
     msg->buffer += "*" + NMEA::CheckSum(msg->buffer.c_str()) + "\r\n";
     ESP_LOGD(FNAME, "SeeYouF %s", msg->buffer.c_str());
@@ -168,13 +171,13 @@ void NmeaPrtcl::sendSeeYouS()
 
     msg->buffer = "$PLXVS,";
     char tmp[50];
-    std::sprintf(tmp, "%.1f", Units::pipe(OAT.get(), Units::celsius));
+    std::sprintf(tmp, "%.1f,", Units::pipe(OAT.get(), Units::celsius));
     msg->buffer += tmp;
-    std::sprintf(tmp, ",%1d", VCMode.getCMode());
+    std::sprintf(tmp, "%1d,", VCMode.getCMode());
     msg->buffer += tmp;
-    std::sprintf(tmp, ",%.1f", battery_voltage.get());
+    std::sprintf(tmp, "%.1f,", battery_voltage.get());
     msg->buffer += tmp;
-    std::sprintf(tmp, ",%.1f", altitude.get());
+    std::sprintf(tmp, "%.1f,", altitude.get());
     msg->buffer += tmp;
 
     msg->buffer += "*" + NMEA::CheckSum(msg->buffer.c_str()) + "\r\n";
