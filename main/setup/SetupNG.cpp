@@ -82,6 +82,7 @@ static void changeQnh() {
     if ( prtcl ) {
         (static_cast<NmeaPrtcl*>(prtcl))->sendSeeYouVal(QNH.get(), SeeYouMsg::QNH_VAL);
     }
+    Display->setQnhChanged();
 }
 
 void change_ballast() {

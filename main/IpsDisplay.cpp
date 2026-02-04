@@ -758,6 +758,11 @@ void IpsDisplay::setCruiseChanged()
 {
     flags.mode_dirty = true;
 }
+void IpsDisplay::setQnhChanged() {
+    if ( ALTgauge ) {
+        ALTgauge->forceRedraw();
+    }
+}
 
 
 //////////////////////////////////////////////

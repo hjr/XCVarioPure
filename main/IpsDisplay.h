@@ -54,6 +54,10 @@ struct Line {
     bool similar(const Line &r) const;
 };
 
+//
+// Routines that manipulate the display contents must always be called from the DrawDisplay context!
+// Functions that are safe to be called from any context are marked.
+//
 class IpsDisplay {
 public:
 	IpsDisplay( AdaptUGC *aucg );
@@ -70,8 +74,10 @@ public:
 	static void initDisplay();
 	static void clear();   // erase whole display
 	static void redrawValues();
+    // the following may be called from any context (!)
 	static void setBottomDirty();
 	static void setCruiseChanged();
+    static void setQnhChanged();
 
 	static inline AdaptUGC *getDisplay() { return ucg; };
 	static AdaptUGC *ucg;
