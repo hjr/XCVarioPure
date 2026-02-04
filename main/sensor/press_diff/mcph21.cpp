@@ -5,8 +5,6 @@
 
 #include <I2Cbus.hpp>
 
-#include <cmath>
-
 
 #define I2C_ADDRESS_MCPH21    0x7F  //  Datasheet testcode: IC_Send(0xFE,..) what is 7F shifted right 1 bit
 

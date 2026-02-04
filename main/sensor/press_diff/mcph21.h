@@ -3,8 +3,6 @@
 
 #include "AsSensI2c.h"
 
-#include "I2Cbus.hpp"
-
 #include <cstdint>
 
 class MCPH21 final : public AsSensI2c

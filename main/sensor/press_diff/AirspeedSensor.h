@@ -1,7 +1,6 @@
 #pragma once
 
 #include "../SensorBase.h"
-#include "../Filters.h"
 
 class AirspeedSensor : public SensorTP<float> {
 public:

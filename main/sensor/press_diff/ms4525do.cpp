@@ -1,11 +1,7 @@
 #include "ms4525do.h"
 
 #include "setup/SetupNG.h"
-#include "logdefnone.h"
 
-#include <I2Cbus.hpp>
-
-#include <cmath>
 
 #define MAX_AUTO_CORRECTED_OFFSET 50
 
