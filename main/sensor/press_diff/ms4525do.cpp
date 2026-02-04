@@ -33,6 +33,9 @@ MS4525DO::MS4525DO(bool is_abpmrr) : AsSensI2c(&i2c1, I2C_ADDRESS_MS4525DO), _is
 }
 
 const char *MS4525DO::name() const {
+    if ( PS_NONE == airspeed_sensor.get() ) {
+        return "undefined";
+    }
     if (_is_abpmrr) {
         return "ABPMRR";
     }

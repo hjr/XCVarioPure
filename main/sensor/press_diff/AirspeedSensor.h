@@ -4,7 +4,7 @@
 
 class AirspeedSensor : public SensorTP<float> {
 public:
-    using ASens_Type = enum : uint8_t { PS_ABPMRR, PS_TE4525, PS_MP3V5004, PS_MCPH21, PS_MAX_TYPES, PS_NONE = PS_MAX_TYPES };
+    using ASens_Type = enum : uint8_t { PS_ABPMRR, PS_TE4525, PS_MP3V5004, PS_MCPH21, PS_MAX_TYPES, PS_NONE = 0xff };
 
     AirspeedSensor();
     virtual ~AirspeedSensor() {};
