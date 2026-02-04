@@ -56,7 +56,7 @@ bool AsSensI2c::fetch_pressure(int32_t &p, uint16_t &t)
     uint8_t stat = (Press_H >> 6) & 0x03;
     p = ((Press_H & 0x3f) << 8) | Press_L;
     t = (Temp_H << 3) | (Temp_L >> 5);
-    ESP_LOGI(FNAME,"fetch_pressure() status: %d, err %d,  P:%d T: %d",  (int)stat, (int)err, (int)p, (int)t );
+    ESP_LOGI(FNAME,"fetch_pressure() status: %d, err %d,  P:%d T: %d Off:%d, SC:%d",  (int)stat, (int)err, (int)p, (int)t, (int)_offset, _sign_read_count);
     if ( abs(p - _offset) > 10 ) {
         _sign_read_count += (p > _offset) ? 1 : -1;
         if ( abs(_sign_read_count) == 100) {

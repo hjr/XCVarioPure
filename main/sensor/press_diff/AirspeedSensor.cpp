@@ -106,7 +106,7 @@ bool AirspeedSensor::setup()
         ESP_LOGI(FNAME, "offset not yet done: need to recalibrate");
     }
     else {
-        ESP_LOGI(FNAME, "offset from NVS: %df", _offset);
+        ESP_LOGI(FNAME, "offset from NVS: %d", (int)_offset);
     }
 
     int32_t adcval = 0;
@@ -147,7 +147,7 @@ bool AirspeedSensor::setup()
         }
         _offset = fast_iroundf(float(rawOffset) / samples);
         if (offsetPlausible(_offset)) {
-            ESP_LOGI(FNAME, "Offset procedure finished, offset: %d", _offset);
+            ESP_LOGI(FNAME, "Offset procedure finished, offset: %d", (int)_offset);
             as_offset.set(_offset);
         }
         else {
@@ -178,12 +178,13 @@ bool AirspeedSensor::doRead(float &val)
         }
     }
     int raw_diff = p_raw - _offset;
-    if (raw_diff < 0) {
+    float tmpv = static_cast<float>(raw_diff) * _multiplier;
+    if (tmpv < 0.f) {
         val = 0.f;
         return true;
     }
-    val = static_cast<float>(raw_diff) * _multiplier;
-    ESP_LOGI(FNAME,"P:%f offset:%d raw:%ld  raw-off:%d m:%f T:%u", val, _offset, p_raw, raw_diff, _multiplier, t_dat);
+    val = tmpv;
+    ESP_LOGI(FNAME,"P:%f offset:%d raw:%d  raw-off:%d m:%f T:%u", val, (int)_offset, (int)p_raw, raw_diff, _multiplier, (unsigned)t_dat);
     return true;
 }
 
