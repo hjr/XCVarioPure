@@ -71,6 +71,7 @@ Clock::Clock()
 {
     // setup clock timer only once
     if ( _clock_timer == 0 ) {
+        request_queue = xQueueCreate(10, sizeof(ClkRequest));
         esp_timer_create_args_t t_args = {
             .callback = (esp_timer_cb_t)clock_timer_sr,
             .arg = (void*)(&clock_registry),
@@ -81,7 +82,6 @@ Clock::Clock()
         esp_timer_create(&t_args, &_clock_timer);
         esp_timer_start_periodic(_clock_timer, TICK_ATOM * 1000); // the timers API is on usec
         clock_registry.clear();
-        request_queue = xQueueCreate(10, sizeof(ClkRequest));
     }
 }
 Clock::~Clock()
