@@ -275,6 +275,7 @@ bool BME280_SPI::selfTest(celsius_t& t, pascal_t& p) {
         return false;
     }
     bool success;
+    vTaskDelay(pdMS_TO_TICKS(200));
     p = 0;
     for (int i = 0; i < 10; i++) {
         pascal_t tmp_p;
@@ -282,7 +283,7 @@ bool BME280_SPI::selfTest(celsius_t& t, pascal_t& p) {
         pushToHistory(tmp_p, Clock::getMillis());
         if ( ! success ) break;
         p += tmp_p;
-        vTaskDelay(pdMS_TO_TICKS(70));
+        vTaskDelay(pdMS_TO_TICKS(100));
     }
     if ( ! success ) {
         ESP_LOGE(FNAME, "BMP280 Error, pressure reading BMP280 failed, invalid readout");
@@ -295,7 +296,7 @@ bool BME280_SPI::selfTest(celsius_t& t, pascal_t& p) {
         ESP_LOGE(FNAME, "BMP280 Error, Temperatur reading BMP280 failed, invalid readout");
         return false;
     }
-    if ((t < -32.0) || (t > 70.0)) {
+    if ((t < -32.0) || (t > 100.0)) {
         ESP_LOGW(FNAME, "HW Error, Temperatur value reading BMP280 at normal condition (20 °C +-10) out of bounds readout T=%f", (float)t);
         return false;
     }
