@@ -121,7 +121,7 @@ constexpr std::pair<DeviceId, DeviceAttributes> DEVATTR[] = {
     {DeviceId::XCVARIOSECOND_DEV, {"", {{S2_RS232}}, {{XCVSYNC_P}, 1}, 0, 0, nullptr}},
     {DeviceId::MAGLEG_DEV, {"MagSens rev0", {{CAN_BUS}}, {{MAGSENSBIN_P}, 1}, MagSensBin::LEGACY_MAGSTREAM_ID, IS_SEL, &magleg_devsetup}},
     {DeviceId::MAGSENS_DEV, {"MagSens rev1", {{CAN_BUS}}, {{MAGSENS_P}, 1}, 0, IS_SEL, nullptr}}, // auto reg
-    {DeviceId::NAVI_DEV,   {"Navi", {{WIFI_APSTA, S1_RS232, S2_RS232, BT_SPP, BT_LE, CAN_BUS}},
+    {DeviceId::NAVI_DEV,   {"Navi", {{WIFI_APSTA, S1_RS232, S2_RS232, BT_SPP, BT_LE}},
                                     {{XCVARIO_P, CAMBRIDGE_P, OPENVARIO_P, BORGELT_P, SEEYOU_P, KRT2_REMOTE_P, ATR833_REMOTE_P}, 1},
                                     8880, IS_SEL, &navi_devsetup}},
     {DeviceId::NAVI_DEV,   {"", {{S2_RS232}}, {{XCVARIO_P, CAMBRIDGE_P, OPENVARIO_P, BORGELT_P, KRT2_REMOTE_P, ATR833_REMOTE_P}, 1},
@@ -138,8 +138,8 @@ constexpr std::pair<DeviceId, DeviceAttributes> DEVATTR[] = {
     {DeviceId::FLARM_HOST2_DEV, {"", {{BT_SPP}}, {{FLARMHOST_P, FLARMBIN_P}, 2}, 0, 0, nullptr}},
     {DeviceId::FLARM_HOST2_DEV, {"", {{BT_LE}}, {{FLARMHOST_P, FLARMBIN_P}, 2}, 0, 0, nullptr}},
     {DeviceId::RADIO_REMOTE_DEV, {"Radio remote", {{WIFI_APSTA}}, {{KRT2_REMOTE_P}, 1}, 8882, IS_SEL, &radio_host_setup}},
-    {DeviceId::RADIO_KRT2_DEV, {"KRT 2", {{S2_RS232, CAN_BUS}}, {{KRT2_REMOTE_P}, 1}, 0, IS_SEL, &krt_devsetup}},
-    {DeviceId::RADIO_ATR833_DEV, {"ATR833", {{S2_RS232, CAN_BUS}}, {{ATR833_REMOTE_P}, 1}, 0, IS_SEL, &atr_devsetup}},
+    {DeviceId::RADIO_KRT2_DEV, {"KRT 2", {{S2_RS232}}, {{KRT2_REMOTE_P}, 1}, 0, IS_SEL, &krt_devsetup}},
+    {DeviceId::RADIO_ATR833_DEV, {"ATR833", {{S2_RS232}}, {{ATR833_REMOTE_P}, 1}, 0, IS_SEL, &atr_devsetup}},
     {DeviceId::TEMPSENS_DEV, {"Temp. Sensor", {{OW_BUS}}, {{NO_ONE}, 0}, 0, IS_SEL, nullptr}},
 };
 
@@ -563,7 +563,7 @@ int DeviceManager::getSendPort(DeviceId did, ProtocolType proto)
 
 // Remove device from map, delete device and all resources
 // returns true, when a reboot is needed
-bool DeviceManager::removeDevice(DeviceId did, bool nvsave)
+uint8_t DeviceManager::removeDevice(DeviceId did, bool nvsave)
 {
     Device* dev = nullptr;
     {
@@ -576,7 +576,7 @@ bool DeviceManager::removeDevice(DeviceId did, bool nvsave)
             _device_map.erase(it);
         }
     }
-    bool ret = false;
+    uint8_t ret = 0;
 
     if ( dev ) {
         InterfaceCtrl *itf = dev->_itf;
@@ -590,23 +590,23 @@ bool DeviceManager::removeDevice(DeviceId did, bool nvsave)
             }
             else if ( itf == WIFI ) {
             // fixme, WiFi delete not reliably working (idf issue)
-            //     ESP_LOGI(FNAME, "stopping Wifi");
-            //     WIFI *tmp = WIFI;
-            //     WIFI = nullptr;
-            //     delete tmp;
-                ret = true; // restart needed
+                ESP_LOGI(FNAME, "stopping Wifi");
+                WifiApSta *tmp = WIFI;
+                WIFI = nullptr;
+                delete tmp;
+                ret = RESTART_WIFI_CHANGE; // restart needed
             }
             else if ( itf == BLUEspp ) {
                 ESP_LOGI(FNAME, "stopping BTspp");
                 delete BLUEspp;
                 BLUEspp = nullptr;
-                ret = true; // restart needed
+                ret = RESTART_BT_CHANGE; // restart needed
             }
             else if ( itf == BLUEnus ) {
                 ESP_LOGI(FNAME, "stopping BTle");
                 delete BLUEnus;
                 BLUEnus = nullptr;
-                ret = true; // restart needed
+                ret = RESTART_BT_CHANGE; // restart needed
             }
             else if ( itf == S1 ) {
                 ESP_LOGI(FNAME, "stopping S1");
