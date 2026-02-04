@@ -590,10 +590,10 @@ uint8_t DeviceManager::removeDevice(DeviceId did, bool nvsave)
             }
             else if ( itf == WIFI ) {
             // fixme, WiFi delete not reliably working (idf issue)
-                ESP_LOGI(FNAME, "stopping Wifi");
-                WifiApSta *tmp = WIFI;
-                WIFI = nullptr;
-                delete tmp;
+                // ESP_LOGI(FNAME, "stopping Wifi");
+                // WifiApSta *tmp = WIFI;
+                // WIFI = nullptr;
+                // delete tmp;
                 ret = RESTART_WIFI_CHANGE; // restart needed
             }
             else if ( itf == BLUEspp ) {
