@@ -44,6 +44,11 @@ meter_t PressureSensor::readAltitude(pascal_t qnh, bool& success) {
     return Atmosphere::calcAltitude( qnh, getHead() );
 }
 
+meter_t PressureSensor::readAltitudeISA(bool& success) {
+    success = getHeadValid();
+    return Atmosphere::calcAltitudeISA(getHead());
+}
+
 static PressureSensor* factory(PressureSensor::PSens_Type type, SensorId id)
 {
     PressureSensor* ret = nullptr;

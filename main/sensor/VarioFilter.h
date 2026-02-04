@@ -26,6 +26,7 @@ class VarioFilter final : public SensorTP<float> {
     void postProcess() override;
 
     void configChange();
+    void resetKF();  // cope with disruptive events like a QNH adjustment
     float getAvgVario() const { return _avg_vario; }
     float getPolarSink() const { return _polar_sink; }
 
