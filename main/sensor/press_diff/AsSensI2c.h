@@ -24,7 +24,7 @@ public:
 
 protected:
     bool fetch_pressure(int32_t &p, uint16_t &t) override;
-    virtual void setSubType(bool negative) {} // dedicated to ABPMRR and MS4525DO
+    virtual void setSubType(bool positive) {} // dedicated to ABPMRR and MS4525DO
     i2cbus::I2C *_bus;
     const uint8_t _address;
     int _sign_read_count = 0;

@@ -61,7 +61,7 @@ bool AsSensI2c::fetch_pressure(int32_t &p, uint16_t &t)
         _sign_read_count += (p > _offset) ? 1 : -1;
         if ( abs(_sign_read_count) == 100) {
             ESP_LOGW(FNAME, "fetch_pressure() sign pressure read count: %d", _sign_read_count);
-            setSubType(_sign_read_count < 0);
+            setSubType(_sign_read_count > 0);
         }
     }
     return stat == 0;

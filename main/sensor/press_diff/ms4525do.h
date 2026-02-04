@@ -18,7 +18,7 @@ public:
     inline void setAbpmrr() { setSubType(true); }
 
 protected:
-    void setSubType(bool negative) override;
+    void setSubType(bool positive) override;
     bool offsetPlausible(int32_t offset) override;
     int getMaxACOffset() override;
 

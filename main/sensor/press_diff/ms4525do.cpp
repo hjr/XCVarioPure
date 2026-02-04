@@ -47,15 +47,15 @@ const char *MS4525DO::name() const {
 
 void MS4525DO::changeConfig() {
     _multiplier = (2.f * 6894.76 / MS4525Span) * ((100.0 + speedcal.get()) / 100.0);
-    _multiplier *= (_is_abpmrr) ? -1.0f : 1.0f;
+    _multiplier *= (!_is_abpmrr) ? -1.0f : 1.0f;
 }
 
 
-void MS4525DO::setSubType(bool negative)
+void MS4525DO::setSubType(bool positive)
 {
     // This will set the correct sensor type for the next XCV boot and
     // provide the proper zero offset tollerances
-    _is_abpmrr = negative;
+    _is_abpmrr = positive;
     changeConfig();
     if ( _is_abpmrr ) {
         airspeed_sensor.set( AirspeedSensor::PS_ABPMRR );
