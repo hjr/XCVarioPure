@@ -159,12 +159,13 @@ void SetupMenuValFloat::rot(int count) {
 
     if (bits._live_update) {
         _nvs->set(_value, false, false);
-        if (_action != 0) {
-            (*_action)(this);
-        }
     }
 
     displayVal();
+    
+    if (_action != 0) {
+        (*_action)(this);
+    }
 }
 
 void SetupMenuValFloat::longPress()

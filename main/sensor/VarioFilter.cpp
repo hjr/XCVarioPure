@@ -141,11 +141,16 @@ void VarioFilter::configChange() {
     ESP_LOGI(FNAME, "configChange damping:%f filter_len:%d", _lpf.getAlpha(), _avg_filter_idx);
 
     avgTE.setLength( vario_av_delay.get() );
-	TEavg.setLength( rint(vario_delay.get()*(10.0/3)) );
+    TEavg.setLength( rint(vario_delay.get()*(10.0/3)) );
+}
+void VarioFilter::resetKF() {
+    meter_t h0 = altitude_isa.get();
+    vkf.init(h0); // KF
+    _filter->reset(h0);
 }
 
 bool VarioFilter::setup() {
-    // Decide if sensor readings come from local sensor or master
+    // Decide if sensor readings come from local sensor or master (ctor gets called too early for this)
     if (SetupCommon::isMaster()) {
         _id = _id | SensorId::LocalSensor;
         // mark as essential sensor to be able to simulate
@@ -153,11 +158,9 @@ bool VarioFilter::setup() {
     }
 
     ESP_LOGI(FNAME, "VarioFilter setup as %s sensor with alt %f", (isLocalSensor(_id) ? "local" : "remote"), altitude.get());
-    init(altitude.get());
+    init(altitude_isa.get());
     configChange();
-    meter_t h0 = altitude.get();
-    vkf.init(h0); // KF
-    _filter->reset(h0); // reset the te_alt filter before entering the sensor loop
+    resetKF(); // reset the te_alt filter before entering the sensor loop
     _prev_time = Clock::getMillis();
     return true;
 }
@@ -167,25 +170,24 @@ bool VarioFilter::setup() {
 // a total energy compensated altitude.
 bool VarioFilter::doRead(float& val) {
     float curr_altitude;
-    pascal_t qnh = QNH.get();
     if (te_comp_enable.get() == TE_TEK_EPOT) {
-        curr_altitude = altitude.get();  // already read
-        if (!altitude.getValid() || std::isnan(curr_altitude)) {
+        curr_altitude = altitude_isa.get();  // already read
+        if (!altitude_isa.getValid() || std::isnan(curr_altitude)) {
             curr_altitude = getHead();  // ignore readout when failed
         }
         mps_t ta_speed = tas.get();  // m/s
         float cw = Speed2Fly.cw(ta_speed);
-        float ealt = ((((ta_speed * ta_speed) / 19.62) * (1 + (te_comp_adjust.get() / 100.0)))) * (1 - cw);  // Ekin ~ h = v²/2g  * adjust * (1-cw)
+        float ealt = ((ta_speed * ta_speed) / (2 * Units::g0)) * (1 + (te_comp_adjust.get() / 100.0)) * (1 - cw);  // Ekin ~ h = v²/2g  * adjust * (1-cw)
         curr_altitude += ealt;
         ESP_LOGD(FNAME, "Energy Alt @%0.1f km/h: %0.1f cw: %f", tas.get(), ealt, cw);
     } else if (te_comp_enable.get() == TE_TEK_PRESSURE) {
         pascal_t barP = baroSensor->getHead();
         pascal_t dynP = asSensor->getHead();
-        curr_altitude = Atmosphere::calcAltitude(qnh, (barP - dynP) * (1 + (te_comp_adjust.get() / 100.0)));  // subtract PI pressure like TEK probe does
+        curr_altitude = Atmosphere::calcAltitudeISA((barP - dynP) * (1 + (te_comp_adjust.get() / 100.0)));  // subtract PI pressure like TEK probe does
         // ESP_LOGI(FNAME,"TE alt: %4.3f m, ST: %.1f PI: %.1f", _currentAlt, barP, (dynP*100) );
     } else {  // TE_TEK_PROBE
         bool success;
-        curr_altitude = teSensor->readAltitude(qnh, success);
+        curr_altitude = teSensor->readAltitudeISA(success);
     }
 
     // linear prediction and innovation gating

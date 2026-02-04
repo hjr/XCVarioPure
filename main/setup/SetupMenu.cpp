@@ -320,15 +320,15 @@ static int imu_calib(SetupMenuSelect *p) {
 }
 
 int qnh_adj(SetupMenuValFloat* p) {
-    ESP_LOGI(FNAME, "qnh_adj %f", QNH.get());
+    ESP_LOGI(FNAME, "qnh_adj %f", p->get());
     float alt = 0;
     if (Flarm::validExtAlt() && alt_select.get() == AS_EXTERNAL) {  // fixme
-        alt = alt_external + (QNH.get() - Units::P0) * 0.082296;    // correct altitude according to ISA model = 27ft / hPa
+        alt = alt_external + (p->get() - Units::P0) * 0.082296;    // correct altitude according to ISA model = 27ft / hPa
     } else {
         // catch the 10 samples from the pressure sensor self test
-        alt = (baroSensor) ? Atmosphere::calcAltitude(QNH.get(), baroSensor->getAVG(5000)) : altitude.get();
+        alt = (baroSensor) ? Atmosphere::calcAltitude(p->get(), baroSensor->getAVG(5000)) : altitude.get();
     }
-    ESP_LOGI(FNAME, "Setup BA alt=%f QNH=%f Pa", alt, QNH.get());
+    ESP_LOGI(FNAME, "Setup BA alt=%f QNH=%f Pa", alt, p->get());
     MYUCG->setFont(ucg_font_fub25_hr, true);
     alt = AltUnit->apply(alt);
 
@@ -1444,7 +1444,7 @@ SetupMenu* SetupMenu::createTopSetup() {
 }
 
 SetupMenuValFloat* SetupMenu::createQNHMenu() {
-	SetupMenuValFloat *qnh = new SetupMenuValFloat("QNH", "", qnh_adj, true, &QNH, RST_NONE, true);
+	SetupMenuValFloat *qnh = new SetupMenuValFloat("QNH", "", qnh_adj, true, &QNH, RST_NONE, false);
     qnh->setPrecision(2);
 	qnh->setHelp("QNH pressure value from ATC. On ground you may adjust to airfield altitude above MSL", 180);
 	return qnh;
