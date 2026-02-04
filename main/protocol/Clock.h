@@ -35,6 +35,7 @@ public:
     static int64_t getMillisUTC() {
         return _offset_ms + getMillis();
     }
+    static int32_t getMilisMidnightUTC();
     static inline bool isValidUTC() { return _valid; }
     static void setSimSpeed(uint8_t s) { _sim_speed = s; }
     static int getUpdateAgeMs();

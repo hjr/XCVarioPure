@@ -108,6 +108,13 @@ int Clock::getSeconds()
 {
     return msec_counter / 1000;
 }
+int32_t Clock::getMilisMidnightUTC()
+{
+    int64_t utc = getMillisUTC();
+    int32_t day_ms = static_cast<int32_t>(utc % 86400000LL);
+    // if ( day_ms < 0 ) day_ms += 86400000; // utc > 0 always
+    return day_ms;
+}
 
 int Clock::getUpdateAgeMs() {
     return  msec_counter - _last_updated_ms;
