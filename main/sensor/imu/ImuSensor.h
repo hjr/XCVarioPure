@@ -19,12 +19,11 @@
 
 struct PIController;
 enum class ImuType : uint8_t {UNKNOWN, MPU6050, MPU6500, ICM20602, ICM20689};
+enum class temp_status_t : uint8_t { MPU_T_UNKNOWN, MPU_T_LOCKED, MPU_T_LOW, MPU_T_HIGH };
+
 
 class ImuSensor : public SensorTP<vector_f>
 {
-public:
-    using temp_status_t = enum : uint8_t  { MPU_T_UNKNOWN, MPU_T_LOCKED, MPU_T_LOW, MPU_T_HIGH };
-
 public:
     ImuSensor(SensorId id);
     ~ImuSensor() override;

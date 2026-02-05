@@ -12,6 +12,7 @@
 #include "screen/element/PolarGauge.h"
 #include "screen/element/WindIndicator.h"
 #include "screen/element/McCready.h"
+#include "screen/element/Temperature.h"
 #include "screen/element/S2FBar.h"
 #include "screen/element/Battery.h"
 #include "screen/element/Altimeter.h"
@@ -68,6 +69,7 @@ Altimeter*	IpsDisplay::ALTgauge = nullptr;
 MultiGauge*	IpsDisplay::TOPgauge = nullptr;
 CruiseStatus* IpsDisplay::VCSTATgauge = nullptr;
 FlapsBox*   IpsDisplay::FLAPSgauge = nullptr;
+Temperature* IpsDisplay::OATgauge = nullptr;
 
 int16_t DISPLAY_H;
 int16_t DISPLAY_W;
@@ -123,10 +125,6 @@ static int16_t LOAD_MIAS_POS = 0;
 
 AdaptUGC *IpsDisplay::ucg = 0;
 
-static int _ate = -1000;
-int IpsDisplay::tempalt = -2000;
-
-uint8_t IpsDisplay::siliconTempStatusOld = ImuSensor::MPU_T_UNKNOWN;
 Point IpsDisplay::screen_edge[4];
 
 static union {
@@ -473,11 +471,14 @@ void IpsDisplay::initDisplay() {
             S2FBARgauge = nullptr;
         }
     }
+    if ( !OATgauge ) {
+        OATgauge = new Temperature(68, 32);
+    }
     if (!BATgauge) {
         BATgauge = new Battery(DISPLAY_W - 10, DISPLAY_H - 12);
     }
     if ( !VCSTATgauge ) {
-        VCSTATgauge = new CruiseStatus(INNER_RIGHT_ALIGN - 8, 18);
+        VCSTATgauge = new CruiseStatus(INNER_RIGHT_ALIGN - 6, 18);
     }
     if ( FLAP && flapbox_enable.get() ) {
         if (!FLAPSgauge) {
@@ -565,7 +566,7 @@ void IpsDisplay::initDisplay() {
 
     // Unit's
     ucg->setFont(ucg_font_fub11_hr);
-    ucg->setPrintPos(2, 50);
+    ucg->setPrintPos(4, 60);
     ucg->setColor(COLOR_HEADER);
     ucg->print(VarioUnit->getName());
     if (TOPgauge) {
@@ -587,12 +588,12 @@ void IpsDisplay::begin() {
 
 void IpsDisplay::redrawValues()
 {
-	// ESP_LOGI(FNAME,"IpsDisplay::redrawValues()");
-	tempalt = -2000;
-	flags.wireless_alive = false;
+    // ESP_LOGI(FNAME,"IpsDisplay::redrawValues()");
+    flags.wireless_alive = false;
     if (MCgauge) {
         MCgauge->forceRedraw();
     }
+    OATgauge->forceRedraw();
     BATgauge->forceRedraw();
     if (ALTgauge) {
         ALTgauge->forceRedraw();
@@ -605,8 +606,9 @@ void IpsDisplay::redrawValues()
         flags.mode_dirty = true;
     }
 
-	if ( FLAPSgauge ) FLAPSgauge->forceRedraw();
-    _ate = -1000;
+    if ( FLAPSgauge ) {
+        FLAPSgauge->forceRedraw();
+    }
 }
 
 void IpsDisplay::drawBT() {
@@ -709,44 +711,6 @@ void IpsDisplay::drawConnection( int16_t x, int16_t y )
 	else if( SetupCommon::isWired() ) {
 		drawCable(DISPLAY_W-18, y);
 	}
-}
-
-
-// accept temperature in deg C and display in configured unit
-// right-aligned value to x, incl. unit right of x
-void IpsDisplay::drawTemperature( int x, int y, kelvin_t t ) {
-	ucg->setFont(ucg_font_fub14_hn, false);
-	char s[32];
-	if( t > -1000. ) {
-		sprintf(s, "%.1f ", std::roundf(TempUnit->apply(t)*10.f)/10.f );
-	}
-	else {
-		strcpy(s, "---");
-	}
-	// ESP_LOGI(FNAME,"drawTemperature: %d,%d %s", x, y, s);
-	ucg->setColor( COLOR_WHITE );
-	ucg->setPrintPos(x,y-3);
-	ucg->print(s);
-	if( accSensor && accSensor->hasHeatCtlr() ){   // Color if T unit shows if MPU silicon temperature is locked, too high or too low
-		switch( accSensor->getTempStatus() ){
-		case ImuSensor::MPU_T_LOCKED:
-			ucg->setColor( COLOR_HEADER );
-			break;
-		case ImuSensor::MPU_T_LOW:
-			ucg->setColor( COLOR_LBLUE );
-			break;
-		case ImuSensor::MPU_T_HIGH:
-			ucg->setColor( COLOR_RED );
-			break;
-		default:
-			ucg->setColor( COLOR_HEADER );
-		}
-	}else{
-		ucg->setColor( COLOR_HEADER );
-	}
-	ucg->setFont(ucg_font_fub11_hn, false);
-	ucg->setPrintPos(x+ucg->getStrWidth(s)+2,y-3);
-	ucg->printf("%s ", TempUnit->getName());
 }
 
 
@@ -987,13 +951,9 @@ void IpsDisplay::drawDisplay(){
     }
 
     // Temperature Value
-	uint8_t mputemp = (accSensor) ? accSensor->getTempStatus() : ImuSensor::MPU_T_UNKNOWN; 
-    kelvin_t temp = OAT.get();
-	if( (((int)(temp*10) != tempalt) || (mputemp != siliconTempStatusOld)) && !(tick%12)) {
-		drawTemperature( 4, 30, temp );
-		tempalt=(int)(temp*10);
-		siliconTempStatusOld = mputemp;
-	}
+    if( !(tick%12) ) {
+        OATgauge->draw(OAT.get(), (accSensor) ? accSensor->getTempStatus() : temp_status_t::MPU_T_UNKNOWN);
+    }
 
     // WK-Indicator
     if (FLAPSgauge && !(tick % 3)) {

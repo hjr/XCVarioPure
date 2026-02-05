@@ -23,6 +23,7 @@ class WindIndicator;
 class McCready;
 class S2FBar;
 class Battery;
+class Temperature;
 class Altimeter;
 class MultiGauge;
 class CruiseStatus;
@@ -97,23 +98,18 @@ public:
     static MultiGauge *TOPgauge;
     static CruiseStatus *VCSTATgauge;
     static FlapsBox *FLAPSgauge;
+    static Temperature* OATgauge;
 
-	static int tick;
+    static int tick;
 
-	// local variabls for dynamic display
-	static int s2falt;
-	static bool wireless_alive;
-	static int tempalt;
-	static uint8_t siliconTempStatusOld;
+    // local variabls for dynamic display
     static Point screen_edge[4];
 
-	static void drawBT();
-	static void drawCable(int16_t x, int16_t y);
-	static void drawWifi( int x, int y );
-	static void drawConnection( int16_t x, int16_t y );
-	static void drawTemperature( int x, int y, float t );
-	static void initLoadDisplay();
-    static bool drawTopGauge(int val, int16_t x, int16_t y, bool inc_unit=false);
+    static void drawBT();
+    static void drawCable(int16_t x, int16_t y);
+    static void drawWifi(int x, int y);
+    static void drawConnection(int16_t x, int16_t y);
+    static void initLoadDisplay();
 };
 
 extern IpsDisplay *Display;

@@ -142,15 +142,16 @@ ImuType ImuSensor::getImuId() {
     }
 }
 
-ImuSensor::temp_status_t ImuSensor::getTempStatus() const {
-    if( abs(_mpu_t_delta) < 0.5)
-        return MPU_T_LOCKED;
-    else if( _mpu_t_delta < -0.5 )
-        return MPU_T_LOW;
-    else if( _mpu_t_delta > 0.5 )
-        return MPU_T_HIGH;
-    else
-        return MPU_T_UNKNOWN;
+temp_status_t ImuSensor::getTempStatus() const {
+    if( abs(_mpu_t_delta) < 0.5) {
+        return temp_status_t::MPU_T_LOCKED;
+    } else if( _mpu_t_delta < -0.5 ) {
+        return temp_status_t::MPU_T_LOW;
+    } else if( _mpu_t_delta > 0.5 ) {
+        return temp_status_t::MPU_T_HIGH;
+    } else {
+        return temp_status_t::MPU_T_UNKNOWN;
+    }
 }
 
 // Setup the rotation for the "upright", "topdown" and "ninety" vario mounting positions
