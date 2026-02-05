@@ -9,6 +9,7 @@
 #pragma once
 
 #include "ScreenElement.h"
+#include "sensor/Filters.h"
 
 #include <cstdint>
 
@@ -61,7 +62,7 @@ private:
 
 private: // attributes
     Flap* _flap;
-    float _flaps_position = 0.;
+    LowPassFilter _fp_filter;
     FBoxStateHash _state = {0,0,0};
     int   _last_flap_idx = 0;
     int   _snd_latency_cnt = 0;
@@ -69,6 +70,7 @@ private: // attributes
     int   _same_event_to = -1;
     bool  _vertical;
     int16_t _LFH;
+
 public:
     static int16_t BOX_LENGTH;
     static float   PIX_PER_MPS;

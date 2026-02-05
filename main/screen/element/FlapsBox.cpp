@@ -64,6 +64,7 @@ bool FBoxStateHash::operator!=(const FBoxStateHash &other) const noexcept
 FlapsBox::FlapsBox(Flap* flap, int16_t cx, int16_t cy, bool vertical) :
     ScreenElement(cx, cy),
     _flap(flap),
+    _fp_filter(0.33f),
     _last_event(0,0),
     _vertical(vertical)
 {
@@ -198,18 +199,18 @@ void FlapsBox::draw(float ias)
         MYUCG->drawDisc(_ref_x, _ref_y, 3, UCG_DRAW_ALL);
     }
 
-    float wktarget;
+    float curr_fp;
     bool have_sens = Flap::sensAvailable();
     if ( have_sens ) {
-        wktarget = _flap->getFlapPosition();
+        curr_fp = _flap->getFlapPosition();
     } else {
-        wktarget = (int)std::ceilf(_flap->getOptimum(ias));
+        curr_fp = (int)std::ceilf(_flap->getOptimum(ias));
     }
     // damp speed of indicator to make it good readable
-    _flaps_position = _flaps_position + (wktarget - _flaps_position) * 0.2f;
+    curr_fp = _fp_filter.filter(curr_fp);
 
     mps_t minv, maxv;
-    minv = _flap->getSpeedBand(_flaps_position, maxv);
+    minv = _flap->getSpeedBand(curr_fp, maxv);
     if ( airborne.get() == false ) {
         // on ground, set a virtual green band for the correct start position (ias "0km/h")
         ias = _flap->getSpeed(flap_takeoff.get() - .3); // pretend start speed
@@ -217,7 +218,7 @@ void FlapsBox::draw(float ias)
     minv -= ias;
     maxv -= ias;
     // the three variables that define the box state
-    FBoxStateHash current_state( _flaps_position, minv, maxv);
+    FBoxStateHash current_state( curr_fp, minv, maxv);
     if ( current_state != _state || _dirty ) {
         ESP_LOGI(FNAME,"wkf:%.1f minv:%.1f maxv:%.1f ias:%.1f", current_state.getWk(), minv, maxv, ias);
         drawLabels(current_state);
@@ -225,7 +226,7 @@ void FlapsBox::draw(float ias)
 
     // do sounds when stepping over the speed range (with sensor),
     // or when the recommended position changes (without sensor)
-    int flap_idx = fast_iroundf(_flaps_position);
+    int flap_idx = fast_iroundf(curr_fp);
     if ( have_sens ) {
         _last_flap_idx = flap_idx; // keep in sync with actual position, option to not play any sound
         if ( minv > 0. && flap_idx < _flap->getNrPositions()-1 ) { // slipped below the lower speed limit
