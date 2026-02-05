@@ -14,7 +14,6 @@
 #include "setup/SetupMenuSelect.h"
 #include "setup/SetupMenuChar.h"
 #include "setup/SetupMenuValFloat.h"
-#include "AnalogInput.h"
 #include "AdaptUGC.h"
 #include "sensor.h"
 #include "logdefnone.h"
@@ -281,7 +280,9 @@ void flap_levels_menu_create(SetupMenu* top) // dynamic!
 {
     SetupMenuValFloat *flgnd = static_cast<SetupMenuValFloat*>(top->getEntry(0));
     if ( ! flgnd ) {
-        new_level_speed = new SetupNG<mps_t>("foo", 27.78f, false, SYNC_NONE, VOLATILE, nullptr, quantity_t::QUANT_HSPEED, &polar_mps_limits);
+        if ( ! new_level_speed ) {
+            new_level_speed = new SetupNG<kmh_t>("foo", 100.f, false, SYNC_NONE, VOLATILE, nullptr, quantity_t::QUANT_HSLEGACY, &polar_speed_limits);
+        }
         top->setDynContent();
         flgnd = new SetupMenuValFloat("Takeoff Flap",".", nullptr, false, &flap_takeoff  );
         flgnd->setHelp("Flap position to be set for takeoff");
@@ -313,7 +314,8 @@ void flap_levels_menu_create(SetupMenu* top) // dynamic!
         flap_level_menu[level] += ". Level ";
         flap_level_menu[level] += lev->label;
         SetupMenu *levmenu = new SetupMenu(flap_level_menu[level].c_str(), one_flap_level, level);
-        flap_level_buzz[level] = std::to_string(static_cast<int>(SpeedUnit->apply(lev->nvs_speed))) + " " + SpeedUnit->getName();
+        ESP_LOGI(FNAME,"flap level %d - %s: %f", level, lev->label, lev->nvs_speed);
+        flap_level_buzz[level] = std::to_string(static_cast<int>(SpeedUnit->apply(Units::kmh_to_mps(lev->nvs_speed)))) + " " + SpeedUnit->getName();
         levmenu->setBuzzword(flap_level_buzz[level].data());
         top->addEntry(levmenu);
     }

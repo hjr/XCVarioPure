@@ -48,7 +48,7 @@ class SetupNG;
 
 struct FlapLevel
 {
-    mps_t nvs_speed;
+    kmh_t nvs_speed;
     mps_t prep_speed;
     mps_t speed_delta;
     union {
@@ -57,7 +57,7 @@ struct FlapLevel
     };
     int sensval;
     int sens_delta;
-    FlapLevel(mps_t s, int label_int, int sv) : nvs_speed(s), prep_speed(0.), speed_delta(0.), label_int(label_int), sensval(sv), sens_delta(0) {}
+    FlapLevel(kmh_t s, int label_int, int sv) : nvs_speed(s), prep_speed(0.), speed_delta(0.), label_int(label_int), sensval(sv), sens_delta(0) {}
     // FlapLevel(float s, const char *lc, int sv) : nvs_speed(s), prep_speed(0.), speed_delta(0.), sensval(sv), sens_delta(0) {
     //     std::strncpy(label, lc, 4);
     //     label[3] = '\0';
@@ -85,7 +85,7 @@ public:
     const FlapLevel *getFL(int idx) const { return (idx < flevel.size()) ? &flevel[idx] : &dummy; }
     void setSensCal(int idx, int val);
     void setLabel(int idx, const char *lab);
-    void setSpeed(int idx, mps_t spd);
+    void setSpeed(int idx, kmh_t spd);
     void prepLevels();
     void modLevels();
     void reLoadLevels();

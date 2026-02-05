@@ -2,7 +2,6 @@
 #include "Flap.h"
 
 #include "AnalogInput.h"
-#include "setup/SubMenuFlap.h"
 #include "setup/SetupNG.h"
 #include "sensor/imu/KalmanMPU6050.h"
 #include "math/Floats.h"
@@ -102,7 +101,7 @@ void Flap::setLabel(int idx, const char *lab) {
         flevel[idx].label[3] = '\0';
     }
 }
-void Flap::setSpeed(int idx, mps_t spd) {
+void Flap::setSpeed(int idx, kmh_t spd) {
     if (idx < flevel.size()) {
         flevel[idx].nvs_speed = spd;
     }
@@ -114,7 +113,7 @@ void Flap::prepLevels()
     {
         // adapt speeds to actual wingload
         for ( FlapLevel &fl : flevel ) {
-            fl.prep_speed = fl.nvs_speed * std::sqrtf( (ballast.get()+100.0) / 100.0 );
+            fl.prep_speed = Units::kmh_to_mps(fl.nvs_speed) * std::sqrtf( (ballast.get()+100.0) / 100.0 );
             ESP_LOGI( FNAME, "Adjusted flap speed %.1f", fl.prep_speed );
         }
 
@@ -352,14 +351,10 @@ bool Flap::initFromNVS()
     flevel.clear();
     for (int i = 0; i < MAX_NR_POS; i++)
     {
-        mps_t nvsspeed = FL_STORE[i].speed->get();
+        kmh_t nvsspeed = FL_STORE[i].speed->get();
         if (nvsspeed > 0)
         {
             // a valid entry
-            if ( i == MAX_NR_POS-1 && nvsspeed >= flevel.back().nvs_speed ) {
-                // last entry must be slower than previous
-                nvsspeed = std::max(flevel.back().nvs_speed - Units::kmh_to_mps(20.0f), 0.f);
-            }
             flevel.push_back(FlapLevel{nvsspeed, FL_STORE[i].getLabelInt(), FL_STORE[i].sensval->get()});
             ESP_LOGI( FNAME, "new flap level %d %s: %.1f (%d)", i, FL_STORE[i].getLabel(), nvsspeed, FL_STORE[i].sensval->get() );
         }
@@ -399,7 +394,7 @@ bool Flap::initFromNVS()
                     int ilabel;
                     std::strncpy((char*)&ilabel,flap_labels[lblidx].data(), 4);
                     ((char*)&ilabel)[3] = '\0';
-                    flevel.push_back( FlapLevel{ Units::kmh_to_mps(nvsspeed), ilabel, sensval } );
+                    flevel.push_back( FlapLevel{ nvsspeed, ilabel, sensval } );
                     ESP_LOGI( FNAME, "migrated old flap level %d %s: %.1f (%d)", i, (char*)&ilabel, nvsspeed, sensval );
                 }
                 old_iter++;

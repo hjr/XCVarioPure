@@ -126,7 +126,6 @@ struct limits_t
     return &_lim; \
 }())
 extern const limits_t polar_speed_limits;
-extern const limits_t polar_mps_limits;
 
 template<typename T>
 class SetupNG: public SetupCommon
@@ -417,13 +416,13 @@ extern SetupNG<int>  		display_type;
 extern SetupNG<int>  		display_test;
 extern SetupNG<int>  		display_orientation;
 extern SetupNG<int>  		flapbox_enable;
-extern SetupNG<mps_t>  		wk_speed_0;
-extern SetupNG<mps_t>  		wk_speed_1;
-extern SetupNG<mps_t>  		wk_speed_2;
-extern SetupNG<mps_t>  		wk_speed_3;
-extern SetupNG<mps_t>  		wk_speed_4;
-extern SetupNG<mps_t>  		wk_speed_5;
-extern SetupNG<mps_t>  		wk_speed_6;
+extern SetupNG<kmh_t>  		wk_speed_0;
+extern SetupNG<kmh_t>  		wk_speed_1;
+extern SetupNG<kmh_t>  		wk_speed_2;
+extern SetupNG<kmh_t>  		wk_speed_3;
+extern SetupNG<kmh_t>  		wk_speed_4;
+extern SetupNG<kmh_t>  		wk_speed_5;
+extern SetupNG<kmh_t>  		wk_speed_6;
 extern SetupNG<int>  		alt_unit;
 extern SetupNG<int>  		alt_quantization;
 extern SetupNG<int>  		ias_unit;
