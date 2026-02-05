@@ -29,3 +29,4 @@ private:
     kelvin_t _temp = -1001.;
     temp_status_t _imut = temp_status_t(0);
 };
+

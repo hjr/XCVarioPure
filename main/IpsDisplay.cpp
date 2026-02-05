@@ -447,7 +447,7 @@ void IpsDisplay::initDisplay() {
         BATgauge = new Battery(DISPLAY_W - 10, DISPLAY_H - 12);
     }
     if ( !VCSTATgauge ) {
-        VCSTATgauge = new CruiseStatus(INNER_RIGHT_ALIGN - 6, 18);
+        VCSTATgauge = new CruiseStatus(INNER_RIGHT_ALIGN - 6, 22);
     }
     if ( FLAP && flapbox_enable.get() ) {
         if (!FLAPSgauge) {

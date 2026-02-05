@@ -27,14 +27,19 @@ void McCready::draw(mps_t mc)
             MYUCG->setFont(ucg_font_fub14_hn, false);
         }
         char s[32];
-        std::sprintf(s, "  %1.1f", VarioUnit->apply(mc) );
+        float mcu = VarioUnit->apply(mc);
+        if ( mcu < 10.f ) {
+            std::sprintf(s, "  %.1f", mcu);
+        } else {
+            std::sprintf(s, "  %.0f", mcu);
+        }
         int16_t fl = MYUCG->getStrWidth(s);
         MYUCG->setPrintPos(_ref_x - fl, _ref_y);
         MYUCG->print(s);
         if ( _dirty ) {
             MYUCG->setFont(ucg_font_fub11_hr, false);
             MYUCG->setColor(COLOR_HEADER);
-            MYUCG->setPrintPos(_ref_x, _ref_y);
+            MYUCG->setPrintPos(_ref_x + 2, _ref_y);
             MYUCG->print("MC");
             _dirty = false;
         }

@@ -25,7 +25,12 @@ void Temperature::draw(kelvin_t t, temp_status_t mputemp)
         MYUCG->setFont(ucg_font_fub20_hn, false);
         char s[32];
         if (t > -1000.) {
-            sprintf(s, "  %.1f ", std::roundf(TempUnit->apply(t) * 10.f) / 10.f);
+            float tu = std::roundf(TempUnit->apply(t) * 10.f) / 10.f;
+            if ( tu < 100.f ) {
+                std::sprintf(s, "  %.1f ", tu);
+            } else {
+                std::sprintf(s, "  %.0f ", tu);
+            }
             if (t < -0.05f) {
                 MYUCG->setColor(COLOR_BBLUE);
             } else {
