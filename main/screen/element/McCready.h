@@ -9,6 +9,7 @@
 #pragma once
 
 #include "ScreenElement.h"
+#include "math/Units.h"
 
 #include <cstdint>
 
@@ -19,10 +20,10 @@ public:
     McCready(int16_t cx, int16_t cy) : ScreenElement(cx, cy) {}
     // API
     void setLarge(bool l) { _large = l; }
-    void draw(float mc);
+    void draw(mps_t mc);
 
     // attributes
 private:
     bool _large = true;
-    float _mcval = -1.;
+    mps_t _mcval = -1.;
 };

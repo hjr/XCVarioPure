@@ -457,7 +457,7 @@ void IpsDisplay::initDisplay() {
     MAINgauge->setColor(VN_COLOR_RED); // fixme temp needle_color.get());
     if (vario_mc_gauge.get()) {
         if ( !MCgauge ) {
-            MCgauge = new McCready(1, DISPLAY_H + 2);
+            MCgauge = new McCready(50, DISPLAY_H + 2);
         }
         if ( !S2FBARgauge) {
             S2FBARgauge = new S2FBar(DISPLAY_W - 50, AMIDY, 28, 32);
