@@ -61,7 +61,7 @@ public:
 
     void draw(float a);
     void drawIndicator(float a);
-    void drawPolarSink(float a);
+    void drawPolarSink(mps_t a);
     void drawAVG();
     void drawFigure(float a);
     void drawWind(int16_t wdir, mps_t wval, int16_t idir, mps_t ival);

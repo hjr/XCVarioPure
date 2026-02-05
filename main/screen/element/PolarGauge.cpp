@@ -189,7 +189,7 @@ void PolarGauge::drawIndicator(float a)
 }
 
 // sink speed in [m/s]
-void PolarGauge::drawPolarSink(float a)
+void PolarGauge::drawPolarSink(mps_t a)
 {
     a *= _unit_fac;
     int16_t val = dice_up(clipValue(a));
