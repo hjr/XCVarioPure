@@ -192,8 +192,8 @@ void FlapsBox::draw(float ias)
     if ( _dirty ) {
         MYUCG->setColor(COLOR_HEADER);
         MYUCG->drawRFrame(_ref_x, _ref_y-BOX_LENGTH/2-BOX_CORNER, BOX_WIDTH, BOX_LENGTH + 2*BOX_CORNER, BOX_CORNER);
-        MYUCG->drawDisc(_ref_x, _ref_y + 10*PIX_PER_MPS, 3, UCG_DRAW_ALL);
-        MYUCG->drawDisc(_ref_x, _ref_y - 10*PIX_PER_MPS, 3, UCG_DRAW_ALL);
+        MYUCG->drawDisc(_ref_x, _ref_y + Units::kmh_to_mps(10)*PIX_PER_MPS, 3, UCG_DRAW_ALL);
+        MYUCG->drawDisc(_ref_x, _ref_y - Units::kmh_to_mps(10)*PIX_PER_MPS, 3, UCG_DRAW_ALL);
         MYUCG->setColor(COLOR_WHITE);
         MYUCG->drawDisc(_ref_x, _ref_y, 3, UCG_DRAW_ALL);
     }
