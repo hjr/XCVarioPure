@@ -395,6 +395,15 @@ bool Flap::initFromNVS()
                 }
                 old_iter++;
             }
+            // convert takeoff flap setting
+            float wktoflap;
+            if ( SetupCommon::getOldFloat("FLAPTO", wktoflap) ) {
+                // map to new flap index
+                int nto = wktoflap - flstart;
+                nto = std::clamp(nto, 0, (int)flevel.size()-1);
+                ESP_LOGI( FNAME, "migrated old takeoff flap setting: %.1f mapped to index %d", wktoflap, nto );
+                flap_takeoff.set( nto, false, false );
+            }
         }
         return true;
     }

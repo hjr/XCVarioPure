@@ -431,7 +431,7 @@ SetupNG<int> 			wk_label_3( "WK_LBL_3", 0, false, SYNC_BIDIR, PERSISTENT, flap_u
 SetupNG<int> 			wk_label_4( "WK_LBL_4", 0, false, SYNC_BIDIR, PERSISTENT, flap_update_act );
 SetupNG<int> 			wk_label_5( "WK_LBL_5", 0, false, SYNC_BIDIR, PERSISTENT, flap_update_act );
 SetupNG<int> 			wk_label_6( "WK_LBL_6", 0, false, SYNC_BIDIR, PERSISTENT, flap_update_act );
-SetupNG<float> 			flap_takeoff("FLAPTO", 0,  false, SYNC_BIDIR, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(0, 6, 1));
+SetupNG<float> 			flap_takeoff("FLAPTOp", 0,  false, SYNC_BIDIR, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(0, 6, 1));
 SetupNG<int> 			audio_mute_sink( "AUDISS", 0 );
 SetupNG<int> 			audio_mute_gen( "AUDISG", AUDIO_ON );
 SetupNG<int>			vario_mode("VAMOD", CRUISE_ONLY_NETTO, true, SYNC_NONE, PERSISTENT, change_cruise);  // switch to netto mode when cruising
