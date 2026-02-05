@@ -135,6 +135,7 @@ void SetupRoot::exit(int levels)
     if (_restart) {
         reBoot();
     }
+    SetupCommon::commitDirty(); // commit all dirty setup items
 
     delete _childs.front(); // the exited setup tree
     _childs.erase(_childs.begin());
