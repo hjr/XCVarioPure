@@ -74,49 +74,18 @@ Temperature* IpsDisplay::OATgauge = nullptr;
 int16_t DISPLAY_H;
 int16_t DISPLAY_W;
 
-// u8g2_t IpsDisplay::u8g2c;
-
-const int   dmid = 160;   // display middle
-const int   bw    = 32;   // bar width
-
-#define TRISIZE 15
-
-#define FIELD_START 85
-#define FIELD_START_UL 170
-#define SIGNLEN 24+4
-#define GAP 12
-
-#define HEADFONTH 14
-#define VARFONTH  54 // fub35_hn
-#define YVAR HEADFONTH+VARFONTH
-#define YVARMID (YVAR - (VARFONTH/2))
-
-#define S2FFONTH 35 //31
-#define YS2F YVAR+S2FFONTH+HEADFONTH+GAP-8
-
-
-#define VARBARGAP (HEADFONTH+(HEADFONTH/2)+2)
-#define MAXTEBAR ((DISPLAY_H-(VARBARGAP*2))/2)
-
 #define BTSIZE  5
 #define BTW    15
 #define BTH    24
-#define ASVALX 163
 
 #define FLOGO  24
 
-int S2FST = 45;
-
-#define UNITVAR (vario_unit.get())
-#define UNITAS (ias_unit.get())
-#define UNITALT (alt_unit.get())
-
 IpsDisplay *Display = nullptr;
 
-static int AMIDY;
-static int AMIDX;
-static int AVGOFFX;
-static int SPEEDYPOS;
+static int16_t AMIDY;
+static int16_t AMIDX;
+static int16_t AVGOFFX;
+static int16_t SPEEDYPOS;
 constexpr const float OPT_Y_IN = 0.262f;
 
 static int16_t INNER_RIGHT_ALIGN = 170;
@@ -124,7 +93,6 @@ static int16_t LOAD_MPG_POS = 0;
 static int16_t LOAD_MIAS_POS = 0;
 
 AdaptUGC *IpsDisplay::ucg = 0;
-
 Point IpsDisplay::screen_edge[4];
 
 static union {
@@ -400,7 +368,8 @@ void IpsDisplay::clear(){
 	screens_init = INIT_DISPLAY_NULL;
 }
 
-void IpsDisplay::bootDisplay() {
+void IpsDisplay::setupDisplay() {
+    ucg->begin();
 	// ESP_LOGI(FNAME,"IpsDisplay::bootDisplay()");
 	if( display_type.get() == ST7789_2INCH_12P )
 		ucg->setRedBlueTwist( true );
@@ -579,12 +548,6 @@ void IpsDisplay::initDisplay() {
 
     redrawValues();
 }
-
-void IpsDisplay::begin() {
-	ESP_LOGI(FNAME,"IpsDisplay::begin");
-	ucg->begin();
-}
-
 
 void IpsDisplay::redrawValues()
 {

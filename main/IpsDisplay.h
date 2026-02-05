@@ -63,8 +63,7 @@ class IpsDisplay {
 public:
 	IpsDisplay( AdaptUGC *aucg );
 	~IpsDisplay();
-	static void begin();
-	static void bootDisplay();
+	static void setupDisplay();
 	static void setGlobalColors();
 	static void writeText( int line, const char *text );
 	static void writeText( int line, std::string &text );

@@ -547,8 +547,7 @@ void system_startup(void *args){
 	MYUCG = new AdaptUGC();
 	MYUCG->begin();
 	Display = new IpsDisplay( MYUCG );
-	Display->begin();
-	Display->bootDisplay();
+	Display->setupDisplay();
 	MenuRoot = new SetupRoot(Display); // the root setup menu, screens still disabled
 
 	Version V;
