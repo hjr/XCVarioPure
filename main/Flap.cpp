@@ -49,10 +49,6 @@ static const std::array<FLConf, Flap::MAX_NR_POS> FL_STORE = {{
 ///////////////////////////////////////
 // Flap class implementation
 Flap::Flap() {
-    if (flap_sensor.get() & 0x3) {
-        // migration from old settings with multiple IO's
-        flap_sensor.set(FLAP_SENSOR_ENABLE);
-    }
     configureADC();
     if ( initFromNVS() ) {
         // migrated from old settings may need to sort levels according speed.
