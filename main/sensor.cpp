@@ -1082,9 +1082,6 @@ extern "C" void  app_main(void)
         ESP_LOGI(FNAME, "Init devices");
         gflags.first_devices_run = true;
     }
-    if (wk_speed_0.exists()) {
-        gflags.flaps_nvs_defined = true;
-    }
     ESP_LOGI(FNAME,"Init all NVS Setup items");
 	SetupCommon::initSetup();
     Units::setAll(); // set all units according to setup

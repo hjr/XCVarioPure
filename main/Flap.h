@@ -118,8 +118,9 @@ private:
     static Flap *_instance;
     AnalogInput *sensorAdc = nullptr;
     std::vector<FlapLevel> flevel;
-    bool _sens_order = true; // if true, sensval are in descending order from flap level 0 upwards
-    static FlapLevel dummy;
+    bool _sens_order = true; // if true, sensval are in descending order from flap level 0, 1, 2, ...
+    bool _legacy_imported = false;
+    static const FlapLevel dummy;
     int rawFiltered = 0;
     int tick = 0;
     mutable float g_force = 1.;

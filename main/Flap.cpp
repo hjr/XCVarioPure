@@ -17,7 +17,7 @@ constexpr mps_t GENERAL_V_MIN = Units::kmh_to_mps(50);
 
 Flap* Flap::_instance = nullptr;
 Flap* FLAP = nullptr;
-FlapLevel Flap::dummy = {.0, (int)('x'<<24), 0};
+const FlapLevel Flap::dummy = {.0, (int)('x'<<24), 0};
 
 // Center responsibility to store the flap settings permanetly here
 // ================================================================
@@ -356,7 +356,7 @@ bool Flap::initFromNVS()
         }
     }
 
-    if ( flevel.size() == 0 && ! gflags.flaps_nvs_defined ) {
+    if ( flevel.size() == 0 && ! _legacy_imported ) {
         // try to read from old settings
         const char *old_speed[] = {"FLAP_MINUS_3", "FLAP_MINUS_2", "FLAP_MINUS_1", "FLAP_0", "FLAP_PLUS_1", "FLAP_PLUS_2", ""};
         const char *old_lblidx[] = {"WKLM3", "WKLM2", "WKLM1", "WKL0", "WKLP1", "WKLP2", "WKLP3"};
@@ -378,8 +378,13 @@ bool Flap::initFromNVS()
             for ( int i=0; i<end; i++ ) {
                 kmh_t nvsspeed;
                 bool good = SetupCommon::getOldFloat( old_speed[old_iter], nvsspeed );
-                if ( ! good && old_iter == 6 ) {
-                    nvsspeed = Units::mps_to_kmh(GENERAL_V_MIN); // last position default
+                if ( ! good && old_iter == (MAX_NR_POS-1) ) {
+                    // last position is not defined  for legacy, so default
+                    // last entry must be the smallest speed
+                    nvsspeed = std::min(flevel.back().nvs_speed - 20.0f, Units::mps_to_kmh(GENERAL_V_MIN));
+                    if ( nvsspeed < 1.f ) {
+                        nvsspeed = 1.f;
+                    }
                     good = true;
                 }
                 int lblidx;
@@ -405,6 +410,8 @@ bool Flap::initFromNVS()
                 flap_takeoff.set( nto, false, false );
             }
         }
+        _legacy_imported = true; // avoid repeated attempts
+
         return true;
     }
     ESP_LOGI(FNAME, "found %d flap levels", (int)flevel.size());

@@ -24,7 +24,6 @@ union global_flags {
         uint16_t gear_warn_external : 1;
         uint16_t schedule_reboot : 1;
         uint16_t first_devices_run : 1;
-        uint16_t flaps_nvs_defined : 1;
         uint16_t inSimulationMode : 1;
     };
     uint16_t raw;
