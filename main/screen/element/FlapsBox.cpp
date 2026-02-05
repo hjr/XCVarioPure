@@ -68,7 +68,7 @@ FlapsBox::FlapsBox(Flap* flap, int16_t cx, int16_t cy, bool vertical) :
     _last_event(0,0),
     _vertical(vertical)
 {
-    MYUCG->setFont(ucg_font_fub11_hn);
+    MYUCG->setFont(ucg_font_fub11_hr);
     _LFH = MYUCG->getFontAscent() - MYUCG->getFontDescent() + 4;
     ESP_LOGI(FNAME, "FlapsBox label height %d, a%d d%d", _LFH, MYUCG->getFontAscent(), MYUCG->getFontDescent());
 }
@@ -129,7 +129,7 @@ void FlapsBox::drawLabels(FBoxStateHash cs)
     MYUCG->undoClipRange();
 
     // foreground labels
-    MYUCG->setFont(ucg_font_fub11_hn);
+    MYUCG->setFont(ucg_font_fub11_hr);
     const int from = std::max((int)(std::floorf(cs.getWk())) - 1, 0);
     const int range = (from == (int)(std::floorf(cs.getWk()))) ? 1 : 2;
     const int to   = std::min(from + range, _flap->getNrPositions() - 1);

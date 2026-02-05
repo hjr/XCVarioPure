@@ -86,7 +86,7 @@ void HorizonPage::draw( Quaternion q )
 	// heading
 	if( theCompass ){
 		int heading = fast_iroundf(mag_hdt.get());
-		MYUCG->setFont(ucg_font_fub20_hr, true);
+		MYUCG->setFont(ucg_font_fub20_hn, true);
 		MYUCG->setPrintPos(70,310);
 		if( heading >= 360 ) {
 			heading -= 360;

@@ -28,7 +28,7 @@ static int polar_select(SetupMenuSelect *p) {
 int start_weight_adj(SetupMenuValFloat *p) {
 	float wingload = (ballast_kg.get() + crew_weight.get() + empty_weight.get()) / polar_wingarea.get();
 	ESP_LOGI(FNAME,"wingload:%.1f empty: %.1f cw:%.1f water:%.1f", wingload, empty_weight.get(), crew_weight.get(), ballast_kg.get() );
-	MYUCG->setFont(ucg_font_fub25_hr, true);
+	MYUCG->setFont(ucg_font_fub25_hf, true);
 	MYUCG->setPrintPos(1, 110);
 	MYUCG->printf("%0.2f kg/m2  ", wingload);
 	MYUCG->setFont(ucg_font_ncenR14_hr);

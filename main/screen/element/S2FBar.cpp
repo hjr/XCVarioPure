@@ -25,7 +25,7 @@ S2FBar::S2FBar(int16_t cx, int16_t cy, int16_t width, int16_t gap) :
     _gap_h(gap/2)
 {
     stepFromWidth(width);
-    MYUCG->setFont(ucg_font_fub11_hn);
+    MYUCG->setFont(ucg_font_fub11_hr);
 }
 
 // v : IAS [m/s]
@@ -44,7 +44,7 @@ void S2FBar::drawSpeed(mps_t v)
     else {
         MYUCG->setColor(COLOR_WGREY);
     }
-    MYUCG->setFont(ucg_font_fub11_hn, true);
+    MYUCG->setFont(ucg_font_fub11_hr, true);
     char s[32];
     sprintf(s, " %3d ", airspeed);
     int16_t toleft = (_gap_h < 8) ? 2 * _width_h : 0;

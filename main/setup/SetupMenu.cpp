@@ -329,7 +329,7 @@ int qnh_adj(SetupMenuValFloat* p) {
         alt = (baroSensor) ? Atmosphere::calcAltitude(p->get(), baroSensor->getAVG(5000)) : altitude.get();
     }
     ESP_LOGI(FNAME, "Setup BA alt=%f QNH=%f Pa", alt, p->get());
-    MYUCG->setFont(ucg_font_fub25_hr, true);
+    MYUCG->setFont(ucg_font_fub25_hf, true);
     alt = AltUnit->apply(alt);
 
     MYUCG->setPrintPos(1, 120);

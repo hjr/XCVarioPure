@@ -114,7 +114,7 @@ static int flap_cal_act(SetupMenuSelect *p)
         MYUCG->setPrintPos(1, 200);
         MYUCG->setFont(ucg_font_ncenR14_hr, true);
         MYUCG->printf("Press for next");
-        MYUCG->setFont(ucg_font_fub25_hr, true);
+        MYUCG->setFont(ucg_font_fub25_hf, true);
         int sensval;
         for (int wk = 0; wk < FLAP->getNrPositions(); wk++)
         {

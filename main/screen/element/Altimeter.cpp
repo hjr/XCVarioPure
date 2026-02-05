@@ -27,7 +27,7 @@ static const int16_t QantTable[] = { 0, 2, 5, 10, 20 };
 Altimeter::Altimeter(int16_t cx, int16_t cy) :
     ScreenElement(cx, cy)
 {
-    MYUCG->setFont(ucg_font_fub25_hr, true);
+    MYUCG->setFont(ucg_font_fub25_hf, true);
     _char_width = MYUCG->getStrWidth("2");
     _char_height = MYUCG->getFontAscent() - MYUCG->getFontDescent() - 4;
     _unit = _unit_drawn = (alt_unit_t)alt_unit.get();
@@ -153,7 +153,7 @@ void Altimeter::draw(meter_t alt_input)
         MYUCG->setColor(COLOR_BLACK);
         MYUCG->drawBox(_ref_x - 2 * _char_width, _ref_y - _char_height * 1.5, 2 * _char_width, _char_height * 2);
     }
-    MYUCG->setFont(ucg_font_fub25_hr, true);
+    MYUCG->setFont(ucg_font_fub25_hf, true);
     MYUCG->setColor(COLOR_WHITE);
     
     if (!used_quant)
