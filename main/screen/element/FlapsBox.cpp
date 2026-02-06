@@ -31,6 +31,9 @@ constexpr const int     SOUND_LATENCY = 5; // frames
 int16_t FlapsBox::BOX_LENGTH = 100;
 float   FlapsBox::PIX_PER_MPS = 11.628f;
 
+/////////////////////////
+// FBoxStateHash
+/////////////////////////
 FBoxStateHash::FBoxStateHash(float f, float minvd, float maxvd) :
     wkidx10( fast_iroundf(f*10.) )
 {
@@ -60,7 +63,9 @@ bool FBoxStateHash::operator!=(const FBoxStateHash &other) const noexcept
     return false;
 }
 
-
+/////////////////////////
+// FlapsBox
+/////////////////////////
 FlapsBox::FlapsBox(Flap* flap, int16_t cx, int16_t cy, bool vertical) :
     ScreenElement(cx, cy),
     _flap(flap),
@@ -188,6 +193,8 @@ void FlapsBox::drawLabels(FBoxStateHash cs)
     _state = cs;
 }
 
+// currently called ca. every 0,3sec, 
+// but only redraws when the position changes enough to change the state hash
 void FlapsBox::draw(float ias)
 {
     if ( _dirty ) {

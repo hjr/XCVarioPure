@@ -130,11 +130,12 @@ VarioFilter::VarioFilter() : SensorTP<float>(vario_buffer, DUTY_CYCLE_MS) {
     setNVSVar(&te_alt);
     setFilter(new LowPassFilter(0.25f));
 }
-
+// ~VarioFilter() {} .. never going to be deleted
+    
 void VarioFilter::configChange() {
     // vario needle damping
     _te_filter_idx = fast_iroundf(vario_delay.get() * 10.0f / 3);
-    _lpf.setAlpha(1.f / (vario_delay.get() * 10.f + 0.1f));
+    _lpf.setAlpha(LowPassFilter::alphaFromTau(vario_delay.get(), 0.1f)); // 10 Hz
     vkf.setTau(vario_delay.get()); // KF
     // vario averager damping
     _avg_filter_idx = (vario_av_delay.get() / 0.1) - 1;

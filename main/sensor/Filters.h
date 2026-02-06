@@ -38,6 +38,9 @@ class LowPassFilter : public BaseFilterItf
 {
 public:
     explicit LowPassFilter(float alpha) : _alpha(alpha), _last_output(0.0f) {}
+    static float alphaFromTau(second_t tau, second_t dt) {
+        return dt / (tau + dt);
+    }
     void setAlpha(float alpha) { _alpha = alpha; }
     float getAlpha() const { return _alpha; }
     void reset(float init_val) override { _last_output = init_val; }
