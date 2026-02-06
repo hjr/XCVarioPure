@@ -169,21 +169,21 @@ int config_gear_warning(SetupMenuSelect *p) {
 	return 0;
 }
 
-int do_display_test(SetupMenuSelect *p) {
-	if (display_test.get()) {
-		MYUCG->setColor(0, 0, 0);
-		MYUCG->drawBox(0, 0, 240, 320);
-		while (! Rotary->readSwitch(300)) {
-			ESP_LOGI(FNAME,"Wait for key press");
-		}
-		MYUCG->setColor(255, 255, 255);
-		MYUCG->drawBox(0, 0, 240, 320);
-		while (! Rotary->readSwitch(300)) {
-			ESP_LOGI(FNAME,"Wait for key press");
-		}
-		esp_restart();
-	}
-	return 0;
+int do_display_test(SetupMenuSelect* p) {
+    if (display_test.get()) {
+        MYUCG->setColor(0, 0, 0);
+        MYUCG->drawBox(0, 0, DISPLAY_W, DISPLAY_H);
+        while (!Rotary->readSwitch(300)) {
+            ESP_LOGI(FNAME, "Wait for key press");
+        }
+        MYUCG->setColor(255, 255, 255);
+        MYUCG->drawBox(0, 0, DISPLAY_W, DISPLAY_H);
+        while (!Rotary->readSwitch(300)) {
+            ESP_LOGI(FNAME, "Wait for key press");
+        }
+    }
+    p->setSelect(0);
+    return 0;
 }
 
 int select_battery_type(SetupMenuSelect *p) {
@@ -257,7 +257,7 @@ static void doImuCalibration( SetupMenuSelect *p ){
 	MYUCG->setPrintPos( 1, 90 );
 	MYUCG->printf( "then press button.." );
 	while( ! Rotary->readSwitch(100) ) ;
-	float angle = 0.0;
+	rad_t angle = 0.0;
 	int ret = IMU::getAccelSamplesAndCalib(IMU_RIGHT, angle);
 	if( ret<1 ){
 		p->clear();
@@ -1185,22 +1185,28 @@ void system_menu_create_hardware_rotary(SetupMenu *top) {
 	sact->addEntry("Long Press");
 }
 
-void system_menu_create_ahrs_calib(SetupMenu *top) {
-	SetupMenuSelect *ahrs_calib_collect = new SetupMenuSelect("Axis calibration", RST_NONE, imu_calib);
-	ahrs_calib_collect->setHelp(
-			"Calibrate IMU axis on flat leveled ground ground with no inclination. Run the procedure by selecting Start.");
-	ahrs_calib_collect->addEntry("Cancel");
-	ahrs_calib_collect->addEntry("Start");
-	ahrs_calib_collect->addEntry("Reset");
+void system_menu_create_ahrs_calib(SetupMenu* top) {
+    SetupMenuSelect* ahrs_calib_collect = new SetupMenuSelect("Axis calibration", RST_NONE, imu_calib);
+    ahrs_calib_collect->setHelp(
+        "Calibrate IMU axis on flat leveled ground ground with no inclination. "
+        "Run the procedure by selecting Start.");
+    ahrs_calib_collect->addEntry("Cancel");
+    ahrs_calib_collect->addEntry("Start");
+    ahrs_calib_collect->addEntry("Reset");
 
-	SetupMenuValFloat *ahrs_ground_aa = new SetupMenuValFloat("Ground angle of attack", "°", imu_gaa, false, &glider_ground_aa);
-	ahrs_ground_aa->setHelp(
-			"Angle of attack with tail skid on the ground to adjust the AHRS reference. Change this any time to correct the AHRS horizon level.");
-	ahrs_ground_aa->setPrecision(0);
-	top->addEntry(ahrs_calib_collect);
-	top->addEntry(ahrs_ground_aa);
+    SetupMenuValFloat* ahrs_ground_aa = new SetupMenuValFloat("Ground angle of attack", "°", imu_gaa, false, &glider_ground_aa);
+    ahrs_ground_aa->setHelp(
+        "Angle of attack with tail skid on the ground to adjust the AHRS reference. Change this any time to correct the AHRS horizon "
+        "level.");
+    ahrs_ground_aa->setPrecision(0);
+    top->addEntry(ahrs_calib_collect);
+    top->addEntry(ahrs_ground_aa);
+
+    SetupMenuValFloat* lever_arm = new SetupMenuValFloat("CG Lever Arm", "m", nullptr, false, &imu_leverarm);
+    lever_arm->setHelp(
+        "Distance from XCVario back to the CG of the glider. Used to compensate accelerometer readings.");
+    top->addEntry(lever_arm);
 }
-
 
 void system_menu_create_hardware_ahrs_parameter(SetupMenu *top) {
 	SetupMenuValFloat *ahrsgf = new SetupMenuValFloat("Gyro Max Trust", "x", nullptr, false, &ahrs_gyro_factor);

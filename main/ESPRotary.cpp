@@ -263,16 +263,16 @@ void ESPRotary::sendEscape() const
 }
 
 // In case an event triggered routine is asking itself for button status (events)
-bool ESPRotary::readSwitch(int delay) const
-{
+bool ESPRotary::readSwitch(int delay) const {
     // return true for any button event in the queue, except a release
     // default: wait for just a very short time and shovel all not interresting events off the queue
-    int event;
-    bool ret = false;
+    UiEvent event;
     while (xQueueReceive(uiEventQueue, &event, pdMS_TO_TICKS(delay)) == pdTRUE) {
-        if (event == ButtonEvent(ButtonEvent::SHORT_PRESS).raw || event == ButtonEvent(ButtonEvent::LONG_PRESS).raw) {
-            ret = true;
+        uint8_t detail = event.getUDetail();
+        ESP_LOGI(FNAME, "readSwitch got event %x - %x", (int)event.code, detail);
+        if (event.isButtonEvent() && (detail == ButtonEvent::SHORT_PRESS || detail == ButtonEvent::LONG_PRESS)) {
+            return true;
         }
     }
-    return ret;
+    return false;
 }
