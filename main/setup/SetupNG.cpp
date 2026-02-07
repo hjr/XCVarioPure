@@ -653,3 +653,5 @@ SetupNG<DeviceNVS>		flarm_host2_setup("NAVIFLDOWN", DeviceNVS() );
 SetupNG<DeviceNVS>		radio_host_setup("NAVIRADIO", DeviceNVS() );
 SetupNG<DeviceNVS>		krt_devsetup("KRTRADIO", DeviceNVS() );
 SetupNG<DeviceNVS>		atr_devsetup("ATRIRADIO", DeviceNVS() );
+
+template class SetupNG<DeviceNVS>;

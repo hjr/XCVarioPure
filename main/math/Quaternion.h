@@ -9,6 +9,7 @@
 #pragma once
 
 #include "math/vector_3d_fwd.h"
+#include "math/Units.h"
 
 
 // #define Quaternionen_Test 1
@@ -26,15 +27,15 @@ public:
     float _z;
     constexpr Quaternion() : _w(1.), _x(0), _y(0), _z(0) {};
     Quaternion(float w, float b, float c, float d);
-    Quaternion(const float angle, const vector_f& axis);
+    Quaternion(const rad_t angle, const vector_f& axis);
     Quaternion(Quaternion &&) = default; // Allow std::move
     Quaternion(const Quaternion &) = default;
     Quaternion& operator=(const Quaternion&) = default;
     bool operator==(const Quaternion r) { return _w==r._w && _x==r._x && _y==r._y && _z==r._z; };
 
     // API
-    float getAngle() const;
-    float getAngleAndAxis(vector_f& axis) const;
+    rad_t getAngle() const;
+    rad_t getAngleAndAxis(vector_f& axis) const;
     friend Quaternion operator*(const Quaternion& left, const Quaternion& right);
     Quaternion get_normalized() const;
     Quaternion& normalize();

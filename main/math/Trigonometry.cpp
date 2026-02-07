@@ -56,7 +56,7 @@ int angleDiffDeg(int a1, int a2)
 //
 
 // sinus table with 0.5 degree resolution
-static const float sin_table_0_5deg[182] = {
+static const rad_t sin_table_0_5deg[182] = {
     0.000000000f,   0.008726535f,   0.017452406f,   0.026176948f,   0.034899497f,   0.043619387f,   0.052335956f,   0.061048540f,
     0.069756474f,   0.078459096f,   0.087155743f,   0.095845753f,   0.104528463f,   0.113203214f,   0.121869343f,   0.130526192f,
     0.139173101f,   0.147809411f,   0.156434465f,   0.165047606f,   0.173648178f,   0.182235525f,   0.190808995f,   0.199367934f,
@@ -84,7 +84,7 @@ static const float sin_table_0_5deg[182] = {
 
 // O():=8178c
 // peak error for x.25 and x.75 angles is about 5µ rad
-float fast_sin_deg(float angle) {
+rad_t fast_sin_deg(degree_t angle) {
     // equals to angle = fmodf(angle, 360.0f); (3800c)
     angle = angle - 360.0f * fast_floorf(angle / 360.0f); // 0 .. 360.0 (2736c)
     
@@ -100,14 +100,14 @@ float fast_sin_deg(float angle) {
     // index
     angle *= 2.0f; // 0.5° resolution ==> Index = Grad × 2; [0 .. 180)
     int index = static_cast<int>(angle);
-    float fraction = angle - static_cast<float>(index); // 0 .. 1
+    degree_t fraction = angle - static_cast<float>(index); // 0 .. 1
 
-    float result = sin_table_0_5deg[index] + fraction * (sin_table_0_5deg[index+1] - sin_table_0_5deg[index]);
+    rad_t result = sin_table_0_5deg[index] + fraction * (sin_table_0_5deg[index+1] - sin_table_0_5deg[index]);
     return negative ? -result : result;
 }
 
 // an idx index is an integer representation of an angle with unit [0.5deg]
-float fast_sin_idx(int16_t angle) {
+rad_t fast_sin_idx(int16_t angle) {
     int16_t r = angle % 720;
     angle = (r < 0) ? r + 720 : r;
     
@@ -120,23 +120,23 @@ float fast_sin_idx(int16_t angle) {
     if (angle > 180)
         angle = 360 - angle;
 
-    float result = sin_table_0_5deg[angle];
+    rad_t result = sin_table_0_5deg[angle];
     return negative ? -result : result;
 }
 
-float fast_cos_deg(float angle) {
+rad_t fast_cos_deg(degree_t angle) {
     return fast_sin_deg(angle + 90.0f);
 }
 
-float fast_cos_idx(int angle) {
+rad_t fast_cos_idx(int angle) {
     return fast_sin_idx(angle + 180);
 }
 
-float fast_sin_rad(float rad) {
+rad_t fast_sin_rad(rad_t rad) {
     return fast_sin_deg(rad * (180.0f / My_PIf));
 }
 
-float fast_cos_rad(float rad) {
+rad_t fast_cos_rad(rad_t rad) {
     return fast_cos_deg(rad * (180.0f / My_PIf));
 }
 
@@ -161,16 +161,17 @@ float fast_log2f(float x) {
 
 
 // fast approximation of atan(x) for x in [0, 1] !!! (0-45°)
-float fast_atan(float x) {
+rad_t fast_atan(float x) {
     return x / (1.0f + 0.28f * x * x);
 }
 
 // O():=5484c
-float fast_atan2(float y, float x) {
+rad_t fast_atan2(float y, float x) {
     const float ONEQTR_PI = M_PI_4;        // π/4
     const float THRQTR_PI = 3.0f * M_PI_4; // 3π/4
     float abs_y = fabsf(y) + 1e-10f;       // avoid division by zero
-    float r, angle;
+    float r;
+    rad_t angle;
 
     if (x < 0.0f) {
         r = (x + abs_y) / (abs_y - x);
@@ -184,7 +185,7 @@ float fast_atan2(float y, float x) {
 }
 
 
-constexpr float TAN_STEP_DEG = 0.5f;
+constexpr degree_t TAN_STEP_DEG = 0.5f;
 constexpr int TAN_TABLE_SIZE = 181;
 
 
@@ -194,7 +195,7 @@ constexpr int TAN_TABLE_SIZE = 181;
    89.5° → tan_table[179]
    90°  → tan_table[180] (∞)
 */
-const float tan_table[TAN_TABLE_SIZE] = {
+const rad_t tan_table[TAN_TABLE_SIZE] = {
     0.00000000f,   0.00872687f,   0.01745506f,   0.02618592f,   0.03492077f,   0.04366094f,   0.05240778f,   0.06116262f,
     0.06992681f,   0.07870171f,   0.08748866f,   0.09628905f,   0.10510424f,   0.11393561f,   0.12278456f,   0.13165250f,
     0.14054083f,   0.14945100f,   0.15838444f,   0.16734261f,   0.17632698f,   0.18533904f,   0.19438031f,   0.20345230f,
@@ -223,7 +224,7 @@ const float tan_table[TAN_TABLE_SIZE] = {
 
 // O():=7729c
 // peak error around 90°, 270°, ...
-float fast_tan_deg(float deg)
+rad_t fast_tan_deg(degree_t deg)
 {
     // Wrap angle to 0–180°, then use tan(θ) = –tan(θ–180°)
     bool negative = false;
@@ -238,16 +239,16 @@ float fast_tan_deg(float deg)
     if (idx >= TAN_TABLE_SIZE - 1)   // 89.5° or above
         return negative ? -INFINITY : INFINITY;
 
-    float frac = (deg - idx * TAN_STEP_DEG) / TAN_STEP_DEG;
+    degree_t frac = (deg - idx * TAN_STEP_DEG) / TAN_STEP_DEG;
 
     // Linear interpolation between idx and idx+1
-    float t0 = tan_table[idx];
-    float t1 = tan_table[idx + 1];
-    float value = t0 + frac * (t1 - t0);
+    rad_t t0 = tan_table[idx];
+    rad_t t1 = tan_table[idx + 1];
+    rad_t value = t0 + frac * (t1 - t0);
     return negative ? -value : value;
 }
 
-float fast_tan_rad(float rad) {
+rad_t fast_tan_rad(rad_t rad) {
     return fast_tan_deg(rad * (180.0f / My_PIf));
 }
 

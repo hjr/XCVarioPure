@@ -27,7 +27,7 @@ Quaternion::Quaternion(float w, float x, float y, float z)
 }
 
 // rotate radian angle around axis
-Quaternion::Quaternion(const float angle, const vector_f& axis)
+Quaternion::Quaternion(const rad_t angle, const vector_f& axis)
 {
     float fac = std::sinf(0.5f * angle);
 
@@ -37,15 +37,15 @@ Quaternion::Quaternion(const float angle, const vector_f& axis)
     _z = fac * axis.z;
 }
 // radian
-float Quaternion::getAngle() const
+rad_t Quaternion::getAngle() const
 {
     return 2.f * std::acos(_w);
 }
 
 // radians and a normalized vector
-float Quaternion::getAngleAndAxis(vector_f& axis) const
+rad_t Quaternion::getAngleAndAxis(vector_f& axis) const
 {
-    float angle = getAngle();
+    rad_t angle = getAngle();
     float sinphi2 = fabsf(angle) > 1e-7 ? 1.0f / sinf(0.5f * angle) : 0.0;
 
     // null rotation -> return null vector

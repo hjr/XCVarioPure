@@ -11,6 +11,7 @@
 #include "../SensorBase.h"
 #include "math/vector_3d_fwd.h"
 #include "math/Quaternion.h"
+#include "math/Units.h"
 
 #include <MPU.hpp>
 #include <mpu/types.hpp>
@@ -36,13 +37,13 @@ public:
     ImuType getImuType() const { return _who_typ; }
     temp_status_t getTempStatus() const;
     static Quaternion setDefaultImuReference();
-    void applyImuReference(const float gAA, const Quaternion& basic) {
+    void applyImuReference(const degree_t gAA, const Quaternion& basic) {
         _ref_rot = concatGaaAndImuReference(gAA, basic);
     }
 
 protected:
     ImuType getImuId();
-    static Quaternion concatGaaAndImuReference(const float gAA, const Quaternion& basic);
+    static Quaternion concatGaaAndImuReference(const degree_t gAA, const Quaternion& basic);
     mpud::MPU& _MPUdev;
     ImuType _who_typ; // cached IMU type
     static Quaternion _ref_rot;
@@ -52,7 +53,7 @@ protected:
     void temp_control();   // Tick hook
     void clearpwm(); // ensure heating is off
 private:
-    float _mpu_t_delta = 0;
+    celsius_t _mpu_t_delta = 0; // difference to target temp, positive means too hot
     PIController *_pictrl = nullptr;
 };
 

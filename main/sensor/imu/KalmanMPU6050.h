@@ -20,6 +20,7 @@
 
 #include "math/vector_3d.h"
 #include "math/Quaternion.h"
+#include "math/Units.h"
 
 #include <esp_err.h>
 
@@ -143,26 +144,26 @@ public:
    *
    * @returns The x rotation (roll) in degrees
    */
-  static inline float getRoll() { return float(RAD_TO_DEG) * filterRoll_rad; };
-  static inline float getRollRad() { return filterRoll_rad; };
+  static inline float getRoll() { return float(RAD_TO_DEG) * filterRoll; };
+  static inline float getRollRad() { return filterRoll; };
 
   /**
    * Gets the pitch (Y rotation) in degrees from the Kalman Filter.\
    *
    * @returns The y rotation (pitch) in degrees
    */
-  static inline float getPitch()  { return float(RAD_TO_DEG) * filterPitch_rad; }
-  static inline float getPitchRad()  { return filterPitch_rad; }
+  static inline float getPitch()  { return float(RAD_TO_DEG) * filterPitch; }
+  static inline float getPitchRad()  { return filterPitch; }
 
   // XCSoar uses a 180 deg rotated reference system with Z vector pointing down, so Yaw and Pitch inverted
   // hence only Pitch and Roll is used for XCSoar
-  static inline float getXCSPitch()  { return -float(RAD_TO_DEG) * filterPitch_rad;  }
+  static inline float getXCSPitch()  { return -float(RAD_TO_DEG) * filterPitch;  }
   static inline double getYaw()  { return filterYaw;  }
 
   static inline double getGyroRate()  {	return abs(gyro.x)+abs(gyro.y)+abs(gyro.z); }
 
   // Reference calibration
-  static int getAccelSamplesAndCalib(int side, float &wing_angle );
+  static int getAccelSamplesAndCalib(int side, rad_t &wing_angle );
   static void getGyroSamplesAndZero();
   // static void defaultImuReference();
   // static void applyImuReference(const float gAA, const Quaternion& basic);
@@ -176,7 +177,7 @@ private:
   // static Kalman kalmanY;
   // static Kalman kalmanZ;
 
-  static vector_i   raw_gyro;
+  static vector_i raw_gyro;
   static vector_f nogate_gyro;
   static vector_f accel;
   static vector_f gyro;
@@ -189,8 +190,8 @@ private:
   static float PitchFromAccel();
   static float PitchFromAccelRad();
   static int last_rts;
-  static float  filterPitch_rad;
-  static float  filterRoll_rad;
+  static float  filterPitch;
+  static float  filterRoll;
   static float  filterYaw;
 
   static float   fused_yaw;

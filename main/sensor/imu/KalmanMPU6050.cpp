@@ -24,8 +24,8 @@ extern mpud::MPU myMPU; // fixme
 // Kalman IMU::kalmanY;
 // Kalman IMU::kalmanZ;
 
-rad_t  IMU::filterPitch_rad = 0;
-rad_t  IMU::filterRoll_rad = 0;
+rad_t  IMU::filterPitch = 0;
+rad_t  IMU::filterRoll = 0;
 rad_t  IMU::filterYaw = 0;
 
 int IMU::last_rts=0;
@@ -243,8 +243,8 @@ void IMU::Process()
 		[[maybe_unused]] vector_f euler = euler_rad * rad2deg(1.f);
 		// ESP_LOGI( FNAME,"Euler R:%.1f P:%.1f OR:%.1f IMUP:%.1f %.1f@GA(%.3f,%.3f,%.3f)", euler.Roll(), euler.Pitch(), rad2deg(roll), rad2deg(pitch), rad2deg(w), axis.x, axis.y, axis.z );
 	}
-	filterRoll_rad =  euler_rad.Roll();
-	filterPitch_rad =  euler_rad.Pitch();
+	filterRoll =  euler_rad.Roll();
+	filterPitch =  euler_rad.Pitch();
 
 	// treat gimbal lock, limit to 88 deg
 	const float limit = deg2rad(88.);
