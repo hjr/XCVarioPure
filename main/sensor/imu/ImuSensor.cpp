@@ -157,30 +157,27 @@ temp_status_t ImuSensor::getTempStatus() const {
 }
 
 // Setup the rotation for the "upright", "topdown" and "ninety" vario mounting positions
-Quaternion ImuSensor::setDefaultImuReference()
-{
-	// Revert from calibrated IMU to default mapping, which fits
-	// roughly to an upright or top down installation.
-	Quaternion accelDefaultRef = Quaternion(deg2rad(90.0f), vector_f(0,1,0)).get_conjugate();
+Quaternion ImuSensor::setDefaultImuReference() {
+    // Revert from calibrated IMU to default mapping, which fits
+    // roughly to an upright, top down, or ninety degree installation.
+    // IMU in PCB placement to "NED" reference: X forward, Y right, Z down
+    Quaternion accelDefaultRef = Quaternion(deg2rad(90.0f), vector_f(0, 1, 0)).get_conjugate();
+    accelDefaultRef = Quaternion(deg2rad(180.0f), vector_f(1, 0, 0)) * accelDefaultRef;  // towards "NED"
 
-	if ( display_orientation.get() == DISPLAY_TOPDOWN ) {
-		accelDefaultRef = Quaternion(deg2rad(180.0f), vector_f(1,0,0)) * accelDefaultRef;
-	}
-	else if ( display_orientation.get() == DISPLAY_NINETY ) {
-		accelDefaultRef = Quaternion(deg2rad(-90.0f), vector_f(1,0,0)) * accelDefaultRef;
-	}
-	imu_reference.set(accelDefaultRef, false); // nvs
-	// imu_reference.commit(); should not be needed
+    if (display_orientation.get() == DISPLAY_TOPDOWN) {
+        accelDefaultRef = Quaternion(deg2rad(180.0f), vector_f(1, 0, 0)) * accelDefaultRef;
+    } else if (display_orientation.get() == DISPLAY_NINETY) {
+        accelDefaultRef = Quaternion(deg2rad(-90.0f), vector_f(1, 0, 0)) * accelDefaultRef;
+    }
+    imu_reference.set(accelDefaultRef, false);  // nvs
     return accelDefaultRef;
 }
 
 // Concatenation of ground angle of attack and the basic reference calibration rotation
-Quaternion ImuSensor::concatGaaAndImuReference(const float gAA, const Quaternion& basic)
-{
-	Quaternion rot = Quaternion(deg2rad(gAA), vector_f(0,1,0)) * basic; // rotate positive around Y
-	return rot.normalize();
+Quaternion ImuSensor::concatGaaAndImuReference(const degree_t gAA, const Quaternion& basic) {
+    Quaternion rot = Quaternion(deg2rad(-gAA), vector_f(0, 1, 0)) * basic;  // rotate positive around Y
+    return rot.normalize();
 }
-
 
 //
 // PI control to regulate temperature

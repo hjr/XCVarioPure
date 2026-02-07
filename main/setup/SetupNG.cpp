@@ -8,6 +8,7 @@
 #include "setup/SetupNG.h"
 
 #include "IpsDisplay.h"
+#include "Units.h"
 #include "setup/CruiseMode.h"
 #include "math/Quaternion.h"
 #include "ESPAudio.h"
@@ -635,6 +636,7 @@ SetupNG<Quaternion>			imu_reference("IMU_REFERENCE", Quaternion(), false);
 SetupNG<axes_i16_abi>		gyro_bias("GYRO_BIAS", {0, 0, 0} );
 SetupNG<axes_i16_abi>		accl_bias("ACCL_BIAS", {0, 0, 0} );
 SetupNG<float> 				mpu_temperature("MPUTEMP", 45.0, true, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(30, 60, 1)); // default for AHRS chip temperature (XCV 2023)
+SetupNG<meter_t> 			imu_leverarm("IMU_LEVER", 1.4f, true, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(0, 3, .1));
 // Master or Second device role
 SetupNG<int> 			xcv_role("XCVROLE", MASTER_ROLE, false, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(MASTER_ROLE, SECOND_ROLE, 1));
 // Bitfield to exchange status on connected devices between master and second
@@ -653,5 +655,3 @@ SetupNG<DeviceNVS>		flarm_host2_setup("NAVIFLDOWN", DeviceNVS() );
 SetupNG<DeviceNVS>		radio_host_setup("NAVIRADIO", DeviceNVS() );
 SetupNG<DeviceNVS>		krt_devsetup("KRTRADIO", DeviceNVS() );
 SetupNG<DeviceNVS>		atr_devsetup("ATRIRADIO", DeviceNVS() );
-
-template class SetupNG<DeviceNVS>;

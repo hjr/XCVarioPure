@@ -507,27 +507,3 @@ int IMU::getAccelSamplesAndCalib(int side, float &wing_angle  )
             gyro_bias.set(axes_i16_abi(raw_bias.x, raw_bias.y, raw_bias.z), false);
 }
 
-// // Setup the rotation for the "upright", "topdown" and "ninety" vario mounting positions
-// void IMU::defaultImuReference()
-// {
-// 	// Revert from calibrated IMU to default mapping, which fits
-// 	// roughly to an upright or top down installation.
-// 	Quaternion accelDefaultRef = Quaternion(deg2rad(90.0f), vector_f(0,1,0)).get_conjugate();
-
-// 	if ( display_orientation.get() == DISPLAY_TOPDOWN ) {
-// 		accelDefaultRef = Quaternion(deg2rad(180.0f), vector_f(1,0,0)) * accelDefaultRef;
-// 	}
-// 	else if ( display_orientation.get() == DISPLAY_NINETY ) {
-// 		accelDefaultRef = Quaternion(deg2rad(-90.0f), vector_f(1,0,0)) * accelDefaultRef;
-// 	}
-// 	ref_rot = accelDefaultRef;
-// 	imu_reference.set(ref_rot, false); // nvs
-// 	imu_reference.commit();
-// 	progress = 0; // reset the calibration procedure
-// }
-// Concatenation of ground angle of attack and the basic reference calibration rotation
-// void IMU::applyImuReference(const float gAA, const Quaternion& basic)
-// {
-// 	ref_rot = Quaternion(deg2rad(gAA), vector_f(0,1,0)) * basic; // rotate positive around Y
-// 	ref_rot.normalize();
-// }
