@@ -59,42 +59,42 @@ inline constexpr float accelGravity(const int16_t axis, const accel_fs_t fs)
     return axis * accelResolution(fs);
 }
 
-inline constexpr float_axes_t accelGravity(const raw_axes_t& raw_axes, const accel_fs_t fs)
-{
-    float_axes_t axes;
-    axes.x = raw_axes.x * accelResolution(fs);
-    axes.y = raw_axes.y * accelResolution(fs);
-    axes.z = raw_axes.z * accelResolution(fs);
-    return axes;
-}
+// inline constexpr float_axes_t accelGravity(const raw_axes_t& raw_axes, const accel_fs_t fs)
+// {
+//     float_axes_t axes;
+//     axes.x = raw_axes.x * accelResolution(fs);
+//     axes.y = raw_axes.y * accelResolution(fs);
+//     axes.z = raw_axes.z * accelResolution(fs);
+//     return axes;
+// }
 
 inline constexpr float gyroDegPerSec(const int16_t axis, const gyro_fs_t fs)
 {
     return axis * gyroResolution(fs);
 }
 
-inline constexpr float_axes_t gyroDegPerSec(const raw_axes_t& raw_axes, const gyro_fs_t fs)
-{
-    float_axes_t axes;
-    axes.x = raw_axes.x * gyroResolution(fs);
-    axes.y = raw_axes.y * gyroResolution(fs);
-    axes.z = raw_axes.z * gyroResolution(fs);
-    return axes;
-}
+// inline constexpr float_axes_t gyroDegPerSec(const raw_axes_t& raw_axes, const gyro_fs_t fs)
+// {
+//     float_axes_t axes;
+//     axes.x = raw_axes.x * gyroResolution(fs);
+//     axes.y = raw_axes.y * gyroResolution(fs);
+//     axes.z = raw_axes.z * gyroResolution(fs);
+//     return axes;
+// }
 
 inline constexpr float gyroRadPerSec(const int16_t axis, const gyro_fs_t fs)
 {
     return (M_PI / 180) * gyroDegPerSec(axis, fs);
 }
 
-inline constexpr float_axes_t gyroRadPerSec(const raw_axes_t& raw_axes, const gyro_fs_t fs)
-{
-    float_axes_t axes;
-    axes.x = (M_PI / 180) * gyroDegPerSec(raw_axes.x, fs);
-    axes.y = (M_PI / 180) * gyroDegPerSec(raw_axes.y, fs);
-    axes.z = (M_PI / 180) * gyroDegPerSec(raw_axes.z, fs);
-    return axes;
-}
+// inline constexpr float_axes_t gyroRadPerSec(const raw_axes_t& raw_axes, const gyro_fs_t fs)
+// {
+//     float_axes_t axes;
+//     axes.x = (M_PI / 180) * gyroDegPerSec(raw_axes.x, fs);
+//     axes.y = (M_PI / 180) * gyroDegPerSec(raw_axes.y, fs);
+//     axes.z = (M_PI / 180) * gyroDegPerSec(raw_axes.z, fs);
+//     return axes;
+// }
 
 #if defined CONFIG_MPU6500 || defined CONFIG_MPU9250
 constexpr int16_t kRoomTempOffset = 0;        // LSB

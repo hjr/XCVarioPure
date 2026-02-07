@@ -21,11 +21,12 @@ bool GyroMPU6050::doRead(vector_f& val) {
     // Get new gyro values from MPU6050
     mpud::raw_axes_t imuRaw;
     if (_MPUdev.rotation(&imuRaw) == ESP_OK) {
-        mpud::float_axes_t tmp = mpud::gyroDegPerSec(imuRaw, mpud::GYRO_FS_250DPS);  // raw data to º/s
-        vector_f tmpvec(tmp.x, tmp.y, tmp.z);
+        // raw data to rad/s
+        float scale = Units::deg_to_rad(mpud::gyroResolution(mpud::GYRO_FS_250DPS));
+        vector_f tmpvec = vector_f::make_vector(imuRaw.x, imuRaw.y, imuRaw.z, scale);
 
         // Check on irrational changes
-        if ((tmpvec - *getHeadPtr()).get_norm2() > 30000) {
+        if ((tmpvec - *getHeadPtr()).get_norm2() > Units::deg_to_rad(30000.f)) {
             ESP_LOGE(FNAME, "gyro angle >300 deg/s in 0.1 sec");
             // return false;
         }

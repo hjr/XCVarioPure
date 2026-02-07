@@ -22,19 +22,13 @@ AccMPU6050::AccMPU6050() : ImuSensor(SensorId::ACC_INERTIAL | SensorId::LocalSen
 }
 
 bool AccMPU6050::doRead(vector_f& val) {
-    // mpud::raw_axes_t a;
-    // MPU.getAcceleration(&a);
-    // val.x = static_cast<int16_t>(a.x / ACCEL_SCALE);
-    // val.y = static_cast<int16_t>(a.y / ACCEL_SCALE);
-    // val.z = static_cast<int16_t>(a.z / ACCEL_SCALE);
-    // return true;
 
     // Get new accelerometer values from MPU6050
     mpud::raw_axes_t imuRaw;
     // fetch raw data from the registers
     if (_MPUdev.acceleration(&imuRaw) == ESP_OK) {
-        mpud::float_axes_t tmp = mpud::math::accelGravity(imuRaw, mpud::ACCEL_FS_8G);  // raw data to gravity
-        vector_f tmpvec(tmp.x, tmp.y, tmp.z);
+        // raw data to gravity
+        vector_f tmpvec = vector_f::make_vector(imuRaw.x, imuRaw.y, imuRaw.z, mpud::math::accelResolution(mpud::ACCEL_FS_8G));
 
         // Check on irrational changes
         if ((tmpvec - *getHeadPtr()).get_norm2() > 25) {

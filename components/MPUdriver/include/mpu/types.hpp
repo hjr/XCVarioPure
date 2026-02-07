@@ -490,7 +490,7 @@ struct axes_t
 
 // Ready-to-use axes types
 typedef axes_t<int16_t> raw_axes_t;  //!< Axes type to hold gyroscope, accelerometer, magnetometer raw data.
-typedef axes_t<float> float_axes_t;  //!< Axes type to hold converted sensor data.
+// typedef axes_t<float> float_axes_t;  //!< Axes type to hold converted sensor data.
 
 /*! Sensors struct for fast reading all sensors at once */
 typedef struct

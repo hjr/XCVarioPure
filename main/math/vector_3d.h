@@ -10,7 +10,8 @@ public:
 	vector_3d() = default;
 	vector_3d( const vector_3d &o ) { x=o.x; y=o.y; z=o.z; };
 	vector_3d(T px, T py, T pz);
-	vector_3d(vector_3d&&) = default; // Allow the move optimization
+    static inline vector_3d make_vector(int16_t, int16_t, int16_t, float) = delete;
+    vector_3d(vector_3d&&) = default; // Allow the move optimization
 	vector_3d<T>& operator=(const vector_3d<T>&) = default;
 
 	// indexed access
@@ -44,6 +45,11 @@ public:
 	T y;
 	T z;
 };
+
+template<>
+inline vector_3d<float> vector_3d<float>::make_vector(int16_t a, int16_t b, int16_t c, float scale) {
+    return {a * scale, b * scale, c * scale};
+}
 
 template <typename T>
 vector_3d<T>& operator+(const vector_3d<T> v1, const vector_3d<T> v2);
