@@ -84,7 +84,7 @@ static const char EMPTY[]                 = "";
 
 static inline esp_err_t errorCheckLogger(esp_err_t x, const char* func, const int line, const char* expr)
 {
-    if (x) MPU_LOGE("func:%s @ line:%d, expr:\"%s\", error:0x%X ", func, line, expr, x);
+    if (x) { MPU_LOGE("func:%s @ line:%d, expr:\"%s\", error:0x%X ", func, line, expr, x); }
     return x;
 }
 

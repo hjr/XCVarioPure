@@ -25,15 +25,11 @@
 #ifndef _MPU_HPP_
 #define _MPU_HPP_
 
-#include <freertos/FreeRTOS.h>
-#include <freertos/semphr.h>
-
 #include <cstdint>
 #include <esp_err.h>
 #include "sdkconfig.h"
 
-
-extern SemaphoreHandle_t i2c_mutex;
+// #define MPU_Test 1
 
 #ifdef CONFIG_MPU_I2C
 #if !defined I2CBUS_COMPONENT_TRUE

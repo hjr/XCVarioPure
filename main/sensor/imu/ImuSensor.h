@@ -9,7 +9,7 @@
 #pragma once
 
 #include "../SensorBase.h"
-#include "math/vector_3d.h"
+#include "math/vector_3d_fwd.h"
 #include "math/Quaternion.h"
 
 #include <MPU.hpp>

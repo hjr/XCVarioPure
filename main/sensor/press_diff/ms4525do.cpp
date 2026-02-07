@@ -2,6 +2,7 @@
 
 #include "setup/SetupNG.h"
 
+#include <I2Cbus.hpp>
 
 #define MAX_AUTO_CORRECTED_OFFSET 50
 

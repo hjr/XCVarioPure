@@ -101,13 +101,15 @@ bool ImuSensor::setup() {
     myMPU.setAccelFullScale(mpud::ACCEL_FS_8G);
     myMPU.setGyroFullScale(mpud::GYRO_FS_250DPS);
     myMPU.setDigitalLowPassFilter(mpud::DLPF_5HZ);  // smoother data
-    mpud::raw_axes_t gb = gyro_bias.get();
-    mpud::raw_axes_t ab = accl_bias.get();
+    axes_i16_abi tmp = gyro_bias.get();
+    mpud::raw_axes_t gb(tmp.x, tmp.y, tmp.z);
+    tmp = accl_bias.get();
+    mpud::raw_axes_t ab(tmp.x, tmp.y, tmp.z);
     if (gb.isZero() && ab.isZero()) {
         ESP_LOGI(FNAME, "MPU computeOffsets");
         myMPU.computeOffsets(&ab, &gb);  // returns Offsets in 16G scale
-        accl_bias.set(ab);
-        gyro_bias.set(gb);
+        accl_bias.set(axes_i16_abi(ab.x, ab.y, ab.z));
+        gyro_bias.set(axes_i16_abi(gb.x, gb.y, gb.z));
         myMPU.setGyroOffset(gb);
         ESP_LOGI(FNAME, "MPU new offsets accl:%d/%d/%d gyro:%d/%d/%d ZERO:%d", ab.x, ab.y, ab.z, gb.x, gb.y, gb.z, gb.isZero());
     } else {

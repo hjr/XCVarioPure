@@ -9,10 +9,8 @@
 #include "Trigonometry.h"
 
 #include "Floats.h"
-#include "logdef.h"
 
 #include <cmath>
-#include <cfloat>
 
 // O:=1813c == 1,85µs (240MHz)
 int normalizeDeg(int angle)

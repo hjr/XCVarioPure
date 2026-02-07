@@ -485,7 +485,6 @@ int IMU::getAccelSamplesAndCalib(int side, float &wing_angle  )
 			// Save the accel bias
 			mpud::raw_axes_t raw_bias(bias.x*-2048., bias.y*-2048., bias.z*-2048.);
 			ESP_LOGI(FNAME, "raw  Bias: %d,%d,%d", raw_bias.x, raw_bias.y, raw_bias.z);
-			accl_bias.set(raw_bias, false);
 			// Reprogam MPU bias
 			myMPU.setAccelOffset(raw_bias);
 
@@ -498,13 +497,14 @@ int IMU::getAccelSamplesAndCalib(int side, float &wing_angle  )
 			ESP_LOGI(FNAME, "curr Gyro: %d,%d,%d", curr_bias.x, curr_bias.y, curr_bias.z);
 			raw_bias += curr_bias;
 			ESP_LOGI(FNAME, "new  Gyro: %d,%d,%d", raw_bias.x, raw_bias.y, raw_bias.z);
-			gyro_bias.set(raw_bias, false);
 			// Reprogam MPU bias
 			myMPU.setGyroOffset(raw_bias);
 		}
 		return progress;
 	}
 	return -1;
+            accl_bias.set(axes_i16_abi(raw_bias.x, raw_bias.y, raw_bias.z), false);
+            gyro_bias.set(axes_i16_abi(raw_bias.x, raw_bias.y, raw_bias.z), false);
 }
 
 // // Setup the rotation for the "upright", "topdown" and "ninety" vario mounting positions

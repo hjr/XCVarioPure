@@ -7,27 +7,31 @@
 
 #pragma once
 
-#include "comm/Configuration.h"
 #include "Compass.h"
+#include "comm/Configuration.h"
 #include "math/Units.h"
 #include "setup/SetupCommon.h"
 // #include "logdef.h" // do not include this in a header file
 
-#include <MPU.hpp>
-
-
-#include <freertos/FreeRTOS.h>
-#include <esp_system.h>
 
 #include <esp_err.h>
-#include <nvs_flash.h>
 #include <nvs.h>
-#include <cstdio>
-#include <string>
+#include <nvs_flash.h>
+
 #include <cstring>
+#include <string>
 
 // forwards
 class Quaternion;
+
+// abi robust int16 vector, to avoid issues with padding and alignment of the original types
+struct axes_i16_abi {
+    int16_t x, y, z;
+    constexpr axes_i16_abi() = default;
+    constexpr axes_i16_abi(int16_t a, int16_t b, int16_t c) : x(a), y(b), z(c) {}
+    constexpr bool operator==(const axes_i16_abi& right) const { return x == right.x && y == right.y && z == right.z; }
+};
+
 
 /*
  *
@@ -38,7 +42,6 @@ class Quaternion;
  *  MC.set( 1.5 );
  *
  */
-
 
 enum e_display_type { UNIVERSAL, RAYSTAR_RFJ240L_40P, ST7789_2INCH_12P, ILI9341_TFT_18P };
 typedef enum chopping_mode { NO_CHOP=0, VARIO_CHOP=1, S2F_CHOP=2, BOTH_CHOP=3 } chopping_mode_t; // bit masked
@@ -81,210 +84,85 @@ typedef enum e_display_orientation { DISPLAY_NORMAL, DISPLAY_TOPDOWN, DISPLAY_NI
 typedef enum e_gear_warning_io { GW_OFF, GW_FLAP_SENSOR, GW_S2_RS232_RX, GW_FLAP_SENSOR_INV, GW_S2_RS232_RX_INV, GW_EXTERNAL }  e_gear_warning_io_t;
 typedef enum e_data_mon_mode { MON_MOD_ASCII, MON_MOD_BINARY } e_data_mon_mode_t;
 typedef enum e_hardware_rev {
-	HW_UNKNOWN=0,
-	HW_LONG_VARIO=1,
-	XCVARIO_20=2,  // 1 x RS232
-	XCVARIO_21=3,  // 2 x RS232, AHRS MPU6500
-	XCVARIO_22=4,  // 2 x RS232, AHRS MPU6500, CAN Bus,
-	XCVARIO_23=5,  // 2 x RS232, AHRS MPU6500, CAN Bus, AHRS temperature control
-	XCVARIO_25=7   // 2 x RS232, AHRS ICM-20602, CAN Bus, AHRS temperature control
-} e_hardware_rev_t;        // XCVario-Num = hardware revision + 18
+    HW_UNKNOWN = 0,
+    HW_LONG_VARIO = 1,
+    XCVARIO_20 = 2,  // 1 x RS232
+    XCVARIO_21 = 3,  // 2 x RS232, AHRS MPU6500
+    XCVARIO_22 = 4,  // 2 x RS232, AHRS MPU6500, CAN Bus,
+    XCVARIO_23 = 5,  // 2 x RS232, AHRS MPU6500, CAN Bus, AHRS temperature control
+    XCVARIO_25 = 7   // 2 x RS232, AHRS ICM-20602, CAN Bus, AHRS temperature control
+} e_hardware_rev_t;  // XCVario-Num = hardware revision + 18
 enum e_battery_type { BATTERY_CANCEL, BATTERY_LEADACID, BATTERY_LIFEPO4 };
 
 constexpr int NO_ELEVATION = -1;
 
 struct t_tenchar_id {
-	char id[10];
-	t_tenchar_id() {}
-	t_tenchar_id( const char *val ) { strncpy( id, val, 10 ); }
-	t_tenchar_id( const t_tenchar_id &val ) { strncpy( id, val.id, 10 ); }
-	bool operator == ( const t_tenchar_id &other ) const {
-		return( strcmp( id, other.id ) == 0 );
-	}
-	t_tenchar_id operator = ( const t_tenchar_id &other ) {
-		strncpy( id, other.id, 10 );
-		return *this;
-	}
-	t_tenchar_id operator = ( const char *other ) {
-		strncpy( id, other, 10 );
-		id[9] = '\0';
-		return *this;
-	}
+    char id[10];
+    t_tenchar_id() {}
+    t_tenchar_id(const char* val) { strncpy(id, val, 10); }
+    t_tenchar_id(const t_tenchar_id& val) { strncpy(id, val.id, 10); }
+    bool operator==(const t_tenchar_id& other) const { return (strcmp(id, other.id) == 0); }
+    t_tenchar_id operator=(const t_tenchar_id& other) {
+        strncpy(id, other.id, 10);
+        return *this;
+    }
+    t_tenchar_id operator=(const char* other) {
+        strncpy(id, other, 10);
+        id[9] = '\0';
+        return *this;
+    }
 };
 
-struct limits_t
-{
-	float _min;
-	float _max;
-	float _step;
-	constexpr limits_t(float min, float max, float step)
-		: _min(min), _max(max), _step(step) {}
+struct limits_t {
+    float _min;
+    float _max;
+    float _step;
+    constexpr limits_t(float min, float max, float step) : _min(min), _max(max), _step(step) {}
 };
 // create static pointers to limits that live only in flash
-#define LIMITS(min, max, step) ([]() -> const limits_t* { \
-    static constexpr limits_t _lim = { (min), (max), (step) }; \
-    return &_lim; \
-}())
+#define LIMITS(min, max, step)                                   \
+    ([]() -> const limits_t* {                                   \
+        static constexpr limits_t _lim = {(min), (max), (step)}; \
+        return &_lim;                                            \
+    }())
 extern const limits_t polar_speed_limits;
 
-template<typename T>
-class SetupNG: public SetupCommon
-{
-public:
-	SetupNG( const char *akey, T adefault, bool reset=true, e_sync_t sync=SYNC_NONE, e_volatility vol=PERSISTENT,
-			void (* action)()=nullptr, quantity_t quant = quantity_t::QUANT_NONE, const limits_t *l = nullptr) :
-		SetupCommon(akey),
-		_default(adefault),
-		_limt(l)
-	{
-		// ESP_LOGI(FNAME,"SetupNG(%s)", akey );
-		// if( strlen( akey ) > 15 ) {
-		// 	ESP_LOGE(FNAME,"SetupNG(%s) key > 15 char !", akey );
-		// }
-		flags._reset = reset;
-		flags._sync = sync;
-		flags._volatile = vol;
-		flags._quant = (uint8_t)quant;
-		_action = action;
-	}
-	virtual ~SetupNG() = default;
+template <typename T>
+class SetupNG : public SetupCommon {
+   public:
+    SetupNG(const char* akey,
+            T adefault,
+            bool reset = true,
+            e_sync_t sync = SYNC_NONE,
+            e_volatility vol = PERSISTENT,
+            void (*action)() = nullptr,
+            quantity_t quant = quantity_t::QUANT_NONE,
+            const limits_t* l = nullptr);
+    virtual ~SetupNG() = default;
+    char typeName(void) const override;
+    std::string getValueAsStr() const override;
+    void setValueFromStr(const char* str) override;
 
-	char typeName(void) const override {
-		if constexpr (std::is_same_v<T, float>)
-			return 'F';
-		else if constexpr (std::is_same_v<T, int>)
-			return 'I';
-		else if constexpr (std::is_same_v<T, Quaternion>)
-			return 'Q';
-		else if constexpr (std::is_same_v<T, bitfield_compass>)
-			return 'B';
-		else if constexpr (std::is_same_v<T, mpud::raw_axes_t>)
-			return 'A';
-		else if constexpr (std::is_same_v<T, DeviceNVS>)
-			return 'D';
-		else
-			return 'U';
-	}
+    void* getPtr() override { return &_value; }
+    int getSize() override { return sizeof(_value); }
+    bool isDefault() override { return _default == _value; }
+    bool inLimits() const override;  // check on nan for <float>
 
-	std::string getValueAsStr() const override {
-		std::string str;
-		if( flags._volatile != VOLATILE ){
-			if constexpr (std::is_same_v<T, float>) {
-				str = std::to_string(_value);
-			}
-			else if constexpr (std::is_same_v<T, int>) {
-				str = std::to_string(_value);
-			}
-			else if constexpr (std::is_same_v<T, Quaternion>) {
-				str = std::to_string(_value._w) + '/' + std::to_string(_value._x) + '/' + std::to_string(_value._y) + '/' + std::to_string(_value._z);
-			}
-			else if constexpr (std::is_same_v<T, bitfield_compass>) {
-				uint8_t as_byte = *reinterpret_cast<const uint8_t*>(&_value);
-				str = std::to_string(as_byte);
-			}
-			else if constexpr (std::is_same_v<T, mpud::raw_axes_t>) {
-				str = std::to_string(_value.x) + '/' +std::to_string(_value.y) + '/' +std::to_string(_value.z);
-			}
-			else if constexpr (std::is_same_v<T, DeviceNVS>) {
-				str = std::to_string(_value.target.raw) + '/' +std::to_string(_value.setup.data) +
-					'/' +std::to_string(_value.bin_sp) + '/' +std::to_string(_value.nmea_sp);
-			}
-		}
-		return str;
-	}
+    // virtual T getGui() const { return get(); } // tb. overloaded for blackboard fixme
+    // virtual const char* unit() const { return ""; } // tb. overloaded for blackboard
+    T get() const { return _value; }
+    bool set(T aval, bool dosync = true, bool doAct = true);
+    bool setCheckRange(T aval, bool dosync = true, bool doAct = true);
 
-	void setValueFromStr( const char * str ) override {
-		if( flags._volatile != VOLATILE ){
-			if constexpr (std::is_same_v<T, float>) {
-				sscanf(str, "%f", &_value);
-			}
-			else if constexpr (std::is_same_v<T, int>) {
-				sscanf(str, "%d", &_value);
-			}
-			else if constexpr (std::is_same_v<T, Quaternion>) {
-				sscanf( str,"%f/%f/%f/%f", &_value._w, &_value._x, &_value._y, &_value._z );
-			}
-			else if constexpr (std::is_same_v<T, bitfield_compass>) {
-				unsigned temp;
-				if (sscanf(str ,"%u", &temp) == 1 && temp < 256) {
-					_value = bitfield_compass(temp);
-				}
-			}
-			else if constexpr (std::is_same_v<T, mpud::raw_axes_t>) {
-				sscanf( str,"%hd/%hd/%hd", &_value.x, &_value.y, &_value.z );
-			}
-			else if constexpr (std::is_same_v<T, DeviceNVS>) {
-				uint32_t t, s;
-				int16_t bp, np;
-				if (sscanf(str ,"%d/%d/%hd/%hd", (unsigned*)&t, (unsigned*)&s, &bp, &np) == 4) {
-					_value = DeviceNVS(t, s, bp, np);
-				}
-			}
-			setDirty();
-		}
+    quantity_t quantityType() { return (quantity_t)flags._quant; }
+    T getDefault() const { return _default; }
 
-	}
+    bool hasLimits() const { return _limt != nullptr; }
+    float getMin() const { return _limt->_min; }
+    float getMax() const { return _limt->_max; }
+    float getStep() const { return _limt->_step; }
 
-	void* getPtr() override { return &_value; }
-	int getSize() override { return sizeof(_value); }
-	bool isDefault() override { return _default == _value; }
-	bool inLimits() const override; // check on nan for <float>
-
-	// virtual T getGui() const { return get(); } // tb. overloaded for blackboard fixme
-	// virtual const char* unit() const { return ""; } // tb. overloaded for blackboard
-
-	T get() const { return _value; }
-
-	bool set( T aval, bool dosync=true, bool doAct=true ) {
-		if( _value == aval && !dosync && !doAct) {
-			// ESP_LOGI(FNAME,"Value already in config: %s(%s)", _key.data(), getValueAsStr().c_str() );
-			return( true );
-		}
-		_value = aval;
-		flags._valid = true;
-		if ( dosync ) {
-			// ESP_LOGI( FNAME,"Syncing %s after set", _key.data());
-			sync();
-		}
-		if( doAct ){
-			if( _action != 0 ) {
-				(*_action)();
-			}
-		}
-		if( flags._volatile == VOLATILE ){
-			return true;
-		}
-		setDirty();
-		// ESP_LOGI(FNAME,"set_%s(%s)", _key.data(), getValueAsStr().c_str() );
-		return true;
-	}
-
-	bool setCheckRange( T aval, bool dosync=true, bool doAct=true ) {
-		if constexpr (std::is_same_v<T, float> || std::is_same_v<T, int>) {
-			if( hasLimits() ){
-				if( aval < getMin() ) {
-					return set( getMin(), dosync, doAct );
-				}
-				if ( aval > getMax() ){
-					return set( getMax(), dosync, doAct );
-				}
-			}
-		}
-		return set( aval, dosync, doAct );
-	}
-
-	quantity_t quantityType() {
-		return (quantity_t)flags._quant;
-	}
-
-	T getDefault() const { return _default; }
-
-	bool hasLimits() const { return _limt != nullptr; }
-	float getMin() const { return _limt->_min; }
-	float getMax() const { return _limt->_max; }
-	float getStep() const { return _limt->_step; }
-
-protected:
+   protected:
     void setDefault() override {
         // do not do the set procedure here (only for intialization or factory reset)
         if (_value == _default) {
@@ -296,11 +174,12 @@ protected:
         }
     }
 
-private:
-	T       _value;   // the value
-	const T _default; // value applied with a factory reset
-	const limits_t *_limt = nullptr;
+   private:
+    T       _value;    // the value
+    const T _default;  // value applied with a factory reset
+    const limits_t* _limt = nullptr;
 };
+
 
 //////////////////////////
 // configuration variables
@@ -547,11 +426,12 @@ extern SetupNG<t_tenchar_id>  custom_wireless_id;
 extern SetupNG<int> 		logging;
 extern SetupNG<float>      	display_clock_adj;
 
-extern SetupNG<float>		glider_ground_aa;
-extern SetupNG<Quaternion>	imu_reference;
-extern SetupNG<mpud::raw_axes_t> gyro_bias;
-extern SetupNG<mpud::raw_axes_t> accl_bias;
-extern SetupNG<float>       mpu_temperature;
+extern SetupNG<float> 		glider_ground_aa;
+extern SetupNG<Quaternion> 	imu_reference;
+extern SetupNG<axes_i16_abi> gyro_bias;
+extern SetupNG<axes_i16_abi> accl_bias;
+extern SetupNG<float> 		mpu_temperature;
+extern SetupNG<meter_t> 	imu_leverarm;
 extern SetupNG<int> 		xcv_role;
 extern SetupNG<int> 		my_caps;
 extern SetupNG<int> 		peer_caps;

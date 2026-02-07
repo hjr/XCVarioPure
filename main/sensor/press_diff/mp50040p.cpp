@@ -1,10 +1,10 @@
 
 #include "mp50040p.h"
 
-#include "setup/SetupNG.h"
 #include "../adc/mcp3221.h"
 #include "logdefnone.h"
 
+#include <I2Cbus.hpp>
 
 constexpr float MP50040P_CORR = 5000.0/4096.0;  // according to above formula, this is the relation between adc readout and Pascal
 

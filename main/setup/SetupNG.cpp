@@ -12,7 +12,6 @@
 #include "math/Quaternion.h"
 #include "ESPAudio.h"
 #include "glider/Polars.h"
-#include "mpu/types.hpp"  // MPU data types and definitions
 #include "sensor.h"
 #include "wind/StraightWind.h"
 #include "wind/CircleWind.h"
@@ -44,29 +43,190 @@
 #include <esp_http_server.h>
 
 
-// Specialization for float
-template<typename T>
-bool SetupNG<T>::inLimits() const { return true; }
-template<>
-bool SetupNG<float>::inLimits() const {
-	if ( std::isnan(_value) ) { return false; }
-	if ( _limt ) {
-		// check min/max limit
-		if ( _value < _limt->_min ) { return false; }
-		if ( _value > _limt->_max ) { return false; }
-	}
-	return true;
-}
-template<>
-bool SetupNG<int>::inLimits() const {
-	if ( _limt ) {
-		// check min/max limit
-		if ( _value < (int)_limt->_min ) { return false; }
-		if ( _value > (int)_limt->_max ) { return false; }
-	}
-	return true;
+template <typename T>
+SetupNG<T>::SetupNG( const char *akey, T adefault, bool reset, e_sync_t sync, e_volatility vol,
+        void (* action)(), quantity_t quant, const limits_t *l) :
+    SetupCommon(akey),
+    _default(adefault),
+    _limt(l)
+{
+    // ESP_LOGI(FNAME,"SetupNG(%s)", akey );
+    // if( strlen( akey ) > 15 ) {
+    // 	ESP_LOGE(FNAME,"SetupNG(%s) key > 15 char !", akey );
+    // }
+    flags._reset = reset;
+    flags._sync = sync;
+    flags._volatile = vol;
+    flags._quant = (uint8_t)quant;
+    _action = action;
 }
 
+template <typename T>
+char SetupNG<T>::typeName(void) const {
+    if constexpr (std::is_same_v<T, float>)
+        return 'F';
+    else if constexpr (std::is_same_v<T, int>)
+        return 'I';
+    else if constexpr (std::is_same_v<T, Quaternion>)
+        return 'Q';
+    else if constexpr (std::is_same_v<T, bitfield_compass>)
+        return 'B';
+    else if constexpr (std::is_same_v<T, axes_i16_abi>)
+        return 'A';
+    else if constexpr (std::is_same_v<T, DeviceNVS>)
+        return 'D';
+    else
+        return 'U';
+}
+
+template <typename T>
+std::string SetupNG<T>::getValueAsStr() const {
+    std::string str;
+    if( flags._volatile != VOLATILE ){
+        if constexpr (std::is_same_v<T, float>) {
+            str = std::to_string(_value);
+        }
+        else if constexpr (std::is_same_v<T, int>) {
+            str = std::to_string(_value);
+        }
+        else if constexpr (std::is_same_v<T, Quaternion>) {
+            str = std::to_string(_value._w) + '/' + std::to_string(_value._x) + '/' + std::to_string(_value._y) + '/' + std::to_string(_value._z);
+        }
+        else if constexpr (std::is_same_v<T, bitfield_compass>) {
+            uint8_t as_byte = *reinterpret_cast<const uint8_t*>(&_value);
+            str = std::to_string(as_byte);
+        }
+        else if constexpr (std::is_same_v<T, axes_i16_abi>) {
+            str = std::to_string(_value.x) + '/' +std::to_string(_value.y) + '/' +std::to_string(_value.z);
+        }
+        else if constexpr (std::is_same_v<T, DeviceNVS>) {
+            str = std::to_string(_value.target.raw) + '/' +std::to_string(_value.setup.data) +
+                '/' +std::to_string(_value.bin_sp) + '/' +std::to_string(_value.nmea_sp);
+        }
+    }
+    return str;
+}
+
+template <typename T>
+void SetupNG<T>::setValueFromStr( const char * str ) {
+    if( flags._volatile != VOLATILE ){
+        if constexpr (std::is_same_v<T, float>) {
+            sscanf(str, "%f", &_value);
+        }
+        else if constexpr (std::is_same_v<T, int>) {
+            sscanf(str, "%d", &_value);
+        }
+        else if constexpr (std::is_same_v<T, Quaternion>) {
+            sscanf( str,"%f/%f/%f/%f", &_value._w, &_value._x, &_value._y, &_value._z );
+        }
+        else if constexpr (std::is_same_v<T, bitfield_compass>) {
+            unsigned temp;
+            if (sscanf(str ,"%u", &temp) == 1 && temp < 256) {
+                _value = bitfield_compass(temp);
+            }
+        }
+        else if constexpr (std::is_same_v<T, axes_i16_abi>) {
+            sscanf( str,"%hd/%hd/%hd", &_value.x, &_value.y, &_value.z );
+        }
+        else if constexpr (std::is_same_v<T, DeviceNVS>) {
+            uint32_t t, s;
+            int16_t bp, np;
+            if (sscanf(str ,"%d/%d/%hd/%hd", (unsigned*)&t, (unsigned*)&s, &bp, &np) == 4) {
+                _value = DeviceNVS(t, s, bp, np);
+            }
+        }
+        setDirty();
+    }
+}
+
+// Specialization for float
+template <typename T>
+bool SetupNG<T>::inLimits() const {
+    return true;
+}
+template <>
+bool SetupNG<float>::inLimits() const {
+    if (std::isnan(_value)) {
+        return false;
+    }
+    if (_limt) {
+        // check min/max limit
+        if (_value < _limt->_min) {
+            return false;
+        }
+        if (_value > _limt->_max) {
+            return false;
+        }
+    }
+    return true;
+}
+template <>
+bool SetupNG<int>::inLimits() const {
+    if (_limt) {
+        // check min/max limit
+        if (_value < (int)_limt->_min) {
+            return false;
+        }
+        if (_value > (int)_limt->_max) {
+            return false;
+        }
+    }
+    return true;
+}
+
+template <typename T>
+bool SetupNG<T>::set( T aval, bool dosync, bool doAct ) {
+    if( _value == aval && !dosync && !doAct) {
+        // ESP_LOGI(FNAME,"Value already in config: %s(%s)", _key.data(), getValueAsStr().c_str() );
+        return( true );
+    }
+    _value = aval;
+    flags._valid = true;
+    if ( dosync ) {
+        // ESP_LOGI( FNAME,"Syncing %s after set", _key.data());
+        sync();
+    }
+    if( doAct ){
+        if( _action != 0 ) {
+            (*_action)();
+        }
+    }
+    if( flags._volatile == VOLATILE ){
+        return true;
+    }
+    setDirty();
+    // ESP_LOGI(FNAME,"set_%s(%s)", _key.data(), getValueAsStr().c_str() );
+    return true;
+}
+
+template <typename T>
+bool SetupNG<T>::setCheckRange( T aval, bool dosync, bool doAct ) {
+    if constexpr (std::is_same_v<T, float> || std::is_same_v<T, int>) {
+        if( hasLimits() ){
+            if( aval < getMin() ) {
+                return set( getMin(), dosync, doAct );
+            }
+            if ( aval > getMax() ){
+                return set( getMax(), dosync, doAct );
+            }
+        }
+    }
+    return set( aval, dosync, doAct );
+}
+
+// All the instantiations we need
+template class SetupNG<float>;
+template class SetupNG<int>;
+template class SetupNG<Quaternion>;
+template class SetupNG<t_tenchar_id>;
+template class SetupNG<axes_i16_abi>;
+template class SetupNG<bitfield_compass>;
+template class SetupNG<DeviceNVS>;
+
+
+////////////////////////////////////////////////////////////////////////////
+// static callbacks
+////////////////////////////////////////////////////////////////////////////
 void change_mc()
 {
     Speed2Fly.changeMc();
@@ -472,14 +632,15 @@ SetupNG<float>      	display_clock_adj("DSCLADHJ", 0, true, SYNC_NONE, PERSISTEN
 
 SetupNG<float>				glider_ground_aa("GLD_GND_AA", 12.0, true, SYNC_FROM_MASTER, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(-5, 20, 1));
 SetupNG<Quaternion>			imu_reference("IMU_REFERENCE", Quaternion(), false);
-SetupNG<mpud::raw_axes_t>	gyro_bias("GYRO_BIAS", {} );
-SetupNG<mpud::raw_axes_t>	accl_bias("ACCL_BIAS", {} );
-SetupNG<float>              mpu_temperature("MPUTEMP", 45.0, true, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(-1, 60, 1)); // default for AHRS chip temperature (XCV 2023)
+SetupNG<axes_i16_abi>		gyro_bias("GYRO_BIAS", {0, 0, 0} );
+SetupNG<axes_i16_abi>		accl_bias("ACCL_BIAS", {0, 0, 0} );
+SetupNG<float> 				mpu_temperature("MPUTEMP", 45.0, true, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(30, 60, 1)); // default for AHRS chip temperature (XCV 2023)
+// Master or Second device role
 SetupNG<int> 			xcv_role("XCVROLE", MASTER_ROLE, false, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(MASTER_ROLE, SECOND_ROLE, 1));
 // Bitfield to exchange status on connected devices between master and second
 SetupNG<int> 			my_caps("MACAPS", 0, false, SYNC_NONE, VOLATILE, propagate_caps );
 SetupNG<int>			peer_caps("SECAPS", 0, false, SYNC_NONE, VOLATILE );
-// Those device entries are serving as factory reset minimum configuration
+// Connected device entries persistance
 SetupNG<DeviceNVS>		anemoi_devsetup("ANEMOI", DeviceNVS() );
 SetupNG<DeviceNVS>		flarm_devsetup("FLARM", DeviceNVS() );
 SetupNG<DeviceNVS>		master_devsetup("MASTER", DeviceNVS() );
@@ -492,5 +653,3 @@ SetupNG<DeviceNVS>		flarm_host2_setup("NAVIFLDOWN", DeviceNVS() );
 SetupNG<DeviceNVS>		radio_host_setup("NAVIRADIO", DeviceNVS() );
 SetupNG<DeviceNVS>		krt_devsetup("KRTRADIO", DeviceNVS() );
 SetupNG<DeviceNVS>		atr_devsetup("ATRIRADIO", DeviceNVS() );
-
-template class SetupNG<DeviceNVS>;

@@ -2083,6 +2083,7 @@ esp_err_t MPU::compassReset()
  * @param result Should be ZERO if gyro and accel passed.
  * @todo Elaborate doc.
  * */
+ #ifdef MPU_Test
 esp_err_t MPU::selfTest(selftest_t* result)
 {
 #ifdef CONFIG_MPU6050
@@ -2108,6 +2109,7 @@ esp_err_t MPU::selfTest(selftest_t* result)
 	if (gyroST != 0) *result |= SELF_TEST_GYRO_FAIL;
 	return err;
 }
+#endif
 
 #if defined CONFIG_MPU6500
 // Production Self-Test table for MPU6500 based models,
@@ -2153,6 +2155,7 @@ static constexpr uint16_t kSelfTestTable[256] = {
  * @param result self-test error for each axis (X=bit0, Y=bit1, Z=bit2). Zero is a pass.
  * @note Bias should be in 16G format for MPU6050 and 2G for MPU6500 based models.
  * */
+#ifdef MPU_Test
 esp_err_t MPU::accelSelfTest(raw_axes_t& regularBias, raw_axes_t& selfTestBias, uint8_t* result)
 {
 #if defined CONFIG_MPU6050
@@ -2242,12 +2245,14 @@ esp_err_t MPU::accelSelfTest(raw_axes_t& regularBias, raw_axes_t& selfTestBias, 
 			((*result & 0x2) ? "FAIL" : "OK"), ((*result & 0x4) ? "FAIL" : "OK"));
 	return err;
 }
+#endif
 
 /**
  * @brief Gyro Self-test.
  * @param result Self-test error for each axis (X=bit0, Y=bit1, Z=bit2). Zero is a pass.
  * @note Bias should be in 250DPS format for both MPU6050 and MPU6500 based models.
  * */
+ #ifdef MPU_Test
 esp_err_t MPU::gyroSelfTest(raw_axes_t& regularBias, raw_axes_t& selfTestBias, uint8_t* result)
 {
 	constexpr gyro_fs_t kGyroFS = GYRO_FS_250DPS;
@@ -2327,6 +2332,7 @@ esp_err_t MPU::gyroSelfTest(raw_axes_t& regularBias, raw_axes_t& selfTestBias, u
 			((*result & 0x2) ? "FAIL" : "OK"), ((*result & 0x4) ? "FAIL" : "OK"));
 	return err;
 }
+#endif
 
 /**
  * @brief Collect samples of a static 1g acceleration
@@ -2349,10 +2355,10 @@ esp_err_t MPU::getMPUSamples(double& avgx, double& avgy, double& avgz, axes_t<in
 	if (MPU_ERR_CHECK(setAccelOffset())) return err;
 
 	// wait for 200ms for sensors to stabilize
-	vTaskDelay(200 / portTICK_PERIOD_MS);
+	vTaskDelay(pdMS_TO_TICKS(200));
 	// fill FIFO for 400ms
 	if (MPU_ERR_CHECK(resetFIFO())) return err;
-	vTaskDelay(400 / portTICK_PERIOD_MS);
+	vTaskDelay(pdMS_TO_TICKS(400));
 	if (MPU_ERR_CHECK(setFIFOConfig(FIFO_CFG_NONE))) return err;
 	// get FIFO count
 	const uint16_t fifoCount = getFIFOCount();
