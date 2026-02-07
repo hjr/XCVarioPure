@@ -131,10 +131,10 @@ void UiEventLoop(void *arg)
             }
             else if (event.isModeEvent()) {
                 if (detail == ModeEvent::MODE_TOGGLE) {
-                    VCMode.setCMode(!VCMode.getCMode());
+                    CRMOD.setCMode(!CRMOD.getCMode());
                 }
                 else if (detail == ModeEvent::MODE_VARIO || detail == ModeEvent::MODE_S2F) {
-                    VCMode.setCMode(detail == ModeEvent::MODE_S2F);
+                    CRMOD.setCMode(detail == ModeEvent::MODE_S2F);
                 }
             }
             else {

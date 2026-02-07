@@ -118,7 +118,7 @@ void NmeaPrtcl::sendStdXCVario()
         std::sprintf(str, "%1.3f", (ballast.get() + 100.f) / 100.f);
         msg->buffer += str;
     }
-    msg->buffer += ',' + std::to_string(!VCMode.getCMode());
+    msg->buffer += ',' + std::to_string(!CRMOD.getCMode());
     std::sprintf(str, ",%2.1f", std::roundf(temp * 10.f) / 10.f);
     msg->buffer += str;
     std::sprintf(str, ",%4.1f", Units::pipe(QNH.get(), Units::hpa));

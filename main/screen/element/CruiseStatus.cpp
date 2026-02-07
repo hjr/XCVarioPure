@@ -31,7 +31,7 @@ void CruiseStatus::draw() {
         MYUCG->drawBox(_ref_x - (SYMBOL_SIZE+3), _ref_y - (SYMBOL_SIZE+3), 2*SYMBOL_SIZE+6, 2*SYMBOL_SIZE+6);
 
         MYUCG->setColor(COLOR_WHITE);
-        if (VCMode.getCMode()) {
+        if (CRMOD.getCMode()) {
             // draw litte arrow
             MYUCG->drawTetragon(_ref_x - SYMBOL_SIZE, _ref_y - 5, _ref_x - SYMBOL_SIZE-1, _ref_y - 1,
                                 _ref_x + SYMBOL_SIZE-4, _ref_y + 5, _ref_x + SYMBOL_SIZE-4, _ref_y + 1);
@@ -49,13 +49,13 @@ void CruiseStatus::draw() {
     }
 
     // write netto mode in case set
-    if (VCMode.isNetto()) {
+    if (CRMOD.isNetto()) {
         MYUCG->setColor(COLOR_WHITE);
     } else {
         MYUCG->setColor(COLOR_BLACK);
     }
     const char *s = "  net";
-    if (VCMode.getVMode() == CruiseMode::MODE_REL_NETTO) {
+    if (CRMOD.getVMode() == CruiseMode::MODE_REL_NETTO) {
         s = "snet";
     }
     ESP_LOGI(FNAME, "print netto stat %d - %s", VCMode.isNetto(), s);

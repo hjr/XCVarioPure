@@ -144,7 +144,7 @@ void NmeaPrtcl::sendSeeYouF()
     msg->buffer += tmp;
     std::sprintf(tmp, "%.1f,", altitude.get());
     msg->buffer += tmp;
-    std::sprintf(tmp, "%1d,", VCMode.getCMode());
+    std::sprintf(tmp, "%1d,", CRMOD.getCMode());
     msg->buffer += tmp;
 
     msg->buffer += "*" + NMEA::CheckSum(msg->buffer.c_str()) + "\r\n";
@@ -173,7 +173,7 @@ void NmeaPrtcl::sendSeeYouS()
     char tmp[50];
     std::sprintf(tmp, "%.1f,", Units::pipe(OAT.get(), Units::celsius));
     msg->buffer += tmp;
-    std::sprintf(tmp, "%1d,", VCMode.getCMode());
+    std::sprintf(tmp, "%1d,", CRMOD.getCMode());
     msg->buffer += tmp;
     std::sprintf(tmp, "%.1f,", battery_voltage.get());
     msg->buffer += tmp;

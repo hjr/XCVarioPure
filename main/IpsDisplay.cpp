@@ -827,11 +827,11 @@ void IpsDisplay::drawDisplay(){
     mps_t te_ms = te_vario.get();
     mps_t te_avg_ms = bmpVario.getAvgVario();
     mps_t polar_sink_ms = bmpVario.getPolarSink();
-	if ( VCMode.isNetto() ) {
+	if ( CRMOD.isNetto() ) {
 		te_ms -= polar_sink_ms;
 		te_avg_ms -= polar_sink_ms; // average
 	}
-	if ( VCMode.getVMode() == CruiseMode::MODE_REL_NETTO ) { // Super Netto, considering circling sink
+	if ( CRMOD.getVMode() == CruiseMode::MODE_REL_NETTO ) { // Super Netto, considering circling sink
 		te_ms += Speed2Fly.circlingSink( ias.get() );
 		te_avg_ms += Speed2Fly.circlingSink( ias.get() );
 	}
@@ -872,7 +872,7 @@ void IpsDisplay::drawDisplay(){
 
     // Wind & center aid
     if (!(tick % 2)) {
-        if (theCenteraid && !VCMode.getCMode()) {
+        if (theCenteraid && !CRMOD.getCMode()) {
             theCenteraid->drawCenterAid();
         } else if (wind_enable.get() > WA_OFF) {
             // static int16_t wdir=-1, idir=-1;
@@ -904,7 +904,7 @@ void IpsDisplay::drawDisplay(){
 
     // Vario indicator
     MAINgauge->draw(te_ms);
-    if (VCMode.isGross()) {
+    if (CRMOD.isGross()) {
         MAINgauge->drawPolarSink(polar_sink_ms);
     }
 
@@ -932,7 +932,7 @@ void IpsDisplay::drawDisplay(){
     if( flags.mode_dirty ) {
         VCSTATgauge->draw();
         WNDgauge->clearGauge();
-        if (!vario_centeraid.get() || VCMode.getCMode()) {
+        if (!vario_centeraid.get() || CRMOD.getCMode()) {
             WNDgauge->drawRose();
         }
         flags.mode_dirty = false;

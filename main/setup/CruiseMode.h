@@ -49,4 +49,4 @@ private:
 };
 
 
-extern CruiseMode VCMode;
+extern CruiseMode CRMOD;

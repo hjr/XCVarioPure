@@ -64,7 +64,7 @@ void NmeaPrtcl::sendBorgelt()
     msg->buffer += buffer;
     std::sprintf(buffer, ",%1.2f", (ballast.get()+100.f)/100.f);
     msg->buffer += buffer;
-    std::sprintf(buffer, ",%1d", !VCMode.getCMode());
+    std::sprintf(buffer, ",%1d", !CRMOD.getCMode());
     msg->buffer += buffer;
     std::sprintf(buffer, ",%2d", fast_iroundf(temp));
 

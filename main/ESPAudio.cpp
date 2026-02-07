@@ -727,7 +727,7 @@ void Audio::applySetup()
     maxf = center_freq.get() * tone_var.get();
     minf = center_freq.get() / tone_var.get();
     ESP_LOGI(FNAME,"min/max freq. %.1f/%.1f", minf, maxf);
-    VCMode.updateCache(); // force re- evaluation of cruise and audio mode
+    CRMOD.updateCache(); // force re- evaluation of cruise and audio mode
     updateAudioMode();
 }
 
@@ -771,7 +771,7 @@ void Audio::setVolume(float vol, bool sync) {
 	speaker_volume = audio_volume.get();
     if (audio_split_vol.get())
     {
-        if (VCMode.getCMode())
+        if (CRMOD.getCMode())
         {
             s2f_mode_volume = speaker_volume;
         }
@@ -796,7 +796,7 @@ void Audio::updateAudioMode()
 {
     // adjust dead band doe S2F
     // deadband also used to implement audio mute options
-    if (VCMode.audioIsVario()) {
+    if (CRMOD.audioIsVario()) {
         _deadband_p = deadband.get();
         _deadband_n = audio_mute_sink.get() ? -_range-1 : deadband_neg.get();
     }
@@ -816,7 +816,7 @@ void Audio::updateAudioMode()
     // set volume according s2f mode, need to be the last action here last
     if (audio_split_vol.get())
     {
-        speaker_volume = VCMode.getCMode() ? s2f_mode_volume : vario_mode_volume;
+        speaker_volume = CRMOD.getCMode() ? s2f_mode_volume : vario_mode_volume;
         writeVolume(speaker_volume);
     }
 }
@@ -969,7 +969,7 @@ void Audio::stopAudio() {
 
 void  Audio::calculateFrequency(float val) {
     float max_var = (val > 0) ? ((maxf - center_freq.get()) * 2) : (center_freq.get() - minf);
-    float range = (VCMode.audioIsVario()) ? _range : 5.0;
+    float range = (CRMOD.audioIsVario()) ? _range : 5.0;
     float mult = std::pow((abs(val) / range) + 1, audio_factor.get());
     float freq = center_freq.get() + ((mult * val) / range) * (max_var / _exponent_max);
     if (val > 0) {
@@ -994,7 +994,7 @@ void  Audio::calculateFrequency(float val) {
         // frequencies
         vario_seq[0].setStep(freq);
         vario_extra[0].setStep(freq * 5.);
-        if ( VCMode.audioIsChopping() && val > 0 ) {
+        if ( CRMOD.audioIsChopping() && val > 0 ) {
             if ( dual_tone.get() ) vario_seq[1].setStep(freq * HIGH_TONE_VAR);
             else vario_seq[1].step = vario_extra[1].step = 0;
         }
@@ -1138,13 +1138,13 @@ void Audio::dactask()
                 // pull the intput value from vario indicator, or speed respectively
                 float max = _range;
                 float audio_value;
-                if( VCMode.audioIsVario() ) {
+                if( CRMOD.audioIsVario() ) {
                     // vario is the parameter for audio
                     audio_value = te_vario.get();
-                    if ( VCMode.isNetto() ) {
+                    if ( CRMOD.isNetto() ) {
                         audio_value -= bmpVario.getPolarSink();
                     }
-                    if ( VCMode.getVMode() == CruiseMode::MODE_REL_NETTO ) {
+                    if ( CRMOD.getVMode() == CruiseMode::MODE_REL_NETTO ) {
                         audio_value += Speed2Fly.circlingSink( ias.get() );
                     }
                 }

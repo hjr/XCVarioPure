@@ -411,7 +411,7 @@ void readSensors(void *pvParameters)
 		}
 
         // Need to be done for client and main vario
-        s2f_ideal.set(Speed2Fly.calculate(te_netto.get(), !VCMode.getCMode()));
+        s2f_ideal.set(Speed2Fly.calculate(te_netto.get(), !CRMOD.getCMode()));
 
         if (OneWIRE) {
             // read one wire sensors
@@ -1036,7 +1036,7 @@ void system_startup(void *args){
     // enter normal operation
     xTaskCreate(&readSensors, "readSensors", 5120, NULL, 12, NULL);
 
-    VCMode.updateCache();  // correct initialization
+    CRMOD.updateCache();  // correct initialization
     AUDIO->initVarioVoice();
 }
 

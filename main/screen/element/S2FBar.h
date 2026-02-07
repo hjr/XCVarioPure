@@ -18,7 +18,7 @@
 class S2FBar : public ScreenElement
 {
 public:
-    static constexpr const float LEVEL_DELTA = Units::kmh_to_mps(10.0f); // 10 km/h per level
+    static constexpr const mps_t LEVEL_DELTA = Units::kmh_to_mps(10.0f); // 10 km/h per level
 
     S2FBar(int16_t cx, int16_t cy, int16_t width, int16_t gap);
 

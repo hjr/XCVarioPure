@@ -79,6 +79,12 @@ S2fSwitch::S2fSwitch(gpio_num_t sw) :
 
     // init
     updateSwitchSetup();
+    _state = _lastButtonRead = gpio_get_level(_sw) == _active_level;
+
+    // in case of a bistable switch set the initial Vario Mode accordingly
+    if ( s2f_switch_type.get() == S2F_HW_SWITCH || s2f_switch_type.get() == S2F_HW_SWITCH_INVERTED ) {
+        CRMOD.setCMode(_state);
+    }
 }
 
 S2fSwitch::~S2fSwitch()
@@ -103,8 +109,8 @@ void S2fSwitch::updateSwitchSetup()
 
     // setup auto switches
     _auto_lag = 0;
-    _auto_state = VCMode.getCMode(); // init event signalling state
-    VCMode.unlockCMode();
+    _auto_state = CRMOD.getCMode(); // init event signalling state
+    CRMOD.unlockCMode();
     switch (s2f_switch_mode.get())
     {
     case AM_AUTOSPEED:
@@ -121,7 +127,7 @@ void S2fSwitch::updateSwitchSetup()
         break;
     case AM_VARIO:
     case AM_S2F:
-        VCMode.lockTo(s2f_switch_mode.get()==AM_S2F);
+        CRMOD.lockTo(s2f_switch_mode.get()==AM_S2F);
         [[fallthrough]];
     case AM_MANUALLY:
     default:

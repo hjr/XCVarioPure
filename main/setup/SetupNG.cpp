@@ -295,7 +295,7 @@ static void change_bugs() {
 }
 
 void change_cruise() {
-    VCMode.updateCache();
+    CRMOD.updateCache();
     Display->setCruiseChanged();
     AUDIO->updateAudioMode();
 }
