@@ -29,7 +29,7 @@ S2fSwitch *S2FSWITCH = nullptr;
 bool IRAM_ATTR S2fSwitch::tick()
 {
     // called every 10msec
-    bool buttonRead = gpio_get_level(_sw) == _active_level; // button active / not pressed (open pull-up)
+    bool buttonRead = gpio_get_level(_sw) == _active_level; // gpio level 1 -- not pressed (open pull-up)
 
     _debounce = (buttonRead == _lastButtonRead) ? (_debounce + 1) : 0;
     _lastButtonRead = buttonRead;
@@ -52,11 +52,11 @@ bool IRAM_ATTR S2fSwitch::tick()
         // switch
         if (_state)
         {
-            gotEvent = ModeEvent(ModeEvent::MODE_VARIO).raw; // Button active
+            gotEvent = ModeEvent(ModeEvent::MODE_S2F).raw; // Button state active
         }
         else
         {
-            gotEvent = ModeEvent(ModeEvent::MODE_S2F).raw;
+            gotEvent = ModeEvent(ModeEvent::MODE_VARIO).raw;
         }
         xQueueSend(uiEventQueue, &gotEvent, 0);
     }
@@ -76,13 +76,14 @@ S2fSwitch::S2fSwitch(gpio_num_t sw) :
 {
     // prepare switch gpio
     gpio_set_direction(_sw, GPIO_MODE_INPUT);
+    gpio_set_pull_mode(_sw, GPIO_PULLUP_ONLY);
 
-    // init
+    // init button semantic
     updateSwitchSetup();
-    _state = _lastButtonRead = gpio_get_level(_sw) == _active_level;
 
     // in case of a bistable switch set the initial Vario Mode accordingly
     if ( s2f_switch_type.get() == S2F_HW_SWITCH || s2f_switch_type.get() == S2F_HW_SWITCH_INVERTED ) {
+        ESP_LOGI(FNAME, "Init CMode _state: %d", _state);
         CRMOD.setCMode(_state);
     }
 }
@@ -95,11 +96,12 @@ S2fSwitch::~S2fSwitch()
 void S2fSwitch::updateSwitchSetup()
 {
     // setup the switch
-    gpio_set_pull_mode(_sw, GPIO_PULLUP_ONLY);
-    _active_level = 1;
+    _active_level = 0; // default for push button is "pushed"
     if ( s2f_switch_type.get() != S2F_HW_PUSH_BUTTON ) {
-        _active_level = (s2f_switch_type.get() == S2F_HW_SWITCH_INVERTED) ? 0 : 1;
+        _active_level = (s2f_switch_type.get() == S2F_HW_SWITCH_INVERTED) ? 1 : 0;
     }
+    _state = _lastButtonRead = gpio_get_level(_sw) == _active_level; // first button state read
+    ESP_LOGI(FNAME, "updateSwitchSetup _state: %d", _state);
     if ((s2f_switch_type.get() != S2F_SWITCH_DISABLE)) {
         Clock::start(this);
     }
