@@ -307,42 +307,47 @@ IpsDisplay::IpsDisplay( AdaptUGC *aucg ) {
 }
 
 IpsDisplay::~IpsDisplay() {
-    if (MAINgauge) {
-        delete MAINgauge;
-        MAINgauge = nullptr;
-    }
-    if (WNDgauge) {
-        delete WNDgauge;
-        WNDgauge = nullptr;
-    }
-    if (MCgauge) {
-        delete MCgauge;
-        MCgauge = nullptr;
-    }
-    if (S2FBARgauge) {
-        delete S2FBARgauge;
-        S2FBARgauge = nullptr;
-    }
-    if (BATgauge) {
-        delete BATgauge;
-        BATgauge = nullptr;
-    }
-    if (ALTgauge) {
-        delete ALTgauge;
-        ALTgauge = nullptr;
-    }
-    if (TOPgauge) {
-        delete TOPgauge;
-        TOPgauge = nullptr;
-    }
-    if (VCSTATgauge) {
-        delete VCSTATgauge;
-        VCSTATgauge = nullptr;
-    }
-    if (FLAPSgauge) {
-        delete FLAPSgauge;
-        FLAPSgauge = nullptr;
-    }
+    // never gets deleted, save the flash memory
+    // if (MAINgauge) {
+    //     delete MAINgauge;
+    //     MAINgauge = nullptr;
+    // }
+    // if (WNDgauge) {
+    //     delete WNDgauge;
+    //     WNDgauge = nullptr;
+    // }
+    // if (MCgauge) {
+    //     delete MCgauge;
+    //     MCgauge = nullptr;
+    // }
+    // if (OATgauge) {
+    //     delete OATgauge;
+    //     OATgauge = nullptr;
+    // }
+    // if (S2FBARgauge) {
+    //     delete S2FBARgauge;
+    //     S2FBARgauge = nullptr;
+    // }
+    // if (BATgauge) {
+    //     delete BATgauge;
+    //     BATgauge = nullptr;
+    // }
+    // if (ALTgauge) {
+    //     delete ALTgauge;
+    //     ALTgauge = nullptr;
+    // }
+    // if (TOPgauge) {
+    //     delete TOPgauge;
+    //     TOPgauge = nullptr;
+    // }
+    // if (VCSTATgauge) {
+    //     delete VCSTATgauge;
+    //     VCSTATgauge = nullptr;
+    // }
+    // if (FLAPSgauge) {
+    //     delete FLAPSgauge;
+    //     FLAPSgauge = nullptr;
+    // }
 }
 
 void IpsDisplay::writeText( int line, const char *text )
@@ -408,11 +413,11 @@ void IpsDisplay::setGlobalColors() {
 }
 
 void IpsDisplay::initDisplay() {
-	// ESP_LOGI(FNAME,"IpsDisplay::initDisplay()");
+    // ESP_LOGI(FNAME,"IpsDisplay::initDisplay()");
     setGlobalColors();
     clear();
 
-	// Create common elements
+    // Create common elements
     initRefs();
 
     if (!MAINgauge) { // shared with
@@ -424,7 +429,7 @@ void IpsDisplay::initDisplay() {
     MAINgauge->setColor(VN_COLOR_RED); // fixme temp needle_color.get());
     if (vario_mc_gauge.get()) {
         if ( !MCgauge ) {
-            MCgauge = new McCready(50, DISPLAY_H + 2);
+            MCgauge = new McCready(40, DISPLAY_H + 2);
         }
         if ( !S2FBARgauge) {
             S2FBARgauge = new S2FBar(DISPLAY_W - 50, AMIDY, 28, 32);
@@ -441,7 +446,7 @@ void IpsDisplay::initDisplay() {
         }
     }
     if ( !OATgauge ) {
-        OATgauge = new Temperature(68, 32);
+        OATgauge = new Temperature(58, 32);
     }
     if (!BATgauge) {
         BATgauge = new Battery(DISPLAY_W - 10, DISPLAY_H - 12);
@@ -484,8 +489,10 @@ void IpsDisplay::initDisplay() {
 
     VCSTATgauge->useSymbol(true);
     if (MCgauge) {
-        MCgauge->setLarge(true);
+        MCgauge->setLarge(display_orientation.get() != DISPLAY_NINETY);
     }
+    OATgauge->setLarge(display_orientation.get() != DISPLAY_NINETY);
+
 
     if (vario_lower_gauge.get()) {
         if (!ALTgauge) {

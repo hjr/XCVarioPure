@@ -22,10 +22,13 @@ public:
     // right-aligned value to cx, incl. unit to the right of cx
     Temperature(int16_t cx, int16_t cy) : ScreenElement(cx, cy) {}
     // API
+    void setLarge(bool l) { _large = l; _x_offset = l ? 10 : 0; }
     void draw(kelvin_t t, temp_status_t mputemp);
 
     // attributes
 private:
+    bool _large = true;
+    int16_t _x_offset = 0;
     kelvin_t _temp = -1001.;
     temp_status_t _imut = temp_status_t(0);
 };

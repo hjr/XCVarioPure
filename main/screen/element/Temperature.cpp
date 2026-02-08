@@ -22,7 +22,11 @@ void Temperature::draw(kelvin_t t, temp_status_t mputemp)
     if ( std::abs(t - _temp) > 0.1 || _dirty ) {
         _temp = t;
 
-        MYUCG->setFont(ucg_font_fub20_hn, false);
+        if (_large) {
+            MYUCG->setFont(ucg_font_fub20_hn, false);
+        } else {
+            MYUCG->setFont(ucg_font_fub14_hn, false);
+        }
         char s[32];
         if (t > -1000.) {
             float tu = std::roundf(TempUnit->apply(t) * 10.f) / 10.f;
@@ -37,12 +41,12 @@ void Temperature::draw(kelvin_t t, temp_status_t mputemp)
                 MYUCG->setColor(COLOR_WHITE);
             }
         } else {
-            strcpy(s, "  ---");
+            strcpy(s, "  -/- ");
             MYUCG->setColor(COLOR_WHITE);
         }
         // ESP_LOGI(FNAME,"drawTemperature: %d,%d %s", _ref_x, _ref_y, s);
         int16_t fl = MYUCG->getStrWidth(s);
-        MYUCG->setPrintPos(_ref_x - fl, _ref_y);
+        MYUCG->setPrintPos(_ref_x + _x_offset - fl, _ref_y - (_large ? 0 : 7));
         MYUCG->print(s);
         // the figure covers the little ° symbol, so alway repaint
     // }
@@ -64,7 +68,7 @@ void Temperature::draw(kelvin_t t, temp_status_t mputemp)
                 MYUCG->setColor(COLOR_HEADER);
         }
         MYUCG->setFont(ucg_font_fub11_hr, false);
-        MYUCG->setPrintPos(_ref_x - 4, _ref_y - 9);
+        MYUCG->setPrintPos(_ref_x + _x_offset - 3, _ref_y - 9);
         MYUCG->print(TempUnit->getName());
         _dirty = false;
     }
