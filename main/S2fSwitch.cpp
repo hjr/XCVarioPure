@@ -81,7 +81,6 @@ S2fSwitch::S2fSwitch(gpio_num_t sw) :
     // init button semantic
     updateSwitchSetup();
 
-    // in case of a bistable switch set the initial Vario Mode accordingly
     if ( s2f_switch_type.get() == S2F_HW_SWITCH || s2f_switch_type.get() == S2F_HW_SWITCH_INVERTED ) {
         ESP_LOGI(FNAME, "Init CMode _state: %d", _state);
         CRMOD.setCMode(_state);
@@ -97,10 +96,12 @@ void S2fSwitch::updateSwitchSetup()
 {
     // setup the switch
     _active_level = 0; // default for push button is "pushed"
-    if ( s2f_switch_type.get() != S2F_HW_PUSH_BUTTON ) {
+    _state = _lastButtonRead = false; // init state is "Vario" (CMode == false)
+    if (s2f_switch_type.get() != S2F_HW_PUSH_BUTTON) {
+        // in case of a bistable switch set the initial Vario Mode accordingly
         _active_level = (s2f_switch_type.get() == S2F_HW_SWITCH_INVERTED) ? 1 : 0;
+        _state = _lastButtonRead = gpio_get_level(_sw) == _active_level;  // first button state read
     }
-    _state = _lastButtonRead = gpio_get_level(_sw) == _active_level; // first button state read
     ESP_LOGI(FNAME, "updateSwitchSetup _state: %d", _state);
     if ((s2f_switch_type.get() != S2F_SWITCH_DISABLE)) {
         Clock::start(this);

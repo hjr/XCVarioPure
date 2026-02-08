@@ -418,9 +418,14 @@ void readSensors(void *pvParameters)
             OneWIRE->groupUpdate(Clock::getMillis());
         }
 
+        // audio update
         AUDIO->updateTone();
-        const int screenEvent = ScreenEvent(ScreenEvent::MAIN_SCREEN).raw;
-        xQueueSend(uiEventQueue, &screenEvent, 0);
+        // UI update, to not flood the UI queue with a binary hand shake
+        if ( ui_update_done ) {
+            const int screenEvent = ScreenEvent(ScreenEvent::MAIN_SCREEN).raw;
+            ui_update_done = false;
+            xQueueSend(uiEventQueue, &screenEvent, 0);
+        }
 
         if ((count % 300) == 0) {
             SetupCommon::commitDirty(); // very important, flash NVS settings permanently

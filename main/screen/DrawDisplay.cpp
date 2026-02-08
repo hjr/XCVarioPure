@@ -35,6 +35,7 @@
 
 // The context to serialize all display access.
 QueueHandle_t uiEventQueue = nullptr;
+bool ui_update_done = false;
 
 
 void UiEventLoop(void *arg)
@@ -49,6 +50,7 @@ void UiEventLoop(void *arg)
     while (1)
     {
         // handle button events in this context
+        ui_update_done = true; // accept an UI screen event again (flood protection)
         int eparam;
         if (xQueueReceive(uiEventQueue, &eparam, pdMS_TO_TICKS(20)) == pdTRUE)
         {

@@ -34,9 +34,9 @@ private:
     int16_t _lag_counter = 0;
 
     // switch polling
-    int16_t _active_level = 1;
-    bool _state = false;
-    bool _lastButtonRead = false;
+    int16_t _active_level;
+    bool _state;
+    bool _lastButtonRead;
     int16_t _debounce = 0;
     int16_t _dcount = 4;
 };

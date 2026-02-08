@@ -14,4 +14,5 @@
 
 // Everything is pumping events into this queue to update the screens
 extern QueueHandle_t uiEventQueue;
+extern bool ui_update_done;
 void UiEventLoop(void *arg);
