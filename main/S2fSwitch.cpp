@@ -183,7 +183,8 @@ void S2fSwitch::checkCruiseMode()
         // when e.g. the criterion toggles in the defined auto lag duration
         if (cm != _auto_state)
         {
-            if (_lag_counter == (_auto_lag / (_auto_state ? 2 : 1))) // go twice as fast into vario mode, as out of it
+            // if (_lag_counter == (_auto_lag / (_auto_state ? 2 : 1))) // go twice as fast into vario mode, as out of it
+            if (_lag_counter == _auto_lag )
             {
                 _auto_state = cm;
                 ESP_LOGI(FNAME, "New S2F auto mode: %d", cm);
