@@ -103,6 +103,17 @@ int gload_reset(SetupMenuSelect *p) {
 	return 0;
 }
 
+static int clear_nvs_action(SetupMenuSelect* p) {
+    if (p->getSelect() == 2) {
+        ESP_LOGI(FNAME, "Clearing NVS...");
+        ESP_ERROR_CHECK(nvs_flash_erase());
+        nvs_flash_init();
+
+        p->reBoot();
+    }
+    return 0;
+}
+
 int compass_ena(SetupMenuSelect *p) {
 	return 0;
 }
@@ -1103,11 +1114,12 @@ void system_menu_create_software(SetupMenu *top) {
 		top->addEntry(dis);
 	}
 
-	SetupMenuSelect *fa = new SetupMenuSelect("Factory Reset", RST_IMMEDIATE, nullptr, &factory_reset);
-	fa->setHelp("Reset all settings to factory defaults (metric system, 5 m/s vario range, etc.)");
-	fa->addEntry("Cancel");
-	fa->addEntry("ResetAll");
-	top->addEntry(fa);
+    SetupMenuSelect* fa = new SetupMenuSelect("Factory Reset", RST_IMMEDIATE, clear_nvs_action, &factory_reset);
+    fa->setHelp("Reset all settings to factory defaults (metric system, 5 m/s vario range, etc.)");
+    fa->addEntry("Cancel");
+    fa->addEntry("ResetAll");
+    fa->addEntry("ClearNVS");
+    top->addEntry(fa);
 }
 
 void system_menu_create_battery(SetupMenu *top) {
