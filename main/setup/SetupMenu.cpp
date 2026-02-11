@@ -473,9 +473,14 @@ void SetupMenu::display(int mode)
 	dirty = false;
 }
 
-int SetupMenu::freeBottomLines() const
+int16_t SetupMenu::freeBottomLines() const
 {
     return dheight/25 - getNrChilds() - 1;
+}
+
+int16_t SetupMenu::firstHelpLine() const
+{
+    return getNrChilds() + 2;
 }
 
 // void SetupMenu::setHighlight(MenuEntry *value)
@@ -564,10 +569,25 @@ static int modulo(int a, int b) {
 
 void SetupMenu::rot(int count)
 {
-	// ESP_LOGI(FNAME,"select %d: %d/%d", count, highlight, _childs.size() );
-	unHighlight(highlight);
-	highlight = modulo(highlight+1+count, _childs.size()+1) - 1;
-	doHighlight(highlight);
+    // ESP_LOGI(FNAME,"select %d: %d/%d", count, highlight, _childs.size() );
+    unHighlight(highlight);
+    highlight = modulo(highlight + 1 + count, _childs.size() + 1) - 1;
+    doHighlight(highlight);
+
+    // show help like a mouse over when menu get highlighted
+    MenuEntry* child = (highlight >= 0) ? _childs[highlight] : nullptr;
+    if (child && child->canInline() && child->hasHelp() ) {
+        child->showhelp(true);
+        _help_dirty = true;
+    }
+    else {
+        if ( _help_dirty ) {
+            if ( hasHelp() ) { showhelp(true); }
+            else { clearHelpLines(firstHelpLine()); }
+            _help_dirty = false;
+        }
+    }
+    ESP_LOGI(FNAME, "new highlight %d dyn %.1f", highlight, getRotDynamic());
 }
 
 void SetupMenu::press()
@@ -657,7 +677,7 @@ void vario_menu_create_s2f(SetupMenu *top) {
 	top->addEntry(blck);
 
 	SetupMenuSelect *s2fmod = new SetupMenuSelect("S2F Mode", RST_NONE, s2fModeChange, &s2f_switch_mode);
-	s2fmod->setHelp("Select data source for switching between S2F and Vario modes", 230);
+	s2fmod->setHelp("Select data source for switching between S2F and Vario modes");
 	s2fmod->addEntry("Manual", AM_MANUALLY);
 	s2fmod->addEntry("AutoSpeed", AM_AUTOSPEED);
 	if ( FLAP ) {
@@ -824,7 +844,7 @@ static void options_menu_create_altimeter(SetupMenu *top) {
 	atrans->mkEnable();
 
 	SetupMenuValFloat *tral = new SetupMenuValFloat("Transition Altitude", "FL", nullptr, false, &transition_alt);
-	tral->setHelp("Transition altitude (or transition height, when using QFE) is the altitude/height above which standard pressure (QNE) is set (1013.2 mb/hPa)", 100);
+	tral->setHelp("Transition altitude (or transition height, when using QFE) is the altitude/height above which standard pressure (QNE) is set (1013.2 mb/hPa)");
 	top->addEntry(tral);
 
 	SetupMenuSelect *als = new SetupMenuSelect("Alt. Source", RST_NONE, nullptr, &alt_select);
@@ -1079,7 +1099,7 @@ void options_menu_create(SetupMenu *opt) { // dynamic!
 
 		SetupMenu *compassWindMenu = new SetupMenu("Compass/Wind", options_menu_create_compasswind);
 		opt->addEntry(compassWindMenu);
-		compassWindMenu->setHelp("Setup Compass and Wind", 280);
+		compassWindMenu->setHelp("Setup Compass and Wind");
 
 		SetupMenu *screens = new SetupMenu("Screens & Gauges", options_menu_create_screens);
 		opt->addEntry(screens);
@@ -1277,7 +1297,7 @@ void system_menu_create_hardware_ahrs(SetupMenu *top) {
 	top->addEntry(ahrslc);
 
 	SetupMenu *ahrspa = new SetupMenu("Parameters", system_menu_create_hardware_ahrs_parameter);
-	ahrspa->setHelp("AHRS constants such as gyro trust and filtering", 275);
+	ahrspa->setHelp("AHRS constants such as gyro trust and filtering");
 	top->addEntry(ahrspa);
 
 	SetupMenuSelect *rpyl = new SetupMenuSelect("AHRS RPYL", RST_NONE, nullptr, &ahrs_rpyl_dataset);
@@ -1352,10 +1372,10 @@ void system_menu_create(SetupMenu *sye) {
 	// Units
 	SetupMenu *un = new SetupMenu("Units", options_menu_create_units);
 	sye->addEntry(un);
-	un->setHelp("Setup altimeter, airspeed indicator and variometer with European Metric, American, British or Australian units", 205);
+	un->setHelp("Setup altimeter, airspeed indicator and variometer with European Metric, American, British or Australian units");
 
 	SetupMenu *hardware = new SetupMenu("Hardware & Sensors", system_menu_create_hardware);
-	hardware->setHelp("Setup variometer hardware e.g. display, rotary, AS and AHRS sensor, voltmeter, etc", 240);
+	hardware->setHelp("Setup variometer hardware e.g. display, rotary, AS and AHRS sensor, voltmeter, etc");
 	sye->addEntry(hardware);
 
 	// XCV role
@@ -1464,7 +1484,7 @@ SetupMenu* SetupMenu::createTopSetup() {
 SetupMenuValFloat* SetupMenu::createQNHMenu() {
 	SetupMenuValFloat *qnh = new SetupMenuValFloat("QNH", "", qnh_adj, true, &QNH, RST_NONE, false);
     qnh->setPrecision(2);
-	qnh->setHelp("QNH pressure value from ATC. On ground you may adjust to airfield altitude above MSL", 180);
+	qnh->setHelp("QNH pressure value from ATC. On ground you may adjust to airfield altitude above MSL");
 	return qnh;
 }
 

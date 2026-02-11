@@ -31,13 +31,15 @@ SetupRoot::SetupRoot(IpsDisplay *display) :
     SetupMenu("Setup Root", nullptr),
     _ui_mon_wd(this)
 {
+    // set statics once
     _display = display;
-    MenuEntry::grabDisplaySize(); // set statics once
+    MenuEntry::grabDisplaySize();
+    current_menu = this;
     ESP_LOGI(FNAME,"Init root menu");
     attach();
     if ( rot_default.get() == 0) {
         // volume needs rotary dynamics
-        setRotDynamic(2.5f);
+        setRotDynamic(2.3f);
     }
 }
 
@@ -78,6 +80,7 @@ void SetupRoot::begin(MenuEntry *setup)
     if ( ! _childs.empty() ) {
         ESP_LOGW(FNAME,"Found root menu not empty");
     }
+    current_menu = this;
 
     // Given setup might be for QNH, or voltage adjustment
     if ( setup ) {

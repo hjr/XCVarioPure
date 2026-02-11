@@ -12,8 +12,11 @@
 #include "logdefnone.h"
 
 #include <cstring>
+#include <string_view>
 
 extern AdaptUGC *MYUCG;
+
+const std::string_view alternate_help[2] = {"Choose position, press to edit", "Long press to exit"};
 
 CharFilter::CharFilter( const char *chset )
 {
@@ -79,6 +82,18 @@ SetupMenuChar::SetupMenuChar( const char* title, const char *chset, int mlen, e_
     setRotDynamic(1.); // always setp == 1 for char editing
 }
 
+void SetupMenuChar::enter()
+{
+    MenuEntry::enter();
+    if (!bits._locked) {
+        if ( bits._is_inline && _parent->freeBottomLines() >= 2) {
+            clearHelpLines(_parent->firstHelpLine());
+            menuPrintLn(alternate_help[_mode].data(), _parent->firstHelpLine());
+        }
+    }
+
+}
+
 void SetupMenuChar::display(int mode)
 {
     ESP_LOGI(FNAME,"display title:%s action: %x", _title.c_str(), (int)(_exit_action));
@@ -139,6 +154,12 @@ void SetupMenuChar::press()
         ESP_LOGI(FNAME,"press() enter edit mode at index %d", _char_index );
     }
     focusPosLn(_value.c_str(), _char_index, _mode);
+
+    // additional help to handle the char menu
+    if ( bits._is_inline && _parent->freeBottomLines() >= 2) {
+        clearHelpLines(_parent->firstHelpLine());
+        menuPrintLn(alternate_help[_mode].data(), _parent->firstHelpLine());
+    }
 }
 
 void SetupMenuChar::longPress(){

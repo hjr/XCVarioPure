@@ -42,7 +42,7 @@ int show_compass_setting(SetupMenuDisplay *p, int mode) {
         MYUCG->setPrintPos(0, y);
         sprintf(buffer, "Sensor enabled: %s", (theCompass) ? "Yes" : "No");
         MYUCG->print(buffer);
-        y += 25;
+        y += LINE_HEIGHT;
 
         MYUCG->setPrintPos(0, y);
         bitfield_compass state = calibration_bits.get();
@@ -52,7 +52,7 @@ int show_compass_setting(SetupMenuDisplay *p, int mode) {
             all_green = true;
         sprintf(buffer, "Sensor calibrated: %s", (compass_calibrated.get() == 0 || !all_green) ? "No" : "Yes");
         MYUCG->print(buffer);
-        y += 25;
+        y += LINE_HEIGHT;
 
         const char *soText = "Sensor overflow: ";
         int sotw = MYUCG->getStrWidth(soText);
@@ -60,27 +60,27 @@ int show_compass_setting(SetupMenuDisplay *p, int mode) {
         MYUCG->print(soText);
         MYUCG->setPrintPos(sotw, y);
         MYUCG->print((theCompass->overflowFlag() == false) ? "No" : "Yes");
-        y += 25;
+        y += LINE_HEIGHT;
 
         MYUCG->setPrintPos(0, y);
         sprintf(buffer, "Compass declination: %d°", static_cast<int>(compass_declination.get()));
         MYUCG->print(buffer);
-        y += 25;
+        y += LINE_HEIGHT;
 
         MYUCG->setPrintPos(0, y);
         sprintf(buffer, "Display damping: %.02fs", (compass_damping.get()));
         MYUCG->print(buffer);
-        y += 25;
+        y += LINE_HEIGHT;
 
         MYUCG->setPrintPos(0, y);
         sprintf(buffer, "NMEA mag heading: %s", (compass_nmea_hdm.get() == 0) ? "No" : "Yes");
         MYUCG->print(buffer);
-        y += 25;
+        y += LINE_HEIGHT;
 
         MYUCG->setPrintPos(0, y);
         sprintf(buffer, "NMEA true heading: %s", (compass_nmea_hdt.get() == 0) ? "No" : "Yes");
         MYUCG->print(buffer);
-        y += 25;
+        y += LINE_HEIGHT;
     }
     MYUCG->setPrintPos(5, 290);
     MYUCG->print("Press button to exit");

@@ -27,7 +27,8 @@ public:
 	void display( int mode=0 ) override;
 	bool isLeaf() const override { return false; }
 	const char *value() const override { return buzzword; };
-	int freeBottomLines() const override ;
+	int16_t freeBottomLines() const;
+    int16_t firstHelpLine() const;
 	// accessors
 	int getHighlight() const { return highlight; }
 	int incHighlight() { return ++highlight; }
@@ -70,5 +71,7 @@ protected:
 	bool dirty = false; // need to refresh content/child list
 	int content_id;
 	const char *buzzword = nullptr;
+private:
+    bool _help_dirty = false;
 };
 

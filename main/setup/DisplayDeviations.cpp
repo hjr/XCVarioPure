@@ -40,7 +40,7 @@ int display_deviations_action(SetupMenuDisplay *p, int mode) {
     MYUCG->setFont(ucg_font_ncenR14_hr);
     p->menuPrintLn(p->getTitle(), 0, 5);
     const char *skydirdev[8] = {"N", "NE", "E", "SE", "S", "SW", "W", "NW"};
-    uint16_t y = 25;
+    uint16_t y = LINE_HEIGHT;
     for (int i = 0; i < 8; i++) {
         uint16_t x = 0;
         y += 20;

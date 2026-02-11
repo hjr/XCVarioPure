@@ -285,7 +285,7 @@ void flap_levels_menu_create(SetupMenu* top) // dynamic!
         }
         top->setDynContent();
         flgnd = new SetupMenuValFloat("Takeoff Flap",".", nullptr, false, &flap_takeoff  );
-        flgnd->setHelp("Flap position to be set for takeoff");
+        flgnd->setHelp("Flap index of flap position to be set for takeoff");
         top->addEntry( flgnd );
         SetupMenu *addlev = new SetupMenu("Add Level", flap_menu_add_level);
         addlev->setHelp("Get XCVario to know about your gliders flap levels");

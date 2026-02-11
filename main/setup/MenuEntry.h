@@ -35,7 +35,7 @@ class PressureSensor;
 class SetupMenu;
 class SetupRoot;
 
-constexpr const int DEFAULT_HELP_Y_POS = 180;
+constexpr const int LINE_HEIGHT = 25;
 
 class MenuEntry : public RotaryObserver
 {
@@ -58,7 +58,6 @@ public:
 	virtual void refresh() {} // reread temp values coping with side efects on refreshing the display
 	virtual bool isLeaf() const { return true; }
 	virtual const char* value() const = 0; // content as string
-	virtual int freeBottomLines() const;
 
 	void lock() { bits._locked = true; }
 	void unlock() { bits._locked = false; }
@@ -70,10 +69,10 @@ public:
 	SetupMenu* getParent() const { return _parent; }
 	void hookToParent(SetupMenu* p) { _parent = p; }
 	void regParent(SetupMenu* p);
-	bool isRoot() const;
-	bool isSelected() const { return selected == this; }
-	MenuEntry *getSelected() const { return selected; }
-	void setHelp( const char *txt, int y=DEFAULT_HELP_Y_POS ) { helptext = (char*)txt; };
+	bool isFirstLevel() const;
+	MenuEntry *getSelected() const { return current; }
+	void setHelp( const char *txt, int y=0 ) { helptext = (char*)txt; };
+    bool hasHelp() const { return helptext != nullptr; }
 	void doHighlight(int sel) const;
     void unHighlight(int sel) const;
     void indentHighlight(int sel);
@@ -83,9 +82,9 @@ public:
 	int nrOfHelpLines() const;
 	bool showhelp(bool inln=false);
 	static void clear();
-	void clearHelpLines() const;
-	const MenuEntry* findMenu(const char *title) const;
-	void menuPrintLn(const char* str, int sel, int x=1) const;
+	void clearHelpLines(int16_t ln) const;
+	// const MenuEntry* findMenu(const char *title) const;
+	void menuPrintLn(const char* str, int ln, int x=1) const;
 	void menuPrintChar(char chr, int ln, int x) const;
 	// void uprint( int x, int y, const char* str );
 	void SavedDelay(bool showit=true);
@@ -109,5 +108,6 @@ protected:
 	static int16_t cur_row;
 
 private:
-	static MenuEntry *selected;
+	static MenuEntry *current;
+    static SetupMenu *current_menu;
 };

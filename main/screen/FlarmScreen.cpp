@@ -47,7 +47,7 @@ void FlarmScreen::exit(int ups)
     ESP_LOGI(FNAME,"FlarmScreen exit");
     FLARMSCREEN = nullptr;
     MenuEntry::exit();
-    if ( ! isRoot() ) {
+    if ( ! isFirstLevel() ) {
         delete this;
     }
 }

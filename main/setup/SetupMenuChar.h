@@ -34,6 +34,7 @@ public:
     SetupMenuChar() = delete;
     SetupMenuChar(const char *title, const char *chset, int mlen, e_restart_mode_t restart = RST_NONE, int (*exit_action)(SetupMenuChar *p) = nullptr, const char *achar = 0);
     virtual ~SetupMenuChar() = default;
+    void enter() override;
     void display(int mode = 0) override;
     void rot(int count);
     void press() override;

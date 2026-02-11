@@ -94,7 +94,7 @@ static void options_menu_create_compasswind_compass(SetupMenu *top) {
 	top->addEntry(devMenuA);
 
 	SetupMenu *devMenu = new SetupMenu("Setup Deviations", options_menu_create_compasswind_compass_dev);
-	devMenu->setHelp("Compass Deviations", 280);
+	devMenu->setHelp("Compass Deviations");
 	top->addEntry(devMenu);
 
 	// Show comapss deviations
@@ -227,7 +227,7 @@ void options_menu_create_compasswind(SetupMenu *top) { // dynamic!
 
 		SetupMenu *strWindM = new SetupMenu("Straight Wind", options_menu_create_compasswind_straightwind);
 		top->addEntry(strWindM);
-		strWindM->setHelp("Straight flight wind calculation needs compass module active",250);
+		strWindM->setHelp("Straight flight wind calculation needs compass module active");
 
 		SetupMenu *cirWindM = new SetupMenu("Circling Wind", options_menu_create_compasswind_circlingwind);
 		top->addEntry(cirWindM);
