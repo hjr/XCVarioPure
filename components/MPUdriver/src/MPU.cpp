@@ -2390,7 +2390,7 @@ esp_err_t MPU::getMPUSamples(double& avgx, double& avgy, double& avgz, axes_t<in
 		avg_gyro += mpuCur;
 	}
 	// calculate average
-	avg_accel /= packetCount;
+	avg_accel /= -packetCount; // go NED, g vector points down, so negate
 	MPU_LOGI("Avg accel %d/%d/%d", avg_accel.x, avg_accel.y, avg_accel.z);
 	avg_gyro /= packetCount;
 	MPU_LOGI("Avg gyro %d/%d/%d", avg_gyro.x, avg_gyro.y, avg_gyro.z);

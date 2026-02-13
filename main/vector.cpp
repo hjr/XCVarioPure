@@ -15,6 +15,7 @@
  ***********************************************************************/
 
 #include "vector.h"
+#include "Units.h"
 #include "math/Floats.h"
 #include "math/Trigonometry.h"
 
@@ -41,38 +42,38 @@ Vector::Vector(const float angle, const float speed) {
 
 //  in: -oo < angle < oo
 // out: 0 .. 2*pi
-float Vector::normalizePI2(float angle) {
+rad_t Vector::normalizePI2(rad_t angle) {
     return angle - PI2f * fast_floorf(angle / PI2f);
 }
 
 //  in: -oo < angle < oo
 // out: 0 .. 2*pi
-float Vector::normalizePI(float angle) {
+rad_t Vector::normalizePI(rad_t angle) {
     return angle - PI2f * fast_floorf((angle + My_PIf) / PI2f);
 }
 
 //  in: -oo < angle < oo
 // out: 0 .. 360
-float Vector::normalizeDeg(float angle) {
+degree_t Vector::normalizeDeg(degree_t angle) {
     return angle - 360.0f * fast_floorf(angle / 360.0f);
 }
 
 //  in: -oo < angle < oo
 // out: -180 .. 180
-float Vector::normalizeDeg180(float angle) {
+degree_t Vector::normalizeDeg180(degree_t angle) {
     return angle - 360.0f * fast_floorf((angle + 180.0f) / 360.0f);
 }
 
 //  in: -oo < angle < oo
 // out: -180 .. 180
-float Vector::reverseBearing(float angle) {
+degree_t Vector::reverseBearing(degree_t angle) {
     return normalizeDeg180(angle + 180.0f);
 }
 
 //  in: -oo < x,y < oo
 // out: 0 .. 2*pi
-float Vector::polar(float y, float x) {
-    float angle = atan2f(y, x);  // range: (–π, π]
+rad_t Vector::polar(rad_t y, rad_t x) {
+    rad_t angle = atan2f(y, x);  // range: (–π, π]
     if (angle < 0.0f) {
         angle += PI2f;  // convert to [0, 2π)
     }
@@ -81,19 +82,19 @@ float Vector::polar(float y, float x) {
 
 //  in: -oo < ang1, ang2 < oo
 // out: -180 .. 180
-float Vector::angleDiffDeg(float ang1, float ang2) {
+degree_t Vector::angleDiffDeg(degree_t ang1, degree_t ang2) {
     return normalizeDeg180(ang1 - ang2);
 }
 
 //  in: -oo < ang1, ang2 < oo
 // out: -pi .. pi
-float Vector::angleDiff(float ang1, float ang2) {
+rad_t Vector::angleDiff(rad_t ang1, rad_t ang2) {
     return normalizePI(ang1 - ang2);
 }
 
 Vector::~Vector() {}
 
-float Vector::getAngleDeg() {
+degree_t Vector::getAngleDeg() {
     if (flags.dirtyDR) {
         recalcDR();
     }
@@ -102,7 +103,7 @@ float Vector::getAngleDeg() {
 }
 
 /** Get angle in radian. */
-float Vector::getAngleRad() {
+rad_t Vector::getAngleRad() {
     if (flags.dirtyDR) {
         recalcDR();
     }
@@ -110,13 +111,13 @@ float Vector::getAngleRad() {
     return _angle;
 }
 
-void Vector::setAngle(const float angle) {
+void Vector::setAngle(degree_t angle) {
     // ESP_LOGI(FNAME, "setAngle D ang:%f", angle );
     if (flags.dirtyDR) {
         recalcDR();
     }
 
-    _angle = normalizePI2(angle * My_PIf / 180.0);
+    _angle = normalizePI2(deg2rad(angle));
     flags.dirtyXY = true;
     flags._isValid = true;
     // ESP_LOGI(FNAME, "New angle ang:%f", _angle );
@@ -138,7 +139,7 @@ void Vector::setAngle(const float angle) {
 // }
 
 /** Set property of float angle as radian. */
-void Vector::setAngleRad(const float& angle) {
+void Vector::setAngleRad(rad_t angle) {
     if (flags.dirtyDR) {
         recalcDR();
     }
@@ -152,7 +153,7 @@ void Vector::setAngleRad(const float& angle) {
 /**
  * Set the speed
  */
-void Vector::setSpeedKmh(const float speed) {
+void Vector::setSpeedKmh(kmh_t speed) {
     if (flags.dirtyDR) {
         recalcDR();
     }
@@ -199,24 +200,6 @@ void Vector::recalcXY() {
 }
 
 /** returns the speed in X (latitude) direction (north is positive, south is negative) */
-float Vector::getX() {
-    if (flags.dirtyXY) {
-        recalcXY();
-    }
-
-    return float(_x);
-}
-
-/** Returns the speed in Y (longitude) direction (east is positive, west is negative) */
-float Vector::getY() {
-    if (flags.dirtyXY) {
-        recalcXY();
-    }
-
-    return float(_y);
-}
-
-/** returns the speed in X (latitude) direction (north is positive, south is negative) */
 float Vector::getXMps() {
     if (flags.dirtyXY) {
         recalcXY();
@@ -226,7 +209,7 @@ float Vector::getXMps() {
 }
 
 /** Returns the speed in Y (longitude) direction (east is positive, west is negative) */
-float Vector::getYMps() {
+mps_t Vector::getYMps() {
     if (flags.dirtyXY) {
         recalcXY();
     }
@@ -295,25 +278,25 @@ Vector Vector::operator-(Vector& x) {
     return Vector(_x - x._x, _y - x._y);
 }
 
-/** * operator for Vector. */
-Vector Vector::operator*(float left) {
-    if (flags.dirtyDR) {
-        recalcDR();
-    }
+// /** * operator for Vector. */
+// Vector Vector::operator*(float left) {
+//     if (flags.dirtyDR) {
+//         recalcDR();
+//     }
 
-    return Vector(_angle, left * _speed);
-}
+//     return Vector(_angle, left * _speed);
+// }
 
-Vector Vector::operator*(int left) {
-    if (!flags.dirtyDR) {
-        return Vector(_angle, left * _speed);
-    } else if (!flags.dirtyXY) {
-        return Vector(left * _x, left * _y);
-    } else {
-        recalcXY();
-        return Vector(left * _x, left * _y);
-    }
-}
+// Vector Vector::operator*(int left) {
+//     if (!flags.dirtyDR) {
+//         return Vector(_angle, left * _speed);
+//     } else if (!flags.dirtyXY) {
+//         return Vector(left * _x, left * _y);
+//     } else {
+//         recalcXY();
+//         return Vector(left * _x, left * _y);
+//     }
+// }
 
 /** / operator for Vector. */
 float Vector::operator/(Vector& x) {

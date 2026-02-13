@@ -18,6 +18,7 @@
 #include "wind/StraightWind.h"
 #include "setup/SetupNG.h"
 #include "math/Floats.h"
+#include "math/Trigonometry.h"
 #include "logdefnone.h"
 
 #include <cmath>
@@ -56,13 +57,14 @@
 
 
 
-#define MINTURNANGDIFF 4
+constexpr const rad_t MINTURNINGDIFF = Units::deg_to_rad(4);
 
 CircleWind *circleWind = nullptr;
 
 int16_t CircleWind::_age = 9000;
 
-CircleWind::CircleWind()
+CircleWind::CircleWind() :
+    _lp_headdiff(0.3)
 {
 	// Initialization
     status = "idle";
@@ -74,191 +76,174 @@ CircleWind::~CircleWind()
 {}
 
 /** Called if a new sample is available in the sample list. */
-void CircleWind::newSample()
-{
-	// circle detection
-	if( lastHeading != -1 )
-	{
-		headingDiff += ( Vector::angleDiffDeg( flarmVec.getAngleDeg(), lastHeading ) - headingDiff) * 0.3;  // filter a bit jittering headings
-		calcFlightMode( headingDiff, flarmVec.getSpeed() );
-		if( flightMode == circlingL || flightMode == circlingR )
-			circleDegrees += abs(headingDiff);
-	}
+void CircleWind::newSample() {
+    // circle detection
+    rad_t headingDiff = _lp_headdiff.filter(Vector::angleDiff(flarmVec.getAngleRad(), lastHeading));
+    calcFlightMode(headingDiff, flarmVec.getSpeed());
+    if (flightMode == circlingL || flightMode == circlingR) {
+        circleArc += fabs(headingDiff);
+    }
 
-	lastHeading = flarmVec.getAngleDeg();
-	if( flightMode != circlingL && flightMode != circlingR ){
-		// ESP_LOGI(FNAME,"FlightMode not circling %d", flightMode );
-		status = "Not Circling";
-		circleDegrees = 0;
-		return;
-	}
-	status = "Sampling";
-	// ESP_LOGI(FNAME,"GPS Sample, dir:%3.2f° speed:%3.2f", flarmVec.getAngleDeg(), flarmVec.getSpeed() );
+    lastHeading = flarmVec.getAngleRad();
+    if (flightMode != circlingL && flightMode != circlingR) {
+        // ESP_LOGI(FNAME,"FlightMode not circling %d", flightMode );
+        status = "Not Circling";
+        circleArc = 0;
+        return;
+    }
+    status = "Sampling";
+    // ESP_LOGI(FNAME,"GPS Sample, dir:%3.2f° speed:%3.2f", flarmVec.getAngleDeg(), flarmVec.getSpeed() );
 
-	if( flarmVec.getSpeed() < minVector.getSpeed() )
-	{
-		// New minimum speed detected
-		minVector = flarmVec;
-		// ESP_LOGI(FNAME,"new minimum detected:  %3.2f°/%3.2f kmh", minVector.getAngleDeg(), minVector.getSpeed() );
-	}
+    if (flarmVec.getSpeed() < minVector.getSpeed()) {
+        // New minimum speed detected
+        minVector = flarmVec;
+        // ESP_LOGI(FNAME,"new minimum detected:  %3.2f°/%3.2f kmh", minVector.getAngleDeg(), minVector.getSpeed() );
+    }
 
-	if( flarmVec.getSpeed() > maxVector.getSpeed() )
-	{
-		// New maximum speed detected
-		maxVector = flarmVec;
-		// ESP_LOGI(FNAME,"new maximum detected: %3.2f°/%3.2f kmh",  maxVector.getAngleDeg(), maxVector.getSpeed() );
-	}
+    if (flarmVec.getSpeed() > maxVector.getSpeed()) {
+        // New maximum speed detected
+        maxVector = flarmVec;
+        // ESP_LOGI(FNAME,"new maximum detected: %3.2f°/%3.2f kmh",  maxVector.getAngleDeg(), maxVector.getSpeed() );
+    }
 
-	if( circleDegrees > 361 )  // a bit more than one circle to ensure both ends are in
-	{
-		status = "Calculating";
-		circleCount++;  // increase the number of circles flown (used to determine the jitter)
-		ESP_LOGI(FNAME,"full circle made, circles %d last circle had %d °", circleCount, circleDegrees );
-		_calcWind(); 	// calculate the wind for this circle
-		restartCycle( false );
-	}
+    if (circleArc > deg2rad(361.f))  // a bit more than one circle to ensure both ends are in
+    {
+        status = "Calculating";
+        circleCount++;  // increase the number of circles flown (used to determine the jitter)
+        ESP_LOGI(FNAME, "full circle made, circles %d last circle had %f °", circleCount, rad2deg(circleArc));
+        _calcWind();  // calculate the wind for this circle
+        restartCycle(false);
+    }
 }
 
-void CircleWind::calcFlightMode( float headingDiff, mps_t speed ){
-	// ESP_LOGI(FNAME,"calcFlightMode head diff:%3.2f gs:%3.2f", headingDiff, speed  );
-	if( speed < Units::kmh_to_mps(25) ){
-		if( flightMode != undefined ) {
-			newFlightMode( undefined );
-			flightMode = undefined;
-			ESP_LOGI(FNAME,"New flightmode: undefined, no GS");
-		}
-	}
-	else{
-		if( headingDiff > MINTURNANGDIFF ){
-				if( turn_right < 4 )  // hold down
-					turn_right++;
-				fly_straight = 0;
-				if( flightMode != circlingR && turn_right > 2 ) {
-					newFlightMode( circlingR );
-					flightMode = circlingR;
-					// ESP_LOGI(FNAME,"New flightmode: circle right");
-				}
-		}
-		else if( headingDiff < -MINTURNANGDIFF ) {
-			if( turn_left < 4)
-				turn_left++;
-			fly_straight = 0;
-			if( flightMode != circlingL && turn_left > 2 ){
-				newFlightMode( circlingL );
-				flightMode = circlingL;
-				// ESP_LOGI(FNAME,"New flightmode: circle left");
-			}
-		}
-		else{
-			turn_left = turn_right = 0;
-			if( fly_straight < 4 )
-				fly_straight++;
-			if( flightMode != straight && fly_straight > 2 ) {
-				newFlightMode( straight );
-				flightMode = straight;
-				// ESP_LOGI(FNAME,"New flightmode: straight");
-			}
-		}
-	}
+void CircleWind::calcFlightMode(rad_t headingDiff, mps_t speed) {
+    // ESP_LOGI(FNAME,"calcFlightMode head diff:%3.2f gs:%3.2f", headingDiff, speed  );
+    if (speed < Units::kmh_to_mps(25)) {
+        if (flightMode != undefined) {
+            newFlightMode(undefined);
+            flightMode = undefined;
+            ESP_LOGI(FNAME, "New flightmode: undefined, no GS");
+        }
+    } else {
+        if (headingDiff > MINTURNINGDIFF) {
+            if (turn_right < 4)  // hold down
+                turn_right++;
+            fly_straight = 0;
+            if (flightMode != circlingR && turn_right > 2) {
+                newFlightMode(circlingR);
+                flightMode = circlingR;
+                // ESP_LOGI(FNAME,"New flightmode: circle right");
+            }
+        } else if (headingDiff < -MINTURNINGDIFF) {
+            if (turn_left < 4)
+                turn_left++;
+            fly_straight = 0;
+            if (flightMode != circlingL && turn_left > 2) {
+                newFlightMode(circlingL);
+                flightMode = circlingL;
+                // ESP_LOGI(FNAME,"New flightmode: circle left");
+            }
+        } else {
+            turn_left = turn_right = 0;
+            if (fly_straight < 4)
+                fly_straight++;
+            if (flightMode != straight && fly_straight > 2) {
+                newFlightMode(straight);
+                flightMode = straight;
+                // ESP_LOGI(FNAME,"New flightmode: straight");
+            }
+        }
+    }
 }
-
 
 /** Called if the flight mode changes */
-void CircleWind::newFlightMode( t_circling newFlightMode )
-{
-	// Reset the circle counter for each flight mode change. The important thing
-	// to measure is the number of turns in a thermal per turn direction.
-	ESP_LOGI(FNAME,"newFlightMode %d", newFlightMode );
-	if( newFlightMode == circlingL || newFlightMode == circlingR ){
-		if( circlingMode != newFlightMode ){
-			circlingMode = newFlightMode;
-			restartCycle( true );
-		}
-	}
+void CircleWind::newFlightMode(t_circling newFlightMode) {
+    // Reset the circle counter for each flight mode change. The important thing
+    // to measure is the number of turns in a thermal per turn direction.
+    ESP_LOGI(FNAME, "newFlightMode %d", newFlightMode);
+    if (newFlightMode == circlingL || newFlightMode == circlingR) {
+        if (circlingMode != newFlightMode) {
+            circlingMode = newFlightMode;
+            restartCycle(true);
+        }
+    }
 }
 
-const char * CircleWind::getFlightModeStr() const
-{
-	if( flightMode == straight )
-		return "straight";
-	else if( flightMode == circlingL )
-		return "circle left";
-	else if( flightMode == circlingR )
-		return "circle right";
-	else
-		return "undefined";
+const char* CircleWind::getFlightModeStr() const {
+    if (flightMode == straight)
+        return "straight";
+    else if (flightMode == circlingL)
+        return "circle left";
+    else if (flightMode == circlingR)
+        return "circle right";
+    else
+        return "undefined";
 }
 
-bool CircleWind::getWind(int16_t *dir, mps_t *speed)
-{
-	*dir = fast_iroundf(cwind_dir.get());
-	*speed = cwind_speed.get();
-	if( _age < 7200 ) {
-		return true;
-	}
-	else {
-		return false;
-	}
+bool CircleWind::getWind(int16_t* dir, mps_t* speed) {
+    *dir = fast_iroundf(cwind_dir.get());
+    *speed = cwind_speed.get();
+    if (_age < 7200) {
+        return true;
+    } else {
+        return false;
+    }
 }
 
-void CircleWind::resetAge(){
-	// ESP_LOGI(FNAME,"resetAge");
-	_age = 0;
+void CircleWind::resetAge() {
+    // ESP_LOGI(FNAME,"resetAge");
+    _age = 0;
 }
 
-void CircleWind::_calcWind()
-{
-	// Invert maxVector angle
-	maxVector.setAngle( maxVector.getAngleDeg() + 180 );
+void CircleWind::_calcWind() {
+    // Invert maxVector angle
+    maxVector.setAngleRad(maxVector.getAngleRad() + deg2rad(180.f));
 
-	float aDiff = Vector::angleDiffDeg( minVector.getAngleDeg(), maxVector.getAngleDeg() );
-	ESP_LOGI(FNAME,"calcWind, min/max diff %3.2f", aDiff );
+    rad_t aDiff = Vector::angleDiff(minVector.getAngleRad(), maxVector.getAngleRad());
+    ESP_LOGI(FNAME, "calcWind, min/max diff %3.2f", rad2deg(aDiff));
 
-	float delta = abs( aDiff );   // 90 degree diff is considered zero jitter
+    rad_t delta = abs(aDiff);  // 90 degree diff is considered zero jitter
 
-	if( delta > (max_circle_wind_diff.get()) )
-	{
-		ESP_LOGI(FNAME,"true course jitter bad %3.1f > %3.1f: Drop Sample ", delta, max_circle_wind_diff.get() );
-		status = "Too Low Qual";
-		return; // Measurement jitter too low
-	}
+    if (delta > (deg2rad(max_circle_wind_diff.get()))) {
+        ESP_LOGI(FNAME, "true course jitter bad %3.1f > %3.1f: Drop Sample ", rad2deg(delta), max_circle_wind_diff.get());
+        status = "Too Low Qual";
+        return;  // Measurement jitter too low
+    }
 
-	// take both directions for min and max vector into account
-	ESP_LOGI(FNAME, "maxAngle=%3.1f°/%.0f   minAngle=%3.1f°/%.0f Jitter=%2.1f°",
-			maxVector.getAngleDeg(), maxVector.getSpeed(),
-			minVector.getAngleDeg(), minVector.getSpeed(), aDiff  );
+    // take both directions for min and max vector into account
+    ESP_LOGI(FNAME, "maxAngle=%3.1f°/%.0f   minAngle=%3.1f°/%.0f Jitter=%2.1f°", maxVector.getAngleDeg(), maxVector.getSpeed(),
+             minVector.getAngleDeg(), minVector.getSpeed(), rad2deg(aDiff));
 
+    // the direction of the wind is the direction where the greatest speed occurred
+    result.setAngleRad(
+        Vector::normalizePI2((Vector::normalizePI(maxVector.getAngleRad()) + Vector::normalizePI(minVector.getAngleRad())) / 2.0));
 
-	// the direction of the wind is the direction where the greatest speed occurred
-	result.setAngle( Vector::normalizeDeg((Vector::normalizeDeg180(maxVector.getAngleDeg()) + Vector::normalizeDeg180(minVector.getAngleDeg())) / 2.0) );
+    // The speed of the wind is half the difference between the minimum and the maximum speeds.
+    result.setSpeed((maxVector.getSpeed() - minVector.getSpeed()) / 2.0);
 
-	// The speed of the wind is half the difference between the minimum and the maximum speeds.
-	result.setSpeed( (maxVector.getSpeed() - minVector.getSpeed()) / 2.0 );
-
-	// Let the world know about our measurement!
-	ESP_LOGI(FNAME,"### RAW CircleWind: %3.1f°/%.1fKm/h", result.getAngleDeg(), result.getSpeed() );
-	newWind( result.getAngleDeg(), result.getSpeed() );
+    // Let the world know about our measurement!
+    ESP_LOGI(FNAME, "### RAW CircleWind: %3.1f°/%.1fKm/h", result.getAngleDeg(), result.getSpeed());
+    newWind(result.getAngleRad(), result.getSpeed());
 }
-
 
 // Jitter in the signal leads to higher windspeed measures as delta's grow
 // The new algorithm considers jitter and corrects windspeed according to measured jitter value
-void CircleWind::newWind( float angle, mps_t speed ){
-	ESP_LOGI(FNAME,"New Wind Vector angle %.1f speed %.1f", angle, speed );
+void CircleWind::newWind( rad_t angle, mps_t speed ){
+	ESP_LOGI(FNAME,"New Wind Vector angle %.1f speed %.1f", rad2deg(angle), speed );
 
 	windVectors.push_back( Vector( angle, speed ) );
 	while( windVectors.size() > (int)circle_wind_lowpass.get() ){
 		windVectors.pop_front();
 	}
 	result = Vector( 0.0, 0.0 );
-	float avgSpeed = 0;
+	mps_t avgSpeed = 0;
 	for( auto it=std::begin(windVectors); it != std::end(windVectors); it++ ){
 		result.add( *it );
-		// ESP_LOGI(FNAME,"angle %.1f speed %.1f", it->getAngleDeg(), it->getSpeed() );
+		ESP_LOGI(FNAME,"angle %.1f speed %.1f", it->getAngleDeg(), it->getSpeed() );
 		avgSpeed+=it->getSpeed();
 	}
 	float direction = result.getAngleDeg();
-	float windspeed = avgSpeed / windVectors.size();
+	mps_t windspeed = avgSpeed / windVectors.size();
 
 	ESP_LOGI(FNAME,"### NEW AVG CircleWind: %.1f°/%.1fKm/h  JI:%2.1f", direction, windspeed, jitter  );
 
@@ -266,9 +251,9 @@ void CircleWind::newWind( float angle, mps_t speed ){
 	if( (int)(direction+0.5) != (int)cwind_dir.get()  ){
 		cwind_dir.set( (int)(direction+0.5) );
 	}
-	if( (int)(windspeed+0.5) != (int)cwind_speed.get() ){
-		cwind_speed.set( (int)(windspeed+0.5) );
-	}
+	// if( (int)(windspeed+0.5) != (int)cwind_speed.get() ){
+    cwind_speed.set( windspeed );
+	// }
 	float deltaDir = abs( Vector::angleDiffDeg( lastWindDir, angle ) );
 	mps_t deltaSpeed = abs( lastWindSpeed - speed );
 	lastWindDir = angle;
@@ -294,8 +279,8 @@ void CircleWind::restartCycle( bool clean ){
 	if( clean ) {
 		circleCount = 0;
 	}
-	circleDegrees = 0;
-	lastHeading   = -1;
+	circleArc = 0;
+    _lp_headdiff.reset(0.f);
 	minVector.setSpeedKmh( 370.0 );
 	maxVector.setSpeed( 0.0 );
 }
@@ -323,8 +308,9 @@ void CircleWind::setGpsStatus( bool newStatus )
 		// changed now. So we become active.
 		// Initialize analyzer-parameters
 		gpsStatus = newStatus;
-		if( ! gpsStatus )
+		if( ! gpsStatus ) {
 			status = "Bad GPS";
+        }
 		restartCycle( true );
 	}
 }

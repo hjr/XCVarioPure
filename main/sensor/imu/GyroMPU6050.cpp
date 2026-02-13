@@ -11,7 +11,9 @@
 #include "../SensorMgr.h"
 #include "logdef.h"
 
-GyroMPU6050::GyroMPU6050() : ImuSensor(SensorId::GYRO_INERTIAL | SensorId::LocalSensor)
+GyroMPU6050::GyroMPU6050() :
+    ImuSensor(SensorId::GYRO_INERTIAL | SensorId::LocalSensor),
+    _scale(Units::deg_to_rad(mpud::gyroResolution(mpud::GYRO_FS_250DPS))) // scale factor for raw gyro data to rad/s
 {
     // push a single previous value
     pushAndPublish(vector_f(0,0,0), 0);
@@ -22,8 +24,7 @@ bool GyroMPU6050::doRead(vector_f& val) {
     mpud::raw_axes_t imuRaw;
     if (_MPUdev.rotation(&imuRaw) == ESP_OK) {
         // raw data to rad/s
-        float scale = Units::deg_to_rad(mpud::gyroResolution(mpud::GYRO_FS_250DPS));
-        vector_f tmpvec = vector_f::make_vector(imuRaw.x, imuRaw.y, imuRaw.z, scale);
+        vector_f tmpvec = vector_f::make_vector(imuRaw.x, imuRaw.y, imuRaw.z, _scale);
 
         // Check on irrational changes
         if ((tmpvec - *getHeadPtr()).get_norm2() > Units::deg_to_rad(30000.f)) {

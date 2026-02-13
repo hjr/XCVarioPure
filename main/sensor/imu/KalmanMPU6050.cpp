@@ -29,7 +29,7 @@ rad_t  IMU::filterRoll = 0;
 rad_t  IMU::filterYaw = 0;
 
 int IMU::last_rts=0;
-vector_i IMU::raw_gyro(0,0,0);
+// vector_i IMU::raw_gyro(0,0,0);
 vector_f IMU::nogate_gyro(0,0,0);
 vector_f IMU::accel(0,0,0);
 vector_f IMU::gyro(0,0,0);
@@ -187,11 +187,10 @@ void IMU::Process()
 	float gravity_trust = 1;
 	gyro = gyroSensor->getHead();
 	accel = accSensor->getHead();
-	// ESP_LOGI( FNAME, " Accel: %.3f,%.3f,%.3f Gyro: %.3f,%.3f,%.3f dt: %.3f", accel.x, accel.y, accel.z, gyro.x, gyro.y, gyro.z, dt );
+	ESP_LOGI( FNAME, " Accel: %.3f,%.3f,%.3f Gyro: %.3f,%.3f,%.3f dt: %.3f", accel.x, accel.y, accel.z, gyro.x, gyro.y, gyro.z, dt );
 
 	// create a gyro base rotation axis
-	vector_f gyro_rad = gyro * deg2rad(1.f);
-	omega_step = Quaternion::fromGyro(gyro_rad, dt);
+	omega_step = Quaternion::fromGyro(gyro, dt);
 	vector_f axis;
 	float w = omega_step.getAngleAndAxis(axis) * 1.f / dt; // angular speed [rad/sec]
 	omega_step.conjugate(); // inverse step
@@ -203,7 +202,7 @@ void IMU::Process()
 		float lf = loadFactor > 2.0 ? 2.0 : loadFactor;
 		loadFactor = lf < 0 ? 0 : lf; // limit to 0..2g
 		// the yz portion of w is proportional to the length of YZ portion of the normalized axis.
-		circle_omega = w * std::sqrtf(axis.y*axis.y + axis.z*axis.z) * (std::signbit(gyro_rad.z)?-1.f:1.f);
+		circle_omega = w * std::sqrtf(axis.y*axis.y + axis.z*axis.z) * (std::signbit(gyro.z)?-1.f:1.f);
 		// tan(roll):= petal force/G = m w v / m g
 		float tanw = -circle_omega * tas.get() / Units::g0;
 		roll = atan( tanw );
@@ -219,7 +218,7 @@ void IMU::Process()
 		pitch = PitchFromAccelRad();
 
 		// Centripetal forces to keep angle of bank while circling
-		petal.x = -sin(pitch);               // Nose down (positive Y turn) results in negative X force
+		petal.x = -sin(pitch);               // Nose up (positive Y turn) results in negative X force
 		petal.y = sin(roll)*cos(pitch);   // Right wing down (or positive X roll) results in positive Y force
 		petal.z = cos(roll)*cos(pitch);   // Any roll or pitch creates a smaller positive Z, gravity Z is positive
 		// trust in gyro at load factors unequal 1 g
@@ -234,14 +233,14 @@ void IMU::Process()
 	// ESP_LOGI( FNAME, " ax1:%f ay1:%f az1:%f Gx:%f Gy:%f GZ:%f dT:%f", petal.a, petal.b, petal.c, gyro.a, gyro.b, gyro.c, dt );
 	vector_f att_prev = att_vector;
 	update_fused_vector(att_vector, gravity_trust, petal, omega_step);
-	// ESP_LOGI(FNAME,"attv: %.3f %.3f %.3f ProjAccel: %f", att_vector.a, att_vector.b, att_vector.c, accel.dot(att_vector));
+	// ESP_LOGI(FNAME,"attv: %.3f %.3f %.3f ProjAccel: %f", att_vector.x, att_vector.y, att_vector.z, accel.dot(att_vector));
 	att_quat = Quaternion::fromAccelerometer(att_vector);
 	// ESP_LOGI(FNAME,"attq: %.3f %.3f %.3f %.3f", att_quat._x, att_quat._y, att_quat._z, att_quat._w );
-	ESP_LOGI(FNAME,"Circle Omega: %f", circle_omega );
+	// ESP_LOGI(FNAME,"Circle Omega: %f", circle_omega );
 	euler_rad = att_quat.toEulerRad() * -1.f;
 	if ( (att_vector-att_prev).get_norm2() > 0.5 ) {
 		[[maybe_unused]] vector_f euler = euler_rad * rad2deg(1.f);
-		// ESP_LOGI( FNAME,"Euler R:%.1f P:%.1f OR:%.1f IMUP:%.1f %.1f@GA(%.3f,%.3f,%.3f)", euler.Roll(), euler.Pitch(), rad2deg(roll), rad2deg(pitch), rad2deg(w), axis.x, axis.y, axis.z );
+		ESP_LOGI( FNAME,"Euler R:%.1f P:%.1f OR:%.1f IMUP:%.1f %.1f@GA(%.3f,%.3f,%.3f)", euler.Roll(), euler.Pitch(), rad2deg(roll), rad2deg(pitch), rad2deg(w), axis.x, axis.y, axis.z );
 	}
 	filterRoll =  euler_rad.Roll();
 	filterPitch =  euler_rad.Pitch();
@@ -290,63 +289,6 @@ float IMU::fallbackToGyro(){
 	return( Vector::normalizeDeg( fused_yaw ) );
 }
 
-// Central read of IMU with reotation into the glider reference system
-// esp_err_t IMU::MPU6050Read()
-// {
-	// static vector_f prev_accel(1,0,0), prev_gyro(0,0,0);
-
-	// // Get new accelerometer values from MPU6050
-	// mpud::raw_axes_t imuRaw; // holds x, y, z axes as int16
-	// esp_err_t err = MPU.acceleration(&imuRaw);  // fetch raw data from the registers
-	// if( err != ESP_OK ) {
-	// 	ESP_LOGE(FNAME, "accel I2C error, X:%d Y:%d Z:%d", imuRaw.x, imuRaw.y, imuRaw.z );
-	// }
-	// mpud::float_axes_t tmp = mpud::accelGravity(imuRaw, mpud::ACCEL_FS_8G); // raw data to gravity
-	// vector_f tmpvec(tmp.x, tmp.y, tmp.z);
-
-	// // Check on irrational changes
-	// if ( (tmpvec-prev_accel).get_norm2() > 25 ) {
-	// 	vector_f d(tmpvec-prev_accel);
-	// 	ESP_LOGE(FNAME, "accelaration change > 5 g in 0.2 S:  X:%+.2f Y:%+.2f Z:%+.2f", d.x, d.y, d.z );
-	// 	err |= ESP_FAIL;
-	// }
-	// else {
-	// 	// into glide reference system
-	// 	accel = ref_rot * tmpvec;
-	// }
-	// prev_accel = tmpvec;
-
-	// // Get new gyro values from MPU6050
-	// err |= MPU.rotation(&imuRaw);       // fetch raw data from the registers
-	// if( err != ESP_OK ) {
-	// 	ESP_LOGE(FNAME, "gyro I2C error, X:%d Y:%d Z:%d",  imuRaw.x, imuRaw.y, imuRaw.z );
-	// }
-	// tmp = mpud::gyroDegPerSec(imuRaw, mpud::GYRO_FS_250DPS);  // raw data to º/s
-	// tmpvec = vector_f(tmp.x, tmp.y, tmp.z);
-
-	// // Check on irrational changes
-	// if ( (tmpvec-prev_gyro).get_norm2() > 30000 ) {
-	// 	vector_f d(tmpvec-prev_gyro);
-	// 	ESP_LOGE(FNAME, "gyro angle >300 deg/s in 0.2 S: X:%+.2f Y:%+.2f Z:%+.2f", d.x, d.y, d.z );
-	// 	err |= ESP_FAIL;
-	// }
-	// else {
-	// 	// Gating ignores Gyro drift < 1 deg per second (default)
-	// 	float gate = gyro_gating.get();
-	// 	nogate_gyro = ref_rot * tmpvec;
-	// 	tmpvec.x = abs(tmpvec.x) < gate ? 0.0 : tmpvec.x;
-	// 	tmpvec.y = abs(tmpvec.y) < gate ? 0.0 : tmpvec.y;
-	// 	tmpvec.z = abs(tmpvec.z) < gate ? 0.0 : tmpvec.z;
-	// 	// into glider reference system
-	// 	gyro = ref_rot * tmpvec;
-	// 	// preserve the raw read-out
-	// 	raw_gyro.x = imuRaw.x; raw_gyro.y = imuRaw.y; raw_gyro.z = imuRaw.z;
-	// }
-	// prev_gyro = tmpvec;
-	// return err;
-// 	return ESP_FAIL;
-// }
-
 float IMU::getVerticalAcceleration()
 {
 	// orthonormal projection of the current accelerometer reading to the attitude vector
@@ -362,14 +304,14 @@ float IMU::getVerticalOmega()
 	return circle_omega;
 }
 
-float IMU::PitchFromAccel()
-{
-	return -atan2f(accel.x, accel.z) * RAD_TO_DEG;
-}
+// float IMU::PitchFromAccel()
+// {
+// 	return rad2deg(atan2f(accel.x, accel.z));
+// }
 
 float IMU::PitchFromAccelRad()
 {
-	return -atan2f(accel.x, accel.z);
+	return atan2f(accel.x, accel.z);
 }
 
 // void IMU::RollPitchFromAccel(double *roll, double *pitch)
@@ -479,6 +421,7 @@ int IMU::getAccelSamplesAndCalib(int side, rad_t& wing_angle) {
 
             // Save the basic part to nvs storage
             imu_reference.set(basic_reference, false);
+
             // Save the accel bias
             mpud::raw_axes_t raw_bias(bias.x * -2048., bias.y * -2048., bias.z * -2048.);
             ESP_LOGI(FNAME, "raw  Bias: %d,%d,%d", raw_bias.x, raw_bias.y, raw_bias.z);

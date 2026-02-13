@@ -36,7 +36,7 @@ public:
 
     ImuType getImuType() const { return _who_typ; }
     temp_status_t getTempStatus() const;
-    static Quaternion setDefaultImuReference();
+    static void setDefaultImuReference();
     void applyImuReference(const degree_t gAA, const Quaternion& basic) {
         _ref_rot = concatGaaAndImuReference(gAA, basic);
     }
@@ -46,6 +46,7 @@ protected:
     static Quaternion concatGaaAndImuReference(const degree_t gAA, const Quaternion& basic);
     mpud::MPU& _MPUdev;
     ImuType _who_typ; // cached IMU type
+    static Quaternion loadDefaultImuReference();
     static Quaternion _ref_rot;
 
     // Heat control & parameters

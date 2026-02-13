@@ -7,6 +7,7 @@
  ***********************************************************/
 
 #include "ImuSensor.h"
+
 #include "../SensorMgr.h"
 #include "math/Trigonometry.h"
 #include "setup/SetupNG.h"
@@ -127,7 +128,7 @@ bool ImuSensor::setup() {
     Quaternion basic_ref = imu_reference.get();
     if (basic_ref == Quaternion()) {
         // If unset, set to a rough default
-        basic_ref = setDefaultImuReference();
+        basic_ref = loadDefaultImuReference();
     }
     _ref_rot = concatGaaAndImuReference(glider_ground_aa.get(), basic_ref);
 
@@ -157,19 +158,25 @@ temp_status_t ImuSensor::getTempStatus() const {
 }
 
 // Setup the rotation for the "upright", "topdown" and "ninety" vario mounting positions
-Quaternion ImuSensor::setDefaultImuReference() {
+void ImuSensor::setDefaultImuReference() {
+    Quaternion base = loadDefaultImuReference();
+    _ref_rot = concatGaaAndImuReference(glider_ground_aa.get(), base);
+    imu_reference.set(_ref_rot, false);  // nvs
+}
+
+Quaternion ImuSensor::loadDefaultImuReference() {
+
     // Revert from calibrated IMU to default mapping, which fits
     // roughly to an upright, top down, or ninety degree installation.
+    // IMU in PCB placement: X up, Y left, Z backwards
     // IMU in PCB placement to "NED" reference: X forward, Y right, Z down
-    Quaternion accelDefaultRef = Quaternion(deg2rad(90.0f), vector_f(0, 1, 0)).get_conjugate();
-    accelDefaultRef = Quaternion(deg2rad(180.0f), vector_f(1, 0, 0)) * accelDefaultRef;  // towards "NED"
+    Quaternion accelDefaultRef = Quaternion(deg2rad(90.0f), vector_f(0, 1, 0)).conjugate(); // towards "NED"
 
-    if (display_orientation.get() == DISPLAY_TOPDOWN) {
+    if (display_orientation.get() == DISPLAY_NORMAL) {
         accelDefaultRef = Quaternion(deg2rad(180.0f), vector_f(1, 0, 0)) * accelDefaultRef;
     } else if (display_orientation.get() == DISPLAY_NINETY) {
-        accelDefaultRef = Quaternion(deg2rad(-90.0f), vector_f(1, 0, 0)) * accelDefaultRef;
+        accelDefaultRef = Quaternion(deg2rad(-90.0f), vector_f(1, 0, 0)).conjugate() * accelDefaultRef;
     }
-    imu_reference.set(accelDefaultRef, false);  // nvs
     return accelDefaultRef;
 }
 

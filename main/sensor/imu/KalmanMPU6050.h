@@ -20,22 +20,23 @@
 
 #include "math/vector_3d.h"
 #include "math/Quaternion.h"
+#include "math/Trigonometry.h"
 #include "math/Units.h"
 
 #include <esp_err.h>
 
 class Quaternion;
 
-#ifndef M_PI
-#define M_PI 3.14159265359
-#endif // M_PI
-#ifndef RAD_TO_DEG
-#define RAD_TO_DEG (180.0/M_PI)
-#endif // RAD_TO_DEG
+// #ifndef M_PI
+// #define M_PI 3.14159265359
+// #endif // M_PI
+// #ifndef RAD_TO_DEG
+// #define RAD_TO_DEG (180.0/M_PI)
+// #endif // RAD_TO_DEG
 
-#ifndef DEG_TO_RAD
-#define DEG_TO_RAD (M_PI/180.0)
-#endif // DEG_TO_RAD
+// #ifndef DEG_TO_RAD
+// #define DEG_TO_RAD (M_PI/180.0)
+// #endif // DEG_TO_RAD
 
 typedef enum e_imudir { IMU_RIGHT=1, IMU_LEFT=2 } e_imudir_t;
 
@@ -77,7 +78,7 @@ public:
   static void Process();
 
   // Accelerometer reading in glider reference and in [g]
-  static inline vector_f getGliderAccel() { return accel; };
+  // static inline vector_f getGliderAccel() { return accel; };
 
   /**
    * Gets the accelerometer X reading, as per last read() call.
@@ -114,29 +115,29 @@ public:
    *
    * @returns The gyroscope X reading in glider reference.
    */
-  static inline float getGliderGyroX()   { return gyro.x; };
-  static inline float getGliderNogateGyroX()   { return nogate_gyro.x; };
+  // static inline float getGliderGyroX()   { return gyro.x; };
+  // static inline float getGliderNogateGyroX()   { return nogate_gyro.x; };
 
   /**
    * Gets the gyroscope Y reading, as per last read() call.
    *
    * @returns The gyroscope Y reading.
    */
-  static inline float getGliderGyroY()   { return gyro.y; };
-  static inline float getGliderNogateGyroY()   { return nogate_gyro.y; };
+  // static inline float getGliderGyroY()   { return gyro.y; };
+  // static inline float getGliderNogateGyroY()   { return nogate_gyro.y; };
 
   /**
    * Gets the gyroscope Z reading, as per last read() call.
    *
    * @returns The gyroscope Z reading.
    */
-  static inline float getGliderGyroZ()   { return gyro.z; };
-  static inline float getGliderNogateGyroZ()   { return nogate_gyro.z; };
+  // static inline float getGliderGyroZ()   { return gyro.z; };
+  // static inline float getGliderNogateGyroZ()   { return nogate_gyro.z; };
 
   // Get the last raw gyro reads
-  static inline float getRawGyroX()   { return raw_gyro.x; };
-  static inline float getRawGyroY()   { return raw_gyro.y; };
-  static inline float getRawGyroZ()   { return raw_gyro.z; };
+  // static inline float getRawGyroX()   { return raw_gyro.x; };
+  // static inline float getRawGyroY()   { return raw_gyro.y; };
+  // static inline float getRawGyroZ()   { return raw_gyro.z; };
 
   /**
    * Gets the roll (X rotation) in degress from the Kalman Filter.
@@ -144,7 +145,7 @@ public:
    *
    * @returns The x rotation (roll) in degrees
    */
-  static inline float getRoll() { return float(RAD_TO_DEG) * filterRoll; };
+  static inline float getRoll() { return rad2deg(filterRoll); };
   static inline float getRollRad() { return filterRoll; };
 
   /**
@@ -152,12 +153,13 @@ public:
    *
    * @returns The y rotation (pitch) in degrees
    */
-  static inline float getPitch()  { return float(RAD_TO_DEG) * filterPitch; }
+  static inline float getPitch()  { return rad2deg(filterPitch); }
   static inline float getPitchRad()  { return filterPitch; }
 
-  // XCSoar uses a 180 deg rotated reference system with Z vector pointing down, so Yaw and Pitch inverted
-  // hence only Pitch and Roll is used for XCSoar
-  static inline float getXCSPitch()  { return -float(RAD_TO_DEG) * filterPitch;  }
+  // XCSoar, and XCVario using a reference system with X pointing to th nose, Z vector pointing down (NED),
+  // and Y to the right.
+  // only Pitch and Roll is used for XCSoar
+  // static inline float getXCSPitch()  { return -float(RAD_TO_DEG) * filterPitch;  }
   static inline double getYaw()  { return filterYaw;  }
 
   static inline double getGyroRate()  {	return abs(gyro.x)+abs(gyro.y)+abs(gyro.z); }
@@ -177,7 +179,7 @@ private:
   // static Kalman kalmanY;
   // static Kalman kalmanZ;
 
-  static vector_i raw_gyro;
+  // static vector_i raw_gyro;
   static vector_f nogate_gyro;
   static vector_f accel;
   static vector_f gyro;
@@ -187,7 +189,7 @@ private:
 
   static float fallbackToGyro();
   // static void RollPitchFromAccel(double *roll, double *pitch);
-  static float PitchFromAccel();
+  // static float PitchFromAccel();
   static float PitchFromAccelRad();
   static int last_rts;
   static float  filterPitch;

@@ -54,30 +54,29 @@ public:
 
     ~Vector();
 
-    static float polar(float y, float x);
-    static float normalizePI2(float angle);
-    static float normalizePI(float angle);
-    static float normalizeDeg(float angle);
-    static float normalizeDeg180(float angle);
+    static rad_t polar(rad_t y, rad_t x);
+    static rad_t normalizePI2(rad_t angle);
+    static rad_t normalizePI(rad_t angle);
+    static degree_t normalizeDeg(degree_t angle);
+    static degree_t normalizeDeg180(degree_t angle);
+    static rad_t angleDiff(rad_t ang1, rad_t ang2);    // RAD
+    static degree_t angleDiffDeg(degree_t ang1, degree_t ang2);    // DEG
 
-    static float angleDiff(float ang1, float ang2);    // RAD
-    static float angleDiffDeg(float ang1, float ang2);    // DEG
-
-    static float reverseBearing( float angle );
+    static degree_t reverseBearing(degree_t angle);
     /**
      * Get angle in degrees.
      */
-    float getAngleDeg();
+    degree_t getAngleDeg();
 
     /**
      * Get angle in radian.
      */
-    float getAngleRad();
+    rad_t getAngleRad();
 
     /**
      * set the angle in degrees
      */
-    void setAngle(const float angle);
+    void setAngle(degree_t angle);
 
     /**
      * set the angle in degrees  and the speed
@@ -87,12 +86,12 @@ public:
     /**
      * set the angle in radian
      */
-    void setAngleRad(const float& angle);
+    void setAngleRad(rad_t angle);
 
     /**
      * Set the speed. Expected unit is meter per second.
      */
-    void setSpeedKmh(const float kmh);
+    void setSpeedKmh(kmh_t kmh);
     void setSpeed(const mps_t mps);
 
     /**
@@ -101,39 +100,27 @@ public:
     mps_t getSpeed();  // in internal units of m/s
 
     /**
-     * @return The speed in Y (longitude) direction
-     * (east is positive, west is negative)
-     */
-    float getY();
-
-    /**
-     * @return The speed in X (latitude) direction
-     * (north is positive, south is negative)
-     */
-    float getX();
-
-    /**
      * @returns The speed in Y (longitude) direction
      * (east is positive, west is negative) in meters per second
      */
-    float getYMps();
+    mps_t getYMps();
 
     /**
      * @return The speed in X (latitude) direction
      * (north is positive, south is negative) in meters per second
      */
-    float getXMps();
+    mps_t getXMps();
 
 
     /**
      * Sets the X (latitudinal) speed in meters per second.
      */
-    void setX(const float& x);
+    void setX(const mps_t& x);
 
     /**
      * Sets the Y (longitudinal) speed in meters per second.
      */
-    void setY(const float& y);
+    void setY(const mps_t& y);
 
     /* Operators */
     /**
@@ -176,12 +163,12 @@ public:
      */
     Vector operator - ();
 
-    /**
-     * * prefix operator for Vector
-     */
-    Vector operator * (float left);
+    // /**
+    //  * * prefix operator for Vector
+    //  */
+    // Vector operator * (float left);
 
-    Vector operator * (int left);
+    // Vector operator * (int left);
 
     /**
      * Poor man's solution for not getting the +
@@ -222,17 +209,17 @@ protected: // Protected attributes
     /**
      * Contains the angle of the speed. 0 is north, pi/2 east, pi south, etc.
      */
-    float _angle;
+    rad_t _angle;
 
     /**
      * float in X (latitudinal) direction in meters per second, north being positive.
      */
-    float _x;
+    mps_t _x;
 
     /**
      * float in Y (longitudinal) direction in meters per second, east being positive.
      */
-    float _y;
+    mps_t _y;
 
     /**
      * float in mps

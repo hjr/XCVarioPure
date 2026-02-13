@@ -163,7 +163,7 @@ bool Flap()
 bool Omega()
 {
     float ref = s2f_gyro_deg.get();
-    if ((abs(IMU::getVerticalOmega()) * RAD_TO_DEG) < ref)
+    if ( rad2deg(abs(IMU::getVerticalOmega())) < ref)
     {
         return true;
     }

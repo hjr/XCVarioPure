@@ -22,16 +22,18 @@
  */
 #include "StraightWind.h"
 
+#include "Units.h"
 #include "protocol/ProtocolItf.h"
 #include "protocol/NMEA.h"
 #include "Compass.h"
 #include "Flarm.h"
 #include "setup/SetupNG.h"
 #include "sensor.h"
-#include "sensor/imu/KalmanMPU6050.h"
+#include "sensor/imu/ImuSensor.h"
 #include "math/Trigonometry.h"
 #include "math/Floats.h"
 #include "comm/DeviceMgr.h"
+#include "vector_3d_fwd.h"
 #include "wind/CircleWind.h"
 #include "logdef.h"
 
@@ -191,10 +193,11 @@ bool StraightWind::calculateWind()
 			char log2[ProtocolItf::MAX_LEN];
 			sprintf( log2, "$IMU;");
 			int pos = strlen(log2);
+			vector_f acc = accSensor->getHead();
+			vector_f gyrodeg = gyroSensor->getHead() * rad2deg(1.f);
 			sprintf( log2+pos, ";%.3f;%.3f;%.3f;%.3f;%.3f;%.3f;%.3f;%.3f;%.3f",
 					theCompass->rawX()/16384.0,theCompass->rawY()/16384.0,theCompass->rawZ()/16384.0,
-					IMU::getGliderAccelX(), IMU::getGliderAccelY(), IMU::getGliderAccelZ(),
-					IMU::getGliderGyroX(), IMU::getGliderGyroY(), IMU::getGliderGyroZ()  );
+					acc.x, acc.y, acc.z, gyrodeg.x, gyrodeg.y, gyrodeg.z );
 			pos = strlen(log2);
 			sprintf(log2+pos, "\n");
 			const NmeaPrtcl *prtcl = DEVMAN->getNMEA(NAVI_DEV); // Todo preliminary solution ..

@@ -36,6 +36,8 @@
 #include "screen/MessageBox.h"
 #include "screen/DrawDisplay.h"
 #include "screen/UiEvents.h"
+#include "math/Trigonometry.h"
+#include "math/Units.h"
 
 // #include "math/Quaternion.h"
 // #include "math/Floats.h"
@@ -44,13 +46,8 @@
 #include "S2fSwitch.h"
 #include "AverageVario.h"
 
-#include "MPU.hpp"        // main file, provides the class itself
-#include "mpu/math.hpp"   // math helper for dealing with MPU data
-#include "mpu/types.hpp"  // MPU data types and definitions
 #include "I2Cbus.hpp"
-#include "sensor/imu/KalmanMPU6050.h"
 #include "LeakTest.h"
-#include "math/Units.h"
 #include "Flap.h"
 #include "wind/WindCalcTask.h"
 #include "comm/SerialLine.h"
@@ -279,11 +276,11 @@ void readSensors(void *pvParameters)
                 if (delta < 0) {
                     delta += 1000;
                 }
-                vector_3d acc = accSensor->getHead();
-                vector_3d gyro = gyroSensor->getHead();
+                vector_f acc = accSensor->getHead();
+                vector_f gyro_deg = gyroSensor->getHead() * rad2deg(1.f);
                 sprintf(log + pos, "%d.%03d,%d,%.3f,%.3f,%.3f,%.2f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f", (int)(tv.tv_sec % (60 * 60 * 24)),
                         (int)(tv.tv_usec / 1000), delta, baroSensor->getHead()/100.f, teSensor->getHead()/100.f, asSensor->getHead(), temp, 
-                        acc.x, acc.y, acc.z, gyro.x, gyro.y, gyro.z);
+                        acc.x, acc.y, acc.z, gyro_deg.x, gyro_deg.y, gyro_deg.z);
                 if (theCompass) {
                     pos = strlen(log);
                     sprintf(log + pos, ",%.4f,%.4f,%.4f", theCompass->rawX(), theCompass->rawY(), theCompass->rawZ());
@@ -383,18 +380,21 @@ void readSensors(void *pvParameters)
 		}
 
 
-        // battery voltage update
-        if ( SetupCommon::isMaster() && !(count%10) ) {
-            battery_voltage.set(BatVoltage->get());
-            if (theCompass) {
-               theCompass->ageIncr();
+        // every second
+        if ( !(count%10) ) {
+            // battery voltage update
+            if ( SetupCommon::isMaster() ) {
+                battery_voltage.set(BatVoltage->get());
+                if (theCompass) {
+                theCompass->ageIncr();
+                }
             }
 
-			// Check auto s2f mode filter every second
-			if (S2FSWITCH) {
-				S2FSWITCH->checkCruiseMode();
-			}
-		}
+            // Check auto s2f mode filter every second
+            if (S2FSWITCH) {
+                S2FSWITCH->checkCruiseMode();
+            }
+        }
 
         // MinMax tracking
         if (accSensor) {
@@ -461,12 +461,10 @@ void readSensors(void *pvParameters)
         }
         avg_delta = avg_delta + (delta - avg_delta) * 0.1;
 
-
-		esp_task_wdt_reset();
-		xTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(100));
-	}
+        esp_task_wdt_reset();
+        xTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(100));
+    }
 }
-
 
 static esp_err_t _coredump_to_server_begin_cb(void * priv)
 {

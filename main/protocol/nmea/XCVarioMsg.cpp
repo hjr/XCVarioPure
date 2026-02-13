@@ -133,13 +133,13 @@ void NmeaPrtcl::sendStdXCVario()
     {
         std::sprintf(str, ",%3.1f", IMU::getRoll());
         msg->buffer += str;
-        std::sprintf(str, ",%3.1f", IMU::getXCSPitch());
+        std::sprintf(str, ",%3.1f", -IMU::getPitch());
         msg->buffer += str;
         std::sprintf(str, ",%1.2f", IMU::getGliderAccelX());
         msg->buffer += str;
-        std::sprintf(str, ",%1.2f", IMU::getGliderAccelY());
+        std::sprintf(str, ",%1.2f", -IMU::getGliderAccelY());
         msg->buffer += str;
-        std::sprintf(str, ",%1.2f", IMU::getGliderAccelZ());
+        std::sprintf(str, ",%1.2f", -IMU::getGliderAccelZ());
         msg->buffer += str;
     }
     else

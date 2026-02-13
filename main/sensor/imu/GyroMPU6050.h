@@ -18,5 +18,6 @@ public:
     bool doRead(vector_f& val) override;
 
 private:
+    const float _scale;
 };
 
