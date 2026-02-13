@@ -75,6 +75,7 @@ private:
     float vario_mode_volume;
     float s2f_mode_volume;
     float speaker_volume;
+    int volumeadjust = -1; // make a noise when turning the knob
     int16_t _channel;
     dac_continuous_handle_t _dac_chan = nullptr;
     dac_continuous_config_t _dac_cfg;

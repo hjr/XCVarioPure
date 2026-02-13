@@ -768,7 +768,7 @@ void Audio::setVolume(float vol, bool sync) {
         return; // no volume change during alarm
     }
     audio_volume.setCheckRange(vol, sync, false);
-	speaker_volume = audio_volume.get();
+    speaker_volume = audio_volume.get();
     if (audio_split_vol.get())
     {
         if (CRMOD.getCMode())
@@ -788,6 +788,7 @@ void Audio::setVolume(float vol, bool sync) {
         vario_mode_volume = speaker_volume;
         ESP_LOGI(FNAME, "setvolume() to %f, joint mode", speaker_volume);
     }
+    volumeadjust = 5;
     writeVolume(speaker_volume);
 }
 
@@ -813,7 +814,7 @@ void Audio::updateAudioMode()
     // chopping is caches from VCMode
     ESP_LOGI(FNAME, "Vario chopping mode %d", VCMode.audioIsChopping());
 
-    // set volume according s2f mode, need to be the last action here last
+    // set volume according s2f mode, need to be the last action here
     if (audio_split_vol.get())
     {
         speaker_volume = CRMOD.getCMode() ? s2f_mode_volume : vario_mode_volume;
@@ -987,7 +988,7 @@ void  Audio::calculateFrequency(float val) {
         vario_tim[0].setSamples(50);
         vario_tim[1].setSamples(50);
     }
-    if ( inDeadBand(val) || speaker_volume < 1.0 ) {
+    if ( (inDeadBand(val) || speaker_volume < 1.0) && volumeadjust-- < 0) {
         vario_seq[0].step = vario_extra[0].step = vario_seq[1].step = vario_extra[1].step = 0;
     }
     else {
@@ -1134,7 +1135,7 @@ void Audio::dactask()
                 }
             }
             else if ( event.cmd == DO_VARIO && ! _alarm_mode) {
-                // update vario sound
+                // update vario sound (10Hz)
                 // pull the intput value from vario indicator, or speed respectively
                 float max = _range;
                 float audio_value;
