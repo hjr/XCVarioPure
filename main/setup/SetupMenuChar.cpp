@@ -16,7 +16,7 @@
 
 extern AdaptUGC *MYUCG;
 
-const std::string_view alternate_help[2] = {"Choose position, press to edit", "Long press to exit"};
+const std::string_view alternate_help[4] = {"Choose pos., press to edit", "Long press to exit", "Choose charachter", "Press to reposition"};
 
 CharFilter::CharFilter( const char *chset )
 {
@@ -88,7 +88,8 @@ void SetupMenuChar::enter()
     if (!bits._locked) {
         if ( bits._is_inline && _parent->freeBottomLines() >= 2) {
             clearHelpLines(_parent->firstHelpLine());
-            menuPrintLn(alternate_help[_mode].data(), _parent->firstHelpLine());
+            menuPrintLn(alternate_help[_mode*2].data(), _parent->firstHelpLine());
+            menuPrintLn(alternate_help[_mode*2+1].data(), _parent->firstHelpLine()+1);
         }
     }
 
@@ -158,7 +159,8 @@ void SetupMenuChar::press()
     // additional help to handle the char menu
     if ( bits._is_inline && _parent->freeBottomLines() >= 2) {
         clearHelpLines(_parent->firstHelpLine());
-        menuPrintLn(alternate_help[_mode].data(), _parent->firstHelpLine());
+        menuPrintLn(alternate_help[_mode*2].data(), _parent->firstHelpLine());
+        menuPrintLn(alternate_help[_mode*2+1].data(), _parent->firstHelpLine()+1);
     }
 }
 
