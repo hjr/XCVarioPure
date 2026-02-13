@@ -126,6 +126,8 @@ public:
 	inline void setPrintPos(int16_t x, int16_t y) { eglib_print_xpos = x; eglib_print_ypos = y; };
 	inline void setPrintDir(uint8_t d) { eglib_print_dir = d; }
 	inline int16_t getStrWidth( const char * s ) { return ( eglib_GetTextWidth(eglib, s) ); };
+	inline int16_t IdxToTextWidth(const char *text, int16_t width_limit) { return ( eglib_IdxToTextWidth(eglib, text, width_limit) ); }
+
 	// Font related
 	void setFont(const uint8_t *f, bool filled=false );
 	void setFontMode( uint8_t is_transparent ) {};  // no concept for transparent fonts in eglib, as it appears

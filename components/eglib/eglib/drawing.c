@@ -1381,6 +1381,24 @@ coordinate_t eglib_GetTextWidth(eglib_t *eglib, const char *utf8_text) {
   return width;
 }
 
+coordinate_t eglib_IdxToTextWidth(eglib_t *eglib, const char *utf8_text, coordinate_t width_limit) {
+  coordinate_t width = 0;
+  for(uint16_t index=0 ; utf8_text[index]; index++ ) {
+    const struct glyph_t *glyph;
+    glyph = eglib_GetGlyph(eglib, utf8_text[index] );
+    if(glyph == NULL){
+      width += eglib->drawing.font->pixel_size;
+    }
+    else{
+      width += glyph->advance;
+    }
+    if ( width > width_limit ) {
+      return index;
+    }
+  }
+  return 0;
+}
+
 void eglib_setFilledMode(eglib_t *eglib, bool fill ) {
 	eglib->drawing.filled_mode = fill;
 };

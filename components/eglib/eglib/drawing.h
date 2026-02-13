@@ -1005,4 +1005,9 @@ size_t eglib_DrawText(eglib_t *eglib, coordinate_t x, coordinate_t y, const char
  */
 coordinate_t eglib_GetTextWidth(eglib_t *eglib, const char *utf8_text);
 
+/**
+ *  Return index that exceeds the width limit
+ */
+coordinate_t eglib_IdxToTextWidth(eglib_t *eglib, const char *utf8_text, coordinate_t width_limit);
+
 #endif
