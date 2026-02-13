@@ -90,7 +90,7 @@ void SetupMenuSelect::press()
 
 	if( _nvs ) {
 		_nvs->set(_values[_select].second);
-		if ( helptext ) {
+		if ( hasHelp() ) {
 			SavedDelay(_select_save != _select);
 		}
 	}

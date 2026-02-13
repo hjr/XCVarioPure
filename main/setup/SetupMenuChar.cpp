@@ -171,7 +171,7 @@ void SetupMenuChar::longPress(){
         ESP_LOGI(FNAME, "calling exit action");
         (*_exit_action)(this);
     }
-    if (helptext) {
+    if ( hasHelp() ) {
         SavedDelay(_dirty);
     }
     if (_dirty && bits._restart) {

@@ -31,7 +31,7 @@ void SetupAction::enter()
     if ( (*_action)(this) ) {
         // hijacked
     };
-    if ( !helptext ) {
+    if ( ! hasHelp() ) {
         return; // do not enter at all, just one action
     }
     MenuEntry::enter();

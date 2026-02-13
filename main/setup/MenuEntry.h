@@ -30,19 +30,21 @@ constexpr uint8_t RESTART_SCHEDULED = 0x80;
 constexpr uint8_t RESTART_BT_CHANGE = 0x01; // because of BT change
 constexpr uint8_t RESTART_WIFI_CHANGE = 0x02; // because of WIFI change
 
+// wrap help lines
+constexpr int MAX_HELP_LINES = 6;
+constexpr const int16_t LINE_HEIGHT = 25;
 
 class PressureSensor;
 class SetupMenu;
 class SetupRoot;
 
-constexpr const int LINE_HEIGHT = 25;
 
 class MenuEntry : public RotaryObserver
 {
 	friend class SetupRoot;
 
 public:
-	MenuEntry(const char *t) : RotaryObserver() { _title.assign(t); }
+	MenuEntry(const char *t);
 	virtual ~MenuEntry() = default;
 
 	static void grabDisplaySize();
@@ -71,7 +73,7 @@ public:
 	void regParent(SetupMenu* p);
 	bool isFirstLevel() const;
 	MenuEntry *getSelected() const { return current; }
-	void setHelp( const char *txt, int y=0 ) { helptext = (char*)txt; };
+	void setHelp( const char *txt );
     bool hasHelp() const { return helptext != nullptr; }
 	void doHighlight(int sel) const;
     void unHighlight(int sel) const;
@@ -102,12 +104,13 @@ protected:
 protected:
 	SetupMenu  *_parent = nullptr;
 	std::string _title;
-	const char *helptext = nullptr;
 	bitfield bits = {};
 	static int16_t cur_indent;
 	static int16_t cur_row;
 
-private:
-	static MenuEntry *current;
-    static SetupMenu *current_menu;
+   private:
+    const char* helptext = nullptr;
+    uint8_t _help_line_start[MAX_HELP_LINES];
+    static MenuEntry* current;
+    static SetupMenu* current_menu;
 };

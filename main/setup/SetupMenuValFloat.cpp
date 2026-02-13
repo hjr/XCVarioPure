@@ -74,7 +74,6 @@ SetupMenuValFloat::SetupMenuValFloat( const char* title, const char *unit, int (
 	_nvs(anvs)
 {
 	ESP_LOGI(FNAME,"SetupMenuValFloat( %s ) ", title );
-	_title.assign(title);
 	if( unit != 0 && *unit != '\0' ) {
 		_unit = unit;
         ESP_LOGI(FNAME,"unit %s", _unit );
@@ -187,7 +186,7 @@ void SetupMenuValFloat::press()
         if (_action != 0) {
            (*_action)(this);
         }
-		if ( helptext ) {
+		if ( hasHelp() ) {
 			SavedDelay();
 		}
 		ESP_LOGI(FNAME,"Yes restart:%d", bits._restart);

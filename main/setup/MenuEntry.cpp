@@ -25,6 +25,13 @@ int16_t MenuEntry::cur_row;
 int16_t MenuEntry::dwidth;
 int16_t MenuEntry::dheight;
 
+MenuEntry::MenuEntry(const char *t) :
+    RotaryObserver(),
+    _title(t)
+{
+    _help_line_start[0] = 0;
+}
+
 void MenuEntry::grabDisplaySize()
 {
 	dwidth = MYUCG->getDisplayWidth();
@@ -140,6 +147,46 @@ bool MenuEntry::isFirstLevel() const
     return  _parent->_parent == nullptr;
 }
 
+void MenuEntry::setHelp( const char *txt )
+{
+    helptext = (char*)txt;
+
+    if (!helptext) {
+        return;
+    }
+    MYUCG->setFont(ucg_font_ncenR14_hr);
+    int16_t nlidx = MYUCG->IdxToTextWidth(helptext, dwidth);
+    if (nlidx == 0) {
+        return; // fits in one line, no need to split
+    }
+
+    int last_nlidx = 0;
+    const char* p = helptext + nlidx;
+    int16_t nlidx_prev = 0;
+    int lines = 0;
+    while (lines < MAX_HELP_LINES) {
+        // go backwards, find the last space before end_idx
+        while ( (p > helptext) && (*p != ' ') ) {
+            p--;
+            nlidx--;
+        }
+        _help_line_start[lines] = nlidx + nlidx_prev;
+        nlidx_prev = _help_line_start[lines];
+        lines++;
+        // get the potential next line end
+        nlidx = MYUCG->IdxToTextWidth(p, dwidth);
+        if ( nlidx == 0 ) {
+            break;
+        }
+        p += nlidx;
+    }
+    
+    if ( lines < MAX_HELP_LINES ) {
+        _help_line_start[lines] = 0; // mark end of help text
+    }
+    ESP_LOGI(FNAME,"MenuEntry setHelp() lines %d, %d,%d,%d", lines, _help_line_start[0], _help_line_start[1], _help_line_start[2] );
+}
+
 void MenuEntry::doHighlight(int sel) const
 {
 	MYUCG->setColor(COLOR_WHITE);
@@ -192,34 +239,16 @@ void MenuEntry::focusPosLn(const char *str, int16_t pos, bool mode) const
 // how many lines the help text will allocate
 bool MenuEntry::canInline() const
 {
-	return current_menu->freeBottomLines() >= nrOfHelpLines() && !isFirstLevel() && !bits._never_inline;
+    return current_menu->freeBottomLines() >= nrOfHelpLines() && !isFirstLevel() && !bits._never_inline;
 }
 
 int MenuEntry::nrOfHelpLines() const
 {
-	int lines = 0;
-    if( helptext ) {
-		int nr_of_char_per_line = dwidth * 11 / (MYUCG->getStrWidth("n") * 10); // add 10% for safety
-		int ll = 0;
-		int last_ll = 0;
-		const char *p = helptext;
-		lines = 1;
-		while (*p != '\0')
-		{
-			ll += 1;
-			if ( *p++ != ' ' ) {
-				continue;
-			}
-			if ( ll < nr_of_char_per_line ) {
-				last_ll = ll; // still fits
-			}
-			else {
-				ll = ll - last_ll; // back one word
-				lines++;
-			}
-		}
-	}
-	return lines;
+    int lines = 1;
+    for (int i=0; i<MAX_HELP_LINES && _help_line_start[i] != 0; i++) {
+        lines++;
+    }
+    return lines;
 }
 
 // In case inline is requested: Try to squeeze the help under
@@ -229,7 +258,7 @@ bool MenuEntry::showhelp(bool inln)
 {
 	ESP_LOGI(FNAME,"MenuEntry showhelp() %s inline=%d", _title.c_str(), inln );
 	bool ret = true; // inlining w/o help text is always possible
-    if( helptext != 0 )
+    if( helptext )
 	{
 		// option to fit the help under the menu lines
 		int needed_ln = nrOfHelpLines();
@@ -245,38 +274,27 @@ bool MenuEntry::showhelp(bool inln)
         }
 		clearHelpLines(first_hln);
 
-		int y = (first_hln + 1) * LINE_HEIGHT;
-		int line_length = dwidth;
-		int w=0;
-		char *buf = (char *)malloc(512);
-		memset(buf, 0, 512);
-		memcpy( buf, helptext, strlen(helptext));
-		char *p = strtok (buf, " ");
-		char *words[100];
-		while (p != NULL)
-		{
-			words[w++] = p;
-			p = strtok (NULL, " ");
-		}
-		// ESP_LOGI(FNAME,"showhelp number of words: %d", w);
-		int x=1;
-
 		MYUCG->setFont(ucg_font_ncenR14_hr);
-		for( int p=0; p<w; p++ )
-		{
-			int len = MYUCG->getStrWidth( words[p] );
-			// ESP_LOGI(FNAME,"showhelp pix len word #%d = %d, %s ", p, len, words[p]);
-			if( x+len >= line_length ) {   // does still fit on line
-				y+=LINE_HEIGHT;
-				x=1;
-			}
-			MYUCG->setPrintPos(x, y);
-			MYUCG->print( words[p] );
-			x+=len+5;
-		}
-		free( buf );
-	}
-	return ret;
+        if ( _help_line_start[0] == 0 ) {
+            // just one line
+            menuPrintLn(helptext, first_hln);
+            ESP_LOGI(FNAME,"MenuEntry showhelp() line 0: '%s'",  helptext );
+        }
+        else {
+            // multiple lines
+            int16_t start = 0;
+            int16_t i;;
+            for (i=0; i < MAX_HELP_LINES && _help_line_start[i] != 0; i++) {
+                std::string_view lbuf(helptext + start, _help_line_start[i] - start);
+                ESP_LOGI(FNAME,"MenuEntry showhelp() line %d: '%s'", i, lbuf.data() );
+                menuPrintLn(lbuf.data(), first_hln + i);
+                start = _help_line_start[i];
+            }
+            menuPrintLn(helptext + start, first_hln + i);
+        }
+
+    }
+    return ret;
 }
 
 void MenuEntry::clear() {

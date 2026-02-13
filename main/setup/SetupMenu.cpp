@@ -480,7 +480,7 @@ int16_t SetupMenu::freeBottomLines() const
 
 int16_t SetupMenu::firstHelpLine() const
 {
-    return getNrChilds() + 2;
+    return getNrChilds() + 1;
 }
 
 // void SetupMenu::setHighlight(MenuEntry *value)
@@ -1190,7 +1190,7 @@ void system_menu_create_hardware_type(SetupMenu *top) {
 
 	SetupMenuValFloat *dcadj = new SetupMenuValFloat("Display Clk Adj", "%", nullptr, true, &display_clock_adj, RST_IMMEDIATE);
 	dcadj->setHelp(
-			"Modify display clock by given percentage (restarts on exit)", 100);
+			"Modify display clock by given percentage (restarts on exit)");
 	top->addEntry(dcadj);
 
 }
@@ -1321,9 +1321,7 @@ void system_menu_create_hardware(SetupMenu *top) {
 
 		SetupMenuSelect *gear = new SetupMenuSelect("Gear Warn", RST_NONE, config_gear_warning, &gear_warning);
 		top->addEntry(gear);
-		gear->setHelp(
-				"Enable gear warning on S2 flap sensor or serial RS232 pin (pos. or neg. signal) or by external command",
-				220);
+		gear->setHelp("Enable gear warning on S2 flap sensor or serial RS232 pin (pos. or neg. signal) or by external command");
 		gear->addEntry("Disable");
 		gear->addEntry("S2 Flap positive"); // A positive signal, high signal or > 2V will start alarm
 		gear->addEntry("S2 RS232 positive");
