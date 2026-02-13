@@ -124,7 +124,7 @@ Point Point::rotate(float alpha) const {
 // Hesse horizon line parameters in the gliders Y/Z plane
 Line::Line(Quaternion q, int16_t cx, int16_t cy) {
     // normal vector of the plane
-    vector_f n = q * vector_f(0, 0, 1);
+    vector_f n = q.rotate(vector_f(0, 0, 1));
     _nx = -n.y;
     _ny = -n.z;
     _d = -n.x * 100; // projection scale to visible range

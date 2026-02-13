@@ -27,7 +27,7 @@ Quaternion::Quaternion(float w, float x, float y, float z)
 }
 
 // rotate radian angle around axis
-Quaternion::Quaternion(const rad_t angle, const vector_f& axis)
+Quaternion::Quaternion(rad_t angle, const vector_f& axis)
 {
     float fac = std::sinf(0.5f * angle);
 
@@ -134,7 +134,7 @@ Quaternion Quaternion::get_conjugate() const
 }
 
 // rotate vector v by quaternion
-vector_f Quaternion::operator*(const vector_f& vec) const
+vector_f Quaternion::rotate(const vector_f& vec) const
 {
     float a00 = _w * _w;
     float a01 = _w * _x;
@@ -155,7 +155,7 @@ vector_f Quaternion::operator*(const vector_f& vec) const
         + 2.0f * (a13 * vec.x + a23 * vec.y - a02 * vec.x + a01 * vec.y);
     return result;
 }
-vector_d Quaternion::operator*(const vector_d& vec) const
+vector_d Quaternion::rotate(const vector_d& vec) const
 {
     double a00 = _w * _w;
     double a01 = _w * _x;
@@ -409,7 +409,7 @@ void Quaternion::quaternionen_test()
 
     // rotate
     t0 = esp_timer_get_time();
-    v3 = q * v1;
+    v3 = q.rotate(v1);
     t1 = esp_timer_get_time();
     ESP_LOGI(FNAME,"Mapping (%lldusec)", t1-t0);
     ESP_LOGI(FNAME,"rotate v1 -> v2: %f %f %f", v3.x, v3.y, v3.z );
@@ -423,8 +423,8 @@ void Quaternion::quaternionen_test()
 
     // Zero rotation
     q = Quaternion(1,0,0,0);
-    v3 = q * v1;
-    ESP_LOGI(FNAME,"rotate yero v1 -> v1: %f %f %f", v3.x, v3.y, v3.z );
+    v3 = q.rotate(v1);
+    ESP_LOGI(FNAME,"rotate zero v1 -> v1: %f %f %f", v3.x, v3.y, v3.z );
 
     // slerp
     ESP_LOGI(FNAME,"Slerp: (v1+v2)/2, v2");
@@ -479,21 +479,21 @@ void Quaternion::quaternionen_test()
     ESP_LOGI(FNAME, "Concat Rotate 90°/Z and Rotate 90°/X");
     q = q * q2; // concatenate
     ESP_LOGI(FNAME, "Quaternion : %f %f %f %f a:%f", q._w, q._x, q._y, q._z, rad2deg(q.getAngle()) );
-    v1 = q * x_axes;
-    ESP_LOGI(FNAME, "image of x-axes: %f %f %f", v1.a, v1.b, v1.c );
-    v1 = q * y_axes;
-    ESP_LOGI(FNAME, "image of y-axes: %f %f %f", v1.a, v1.b, v1.c );
-    v1 = q * vector_f(5,5,5);
-    ESP_LOGI(FNAME, "image of 5,5,5: %f %f %f", v1.a, v1.b, v1.c );
+    v1 = q.rotate(x_axes);
+    ESP_LOGI(FNAME, "image of x-axes: %f %f %f", v1.x, v1.y, v1.z );
+    v1 = q.rotate(y_axes);
+    ESP_LOGI(FNAME, "image of y-axes: %f %f %f", v1.x, v1.y, v1.z );
+    v1 = q.rotate(vector_f(5,5,5));
+    ESP_LOGI(FNAME, "image of 5,5,5: %f %f %f", v1.x, v1.y, v1.z );
     // concatenate
     qex = fromRotationMatrix(vector_d(0,1,0), vector_d(0,0,1));
     ESP_LOGI(FNAME, "check equal: %f %f %f %f a:%f", qex._w, qex._x, qex._y, qex._z, rad2deg(qex.getAngle()) );
-    v1 = qex * x_axes;
-    ESP_LOGI(FNAME, "image of x-axes: %f %f %f", v1.a, v1.b, v1.c );
-    v1 = qex * y_axes;
-    ESP_LOGI(FNAME, "image of y-axes: %f %f %f", v1.a, v1.b, v1.c );
-    v1 = qex * vector_f(5,5,5);
-    ESP_LOGI(FNAME, "image of 5,5,5: %f %f %f", v1.a, v1.b, v1.c );
+    v1 = qex.rotate(x_axes);
+    ESP_LOGI(FNAME, "image of x-axes: %f %f %f", v1.x, v1.y, v1.z );
+    v1 = qex.rotate(y_axes);
+    ESP_LOGI(FNAME, "image of y-axes: %f %f %f", v1.x, v1.y, v1.z );
+    v1 = qex.rotate(vector_f(5,5,5));
+    ESP_LOGI(FNAME, "image of 5,5,5: %f %f %f", v1.x, v1.y, v1.z );
 
     // fromAccelerometer
     ESP_LOGI(FNAME, "Test accelerometer vector conversion");

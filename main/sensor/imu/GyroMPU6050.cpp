@@ -38,7 +38,7 @@ bool GyroMPU6050::doRead(vector_f& val) {
         // tmpvec.y = abs(tmpvec.y) < gate ? 0.0 : tmpvec.y;
         // tmpvec.z = abs(tmpvec.z) < gate ? 0.0 : tmpvec.z;
         // into glider reference system
-        val = _ref_rot * tmpvec;
+        val = _ref_rot.rotate(tmpvec);
         return true;
     }
 

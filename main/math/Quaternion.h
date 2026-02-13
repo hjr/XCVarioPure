@@ -27,7 +27,7 @@ public:
     float _z;
     constexpr Quaternion() : _w(1.), _x(0), _y(0), _z(0) {};
     Quaternion(float w, float b, float c, float d);
-    Quaternion(const rad_t angle, const vector_f& axis);
+    Quaternion(rad_t angle, const vector_f& axis);
     Quaternion(Quaternion &&) = default; // Allow std::move
     Quaternion(const Quaternion &) = default;
     Quaternion& operator=(const Quaternion&) = default;
@@ -41,8 +41,8 @@ public:
     Quaternion& normalize();
     Quaternion& conjugate();
     Quaternion get_conjugate() const;
-    vector_f operator*(const vector_f& p) const;
-    vector_d operator*(const vector_d& p) const;
+    vector_f rotate(const vector_f& p) const;
+    vector_d rotate(const vector_d& p) const;
     friend Quaternion slerp(Quaternion q1, Quaternion q2, double lambda);
     static Quaternion AlignVectors(const vector_f &start, const vector_f &dest);
     static Quaternion fromRotationMatrix(const vector_d &X, const vector_d &Y);

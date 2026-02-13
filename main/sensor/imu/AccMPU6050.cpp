@@ -36,7 +36,7 @@ bool AccMPU6050::doRead(vector_f& val) {
             ESP_LOGE(FNAME, "accelaration change > 5 g in 0.1 sec");
             // return false;
         }
-        val = _ref_rot * tmpvec;
+        val = _ref_rot.rotate(tmp_ned);
         return true;
     }
 

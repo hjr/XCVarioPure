@@ -159,7 +159,7 @@ float IMU::getGyroYawDelta()
 void IMU::update_fused_vector(vector_f& fused, float gyro_trust, vector_f& petal_force, Quaternion& omega_step)
 {
     // move the previos fused attitude by the new omega step
-    vector_f virtual_gravity = omega_step * fused;
+    vector_f virtual_gravity = omega_step.rotate(fused);
     virtual_gravity.normalize();
     virtual_gravity *= gyro_trust;
     // ESP_LOGI(FNAME,"fused/virtual %.4f,%.4f,%.4f/%.4f,%.4f,%.4f", fused.a, fused.b, fused.c, virtual_gravity.a, virtual_gravity.b, virtual_gravity.c);

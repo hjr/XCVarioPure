@@ -97,7 +97,7 @@ bool FlarmSim::tick()
 
         // increment own, and target position
         Quaternion q(deg2rad(_target_omega), vector_f(0.f, 0.f, 1.f));
-        _target_inc = q * _target_inc;  
+        _target_inc = q.rotate(_target_inc);  
         _target_pos += _target_inc;
         _target_pos.x -= 27.f; // ownship at 100km/h
     }
