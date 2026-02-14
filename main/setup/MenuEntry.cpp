@@ -275,6 +275,7 @@ bool MenuEntry::showhelp(bool inln)
 		clearHelpLines(first_hln);
 
 		MYUCG->setFont(ucg_font_ncenR14_hr);
+        MYUCG->drawLine(0, first_hln * LINE_HEIGHT + 1, dwidth, first_hln * LINE_HEIGHT + 1); // separator
         if ( _help_line_start[0] == 0 ) {
             // just one line
             menuPrintLn(helptext, first_hln);
@@ -283,9 +284,9 @@ bool MenuEntry::showhelp(bool inln)
         else {
             // multiple lines
             int16_t start = 0;
-            int16_t i;;
+            int16_t i;
             for (i=0; i < MAX_HELP_LINES && _help_line_start[i] != 0; i++) {
-                std::string_view lbuf(helptext + start, _help_line_start[i] - start);
+                std::string lbuf(helptext + start, _help_line_start[i] - start);
                 ESP_LOGI(FNAME,"MenuEntry showhelp() line %d: '%s'", i, lbuf.data() );
                 menuPrintLn(lbuf.data(), first_hln + i);
                 start = _help_line_start[i];
