@@ -1,21 +1,16 @@
 
 #include "KalmanMPU6050.h"
 
-#include "ImuSensor.h"
+#include "AccMPU6050.h"
 #include "setup/SetupNG.h"
-#include "protocol/Clock.h"
 #include "mpu/math.hpp"
 #include "math/Quaternion.h"
 #include "math/Trigonometry.h"
-#include "vector.h"
-#include "sensor.h"
 #include "logdefnone.h"
 
 #include <simplex.h>
 #include <vector>
 
-#define sqr(x) x *x
-#define hypotenuse(x, y) std::sqrtf(sqr(x) + sqr(y))
 
 extern mpud::MPU myMPU; // fixme
 
@@ -24,27 +19,27 @@ extern mpud::MPU myMPU; // fixme
 // Kalman IMU::kalmanY;
 // Kalman IMU::kalmanZ;
 
-rad_t  IMU::filterPitch = 0;
-rad_t  IMU::filterRoll = 0;
-rad_t  IMU::filterYaw = 0;
+// rad_t  IMU::filterPitch = 0;
+// rad_t  IMU::filterRoll = 0;
+// rad_t  IMU::filterYaw = 0;
 
-int IMU::last_rts=0;
-// vector_i IMU::raw_gyro(0,0,0);
-vector_f IMU::nogate_gyro(0,0,0);
-vector_f IMU::accel(0,0,0);
-vector_f IMU::gyro(0,0,0);
+// int IMU::last_rts=0;
+// // vector_i IMU::raw_gyro(0,0,0);
+// vector_f IMU::nogate_gyro(0,0,0);
+// vector_f IMU::accel(0,0,0);
+// vector_f IMU::gyro(0,0,0);
 
-// double IMU::kalXAngle = 0.0;
-// double IMU::kalYAngle = 0.0;
-float  IMU::fused_yaw = 0;
-vector_f IMU::petal(0,0,0);
-float IMU::circle_omega = 0.f;
+// // double IMU::kalXAngle = 0.0;
+// // double IMU::kalYAngle = 0.0;
+// float  IMU::fused_yaw = 0;
+// vector_f IMU::petal(0,0,0);
+// float IMU::circle_omega = 0.f;
 
 
-Quaternion IMU::att_quat = Quaternion();
-Quaternion IMU::omega_step = Quaternion();
-vector_f IMU::att_vector = {};
-vector_f IMU::euler_rad = {};
+// Quaternion IMU::att_quat = Quaternion();
+// Quaternion IMU::omega_step = Quaternion();
+// vector_f IMU::att_vector = {};
+// vector_f IMU::euler_rad = {};
 
 // Reference calib
 static int progress = 0; // bit-wise 0 -> 1 -> 3 -> 0 // start -> right -> left -> finish
@@ -149,181 +144,159 @@ vector_f gravity_vector( 0,0,-1 );
 // 	ESP_LOGI(FNAME, "Finished IMU setup");
 // }
 
-float IMU::getGyroYawDelta()
-{
-    vector_f e = omega_step.toEulerRad() * rad2deg(1.f);
-    // ESP_LOGI(FNAME,"ngrav deg r=%.3f  p=%.3f  y=%.3f ", e.Roll(), e.Pitch(), e.Yaw() );
-	return e.Yaw();
-}
-
-void IMU::update_fused_vector(vector_f& fused, float gyro_trust, vector_f& petal_force, Quaternion& omega_step)
-{
-    // move the previos fused attitude by the new omega step
-    vector_f virtual_gravity = omega_step.rotate(fused);
-    virtual_gravity.normalize();
-    virtual_gravity *= gyro_trust;
-    // ESP_LOGI(FNAME,"fused/virtual %.4f,%.4f,%.4f/%.4f,%.4f,%.4f", fused.a, fused.b, fused.c, virtual_gravity.a, virtual_gravity.b, virtual_gravity.c);
-
-    // fuse the centripetal and gyro estimation
-    petal_force.normalize();
-    fused = virtual_gravity + petal_force;
-    // ESP_LOGI(FNAME,"fused %.4f,%.4f,%.4f", fused.a, fused.b, fused.c);
-    fused.normalize();
-    // ESP_LOGI(FNAME,"fusedn %.4f,%.4f,%.4f", fused.a, fused.b, fused.c);
-}
-
-// Only call when successfully called MPU6050Read() beforehand
-void IMU::Process()
-{
-	float dt=0;
-	bool ret=false;
-	int rts = Clock::getMillis();
-	if( last_rts == 0 )
-		ret=true;
-	dt = (rts - last_rts)/1000.0f;
-	last_rts = rts;
-	if( ret )
-		return;
-	float gravity_trust = 1;
-	gyro = gyroSensor->getHead();
-	accel = accSensor->getHead();
-	// ESP_LOGI( FNAME, " Accel: %.3f,%.3f,%.3f Gyro: %.3f,%.3f,%.3f dt: %.3f", accel.x, accel.y, accel.z, gyro.x, gyro.y, gyro.z, dt );
-
-	// create a gyro base rotation axis
-	omega_step = Quaternion::fromGyro(gyro, dt);
-	vector_f axis;
-	float w = omega_step.getAngleAndAxis(axis) * 1.f / dt; // angular speed [rad/sec]
-	omega_step.conjugate(); // inverse step
-	// ESP_LOGI( FNAME,"Omega: %f axis: %.3f,%.3f,%.3f", w, axis.x, axis.y, axis.z);
-
-	float roll=0, pitch=0;
-	if( tas.get() > Units::kmh_to_mps(10) ){
-		float loadFactor = accel.get_norm();
-		float lf = loadFactor > 2.0 ? 2.0 : loadFactor;
-		loadFactor = lf < 0 ? 0 : lf; // limit to 0..2g
-		// the yz portion of w is proportional to the length of YZ portion of the gyro vector.
-		circle_omega = w * std::sqrtf(axis.y*axis.y + axis.z*axis.z) * (std::signbit(gyro.z)?-1.f:1.f); // todo what is omega's sign interpretation left turn positiv?
-		// tan(roll):= petal force/G = m w v / m g
-		float tanw = -circle_omega * tas.get() / Units::g0;
-		roll = atan( tanw );
-		if ( ahrs_roll_check.get() ) {
-			// expected extra load c = sqrt(aa+bb) - 1, here a = 1/9.81 x atan, b=1
-			float loadz_exp = std::sqrtf(tanw * tanw / (Units::g0 * Units::g0) + 1.f) - 1.f;
-			float loadz_check = (loadz_exp > 0.f) ? std::min(std::max((accel.z-.99f)/loadz_exp,0.f), 1.f) : 0.f;
-			// ESP_LOGI( FNAME,"tanw: %f loadexp: %.2f loadf: %.2f c:%.2f", tanw, loadz_exp, loadFactor, loadz_check );
-			// Scale according to real experienced load factor with x 0..1
-			roll *= loadz_check;
-		}
-		// get pitch from accelerometer
-		pitch = PitchFromAccelRad();
-
-		// Centripetal forces to keep angle of bank while circling
-		petal.x = -sin(pitch);               // Nose up (positive Y turn) results in negative X force
-		petal.y = sin(roll)*cos(pitch);   // Right wing down (or positive X roll) results in positive Y force
-		petal.z = cos(roll)*cos(pitch);   // Any roll or pitch creates a smaller positive Z, gravity Z is positive
-		// trust in gyro at load factors unequal 1 g
-		gravity_trust = (ahrs_min_gyro_factor.get() + (ahrs_gyro_factor.get() * ( pow(10, abs(loadFactor-1) * ahrs_dynamic_factor.get()) - 1)));
-		ESP_LOGI( FNAME,"Omega roll: %f Pitch: %f W_yz: %f Gyro Trust: %f", rad2deg(roll), rad2deg(pitch), circle_omega, gravity_trust );
-	}
-	else {
-		// For still stand centripetal forces are taken from the accelerometer
-		petal = accel;
-		circle_omega = 0.f;
-	}
-	// ESP_LOGI( FNAME, " ax1:%f ay1:%f az1:%f Gx:%f Gy:%f GZ:%f dT:%f", petal.x, petal.y, petal.z, gyro.x, gyro.y, gyro.z, dt );
-	vector_f att_prev = att_vector;
-	update_fused_vector(att_vector, gravity_trust, petal, omega_step);
-	// ESP_LOGI(FNAME,"attv: %.3f %.3f %.3f ProjAccel: %f", att_vector.x, att_vector.y, att_vector.z, accel.dot(att_vector));
-	att_quat = Quaternion::fromAccelerometer(att_vector);
-	// ESP_LOGI(FNAME,"attq: %.3f %.3f %.3f %.3f", att_quat._x, att_quat._y, att_quat._z, att_quat._w );
-	// ESP_LOGI(FNAME,"Circle Omega: %f", circle_omega );
-	euler_rad = att_quat.toEulerRad() * -1.f;
-	if ( (att_vector-att_prev).get_norm2() > 0.5 ) {
-		[[maybe_unused]] vector_f euler = euler_rad * rad2deg(1.f);
-		ESP_LOGI( FNAME,"Euler R:%.1f P:%.1f OR:%.1f IMUP:%.1f %.1f@GA(%.3f,%.3f,%.3f)", euler.Roll(), euler.Pitch(), rad2deg(roll), rad2deg(pitch), rad2deg(w), axis.x, axis.y, axis.z );
-	}
-	filterRoll =  euler_rad.Roll();
-	filterPitch =  euler_rad.Pitch();
-
-	// treat gimbal lock, limit to 88 deg
-	const float limit = deg2rad(88.);
-	if( euler_rad.Roll() > limit )
-		euler_rad.setRoll(limit);
-	if( euler_rad.Pitch() > limit )
-		euler_rad.setPitch(limit);
-	if( euler_rad.Roll() < -limit )
-		euler_rad.setRoll(-limit);
-	if( euler_rad.Pitch() < -limit )
-		euler_rad.setPitch(-limit);
-
-	float curh = 0;
-	if( theCompass ){
-		bool ok;
-		gravity_vector = att_vector;
-		gravity_vector.normalize();
-		curh = theCompass->cur_heading( &ok );
-		if( ok ){
-			float gyroYaw = getGyroYawDelta();
-			// tuned to plus 7% what gave the best timing swing in response, 2% for compass is far enough
-			// gyro and compass are time displaced, gyro comes immediate, compass a second later
-			fused_yaw +=  Vector::angleDiffDeg( curh ,fused_yaw )*0.02 + gyroYaw;
-			filterYaw=Vector::normalizeDeg( fused_yaw );
-			theCompass->setGyroHeading( filterYaw );
-			//ESP_LOGI( FNAME,"cur magn head %.2f gyro yaw: %.4f fused: %.1f Gyro(%.3f/%.3f/%.3f)", curh, gyroYaw, gh, gyroX, gyroY, gyroZ  );
-		}else
-		{
-			filterYaw=fallbackToGyro();
-		}
-	}
-	else{
-		filterYaw=fallbackToGyro();
-	}
-
-	// ESP_LOGI( FNAME,"GV-Pitch=%.1f  GV-Roll=%.1f filterYaw: %.2f curh: %.2f GX:%.3f GY:%.3f GZ:%.3f AX:%.3f AY:%.3f AZ:%.3f  FP:%.1f FR:%.1f", euler.Pitch(), euler.Roll(), filterYaw, curh, gyro.a,gyro.b,gyro.c, accel.a, accel.b, accel.c, filterPitch_rad, filterRoll_rad  );
-
-}
-
-float IMU::fallbackToGyro(){
-	float gyroYaw = getGyroYawDelta();
-	fused_yaw +=  gyroYaw;
-	return( Vector::normalizeDeg( fused_yaw ) );
-}
-
-float IMU::getVerticalAcceleration()
-{
-	// orthonormal projection of the current accelerometer reading to the attitude vector
-	// https://de.wikipedia.org/wiki/Orthogonalprojektion
-	// lamda := (accel * att_vector) / norm(att_vector)^2 // att_vector is normalized
-	// lamda * att_vector would be the projection point, but here is only the g multiple requested
-
-	return accel.dot(att_vector);
-}
-
-float IMU::getVerticalOmega()
-{
-	return circle_omega;
-}
-
-// float IMU::PitchFromAccel()
+// float IMU::getGyroYawDelta()
 // {
-// 	return rad2deg(atan2f(accel.x, accel.z));
+//     vector_f e = omega_step.toEulerRad() * rad2deg(1.f);
+//     // ESP_LOGI(FNAME,"ngrav deg r=%.3f  p=%.3f  y=%.3f ", e.Roll(), e.Pitch(), e.Yaw() );
+// 	return e.Yaw();
 // }
 
-float IMU::PitchFromAccelRad()
-{
-	return atan2f(-accel.x, accel.z); // neglecting accel.y, because of minor influence on pitch and more noise
-}
-
-// void IMU::RollPitchFromAccel(double *roll, double *pitch)
+// void IMU::update_fused_vector(vector_f& fused, float gyro_trust, vector_f& petal_force, Quaternion& omega_step)
 // {
-// 	// Source: http://www.freescale.com/files/sensors/doc/app_note/AN3461.pdf eq. 25 and eq. 26
-// 	// atan2 outputs the value of -π to π (radians) - see http://en.wikipedia.org/wiki/Atan2
-// 	// It is then converted from radians to degrees
+//     // move the previos fused attitude by the new omega step
+//     vector_f virtual_gravity = omega_step.rotate(fused);
+//     virtual_gravity.normalize();
+//     virtual_gravity *= gyro_trust;
+//     // ESP_LOGI(FNAME,"fused/virtual %.4f,%.4f,%.4f/%.4f,%.4f,%.4f", fused.a, fused.b, fused.c, virtual_gravity.a, virtual_gravity.b, virtual_gravity.c);
 
-// 	*roll = atan(accel.b / hypotenuse(accel.a, accel.c)) * RAD_TO_DEG;
-// 	*pitch = -atan2(accel.a, accel.c) * RAD_TO_DEG;
+//     // fuse the centripetal and gyro estimation
+//     petal_force.normalize();
+//     fused = virtual_gravity + petal_force;
+//     // ESP_LOGI(FNAME,"fused %.4f,%.4f,%.4f", fused.a, fused.b, fused.c);
+//     fused.normalize();
+//     // ESP_LOGI(FNAME,"fusedn %.4f,%.4f,%.4f", fused.a, fused.b, fused.c);
+// }
 
-// 	// ESP_LOGI( FNAME,"Accelerometer Roll: %f  Pitch: %f  (y:%f x:%f)", *roll, *pitch, accel.b, accel.a );
+// // Only call when successfully called MPU6050Read() beforehand
+// void IMU::Process()
+// {
+// 	float dt=0;
+// 	bool ret=false;
+// 	int rts = Clock::getMillis();
+// 	if( last_rts == 0 )
+// 		ret=true;
+// 	dt = (rts - last_rts)/1000.0f;
+// 	last_rts = rts;
+// 	if( ret )
+// 		return;
+// 	float gravity_trust = 1;
+// 	gyro = gyroSensor->getHead();
+// 	accel = accSensor->getHead();
+// 	// ESP_LOGI( FNAME, " Accel: %.3f,%.3f,%.3f Gyro: %.3f,%.3f,%.3f dt: %.3f", accel.x, accel.y, accel.z, gyro.x, gyro.y, gyro.z, dt );
+
+// 	// create a gyro base rotation axis
+// 	omega_step = Quaternion::fromGyro(gyro, dt);
+// 	vector_f axis;
+// 	float w = omega_step.getAngleAndAxis(axis) * 1.f / dt; // angular speed [rad/sec]
+// 	omega_step.conjugate(); // inverse step
+// 	// ESP_LOGI( FNAME,"Omega: %f axis: %.3f,%.3f,%.3f", w, axis.x, axis.y, axis.z);
+
+// 	float roll=0, pitch=0;
+// 	if( tas.get() > Units::kmh_to_mps(10) ){
+// 		float loadFactor = accel.get_norm();
+// 		float lf = loadFactor > 2.0 ? 2.0 : loadFactor;
+// 		loadFactor = lf < 0 ? 0 : lf; // limit to 0..2g
+// 		// the yz portion of w is proportional to the length of YZ portion of the gyro vector.
+// 		circle_omega = w * std::sqrtf(axis.y*axis.y + axis.z*axis.z) * (std::signbit(gyro.z)?-1.f:1.f); // todo what is omega's sign interpretation left turn positiv?
+// 		// tan(roll):= petal force/G = m w v / m g
+// 		float tanw = -circle_omega * tas.get() / Units::g0;
+// 		roll = atan( tanw );
+// 		if ( ahrs_roll_check.get() ) {
+// 			// expected extra load c = sqrt(aa+bb) - 1, here a = 1/9.81 x atan, b=1
+// 			float loadz_exp = std::sqrtf(tanw * tanw / (Units::g0 * Units::g0) + 1.f) - 1.f;
+// 			float loadz_check = (loadz_exp > 0.f) ? std::min(std::max((accel.z-.99f)/loadz_exp,0.f), 1.f) : 0.f;
+// 			// ESP_LOGI( FNAME,"tanw: %f loadexp: %.2f loadf: %.2f c:%.2f", tanw, loadz_exp, loadFactor, loadz_check );
+// 			// Scale according to real experienced load factor with x 0..1
+// 			roll *= loadz_check;
+// 		}
+// 		// get pitch from accelerometer
+// 		pitch = PitchFromAccelRad();
+
+// 		// Centripetal forces to keep angle of bank while circling
+// 		petal.x = -sin(pitch);               // Nose up (positive Y turn) results in negative X force
+// 		petal.y = sin(roll)*cos(pitch);   // Right wing down (or positive X roll) results in positive Y force
+// 		petal.z = cos(roll)*cos(pitch);   // Any roll or pitch creates a smaller positive Z, gravity Z is positive
+// 		// trust in gyro at load factors unequal 1 g
+// 		gravity_trust = (ahrs_min_gyro_factor.get() + (ahrs_gyro_factor.get() * ( pow(10, abs(loadFactor-1) * ahrs_dynamic_factor.get()) - 1)));
+// 		ESP_LOGI( FNAME,"Omega roll: %f Pitch: %f W_yz: %f Gyro Trust: %f", rad2deg(roll), rad2deg(pitch), circle_omega, gravity_trust );
+// 	}
+// 	else {
+// 		// For still stand centripetal forces are taken from the accelerometer
+// 		petal = accel;
+// 		circle_omega = 0.f;
+// 	}
+// 	// ESP_LOGI( FNAME, " ax1:%f ay1:%f az1:%f Gx:%f Gy:%f GZ:%f dT:%f", petal.x, petal.y, petal.z, gyro.x, gyro.y, gyro.z, dt );
+// 	vector_f att_prev = att_vector;
+// 	update_fused_vector(att_vector, gravity_trust, petal, omega_step);
+// 	// ESP_LOGI(FNAME,"attv: %.3f %.3f %.3f ProjAccel: %f", att_vector.x, att_vector.y, att_vector.z, accel.dot(att_vector));
+// 	att_quat = Quaternion::fromAccelerometer(att_vector);
+// 	// ESP_LOGI(FNAME,"attq: %.3f %.3f %.3f %.3f", att_quat._x, att_quat._y, att_quat._z, att_quat._w );
+// 	// ESP_LOGI(FNAME,"Circle Omega: %f", circle_omega );
+// 	euler_rad = att_quat.toEulerRad() * -1.f;
+// 	if ( (att_vector-att_prev).get_norm2() > 0.5 ) {
+// 		[[maybe_unused]] vector_f euler = euler_rad * rad2deg(1.f);
+// 		ESP_LOGI( FNAME,"Euler R:%.1f P:%.1f OR:%.1f IMUP:%.1f %.1f@GA(%.3f,%.3f,%.3f)", euler.Roll(), euler.Pitch(), rad2deg(roll), rad2deg(pitch), rad2deg(w), axis.x, axis.y, axis.z );
+// 	}
+// 	filterRoll =  euler_rad.Roll();
+// 	filterPitch =  euler_rad.Pitch();
+
+// 	// treat gimbal lock, limit to 88 deg
+// 	const float limit = deg2rad(88.);
+// 	if( euler_rad.Roll() > limit )
+// 		euler_rad.setRoll(limit);
+// 	if( euler_rad.Pitch() > limit )
+// 		euler_rad.setPitch(limit);
+// 	if( euler_rad.Roll() < -limit )
+// 		euler_rad.setRoll(-limit);
+// 	if( euler_rad.Pitch() < -limit )
+// 		euler_rad.setPitch(-limit);
+
+// 	float curh = 0;
+// 	if( theCompass ){
+// 		bool ok;
+// 		gravity_vector = att_vector;
+// 		gravity_vector.normalize();
+// 		curh = theCompass->cur_heading( &ok );
+// 		if( ok ){
+// 			float gyroYaw = getGyroYawDelta();
+// 			// tuned to plus 7% what gave the best timing swing in response, 2% for compass is far enough
+// 			// gyro and compass are time displaced, gyro comes immediate, compass a second later
+// 			fused_yaw +=  Vector::angleDiffDeg( curh ,fused_yaw )*0.02 + gyroYaw;
+// 			filterYaw=Vector::normalizeDeg( fused_yaw );
+// 			theCompass->setGyroHeading( filterYaw );
+// 			//ESP_LOGI( FNAME,"cur magn head %.2f gyro yaw: %.4f fused: %.1f Gyro(%.3f/%.3f/%.3f)", curh, gyroYaw, gh, gyroX, gyroY, gyroZ  );
+// 		}else
+// 		{
+// 			filterYaw=fallbackToGyro();
+// 		}
+// 	}
+// 	else{
+// 		filterYaw=fallbackToGyro();
+// 	}
+
+// 	// ESP_LOGI( FNAME,"GV-Pitch=%.1f  GV-Roll=%.1f filterYaw: %.2f curh: %.2f GX:%.3f GY:%.3f GZ:%.3f AX:%.3f AY:%.3f AZ:%.3f  FP:%.1f FR:%.1f", euler.Pitch(), euler.Roll(), filterYaw, curh, gyro.a,gyro.b,gyro.c, accel.a, accel.b, accel.c, filterPitch_rad, filterRoll_rad  );
+
+// }
+
+// float IMU::fallbackToGyro(){
+// 	float gyroYaw = getGyroYawDelta();
+// 	fused_yaw +=  gyroYaw;
+// 	return( Vector::normalizeDeg( fused_yaw ) );
+// }
+
+// float IMU::getVerticalAcceleration()
+// {
+// 	// orthonormal projection of the current accelerometer reading to the attitude vector
+// 	// https://de.wikipedia.org/wiki/Orthogonalprojektion
+// 	// lamda := (accel * att_vector) / norm(att_vector)^2 // att_vector is normalized
+// 	// lamda * att_vector would be the projection point, but here is only the g multiple requested
+
+// 	return accel.dot(att_vector);
+// }
+
+// float IMU::getVerticalOmega()
+// {
+// 	return circle_omega;
 // }
 
 
@@ -417,7 +390,7 @@ int IMU::getAccelSamplesAndCalib(int side, rad_t& wing_angle) {
             // The inverted rotation we need to apply
             Quaternion basic_reference = Quaternion::fromRotationMatrix(X, Y).get_conjugate();
             // Concatenated with ground angle
-            accSensor->applyImuReference(glider_ground_aa.get(), basic_reference);
+            accSensor->getMpu().applyImuReference(glider_ground_aa.get(), basic_reference);
 
             // Save the basic part to nvs storage
             imu_reference.set(basic_reference, false);

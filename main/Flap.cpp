@@ -3,7 +3,7 @@
 
 #include "AnalogInput.h"
 #include "setup/SetupNG.h"
-#include "sensor/imu/KalmanMPU6050.h"
+#include "sensor/imu/AccMPU6050.h"
 #include "math/Floats.h"
 #include "sensor.h"
 #include "logdefnone.h"
@@ -207,7 +207,8 @@ void Flap::progress() {
 
 float Flap::getOptimum(mps_t spd) const {
     // Correct for current g load
-    g_force += (IMU::getGliderAccelZ() - g_force) * 0.5;
+    float gcurr = accSensor ? accSensor->getHeadPtr()->z : 1.f;
+    g_force += (gcurr - g_force) * 0.5;
     if (g_force < 0.3) {
         g_force = 0.3; // Ignore meaningless values below 0.3g
     }

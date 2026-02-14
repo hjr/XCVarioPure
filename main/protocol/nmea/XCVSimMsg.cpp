@@ -14,7 +14,8 @@
 #include "sensor/pressure/PressureSensor.h"
 #include "sensor/press_diff/AirspeedSensor.h"
 #include "sensor/temp/TempSensor.h"
-#include "sensor/imu/ImuSensor.h"
+#include "sensor/imu/AccMPU6050.h"
+#include "sensor/imu/GyroMPU6050.h"
 #include "math/Trigonometry.h"
 #include "logdef.h"
 

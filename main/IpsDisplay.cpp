@@ -20,7 +20,7 @@
 #include "screen/element/FlapsBox.h"
 #include "screen/MessageBox.h"
 
-#include "sensor/imu/ImuSensor.h"
+#include "sensor/imu/AccMPU6050.h"
 #include "sensor/VarioFilter.h"
 #include "math/Trigonometry.h"
 #include "math/Floats.h"

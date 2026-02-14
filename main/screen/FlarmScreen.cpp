@@ -13,7 +13,7 @@
 #include "IpsDisplay.h"
 #include "DrawDisplay.h"
 #include "ESPAudio.h"
-#include "sensor/imu/KalmanMPU6050.h"
+#include "sensor/imu/AccMPU6050.h"
 #include "Flarm.h"
 #include "math/Trigonometry.h"
 #include "math/Quaternion.h"
@@ -63,7 +63,7 @@ void FlarmScreen::display(int mode)
 
     ESP_LOGI(FNAME, "flarm_screen mode %d", mode);
     // calc horizon line
-    Quaternion attq = IMU::getAHRSQuaternion();
+    Quaternion attq = accSensor->getAHRSQuaternion();
     Line l( attq, dwidth/2, dheight/2 );
     Point above[6], below[6];
     int na, nb;
@@ -122,7 +122,7 @@ void FlarmScreen::display(int mode)
     }
     MYUCG->drawDisc( p.x, p.y, size, UCG_DRAW_ALL);
     // Embedd a little glider symbol
-    float roll = -IMU::getRollRad();
+    float roll = -accSensor->getRoll();
     if ( buddyVec.x > 0.f ) {
         MYUCG->setColor(COLOR_WHITE);
         MYUCG->drawDisc( p.x, p.y, size/3, UCG_DRAW_ALL);

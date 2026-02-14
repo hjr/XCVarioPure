@@ -8,26 +8,20 @@
 
 #include "ImuSensor.h"
 
-#include "../SensorMgr.h"
 #include "math/Trigonometry.h"
 #include "setup/SetupNG.h"
 #include "comm/CanBus.h"
 #include "logdefnone.h"
 
-#include "driver/ledc.h"
+#include <driver/ledc.h>
 
 #include <string_view>
 #include <algorithm> // for std::clamp
 
-ImuSensor *accSensor = nullptr;
-ImuSensor *gyroSensor = nullptr;
 
-constexpr int DUTY_CYCLE_MS = 100; // 10Hz
-static vector_f acc_buffer[ (SENSOR_HISTORY_DURATION_MS / DUTY_CYCLE_MS) + 1 ];
-static vector_f gyro_buffer[ (SENSOR_HISTORY_DURATION_MS / DUTY_CYCLE_MS) + 1 ];
 static const std::string_view TYPES[] = { "UNKNOWN", "MPU6050", "MPU6500", "ICM20602", "ICM20689" };
 
-Quaternion ImuSensor::_ref_rot;
+Quaternion MpuImu::_ref_rot;
 
 // ImuSensor* IMUSensor = nullptr;
 mpud::MPU myMPU; // TODO as optional resource
@@ -53,32 +47,23 @@ struct PIController {
 };
 
 
-ImuSensor::ImuSensor(SensorId id) : SensorTP<vector_f>((id == SensorId::ACC_INERTIAL) ? acc_buffer : gyro_buffer, DUTY_CYCLE_MS),
+MpuImu::MpuImu() :
     _MPUdev(myMPU)
 {
-    _id = id;
-    if ( id == SensorId::GYRO_INERTIAL ) {
-        // set long term zero tracker filter
-    }
-    else {
-        // set the MPU temperature regulation filter
-    }
-    
-    // _invalid = vector_f(NAN, NAN, NAN);
 }
 
-ImuSensor::~ImuSensor() {
+MpuImu::~MpuImu() {
     if ( _pictrl ) {
         clearpwm(); // ensure heating is off
         delete _pictrl;
     }
 }
 
-const char *ImuSensor::name() const {
+const char *MpuImu::name() const {
     return TYPES[static_cast<int>(_who_typ)].data();
 }
 
-bool ImuSensor::probe() {
+bool MpuImu::probe() {
     // probe on MPU
 	myMPU.setBus(i2c1);  // set communication bus
 	myMPU.setAddr(mpud::MPU_I2CADDRESS_AD0_LOW);  // set address
@@ -95,7 +80,7 @@ bool ImuSensor::probe() {
     return false;
 }
 
-bool ImuSensor::setup() {
+bool MpuImu::setup() {
     ESP_LOGI(FNAME, "MPU initialize");
     myMPU.initialize();       // this will initialize the chip and set default configurations
     myMPU.setSampleRate(50);  // in (Hz)
@@ -135,7 +120,7 @@ bool ImuSensor::setup() {
     return true;
 }
 
-ImuType ImuSensor::getImuId() {
+ImuType MpuImu::getImuId() {
     switch (myMPU.whoAmI()) {
     case 0x68: return ImuType::MPU6050;
     case 0x70: return ImuType::MPU6500;
@@ -145,7 +130,7 @@ ImuType ImuSensor::getImuId() {
     }
 }
 
-temp_status_t ImuSensor::getTempStatus() const {
+temp_status_t MpuImu::getTempStatus() const {
     if( abs(_mpu_t_delta) < 0.5) {
         return temp_status_t::MPU_T_LOCKED;
     } else if( _mpu_t_delta < -0.5 ) {
@@ -158,13 +143,13 @@ temp_status_t ImuSensor::getTempStatus() const {
 }
 
 // Setup the rotation for the "upright", "topdown" and "ninety" vario mounting positions
-void ImuSensor::setDefaultImuReference() {
+void MpuImu::setDefaultImuReference() {
     Quaternion base = loadDefaultImuReference();
     _ref_rot = concatGaaAndImuReference(glider_ground_aa.get(), base);
     imu_reference.set(base, false);  // nvs
 }
 
-Quaternion ImuSensor::loadDefaultImuReference() {
+Quaternion MpuImu::loadDefaultImuReference() {
 
     // Revert from calibrated IMU to default mapping, which fits
     // roughly to an upright, top down, or ninety degree installation.
@@ -181,7 +166,7 @@ Quaternion ImuSensor::loadDefaultImuReference() {
 }
 
 // Concatenation of ground angle of attack and the basic reference calibration rotation
-Quaternion ImuSensor::concatGaaAndImuReference(const degree_t gAA, const Quaternion& basic) {
+Quaternion MpuImu::concatGaaAndImuReference(const degree_t gAA, const Quaternion& basic) {
     Quaternion rot = Quaternion(deg2rad(-gAA), vector_f(0, 1, 0)) * basic;  // rotate positive around Y
     return rot.normalize();
 }
@@ -190,7 +175,7 @@ Quaternion ImuSensor::concatGaaAndImuReference(const degree_t gAA, const Quatern
 // PI control to regulate temperature
 //
 
-void ImuSensor::initHeatCtrl() {
+void MpuImu::initHeatCtrl() {
     if (!_pictrl) {
         ESP_LOGI(FNAME, "Initialize AHRS heating PWM control");
         ledc_timer_config_t pwm_timer = {.speed_mode = LEDC_LOW_SPEED_MODE,
@@ -216,7 +201,7 @@ void ImuSensor::initHeatCtrl() {
     }
 }
 
-void ImuSensor::temp_control() {
+void MpuImu::temp_control() {
     float mpu_target_temp = mpu_temperature.get();
     float temp = _MPUdev.getTemperature();
     _mpu_t_delta = temp - mpu_target_temp;
@@ -226,7 +211,7 @@ void ImuSensor::temp_control() {
     ESP_LOGI(FNAME, "MPU Temp Control: T=%.2f Target=%.2f PWM=%d", temp, mpu_target_temp, pwm);
 }
 
-void ImuSensor::clearpwm() {
+void MpuImu::clearpwm() {
     gpio_set_direction(GPIO_NUM_2, GPIO_MODE_OUTPUT);
     gpio_set_level(GPIO_NUM_2, 0);  // heating off
 }

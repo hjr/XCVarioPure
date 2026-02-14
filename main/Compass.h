@@ -86,7 +86,7 @@ public:
 	bool overflowFlag();
 
 	// Heading related methods
-	float cur_heading( bool *ok );
+	bool cur_heading( float *head );
 	float rawHeading( bool *okIn );      //  Returns the low pass filtered magnetic heading without deviation
 	float rawX() { return fx; };
 	float rawY() { return fy; };

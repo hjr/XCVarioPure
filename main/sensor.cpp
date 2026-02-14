@@ -3,6 +3,7 @@
 
 #include "Cipher.h"
 #include "ESP32NVS.h"
+#include "imu/ImuSensor.h"
 #include "sensor/pressure/PressureSensor.h"
 #include "sensor/press_diff/AirspeedSensor.h"
 #include "sensor/imu/AccMPU6050.h"
@@ -715,8 +716,8 @@ void system_startup(void *args){
             }
         }
         // register IMU sensors always, even on client XCVario
+        SensorRegistry::registerSensor(gyroSensor); // giro sensor first to have the cg correction immidiately available for the acc sensor
         SensorRegistry::registerSensor(accSensor);
-        SensorRegistry::registerSensor(gyroSensor);
     }
 
 
@@ -1106,15 +1107,16 @@ extern "C" void  app_main(void)
 	i2c1.begin(GPIO_NUM_21, GPIO_NUM_22, 100000 );
 
     // probe on IMU
-    accSensor = new AccMPU6050();
-    if (accSensor->probe()) {
-        gyroSensor = new GyroMPU6050();
-        if (accSensor->getImuType() == ImuType::MPU6050) {
+    MpuImu *imu = new MpuImu();
+    if (imu->probe()) {
+        accSensor = new AccMPU6050(*imu);
+        gyroSensor = new GyroMPU6050(*imu);
+        if (imu->getImuType() == ImuType::MPU6050) {
             if (hardwareRevision.get() < XCVARIO_21) {
                 hardwareRevision.set(XCVARIO_21);  // there is MPU6050 gyro and acceleration sensor, at least we got an XCV-21
                 ESP_LOGI(FNAME, "MPU6050 detected -> hardwareRevision (XCV-21)");
             }
-        } else if (accSensor->getImuType() == ImuType::ICM20602) {
+        } else if (imu->getImuType() == ImuType::ICM20602) {
             if (hardwareRevision.get() < XCVARIO_25) {
                 hardwareRevision.set(XCVARIO_25);  // there is ICM20602 gyro and acceleration sensor, at least we got an XCV-25
                 ESP_LOGI(FNAME, "ICM20602 detected -> hardwareRevision (XCV-25)");
@@ -1122,8 +1124,8 @@ extern "C" void  app_main(void)
         }
     } else {
         ESP_LOGI(FNAME, "No MPU6050/ICM20602 detected");
-        delete accSensor;
-        accSensor = nullptr;
+        delete imu;
+        imu = nullptr;
     }
 
     // Init ui and screen UiEventLoop task recources

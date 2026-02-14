@@ -14,12 +14,12 @@
 #include "comm/Messages.h"
 #include "setup/SetupNG.h"
 #include "setup/CruiseMode.h"
-#include "sensor/imu/ImuSensor.h"
-#include "sensor/imu/KalmanMPU6050.h"
+#include "sensor/imu/AccMPU6050.h"
 #include "math/Units.h"
 #include "sensor.h"
 
 #include "logdefnone.h"
+#include "vector_3d_fwd.h"
 
 #include <string>
 #include <cmath>
@@ -131,15 +131,16 @@ void NmeaPrtcl::sendStdXCVario()
     // optional IMU additions
     if (accSensor && gflags.ahrsKeyValid)
     {
-        std::sprintf(str, ",%3.1f", IMU::getRoll());
+        vector_f acc = accSensor->getHead();
+        std::sprintf(str, ",%3.1f", accSensor->getRollDeg());
         msg->buffer += str;
-        std::sprintf(str, ",%3.1f", -IMU::getPitch());
+        std::sprintf(str, ",%3.1f", accSensor->getPitchDeg());
         msg->buffer += str;
-        std::sprintf(str, ",%1.2f", IMU::getGliderAccelX());
+        std::sprintf(str, ",%1.2f", acc.x);
         msg->buffer += str;
-        std::sprintf(str, ",%1.2f", -IMU::getGliderAccelY());
+        std::sprintf(str, ",%1.2f", acc.y);
         msg->buffer += str;
-        std::sprintf(str, ",%1.2f", -IMU::getGliderAccelZ());
+        std::sprintf(str, ",%1.2f", acc.z);
         msg->buffer += str;
     }
     else
@@ -156,16 +157,19 @@ void NmeaPrtcl::sendXcvRPYL()
     if ( _dl.isBinActive() ) {
         return; // no NMEA output in binary mode
     }
+    if ( !accSensor ) {
+        return; // no IMU or no valid AHRS key, so skip this sentence
+    }
     Message *msg = newMessage();
 
     // LEVIL_AHRS  $RPYL,Roll,Pitch,MagnHeading,SideSlip,YawRate,G,errorcode,
     msg->buffer = "$RPYL,";
     char str[50];
     sprintf(str, "%d,%d,%d,0,0,%d,0",
-            (int)fast_iroundf(IMU::getRoll()*10.f),       // Bank == roll     (deg)
-            (int)fast_iroundf(IMU::getPitch()*10.f),      // Pitch            (deg)
-            (int)fast_iroundf(IMU::getYaw()*10.f),        // Yaw              (deg)
-            (int)fast_iroundf(IMU::getGliderAccelZ()*1000.f));
+            (int)fast_iroundf(accSensor->getRollDeg() * 10.f),       // Bank == roll     (deg)
+            (int)fast_iroundf(accSensor->getPitchDeg() * 10.f),      // Pitch            (deg)
+            (int)fast_iroundf(accSensor->getYawDeg() * 10.f),        // Yaw              (deg)
+            (int)fast_iroundf(accSensor->getHeadPtr()->z * 1000.f));
     msg->buffer += str;
     msg->buffer += "*" + NMEA::CheckSum(msg->buffer.c_str()) + "\r\n";
     DEV::Send(msg);

@@ -7,22 +7,33 @@
  ***********************************************************/
 
 #include "GyroMPU6050.h"
-#include "mpu/math.hpp"
+
+#include "ImuSensor.h"
 #include "../SensorMgr.h"
 #include "logdef.h"
 
-GyroMPU6050::GyroMPU6050() :
-    ImuSensor(SensorId::GYRO_INERTIAL | SensorId::LocalSensor),
+#include "mpu/math.hpp"
+
+GyroMPU6050 *gyroSensor = nullptr;
+
+constexpr int DUTY_CYCLE_MS = 100; // 10Hz
+static vector_f gyro_buffer[ (SENSOR_HISTORY_DURATION_MS / DUTY_CYCLE_MS) + 1 ];
+
+GyroMPU6050::GyroMPU6050(const MpuImu &mmpu) :
+    SensorTP<vector_f>(gyro_buffer, DUTY_CYCLE_MS),
+    _my_mpu(mmpu),
     _scale(Units::deg_to_rad(mpud::gyroResolution(mpud::GYRO_FS_250DPS))) // scale factor for raw gyro data to rad/s
 {
+    _id = SensorId::GYRO_INERTIAL | SensorId::LocalSensor;
     // push a single previous value
     pushAndPublish(vector_f(0,0,0), 0);
 }
+const char *GyroMPU6050::name() const { return _my_mpu.name(); }
 
 bool GyroMPU6050::doRead(vector_f& val) {
     // Get new gyro values from MPU6050
     mpud::raw_axes_t imuRaw;
-    if (_MPUdev.rotation(&imuRaw) == ESP_OK) {
+    if (_my_mpu.rotation(&imuRaw) == ESP_OK) {
         // raw data to rad/s
         vector_f tmpvec = vector_f::make_vector(imuRaw.x, imuRaw.y, imuRaw.z, _scale);
 
@@ -39,10 +50,17 @@ bool GyroMPU6050::doRead(vector_f& val) {
         // tmpvec.y = abs(tmpvec.y) < gate ? 0.0 : tmpvec.y;
         // tmpvec.z = abs(tmpvec.z) < gate ? 0.0 : tmpvec.z;
         // into glider reference system
-        val = _ref_rot.rotate(tmpvec);
+        val = _my_mpu.rotate(tmpvec);
+        _gyro_lpf_ayd.filter((val.y - getHeadPtr()->y) / getDutyCycle());
         return true;
     }
 
     ESP_LOGE(FNAME, "gyro I2C error, X:%d Y:%d Z:%d", imuRaw.x, imuRaw.y, imuRaw.z);
     return false;
+}
+
+
+void GyroMPU6050::postProcess() {
+    // a sudo publish
+    gyro = getHead();
 }

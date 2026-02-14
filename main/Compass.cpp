@@ -17,7 +17,7 @@ Author: Axel Pauli, deviation and refactoring by Eckhard Völlm Dec 2021
  **************************************************************************/
 
 #include "Compass.h"
-#include "sensor/imu/KalmanMPU6050.h"
+#include "sensor/imu/AccMPU6050.h"
 #include "QMCMagCAN.h"
 #include "math/Quaternion.h"
 #include "vector.h"
@@ -377,13 +377,13 @@ bool Compass::loadCalibration()
 	return true;
 }
 
-float Compass::cur_heading( bool *ok ) {
-	// ESP_LOGI( FNAME, "current heading %.1f, age:%d", _heading, age );
-	*ok = true;
-	if( age > 10 )
-		*ok = false;
-	return _heading;
-};
+bool Compass::cur_heading( float *head ) {
+    // ESP_LOGI( FNAME, "current heading %.1f, age:%d", _heading, age );
+    if (age > 10)
+        return false;
+    *head = _heading;
+    return true;
+}
 
 /**
  * Reads the heading in degrees of 0...359. Ok is set to true,
@@ -435,7 +435,8 @@ float Compass::heading( bool *ok )
 	age = 0;
 
 	vector_f mv( fx,fy,fz ); // uT magnetic vector, relative to glider
-	vector_f mev = IMU::getAHRSQuaternion().conjugate().rotate(mv);  // rotate magnetic vector back in ENU ref sys
+    assert(accSensor);
+	vector_f mev = accSensor->getAHRSQuaternion().conjugate().rotate(mv);  // rotate magnetic vector back in ENU ref sys
 	// ESP_LOGI(FNAME, "gravity a %.2f, b %.2f, c %.2f MV: a %.2f, b %.2f, c %.2f ", gravity_vector.a, gravity_vector.b, gravity_vector.c, mv.a, mv.b, mv.c );
 	// ESP_LOGI(FNAME, "gravity a %.2f, b %.2f, c %.2f ME a %.2f, b %.2f, c %.2f MEV: a %.2f, b %.2f, c %.2f ", gravity_vector.a, gravity_vector.b, gravity_vector.c, mv.a, mv.b, mv.c, mev.a, mev.b, mev.c );
 	// ESP_LOGI(FNAME, "rot a %.2f, b %.2f, c %.2f, w %.2f - %.2f ", q.b, q.c, q.d, q.a, RAD_TO_DEG*q.getAngle() );
@@ -444,11 +445,11 @@ float Compass::heading( bool *ok )
 	ESP_LOGI(FNAME,"mag (%.2f,%.2f,%.2f) heading %.2f", mev.x, mev.y, mev.z, _heading);
 	// ESP_LOGI(FNAME,"normalized heading %.2f", _heading);
 
-	// ESP_LOGI(FNAME,"Magn-Eul:(Y:%.1f P:%.1f R:%.1f) Magn-Vec:(%.4f %.4f %.4f) G-Vec:(%.4f/%.4f/%.4f) G-Eul:(P:%.1f R:%.1f)", _heading, ce.pitch, ce.roll , mv.a, mv.b, mv.c, gravity_vector.a,gravity_vector.b,gravity_vector.c, IMU::getPitch(), IMU::getRoll() );
+	// ESP_LOGI(FNAME,"Magn-Eul:(Y:%.1f P:%.1f R:%.1f) Magn-Vec:(%.4f %.4f %.4f) G-Vec:(%.4f/%.4f/%.4f) G-Eul:(P:%.1f R:%.1f)", _heading, ce.pitch, ce.roll , mv.a, mv.b, mv.c, gravity_vector.a,gravity_vector.b,gravity_vector.c, accSensor->getPitch(), accSensor->getRoll() );
 #if 0
 	if( wind_logging.get() ){
 		char log[120];
-		sprintf( log, "$COMPASS;%d;%d;%d;%.1f;%.1f;%.1f;%d\n", magRaw.x, magRaw.y, magRaw.z, IMU::getPitch(), IMU::getRoll(),  _heading,  totalReadErrors );
+		sprintf( log, "$COMPASS;%d;%d;%d;%.1f;%.1f;%.1f;%d\n", magRaw.x, magRaw.y, magRaw.z, accSensor->getPitch(), accSensor->getRoll(),  _heading,  totalReadErrors );
 		const NmeaPrtcl *prtcl = DEVMAN->getNMEA(NAVI_DEV); // Todo preliminary solution ..
 		if ( prtcl ) {
 			prtcl->sendXCV(log);

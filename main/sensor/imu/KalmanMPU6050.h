@@ -1,67 +1,67 @@
-// IMU Library for use with Kalman's filter for the MPU6050.
-// Copyright (C) 2018 Pedro F Linhares,
-// derivative work from https://github.com/TKJElectronics/KalmanFilter/tree/master/examples/MPU6050,
-// by Kristian Lauszus, TKJ Electronics.
+// // IMU Library for use with Kalman's filter for the MPU6050.
+// // Copyright (C) 2018 Pedro F Linhares,
+// // derivative work from https://github.com/TKJElectronics/KalmanFilter/tree/master/examples/MPU6050,
+// // by Kristian Lauszus, TKJ Electronics.
 
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// // This program is free software: you can redistribute it and/or modify
+// // it under the terms of the GNU General Public License as published by
+// // the Free Software Foundation, either version 3 of the License, or
+// // (at your option) any later version.
 
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
+// // This program is distributed in the hope that it will be useful,
+// // but WITHOUT ANY WARRANTY; without even the implied warranty of
+// // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// // GNU General Public License for more details.
 
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+// // You should have received a copy of the GNU General Public License
+// // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-#pragma once
+// #pragma once
 
-#include "math/vector_3d.h"
+// #include "math/vector_3d.h"
 #include "math/Quaternion.h"
 #include "math/Trigonometry.h"
 #include "math/Units.h"
 
-#include <esp_err.h>
+// #include <esp_err.h>
 
-class Quaternion;
+// class Quaternion;
 
-// #ifndef M_PI
-// #define M_PI 3.14159265359
-// #endif // M_PI
-// #ifndef RAD_TO_DEG
-// #define RAD_TO_DEG (180.0/M_PI)
-// #endif // RAD_TO_DEG
+// // #ifndef M_PI
+// // #define M_PI 3.14159265359
+// // #endif // M_PI
+// // #ifndef RAD_TO_DEG
+// // #define RAD_TO_DEG (180.0/M_PI)
+// // #endif // RAD_TO_DEG
 
-// #ifndef DEG_TO_RAD
-// #define DEG_TO_RAD (M_PI/180.0)
-// #endif // DEG_TO_RAD
+// // #ifndef DEG_TO_RAD
+// // #define DEG_TO_RAD (M_PI/180.0)
+// // #endif // DEG_TO_RAD
 
 typedef enum e_imudir { IMU_RIGHT=1, IMU_LEFT=2 } e_imudir_t;
 
-// typedef struct kalman_t
-// {
-// 	double Q_angle;   // Process noise variance for the accelerometer
-// 	double Q_bias;    // Process noise variance for the gyro bias
-// 	double R_measure; // Measurement noise variance - this is actually the variance of the measurement noise
+// // typedef struct kalman_t
+// // {
+// // 	double Q_angle;   // Process noise variance for the accelerometer
+// // 	double Q_bias;    // Process noise variance for the gyro bias
+// // 	double R_measure; // Measurement noise variance - this is actually the variance of the measurement noise
 
-// 	double angle; // The angle calculated by the Kalman filter - part of the 2x1 state vector
-// 	double bias;  // The gyro bias calculated by the Kalman filter - part of the 2x1 state vector
-// 	double rate;  // Unbiased rate calculated from the rate and the calculated bias - you have to call getAngle to update the rate
+// // 	double angle; // The angle calculated by the Kalman filter - part of the 2x1 state vector
+// // 	double bias;  // The gyro bias calculated by the Kalman filter - part of the 2x1 state vector
+// // 	double rate;  // Unbiased rate calculated from the rate and the calculated bias - you have to call getAngle to update the rate
 
-// 	double P[2][2]; // Error covariance matrix - This is a 2x2 matrix
-// 	double K[2];    // Kalman gain - This is a 2x1 vector
-// 	double y;       // Angle difference
-// 	double S;       // Estimate error
-// } Kalman;
+// // 	double P[2][2]; // Error covariance matrix - This is a 2x2 matrix
+// // 	double K[2];    // Kalman gain - This is a 2x1 vector
+// // 	double y;       // Angle difference
+// // 	double S;       // Estimate error
+// // } Kalman;
 
-// void Kalman_Init(Kalman *kalPointer, double qang=0.001, double qbias=0.003, double rmeas=0.03 );
-// double Kalman_GetAngle(Kalman *kalPointer, double newAngle, double newRate, double dt);
+// // void Kalman_Init(Kalman *kalPointer, double qang=0.001, double qbias=0.003, double rmeas=0.03 );
+// // double Kalman_GetAngle(Kalman *kalPointer, double newAngle, double newRate, double dt);
 
-#define SERIAL_KalmanMPU6050_DEBUG 0 // 1 Enables, 0 Disables
+// #define SERIAL_KalmanMPU6050_DEBUG 0 // 1 Enables, 0 Disables
 
-#define RESTRICT_PITCH     // Comment out to restrict roll to ±90deg instead please read: http://www.freescale.com/files/sensors/doc/app_note/AN3461.pdf
+// #define RESTRICT_PITCH     // Comment out to restrict roll to ±90deg instead please read: http://www.freescale.com/files/sensors/doc/app_note/AN3461.pdf
 
 class IMU
 {
@@ -69,75 +69,75 @@ public:
   /**
    * Initializes the Wire library, the MPU and the Kalman Filter.
    */
-  // static void init();
+//   // static void init();
 
   /**
    * Fetches the IMU data and proccesses it through the Kalman Filter.
    */
-  // static esp_err_t MPU6050Read();
-  static void Process();
+//   // static esp_err_t MPU6050Read();
+//   static void Process();
 
-  // Accelerometer reading in glider reference and in [g]
-  // static inline vector_f getGliderAccel() { return accel; };
+//   // Accelerometer reading in glider reference and in [g]
+//   // static inline vector_f getGliderAccel() { return accel; };
 
   /**
    * Gets the accelerometer X reading, as per last read() call.
    *
    * @returns The accelerometer X reading in glider reference
    */
-  static inline float getGliderAccelX()  { return accel.x; };
+//   static inline float getGliderAccelX()  { return accel.x; };
 
   /**
    * Gets the accelerometer Y reading, as per last read() call.
    *
    * @returns The accelerometer Y reading
    */
-  static inline float getGliderAccelY()   { return accel.y; };
+//   static inline float getGliderAccelY()   { return accel.y; };
 
   /**
    * Gets the accelerometer Z reading, as per last read() call.
    *
    * @returns The accelerometer Z reading
    */
-  static inline float getGliderAccelZ()  { return accel.z; };
+//   static inline float getGliderAccelZ()  { return accel.z; };
 
-  // Gets the acceleration along the earth g-vector in [times g]
-  static float getVerticalAcceleration();
+//   // Gets the acceleration along the earth g-vector in [times g]
+//   static float getVerticalAcceleration();
 
-  // Gets the rotation rate in [rad/sec] of the glider around a vertical circling axes
-  static float getVerticalOmega();
+//   // Gets the rotation rate in [rad/sec] of the glider around a vertical circling axes
+//   static float getVerticalOmega();
 
-  // Gyro reading in glider reference and in DPS
-  static inline vector_f getGliderGyro() { return gyro; };
+//   // Gyro reading in glider reference and in DPS
+//   static inline vector_f getGliderGyro() { return gyro; };
 
   /**
    * Gets the gyroscope X reading, as per last read() call.
    *
    * @returns The gyroscope X reading in glider reference.
    */
-  // static inline float getGliderGyroX()   { return gyro.x; };
-  // static inline float getGliderNogateGyroX()   { return nogate_gyro.x; };
+//   // static inline float getGliderGyroX()   { return gyro.x; };
+//   // static inline float getGliderNogateGyroX()   { return nogate_gyro.x; };
 
   /**
    * Gets the gyroscope Y reading, as per last read() call.
    *
    * @returns The gyroscope Y reading.
    */
-  // static inline float getGliderGyroY()   { return gyro.y; };
-  // static inline float getGliderNogateGyroY()   { return nogate_gyro.y; };
+//   // static inline float getGliderGyroY()   { return gyro.y; };
+//   // static inline float getGliderNogateGyroY()   { return nogate_gyro.y; };
 
   /**
    * Gets the gyroscope Z reading, as per last read() call.
    *
    * @returns The gyroscope Z reading.
    */
-  // static inline float getGliderGyroZ()   { return gyro.z; };
-  // static inline float getGliderNogateGyroZ()   { return nogate_gyro.z; };
+//   // static inline float getGliderGyroZ()   { return gyro.z; };
+//   // static inline float getGliderNogateGyroZ()   { return nogate_gyro.z; };
 
-  // Get the last raw gyro reads
-  // static inline float getRawGyroX()   { return raw_gyro.x; };
-  // static inline float getRawGyroY()   { return raw_gyro.y; };
-  // static inline float getRawGyroZ()   { return raw_gyro.z; };
+//   // Get the last raw gyro reads
+//   // static inline float getRawGyroX()   { return raw_gyro.x; };
+//   // static inline float getRawGyroY()   { return raw_gyro.y; };
+//   // static inline float getRawGyroZ()   { return raw_gyro.z; };
 
   /**
    * Gets the roll (X rotation) in degress from the Kalman Filter.
@@ -145,63 +145,63 @@ public:
    *
    * @returns The x rotation (roll) in degrees
    */
-  static inline float getRoll() { return rad2deg(filterRoll); };
-  static inline float getRollRad() { return filterRoll; };
+//   static inline float getRoll() { return rad2deg(filterRoll); };
+//   static inline float getRollRad() { return filterRoll; };
 
   /**
    * Gets the pitch (Y rotation) in degrees from the Kalman Filter.\
    *
    * @returns The y rotation (pitch) in degrees
    */
-  static inline float getPitch()  { return rad2deg(filterPitch); }
-  static inline float getPitchRad()  { return filterPitch; }
+//   static inline float getPitch()  { return rad2deg(filterPitch); }
+//   static inline float getPitchRad()  { return filterPitch; }
 
-  // XCSoar, and XCVario using a reference system with X pointing to th nose, Z vector pointing down (NED),
-  // and Y to the right.
-  // only Pitch and Roll is used for XCSoar
-  // static inline float getXCSPitch()  { return -float(RAD_TO_DEG) * filterPitch;  }
-  static inline double getYaw()  { return filterYaw;  }
+//   // XCSoar, and XCVario using a reference system with X pointing to th nose, Z vector pointing down (NED),
+//   // and Y to the right.
+//   // only Pitch and Roll is used for XCSoar
+//   // static inline float getXCSPitch()  { return -float(RAD_TO_DEG) * filterPitch;  }
+//   static inline double getYaw()  { return filterYaw;  }
 
-  static inline double getGyroRate()  {	return abs(gyro.x)+abs(gyro.y)+abs(gyro.z); }
+//   static inline double getGyroRate()  {	return abs(gyro.x)+abs(gyro.y)+abs(gyro.z); }
 
-  // Reference calibration
-  static int getAccelSamplesAndCalib(int side, rad_t &wing_angle );
-  static void getGyroSamplesAndZero();
-  // static void defaultImuReference();
-  // static void applyImuReference(const float gAA, const Quaternion& basic);
-  static inline Quaternion getAHRSQuaternion() { return att_quat; };
-  static inline vector_f getAHRSVector() { return att_vector; };
+//   // Reference calibration
+   static int getAccelSamplesAndCalib(int side, rad_t &wing_angle );
+//   static void getGyroSamplesAndZero();
+//   // static void defaultImuReference();
+//   // static void applyImuReference(const float gAA, const Quaternion& basic);
+//   static inline Quaternion getAHRSQuaternion() { return att_quat; };
+//   static inline vector_f getAHRSVector() { return att_vector; };
 
-private:
-  static float getGyroYawDelta();
-  static void update_fused_vector(vector_f& fused, float gyro_trust, vector_f& petal_force, Quaternion& omega_step);
-  // static Kalman kalmanX; // Create the Kalman instances
-  // static Kalman kalmanY;
-  // static Kalman kalmanZ;
+// private:
+//   static float getGyroYawDelta();
+//   static void update_fused_vector(vector_f& fused, float gyro_trust, vector_f& petal_force, Quaternion& omega_step);
+//   // static Kalman kalmanX; // Create the Kalman instances
+//   // static Kalman kalmanY;
+//   // static Kalman kalmanZ;
 
-  // static vector_i raw_gyro;
-  static vector_f nogate_gyro;
-  static vector_f accel;
-  static vector_f gyro;
-  static vector_f petal;
-  static float  circle_omega;
-  // static double kalXAngle, kalYAngle;
+//   // static vector_i raw_gyro;
+//   static vector_f nogate_gyro;
+//   static vector_f accel;
+//   static vector_f gyro;
+//   static vector_f petal;
+//   static float  circle_omega;
+//   // static double kalXAngle, kalYAngle;
 
-  static float fallbackToGyro();
-  // static void RollPitchFromAccel(double *roll, double *pitch);
-  // static float PitchFromAccel();
-  static float PitchFromAccelRad();
-  static int last_rts;
-  static float  filterPitch;
-  static float  filterRoll;
-  static float  filterYaw;
+//   static float fallbackToGyro();
+//   // static void RollPitchFromAccel(double *roll, double *pitch);
+//   // static float PitchFromAccel();
+//   static float PitchFromAccelRad();
+//   static int last_rts;
+//   static float  filterPitch;
+//   static float  filterRoll;
+//   static float  filterYaw;
 
-  static float   fused_yaw;
+//   static float   fused_yaw;
 
-  static Quaternion att_quat;
-  static Quaternion omega_step;
-  static vector_f att_vector;
-  static vector_f euler_rad;
+//   static Quaternion att_quat;
+//   static Quaternion omega_step;
+//   static vector_f att_vector;
+//   static vector_f euler_rad;
 };
 
 

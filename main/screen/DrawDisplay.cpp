@@ -24,7 +24,7 @@
 #include "setup/SetupNG.h"
 #include "setup/CruiseMode.h"
 #include "ESPRotary.h"
-#include "sensor/imu/KalmanMPU6050.h"
+#include "sensor/imu/AccMPU6050.h"
 #include "ESPAudio.h"
 #include "Flarm.h"
 #include "S2F.h"
@@ -92,10 +92,11 @@ void UiEventLoop(void *arg)
                                 Display->drawDisplay();
                                 break;
                             case SCREEN_GMETER:
-                                Display->drawLoadDisplay( IMU::getGliderAccelZ() );
+                                assert(accSensor);
+                                Display->drawLoadDisplay( accSensor->getHeadPtr()->z );
                                 break;
                             case SCREEN_HORIZON:
-                                HorizonPage::HORIZON()->draw( IMU::getAHRSQuaternion() );
+                                HorizonPage::HORIZON()->draw( accSensor->getAHRSQuaternion() );
                                 break;
                         }
                     }
@@ -149,7 +150,7 @@ void UiEventLoop(void *arg)
             // Stall Warning fixme no need for this to be here, could be in sensor loop, no display context needed
             if (stall_warning.get() && screen_gmeter.get() != SCREEN_PRIMARY && airborne.get()) {
                 // In aerobatics stall warning is contra productive, we concentrate on G-Load Display if permanent enabled
-                float acceleration = IMU::getGliderAccelZ();
+                float acceleration = accSensor ? accSensor->getHeadPtr()->z : 1.f;
                 if (acceleration < 0.3) {
                     acceleration = 0.3; // limit acceleration effect to minimum 0.3g
                 }
@@ -192,8 +193,9 @@ void UiEventLoop(void *arg)
             }
 
             // G-Load alarm when limits reached
-            if (screen_gmeter.get() != SCREEN_OFF) {
-                if (IMU::getGliderAccelZ() > gload_pos_limit.get() || IMU::getGliderAccelZ() < gload_neg_limit.get()) {
+            if (screen_gmeter.get() != SCREEN_OFF && accSensor) {
+                float currg = accSensor->getHeadPtr()->z;
+                if (currg > gload_pos_limit.get() || currg < gload_neg_limit.get()) {
                     if (gload_warning_active % 10 == 0) {
                         AUDIO->startSound(AUDIO_ALARM_GLOAD);
                         gload_warning_active++;

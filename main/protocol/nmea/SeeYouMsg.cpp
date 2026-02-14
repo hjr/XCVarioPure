@@ -13,7 +13,7 @@
 #include "comm/Messages.h"
 #include "setup/SetupNG.h"
 #include "setup/CruiseMode.h"
-#include "sensor/imu/KalmanMPU6050.h"
+#include "sensor/imu/AccMPU6050.h"
 #include "math/Units.h"
 #include "logdefnone.h"
 
@@ -132,11 +132,15 @@ void NmeaPrtcl::sendSeeYouF()
     // int32_t ms_midnight = Clock::getMilisMidnightUTC();
     // std::sprintf(tmp, "%ld.%03ld,", ms_midnight / 1000, ms_midnight % 1000);
     msg->buffer += tmp;
-    std::sprintf(tmp, "%.1f,", IMU::getGliderAccelX());
+    vector_f accel = {0,0,0};
+    if ( accSensor ) {
+        accel = accSensor->getHead();
+    }
+    std::sprintf(tmp, "%.1f,", accel.x); // Naviter expects "NED"
     msg->buffer += tmp;
-    std::sprintf(tmp, "%.1f,", -IMU::getGliderAccelY());
+    std::sprintf(tmp, "%.1f,", accel.y);
     msg->buffer += tmp;
-    std::sprintf(tmp, "%.1f,", -IMU::getGliderAccelZ());
+    std::sprintf(tmp, "%.1f,", accel.z);
     msg->buffer += tmp;
     std::sprintf(tmp, "%.1f,", te_vario.get());
     msg->buffer += tmp;

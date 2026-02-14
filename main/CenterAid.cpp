@@ -12,10 +12,9 @@
 #include "math/Trigonometry.h"
 #include "Flarm.h"
 #include "setup/SetupNG.h"
-#include "sensor.h"
 #include "AdaptUGC.h"
 #include "Colors.h"
-#include "sensor/imu/KalmanMPU6050.h"
+#include "sensor/imu/AccMPU6050.h"
 #include "logdefnone.h"
 
 
@@ -26,7 +25,7 @@ constexpr int PEAK_STORAGE = 120;
 constexpr int DRAW_SCALE = PEAK_STORAGE/MAX_DISK_RAD;
 
 extern AdaptUGC *MYUCG;
-CenterAid  *theCenteraid = 0;
+CenterAid  *theCenteraid = nullptr;
 
 CenterAid *CenterAid::create(PolarGauge &g)
 {
@@ -233,12 +232,13 @@ void CenterAid::tick(){
 		}
 		// // ESP_LOGI(FNAME,"MH %f", new_heading );
 		if( new_heading < 0 )  {         // fall back to GPS course and fuse gps heading with gyro
+			float imu_yaw = accSensor ? accSensor->getCircleOmegaDeg() : 0.f;
 			if( Flarm::gpsStatus() ){
 				if( gyro_last == 0 ){
-					gyro_last = IMU::getYaw();
+					gyro_last = imu_yaw;
 				}
 				float gpshead = Flarm::getGndCourse();
-				float gyro = IMU::getYaw();
+				float gyro = imu_yaw;
 				float gyro_delta =  gyro - gyro_last;
 				gyro_last = gyro;
 				float diff = Vector::angleDiffDeg( gpshead, gps_heading );
@@ -246,7 +246,7 @@ void CenterAid::tick(){
 				new_heading=Vector::normalizeDeg( gps_heading );
 				// ESP_LOGI(FNAME,"GPS OK TC:%f gdY:%f fused:%f diff:%f", gpshead, gyro_delta, new_heading, diff );
 			}else{     // trust as last resort just only gyro for Center Aid
-				new_heading = IMU::getYaw();
+				new_heading = imu_yaw;
 				// ESP_LOGI(FNAME,"Gyro yaw %f", new_heading);
 			}
 		}

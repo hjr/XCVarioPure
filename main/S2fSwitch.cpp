@@ -15,7 +15,7 @@
 #include "screen/DrawDisplay.h"
 #include "sensor.h"
 #include "Flap.h"
-#include "sensor/imu/KalmanMPU6050.h"
+#include "sensor/imu/AccMPU6050.h"
 #include "logdefnone.h"
 
 // auto switch filters
@@ -163,7 +163,7 @@ bool Flap()
 bool Omega()
 {
     float ref = s2f_gyro_deg.get();
-    if ( rad2deg(abs(IMU::getVerticalOmega())) < ref)
+    if ( accSensor && abs(accSensor->getCircleOmegaDeg()) < ref)
     {
         return true;
     }

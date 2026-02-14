@@ -9,7 +9,7 @@
 
 #include "glider/Polars.h"
 #include "math/Floats.h"
-#include "sensor/imu/KalmanMPU6050.h"
+#include "sensor/imu/AccMPU6050.h"
 #include "comm/DeviceMgr.h"
 #include "protocol/NMEA.h"
 #include "Flap.h"
@@ -264,8 +264,11 @@ float S2F::getBallastPercent() {
 }
 
 float S2F::getN() {
-	float g = IMU::getGliderAccelZ();
-	if( g < 0.3 )        // Polars and airfoils physics behave different negative or even low g forces, we stop here impacting from g force at 0.3 g
+	float g = 1.0;
+	if ( accSensor ) {
+		g = accSensor->getHeadPtr()->z;
+	}
+	if( g < 0.3 ) // Polars and airfoils physics behave different negative or even low g forces, we stop here impacting from g force at 0.3 g
 		return 0.3;
 	return g;
 }
