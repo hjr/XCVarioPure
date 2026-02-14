@@ -15,6 +15,7 @@
 #include "sensor/press_diff/AirspeedSensor.h"
 #include "sensor/temp/TempSensor.h"
 #include "sensor/imu/ImuSensor.h"
+#include "math/Trigonometry.h"
 #include "logdef.h"
 
 #include <cstring>
@@ -73,14 +74,14 @@ dl_action_t XCVSimMsg::parse_Sens(NmeaPlugin *plg)
     OATSensor->pushAndPublish(tmp, time);
 
     vector_f vtmp;
-    vtmp.x = atof(sm->_frame.c_str() + word->at(6));
+    vtmp.x = -atof(sm->_frame.c_str() + word->at(6));
     vtmp.y = atof(sm->_frame.c_str() + word->at(7));
     vtmp.z = atof(sm->_frame.c_str() + word->at(8));
     if ( accSensor ) accSensor->pushAndPublish(vtmp, time);
 
-    vtmp.x = atof(sm->_frame.c_str() + word->at(9));
-    vtmp.y = atof(sm->_frame.c_str() + word->at(10));
-    vtmp.z = atof(sm->_frame.c_str() + word->at(11));
+    vtmp.x = deg2rad(atof(sm->_frame.c_str() + word->at(9)));
+    vtmp.y = deg2rad(atof(sm->_frame.c_str() + word->at(10)));
+    vtmp.z = deg2rad(atof(sm->_frame.c_str() + word->at(11)));
     if ( gyroSensor ) gyroSensor->pushAndPublish(vtmp, time);
 
     return NOACTION; // never forward the simulation
