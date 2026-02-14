@@ -122,13 +122,15 @@ Point Point::rotate(float alpha) const {
 
 
 // Hesse horizon line parameters in the gliders Y/Z plane
+// quaternion q is attitude in NED frame, 
+// cx/cy is the center of the display
 Line::Line(Quaternion q, int16_t cx, int16_t cy) {
     // normal vector of the plane
-    vector_f n = q.rotate(vector_f(0, 0, 1));
-    _nx = -n.y;
-    _ny = -n.z;
-    _d = -n.x * 100; // projection scale to visible range
-    _d = _d + _nx * cx + _ny * cy; // offset to the middle of the screen
+    vector_f up = q.rotate(vector_f(0, 0, 1));
+    _nx = -up.y;
+    _ny = -up.z;
+    _d = std::clamp(up.x, -0.7f, 0.7f) * 100; // projection scale to visible range
+    _d += _nx * cx + _ny * cy; // offset to the middle of the screen
     // ESP_LOGI(FNAME, "normV %0.1f,%0.1f,%0.1f", _nx, _ny, _d);
 }
 // evaluate line function at point p
