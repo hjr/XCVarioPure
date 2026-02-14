@@ -161,15 +161,15 @@ temp_status_t ImuSensor::getTempStatus() const {
 void ImuSensor::setDefaultImuReference() {
     Quaternion base = loadDefaultImuReference();
     _ref_rot = concatGaaAndImuReference(glider_ground_aa.get(), base);
-    imu_reference.set(_ref_rot, false);  // nvs
+    imu_reference.set(base, false);  // nvs
 }
 
 Quaternion ImuSensor::loadDefaultImuReference() {
 
     // Revert from calibrated IMU to default mapping, which fits
     // roughly to an upright, top down, or ninety degree installation.
-    // IMU in PCB placement: X up, Y left, Z backwards
-    // IMU in PCB placement to "NED" reference: X forward, Y right, Z down
+    // IMU on PCB raw: X up, Y left, Z backwards
+    // IMU on PCB to "NED" reference: X forward, Y right, Z down
     Quaternion accelDefaultRef = Quaternion(deg2rad(90.0f), vector_f(0, 1, 0)).conjugate(); // towards "NED"
 
     if (display_orientation.get() == DISPLAY_NORMAL) {

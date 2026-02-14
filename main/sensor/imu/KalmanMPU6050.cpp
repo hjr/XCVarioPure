@@ -187,7 +187,7 @@ void IMU::Process()
 	float gravity_trust = 1;
 	gyro = gyroSensor->getHead();
 	accel = accSensor->getHead();
-	ESP_LOGI( FNAME, " Accel: %.3f,%.3f,%.3f Gyro: %.3f,%.3f,%.3f dt: %.3f", accel.x, accel.y, accel.z, gyro.x, gyro.y, gyro.z, dt );
+	// ESP_LOGI( FNAME, " Accel: %.3f,%.3f,%.3f Gyro: %.3f,%.3f,%.3f dt: %.3f", accel.x, accel.y, accel.z, gyro.x, gyro.y, gyro.z, dt );
 
 	// create a gyro base rotation axis
 	omega_step = Quaternion::fromGyro(gyro, dt);
@@ -201,8 +201,8 @@ void IMU::Process()
 		float loadFactor = accel.get_norm();
 		float lf = loadFactor > 2.0 ? 2.0 : loadFactor;
 		loadFactor = lf < 0 ? 0 : lf; // limit to 0..2g
-		// the yz portion of w is proportional to the length of YZ portion of the normalized axis.
-		circle_omega = w * std::sqrtf(axis.y*axis.y + axis.z*axis.z) * (std::signbit(gyro.z)?-1.f:1.f);
+		// the yz portion of w is proportional to the length of YZ portion of the gyro vector.
+		circle_omega = w * std::sqrtf(axis.y*axis.y + axis.z*axis.z) * (std::signbit(gyro.z)?-1.f:1.f); // todo what is omega's sign interpretation left turn positiv?
 		// tan(roll):= petal force/G = m w v / m g
 		float tanw = -circle_omega * tas.get() / Units::g0;
 		roll = atan( tanw );
@@ -230,7 +230,7 @@ void IMU::Process()
 		petal = accel;
 		circle_omega = 0.f;
 	}
-	// ESP_LOGI( FNAME, " ax1:%f ay1:%f az1:%f Gx:%f Gy:%f GZ:%f dT:%f", petal.a, petal.b, petal.c, gyro.a, gyro.b, gyro.c, dt );
+	// ESP_LOGI( FNAME, " ax1:%f ay1:%f az1:%f Gx:%f Gy:%f GZ:%f dT:%f", petal.x, petal.y, petal.z, gyro.x, gyro.y, gyro.z, dt );
 	vector_f att_prev = att_vector;
 	update_fused_vector(att_vector, gravity_trust, petal, omega_step);
 	// ESP_LOGI(FNAME,"attv: %.3f %.3f %.3f ProjAccel: %f", att_vector.x, att_vector.y, att_vector.z, accel.dot(att_vector));
@@ -311,7 +311,7 @@ float IMU::getVerticalOmega()
 
 float IMU::PitchFromAccelRad()
 {
-	return atan2f(accel.x, accel.z);
+	return atan2f(-accel.x, accel.z); // neglecting accel.y, because of minor influence on pitch and more noise
 }
 
 // void IMU::RollPitchFromAccel(double *roll, double *pitch)

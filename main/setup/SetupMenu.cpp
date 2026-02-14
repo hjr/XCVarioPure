@@ -241,12 +241,11 @@ static int add_key(SetupMenuChar *p) {
 }
 
 static int imu_gaa(SetupMenuValFloat *f) {
-	if (accSensor && !(imu_reference.get() == Quaternion())) {
-		accSensor->applyImuReference(f->get(), imu_reference.get());
-	}
-	return 0;
+    if (accSensor && !(imu_reference.get() == Quaternion())) {
+        accSensor->applyImuReference(f->get(), imu_reference.get());
+    }
+    return 0;
 }
-
 
 static void doImuCalibration( SetupMenuSelect *p ){
 	MYUCG->setFont( ucg_font_ncenR14_hr, true );
