@@ -256,26 +256,27 @@ int MenuEntry::nrOfHelpLines() const
 // returns true when inlining
 bool MenuEntry::showhelp(bool inln)
 {
-	ESP_LOGI(FNAME,"MenuEntry showhelp() %s inline=%d", _title.c_str(), inln );
-	bool ret = true; // inlining w/o help text is always possible
-    if( helptext )
-	{
-		// option to fit the help under the menu lines
-		int needed_ln = nrOfHelpLines();
+    ESP_LOGI(FNAME, "MenuEntry showhelp() %s inline=%d", _title.c_str(), inln);
+    bool ret = true;  // inlining w/o help text is always possible
+    if (helptext) {
+        // option to fit the help under the menu lines
+        int needed_ln = nrOfHelpLines();
         int16_t first_hln = current_menu->firstHelpLine();
-		if ( inln ) {
-            if (current_menu->freeBottomLines() < needed_ln ) {
+        if (inln) {
+            if (current_menu->freeBottomLines() < needed_ln) {
                 ret = false;
             }
-		}
-        else {
-            first_hln = (dheight/LINE_HEIGHT + 1) / 2; // Lower half of the display for help, default
+        } else {
+            first_hln = (dheight / LINE_HEIGHT + 1) / 2;  // Lower half of the display for help, default
             ret = false;
         }
-		clearHelpLines(first_hln);
 
-		MYUCG->setFont(ucg_font_ncenR14_hr);
-        MYUCG->drawLine(0, first_hln * LINE_HEIGHT + 1, dwidth, first_hln * LINE_HEIGHT + 1); // separator
+        clearHelpLines(first_hln);
+        MYUCG->setColor(COLOR_BBLUE);
+        MYUCG->drawLine(30, first_hln * LINE_HEIGHT + 1, dwidth - 30, first_hln * LINE_HEIGHT + 1);  // separator
+        MYUCG->setColor(COLOR_WHITE);
+
+        MYUCG->setFont(ucg_font_ncenR14_hr);
         if ( _help_line_start[0] == 0 ) {
             // just one line
             menuPrintLn(helptext, first_hln);
@@ -293,7 +294,6 @@ bool MenuEntry::showhelp(bool inln)
             }
             menuPrintLn(helptext + start, first_hln + i);
         }
-
     }
     return ret;
 }
