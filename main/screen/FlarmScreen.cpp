@@ -48,9 +48,7 @@ void FlarmScreen::exit(int ups)
     AUDIO->endAlarm();
     FLARMSCREEN = nullptr;
     MenuEntry::exit();
-    if ( ! isFirstLevel() ) {
-        delete this;
-    }
+    delete this;
 }
 
 void FlarmScreen::display(int mode)

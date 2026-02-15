@@ -69,7 +69,6 @@ public:
 	// helper
 	const char* getTitle() const { return _title.c_str(); }
 	SetupMenu* getParent() const { return _parent; }
-	void hookToParent(SetupMenu* p) { _parent = p; }
 	void regParent(SetupMenu* p);
 	bool isFirstLevel() const;
 	MenuEntry *getSelected() const { return current; }

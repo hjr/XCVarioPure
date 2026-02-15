@@ -108,7 +108,7 @@ void UiEventLoop(void *arg)
                 } else if ( detail == ScreenEvent::FLARM_ALARM ) {
                     if ( ! FLARMSCREEN ) {
                         ESP_LOGI(FNAME,"Flarm::alarmLevel: %d, flarm_warning.get() %d", Flarm::alarmLevel(), flarm_warning.get() );
-                        MenuRoot->push(FlarmScreen::create());
+                        MenuRoot->pushTop(FlarmScreen::create());
                     } else {
                         FLARMSCREEN->display(1);
                     }

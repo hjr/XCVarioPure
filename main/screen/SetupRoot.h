@@ -35,7 +35,7 @@ public:
     // API
     static void initScreens();
     void begin(MenuEntry *setup=nullptr); // enter setup from outside, or schedule the next one
-    void push(MenuEntry *menu); // push menu on top, e.g. the flarm traffic display
+    void pushTop(MenuEntry *menu); // push menu on top, e.g. the flarm traffic display
     void exit(int levels=0) override;
     int getActiveScreen() const  { return active_screen; }
     // interaction

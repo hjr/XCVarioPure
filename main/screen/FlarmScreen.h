@@ -42,7 +42,7 @@ private:
     int _alarmtick = 0;
     WatchDog_C _time_out;
     uint16_t _prev_alarm = 0;
-    volatile std::atomic<int> _done = 0; // int because of atomic operations
+    std::atomic<int> _done = 0; // int because of atomic operations
 };
 
 

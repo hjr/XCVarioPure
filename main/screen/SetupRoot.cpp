@@ -102,26 +102,20 @@ void SetupRoot::begin(MenuEntry *setup)
     SetupMenu::initGearWarning(); // Huh fixme
 }
 
-void SetupRoot::push(MenuEntry *menu)
+void SetupRoot::pushTop(MenuEntry *menu)
 {
-    ESP_LOGI(FNAME,"Push Menu %s", menu->getTitle());
+    ESP_LOGI(FNAME,"Push Menu on top %s", menu->getTitle());
     gflags.inSetup = true;
-    if ( _childs.empty() ) {
-        addEntry(menu);
-        ESP_LOGW(FNAME,"Push flarm screen");
-        menu->enter();
+
+    MenuEntry *sel = getSelected();
+    if ( sel->isLeaf() ) {
+        ESP_LOGW(FNAME,"Cannot push menu on leaf");
+        sel->exit();
     }
-    else {
-        MenuEntry *sel = getSelected();
-        if ( sel->isLeaf() ) {
-            ESP_LOGW(FNAME,"Cannot push menu on leaf");
-            sel->exit();
-        }
-        SetupMenu *parent = static_cast<SetupMenu*>(getSelected());
-        menu->hookToParent(parent);
-        ESP_LOGW(FNAME,"Push flarm screen hooked");
-        menu->enter();
-    }
+    SetupMenu *parent = static_cast<SetupMenu*>(getSelected());
+    menu->regParent(parent);
+    ESP_LOGW(FNAME,"Push flarm screen hooked");
+    menu->enter();
 }
 
 void SetupRoot::exit(int levels)
@@ -140,8 +134,10 @@ void SetupRoot::exit(int levels)
     }
     SetupCommon::commitDirty(); // commit all dirty setup items
 
-    delete _childs.front(); // the exited setup tree
-    _childs.erase(_childs.begin());
+    if ( !_childs.empty() ) {
+        delete _childs.front(); // the exited setup tree
+        _childs.erase(_childs.begin());
+    }
 
     if ( !_childs.empty() ) {
         ESP_LOGI(FNAME,"More menus to run");
