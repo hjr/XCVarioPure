@@ -53,7 +53,7 @@ bool AccMPU6050::doRead(vector_f& val) {
         }
         val = _my_mpu.rotate(tmp_ned);
         val.z -= gyroSensor->getAxD() * imu_leverarm.get(); // compensate the accelerometer mounting position in front of CG
-        ESP_LOGI(FNAME, "val X:%f Y:%f Z:%f", val.x, val.y, val.z);
+        // ESP_LOGI(FNAME, "val X:%f Y:%f Z:%f", val.x, val.y, val.z);
         return true;
     }
 
@@ -102,20 +102,16 @@ void AccMPU6050::postProcess() {
     // ESP_LOGI( FNAME, " Accel: %.3f,%.3f,%.3f Gyro: %.3f,%.3f,%.3f dt: %.3f", accel.x, accel.y, accel.z, gyro.x, gyro.y, gyro.z, dt );
 
     // create a gyro base rotation axis
-    omega_step = Quaternion::fromGyro(gyro, dt);
-    vector_f axis;
-    float w = omega_step.getAngleAndAxis(axis) * 1.f / dt;  // angular speed [rad/sec]
-    omega_step.conjugate();                                 // inverse step
-    // ESP_LOGI( FNAME,"Omega: %f axis: %.3f,%.3f,%.3f", w, axis.x, axis.y, axis.z);
+    omega_step = Quaternion::fromGyro(gyro, dt).conjugate();
 
     float roll = 0, pitch = 0;
     if (tas.get() > Units::kmh_to_mps(10)) {
         float loadFactor = accel.get_norm();
         float lf = loadFactor > 2.0 ? 2.0 : loadFactor;
         loadFactor = lf < 0 ? 0 : lf;  // limit to 0..2g
-        // the yz portion of w is proportional to the length of YZ portion of the gyro vector.
-        circle_omega = w * std::sqrtf(axis.y * axis.y + axis.z * axis.z) *
-                       (std::signbit(gyro.z) ? -1.f : 1.f);  // todo what is omega's sign interpretation left turn positiv?
+        Quaternion q_bn = att_quat.get_conjugate(); // rotation from body to navigation frame
+        vector_f z_earth_body = q_bn.rotate(vector_f{0,0,1});
+        circle_omega = gyro.dot(z_earth_body);
         // tan(roll):= petal force/G = m w v / m g
         float tanw = -circle_omega * tas.get() / Units::g0;
         roll = atan(tanw);
@@ -137,7 +133,7 @@ void AccMPU6050::postProcess() {
         // trust in gyro at load factors unequal 1 g
         gravity_trust =
             (ahrs_min_gyro_factor.get() + (ahrs_gyro_factor.get() * (pow(10, abs(loadFactor - 1) * ahrs_dynamic_factor.get()) - 1)));
-        ESP_LOGI(FNAME, "Omega roll: %f Pitch: %f W_yz: %f Gyro Trust: %f", rad2deg(roll), rad2deg(pitch), circle_omega, gravity_trust);
+        // ESP_LOGI(FNAME, "Omega roll: %f Pitch: %f W_yz: %f Gyro Trust: %f", rad2deg(roll), rad2deg(pitch), circle_omega, gravity_trust);
     } else {
         // For still stand centripetal forces are taken from the accelerometer
         petal = accel;
@@ -153,8 +149,7 @@ void AccMPU6050::postProcess() {
     euler_rad = att_quat.toEulerRad() * -1.f;
     if ((att_vector - att_prev).get_norm2() > 0.5) {
         [[maybe_unused]] vector_f euler = euler_rad * rad2deg(1.f);
-        ESP_LOGI(FNAME, "Euler R:%.1f P:%.1f OR:%.1f IMUP:%.1f %.1f@GA(%.3f,%.3f,%.3f)", euler.Roll(), euler.Pitch(), rad2deg(roll),
-                 rad2deg(pitch), rad2deg(w), axis.x, axis.y, axis.z);
+        ESP_LOGI(FNAME, "Euler R:%.1f P:%.1f OR:%.1f IMUP:%.1f", euler.Roll(), euler.Pitch(), rad2deg(roll), rad2deg(pitch));
     }
 
     // treat gimbal lock, limit to 88 deg
