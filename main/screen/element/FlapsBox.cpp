@@ -195,7 +195,7 @@ void FlapsBox::drawLabels(FBoxStateHash cs)
 
 // currently called ca. every 0,3sec, 
 // but only redraws when the position changes enough to change the state hash
-void FlapsBox::draw(float ias)
+void FlapsBox::draw(mps_t ias)
 {
     if ( _dirty ) {
         MYUCG->setColor(COLOR_HEADER);
@@ -220,7 +220,8 @@ void FlapsBox::draw(float ias)
     minv = _flap->getSpeedBand(curr_fp, maxv);
     if ( airborne.get() == false ) {
         // on ground, set a virtual green band for the correct start position (ias "0km/h")
-        ias = _flap->getSpeed(flap_takeoff.get() - .3); // pretend start speed
+        ias = _flap->getSpeed(flap_takeoff.get() - 0.5); // pretend start speed
+        ESP_LOGI(FNAME, "on ground, set ias to %.1f for flap position %.1f", ias, curr_fp);
     }
     minv -= ias;
     maxv -= ias;

@@ -55,7 +55,7 @@ public:
     // API
     void setRef(int16_t x, int16_t y) { _ref_x=x; _ref_y=y; }
     void setLength(int16_t length);
-    void draw(float ias);
+    void draw(mps_t ias);
 
 private:
     void drawLabels(FBoxStateHash cs);
