@@ -35,6 +35,8 @@ enum e_audio_sound_type
     AUDIO_ALARM_FCODE
 };
 
+enum class alarm_type_t : uint8_t;
+
 class Audio
 {
     friend class TestSequence;
@@ -48,7 +50,8 @@ public:
     bool isUp() const { return _dac_chan != nullptr; }
     bool isPotiUp() const { return _poti != nullptr; }
 
-    void startSound(uint16_t alarmType, bool overlay = false); // outputs various alarm sounds according to alarmType
+    void startSound(uint16_t alarmType, bool overlay = false) const; // outputs various alarm sounds according to alarmType
+    void endAlarm() const; // ends a priority alarm, e.g. when the alarm condition is over
     static uint16_t encFlarmParam(e_audio_sound_type sound_id, uint8_t alevel, uint8_t side, uint8_t alt_diff);
 
     // system wide the only point to set audio volume !!!
@@ -84,7 +87,7 @@ private:
     float _range = 5.f;
     float _deadband_p;
     float _deadband_n;
-    bool _alarm_mode = false;
+    alarm_type_t _alarm_mode = static_cast<alarm_type_t>(0); // enum
     float maxf;
     float minf;
     float _exponent_max = 2;

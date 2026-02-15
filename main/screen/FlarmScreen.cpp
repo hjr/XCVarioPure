@@ -23,7 +23,6 @@
 
 extern AdaptUGC *MYUCG;
 FlarmScreen *FLARMSCREEN = nullptr;
-constexpr int FLARM_ALARM_HOLDING_TIME = 7000; // msec
 
 
 FlarmScreen *FlarmScreen::create()
@@ -39,12 +38,14 @@ FlarmScreen::FlarmScreen() :
     _time_out( this )
 {
     ESP_LOGI(FNAME,"FlarmScreen created");
-    _time_out.start( FLARM_ALARM_HOLDING_TIME );
+    _time_out.start( (int)(flarm_alarm_time.get()) * 1000 );
 }
 
 void FlarmScreen::exit(int ups)
 {
     ESP_LOGI(FNAME,"FlarmScreen exit");
+
+    AUDIO->endAlarm();
     FLARMSCREEN = nullptr;
     MenuEntry::exit();
     if ( ! isFirstLevel() ) {

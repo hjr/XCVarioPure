@@ -551,7 +551,7 @@ SetupNG<int>		    wk_sens_pos_5("WK_SP_5", 0, false );
 SetupNG<int>		    wk_sens_pos_6("WK_SP_6", 0, false );
 SetupNG<int>            stall_warning( "STALL_WARN", 0, true, SYNC_BIDIR, PERSISTENT );
 SetupNG<int>            flarm_warning( "FLARM_LEVEL", 1, true, SYNC_BIDIR, PERSISTENT );
-SetupNG<float>          flarm_alarm_time( "FLARM_ALM", 5, true, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(1, 15, 1));
+SetupNG<second_t>       flarm_alarm_time( "FLARM_ALM", 5, true, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(1, 15, 1));
 SetupNG<int>            flap_sensor( "FLAP_SENS", FLAP_SENSOR_DISABLE, false, SYNC_NONE, PERSISTENT, flap_act);
 SetupNG<float>          compass_dev_0( "CP_DEV_0", 0 );
 SetupNG<float>          compass_dev_45( "CP_DEV_45", 0 );

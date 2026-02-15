@@ -37,6 +37,8 @@ struct TONE;
 struct DURATION;
 struct VOICECONF;
 
+enum class alarm_type_t : uint8_t { ALARM_NONE = 0, ALARM_SIMPLE, ALARM_PRIORITY };
+
 // the global access to the audio functions
 Audio *AUDIO = nullptr;
 
@@ -82,12 +84,13 @@ const std::array<SNDTBL, 3> sound_table = {{
 }};
 
 // helper for DMA command stream and sequencer
-enum {
+enum : uint8_t {
     VLOAD_DONE = 0,
     REQUEST_SOUND,
     START_SOUND,
     ADD_SOUND,
-    DO_VARIO
+    DO_VARIO,
+    END_PRIO_ALARM
 };
 union AudioEvent {
     struct {
@@ -217,7 +220,7 @@ struct DMACMD {
     uint8_t idx;        // current index in the sound sequence
     uint8_t voicecount; // nr of voices used for this sequence
     int8_t  repcount;   // remaining repetitions
-    uint8_t state;      // internal state
+    uint8_t state;      // internal state 0 - uninit., 1 - loaded with sound, 2 - playing
     VOICECMD voice[MAX_VOICES];
 };
 static __attribute__((aligned(4))) DMACMD dma_cmd[2]; // double buffer for DMA command stream
@@ -743,10 +746,10 @@ void Audio::initVarioVoice()
 }
 
 // kick some sound sequence, non blocking
-void Audio::startSound(uint16_t style, bool overlay)
+void Audio::startSound(uint16_t style, bool overlay) const
 {
     if ( _dac_chan ) { // audio switched on
-        if (!_alarm_mode || !overlay) {
+        if (_alarm_mode == alarm_type_t::ALARM_NONE || !overlay) {
             AudioEvent ev(START_SOUND, style); // start an alarm sound
             if ( overlay ) {
                 ev.cmd = ADD_SOUND; // overlay sound
@@ -757,6 +760,14 @@ void Audio::startSound(uint16_t style, bool overlay)
     }
 }
 
+void Audio::endAlarm() const
+{
+    if ( _alarm_mode == alarm_type_t::ALARM_PRIORITY ) {
+        AudioEvent ev(END_PRIO_ALARM, 0); // end alarm
+        xQueueSend(AudioQueue, &ev, 0);
+    }
+}
+
 uint16_t Audio::encFlarmParam(e_audio_sound_type sound_id, uint8_t alevel, uint8_t side, uint8_t alt_diff)
 {
     return ((uint16_t)alevel << 8) | ((uint16_t)side << 6) | ((uint16_t)alt_diff << 4) | ((uint16_t)sound_id & 0xf);
@@ -764,7 +775,7 @@ uint16_t Audio::encFlarmParam(e_audio_sound_type sound_id, uint8_t alevel, uint8
 
 // [%] - in a logarithmic db sense
 void Audio::setVolume(float vol, bool sync) {
-    if ( _alarm_mode ) {
+    if ( _alarm_mode != alarm_type_t::ALARM_NONE ) {
         return; // no volume change during alarm
     }
     audio_volume.setCheckRange(vol, sync, false);
@@ -1048,7 +1059,8 @@ void Audio::dactask()
                 int sound_id = event.getSoundId();
                 if ( sound_id < sound_list.size() ) {
                     ESP_LOGI(FNAME, "Start sound %d (%x)", sound_id, event.param);
-                    if ( sound_id >= AUDIO_ALARMS ) { _alarm_mode = true; }
+                    if ( sound_id >= AUDIO_ALARMS ) { _alarm_mode = alarm_type_t::ALARM_SIMPLE; }
+                    if ( sound_id >= AUDIO_ALARM_FLARM ) { _alarm_mode = alarm_type_t::ALARM_PRIORITY; }
                     if ( sound_id == AUDIO_ALARM_FCODE ) {
                         FlarmCode = *Flarm[event.getSide()][event.getAltDiff()];
                         FlarmCode.repetitions = std::max((event.getLevel() - 1) * 3 - 1, 0);
@@ -1069,7 +1081,7 @@ void Audio::dactask()
                     ESP_LOGI(FNAME, "Sound pushed");
                     curr_dmacmd_idx = !curr_dmacmd_idx;
                     current_dmacmd = &dma_cmd[curr_dmacmd_idx];
-                    if ( _alarm_mode ) {
+                    if ( _alarm_mode > alarm_type_t::ALARM_NONE ) {
                         ESP_LOGI(FNAME, "Raise volume");
                         // raise volume +20%, but assure at least 60%
                         float alarm_vol = std::min(speaker_volume+alarm_volraise.get(), 100.f);
@@ -1079,16 +1091,27 @@ void Audio::dactask()
                 }
                 else {
                     ESP_LOGI(FNAME, "Sound ended");
-                    if ( _alarm_mode ) {
+                    if ( _alarm_mode == alarm_type_t::ALARM_SIMPLE) {
                         ESP_LOGI(FNAME, "Restore volume");
                         writeVolume(speaker_volume);
-                        _alarm_mode = false;
+                        _alarm_mode = alarm_type_t::ALARM_NONE;
                     }
-                    if (audio_mute_gen.get() == AUDIO_ON) {
+                    if (audio_mute_gen.get() == AUDIO_ON && _alarm_mode != alarm_type_t::ALARM_PRIORITY) {
                         current_dmacmd->loadSound(&VarioSound);
                     }
                     else {
                         current_dmacmd->resetSound();
+                    }
+                }
+            }
+            else if ( event.cmd == END_PRIO_ALARM ) {
+                if ( _alarm_mode == alarm_type_t::ALARM_PRIORITY) {
+                    ESP_LOGI(FNAME, "End priority alarm, restore volume");
+                    writeVolume(speaker_volume);
+                    _alarm_mode = alarm_type_t::ALARM_NONE;
+
+                    if (audio_mute_gen.get() == AUDIO_ON) {
+                        current_dmacmd->loadSound(&VarioSound);
                     }
                 }
             }
@@ -1134,7 +1157,7 @@ void Audio::dactask()
                     current_dmacmd->voice[vid].reset();
                 }
             }
-            else if ( event.cmd == DO_VARIO && ! _alarm_mode) {
+            else if ( event.cmd == DO_VARIO && _alarm_mode == alarm_type_t::ALARM_NONE) {
                 // update vario sound (10Hz)
                 // pull the intput value from vario indicator, or speed respectively
                 float max = _range;
