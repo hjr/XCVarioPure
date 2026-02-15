@@ -129,6 +129,7 @@ public:
     void sendCambridge();
     void sendSeeYouF();
     void sendSeeYouS();
+    void sendLK8EX1();
     void sendSeeYouVal(float val, int idx);
     void sendXCVCrewWeight(kilogram_t w);
     void sendXCVEmptyWeight(kilogram_t w);

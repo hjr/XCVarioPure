@@ -14,6 +14,7 @@
 #include "setup/SetupNG.h"
 #include "setup/CruiseMode.h"
 #include "sensor/imu/AccMPU6050.h"
+#include "math/Floats.h"
 #include "math/Units.h"
 #include "logdefnone.h"
 
@@ -186,5 +187,31 @@ void NmeaPrtcl::sendSeeYouS()
 
     msg->buffer += "*" + NMEA::CheckSum(msg->buffer.c_str()) + "\r\n";
     ESP_LOGD(FNAME, "SeeYouS %s", msg->buffer.c_str());
+    DEV::Send(msg);
+}
+
+
+// $LK8EX1,pressure,altitude,vario,temp,battery,*checksum
+void NmeaPrtcl::sendLK8EX1()
+{
+    if ( _dl.isBinActive() ) {
+        return; // no NMEA output in binary mode
+    }
+    Message* msg = newMessage();
+
+    msg->buffer = "$LK8EX1,";
+    char tmp[50];
+
+    std::sprintf(tmp, "%d,99999,", fast_iroundf(statp.get())); // Pa
+    msg->buffer += tmp;
+    std::sprintf(tmp, "%d,", fast_iroundf(te_vario.get() * 100.)); // cm/sec
+    msg->buffer += tmp;
+    std::sprintf(tmp, "%.1f,", Units::pipe(OAT.get(), Units::celsius));
+    msg->buffer += tmp;
+    std::sprintf(tmp, "%.1f", battery_voltage.get());
+    msg->buffer += tmp;
+
+    msg->buffer += "*" + NMEA::CheckSum(msg->buffer.c_str()) + "\r\n";
+    ESP_LOGD(FNAME, "SeeYouF %s", msg->buffer.c_str());
     DEV::Send(msg);
 }

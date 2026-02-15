@@ -205,8 +205,7 @@ static void toyFeed(int count) // Called at 5Hz from clientLoop or sensorloop
             ToyNmeaPrtcl->sendStdXCVario();
             break;
         case SEEYOU_P:
-            ToyNmeaPrtcl->sendSeeYouF();
-            if ( !(count%10) ) ToyNmeaPrtcl->sendSeeYouS();
+            if ( !(count%5) ) ToyNmeaPrtcl->sendLK8EX1();
             break;
         default:
             ESP_LOGE(FNAME, "Protocol %d not supported error", ToyNmeaPrtcl->getProtocolId());
