@@ -166,9 +166,9 @@ void NmeaPrtcl::sendXcvRPYL()
     msg->buffer = "$RPYL,";
     char str[50];
     sprintf(str, "%d,%d,%d,0,0,%d,0",
-            (int)fast_iroundf(accSensor->getRollDeg() * 10.f),       // Bank == roll     (deg)
-            (int)fast_iroundf(accSensor->getPitchDeg() * 10.f),      // Pitch            (deg)
-            (int)fast_iroundf(accSensor->getYawDeg() * 10.f),        // Yaw              (deg)
+            (int)fast_iroundf(accSensor->getRollDeg() * 10.f),
+            (int)fast_iroundf(accSensor->getPitchDeg() * 10.f),
+            (int)fast_iroundf(accSensor->getMagnHeadingDeg() * 10.f),
             (int)fast_iroundf(accSensor->getHeadPtr()->z * 1000.f));
     msg->buffer += str;
     msg->buffer += "*" + NMEA::CheckSum(msg->buffer.c_str()) + "\r\n";
