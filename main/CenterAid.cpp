@@ -7,6 +7,7 @@
 
 #include "CenterAid.h"
 
+#include "Units.h"
 #include "screen/element/PolarGauge.h"
 #include "protocol/Clock.h"
 #include "math/Trigonometry.h"
@@ -68,7 +69,7 @@ CenterAid::CenterAid(PolarGauge &g) :
 }
 
 void CenterAid::drawThermal( int tn, int idir, bool draw_red ){
-	ESP_LOGI(FNAME,"drawThermal, tn: %d, idir: %d, ds: %d", tn, idir, draw_red );
+	// ESP_LOGI(FNAME,"drawThermal, tn: %d, idir: %d, ds: %d", tn, idir, draw_red );
 	if( idir > CA_NUM_DIRS || idir < 0 ){
 		ESP_LOGE(FNAME,"index out of range: %d", agedir );
 		return;
@@ -230,15 +231,15 @@ void CenterAid::tick(){
 		if( theCompass ) { // this is the best source for a heading, use this when avail
 			new_heading = mag_hdt.get();
 		}
-		// // ESP_LOGI(FNAME,"MH %f", new_heading );
 		if( new_heading < 0 )  {         // fall back to GPS course and fuse gps heading with gyro
-			float imu_yaw = accSensor ? accSensor->getCircleOmegaDeg() : 0.f;
+			degree_t mag_heading = accSensor ? accSensor->getMagnHeadingDeg() : 0.f;
+			ESP_LOGI(FNAME,"COD %f", mag_heading );
 			if( Flarm::gpsStatus() ){
 				if( gyro_last == 0 ){
-					gyro_last = imu_yaw;
+					gyro_last = mag_heading;
 				}
 				float gpshead = Flarm::getGndCourse();
-				float gyro = imu_yaw;
+				float gyro = mag_heading;
 				float gyro_delta =  gyro - gyro_last;
 				gyro_last = gyro;
 				float diff = Vector::angleDiffDeg( gpshead, gps_heading );
@@ -246,9 +247,10 @@ void CenterAid::tick(){
 				new_heading=Vector::normalizeDeg( gps_heading );
 				// ESP_LOGI(FNAME,"GPS OK TC:%f gdY:%f fused:%f diff:%f", gpshead, gyro_delta, new_heading, diff );
 			}else{     // trust as last resort just only gyro for Center Aid
-				new_heading = imu_yaw;
+				new_heading = mag_heading;
 				// ESP_LOGI(FNAME,"Gyro yaw %f", new_heading);
 			}
+			ESP_LOGI(FNAME,"NH %f", new_heading );
 		}
 		float diff = Vector::angleDiffDeg( new_heading, cur_heading );
 		// ESP_LOGI(FNAME,"new heading %.1f diff:%.1f", new_heading, diff );

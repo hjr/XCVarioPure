@@ -10,6 +10,7 @@
 
 #include "ImuSensor.h"
 #include "GyroMPU6050.h"
+#include "Units.h"
 #include "math/Trigonometry.h"
 #include "vector.h"
 #include "../SensorMgr.h"
@@ -67,7 +68,7 @@ float AccMPU6050::getVerticalAcceleration() {
     // lamda := (accel * att_vector) / norm(att_vector)^2 // att_vector is normalized
     // lamda * att_vector would be the projection point, but here is only the g multiple requested
 
-    return accel.dot(att_vector);
+    return getHead().dot(att_vector);
 }
 
 static void update_fused_vector(vector_f& fused, float gyro_trust, vector_f& petal_force, Quaternion& omega_step)
@@ -97,14 +98,14 @@ void AccMPU6050::postProcess() {
     float dt = 0.1f; // seconds, a reasonable assumption
 
     float gravity_trust = 1;
-    accel = getHead(); // a sudo publish
+    const vector_f accel = getHead();
     const vector_f gyro = gyroSensor->getHead();
     // ESP_LOGI( FNAME, " Accel: %.3f,%.3f,%.3f Gyro: %.3f,%.3f,%.3f dt: %.3f", accel.x, accel.y, accel.z, gyro.x, gyro.y, gyro.z, dt );
 
     // create a gyro base rotation axis
     omega_step = Quaternion::fromGyro(gyro, dt).conjugate();
 
-    float roll = 0, pitch = 0;
+    rad_t roll = 0, pitch = 0;
     if (tas.get() > Units::kmh_to_mps(10)) {
         float loadFactor = accel.get_norm();
         float lf = loadFactor > 2.0 ? 2.0 : loadFactor;
@@ -124,7 +125,7 @@ void AccMPU6050::postProcess() {
             roll *= loadz_check;
         }
         // get pitch from accelerometer
-        pitch = PitchFromAccelRad();
+        pitch = atan2f(-accel.x, accel.z); // neglecting accel.y, because of minor influence on pitch and more noise
 
         // Centripetal forces to keep angle of bank while circling
         petal.x = -sin(pitch);             // Nose up (positive Y turn) results in negative X force
@@ -164,26 +165,26 @@ void AccMPU6050::postProcess() {
         euler_rad.setPitch(-limit);
 
     float curh = 0;
-    float gyroYaw = rad2deg(omega_step.toEulerRad().Yaw());
+    rad_t gyro_heading_step = -circle_omega * dt; // gyro heading change in this step (NED)
     if (theCompass && theCompass->cur_heading(&curh)) {
         // tuned to plus 7% what gave the best timing swing in response, 2% for compass is far enough
         // gyro and compass are time displaced, gyro comes immediate, compass a second later
-        fused_yaw += Vector::angleDiffDeg(curh, fused_yaw) * 0.02 + gyroYaw;
-        filterYaw = Vector::normalizeDeg(fused_yaw);
-        theCompass->setGyroHeading(filterYaw);
+        fused_mag_heading += Vector::angleDiff(deg2rad(curh), fused_mag_heading) * 0.02 + gyro_heading_step;
+        filtered_mag_heading = Vector::normalizePI2(fused_mag_heading);
+        theCompass->setGyroHeading(rad2deg(filtered_mag_heading));
         // ESP_LOGI( FNAME,"cur magn head %.2f gyro yaw: %.4f fused: %.1f Gyro(%.3f/%.3f/%.3f)", curh, gyroYaw, gh, gyroX, gyroY, gyroZ );
     } else {
-        fused_yaw +=  gyroYaw;
-        Vector::normalizeDeg( fused_yaw );
+        fused_mag_heading +=  gyro_heading_step;
+        Vector::normalizePI2( fused_mag_heading );
     }
 
-    // ESP_LOGI( FNAME,"GV-Pitch=%.1f  GV-Roll=%.1f filterYaw: %.2f curh: %.2f GX:%.3f GY:%.3f GZ:%.3f AX:%.3f AY:%.3f AZ:%.3f  FP:%.1f
-    // FR:%.1f", euler.Pitch(), euler.Roll(), filterYaw, curh, gyro.a,gyro.b,gyro.c, accel.a, accel.b, accel.c, filterPitch_rad,
+    // ESP_LOGI( FNAME,"GV-Pitch=%.1f  GV-Roll=%.1f filtered_mag_heading: %.2f curh: %.2f GX:%.3f GY:%.3f GZ:%.3f AX:%.3f AY:%.3f AZ:%.3f  FP:%.1f
+    // FR:%.1f", euler.Pitch(), euler.Roll(), filtered_mag_heading, curh, gyro.a,gyro.b,gyro.c, accel.a, accel.b, accel.c, filterPitch_rad,
     // filterRoll_rad  );
 }
 
-float AccMPU6050::PitchFromAccelRad()
-{
-	return atan2f(-accel.x, accel.z); // neglecting accel.y, because of minor influence on pitch and more noise
-}
+// rad_t AccMPU6050::PitchFromAccelRad()
+// {
+// 	return atan2f(-accel.x, accel.z); // neglecting accel.y, because of minor influence on pitch and more noise
+// }
 

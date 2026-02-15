@@ -61,6 +61,5 @@ bool GyroMPU6050::doRead(vector_f& val) {
 
 
 void GyroMPU6050::postProcess() {
-    // a sudo publish
-    gyro = getHead();
+    // feed the drift filter
 }
