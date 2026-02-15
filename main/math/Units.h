@@ -17,6 +17,7 @@ using pascal_t   = float;
 using kelvin_t   = float;
 using celsius_t  = float;
 using rad_t      = float;
+using rps_t      = float;
 using degree_t   = float;
 using second_t   = float;
 using hertz_t    = float;
