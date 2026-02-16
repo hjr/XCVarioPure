@@ -26,7 +26,6 @@ FlarmHostMsg::FlarmHostMsg(NmeaPrtcl &nr) :
 // $PFLAX*2E
 dl_action_t FlarmHostMsg::parsePFLAX(NmeaPlugin *plg)
 {
-    ProtocolState *sm = plg->getNMEA().getSM();
     ESP_LOGI(FNAME, "FLAX request received from host -----------------+");
     ESP_LOGI(FNAME, "Start binary request");
     DEVMAN->setFlarmBPInitiator(plg->getNMEA().getDL());

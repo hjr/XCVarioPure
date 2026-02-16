@@ -98,7 +98,7 @@ dl_action_t JumboCmdMsg::config(NmeaPlugin *plg)
     if ( idx >= sizeof(CONF_ITEM) / sizeof(CONF_ITEM[0]) ) {
         return NOACTION; // unknown token
     }
-    int value = atoi(sm->_frame.substr(13).c_str());
+    [[maybe_unused]] int value = atoi(sm->_frame.substr(13).c_str());
     switch (idx) {
     case 0:
         // todo // 0.1m
