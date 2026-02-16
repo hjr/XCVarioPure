@@ -160,7 +160,6 @@ void MenuEntry::setHelp( const char *txt )
         return; // fits in one line, no need to split
     }
 
-    int last_nlidx = 0;
     const char* p = helptext + nlidx;
     int16_t nlidx_prev = 0;
     int lines = 0;
