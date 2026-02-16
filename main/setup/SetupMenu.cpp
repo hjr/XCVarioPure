@@ -1137,7 +1137,9 @@ void system_menu_create_software(SetupMenu *top) {
     fa->setHelp("Reset all settings to factory defaults (metric system, 5 m/s vario range, etc.)");
     fa->addEntry("Cancel");
     fa->addEntry("ResetAll");
+#ifdef DEBUG_AND_TEST
     fa->addEntry("ClearNVS");
+#endif
     top->addEntry(fa);
 }
 
@@ -1295,9 +1297,11 @@ void system_menu_create_hardware_ahrs(SetupMenu *top) {
 	ahrslc->setHelp("Enter valid AHRS License Key to enabled the 'AHRS Option'");
 	top->addEntry(ahrslc);
 
+#ifdef DEBUG_AND_TEST
 	SetupMenu *ahrspa = new SetupMenu("Parameters", system_menu_create_hardware_ahrs_parameter);
 	ahrspa->setHelp("AHRS constants such as gyro trust and filtering");
 	top->addEntry(ahrspa);
+#endif
 
 	SetupMenuSelect *rpyl = new SetupMenuSelect("AHRS RPYL", RST_NONE, nullptr, &ahrs_rpyl_dataset);
 	top->addEntry(rpyl);
@@ -1388,6 +1392,7 @@ void system_menu_create(SetupMenu *sye) {
 	devices->setHelp("Devices, Interf.s, Protocols");
 	sye->addEntry(devices);
 
+#ifdef DEBUG_AND_TEST
 	SetupMenuSelect *logg = new SetupMenuSelect("Logging", RST_NONE, nullptr, &logging);
 	logg->setHelp("R&D option, do not just enable!\n Collect data with NMEA logger in XCSoar");
 	logg->addEntry("Disable");
@@ -1396,6 +1401,7 @@ void system_menu_create(SetupMenu *sye) {
 	logg->addEntry("Both");
 	logg->addEntry("All Sensor Data");
 	sye->addEntry(logg);
+#endif
 
 	// SetupAction *devdump = new SetupAction("Device Setup Dump", deviceDumpAction, 0);
 	// sye->addEntry(devdump);

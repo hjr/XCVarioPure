@@ -12,6 +12,9 @@ add_subdirectory("setup")
 add_subdirectory("wind")
 add_subdirectory("wmm")
 
+#uncomment for debug and test builds
+add_compile_definitions(DEBUG_AND_TEST=1)
+
 # uncommet for release builds
 #add_compile_definitions(CONFIG_LOG_DISABLED=1)
 
