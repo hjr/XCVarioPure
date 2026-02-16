@@ -187,3 +187,32 @@
     "--clang-tidy"
   ]
 }
+
+{
+  "github.copilot.inlineSuggest.enable": true,
+
+  "editor.inlineSuggest.enabled": true,
+
+  "editor.acceptSuggestionOnEnter": "off",
+
+  "editor.suggestSelection": "first",
+
+  "editor.tabCompletion": "on",
+
+  "editor.quickSuggestions": {
+    "other": true,
+    "comments": false,
+    "strings": false
+  }
+}
+
+{
+  "github.copilot.enable": {
+    "*": true,
+    "yaml": false,
+    "json": false,
+    "cmake": false,
+    "cpp": true,
+    "c": true
+  }
+}
