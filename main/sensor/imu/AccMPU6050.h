@@ -50,7 +50,8 @@ private:
     Quaternion omega_step = Quaternion();
     vector_f att_vector = {};
     vector_f euler_rad = {};
-    //AHRS helpers
+    // slip angle
+    LowPassFilter _lpf_slip_angle{0.09};
 };
 
 extern AccMPU6050 *accSensor;

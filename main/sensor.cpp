@@ -214,27 +214,23 @@ static void toyFeed(int count) // Called at 5Hz from clientLoop or sensorloop
 }
 
 static int client_sync_dataIdx = 10000;
-void startClientSync()
-{
-	// Start the client sync in a moment
-	client_sync_dataIdx = 0;
+void startClientSync() {
+    // Start the client sync in a moment
+    client_sync_dataIdx = 0;
 }
 
 void readSensors(void *pvParameters)
 {
-
-	esp_task_wdt_add(NULL);
+    esp_task_wdt_add(NULL);
     int count = 0;
-	int16_t landed = 0; // airborne detection counter
+    int16_t landed = 0;  // airborne detection counter
     uint32_t spartse_time;
     static int max_time = 0;
     static float avg_delta = 0;
 
-
-	while (1)
-	{
-		TickType_t xLastWakeTime = xTaskGetTickCount();
-		count++;   // 10x per second
+    while (1) {
+        TickType_t xLastWakeTime = xTaskGetTickCount();
+        count++;  // 10x per second
 
         // pick the time
         spartse_time = Clock::getMillis();
@@ -258,19 +254,18 @@ void readSensors(void *pvParameters)
         }
 
         // the SENS logging
-        if (SetupCommon::isMaster()) {
+        if (SetupCommon::isMaster() && accSensor) {
             kelvin_t temp = OAT.get();
             if (!OAT.getValid()) {
                 temp = Units::isa_temperature(altitude.get());
                 // ESP_LOGW(FNAME,"T invalid, using 15 deg");
             }
-            // ESP_LOGI(FNAME,"Start");
 
             if (logging.get()) {
                 char log[ProtocolItf::MAX_LEN];
                 struct timeval tv;
                 gettimeofday(&tv, NULL);
-                sprintf(log, "$SENS;");
+                sprintf(log, "$SENS,");
                 int pos = strlen(log);
                 int delta = (GpsSensor) ? Clock::getMillis() - GpsSensor->getLastUpdateTimeMs() : 0;
                 if (delta < 0) {
@@ -294,13 +289,7 @@ void readSensors(void *pvParameters)
             }
         }
 
-        // fixme set slip angle
-		// if( tas > 25.0 ){
-		// 	slip_angle.set(slip_angle.get() + ((IMU::getGliderAccelY()*K / (as*as)) - slip_angle.get())*0.12);   // with atan(x) = x for small x
-		// 	// ESP_LOGI(FNAME,"AS: %f m/s, CURSL: %f°, SLIP: %f", as, IMU::getGliderAccelY()*K / (as*as), slip_angle.get() );
-		// }
-
-		// ESP_LOGI(FNAME,"count %d ccp %d", count, ccp );
+        // ESP_LOGI(FNAME,"count %d ccp %d", count, ccp );
 		if( !(count % ccp) ) {
 			ESP_LOGI(FNAME,"count %d ccp %d", count, ccp );
 			AverageVario::recalcAvgClimb();

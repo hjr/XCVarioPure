@@ -106,7 +106,7 @@ void AccMPU6050::postProcess() {
     omega_step = Quaternion::fromGyro(gyro, dt).conjugate();
 
     rad_t roll = 0, pitch = 0;
-    if (tas.get() > Units::kmh_to_mps(10)) {
+    if (airborne.get()) {
         float loadFactor = accel.get_norm();
         float lf = loadFactor > 2.0 ? 2.0 : loadFactor;
         loadFactor = lf < 0 ? 0 : lf;  // limit to 0..2g
@@ -181,6 +181,13 @@ void AccMPU6050::postProcess() {
     // ESP_LOGI( FNAME,"GV-Pitch=%.1f  GV-Roll=%.1f filtered_mag_heading: %.2f curh: %.2f GX:%.3f GY:%.3f GZ:%.3f AX:%.3f AY:%.3f AZ:%.3f  FP:%.1f
     // FR:%.1f", euler.Pitch(), euler.Roll(), filtered_mag_heading, curh, gyro.a,gyro.b,gyro.c, accel.a, accel.b, accel.c, filterPitch_rad,
     // filterRoll_rad  );
+
+    // update slip angle
+    if (airborne.get()) {
+        constexpr const float K = rad2deg(4000.f); // airplane constant and Ay correction factor
+        slip_angle.set( _lpf_slip_angle.filter( -accel.y * K / (tas.get() * tas.get()) ) );  // with atan(x) = x for small x
+        ESP_LOGI(FNAME,"AS: %f m/s, CURSL: %f°, SLIP: %f", as, -accel.y*K / (tas.get() * tas.get()), slip_angle.get() );
+    }
 }
 
 // rad_t AccMPU6050::PitchFromAccelRad()
