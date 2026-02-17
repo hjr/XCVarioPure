@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <cassert>
+#include <algorithm>
 
 template <typename T>
 vector_3d<T>::vector_3d(T _a, T _b, T _c)
@@ -53,7 +54,7 @@ vector_3d<T>& vector_3d<T>::operator*=(const T s2)
 }
 
 template <typename T>
-vector_3d<T> vector_3d<T>::operator*(const T s2)
+vector_3d<T> vector_3d<T>::operator*(const T s2) const
 {
     vector_3d<T> result(*this);
     return result *= s2;
@@ -106,6 +107,23 @@ vector_3d<T> vector_3d<T>::get_normalized() const
     ret.normalize();
     return ret;
 }
+
+template <typename T>
+vector_3d<T> vector_3d<T>::clamp(float max_norm) const {
+    float n = get_norm();
+    if (n <= max_norm)
+        return *this;
+    return (*this) * (max_norm / n);
+}
+
+template <typename T>
+vector_3d<T> vector_3d<T>::clamp(T minl, T maxl) {
+    x = std::clamp(x, minl, maxl);
+    y = std::clamp(y, minl, maxl);
+    z = std::clamp(z, minl, maxl);
+    return *this;
+}
+
 
 template class vector_3d<float>; // explicit instantiation
 template class vector_3d<double>;
