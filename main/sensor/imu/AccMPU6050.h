@@ -26,6 +26,7 @@ public:
     bool setup() override { return _my_mpu.setup(); } // setup is done in MpuImu;
     bool doRead(vector_f& val) override;
     void postProcess() override;
+    bool isCalm() const override { return _calm_counter > 5; }
 
     temp_status_t getTempStatus() const { return _my_mpu.getTempStatus(); }
     inline float getRollDeg() { return rad2deg(euler_rad.Roll()); }
@@ -52,6 +53,8 @@ private:
     vector_f euler_rad = {};
     // slip angle
     LowPassFilter _lpf_slip_angle{0.09};
+    // calm counter
+    int _calm_counter = 0;
 };
 
 extern AccMPU6050 *accSensor;

@@ -24,6 +24,7 @@ public:
     bool setup() override { return false; } // setup is done in MpuImu;
     bool doRead(vector_f& val) override;
     void postProcess() override;
+    bool isCalm() const override { return _calm_counter > 5; }
     float getAxD() const { return _gyro_lpf_ayd.get(); }
 
 private:
@@ -31,6 +32,7 @@ private:
     const float _scale;
     // low-pass filter for gyro y-axis to get dw/dt
     LowPassFilter _gyro_lpf_ayd{0.5f}; // to compensate the accelerometer mounting position in front of CG
+    int _calm_counter = 0;
 };
 
 extern GyroMPU6050 *gyroSensor;

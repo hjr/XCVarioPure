@@ -186,8 +186,18 @@ void AccMPU6050::postProcess() {
     if (airborne.get()) {
         constexpr const float K = rad2deg(4000.f); // airplane constant and Ay correction factor
         slip_angle.set( _lpf_slip_angle.filter( -accel.y * K / (tas.get() * tas.get()) ) );  // with atan(x) = x for small x
-        ESP_LOGI(FNAME,"AS: %f m/s, CURSL: %f°, SLIP: %f", as, -accel.y*K / (tas.get() * tas.get()), slip_angle.get() );
+        // ESP_LOGI(FNAME,"AS: %f m/s, CURSL: %f°, SLIP: %f", tas.get(), -accel.y*K / (tas.get() * tas.get()), slip_angle.get() );
     }
+
+    // calm status
+    if ( (accel.get_norm2() - 1.f) < 0.1025f && (accel - att_vector).get_norm2() < 0.01f ) { // within 5% of 1 g and not changing much
+        // sensor is calm
+        _calm_counter++;
+    }
+    else {
+        _calm_counter = 0;
+    }
+
 }
 
 // rad_t AccMPU6050::PitchFromAccelRad()

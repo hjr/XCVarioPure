@@ -61,5 +61,14 @@ bool GyroMPU6050::doRead(vector_f& val) {
 
 
 void GyroMPU6050::postProcess() {
+    // calm status
+    vector_f gyro = getHead();
+    if (gyro.get_norm2() < Units::deg_to_rad(3.f * 3.f)) { // within 3 deg/s
+        _calm_counter++;
+    }
+    else {
+        _calm_counter = 0;
+    }
+
     // feed the drift filter
 }

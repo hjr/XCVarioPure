@@ -104,6 +104,7 @@ public:
     virtual bool setup() = 0;
     virtual bool update(uint32_t now_ms) = 0;
     virtual void postProcess() {};
+    virtual bool isCalm() const { return false; } // whether the sensor is in a calm state
     int getDutyCycle() const { return _update_interval_ms; }
     int getLastObservationTime() const { return _last_update_time_ms + _latency_ms; }
     inline int getLastUpdateTimeMs() const { return _last_update_time_ms; }
