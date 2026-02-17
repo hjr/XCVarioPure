@@ -20,6 +20,7 @@
 #include "logdefnone.h"
 
 #include <cmath>
+#include <algorithm>
 
 float getHeading(); // fixme
 
@@ -412,9 +413,10 @@ void PolarGauge::drawScale(float at)
     // increment in 1/10 scale steps
     int16_t start = fast_iroundf(_range)*10, stop = fast_iroundf(_mrange)*10;
     int16_t l_start = start, l_stop = stop; // for labels
-    if (at != -1000)
+    if (at > -1000.)
     {
         // partial scale repainting
+        at = std::clamp(at, _mrange, _range);
         if ( at > 0 ) { // Redraw the AVG area
             int16_t tmp = (int)(at * 10) + 5; // alias .5
             if (tmp < start) {
