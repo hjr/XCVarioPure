@@ -16,7 +16,7 @@
 #include "AdaptUGC.h"
 #include "Colors.h"
 #include "sensor/imu/AccMPU6050.h"
-#include "logdefnone.h"
+#include "logdef.h"
 
 
 constexpr int CA_STEP = 360/CA_NUM_DIRS; // 15
@@ -232,14 +232,14 @@ void CenterAid::tick(){
 			new_heading = mag_hdt.get();
 		}
 		if( new_heading < 0 )  {         // fall back to GPS course and fuse gps heading with gyro
-			degree_t mag_heading = accSensor ? accSensor->getMagnHeadingDeg() : 0.f;
-			ESP_LOGI(FNAME,"COD %f", mag_heading );
+			degree_t gyro_footing = accSensor ? rad2deg(accSensor->getGyroFooting()) : 0.f;
+			ESP_LOGI(FNAME,"COD %f", gyro_footing );
 			if( Flarm::gpsStatus() ){
 				if( gyro_last == 0 ){
-					gyro_last = mag_heading;
+					gyro_last = gyro_footing;
 				}
 				float gpshead = Flarm::getGndCourse();
-				float gyro = mag_heading;
+				float gyro = gyro_footing;
 				float gyro_delta =  gyro - gyro_last;
 				gyro_last = gyro;
 				float diff = Vector::angleDiffDeg( gpshead, gps_heading );
@@ -247,7 +247,7 @@ void CenterAid::tick(){
 				new_heading=Vector::normalizeDeg( gps_heading );
 				// ESP_LOGI(FNAME,"GPS OK TC:%f gdY:%f fused:%f diff:%f", gpshead, gyro_delta, new_heading, diff );
 			}else{     // trust as last resort just only gyro for Center Aid
-				new_heading = mag_heading;
+				new_heading = gyro_footing;
 				// ESP_LOGI(FNAME,"Gyro yaw %f", new_heading);
 			}
 			ESP_LOGI(FNAME,"NH %f", new_heading );
