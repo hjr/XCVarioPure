@@ -71,7 +71,7 @@ float AccMPU6050::getVerticalAcceleration() {
     return getHead().dot(att_vector);
 }
 
-static void update_fused_vector(vector_f& fused, float gyro_trust, vector_f& petal_force, Quaternion& omega_step)
+static void update_fused_vector(vector_f& fused, float gyro_trust, vector_f& petal_force, const Quaternion& omega_step)
 {
     // move the previos fused attitude by the new omega step
     vector_f virtual_gravity = omega_step.rotate(fused);
@@ -95,15 +95,15 @@ void AccMPU6050::postProcess() {
     }
     
     // AHRS code
-    float dt = 0.1f; // seconds, a reasonable assumption
+    constexpr const float dt = 0.1f; // seconds, a reasonable assumption
 
     float gravity_trust = 1;
     const vector_f accel = getHead();
-    const vector_f gyro = gyroSensor->getHead();
-    // ESP_LOGI( FNAME, " Accel: %.3f,%.3f,%.3f Gyro: %.3f,%.3f,%.3f dt: %.3f", accel.x, accel.y, accel.z, gyro.x, gyro.y, gyro.z, dt );
+    const vector_f gyro = gyroSensor->getHead() - mstate.gyro_bias;
+    ESP_LOGI( FNAME, " Accel: %.3f,%.3f,%.3f Gyro: %.3f,%.3f,%.3f dt: %.3f", accel.x, accel.y, accel.z, gyro.x, gyro.y, gyro.z, dt );
 
-    // create a gyro base rotation axis
-    omega_step = Quaternion::fromGyro(gyro, dt).conjugate();
+    // create a gyro base rotation delta
+    d_gyro = Quaternion::fromGyro(gyro, dt);
 
     rad_t roll = 0, pitch = 0;
     if (airborne.get()) {
@@ -111,8 +111,8 @@ void AccMPU6050::postProcess() {
         float lf = loadFactor > 2.0 ? 2.0 : loadFactor;
         loadFactor = lf < 0 ? 0 : lf;  // limit to 0..2g
         Quaternion q_bn = att_quat.get_conjugate(); // rotation from body to navigation frame
-        vector_f z_earth_body = q_bn.rotate(vector_f{0,0,1});
-        circle_omega = gyro.dot(z_earth_body);
+        vector_f z_nav_frame = q_bn.rotate(vector_f{0,0,1});
+        circle_omega = gyro.dot(z_nav_frame);
         // tan(roll):= petal force/G = m w v / m g
         float tanw = -circle_omega * tas.get() / Units::g0;
         roll = atan(tanw);
@@ -142,7 +142,7 @@ void AccMPU6050::postProcess() {
     }
     // ESP_LOGI( FNAME, " ax1:%f ay1:%f az1:%f Gx:%f Gy:%f GZ:%f dT:%f", petal.x, petal.y, petal.z, gyro.x, gyro.y, gyro.z, dt );
     vector_f att_prev = att_vector;
-    update_fused_vector(att_vector, gravity_trust, petal, omega_step);
+    update_fused_vector(att_vector, gravity_trust, petal, d_gyro.get_conjugate());
     // ESP_LOGI(FNAME,"attv: %.3f %.3f %.3f ProjAccel: %f", att_vector.x, att_vector.y, att_vector.z, accel.dot(att_vector));
     att_quat = Quaternion::fromAccelerometer(att_vector);
     // ESP_LOGI(FNAME,"attq: %.3f %.3f %.3f %.3f", att_quat._x, att_quat._y, att_quat._z, att_quat._w );
@@ -154,18 +154,13 @@ void AccMPU6050::postProcess() {
     }
 
     // treat gimbal lock, limit to 88 deg
-    const float limit = deg2rad(88.);
-    if (euler_rad.Roll() > limit)
-        euler_rad.setRoll(limit);
-    if (euler_rad.Pitch() > limit)
-        euler_rad.setPitch(limit);
-    if (euler_rad.Roll() < -limit)
-        euler_rad.setRoll(-limit);
-    if (euler_rad.Pitch() < -limit)
-        euler_rad.setPitch(-limit);
+    constexpr const float limit = deg2rad(88.);
+    euler_rad.clamp(-limit, limit);
 
     float curh = 0;
     rad_t gyro_heading_step = -circle_omega * dt; // gyro heading change in this step (NED)
+    circle_footing += gyro_heading_step; // integrate gyro heading change to get the current circle footing
+
     if (theCompass && theCompass->cur_heading(&curh)) {
         // tuned to plus 7% what gave the best timing swing in response, 2% for compass is far enough
         // gyro and compass are time displaced, gyro comes immediate, compass a second later
@@ -204,4 +199,8 @@ void AccMPU6050::postProcess() {
 // {
 // 	return atan2f(-accel.x, accel.z); // neglecting accel.y, because of minor influence on pitch and more noise
 // }
+
+float AccMPU6050::getGyroFooting() const {
+    return Vector::normalizePI2(circle_footing);
+}
 

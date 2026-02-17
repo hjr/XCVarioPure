@@ -33,6 +33,7 @@ public:
     inline float getRoll() { return euler_rad.Roll(); }
     inline float getPitchDeg() { return rad2deg(euler_rad.Pitch()); }
     inline float getYawDeg() { return rad2deg(euler_rad.Yaw()); }
+    float getGyroFooting() const;
     inline float getMagnHeadingDeg() { return rad2deg(filtered_mag_heading); }
     inline float getCircleOmegaENUDeg() { return rad2deg(-circle_omega); }
     inline Quaternion getAHRSQuaternion() { return att_quat; }
@@ -47,8 +48,9 @@ private:
     rad_t filtered_mag_heading = 0;
     vector_f petal = {0,0,0};
     rps_t circle_omega = 0.f;
+    rad_t circle_footing = 0.f;
     Quaternion att_quat = Quaternion();
-    Quaternion omega_step = Quaternion();
+    Quaternion d_gyro = Quaternion();
     vector_f att_vector = {};
     vector_f euler_rad = {};
     // slip angle
