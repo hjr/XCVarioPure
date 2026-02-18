@@ -18,8 +18,10 @@ endif()
 
 
 if(CMAKE_BUILD_TYPE STREQUAL "Release")
+    message(STATUS "Building in Release mode")
     add_compile_definitions(CONFIG_LOG_DISABLED=1)
 else()
+    message(STATUS "Building in Debug mode")
     add_compile_definitions(DEBUG_AND_TEST=1)
 endif()
 

@@ -31,19 +31,11 @@ jobs:
       # The CMake binaries on the Github Actions machines are (as of this writing) 3.12
 
       run: |
-        echo "== sanity =="
-        pwd
-        ls
-
-        touch main/Version.h
+        touch $PWD/main/Version.h
         echo "#define CIPHER_KEY \"${{ secrets.AHRS_CIPHER_KEY }}\"" >main/cipherkey.h
 
         docker run --rm -v ${{ github.workspace }}:/project -w /project espressif/idf:release-v5.4 \
-        bash -c ". \$IDF_PATH/export.sh && 
-                idf.py set-target esp32 && 
-                xtensa-esp32-elf-g++ --version && 
-                idf.py build &&
-                grep CONFIG_IDF_TARGET build/config/sdkconfig.h"
+        bash -c ". \$IDF_PATH/export.sh && idf.py build"
             
         echo "--- Inhalt von build/ nach Build ---"
         ls -lh build/
