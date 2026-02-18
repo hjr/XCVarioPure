@@ -30,10 +30,11 @@ jobs:
       # and build directories, but this is only available with CMake 3.13 and higher.  
       # The CMake binaries on the Github Actions machines are (as of this writing) 3.12
 
-      run: |
+      run:
         touch main/Version.h
         echo "#define CIPHER_KEY \"${{ secrets.AHRS_CIPHER_KEY }}\"" >main/cipherkey.h
         docker run --rm -v ${{ github.workspace }}:/project -w /project espressif/idf:release-v5.4 \
+        bash -c "./\$IDF_PATH/install.sh"
         bash -c ". \$IDF_PATH/export.sh && idf.py build"
             
         echo "--- Inhalt von build/ nach Build ---"
