@@ -12,9 +12,17 @@ add_subdirectory("setup")
 add_subdirectory("wind")
 add_subdirectory("wmm")
 
-#uncomment for debug and test builds
-add_compile_definitions(DEBUG_AND_TEST=1)
+if(DEFINED ENV{BUILD_TYPE})
+    set(CMAKE_BUILD_TYPE $ENV{BUILD_TYPE} CACHE STRING "" FORCE)
+endif()
 
-# uncommet for release builds
-#add_compile_definitions(CONFIG_LOG_DISABLED=1)
+
+if(CMAKE_BUILD_TYPE STREQUAL "Release")
+    add_compile_definitions(CONFIG_LOG_DISABLED=1)
+else()
+    add_compile_definitions(DEBUG_AND_TEST=1)
+endif()
+
+
+
 
