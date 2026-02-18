@@ -30,7 +30,7 @@ jobs:
       # and build directories, but this is only available with CMake 3.13 and higher.  
       # The CMake binaries on the Github Actions machines are (as of this writing) 3.12
 
-      run:
+      run: |
         touch main/Version.h
         echo "#define CIPHER_KEY \"${{ secrets.AHRS_CIPHER_KEY }}\"" >main/cipherkey.h
         docker run --rm -v ${{ github.workspace }}:/project -w /project espressif/idf:release-v5.4 \
@@ -52,10 +52,5 @@ jobs:
       with:
         name: XCVarioPro-${{ env.FILE_VERSION }}
         path: artifacts/*
-     
-    - name: Upload sdkconfig
-      uses: actions/upload-artifact@v4
-      with:
-        name: sdkconfig-used
-        path: sdkconfig
+
 
