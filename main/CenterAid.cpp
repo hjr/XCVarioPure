@@ -16,7 +16,7 @@
 #include "AdaptUGC.h"
 #include "Colors.h"
 #include "sensor/imu/AccMPU6050.h"
-#include "logdef.h"
+#include "logdefnone.h"
 
 
 constexpr int CA_STEP = 360/CA_NUM_DIRS; // 15

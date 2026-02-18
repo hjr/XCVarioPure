@@ -16,7 +16,7 @@
 #include "S2F.h"
 #include "AverageVario.h"
 #include "setup/SetupNG.h"
-#include "logdef.h"
+#include "logdefnone.h"
 
 
 #include <cmath>
@@ -317,7 +317,7 @@ void VarioFilter::postProcess() {
     second_t dt = 0.1f;
     if (now - _prev_time > 200) {
         dt = (now - _prev_time) / 1000.0f;
-        ESP_LOGI(FNAME, "VKF: init timing: %f", dt);
+        // ESP_LOGI(FNAME, "VKF: init timing: %f", dt);
     }
     vkf.predict(dt);
     _prev_time = now;
