@@ -34,8 +34,7 @@ jobs:
         touch main/Version.h
         echo "#define CIPHER_KEY \"${{ secrets.AHRS_CIPHER_KEY }}\"" >main/cipherkey.h
         docker run --rm -v ${{ github.workspace }}:/project -w /project espressif/idf:release-v5.4 \
-        bash -c "./\$IDF_PATH/install.sh"
-        bash -c ". \$IDF_PATH/export.sh && idf.py build"
+        bash -c "./\$IDF_PATH/install.sh && . \$IDF_PATH/export.sh && idf.py build"
             
         echo "--- Inhalt von build/ nach Build ---"
         ls -lh build/
