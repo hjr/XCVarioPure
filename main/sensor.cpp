@@ -225,8 +225,8 @@ void readSensors(void *pvParameters)
     int count = 0;
     int16_t landed = 0;  // airborne detection counter
     uint32_t spartse_time;
-    static int max_time = 0;
-    static float avg_delta = 0;
+    [[maybe_unused]] static int max_time = 0;
+    [[maybe_unused]] static float avg_delta = 0;
 
     while (1) {
         TickType_t xLastWakeTime = xTaskGetTickCount();
@@ -416,6 +416,7 @@ void readSensors(void *pvParameters)
             xQueueSend(uiEventQueue, &screenEvent, 0);
         }
 
+#ifdef DEBUG_AND_TEST
         if ((count % 300) == 0) {
             SetupCommon::commitDirty(); // very important, flash NVS settings permanently
             ESP_LOGI(FNAME, "Free Heap: %d bytes", heap_caps_get_free_size(MALLOC_CAP_8BIT));
@@ -449,6 +450,7 @@ void readSensors(void *pvParameters)
             ESP_LOGI(FNAME, "Sensor loop max time: %d ms", max_time);
         }
         avg_delta = avg_delta + (delta - avg_delta) * 0.1;
+#endif
 
         esp_task_wdt_reset();
         xTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(100));
