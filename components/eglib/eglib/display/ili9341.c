@@ -274,25 +274,25 @@ static void set_row_address(eglib_t *eglib, uint16_t y_start, uint16_t y_end) {
 	eglib_SendData(eglib, buff, sizeof(buff));
 }
 
-static uint8_t get_bits_per_pixel(eglib_t *eglib) {
-	ili9341_config_t *display_config;
+// static uint8_t get_bits_per_pixel(eglib_t *eglib) {
+// 	ili9341_config_t *display_config;
 
-	display_config = eglib_GetDisplayConfig(eglib);
+// 	display_config = eglib_GetDisplayConfig(eglib);
 
-	switch(display_config->color) {
-		case ILI9341_COLOR_12_BIT:
-			return 12;
-			break;
-		case ILI9341_COLOR_16_BIT:
-			return 16;
-			break;
-		case ILI9341_COLOR_18_BIT:
-			return 24;
-			break;
-		default:
-			while(true);
-	}
-}
+// 	switch(display_config->color) {
+// 		case ILI9341_COLOR_12_BIT:
+// 			return 12;
+// 			break;
+// 		case ILI9341_COLOR_16_BIT:
+// 			return 16;
+// 			break;
+// 		case ILI9341_COLOR_18_BIT:
+// 			return 24;
+// 			break;
+// 		default:
+// 			while(true);
+// 	}
+// }
 
 // debugging only
 // static void clear_memory(eglib_t *eglib) {

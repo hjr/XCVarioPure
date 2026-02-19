@@ -358,7 +358,7 @@ static esp_err_t POST_update_handler(httpd_req_t *req)
 				// Lets update the partition
 				if (esp_ota_set_boot_partition(otaUpdatePartition) == ESP_OK)
 				{
-					const esp_partition_t *boot_partition = esp_ota_get_boot_partition();
+					[[maybe_unused]]const esp_partition_t *boot_partition = esp_ota_get_boot_partition();
 
 					ESP_LOGI(FNAME, "Next boot partition subtype %d at offset 0x%x", boot_partition->subtype, (unsigned int)boot_partition->address);
 					ESP_LOGI(FNAME, "Rebooting in 3 seconds...");

@@ -106,10 +106,11 @@ esp_err_t MPU::reset()
 	int i;
 	for( i=0; i<10; i++ ){
 		esp_err_t err = writeBit(regs::PWR_MGMT1, regs::PWR1_DEVICE_RESET_BIT, 1);
-		if ( err == ESP_OK )
+		if ( err == ESP_OK ) {
 			break;
-		else
+		} else {
 			MPU_LOGI("MPU reset ERROR %d retry: %d", err, i );
+		}
 		vTaskDelay(100 / portTICK_PERIOD_MS);
 	}
 	if( i == 10 ){
@@ -223,8 +224,9 @@ esp_err_t MPU::setSampleRate(uint16_t rate)
 	// Check dlpf configuration
 	dlpf_t dlpf = getDigitalLowPassFilter();
 	if (MPU_ERR_CHECK(lastError())) return err;
-	if (dlpf == 0 || dlpf == 7)
+	if (dlpf == 0 || dlpf == 7) {
 		MPU_LOGWMSG(msgs::INVALID_STATE, ", sample rate divider is not effective when DLPF is (0 or 7)");
+	}
 #endif
 
 	constexpr uint16_t internalSampleRate = 1000;
@@ -1485,8 +1487,8 @@ esp_err_t MPU::readAuxI2CRxData(size_t length, uint8_t* data, size_t skip)
 	// check if I2C Master is enabled, just for warning and debug
 #if CONFIG_MPU_LOG_LEVEL >= ESP_LOG_WARN
 	const bool kAuxI2CEnabled = getAuxI2CEnabled();
-	if (MPU_ERR_CHECK(lastError())) return err;
-	if (!kAuxI2CEnabled) MPU_LOGWMSG(msgs::AUX_I2C_DISABLED, ", better turn on.");
+	if (MPU_ERR_CHECK(lastError())) { return err; }
+	if (!kAuxI2CEnabled) { MPU_LOGWMSG(msgs::AUX_I2C_DISABLED, ", better turn on."); }
 #endif
 	// read the specified amount of registers
 	return MPU_ERR_CHECK(readBytes(regs::EXT_SENS_DATA_00 + skip, length, data));
