@@ -719,7 +719,7 @@ void system_startup(void *args){
         logged_tests += "AS " + std::string(asSensor->name()) +  " offset: ";
         if (asSensor)
         {
-            ESP_LOGI(FNAME, "AS Speed sensor %s self test PASSED", asSensor->name());
+            printf("AS Speed sensor type %s\n", asSensor->name());
             bool as_ok = asSensor->setup();
             pascal_t p;
             if (asSensor->doRead(p) && p > 60.f) {
@@ -729,7 +729,7 @@ void system_startup(void *args){
             // Initialize the airborne status
             airborne.set(ias.get() > Speed2Fly.getStallSpeed());
 
-            ESP_LOGI(FNAME, "Aispeed sensor current speed=%f", ias.get());
+            printf("Aispeed sensor current speed=%fkm/h\n", Units::mps_to_kmh(ias.get()));
             if (!as_ok && (ias.get() < Units::kmh_to_mps(35)))
             {
                 MBOX->pushMessage(2, "AS Sensor: NEED ZERO");
@@ -767,7 +767,7 @@ void system_startup(void *args){
                 batest = false;
                 logged_tests += notfound_text;
             } else {
-                ESP_LOGI(FNAME, "Baro Sensor test OK, T=%f P=%f", ba_t, ba_p);
+                printf("Baro Sensor test: T=%f P=%f\n", ba_t, ba_p);
                 logged_tests += passed_text;
             }
             SensorRegistry::registerSensor(baroSensor);
@@ -784,9 +784,9 @@ void system_startup(void *args){
                 tetest = false;
                 logged_tests += notfound_text;
             } else {
-                ESP_LOGI(FNAME, "TE Sensor test OK,   T=%f P=%f", te_t, te_p);
                 logged_tests += passed_text;
             }
+            printf("TE Sensor test: T=%f P=%f\n", te_t, te_p);
             SensorRegistry::registerSensor(teSensor);
         }
         if (tetest && batest) {
@@ -794,26 +794,25 @@ void system_startup(void *args){
             logged_tests += "TE/Baro Sens. T d. <4'C: ";
             if ((abs(ba_t - te_t) > 400.0) && !airborne.get()) {  // each sensor has deviations, and new PCB has more heat sources
                 selftestPassed = false;
-                ESP_LOGE(FNAME, "Severe T delta > 4 °C between Baro and TE sensor: °C %f", abs(ba_t - te_t));
                 MBOX->pushMessage(1, "TE/Baro Temp: Unequal");
                 logged_tests += failed_text;
             } else {
-                ESP_LOGI(FNAME, "Abs p sensors temp. delta test PASSED, delta: %f °C", abs(ba_t - te_t));
                 logged_tests += passed_text;
             }
+            printf("AbsP sensors temp. delta test delta: %f °C\n", abs(ba_t - te_t));
             pascal_t delta = Units::hpa_to_pa(2.5); // in factory we test at normal temperature, so temperature change is ignored.
             if (abs(factory_volt_adjust.get() - 0.00815) < 0.00001) {
                 delta += Units::hpa_to_pa(1.8);    // plus 1.5 Pa per Kelvin, for 60K T range = 90 Pa or 0.9 hPa per Sensor, 
                                                         // for both there is 2.5 plus 1.8 hPa to consider
             }
             logged_tests += "TE/Baro Sens. P d. <2hPa: ";
+            printf("AbsP sensor data test D: %f hPa\n", Units::pa_to_hpa(abs(ba_p - te_p)));
             if ((abs(ba_p - te_p) > delta) && !airborne.get()) {
                 selftestPassed = false;
-                ESP_LOGI(FNAME, "Abs p sensors deviation delta > 2.5 hPa between Baro and TE sensor: %f", Units::pa_to_hpa(abs(ba_p - te_p)));
+                ESP_LOGE(FNAME, "Abs p sensors deviation delta > 2.5 hPa between Baro and TE sensor: %f", Units::pa_to_hpa(abs(ba_p - te_p)));
                 MBOX->pushMessage(1, "TE/Baro P: Unequal");
                 logged_tests += failed_text;
             } else {
-                ESP_LOGI(FNAME, "AbsP sensor data test PASSED, D: %f hPa", Units::pa_to_hpa(abs(ba_p - te_p)));
                 logged_tests += passed_text;
             }
             boot_screen->finish(2);
@@ -832,7 +831,6 @@ void system_startup(void *args){
         ESP_LOGI(FNAME, "Audio begin");
         logged_tests += "Digi. Audio Poti test: ";
         if (AUDIO->isUp() && AUDIO->isPotiUp()) {
-            ESP_LOGI(FNAME, "Digital potentiometer test PASSED");
             logged_tests += passed_text;
         } else {
             ESP_LOGE(FNAME, "Error: Digital potentiomenter selftest failed");
@@ -864,20 +862,19 @@ void system_startup(void *args){
         }
     }
 
-	float bat = BatVoltage->get(false);
-	logged_tests += "Battery Voltage Sensor: ";
-	if( bat < 1 || bat > 28.0 ){
-		ESP_LOGE(FNAME,"Error: Battery voltage metering out of bounds, act value=%f", bat );
-		MBOX->pushMessage(1, "Bat Meter: Fail");
-		logged_tests += failed_text;
-		selftestPassed = false;
-	}
-	else{
-		ESP_LOGI(FNAME,"Battery voltage metering test PASSED, act value=%f", bat );
-		logged_tests += passed_text;
-	}
+    float bat = BatVoltage->get(false);
+    logged_tests += "Battery Voltage Sensor: ";
+    printf("Battery voltage metering value=%f\n", bat);
+    if (bat < 1 || bat > 28.0) {
+        ESP_LOGE(FNAME, "Error: Battery voltage metering out of bounds, act value=%f", bat);
+        MBOX->pushMessage(1, "Bat Meter: Fail");
+        logged_tests += failed_text;
+        selftestPassed = false;
+    } else {
+        logged_tests += passed_text;
+    }
 
-	// magnetic sensor / compass selftest fixme move, register ..
+    // magnetic sensor / compass selftest fixme move, register ..
 	if( theCompass ) {
 		logged_tests += "Compass test: ";
 		theCompass->begin();
@@ -910,15 +907,15 @@ void system_startup(void *args){
 
     Version myVersion;
     ESP_LOGI(FNAME, "Program Version %s", myVersion.version());
-    ESP_LOGI(FNAME, "\n\n%s", logged_tests.c_str());
+    printf("\n\n%s", logged_tests.c_str());
     if (!selftestPassed) {
-        ESP_LOGI(FNAME, "\n\n\nSelftest failed, see above LOG for Problems\n\n\n");
+        printf("\nSelftest failed, see above LOG for Problems\n\n");
         MBOX->pushMessage(2, "Selftest FAILED", ScreenMsg::CONFIRM);
         if (!airborne.get()) {
             AUDIO->startSound(AUDIO_FAIL_SOUND);
         }
     } else {
-        ESP_LOGI(FNAME, "\n\n\n*****  Selftest PASSED  ********\n\n\n");
+        printf("\n*****  Selftest PASSED  ********\n\n");
         boot_screen->finish(3);  // signal self tests passed
         if (!airborne.get()) {
             AUDIO->startSound(AUDIO_CHECK_SOUND);
