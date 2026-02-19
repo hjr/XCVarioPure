@@ -4,7 +4,7 @@ on: workflow_dispatch
 
 env:
   # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
-  BUILD_TYPE: Release
+  BUILD_TYPE: Release # not setting any shell env (bug?)
 
 jobs:
   build:
@@ -35,7 +35,7 @@ jobs:
         echo "#define CIPHER_KEY \"${{ secrets.AHRS_CIPHER_KEY }}\"" >main/cipherkey.h
 
         docker run --rm -v ${{ github.workspace }}:/project -w /project espressif/idf:release-v5.4 \
-        bash -c ". \$IDF_PATH/export.sh && idf.py build"
+        bash -c ". \$IDF_PATH/export.sh && idf.py -DCMAKE_BUILD_TYPE=Release build"
             
         echo "--- Inhalt von build/ nach Build ---"
         ls -lh build/
