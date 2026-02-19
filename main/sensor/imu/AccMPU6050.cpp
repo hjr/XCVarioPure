@@ -18,6 +18,8 @@
 
 #include "mpu/math.hpp"
 
+#include <algorithm>
+
 AccMPU6050 *accSensor = nullptr;
 
 constexpr int DUTY_CYCLE_MS = 100; // 10Hz
@@ -180,7 +182,9 @@ void AccMPU6050::postProcess() {
     // update slip angle
     if (airborne.get()) {
         constexpr const float K = rad2deg(4000.f); // airplane constant and Ay correction factor
-        slip_angle.set( _lpf_slip_angle.filter( -accel.y * K / (tas.get() * tas.get()) ) );  // with atan(x) = x for small x
+        rad_t slip = -accel.y * K / (tas.get() * tas.get());
+        slip = std::clamp(slip, -deg2rad(15.f), deg2rad(15.f));
+        slip_angle.set( _lpf_slip_angle.filter( slip ) );  // with atan(x) = x for small x
         // ESP_LOGI(FNAME,"AS: %f m/s, CURSL: %f°, SLIP: %f", tas.get(), -accel.y*K / (tas.get() * tas.get()), slip_angle.get() );
     }
 
