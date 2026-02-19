@@ -23,7 +23,6 @@ public:
     static BootUpScreen *create();
     static void terminate();
     static bool isActive() { return inst != nullptr; }
-    ~BootUpScreen();
 
     // this will fill the logo completely
     void finish(int part);
@@ -34,6 +33,7 @@ public:
 
 private:
     BootUpScreen();
+    ~BootUpScreen();
     static BootUpScreen *inst;
     void animate();
 

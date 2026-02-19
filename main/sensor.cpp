@@ -573,7 +573,7 @@ void system_startup(void *args){
             DEVMAN->addDevice(CANREGISTRAR_DEV, REGISTRATION_P, CAN_REG_PORT, CAN_REG_PORT, CAN_BUS);
             DEVMAN->addDevice(MAGSENS_DEV, MAGSENSBIN_P, MagSensBin::LEGACY_MAGSTREAM_ID, 0, CAN_BUS); // fixme
         }
-        delete boot_screen; // screen now belongs to OTA
+        BootUpScreen::terminate(); // screen now belongs to OTA
         MenuRoot->begin(new OTA());
         return; // never coming here
     }
