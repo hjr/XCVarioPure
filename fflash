@@ -1,1 +1,0 @@
-idf.py -p /dev/ttyUSB0 -b 3000000 flash
