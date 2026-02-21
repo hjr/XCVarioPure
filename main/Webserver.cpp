@@ -28,6 +28,7 @@ extern const uint8_t milligram_min_css_gz_end[]     asm("_binary_milligram_min_c
 // http handlers
 static esp_err_t GET_index_html_handler(httpd_req_t *req);
 static esp_err_t GET_milligram_min_css_handler(httpd_req_t *req);
+static esp_err_t GET_favicon_handler(httpd_req_t *req);
 static esp_err_t GET_status_json_handler(httpd_req_t *req);
 static esp_err_t POST_update_handler(httpd_req_t *req);
 static esp_err_t GET_backup_handler(httpd_req_t *req);
@@ -35,56 +36,63 @@ static esp_err_t POST_restore_handler(httpd_req_t *req);
 static esp_err_t DELETE_reset_handler(httpd_req_t *req);
 static esp_err_t GET_coredump_handler(httpd_req_t *req);
 
-httpd_uri_t GET_index_html = {
+static const httpd_uri_t GET_index_html = {
 	.uri = "/",
 	.method = HTTP_GET,
 	.handler = GET_index_html_handler,
 	.user_ctx = NULL
 };
 
-httpd_uri_t GET_milligram_min_css = {
+static const httpd_uri_t GET_milligram_min_css = {
 	.uri = "/milligram.min.css",
 	.method = HTTP_GET,
 	.handler = GET_milligram_min_css_handler,
 	.user_ctx = NULL
 };
 
-httpd_uri_t GET_stats_json = {
+static const httpd_uri_t GET_favicon_uri = {
+    .uri       = "/favicon.ico",
+    .method    = HTTP_GET,
+    .handler   = GET_favicon_handler,
+    .user_ctx  = NULL
+};
+
+static const httpd_uri_t GET_stats_json = {
 	.uri = "/status.json",
 	.method = HTTP_GET,
 	.handler = GET_status_json_handler,
 	.user_ctx = NULL
 };
 
-httpd_uri_t POST_update = {
+static const httpd_uri_t POST_update = {
 	.uri = "/update",
 	.method = HTTP_POST,
 	.handler = POST_update_handler,
 	.user_ctx = NULL
 };
 
-httpd_uri_t GET_backup = {
+static const httpd_uri_t GET_backup = {
 	.uri = "/backup",
 	.method = HTTP_GET,
 	.handler = GET_backup_handler,
 	.user_ctx = NULL
 };
 
-httpd_uri_t POST_restore = {
+static const httpd_uri_t POST_restore = {
 	.uri = "/restore",
 	.method = HTTP_POST,
 	.handler = POST_restore_handler,
 	.user_ctx = NULL
 };
 
-httpd_uri_t DELETE_reset = {
+static const httpd_uri_t DELETE_reset = {
 	.uri = "/reset",
 	.method = HTTP_DELETE,
 	.handler = DELETE_reset_handler,
 	.user_ctx = NULL
 };
 
-httpd_uri_t GET_coredump = {
+static const httpd_uri_t GET_coredump = {
 	.uri = "/coredump",
 	.method = HTTP_GET,
 	.handler = GET_coredump_handler,
@@ -134,6 +142,7 @@ void cWebserver::start()
 		ESP_LOGI(FNAME, "Registering URI handlers");
 		httpd_register_uri_handler(m_httpHandle, &GET_index_html);
 		httpd_register_uri_handler(m_httpHandle, &GET_milligram_min_css);
+        httpd_register_uri_handler(m_httpHandle, &GET_favicon_uri);
 		httpd_register_uri_handler(m_httpHandle, &GET_stats_json);
 		httpd_register_uri_handler(m_httpHandle, &POST_update);
 		httpd_register_uri_handler(m_httpHandle, &GET_backup);
@@ -159,24 +168,23 @@ void cWebserver::stop()
  */
 
 // GET /index.html
-static esp_err_t GET_index_html_handler(httpd_req_t *req)
-{
-	ESP_LOGI(FNAME, "index.html Requested");
+esp_err_t GET_index_html_handler(httpd_req_t* req) {
+    ESP_LOGI(FNAME, "index.html Requested");
 
-	httpd_resp_set_type(req, "text/html");
+    httpd_resp_set_type(req, "text/html");
 
 #if CONFIG_WEBSERVER_USE_GZIP
     httpd_resp_set_hdr(req, "Content-Encoding", "gzip");
-	httpd_resp_send(req, (const char *)index_html_gz_start, index_html_gz_end - index_html_gz_start);
+    httpd_resp_send(req, (const char*)index_html_gz_start, index_html_gz_end - index_html_gz_start);
 #else
-	httpd_resp_send(req, (const char *)index_html_start, index_html_end - index_html_start);
+    httpd_resp_send(req, (const char*)index_html_start, index_html_end - index_html_start);
 #endif
 
-	return ESP_OK;
+    return ESP_OK;
 }
 
 // GET /milligram.min.css
-static esp_err_t GET_milligram_min_css_handler(httpd_req_t *req)
+esp_err_t GET_milligram_min_css_handler(httpd_req_t *req)
 {
 	ESP_LOGI(FNAME, "milligram.min.css Requested");
 
@@ -192,8 +200,18 @@ static esp_err_t GET_milligram_min_css_handler(httpd_req_t *req)
 	return ESP_OK;
 }
 
+esp_err_t GET_favicon_handler(httpd_req_t *req)
+{
+    // SVG icon code as string
+    const char* favicon_svg = "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'> <circle cx='50' cy='50' r='48' fill='#0000FF'/> <text x='50' y='45' font-family='Arial, sans-serif' font-size='48' fill='white' text-anchor='middle' font-weight='bold'>X C</text> <text x='50' y='80' font-family='Arial, sans-serif' font-size='32' fill='white' text-anchor='middle' font-weight='bold'>Vario</text></svg>";
+
+    httpd_resp_set_type(req, "image/svg+xml");
+    
+    return httpd_resp_send(req, favicon_svg, HTTPD_RESP_USE_STRLEN);
+}
+
 // GET /status.json
-static esp_err_t GET_status_json_handler(httpd_req_t *req)
+esp_err_t GET_status_json_handler(httpd_req_t *req)
 {
   	ESP_LOGI(FNAME, "status.json Requested");
 
@@ -216,7 +234,7 @@ size_t otaSize = 0;
 size_t otaReceived = 0;
 
 // Receive .Bin file
-static esp_err_t POST_update_handler(httpd_req_t *req)
+esp_err_t POST_update_handler(httpd_req_t *req)
 {
 	constexpr size_t OTA_BUFF_SIZE = 2 * 1024;
 	static int updateTarget = 0; // 1  - sensor; 2 - CanMag
@@ -391,7 +409,7 @@ static esp_err_t POST_update_handler(httpd_req_t *req)
 	return ESP_OK;
 }
 
-static esp_err_t GET_backup_handler(httpd_req_t *req)
+esp_err_t GET_backup_handler(httpd_req_t *req)
 {
 	ESP_LOGI(FNAME, "Backup Requested");
 
@@ -430,7 +448,7 @@ static esp_err_t POST_restore_handler(httpd_req_t *req)
 	return ESP_OK;
 }
 
-static esp_err_t DELETE_reset_handler(httpd_req_t *req)
+esp_err_t DELETE_reset_handler(httpd_req_t *req)
 {
     ESP_LOGI(FNAME, "Clear Settings Requested");
 
@@ -484,7 +502,7 @@ static void send_coredump( httpd_req *req ) {
 	 }
 }
 
-static esp_err_t GET_coredump_handler(httpd_req_t *req)
+esp_err_t GET_coredump_handler(httpd_req_t *req)
 {
     ESP_LOGI(FNAME, "Get Core File Requested");
 
