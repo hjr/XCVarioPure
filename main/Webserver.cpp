@@ -1,5 +1,6 @@
 
 #include "Webserver.h"
+#include "sdkconfig.h"
 #include "coredump_to_server.h"
 #include "setup/SetupCommon.h"
 #include "comm/DeviceMgr.h"
