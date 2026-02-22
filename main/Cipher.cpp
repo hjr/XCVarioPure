@@ -4,97 +4,56 @@
 #include "setup/SetupNG.h"
 #include "logdefnone.h"
 
-#include <esp_mac.h>
-#include <miniz.h>
 
 #include <cstdlib>
-#include <locale>
 
+#define ALPHABET_LEN 36
 
-static int CalculateDistance(char a, char b) {
-	// ESP_LOGI(FNAME,"CalculateDistance a:%c b:%c  ret:%d", a, b, abs(a - b));
-	return abs(a - b);
+static int char_to_index(char c)
+{
+    if (c >= '0' && c <= '9') return c - '0';
+    if (c >= 'A' && c <= 'Z') return 10 + (c - 'A');
+    return -1;
 }
 
-static char ShiftChar(char a, int keyDistance) {
-	// ESP_LOGI(FNAME,"ShiftChar %c, %d", a, keyDistance );
-	for (int i = 0; i < keyDistance; i++) {
-		a += 1; // shift our char once
-		if( a < 65 && a > 57 )
-			a+=7;  // skip ;:<...
-		if (a > 90) // Check if we've gone past z
-			a = 48; // Set our char back to a
-	}
-	// ESP_LOGI(FNAME,"ShiftChar ret: %c ", a );
-	return a;
+static char index_to_char(int i)
+{
+    i = i % ALPHABET_LEN;
+    return i <= 9 ? '0' + i : 'A' + (i - 10);
 }
 
-static char ShiftCharBack(char a, int keyDistance) {
-	// ESP_LOGI(FNAME,"ShiftCharBack %c, %d", a, keyDistance );
-	for (int i = 0; i < keyDistance; i++) {
-		a -= 1; // shift our char once
-		if( a < 65 && a > 57 )
-			a-=7;  // skip ;:<...
-		if (a < 48) // Check if we've gone before a
-			a = 90; // Set our char back to z
-	}
-	// ESP_LOGI(FNAME,"ShiftCharBack ret: %c ", a );
-	return a;
+static std::string v_decrypt(const std::string& ciphertext, const std::string& key)
+{
+    std::string out;
+    out.reserve(ciphertext.size());
+
+    for (size_t i = 0; i < ciphertext.size(); ++i) {
+        int c = char_to_index(ciphertext[i]);
+        int k = char_to_index(key[i % key.size()]);
+        out.push_back(index_to_char(c - abs(k - 10) + ALPHABET_LEN));
+        // ESP_LOGI(FNAME, "v_decrypt() key: %c dist: %d -> %c", key[i % key.size()], abs(k - 10), out.back() );
+    }
+    return out;
 }
 
-static void FormatKey(std::string& key, std::string plaintext) {
-	// append key length to plaintext's size
-	// note: key may end up larger than plaintext here, but will be trimmed in the next if statement
-	if (key.length() < plaintext.length()) {
-		while (key.length() < plaintext.length())
-			key.append(key); // append key onto itself until >= plaintext.length()
-	}
-	// shrink key length to plaintext's size
-	if (key.length() > plaintext.length())
-		key.erase(key.length(), std::string::npos);
-}
+std::string v_encrypt(const std::string& plaintext, const std::string& key)
+{
+    std::string out;
+    out.reserve(plaintext.size());
 
-static void FormatEncrypted(std::string& encrypted) {
-	std::locale loc;
-	for (int i = 0; i < encrypted.length(); i++)
-		encrypted.at(i) = std::toupper(encrypted.at(i), loc); // Make all character uppercase
-}
-
-
-static std::string Encrypt(std::string key, std::string plaintext) {
-	// encrypted text
-	std::string encrypted;
-	// Format key
-	FormatKey(key, plaintext);
-	// Begin encryption
-	for (int i = 0; i < plaintext.length(); i++) {
-		int keyDistance = CalculateDistance(key.at(i), 'A'); // Key's current char distance from 'a'
-		char EncryptedChar = ShiftChar(plaintext.at(i), keyDistance); // Encrypt the plaintext char shifting the plaintext char by the keyDistance
-		encrypted.push_back(EncryptedChar); // Add char to encrypted string
-	}
-	FormatEncrypted(encrypted);
-	return encrypted; // Return the encrypted string
-}
-
-static std::string Decrypt(std::string key, std::string plaintext) {
-	// std::string to hold our encrypted text
-	std::string encrypted;
-	// Format key
-	FormatKey(key, plaintext);
-	// Begin encryption
-	for (int i = 0; i < plaintext.length(); i++) {
-		int keyDistance = CalculateDistance(key.at(i), 'A'); // Key's current char distance from 'a'
-		char EncryptedChar = ShiftCharBack(plaintext.at(i), keyDistance); // Encrypt the plaintext char shifting the plaintext char by the keyDistance
-		encrypted.push_back(EncryptedChar); // Add char to encrypted string
-	}
-	FormatEncrypted(encrypted);
-	return encrypted; // Return the encrypted string
+    for (size_t i = 0; i < plaintext.size(); ++i) {
+        int p = char_to_index(plaintext[i]);
+        int k = char_to_index(key[i % key.size()]);
+        out.push_back(index_to_char(p + abs(k - 10)));
+        // ESP_LOGI(FNAME, "v_encrypt() key: %c dist: %d -> %c", key[i % key.size()], abs(k - 10), out.back() );
+    }
+    return out;
 }
 
 
 Cipher::Cipher()
 {
-	_id.assign(SetupCommon::getDefaultID()); // four diggits ID
+    _id.assign(SetupCommon::getDefaultID()); // four diggits ID
 }
 
 void Cipher::initTest() {
@@ -115,16 +74,15 @@ void Cipher::initTest() {
         ESP_LOGI(FNAME, "initTest Old ID %s", oldid.c_str());
         ahrs_licence.set(oldid.c_str());
     } else {
-        std::string encid = Encrypt(CIPHER_KEY, _id);
+        std::string encid = v_encrypt(_id, CIPHER_KEY);
         ESP_LOGI(FNAME, "initTest Encrypted ID %s", encid.c_str());
         ahrs_licence.set(encid.c_str());
     }
     SetupCommon::commitDirty();
 }
 
-bool Cipher::checkKeyAHRS()
-{
-	std::string decid = Decrypt(CIPHER_KEY, ahrs_licence.get().id );
-	ESP_LOGI(FNAME,"checkKeyAHRS() ID/KEY/DECID %s %s %s returns %d", _id.c_str(), ahrs_licence.get().id, decid.c_str(), (_id == decid) );
-	return (_id == decid);
+bool Cipher::checkKeyAHRS() {
+    std::string decid = v_decrypt(ahrs_licence.get().id, CIPHER_KEY);
+    ESP_LOGI(FNAME, "checkKeyAHRS() ID/KEY/DECID %s %s %s returns %d", _id.c_str(), ahrs_licence.get().id, decid.c_str(), (_id == decid));
+    return (_id == decid);
 }
