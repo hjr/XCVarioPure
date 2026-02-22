@@ -153,9 +153,9 @@ void VarioFilter::resetKF() {
 bool VarioFilter::setup() {
     // Decide if sensor readings come from local sensor or master (ctor gets called too early for this)
     if (SetupCommon::isMaster()) {
-        _id = _id | SensorId::LocalSensor;
+        _id = _id | SensorFlags::SENSOR_LOCAL;
         // mark as essential sensor to be able to simulate
-        _id = _id | SensorId::EssentialSensor;
+        _id = _id | SensorFlags::SENSOR_ESSENTIAL;
     }
 
     ESP_LOGI(FNAME, "VarioFilter setup as %s sensor with alt %f", (isLocalSensor(_id) ? "local" : "remote"), altitude.get());

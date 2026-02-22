@@ -29,7 +29,7 @@ AccMPU6050::AccMPU6050(MpuImu &mmpu) :
     SensorTP<vector_f>(acc_buffer, DUTY_CYCLE_MS),
     _my_mpu(mmpu)
 {
-    _id = SensorId::ACC_INERTIAL | SensorId::LocalSensor;
+    _id = SensorId::ACC_INERTIAL | SensorFlags::SENSOR_LOCAL;
 
     // push a single previous value
     pushAndPublish(vector_f(1,0,0), 0);

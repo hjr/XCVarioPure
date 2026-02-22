@@ -26,7 +26,7 @@ static float as_buffer[ (SENSOR_HISTORY_DURATION_MS / DUTY_CYCLE_MS) + 1 ]; // h
 
 AirspeedSensor::AirspeedSensor() : SensorTP<float>(as_buffer, DUTY_CYCLE_MS)
 {
-    _id = SensorId::DIFFPRESSURE | SensorId::LocalSensor;
+    _id = SensorId::DIFFPRESSURE | SensorFlags::SENSOR_LOCAL;
     setNVSVar(&dynp);
     setFilter(new LowPassFilter(0.25f));
 }

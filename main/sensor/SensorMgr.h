@@ -27,19 +27,21 @@ enum SensorId : uint8_t {
     GYRO_INERTIAL,
     HUMIDITY,
     FLAP_POSITION,
-    MAX_SENSOR_ID,
-    // mask with upper bits as needed
-    LocalSensor = 0x80,
-    EssentialSensor = 0x40
+    MAX_SENSOR_ID
+};
+
+enum SensorFlags : uint8_t {
+    SENSOR_LOCAL     = 0x80,
+    SENSOR_ESSENTIAL = 0x40
 };
 
 constexpr bool isLocalSensor(SensorId id) {
-    return (static_cast<uint8_t>(id) & static_cast<uint8_t>(SensorId::LocalSensor)) != 0;
+    return (static_cast<uint8_t>(id) & static_cast<uint8_t>(SensorFlags::SENSOR_LOCAL)) != 0;
 }
 constexpr bool isEssentialSensor(SensorId id) {
-    return (static_cast<uint8_t>(id) & static_cast<uint8_t>(SensorId::EssentialSensor)) != 0;
+    return (static_cast<uint8_t>(id) & static_cast<uint8_t>(SensorFlags::SENSOR_ESSENTIAL)) != 0;
 }
-constexpr SensorId operator|(SensorId a, SensorId b) {
+constexpr SensorId operator|(SensorId a, SensorFlags b) {
     return static_cast<SensorId>(
         static_cast<uint8_t>(a) | static_cast<uint8_t>(b)
     );

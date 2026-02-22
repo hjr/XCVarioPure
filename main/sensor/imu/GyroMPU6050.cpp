@@ -24,7 +24,7 @@ GyroMPU6050::GyroMPU6050(const MpuImu &mmpu) :
     _my_mpu(mmpu),
     _scale(Units::deg_to_rad(mpud::gyroResolution(mpud::GYRO_FS_250DPS))) // scale factor for raw gyro data to rad/s
 {
-    _id = SensorId::GYRO_INERTIAL | SensorId::LocalSensor;
+    _id = SensorId::GYRO_INERTIAL | SensorFlags::SENSOR_LOCAL;
     // push a single previous value
     pushAndPublish(vector_f(0,0,0), 0);
 }

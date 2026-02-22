@@ -11,7 +11,9 @@
 #include "SensorBase.h"
 #include "logdef.h"
 
-#include <cstdint>
+#ifndef CONFIG_LOG_DISABLED
+const char *idmemo[] = { "", "Tmp", "dP", "sP", "teP", "Pos", "Alt", "Var", "Mag", "Acc", "Gyr", "HUM", "FLP" };
+#endif
 
 // manage max. 10 sensors at a time (incl. all virtual filter sensors)
 std::array<SensorEntry, SensorRegistry::MaxSensors> SensorRegistry::all_sensors {};
@@ -24,7 +26,7 @@ bool SensorRegistry::registerSensor(SensorBase *s)
     }
     SensorId id = s->getId();
     if ( find(id) ) {
-        ESP_LOGI(FNAME, "Sensor with id %d already registered", static_cast<int>(id));
+        ESP_LOGI(FNAME, "Sensor %s already registered", idmemo[static_cast<int>(id) & 0x3f]);
         return false; // already registered
     }
 
@@ -32,7 +34,7 @@ bool SensorRegistry::registerSensor(SensorBase *s)
     for (auto& e : all_sensors) {
         if (!e.isActive()) {
             e = { id, s, s->getDutyCycle() / 100 }; // store dutycycle in 100ms units
-            ESP_LOGI(FNAME, "Sensor %d registered with id %d and dutycycle %d", idx, static_cast<int>(id), e.dutycycle);
+            ESP_LOGI(FNAME, "%d. %s sensor 0x%x registered with dutycycle %d msec", idx, idmemo[static_cast<int>(id) & 0x3f], static_cast<int>(id), e.dutycycle);
             return true;
         }
         idx++;
@@ -44,7 +46,7 @@ void SensorRegistry::deregisterSensor(SensorBase* s) {
     
     for (auto& e : all_sensors) {
         if (e.sensor == s) {
-            ESP_LOGI(FNAME, "Sensor %d deregistered", static_cast<int>(e.id));
+            ESP_LOGI(FNAME, "Sensor %s deregistered", idmemo[static_cast<int>(e.id) & 0x3f]);
             e.id = SensorId::NONE;
             e.sensor = nullptr;
             e.dutycycle = 0;
@@ -57,8 +59,8 @@ void SensorRegistry::removeFromUpdateLoop(SensorId id)
 {
     SensorEntry *entry = find(id);
     if (entry) {
-        ESP_LOGI(FNAME, "Sensor %d removed from update loop", static_cast<int>(entry->id));
-        entry->id = entry->id & ~SensorId::LocalSensor; // clear local sensor flag
+        ESP_LOGI(FNAME, "Sensor %s removed from update loop", idmemo[static_cast<int>(entry->id) & 0x3f]);
+        entry->id = entry->id & ~SensorFlags::SENSOR_LOCAL; // clear local sensor flag
     }
 }
 
@@ -67,7 +69,7 @@ void SensorRegistry::enterSimMode()
     ESP_LOGI(FNAME, "SensorRegistry entering SIMULATION MODE");
     for (auto& e : all_sensors) {
         if (e.isActive() && !isEssentialSensor(e.id)) {
-            e.id = e.id & ~SensorId::LocalSensor; // no further sensor reading
+            e.id = e.id & ~SensorFlags::SENSOR_LOCAL; // no further sensor reading
         }
     }
 }

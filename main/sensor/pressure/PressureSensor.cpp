@@ -29,7 +29,7 @@ static pascal_t te_buffer[ (SENSOR_HISTORY_DURATION_MS / DUTY_CYCLE_MS) + 1 ];
 
 PressureSensor::PressureSensor(SensorId id) : SensorTP<pascal_t>((id == SensorId::STATIC_PRESSURE) ? pstat_buffer : te_buffer, DUTY_CYCLE_MS)
 {
-    _id = id | SensorId::LocalSensor;
+    _id = id | SensorFlags::SENSOR_LOCAL;
     if (id == SensorId::STATIC_PRESSURE) {
         setNVSVar(&statp);
     }
