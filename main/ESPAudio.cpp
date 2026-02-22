@@ -378,12 +378,14 @@ const SOUND *Flarm[3][3] = {
 };
 static SOUND FlarmCode; // set on the fly
 
-// Ding
-const std::array<DURATION, 11> ding_tim = {{  {10}, {10}, {10},    {160}, {160}, {160},     {40}, {40}, {40},        {600}, {0} }};
-const std::array<TONE, 11> ding_seq1 = {{  {6868}, {2643}, {6868}, {2643}, {2643}, {0},     {2643}, {0}, {2643},     {0}, {0} }};
-const std::array<TONE, 11> ding_seq2 = {{  {2643}, {6868}, {2643}, {6868}, {1250}, {2643},  {1250}, {2643}, {1250}, {2643}, {0} }};
-const std::array<VOICECONF, 2> ding_vconf = {{ {0, 180}, {0, 30}  }};
-const SOUND Ding = { ding_tim.data(), { ding_seq1.data(), ding_seq2.data(), nullptr, nullptr }, ding_vconf.data(), 0 };
+// Knock
+const std::array<DURATION, 6> knock_tim = {{ {10}, {10},  {10},  {10},   {50}, {0} }};
+const std::array<TONE, 6> knock_seq1 = {{  {fC5},  {fD5}, {fC5}, {fD5},  {0},  {0} }};
+const std::array<TONE, 6> knock_seq2 = {{  {fCs5}, {fE5}, {fCs5},{fE5},  {0},  {0} }};
+const std::array<TONE, 6> knock_seq3 = {{  {fD5},  {fF5}, {fD5}, {fF5},  {0},  {0} }};
+const std::array<TONE, 6> knock_seq4 = {{  {fE5},  {fFs5},{fE5}, {0},    {0},  {0} }};
+const std::array<VOICECONF, 4> knock_vconf = {{ {1, 128}, {1, 120}, {1, 110}, {1, 100} }};
+const SOUND Knock = { knock_tim.data(), { knock_seq1.data(), knock_seq2.data(), knock_seq3.data(), knock_seq4.data() }, knock_vconf.data(), 0 };
 
 // Flap forward
 const std::array<DURATION, 10> flapf_tim = {{ {55}, {50},   {55}, {50},   {55}, {50},   {55}, {50},   {100}, {0} }};
@@ -416,7 +418,7 @@ const SOUND Tadda = { tadda_tim.data(), { tadda_seq1.data(), tadda_seq2.data(), 
 
 // list of sounds
 const std::array<const SOUND*, 17> sound_list = { { &NoSound, &VarioSound, &CheckSound, &FailSound, 
-                                                    &TurnOut, &TurnIn, &Ding, &WindGust, &TurnIn, &FlapForward, &FlapBack,
+                                                    &TurnOut, &TurnIn, &Knock, &WindGust, &TurnIn, &FlapForward, &FlapBack,
                                                     &Tadda,
                                                     &StallWarn, &GloadWarn, &GearWarn, &FlarmIntro, &FlarmCode } };
 
