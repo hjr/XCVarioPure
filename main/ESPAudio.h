@@ -27,6 +27,7 @@ enum e_audio_sound_type
     AUDIO_WIND_CHANGE,
     AUDIO_FLAP_FORWARD,
     AUDIO_FLAP_BACK,
+    AUDIO_TADDA,
     AUDIO_ALARMS,
     AUDIO_ALARM_STALL = AUDIO_ALARMS, // first alarm sound, they require a volume raise
     AUDIO_ALARM_GLOAD,
@@ -53,6 +54,7 @@ public:
     void startSound(uint16_t alarmType, bool overlay = false) const; // outputs various alarm sounds according to alarmType
     void endAlarm() const; // ends a priority alarm, e.g. when the alarm condition is over
     static uint16_t encFlarmParam(e_audio_sound_type sound_id, uint8_t alevel, uint8_t side, uint8_t alt_diff);
+    static uint16_t encVolumeParam(e_audio_sound_type sound_id, uint8_t volume);
 
     // system wide the only point to set audio volume !!!
     void setVolume(float vol, bool sync = true); // vol: 0.0 .. 100.0 logarythmic scale

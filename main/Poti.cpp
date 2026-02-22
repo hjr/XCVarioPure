@@ -47,16 +47,14 @@ bool Poti::haveDevice()
     return false;
 }
 
-bool Poti::tick()
-{
-	if (lastWiperValue != targetWiperValue)
-	{
-		int step = (targetWiperValue > lastWiperValue) ? 1 : -1;
-		lastWiperValue += std::abs(targetWiperValue - lastWiperValue) > 5 ? step*5 : step;
-        writeWiper( lastWiperValue );
+bool Poti::tick() {
+    if (lastWiperValue != targetWiperValue) {
+        int step = (targetWiperValue > lastWiperValue) ? 1 : -1;
+        lastWiperValue += std::abs(targetWiperValue - lastWiperValue) > 5 ? step * 5 : step;
+        writeWiper(lastWiperValue);
         ESP_LOGI(FNAME, "soft %d, ival %d", targetWiperValue, lastWiperValue);
         return false;
-	}
+    }
 
     return true;
 }

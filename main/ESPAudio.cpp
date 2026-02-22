@@ -104,6 +104,7 @@ union AudioEvent {
     constexpr AudioEvent(uint8_t c, int16_t v)
         : cmd(c), param(v) {}
     int getSoundId() const { return param & 0xf; }
+    int getSoundVolume() const { return (param >> 4) & 0xf; }
     int getLevel() const { return (param >> 8) & 0x3; }
     int getSide() const { return (param >> 6) & 0x3; }
     int getAltDiff() const { return (param >> 4) & 0x3; }
@@ -210,7 +211,7 @@ struct SOUND {
 };
 struct DMACMD {
     void init();
-    void loadSound(const SOUND* s);
+    void loadSound(const SOUND* s, uint8_t volume_param=0);
     void resetSound();
     void dump();
     static inline constexpr uint32_t calcNrSamples(unsigned ms) {
@@ -221,6 +222,7 @@ struct DMACMD {
     uint8_t voicecount; // nr of voices used for this sequence
     int8_t  repcount;   // remaining repetitions
     uint8_t state;      // internal state 0 - uninit., 1 - loaded with sound, 2 - playing
+    uint8_t volume;    // volume parameter hand over for this sound, 0..15, 0=mute, 15=max
     VOICECMD voice[MAX_VOICES];
 };
 static __attribute__((aligned(4))) DMACMD dma_cmd[2]; // double buffer for DMA command stream
@@ -244,6 +246,7 @@ constexpr float fFs4 = noteFreq(-3);
 constexpr float fG4 = noteFreq(-2);    // 392.00 Hz
 constexpr float fA4 = noteFreq(0);     // 440.00 Hz
 constexpr float fBd4 = noteFreq(1);
+constexpr float fB4 = noteFreq(2);
 constexpr float fC5 = noteFreq(3);
 constexpr float fCs5 = noteFreq(4);
 constexpr float fD5 = noteFreq(5);
@@ -402,9 +405,19 @@ const std::array<TONE, 2> wind_seq1 = {{ {500}, {0.} }};
 const std::array<VOICECONF, 2> wind_vconf = {{ {2, 220}}};
 const SOUND WindGust = { wind_tim.data(), { wind_seq1.data(), nullptr, nullptr, nullptr }, wind_vconf.data(), 0 };
 
+// Tadda
+const std::array<DURATION, 4> tadda_tim = {{  {130}, {20}, {1050}, {0} }};
+const std::array<TONE, 4> tadda_seq1 = {{  {fD5}, {0}, {fD5}, {0} }};
+const std::array<TONE, 4> tadda_seq2 = {{  {fFs5}, {0}, {fFs5}, {0} }};
+const std::array<TONE, 4> tadda_seq3 = {{  {fA5}, {0}, {fA5}, {0} }};
+const std::array<TONE, 4> tadda_seq4 = {{  {fD6}, {0}, {fD6}, {0} }};
+const std::array<VOICECONF, 4> tadda_vconf = {{ {0, 128}, {0, 120}, {0, 110}, {0, 100} }};
+const SOUND Tadda = { tadda_tim.data(), { tadda_seq1.data(), tadda_seq2.data(), tadda_seq3.data(), tadda_seq4.data() }, tadda_vconf.data(), 0 };
+
 // list of sounds
-const std::array<const SOUND*, 16> sound_list = { { &NoSound, &VarioSound, &CheckSound, &FailSound, 
+const std::array<const SOUND*, 17> sound_list = { { &NoSound, &VarioSound, &CheckSound, &FailSound, 
                                                     &TurnOut, &TurnIn, &Ding, &WindGust, &TurnIn, &FlapForward, &FlapBack,
+                                                    &Tadda,
                                                     &StallWarn, &GloadWarn, &GearWarn, &FlarmIntro, &FlarmCode } };
 
 // To call from ISR context
@@ -455,7 +468,7 @@ void DMACMD::init() {
     counter = 0;
 }
 // Only call in synch with DAC DMA ISR event
-void DMACMD::loadSound(const SOUND *s)
+void DMACMD::loadSound(const SOUND *s, uint8_t volume_param)
 {
     idx = 0;
     repcount = s->repetitions;
@@ -474,6 +487,7 @@ void DMACMD::loadSound(const SOUND *s)
     counter = timeseq[0].duration; // kick sound sequence
     voicecount = vc_tmp;
     state = 1;
+    volume = volume_param;
 }
 void DMACMD::resetSound() {
     idx = 0;
@@ -485,6 +499,7 @@ void DMACMD::resetSound() {
     }
     timeseq = no_tone_tim.data();
     voicecount = 1;
+    volume = 0;
 }
 void VOICECMD::dump() {
 #if defined(AUDIO_DEBUG)
@@ -773,6 +788,11 @@ uint16_t Audio::encFlarmParam(e_audio_sound_type sound_id, uint8_t alevel, uint8
     return ((uint16_t)alevel << 8) | ((uint16_t)side << 6) | ((uint16_t)alt_diff << 4) | ((uint16_t)sound_id & 0xf);
 }
 
+uint16_t Audio::encVolumeParam(e_audio_sound_type sound_id, uint8_t volume)
+{
+    return ((uint16_t)volume << 4) | ((uint16_t)sound_id & 0xf);
+}
+
 // [%] - in a logarithmic db sense
 void Audio::setVolume(float vol, bool sync) {
     if ( _alarm_mode != alarm_type_t::ALARM_NONE ) {
@@ -1057,6 +1077,7 @@ void Audio::dactask()
             // Process audio events
             if ( event.cmd == START_SOUND ) {
                 int sound_id = event.getSoundId();
+                int sound_vol = 0;
                 if ( sound_id < sound_list.size() ) {
                     ESP_LOGI(FNAME, "Start sound %d (%x)", sound_id, event.param);
                     if ( sound_id >= AUDIO_ALARMS ) { _alarm_mode = alarm_type_t::ALARM_SIMPLE; }
@@ -1066,6 +1087,8 @@ void Audio::dactask()
                         FlarmCode.repetitions = std::max((event.getLevel() - 1) * 3 - 1, 0);
                         ESP_LOGI(FNAME, "Sound repetitions %d", FlarmCode.repetitions);
                         FlarmCode.timeseq = FlarmLev[event.getLevel() - 1]->data();
+                    } else {
+                        sound_vol = event.getSoundVolume();
                     }
                     if ( current_dmacmd->repcount  < 0 ) {
                         // stop endless sound
@@ -1073,14 +1096,14 @@ void Audio::dactask()
                         current_dmacmd->repcount = 0;
                     }
                     // load sound into unused dma cmd buffer
-                    dma_cmd[!curr_dmacmd_idx].loadSound(sound_list[sound_id]);
+                    dma_cmd[!curr_dmacmd_idx].loadSound(sound_list[sound_id], sound_vol);
                 }
             }
             else if ( event.cmd == REQUEST_SOUND ) {
                 if ( dma_cmd[!curr_dmacmd_idx].state == 1 ) {
                     ESP_LOGI(FNAME, "Sound pushed");
                     curr_dmacmd_idx = !curr_dmacmd_idx;
-                    current_dmacmd = &dma_cmd[curr_dmacmd_idx];
+                    current_dmacmd = &dma_cmd[curr_dmacmd_idx]; // switch to the new sound (will be directly picked up by the DMA callback)
                     if ( _alarm_mode > alarm_type_t::ALARM_NONE ) {
                         ESP_LOGI(FNAME, "Raise volume");
                         // raise volume +20%, but assure at least 60%
@@ -1088,14 +1111,18 @@ void Audio::dactask()
                         alarm_vol = std::max(alarm_vol, 60.f);
                         writeVolume(alarm_vol);
                     }
+                    if ( current_dmacmd->volume == 0xf ) {
+                        // special case for vario sound, which is not muted during priority alarms
+                        writeVolume(100.);
+                    }
                 }
                 else {
                     ESP_LOGI(FNAME, "Sound ended");
                     if ( _alarm_mode == alarm_type_t::ALARM_SIMPLE) {
-                        ESP_LOGI(FNAME, "Restore volume");
-                        writeVolume(speaker_volume);
                         _alarm_mode = alarm_type_t::ALARM_NONE;
                     }
+                    ESP_LOGI(FNAME, "Restore volume");
+                    writeVolume(speaker_volume); // always
                     if (audio_mute_gen.get() == AUDIO_ON && _alarm_mode != alarm_type_t::ALARM_PRIORITY) {
                         current_dmacmd->loadSound(&VarioSound);
                     }
