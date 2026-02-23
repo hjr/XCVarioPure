@@ -183,26 +183,50 @@
 
 {
   "clangd.arguments": [
+    "--compile-commands-dir=build",
+    "--query-driver=**/xtensa-esp32-elf-*"
+    "--background-index",
     "--header-insertion=never",
     "--clang-tidy"
   ]
+  "C_Cpp.intelliSenseEngine": "disabled"
 }
 
 {
   "github.copilot.inlineSuggest.enable": true,
-
   "editor.inlineSuggest.enabled": true,
-
   "editor.acceptSuggestionOnEnter": "off",
-
   "editor.suggestSelection": "first",
-
   "editor.tabCompletion": "on",
 
   "editor.quickSuggestions": {
     "other": true,
     "comments": false,
     "strings": false
+  }
+  
+  "editor.tabSize": 4,
+  "editor.insertSpaces": true,
+  "editor.detectIndentation": false,
+
+  // --- C / C++ ---
+  "[c]": {
+    "editor.tabSize": 4,
+    "editor.insertSpaces": true
+  },
+  "[cpp]": {
+    "editor.tabSize": 4,
+    "editor.insertSpaces": true
+  },
+
+  // --- ESP-IDF / headers ---
+  "[h]": {
+    "editor.tabSize": 4,
+    "editor.insertSpaces": true
+  },
+  "[hpp]": {
+    "editor.tabSize": 4,
+    "editor.insertSpaces": true
   }
 }
 
