@@ -789,19 +789,39 @@ void DeviceManager::reserectFromNvs()
 void DeviceManager::introduceDevices()
 {
     // A very first start w/ devices. Add a Flarm automatically
+    // Check if there is a legacy history on the device
+    // S1
+    int val;
+    bool setup_flarm = true;
+    if ( SetupCommon::getOldInt("SERIAL2_SPEED", val) ) {
+        // legacy S1 (!) setup exists
+        if ( val != 3 ) {
+            // legacy setup is not for flarm, do not try to setup a flarm
+            setup_flarm = false;
+        }
+    }
     assert(S1);
-    S1->ConfigureIntf(SM_FLARM); // load flarm serial default profile
-    Device *dev = DEVMAN->addDevice(FLARM_DEV, FLARM_P, 0, 0, S1_RS232);
-    DEVMAN->addDevice(FLARM_DEV, FLARMBIN_P, 0, 0, NO_PHY);
+    Device *dev = nullptr;
+    if ( setup_flarm ) {
+        S1->ConfigureIntf(SM_FLARM); // load flarm serial default profile
+        dev = DEVMAN->addDevice(FLARM_DEV, FLARM_P, 0, 0, S1_RS232, true);
+        DEVMAN->addDevice(FLARM_DEV, FLARMBIN_P, 0, 0, NO_PHY, true);
+    }
     if ( dev ) {
         // save it to nvs
         flarm_devsetup.set(dev->getNvsData());
     }
-    if ( S2 ) {
+    // S2
+    bool setup_navi = true;
+     if ( SetupCommon::getOldInt("SERIAL1_SPEED", val) ) {
+        // legacy S2 (!) setup exists, so do not second guess, just do not try to setup a navi
+        setup_navi = false;
+    }
+    if ( S2 && setup_navi ) {
         S2->ConfigureIntf(SM_XCTNAV_S3); // load XCTouchNav serial default profile
-        dev = DEVMAN->addDevice(NAVI_DEV, XCVARIO_P, 0, 0, S2_RS232);
+        dev = DEVMAN->addDevice(NAVI_DEV, XCVARIO_P, 0, 0, S2_RS232, true);
         if ( dev ) { navi_devsetup.set(dev->getNvsData()); }
-        dev = DEVMAN->addDevice(FLARM_HOST_DEV, FLARMHOST_P, 0, 0, S2_RS232);
+        dev = DEVMAN->addDevice(FLARM_HOST_DEV, FLARMHOST_P, 0, 0, S2_RS232, true);
         if ( dev ) { flarm_host_setup.set(dev->getNvsData()); }
     }
     if ( CAN && (can_speed.get()!=CAN_SPEED_1MBIT) ) {
