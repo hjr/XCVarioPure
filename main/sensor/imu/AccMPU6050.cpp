@@ -150,7 +150,8 @@ void AccMPU6050::postProcess() {
     // ESP_LOGI(FNAME,"attq: %.3f %.3f %.3f %.3f", att_quat._x, att_quat._y, att_quat._z, att_quat._w );
     // ESP_LOGI(FNAME,"Circle Omega: %f", circle_omega );
     euler_rad = att_quat.toEulerRad() * -1.f;
-    if ((att_vector - att_prev).get_norm2() > 0.5) {
+    float attvd = (att_vector - att_prev).get_norm2();
+    if (attvd > 0.5) {
         [[maybe_unused]] vector_f euler = euler_rad * rad2deg(1.f);
         ESP_LOGI(FNAME, "Euler R:%.1f P:%.1f OR:%.1f IMUP:%.1f", euler.Roll(), euler.Pitch(), rad2deg(roll), rad2deg(pitch));
     }
@@ -189,7 +190,8 @@ void AccMPU6050::postProcess() {
     }
 
     // calm status
-    if ( (accel.get_norm2() - 1.f) < 0.1025f && (accel - att_vector).get_norm2() < 0.01f ) { // within 5% of 1 g and not changing much
+    ESP_LOGI(FNAME, "Calm status: accel_norm=%.3f attvd=%.3f", accel.get_norm2(), attvd);
+    if ( (accel.get_norm2() - 1.f) < 0.2025f && attvd < 0.001f ) { // within 5% of 1 g and not changing much
         // sensor is calm
         _calm_counter++;
     }
