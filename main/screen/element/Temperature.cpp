@@ -48,7 +48,7 @@ void Temperature::draw(kelvin_t t, temp_status_t mputemp)
         int16_t fl = MYUCG->getStrWidth(s);
         MYUCG->setPrintPos(_ref_x + _x_offset - fl, _ref_y - (_large ? 0 : 7));
         MYUCG->print(s);
-        // the figure covers the little ° symbol, so alway repaint
+        // the number overlapps the little ° symbol, so alway repaint
     // }
     // if ( mputemp != _imut || _dirty ) {
         _imut = mputemp;
