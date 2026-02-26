@@ -1,0 +1,20 @@
+
+If:
+  PathMatch: .*\.(h|hpp)
+CompileFlags:
+  Add: [-xc++-header, -std=c++17]
+
+---
+# Higher warn level only for certain folders
+If:
+  PathMatch: \/main\/
+CompileFlags:
+  Add: [-Wall, -Wextra, -Wpedantic]
+
+#---
+# Exclude third-party-Code
+# If:
+#   PathMatch: '**/third_party/**'
+#   PathExclude: '**/my_own_third_party/**'   # but include my own third-party code
+# Diagnostics:
+#   SuppressAll: true
