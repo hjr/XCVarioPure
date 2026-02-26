@@ -21,9 +21,7 @@
 
 static const std::string_view TYPES[] = { "UNKNOWN", "MPU6050", "MPU6500", "ICM20602", "ICM20689" };
 
-Quaternion MpuImu::_ref_rot;
 
-// ImuSensor* IMUSensor = nullptr;
 mpud::MPU myMPU; // TODO as optional resource
 
 // for heat control
@@ -113,7 +111,7 @@ bool MpuImu::setup() {
     Quaternion basic_ref = imu_reference.get();
     if (basic_ref == Quaternion()) {
         // If unset, set to a rough default
-        basic_ref = loadDefaultImuReference();
+        basic_ref = getDefaultImuReference();
     }
     _ref_rot = concatGaaAndImuReference(glider_ground_aa.get(), basic_ref);
 
@@ -142,14 +140,12 @@ temp_status_t MpuImu::getTempStatus() const {
     }
 }
 
-// Setup the rotation for the "upright", "topdown" and "ninety" vario mounting positions
-void MpuImu::setDefaultImuReference() {
-    Quaternion base = loadDefaultImuReference();
-    _ref_rot = concatGaaAndImuReference(glider_ground_aa.get(), base);
-    imu_reference.set(base, false);  // nvs
-}
+//
+// IMU reference
+//
 
-Quaternion MpuImu::loadDefaultImuReference() {
+// Calc the rotation for the "upright", "topdown" and "ninety" vario mounting positions
+Quaternion MpuImu::getDefaultImuReference() {
 
     // Revert from calibrated IMU to default mapping, which fits
     // roughly to an upright, top down, or ninety degree installation.
@@ -208,7 +204,7 @@ void MpuImu::temp_control() {
     unsigned pwm = (unsigned)(_pictrl->update(mpu_target_temp, temp) * 255.f);
     ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, pwm);
     ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0);
-    ESP_LOGI(FNAME, "MPU Temp Control: T=%.2f Target=%.2f PWM=%d", temp, mpu_target_temp, pwm);
+    // ESP_LOGI(FNAME, "MPU Temp Control: T=%.2f Target=%.2f PWM=%d", temp, mpu_target_temp, pwm);
 }
 
 void MpuImu::clearpwm() {

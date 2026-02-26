@@ -119,66 +119,6 @@ const constexpr char passed_text[] = "PASSED\n";
 const constexpr char failed_text[] = "FAILED\n";
 const constexpr char notfound_text[] = "NOT FOUND\n";
 
-// todo transform gyro postfilter
-// static void grabMPU()
-// {
-// 	// Automatically trac the gyro bias
-// 	static int32_t cur_gyro_bias[3];
-// 	const int MAXDRIFT         = 2;    // °/s maximum drift that is automatically compensated on ground
-// 	const int NUM_GYRO_SAMPLES = 3000; // 10 per second -> 5 minutes, so T has been settled after power on
-// 	static uint16_t num_gyro_samples = 0;
-
-// 	// Read the IMU registers and check the output
-// 	if( IMU::MPU6050Read() == ESP_OK )
-// 	{
-// 		// Do the gyro auto bias
-// 		vector_f gyroDPS = IMU::getGliderGyro();
-// 		// ESP_LOGI(FNAME,"Gyro:\t%4f\t%4f\t%4f", gyroDPS.a, gyroDPS.b, gyroDPS.c);
-// 		// vector_f accl = IMU::getGliderAccel();
-// 		// if (compass != nullptr) {
-// 		// 	ESP_LOGI(FNAME,"Accl:\t%4f\t%4f\t%4f\tL%.2f Gyro:\t%4f\t%4f\t%4f Mag:\t%4f\t%4f\t%4f", accl.a, accl.b, accl.c, accl.get_norm(),
-// 		// 		gyroDPS.a, gyroDPS.b, gyroDPS.c,
-// 		// 		compass->rawX(), compass->rawY(), compass->rawZ());
-// 		// }
-
-// 		float GS=0; // Autoleveling Gyro feature only with GPS and GS close to zero to avoid triggering at push back taxi with zero AS
-// 		bool gpsOK = Flarm::getGPSknots( GS );
-// 		// ESP_LOGI(FNAME,"GS=%.3f %d", GS, gpsOK );
-// 		if( gpsOK && GS < 2 && ias.get() < 5 ){  // GPS status, groundspeed and airspeed regarded for still stand
-// 			// check low rotation on all 3 axes = on ground
-// 			if( abs( gyroDPS.x ) < MAXDRIFT && abs( gyroDPS.y ) < MAXDRIFT && abs( gyroDPS.z ) < MAXDRIFT ) {
-// 				num_gyro_samples++;
-// 				cur_gyro_bias[0] = IMU::getRawGyroX();
-// 				cur_gyro_bias[1] = IMU::getRawGyroY();
-// 				cur_gyro_bias[2] = IMU::getRawGyroZ();
-// 				if( num_gyro_samples > NUM_GYRO_SAMPLES ) { // every 5 minute (3000 samples) recalculate offset
-// 					mpud::raw_axes_t gb;
-// 					mpud::raw_axes_t gbo = MPU.getGyroOffset();
-// 					for(int i=0; i<3; i++){
-// 						gb[i]  = gbo[i] -(( (cur_gyro_bias)[i]/(NUM_GYRO_SAMPLES*4)) ); // translate to 1000 DPS
-// 						cur_gyro_bias[i] = 0;
-// 					}
-// 					ESP_LOGI(FNAME,"New gyro offset X/Y/Z: OLD:%d/%d/%d NEW:%d/%d/%d", gbo.x, gbo.y, gbo.z, gb.x, gb.y, gb.z );
-// 					if( (abs( gbo.x-gb.x ) > 0) || (abs( gbo.y-gb.y ) > 0) || (abs( gbo.z-gb.z ) > 0)  ){  // any delta is directly set in RAM
-// 						ESP_LOGI(FNAME,"Set new gyro offset X/Y/Z: OLD:%d/%d/%d NEW:%d/%d/%d", gbo.x, gbo.y, gbo.z, gb.x, gb.y, gb.z );
-// 						MPU.setGyroOffset( gb );
-// 					}
-// 					// if we have temperature control, we check if control is locked, otherwise we have no idea but anyway takeover better offset
-// 					if( (HAS_MPU_TEMP_CONTROL && (MPU.getSiliconTempStatus() == MPU_T_LOCKED)) || !HAS_MPU_TEMP_CONTROL ){
-// 						if( (abs( gbo.x-gb.x ) > 1 || abs( gbo.y-gb.y ) > 1 || abs( gbo.z-gb.z ) > 1) && gyro_flash_savings<5 ){ // Set only changes > 1 in Flash and only 5 times per boot
-// 							gyro_bias.set( gb );
-// 							ESP_LOGI(FNAME,"Store the new offset also in Flash, store number: %d", gyro_flash_savings );
-// 							gyro_flash_savings++;
-// 						}
-// 					}
-// 					num_gyro_samples = 0;
-// 				}
-// 			}
-// 		}
-// 		IMU::Process();
-// 	}
-
-// }
 
 static void toyFeed(int count) // Called at 5Hz from clientLoop or sensorloop
 {

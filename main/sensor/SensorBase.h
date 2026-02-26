@@ -106,15 +106,16 @@ public:
     virtual void postProcess() {};
     virtual bool isCalm() const { return false; } // whether the sensor is in a calm state
     int getDutyCycle() const { return _update_interval_ms; }
+    float getDutyCycleS() const { return (float)_update_interval_ms / 1000.0f; }
     int getLastObservationTime() const { return _last_update_time_ms + _latency_ms; }
     inline int getLastUpdateTimeMs() const { return _last_update_time_ms; }
     inline int getLatency() const { return _latency_ms; }
     inline SensorId getId() const { return _id; }
 
 protected:
-    int _update_interval_ms;  ///< Expected update interval
-    int _latency_ms;          ///< Sensor conversion/acquisition latency
-    int _last_update_time_ms; ///< Time the update got registered
+    uint32_t _update_interval_ms;  ///< Expected update interval
+    uint32_t _latency_ms;          ///< Sensor conversion/acquisition latency
+    uint32_t _last_update_time_ms; ///< Time the update got registered
     SensorId _id; /// SensorId as integer
 };
 
@@ -183,6 +184,7 @@ public:
                     fval = _filter->filter(fval);
                 }
                 _nvsvar->set(fval);
+                _processed = fval;
             }
         }
     }
@@ -191,30 +193,57 @@ public:
         publishNVS();
     }
 
-    // get average of the last X milli seconds
-    T getAVG(int interval_ms) {
-        int count = _history.level();
-        int samples = 0;
+    // get the integral over the las X milli seconds
+    T getIntegral(int interval_ms) const {
+        int count = getCount(interval_ms);
         T sum = T{};
-        uint32_t cutoff_time = Clock::getMillis() - interval_ms;
 
         // Start from latest and go backwards
-        uint32_t ts = _last_update_time_ms;
         for (int i = 0; i < count; ++i) {
-            if (ts < cutoff_time) {
-                break;
-            }
             sum += _history[i];
-            samples++;
-            ts -= _update_interval_ms;
+        }
+        return sum;
+    }
+    
+    // get average of the last X milli seconds
+    T getAVG(int interval_ms) {
+        int count = getCount(interval_ms);
+        T sum = T{};
+
+        // Start from latest and go backwards
+        for (int i = 0; i < count; ++i) {
+            sum += _history[i];
         }
         // ESP_LOGI(FNAME, "getAVG: count=%d samples=%d", count, samples);
-        if (samples == 0) {
+        if (count == 0) {
             return T{};
         }
-        return sum / samples;
+        sum /= (float)count;
+        return sum;
     }
 
+    // get population variance of the last X milli seconds (Welford)
+    T getVariance(int interval_ms) {
+        int count = getCount(interval_ms);
+        if (count <= 1) return T{};
+
+        T mean = T{};
+        T M2 = T{};
+        float n = 0.f;
+
+        // Welford online algorithm for numerical stability
+        for (int i = 0; i < count; ++i) {
+            T val = _history[i];
+
+            n += 1.f;
+            T delta = val - mean;
+            mean += delta / n;
+            T delta2 = val - mean;
+            M2 += delta * delta2;
+        }
+
+        return M2 / (float)count;  // population variance
+    }
 
     /**
      * @brief Retrieve full history (caller provides buffer).
@@ -266,6 +295,14 @@ public:
     //     }
     // }
 
+    // Get latest processed value (after filtering and NVS publish)
+    T get() const {
+        return _processed;
+    }
+    const T& getP() const {
+        return _processed;
+    }
+
     // Get latest reading directly.
     T getHead() const {
         return _history.getHead();
@@ -311,13 +348,20 @@ public:
         }
         return true;
     }
+
 protected:
     // Capacity = ceil(5000 / _update_interval_ms)
     static constexpr size_t HistoryCapacity(uint32_t ums) { return (SENSOR_HISTORY_DURATION_MS + ums - 1) / ums; }
+    // time window to sample count
+    int getCount(int interval_ms) const {
+        uint32_t cutoff_time = Clock::getMillis() - interval_ms;
+        return std::min((_last_update_time_ms - cutoff_time) / _update_interval_ms, (uint32_t)_history.level());
+    }
 
     FixedSensorHistory<T> _history;
     SetupNG<float> *_nvsvar = nullptr; ///< Optional link to NVS variable for sync etc.
     FilterItf<T>*   _filter = nullptr; ///< Optional filter plugin
     T               _invalid = T{};    ///< Invalid value representation
+    T               _processed = T{};  ///< Last valid value as published on the black board
 };
 

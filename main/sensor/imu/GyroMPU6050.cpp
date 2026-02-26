@@ -9,7 +9,9 @@
 #include "GyroMPU6050.h"
 
 #include "ImuSensor.h"
+#include "AccMPU6050.h"
 #include "../SensorMgr.h"
+#include "SetupNG.h"
 #include "logdef.h"
 
 #include "mpu/math.hpp"
@@ -19,7 +21,7 @@ GyroMPU6050 *gyroSensor = nullptr;
 constexpr int DUTY_CYCLE_MS = 100; // 10Hz
 static vector_f gyro_buffer[ (SENSOR_HISTORY_DURATION_MS / DUTY_CYCLE_MS) + 1 ];
 
-GyroMPU6050::GyroMPU6050(const MpuImu &mmpu) :
+GyroMPU6050::GyroMPU6050(MpuImu &mmpu) :
     SensorTP<vector_f>(gyro_buffer, DUTY_CYCLE_MS),
     _my_mpu(mmpu),
     _scale(Units::deg_to_rad(mpud::gyroResolution(mpud::GYRO_FS_250DPS))) // scale factor for raw gyro data to rad/s
@@ -63,13 +65,51 @@ bool GyroMPU6050::doRead(vector_f& val) {
 
 void GyroMPU6050::postProcess() {
     // calm status
-    vector_f gyro = getHead();
-    if (gyro.get_norm2() < Units::deg_to_rad(3.f * 3.f)) { // within 3 deg/s
-        _calm_counter++;
-    }
-    else {
-        _calm_counter = 0;
-    }
+    static bool rest_old = false;
+    const vector_f& gyro = getHead();
+    bool rest = _bias_estimator.detectRest(gyro, accSensor->getHead(), getDutyCycleS());
 
-    // feed the drift filter
+    // feed the bias filter
+    _bias_estimator.update(gyro, getDutyCycleS());
+    vector_f bias = _bias_estimator.getBias();
+    if ( rest != rest_old) {
+        ESP_LOGI(FNAME, "rest state changed: %c -> %c", rest_old ? 'R' : 'M', rest ? 'R' : 'M');
+        rest_old = rest;
+    }
+    if ( rest ) {
+        ESP_LOGI(FNAME, "gyro bEKF: %c - %f/%f/%f (%f/%f/%f)", rest ? 'R' : 'M', bias.x, bias.y, bias.z, _processed.x, _processed.y, _processed.z);
+        if ( bias.get_norm2() > Units::deg_to_rad(1.f) // only push if bias is > 1 deg/s to avoid noise
+            && _bias_estimator.getRestDuration() > 20.f
+            && !airborne.get() && _bias_update < 3 ) { // only push if we have a stable bias and are airborne
+            pushGyroBias(bias);
+            _bias_estimator.reset();
+            _bias_update++;
+        }
+    }
+    _processed = gyro - bias; // a corrected measurment
+}
+
+void GyroMPU6050::pushGyroBias(vector_f& bias) {
+    // rotate back into sensor frame
+    // ESP_LOGI(FNAME, "-> bias: %f/%f/%f", bias.x, bias.y, bias.z);
+    vector_f bias_sensor = _my_mpu._ref_rot.get_conjugate().rotate(bias);
+    ESP_LOGI(FNAME, "backrot: %f/%f/%f", bias_sensor.x, bias_sensor.y, bias_sensor.z);
+
+    // to raw units and scale to 1000 dps
+    mpud::raw_axes_t measured;
+    measured.x = bias_sensor.x / _scale / 4.f;
+    measured.y = bias_sensor.y / _scale / 4.f;
+    measured.z = bias_sensor.z / _scale / 4.f;
+    ESP_LOGI(FNAME, "measured: %d/%d/%d", measured.x, measured.y, measured.z);
+
+    // subtract the new bias from the current bias to get the new offset
+    mpud::raw_axes_t current_bias = _my_mpu.getGyroOffset();
+    ESP_LOGI(FNAME, "current gyro bias: %d/%d/%d", current_bias.x, current_bias.y, current_bias.z);
+    // ESP_LOGI(FNAME, "delta gyro bias: %d/%d/%d", bias_delta.x, bias_delta.y, bias_delta.z);
+    mpud::raw_axes_t new_bias = current_bias;
+    new_bias -= measured;
+    ESP_LOGI(FNAME, "new gyro bias: %d/%d/%d", new_bias.x, new_bias.y, new_bias.z);
+    _my_mpu.setGyroOffset(new_bias);
+    // save to nvs
+    gyro_bias.set(axes_i16_abi(new_bias.x, new_bias.y, new_bias.z), false);
 }
