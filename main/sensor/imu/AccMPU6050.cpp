@@ -55,7 +55,7 @@ bool AccMPU6050::doRead(vector_f& val) {
             // return false;
         }
         val = _my_mpu.rotate(tmp_ned);
-        val.z -= gyroSensor->getAxD() * imu_leverarm.get(); // compensate the accelerometer mounting position in front of CG
+        val.z -= gyroSensor->getAxD() * _my_mpu.getLeverArm(); // compensate the accelerometer mounting position in front of CG
         // ESP_LOGI(FNAME, "val X:%f Y:%f Z:%f", val.x, val.y, val.z);
         return true;
     }

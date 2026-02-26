@@ -41,6 +41,8 @@ public:
         _ref_rot = concatGaaAndImuReference(gAA, basic);
     }
     int getAccelSamplesAndCalib(vector_f gyro_integral, rad_t& wing_angle);
+    inline void setLeverArm(float la) { _leverarm = la; }
+    inline float getLeverArm() const { return _leverarm; }
 
     friend class AccMPU6050;
     friend class GyroMPU6050;
@@ -64,6 +66,7 @@ protected:
 private:
     // IMU reference calibration
     Quaternion _ref_rot;
+    float _leverarm = 0.f; // distance of the accelerometer to the CG in m, used for acceleration compensation during rotation
 
     celsius_t _mpu_t_delta = 0; // difference to target temp, positive means too hot
     PIController *_pictrl = nullptr;
