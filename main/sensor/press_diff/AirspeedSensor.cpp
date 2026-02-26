@@ -28,7 +28,7 @@ AirspeedSensor::AirspeedSensor() : SensorTP<float>(as_buffer, DUTY_CYCLE_MS)
 {
     _id = SensorId::DIFFPRESSURE | SensorFlags::SENSOR_LOCAL;
     setNVSVar(&dynp);
-    setFilter(new LowPassFilter(0.25f));
+    setFilter(new LowPassFilterT<float>(0.25f));
 }
 
 static AirspeedSensor* factory(AirspeedSensor::ASens_Type type)

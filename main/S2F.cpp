@@ -66,7 +66,7 @@ void S2F::changeMc()
 }
 void S2F::changeDamping() {
     ESP_LOGI(FNAME,"S2F::change_damping()" );
-    _lpf_delta.setAlpha(LowPassFilter::alphaFromTau(s2f_delay.get(), 0.1f)); // 10 Hz update
+    _lpf_delta.setTau(s2f_delay.get(), 0.1f); // 10 Hz update
 }
 
 void S2F::setPolar()

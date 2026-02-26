@@ -62,7 +62,7 @@ private:
 
 private: // attributes
     Flap* _flap;
-    LowPassFilter _fp_filter;
+    LowPassFilterT<float> _fp_filter;
     FBoxStateHash _state = {0,0,0};
     int   _last_flap_idx = 0;
     int   _snd_latency_cnt = 0;

@@ -30,7 +30,7 @@ public:
     void draw(meter_t alt);
 
 private: // attributes
-    LowPassFilter _alt_lpf{0.15f};
+    LowPassFilterT<float> _alt_lpf{0.15f};
     int   _alt_prev = 0;
     bool  _isa_alt = false;
     alt_unit_t _unit;

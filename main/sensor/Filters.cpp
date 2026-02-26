@@ -7,32 +7,16 @@
  ***********************************************************/
 
 #include "Filters.h"
+#include "math/vector_3d.h"
 
-#include "SensorBase.h"
-#include "VarioFilter.h"
-#include "Atmosphere.h"
-#include "math/Units.h"
-#include "setup/SetupNG.h"
-#include "math/Floats.h"
-#include "sensor.h"
-#include "logdef.h"
 
-#include <cmath>
-
-float LowPassFilter::filter(float input)
+template <typename T>
+T LowPassFilterT<T>::filter(T input)
 {
-    _last_output = _alpha * (input - _last_output) + _last_output;
+    _last_output = (input - _last_output) * _alpha + _last_output;
     return _last_output;
 }
 
-
-// float TEVariometerFilter::filter(float input) {
-
-//     float tasraw = Atmosphere::TAS2( ias.get(), altitude.get(), OAT.get()); // True airspeed in km/h
-//     input = std::roundf(bmpVario->readTE(tasraw, input) * 20.); // TE value caclulation
-//     if ( !floatEqualFast(_oldte, input) ) {
-//         _oldte = input;
-//     }
-
-//     return _oldte/20.f;
-// }
+// we explicitly need those instantiations
+template class LowPassFilterT<float>;
+template class LowPassFilterT<vector_f>;

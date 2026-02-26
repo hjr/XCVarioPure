@@ -51,7 +51,8 @@ bool GyroMPU6050::doRead(vector_f& val) {
         // tmpvec.z = abs(tmpvec.z) < gate ? 0.0 : tmpvec.z;
         // into glider reference system
         val = _my_mpu.rotate(tmpvec);
-        _gyro_lpf_ayd.filter((val.y - getHeadPtr()->y) / getDutyCycle());
+        // ESP_LOGI(FNAME, "gyro raw: %d/%d/%d scaled: %f/%f/%f", imuRaw.x, imuRaw.y, imuRaw.z, val.x, val.y, val.z);
+        _gyro_lpf_ayd.filter((val.y - getHeadPtr()->y) / getDutyCycleS());
         return true;
     }
 

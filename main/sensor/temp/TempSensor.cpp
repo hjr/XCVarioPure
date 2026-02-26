@@ -17,6 +17,6 @@ TempSensor::TempSensor() : SensorTP<float>(temp_buffer, DUTY_CYCLE_MS)
 {
     _id = SensorId::TEMPERATURE;
     setNVSVar(&OAT);
-    setFilter(new LowPassFilter(0.3f));
+    setFilter(new LowPassFilterT<float>(0.3f));
     OATSensor = this;
 }

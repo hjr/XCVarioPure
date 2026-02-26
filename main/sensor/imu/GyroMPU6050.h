@@ -31,7 +31,7 @@ private:
     const MpuImu& _my_mpu;
     const float _scale;
     // low-pass filter for gyro y-axis to get dw/dt
-    LowPassFilter _gyro_lpf_ayd{0.5f}; // to compensate the accelerometer mounting position in front of CG
+    LowPassFilterT<float> _gyro_lpf_ayd{0.5f}; // to compensate the accelerometer mounting position in front of CG
     int _calm_counter = 0;
 };
 

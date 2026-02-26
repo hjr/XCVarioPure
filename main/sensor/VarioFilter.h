@@ -36,7 +36,7 @@ class VarioFilter final : public SensorTP<float> {
     Average<34, float, float> TEavg;
     Average<60, float, float> avgTE;
     int16_t _te_filter_idx;
-    LowPassFilter _lpf{0.25f};
+    LowPassFilterT<float> _lpf{0.25f};
     int16_t _avg_filter_idx;
     // some usefull derived values
     float _avg_vario = 0.f;

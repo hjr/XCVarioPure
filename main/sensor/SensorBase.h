@@ -138,7 +138,7 @@ public:
     void setNVSVar( SetupNG<float> *nvsvar ) {
         _nvsvar = nvsvar;
     }
-    void setFilter( BaseFilterItf* filter ) {
+    void setFilter( FilterItf<T>* filter ) {
         if ( _filter ) {
             delete _filter;
         }
@@ -317,7 +317,7 @@ protected:
 
     FixedSensorHistory<T> _history;
     SetupNG<float> *_nvsvar = nullptr; ///< Optional link to NVS variable for sync etc.
-    BaseFilterItf*  _filter = nullptr; ///< Optional filter plugin
+    FilterItf<T>*   _filter = nullptr; ///< Optional filter plugin
     T               _invalid = T{};    ///< Invalid value representation
 };
 

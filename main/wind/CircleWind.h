@@ -102,7 +102,7 @@ private:
   t_circling flightMode = undefined;
   static int16_t _age;
   const char *status;
-  LowPassFilter _lp_headdiff; // we filter the heading a bit to get a more stable circle detection
+  LowPassFilterT<float> _lp_headdiff; // we filter the heading a bit to get a more stable circle detection
   std::list<Vector> windVectors;
   uint8_t turn_left;
   uint8_t turn_right;
