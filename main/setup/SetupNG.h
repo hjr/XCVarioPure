@@ -430,7 +430,7 @@ extern SetupNG<float> 		glider_ground_aa;
 extern SetupNG<Quaternion> 	imu_reference;
 extern SetupNG<axes_i16_abi> gyro_bias;
 extern SetupNG<axes_i16_abi> accl_bias;
-extern SetupNG<float> 		mpu_temperature;
+extern SetupNG<celsius_t> 	mpu_temperature;
 extern SetupNG<meter_t> 	imu_leverarm;
 extern SetupNG<int> 		xcv_role;
 extern SetupNG<int> 		my_caps;
