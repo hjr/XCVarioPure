@@ -2367,6 +2367,7 @@ esp_err_t MPU::getMPUSamples(double& avgx, double& avgy, double& avgz, axes_t<in
 	MPU_LOGI("Fifocount %d", fifoCount);
 	if (MPU_ERR_CHECK(lastError())) return err;
 	const int packetCount = fifoCount / kPacketSize;
+	if (packetCount == 0) return -1;
 	// read overrun bytes, if any
 	const int overrunCount = fifoCount - (packetCount * kPacketSize);
 	uint8_t buffer[kPacketSize] = {0};
