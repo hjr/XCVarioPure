@@ -12,7 +12,7 @@
 #include "AccMPU6050.h"
 #include "../SensorMgr.h"
 #include "SetupNG.h"
-#include "logdef.h"
+#include "logdefnone.h"
 
 #include "mpu/math.hpp"
 

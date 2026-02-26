@@ -40,6 +40,7 @@ public:
     void applyImuReference(const degree_t gAA, const Quaternion& basic) {
         _ref_rot = concatGaaAndImuReference(gAA, basic);
     }
+    void resetCalibProgress() { progress = 0; }
     int getAccelSamplesAndCalib(vector_f gyro_integral, rad_t& wing_angle);
     inline void setLeverArm(float la) { _leverarm = la; }
     inline float getLeverArm() const { return _leverarm; }
@@ -67,6 +68,10 @@ private:
     // IMU reference calibration
     Quaternion _ref_rot;
     float _leverarm = 0.f; // distance of the accelerometer to the CG in m, used for acceleration compensation during rotation
+    int16_t progress = 0; // bit-wise 0 -> 1 -> 3 -> 0 // start -> right -> left -> finish
+    vector_d bob_right_wing, bob_left_wing, bob_level;
+    mpud::axes_t<int> gyro_bias_one, gyro_bias_two, gyro_bias_three;
+    vector_f gyro_axis_one, gyro_axis_two;
 
     celsius_t _mpu_t_delta = 0; // difference to target temp, positive means too hot
     PIController *_pictrl = nullptr;

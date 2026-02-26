@@ -33,14 +33,15 @@
 #include "setup/SetupNG.h"
 #include "Flarm.h"
 #include "protocol/FlarmSim.h"
-#include "sensor/imu/KalmanMPU6050.h"
+#include "sensor/imu/AccMPU6050.h"
+#include "sensor/imu/GyroMPU6050.h"
 #include "sensor/pressure/PressureSensor.h"
+#include "ESPAudio.h"
 #include "AnalogInput.h"
 #include "sensor/press_diff/AirspeedSensor.h"
-#include "sensor/imu/AccMPU6050.h"
 #include "AdaptUGC.h"
 #include "sensor.h"
-#include "logdefnone.h"
+#include "logdef.h"
 
 #include "comm/DeviceMgr.h"
 #include "math/Trigonometry.h"
@@ -50,6 +51,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cstdint>
 #include <string_view>
 
 extern AdaptUGC *MYUCG;
@@ -247,86 +249,135 @@ static int imu_gaa(SetupMenuValFloat *f) {
     return 0;
 }
 
-static void doImuCalibration( SetupMenuSelect *p ){
-	MYUCG->setFont( ucg_font_ncenR14_hr, true );
-	p->clear();
-	MYUCG->setPrintPos( 1, 30 );
-	MYUCG->printf( "AHRS calibration" );
-	MYUCG->setPrintPos( 1, 60 );
-	MYUCG->printf( "Ensure ground is flat," );
-	MYUCG->setPrintPos( 1, 90 );
-	MYUCG->printf( "with zero inclination." );
-	MYUCG->setPrintPos( 1, 120 );
-	MYUCG->printf( "Press button to start" );
-	while( ! Rotary->readSwitch(100) ) ;
-	p->clear();
-	MYUCG->setPrintPos( 1, 30 );
-	MYUCG->printf( "Now put down RIGHT wing" );
-	MYUCG->setPrintPos( 1, 60 );
-	MYUCG->printf( "on the ground," );
-	MYUCG->setPrintPos( 1, 90 );
-	MYUCG->printf( "then press button.." );
-	while( ! Rotary->readSwitch(100) ) ;
-	rad_t angle = 0.0;
-	int ret = IMU::getAccelSamplesAndCalib(IMU_RIGHT, angle);
-	if( ret<1 ){
-		p->clear();
-		MYUCG->setPrintPos( 1, 30 );
-		MYUCG->printf( "Error in sampling data," );
-		MYUCG->setPrintPos( 1, 60 );
-		MYUCG->printf( "Right wing: Error" );
-		delay(5000);
-		return;
-	}
-	p->clear();
-	MYUCG->setPrintPos( 1, 30 );
-	MYUCG->printf( "Now put down LEFT wing" );
-	MYUCG->setPrintPos( 1, 60 );
-	MYUCG->printf( "on the ground," );
-	MYUCG->setPrintPos( 1, 90 );
-	MYUCG->printf( "then press button.." );
-	while( ! Rotary->readSwitch(100) ) ;
-	ret=IMU::getAccelSamplesAndCalib(IMU_LEFT, angle);
-	if( ret<2 ){
-			p->clear();
-			MYUCG->setPrintPos( 1, 30 );
-			MYUCG->printf( "Angle <8° too small," );
-			MYUCG->setPrintPos( 1, 60 );
-			MYUCG->printf( "Left wing: Error" );
-			delay(5000);
-			return;
-	}else{
-		MYUCG->setPrintPos( 1, 130 );
-		MYUCG->printf( "Success, Finished!" );
-		MYUCG->setPrintPos( 1, 160 );
-		MYUCG->printf( "Wing Angle: %.2f°", rad2deg(angle) );
-		delay(1000);
-		MYUCG->setPrintPos( 1, 220 );
-		MYUCG->printf( "press button to return" );
-		while( ! Rotary->readSwitch(100) ) ;
-	}
+static void doImuCalibration(SetupMenuSelect* p) {
+    MYUCG->setFont(ucg_font_ncenR14_hr, true);
+    p->clear();
+    p->menuPrintLn("AHRS Glider Reference", 2, 18);
+    int16_t nlidx = 4;
+    p->menuPrintLn("1.+2. Each wing tip down", nlidx++);
+    p->menuPrintLn("to the ground.", nlidx++);
+    p->menuPrintLn("3. wings level.", nlidx++);
+    p->menuPrintLn("Wait for the Chimes, ", nlidx++);
+    p->menuPrintLn("then move on.", nlidx++);
+    p->menuPrintLn("Abort with button", nlidx + 2);
 
+    const float gyro_threshold = Units::deg_to_rad(0.2f);
+
+    AUDIO->startSound(AUDIO_NO_SOUND);
+    accSensor->getMpu().resetCalibProgress();
+    // load the default reference to the IMU
+    accSensor->getMpu().applyImuReference(0, MpuImu::getDefaultImuReference());
+    // reset lever arm
+    accSensor->getMpu().setLeverArm(0.f);
+
+    // double check that the gyro is calibrated, otherwise the procedure would be useless
+    vector_f gyro;
+    float gnorm;
+    bool abort = false;
+    do {
+        abort = Rotary->readSwitch(500);
+        gyro = gyroSensor->getAVG(1000);
+        gnorm = gyro.get_norm();
+    } while (gnorm > gyro_threshold && !abort);
+
+    ESP_LOGI(FNAME, "gyro reading: (%f/%f/%f) - %f < %f", gyro.x, gyro.y, gyro.z, gnorm, gyro_threshold);
+    uint16_t tadda = Audio::encVolumeParam(AUDIO_TADDA, 0xf);
+    AUDIO->startSound(tadda);
+
+    float angle;
+    int ret = 0;
+    while (ret == 0 && !abort)
+    {
+        uint32_t start_time;
+        uint32_t stop_time;
+        vector_f gyro_integral;
+        uint16_t snd = Audio::encVolumeParam(AUDIO_KNOCK, 0xf);
+        
+        for (int i=0; i<3; i++) {
+            // wait for the first wing movement, save the time
+            while (gyroSensor->isCalm() && accSensor->isCalm() && !abort) {
+                ESP_LOGI(FNAME, "Wait for movement, gcalm %d acalm %d", gyroSensor->isCalm(), accSensor->isCalm());
+                abort = Rotary->readSwitch(700);
+            }
+            start_time = Clock::getMillis();
+            
+            // wait until movement stops, save the gyro average and integral
+            while ( (!gyroSensor->isCalm() || !accSensor->isCalm()) && !abort) {
+                // make a noise if the movement is detected, to support the user in the procedure
+                AUDIO->startSound(snd, false);
+                ESP_LOGI(FNAME, "Wait for standstill, gcalm %d acalm %d", gyroSensor->isCalm(), accSensor->isCalm());
+                abort = Rotary->readSwitch(700);
+            }
+            if ( abort ) {
+                break;
+            }
+            // wing movement stopped, save the gyro integral
+            stop_time = Clock::getMillis();
+            gyro_integral = gyroSensor->getIntegral(stop_time - start_time);
+            // compensate bias to get actual movement integral
+            gyro_integral -= gyroSensor->getBias() * (float)((stop_time - start_time) / 100.f); // 10 Hz
+            // sample the accel for the bob vector
+            ret = accSensor->getMpu().getAccelSamplesAndCalib(gyro_integral, angle);
+            AUDIO->startSound(tadda, false);
+            if ( ret != i ) {
+                ESP_LOGI(FNAME, "Calibration step %d expected %d", ret, i);
+                // abort = true;
+            }
+            start_time = Clock::getMillis();
+        }
+    }
+
+    // restart vario sound
+    AUDIO->startSound(AUDIO_VARIO);
+
+    if (ret < 3 || abort) {
+        p->clear();
+        p->menuPrintLn("... aborted ...", 2);
+        nlidx = 4;
+        if ( gnorm > gyro_threshold ) {
+            p->menuPrintLn("Gyro bias too high,", nlidx++);
+            p->menuPrintLn("try a restart.", nlidx++);
+        }
+        accSensor->getMpu().applyImuReference(glider_ground_aa.get(), imu_reference.get());
+        accSensor->getMpu().setLeverArm(imu_leverarm.get());
+        p->menuPrintLn("press button to return", 8, 1);
+        while (!Rotary->readSwitch(100))
+            ;
+        return;
+    }
+
+    p->clear();
+    p->menuPrintLn("Success !", 2, 20);
+    MYUCG->setPrintPos(1, 100);
+    MYUCG->printf("Wing Angle: %.2f°", rad2deg(angle));
+    p->menuPrintLn("press button to return", 8, 1);
+    while (!Rotary->readSwitch(100))
+        ;
 }
 
-static int imu_calib(SetupMenuSelect *p) {
-	ESP_LOGI(FNAME,"Collect AHRS data (%d)", p->getSelect() );
-	int sel = p->getSelect();
-	switch (sel) {
-	case 0:
-		break; // cancel
-	case 1:
-		// collect samples
-		doImuCalibration(p);
-		break;
-	case 2:
-		// reset to default
-		MpuImu::setDefaultImuReference();
-		break;
-	default:
-		break;
-	}
-	p->setSelect(0);
-	return 0;
+static int imu_calib(SetupMenuSelect* p) {
+    ESP_LOGI(FNAME, "Collect AHRS data (%d)", p->getSelect());
+    int sel = p->getSelect();
+    switch (sel) {
+        case 0:
+            break;  // cancel
+        case 1:
+            // collect samples
+            doImuCalibration(p);
+            break;
+        case 2:
+        {
+            // reset to default
+            Quaternion base = MpuImu::getDefaultImuReference();
+            accSensor->getMpu().applyImuReference(glider_ground_aa.get(), base);
+            imu_reference.set(base, false);  // nvs
+            break;
+        }
+        default:
+            break;
+    }
+    p->setSelect(0);
+    return 0;
 }
 
 int qnh_adj(SetupMenuValFloat* p) {
@@ -1178,7 +1229,7 @@ void system_menu_create_hardware_type(SetupMenu *top) {
 	// Orientation   _display_orientation
 	SetupMenuSelect * diso = new SetupMenuSelect( "Orientation", RST_ON_EXIT, nullptr, &display_orientation );
 	top->addEntry( diso );
-	diso->setHelp( "Display Orientation.  NORMAL means Rotary on left, TOPDOWN means Rotary on right  (reboots). A change will reset the AHRS reference calibration.");
+	diso->setHelp( "Display Orientation.  NORMAL means Rotary on left, TOPDOWN means Rotary on right  (reboots). A change will reset the IMU reference.");
 	diso->addEntry( "NORMAL");
 	diso->addEntry( "TOPDOWN");
 	diso->addEntry( "NINETY");
@@ -1220,9 +1271,7 @@ void system_menu_create_hardware_rotary(SetupMenu *top) {
 
 void system_menu_create_ahrs_calib(SetupMenu* top) {
     SetupMenuSelect* ahrs_calib_collect = new SetupMenuSelect("Axis calibration", RST_NONE, imu_calib);
-    ahrs_calib_collect->setHelp(
-        "Calibrate IMU axis on flat leveled ground ground with no inclination. "
-        "Run the procedure by selecting Start.");
+    ahrs_calib_collect->setHelp("Calibrate IMU to glider reference. Run the procedure by selecting Start.");
     ahrs_calib_collect->addEntry("Cancel");
     ahrs_calib_collect->addEntry("Start");
     ahrs_calib_collect->addEntry("Reset");
@@ -1267,13 +1316,12 @@ void system_menu_create_hardware_ahrs_parameter(SetupMenu *top) {
 	gyrog->setHelp("Minimum accepted gyro rate in degree per second");
 	top->addEntry(gyrog);
 
-	SetupMenuValFloat *tcontrol = new SetupMenuValFloat("AHRS Temp Control", "", nullptr, false, &mpu_temperature);
-	tcontrol->setPrecision(0);
-	tcontrol->setHelp(
-			"Regulated target temperature of AHRS silicon chip, if supported in hardware (model > 2023), -1 means OFF");
-	top->addEntry(tcontrol);
+    SetupMenuValFloat* tcontrol = new SetupMenuValFloat("Temp Control", "°C", nullptr, false, &mpu_temperature);
+    tcontrol->setPrecision(0);
+    tcontrol->setHelp("Target temperature of AHRS sensor temp-controler, if supported in hardware (model > 2023)");
+    top->addEntry(tcontrol);
 
-	SetupMenuSelect *ahrsdef = new SetupMenuSelect("Reset to Defaults", RST_NONE, set_ahrs_defaults);
+    SetupMenuSelect *ahrsdef = new SetupMenuSelect("Reset to Defaults", RST_NONE, set_ahrs_defaults);
 	top->addEntry(ahrsdef);
 	ahrsdef->setHelp(
 			"Set optimum default values for all AHRS Parameters as determined to the best practice");

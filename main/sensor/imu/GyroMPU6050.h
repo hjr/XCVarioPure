@@ -26,8 +26,9 @@ public:
     bool doRead(vector_f& val) override;
     void postProcess() override;
     bool isCalm() const override { return _bias_estimator.getRestDuration() > 3.f; }
-    float getAxD() const { return _gyro_lpf_ayd.get(); }
+    inline float getAxD() const { return _gyro_lpf_ayd.get(); }
     void pushGyroBias(vector_f& bias);
+    inline const vector_f& getBias() const { return _bias_estimator.getBias(); }
 
 private:
     MpuImu& _my_mpu;
