@@ -5,6 +5,7 @@
  *      Author: iltis
  */
 
+#include "freertos/idf_additions.h"
 #include "math/Floats.h"
 #include "setup/SetupMenu.h"
 #include "setup/SubMenuAudio.h"
@@ -261,9 +262,6 @@ static void doImuCalibration(SetupMenuSelect* p) {
     p->menuPrintLn("then move on.", nlidx++);
     p->menuPrintLn("Abort with button", nlidx + 2);
 
-    const float gyro_threshold = Units::deg_to_rad(0.2f);
-
-    AUDIO->startSound(AUDIO_NO_SOUND);
     accSensor->getMpu().resetCalibProgress();
     // load the default reference to the IMU
     accSensor->getMpu().applyImuReference(0, MpuImu::getDefaultImuReference());
@@ -276,22 +274,23 @@ static void doImuCalibration(SetupMenuSelect* p) {
     bool abort = false;
     do {
         abort = Rotary->readSwitch(500);
-        gyro = gyroSensor->getAVG(1000);
+        gyro = gyroSensor->getAVG(1000) - gyroSensor->getBias();
         gnorm = gyro.get_norm();
-    } while (gnorm > gyro_threshold && !abort);
+        ESP_LOGI(FNAME, "gyro norm: %f", gnorm);
+    } while (gnorm > GyroMPU6050::GYRO_THRESHOLD && !gyroSensor->isCalm() && !accSensor->isCalm() && !abort);
 
-    ESP_LOGI(FNAME, "gyro reading: (%f/%f/%f) - %f < %f", gyro.x, gyro.y, gyro.z, gnorm, gyro_threshold);
-    uint16_t tadda = Audio::encVolumeParam(AUDIO_TADDA, 0xf);
-    AUDIO->startSound(tadda);
+    ESP_LOGI(FNAME, "gyro reading: (%f/%f/%f) - %f < %f", gyro.x, gyro.y, gyro.z, gnorm, GyroMPU6050::GYRO_THRESHOLD);
+    AUDIO->startSound(AUDIO_TADDA | PRIO_SND_MASK, false, 100);
 
     float angle;
     int ret = 0;
-    while (ret == 0 && !abort)
+    bool once = true;
+    while (once && !abort)
     {
         uint32_t start_time;
         uint32_t stop_time;
         vector_f gyro_integral;
-        uint16_t snd = Audio::encVolumeParam(AUDIO_KNOCK, 0xf);
+        once = false;
         
         for (int i=0; i<3; i++) {
             // wait for the first wing movement, save the time
@@ -300,11 +299,13 @@ static void doImuCalibration(SetupMenuSelect* p) {
                 abort = Rotary->readSwitch(700);
             }
             start_time = Clock::getMillis();
+            gyroSensor->resetCalm();
+            accSensor->resetCalm();
             
             // wait until movement stops, save the gyro average and integral
             while ( (!gyroSensor->isCalm() || !accSensor->isCalm()) && !abort) {
                 // make a noise if the movement is detected, to support the user in the procedure
-                AUDIO->startSound(snd, false);
+                AUDIO->startSound(AUDIO_KNOCK, false, 100);
                 ESP_LOGI(FNAME, "Wait for standstill, gcalm %d acalm %d", gyroSensor->isCalm(), accSensor->isCalm());
                 abort = Rotary->readSwitch(700);
             }
@@ -318,7 +319,7 @@ static void doImuCalibration(SetupMenuSelect* p) {
             gyro_integral -= gyroSensor->getBias() * (float)((stop_time - start_time) / 100.f); // 10 Hz
             // sample the accel for the bob vector
             ret = accSensor->getMpu().getAccelSamplesAndCalib(gyro_integral, angle);
-            AUDIO->startSound(tadda, false);
+            AUDIO->startSound(AUDIO_TADDA, false, 100);
             if ( ret != i ) {
                 ESP_LOGI(FNAME, "Calibration step %d expected %d", ret, i);
                 // abort = true;
@@ -328,18 +329,19 @@ static void doImuCalibration(SetupMenuSelect* p) {
     }
 
     // restart vario sound
-    AUDIO->startSound(AUDIO_VARIO);
+    AUDIO->endAlarm();
+    // set lever arm again
+    accSensor->getMpu().setLeverArm(imu_leverarm.get());
 
     if (ret < 3 || abort) {
         p->clear();
         p->menuPrintLn("... aborted ...", 2);
         nlidx = 4;
-        if ( gnorm > gyro_threshold ) {
+        if ( gnorm > GyroMPU6050::GYRO_THRESHOLD ) {
             p->menuPrintLn("Gyro bias too high,", nlidx++);
             p->menuPrintLn("try a restart.", nlidx++);
         }
         accSensor->getMpu().applyImuReference(glider_ground_aa.get(), imu_reference.get());
-        accSensor->getMpu().setLeverArm(imu_leverarm.get());
         p->menuPrintLn("press button to return", 8, 1);
         while (!Rotary->readSwitch(100))
             ;
@@ -348,8 +350,8 @@ static void doImuCalibration(SetupMenuSelect* p) {
 
     p->clear();
     p->menuPrintLn("Success !", 2, 20);
-    MYUCG->setPrintPos(1, 100);
-    MYUCG->printf("Wing Angle: %.2f°", rad2deg(angle));
+    MYUCG->setPrintPos(1, 150);
+    MYUCG->printf("Wing Angle: %.1f°", rad2deg(angle));
     p->menuPrintLn("press button to return", 8, 1);
     while (!Rotary->readSwitch(100))
         ;

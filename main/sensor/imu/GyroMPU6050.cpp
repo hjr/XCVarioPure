@@ -12,7 +12,7 @@
 #include "AccMPU6050.h"
 #include "../SensorMgr.h"
 #include "SetupNG.h"
-#include "logdefnone.h"
+#include "logdef.h"
 
 #include "mpu/math.hpp"
 
@@ -67,26 +67,57 @@ void GyroMPU6050::postProcess() {
     // calm status
     static bool rest_old = false;
     const vector_f& gyro = getHead();
-    bool rest = _bias_estimator.detectRest(gyro, accSensor->getHead(), getDutyCycleS());
+
+    _processed = gyro - _bias_estimator.getBias(); // a corrected measurment
+    bool rest = detectRest() && accSensor->isCalm();
 
     // feed the bias filter
-    _bias_estimator.update(gyro, getDutyCycleS());
+    _bias_estimator.update(gyro, rest);
     vector_f bias = _bias_estimator.getBias();
     if ( rest != rest_old) {
         ESP_LOGI(FNAME, "rest state changed: %c -> %c", rest_old ? 'R' : 'M', rest ? 'R' : 'M');
         rest_old = rest;
     }
     if ( rest ) {
-        ESP_LOGI(FNAME, "gyro bEKF: %c - %f/%f/%f (%f/%f/%f)", rest ? 'R' : 'M', bias.x, bias.y, bias.z, _processed.x, _processed.y, _processed.z);
-        if ( bias.get_norm2() > Units::deg_to_rad(1.f) // only push if bias is > 1 deg/s to avoid noise
-            && _bias_estimator.getRestDuration() > 20.f
-            && !airborne.get() && _bias_update < 3 ) { // only push if we have a stable bias and are airborne
+        // ESP_LOGI(FNAME, "gyro bEKF: %c - %f/%f/%f (%f/%f/%f)", rest ? 'R' : 'M', bias.x, bias.y, bias.z, _processed.x, _processed.y, _processed.z);
+        if ( !airborne.get() // only on the ground
+            && _restTimer > 30000 // only after a long rest (30sec)
+            && bias.get_norm() > GyroMPU6050::GYRO_THRESHOLD // only push if bias is > threshold
+            && _bias_update < 3 ) { // only push if we have a stable bias and are airborne
             pushGyroBias(bias);
-            _bias_estimator.reset();
+            resetCalm(); // to avoid multiple pushes in a row, only update bias once per rest phase
             _bias_update++;
         }
     }
-    _processed = gyro - bias; // a corrected measurment
+}
+
+void GyroMPU6050::resetCalm() {
+    _bias_estimator.reset();
+    _restTimer = 0;
+    _isResting = false;
+}
+
+// rest - detection
+bool GyroMPU6050::detectRest() {
+    // gyro variance
+    vector_f gyrVar = getVariance(1000);
+    
+    // ESP_LOGI(FNAME, "rest detection: gyrVar=(%f, %f, %f) accDev=%f accNormLP=%f, dt=%f", gyrVar.x, gyrVar.y, gyrVar.z, accDev, accNormLP, dt);
+    
+    // thresholds (VQF-typical)
+    constexpr float thGyr2 = GYRO_THRESHOLD * GYRO_THRESHOLD; // °/s
+    
+    if (gyrVar.get_norm2() < thGyr2 && _processed.get_norm2() < GYRO_THRESHOLD * 2.f) {
+         // min. 1.5–3 sec below threshold → consider as rest
+        _restTimer += getDutyCycle();
+        if ( _restTimer > 3000) {
+            _isResting = true;
+        }
+    } else {
+        _restTimer = 0;
+        _isResting = false;
+    }
+    return _isResting;
 }
 
 void GyroMPU6050::pushGyroBias(vector_f& bias) {

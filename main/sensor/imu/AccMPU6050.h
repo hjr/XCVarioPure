@@ -27,6 +27,7 @@ public:
     bool doRead(vector_f& val) override;
     void postProcess() override;
     bool isCalm() const override { return _calm_counter > 5; }
+    void resetCalm();
 
     temp_status_t getTempStatus() const { return _my_mpu.getTempStatus(); }
     inline float getRollDeg() { return rad2deg(euler_rad.Roll()); }

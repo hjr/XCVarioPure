@@ -201,6 +201,10 @@ void AccMPU6050::postProcess() {
 
 }
 
+void AccMPU6050::resetCalm() {
+    _calm_counter = 0;
+}
+
 // rad_t AccMPU6050::PitchFromAccelRad()
 // {
 // 	return atan2f(-accel.x, accel.z); // neglecting accel.y, because of minor influence on pitch and more noise
