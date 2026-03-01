@@ -90,6 +90,7 @@ enum : uint8_t {
     START_SOUND,
     ADD_SOUND,
     DO_VARIO,
+    SET_VOLUME,
     END_PRIO_ALARM
 };
 union AudioEvent {
@@ -468,6 +469,7 @@ void DMACMD::init() {
     }
     timeseq = nullptr;
     counter = 0;
+    volume = 0;
 }
 // Only call in synch with DAC DMA ISR event
 void DMACMD::loadSound(const SOUND *s, uint8_t volume_param)
@@ -546,6 +548,7 @@ static inline int8_t lfsr_noise(void) {
 static bool IRAM_ATTR dacdma_done(dac_continuous_handle_t h, const dac_event_data_t *e, void *user_data)
 {
     static int32_t reload_count = 0;
+    static uint16_t volume = 0;
     uint16_t fade = 0;
     DMACMD& cmd = **(DMACMD **)user_data;
     VOICECMD *vl = (VOICECMD *)cmd.voice;
@@ -676,6 +679,20 @@ static bool IRAM_ATTR dacdma_done(dac_continuous_handle_t h, const dac_event_dat
             }
         }
     }
+
+    // handle DMA double buffer delayed volume setting
+    if ( volume > 0 ) {
+        // Request now the audio task to update the volume according to the previous dma command buffer
+        ev = AudioEvent(SET_VOLUME, 0, volume);
+        BaseType_t w = pdFALSE;
+        xQueueSendFromISR(AudioQueue, &ev, &w);
+        if (w == pdTRUE) {
+            high_task_wakeup = pdTRUE;
+        }
+    }
+    // Shift in the next volume setting
+    volume = cmd.volume;
+    cmd.volume = 0;
 
 #if defined(AUDIO_DEBUG)
     // benchmark
@@ -1132,6 +1149,11 @@ void Audio::dactask()
                         current_dmacmd->resetSound();
                     }
                 }
+            }
+            else if ( event.cmd == SET_VOLUME ) {
+                // during priority alarm, only adjust the alarm volume, not the vario sound
+                ESP_LOGI(FNAME, "Set volume to %d", event.getVolume());
+                writeVolume(event.getVolume());
             }
             else if ( event.cmd == END_PRIO_ALARM ) {
                 if ( _alarm_mode == alarm_type_t::ALARM_PRIORITY) {
