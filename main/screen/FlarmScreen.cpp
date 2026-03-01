@@ -54,7 +54,7 @@ void FlarmScreen::exit(int ups)
 void FlarmScreen::display(int mode)
 {
     if ( mode == 0 ) {
-        AUDIO->startSound(AUDIO_ALARM_FLARM);
+        AUDIO->startSound(AUDIO_ALARM_FLARM | PRIO_SND_MASK); // start a priority alarm
         Display->clear();
     }
     _time_out.pet();
@@ -152,7 +152,7 @@ void FlarmScreen::display(int mode)
 
     // start encoded audio alarm
     uint16_t alarm = Audio::encFlarmParam(AUDIO_ALARM_FCODE, Flarm::AlarmLevel, side_bear, alt_bear);
-    int pause = 4;
+    int pause = 6;
     if ( Flarm::AlarmLevel > 1 ) { pause = 4 - Flarm::AlarmLevel; };
     if (mode > 0 && Flarm::AlarmLevel > 0 && (alarm > _prev_alarm || (_tick-_alarmtick) > pause)) {
         _prev_alarm = alarm;

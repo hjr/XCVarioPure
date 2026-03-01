@@ -15,7 +15,6 @@
 #include "I2Cbus.hpp"
 #include "setup/CruiseMode.h"
 #include "setup/SetupNG.h"
-#include "sensor.h"
 #include "sensor/VarioFilter.h"
 #include "logdefnone.h"
 
@@ -29,6 +28,7 @@
 #include <cstring>
 #include <cstdlib>
 #include <algorithm>
+#include <deque>
 
 //#define AUDIO_DEBUG 1
 
@@ -47,13 +47,13 @@ static QueueHandle_t AudioQueue = nullptr;
 
 // DAC setup
 constexpr const int SAMPLE_RATE = 66150;    // Hz
-constexpr const int BUF_LEN     = 2048;     // DMA buffer per push -> ~11,6msec chunks
+constexpr const int BUF_LEN     = 2048;     // DMA buffer per push -> ~15,5msec chunks
 constexpr const dac_continuous_channel_mode_t DAC_MODE = DAC_CHANNEL_MODE_ALTER; // interleaved for 2 channels
 // samples per channel
 constexpr const int BUF_SAMPLES = BUF_LEN/(DAC_MODE == DAC_CHANNEL_MODE_ALTER ? 4 : 2);
 constexpr const int TABLE_SIZE  = 128;
 constexpr const int TABLE_BITS  = 7;        // log2((double)TABLE_SIZE);
-constexpr const int DAC_CENTER  = 127;      // base to all wave table design
+constexpr const int DAC_CENTER  = 127;      // center level for DAC output
 constexpr const int DAC_HLF_AMPL = 64;
 
 // predefined sine wave table
@@ -88,27 +88,36 @@ enum : uint8_t {
     VLOAD_DONE = 0,
     REQUEST_SOUND,
     START_SOUND,
-    ADD_SOUND,
+    ADD_VOICE,
     DO_VARIO,
     SET_VOLUME,
     END_PRIO_ALARM
 };
 union AudioEvent {
     struct {
-        unsigned cmd : 4;
-        unsigned param : 12; // can be voice id, sound id, or volume
-    };
-    uint16_t raw = 0; // access the packed 32-bit value
+        unsigned param : 16; // can be voice id, sound id, or other parameter
+        unsigned vol : 8;
+        unsigned cmd : 8;
+    } __attribute__((packed));
+    uint32_t raw = 0; // access the packed 32-bit value
+
+    static constexpr uint16_t Priority = PRIO_SND_MASK; // flag to mark priority alarms
 
     constexpr AudioEvent() = default;
-    constexpr AudioEvent(uint16_t d) : raw(d) {}
-    constexpr AudioEvent(uint8_t c, int16_t v)
-        : cmd(c), param(v) {}
-    int getSoundId() const { return param & 0xf; }
-    int getSoundVolume() const { return (param >> 4) & 0xf; }
-    int getLevel() const { return (param >> 8) & 0x3; }
-    int getSide() const { return (param >> 6) & 0x3; }
-    int getAltDiff() const { return (param >> 4) & 0x3; }
+    constexpr AudioEvent(uint32_t d) : raw(d) {}
+    constexpr AudioEvent(uint8_t c, int16_t p, uint8_t v = 0){
+        raw = (uint32_t)p;
+        raw |= uint32_t(v) << 16;
+        raw |= uint32_t(c) << 24;
+    }
+    constexpr static inline uint16_t encFlarm(e_audio_sound_type sound_id, uint8_t alevel, uint8_t side, uint8_t alt_diff) {
+        return (Priority | (uint16_t)(alevel & 0x3) << 10) | ((uint16_t)(side & 0x3) << 8) | ((uint16_t)(alt_diff & 0x3) << 6) | ((uint16_t)sound_id & 0x3f);
+    }
+    inline int getSoundId() const { return param & 0x3f; }
+    inline int getLevel() const { return (param >> 10) & 0x3; }
+    inline int getSide() const { return (param >> 8) & 0x3; }
+    inline int getAltDiff() const { return (param >> 6) & 0x3; }
+    inline int getVolume() const { return vol; }
 };
 struct VOICECMD
 {
@@ -637,6 +646,7 @@ static bool IRAM_ATTR dacdma_done(dac_continuous_handle_t h, const dac_event_dat
                 cmd.repcount--; // restart another cycle
                 if ( cmd.repcount < 0 ) {
                     // end of sound sequence
+                    cmd.state = 0; // end of sound sequence
                     ev.cmd = REQUEST_SOUND;
                     numVoices = 0;
                 }
@@ -712,7 +722,7 @@ Audio::Audio()
     dma_cmd[1].init();
     current_dmacmd = &dma_cmd[0];
     if ( ! AudioQueue ) {
-        AudioQueue = xQueueCreate(10, sizeof(uint16_t));
+        AudioQueue = xQueueCreate(10, sizeof(uint32_t));
     }
 }
 Audio::~Audio()
@@ -780,15 +790,14 @@ void Audio::initVarioVoice()
 }
 
 // kick some sound sequence, non blocking
-void Audio::startSound(uint16_t style, bool overlay) const
+void Audio::startSound(uint16_t style, bool overlay, uint8_t vol) const
 {
     if ( _dac_chan ) { // audio switched on
         if (_alarm_mode == alarm_type_t::ALARM_NONE || !overlay) {
-            AudioEvent ev(START_SOUND, style); // start an alarm sound
+            AudioEvent ev(START_SOUND, style, vol); // start an alarm sound
             if ( overlay ) {
-                ev.cmd = ADD_SOUND; // overlay sound
+                ev.cmd = ADD_VOICE; // overlay sound
             }
-            
             xQueueSend(AudioQueue, &ev, 0);
         }
     }
@@ -804,12 +813,7 @@ void Audio::endAlarm() const
 
 uint16_t Audio::encFlarmParam(e_audio_sound_type sound_id, uint8_t alevel, uint8_t side, uint8_t alt_diff)
 {
-    return ((uint16_t)alevel << 8) | ((uint16_t)side << 6) | ((uint16_t)alt_diff << 4) | ((uint16_t)sound_id & 0xf);
-}
-
-uint16_t Audio::encVolumeParam(e_audio_sound_type sound_id, uint8_t volume)
-{
-    return ((uint16_t)volume << 4) | ((uint16_t)sound_id & 0xf);
+    return AudioEvent::encFlarm(sound_id, alevel, side, alt_diff);
 }
 
 // [%] - in a logarithmic db sense
@@ -829,7 +833,7 @@ void Audio::setVolume(float vol, bool sync) {
         {
             vario_mode_volume = speaker_volume;
         }
-        ESP_LOGI(FNAME, "setvolume() to %f, for %s", speaker_volume, VCMode.getCMode() ? "s2f" : "vario");
+        ESP_LOGI(FNAME, "setvolume() to %f, for %s", speaker_volume, CRMOD.getCMode() ? "s2f" : "vario");
     }
     else
     {
@@ -861,8 +865,8 @@ void Audio::updateAudioMode()
     }
     ESP_LOGI(FNAME, "Deaband %f/%f", _deadband_p, _deadband_n);
 
-    // chopping is caches from VCMode
-    ESP_LOGI(FNAME, "Vario chopping mode %d", VCMode.audioIsChopping());
+    // chopping is cached from CRMOD
+    ESP_LOGI(FNAME, "Vario chopping mode %d", CRMOD.audioIsChopping());
 
     // set volume according s2f mode, need to be the last action here
     if (audio_split_vol.get())
@@ -1081,6 +1085,7 @@ void Audio::dactask()
     uint8_t curr_idx[MAX_VOICES] = {0};
     uint8_t repetitions[MAX_VOICES] = {0};
     int curr_dmacmd_idx = 0;
+    std::deque<AudioEvent> snd_queue;
     current_dmacmd = &dma_cmd[0];
     current_dmacmd->resetSound(); // silence
 
@@ -1092,48 +1097,111 @@ void Audio::dactask()
         AudioEvent event;
         if (xQueueReceive(AudioQueue, &event, pdMS_TO_TICKS(2000)) == pdTRUE)
         {
-            // ESP_LOGI(FNAME, "AudioEvents queued %d", uxQueueMessagesWaiting(AudioQueue));
+            // ESP_LOGI(FNAME, "AE len %d: %x (%d,%d,%d)", uxQueueMessagesWaiting(AudioQueue), (unsigned)event.raw, event.cmd, event.param, event.vol);
             // Process audio events
-            if ( event.cmd == START_SOUND ) {
-                int sound_id = event.getSoundId();
-                int sound_vol = 0;
-                if ( sound_id < sound_list.size() ) {
-                    ESP_LOGI(FNAME, "Start sound %d (%x)", sound_id, event.param);
-                    if ( sound_id >= AUDIO_ALARMS ) { _alarm_mode = alarm_type_t::ALARM_SIMPLE; }
-                    if ( sound_id >= AUDIO_ALARM_FLARM ) { _alarm_mode = alarm_type_t::ALARM_PRIORITY; }
-                    if ( sound_id == AUDIO_ALARM_FCODE ) {
-                        FlarmCode = *Flarm[event.getSide()][event.getAltDiff()];
-                        FlarmCode.repetitions = std::max((event.getLevel() - 1) * 3 - 1, 0);
-                        ESP_LOGI(FNAME, "Sound repetitions %d", FlarmCode.repetitions);
-                        FlarmCode.timeseq = FlarmLev[event.getLevel() - 1]->data();
-                    } else {
-                        sound_vol = event.getSoundVolume();
+            if ( event.cmd == DO_VARIO) {
+                if ( _alarm_mode == alarm_type_t::ALARM_NONE ) {
+                    // update vario sound (10Hz)
+                    // pull the intput value from vario indicator, or speed respectively
+                    float max = _range;
+                    float audio_value;
+                    if( CRMOD.audioIsVario() ) {
+                        // vario is the parameter for audio
+                        audio_value = te_vario.get();
+                        if ( CRMOD.isNetto() ) {
+                            audio_value -= bmpVario.getPolarSink();
+                        }
+                        if ( CRMOD.getVMode() == CruiseMode::MODE_REL_NETTO ) {
+                            audio_value += Speed2Fly.circlingSink( ias.get() );
+                        }
                     }
-                    if ( current_dmacmd->repcount  < 0 ) {
-                        // stop endless sound
-                        ESP_LOGI(FNAME, "Preempt sound");
-                        current_dmacmd->repcount = 0;
+                    else {
+                        // speed to fly is the parameter for audio
+                        // map s2f_delta to -5..+5, instead of heaving another set of min/max variables.
+                        // ESP_LOGI(FNAME, "S2F delta: %.1f km/h", Speed2Fly.getDelta());
+                        audio_value = - Speed2Fly.getDelta() / Units::kmh_to_mps(10.f);
+                        max = 5.0; // +/- 50km/h range
+                    }
+                    audio_value = std::clamp( audio_value, -max, max );
+                    calculateFrequency(audio_value);
+                }
+            }
+            else if ( event.cmd == VLOAD_DONE ) {
+                uint8_t vid = event.param;
+                // ESP_LOGI(FNAME, "Voice done %d", vid);
+                if ( ! next_time ) {
+                    ESP_LOGI(FNAME, "Dangling voice done");
+                    continue; // no overlay sound active
+                }
+                curr_idx[vid]++;
+                if ( next_time[curr_idx[vid]].duration == 0 ) {
+                    if ( repetitions[vid] > 0 ) {
+                        repetitions[vid]--;
+                        curr_idx[vid] = 0; // restart this voice
+                    }
+                    else {
+                        next_tone[vid] = nullptr; // end of this voice
+                        ESP_LOGI(FNAME, "End of v-load");
+                    }
+                }
+                if ( next_tone[vid] ) {
+                    current_dmacmd->voice[vid].fastLoad(curr_idx[vid]);
+                    current_dmacmd->voice[vid].setCountFromSamples(next_time[curr_idx[vid]].duration);
+                    // ESP_LOGI(FNAME, "Voice %d: step %u dur %u", vid, (unsigned)next_tone[vid][curr_idx[vid]].step, (unsigned)next_tone[vid][curr_idx[vid]].duration );
+                }
+                else {
+                    current_dmacmd->voice[vid].reset();
+                }
+            }
+            else if ( event.cmd == START_SOUND ) {
+                if ( snd_queue.size() > 5 ) {
+                    ESP_LOGW(FNAME, "Sound queue overflow, dropping sound");
+                    continue;
+                }
+                if ( current_dmacmd->repcount  < 0 ) {
+                    // preempt endless sound
+                    ESP_LOGI(FNAME, "Preempt sound");
+                    current_dmacmd->repcount = 0;
+                }
+                ESP_LOGI(FNAME, "Queue sound %d (%d)", event.getSoundId(), snd_queue.size());
+                snd_queue.push_back(event.raw);
+            }
+            else if ( event.cmd == REQUEST_SOUND ) {
+                if ( !snd_queue.empty() ) {
+                    AudioEvent ae = snd_queue.front();
+                    ESP_LOGI(FNAME, "Request sound %d (%d)", ae.getSoundId(), ae.getVolume());
+                    snd_queue.pop_front();
+                    int sound_id = ae.getSoundId();
+                    uint8_t sound_vol = 0;
+                    if ( sound_id >= sound_list.size() ) {
+                        continue;
+                    }
+                    if ( sound_id >= AUDIO_ALARMS ) {
+                        _alarm_mode = alarm_type_t::ALARM_SIMPLE;
+                        if ( event.param & AudioEvent::Priority ) {
+                            _alarm_mode = alarm_type_t::ALARM_PRIORITY;
+                        }
+                        ESP_LOGI(FNAME, "Raise volume");
+                        // raise volume +20%, but assure at least 60%
+                        sound_vol = (int)std::min(speaker_volume+alarm_volraise.get(), 100.f);
+                        sound_vol = std::max(sound_vol, (uint8_t)60);
+                    }
+                    if ( sound_id == AUDIO_ALARM_FCODE ) {
+                        FlarmCode = *Flarm[ae.getSide()][ae.getAltDiff()];
+                        FlarmCode.repetitions = std::max((ae.getLevel() - 1) * 3 - 1, 0);
+                        ESP_LOGI(FNAME, "Sound repetitions %d", FlarmCode.repetitions);
+                        FlarmCode.timeseq = FlarmLev[ae.getLevel() - 1]->data();
+                    } 
+                    if ( ae.getVolume() > 0 ){
+                        sound_vol = ae.getVolume(); // override
                     }
                     // load sound into unused dma cmd buffer
                     dma_cmd[!curr_dmacmd_idx].loadSound(sound_list[sound_id], sound_vol);
-                }
-            }
-            else if ( event.cmd == REQUEST_SOUND ) {
-                if ( dma_cmd[!curr_dmacmd_idx].state == 1 ) {
-                    ESP_LOGI(FNAME, "Sound pushed");
+
+                    // switch to the new sound (will be directly picked up by the DMA callback)
                     curr_dmacmd_idx = !curr_dmacmd_idx;
-                    current_dmacmd = &dma_cmd[curr_dmacmd_idx]; // switch to the new sound (will be directly picked up by the DMA callback)
-                    if ( _alarm_mode > alarm_type_t::ALARM_NONE ) {
-                        ESP_LOGI(FNAME, "Raise volume");
-                        // raise volume +20%, but assure at least 60%
-                        float alarm_vol = std::min(speaker_volume+alarm_volraise.get(), 100.f);
-                        alarm_vol = std::max(alarm_vol, 60.f);
-                        writeVolume(alarm_vol);
-                    }
-                    if ( current_dmacmd->volume == 0xf ) {
-                        // special case for vario sound, which is not muted during priority alarms
-                        writeVolume(100.);
-                    }
+                    current_dmacmd = &dma_cmd[curr_dmacmd_idx];
+                    ESP_LOGI(FNAME, "Sound pushed");
                 }
                 else {
                     ESP_LOGI(FNAME, "Sound ended");
@@ -1166,72 +1234,25 @@ void Audio::dactask()
                     }
                 }
             }
-            else if ( event.cmd == ADD_SOUND ) {
-                // Add sound to the queue, no synchronized start required
-                const SOUND* snd = sound_list[event.param];
-                next_time = snd->timeseq;
-                ESP_LOGI(FNAME, "Overlay sound %d", event.param );
-                const int from_voice = 2; // first 1/2 voices are reserved for vario
-                for ( int i = from_voice; i < MAX_VOICES; i++ ) {
-                    next_tone[i] = snd->toneseq[i-from_voice];
-                    if ( next_tone[i] ) {
-                        current_dmacmd->voice[i].load(&(snd->vconf[i-from_voice]), next_tone[i]);
-                        current_dmacmd->voice[i].setCountFromSamples(next_time[0].duration);
-                        repetitions[i] = snd->repetitions;
-                        curr_idx[i] = 0;
-                        ESP_LOGI(FNAME, "Add %d: step %u gain %u count %u", i, (unsigned)current_dmacmd->voice[i].step, 
-                            (unsigned)current_dmacmd->voice[i].gain_target, (unsigned)current_dmacmd->voice[i].count );
+            else if ( event.cmd == ADD_VOICE ) {
+                // Add voice on top of current sound, no synchronized start required
+                if ( current_dmacmd->repcount < 0 ) { // double check only the endless vario is playing
+                    const SOUND* snd = sound_list[event.param];
+                    next_time = snd->timeseq;
+                    ESP_LOGI(FNAME, "Overlay sound %d", event.param );
+                    const int from_voice = 2; // first 1/2 voices are reserved for vario
+                    for ( int i = from_voice; i < MAX_VOICES; i++ ) {
+                        next_tone[i] = snd->toneseq[i-from_voice];
+                        if ( next_tone[i] ) {
+                            current_dmacmd->voice[i].load(&(snd->vconf[i-from_voice]), next_tone[i]);
+                            current_dmacmd->voice[i].setCountFromSamples(next_time[0].duration);
+                            repetitions[i] = snd->repetitions;
+                            curr_idx[i] = 0;
+                            ESP_LOGI(FNAME, "Add %d: step %u gain %u count %u", i, (unsigned)current_dmacmd->voice[i].step, 
+                                (unsigned)current_dmacmd->voice[i].gain_target, (unsigned)current_dmacmd->voice[i].count );
+                        }
                     }
                 }
-            }
-            else if ( event.cmd == VLOAD_DONE ) {
-                uint8_t vid = event.param;
-                ESP_LOGI(FNAME, "Voice done %d", vid);
-                            
-                curr_idx[vid]++;
-                if ( next_time[curr_idx[vid]].duration == 0 ) {
-                    if ( repetitions[vid] > 0 ) {
-                        repetitions[vid]--;
-                        curr_idx[vid] = 0; // restart this voice
-                    }
-                    else {
-                        next_tone[vid] = nullptr; // end of this voice
-                        ESP_LOGI(FNAME, "End of v-load");
-                    }
-                }
-                if ( next_tone[vid] ) {
-                    current_dmacmd->voice[vid].fastLoad(curr_idx[vid]);
-                    current_dmacmd->voice[vid].setCountFromSamples(next_time[curr_idx[vid]].duration);
-                    // ESP_LOGI(FNAME, "Voice %d: step %u dur %u", vid, (unsigned)next_tone[vid][curr_idx[vid]].step, (unsigned)next_tone[vid][curr_idx[vid]].duration );
-                }
-                else {
-                    current_dmacmd->voice[vid].reset();
-                }
-            }
-            else if ( event.cmd == DO_VARIO && _alarm_mode == alarm_type_t::ALARM_NONE) {
-                // update vario sound (10Hz)
-                // pull the intput value from vario indicator, or speed respectively
-                float max = _range;
-                float audio_value;
-                if( CRMOD.audioIsVario() ) {
-                    // vario is the parameter for audio
-                    audio_value = te_vario.get();
-                    if ( CRMOD.isNetto() ) {
-                        audio_value -= bmpVario.getPolarSink();
-                    }
-                    if ( CRMOD.getVMode() == CruiseMode::MODE_REL_NETTO ) {
-                        audio_value += Speed2Fly.circlingSink( ias.get() );
-                    }
-                }
-                else {
-                    // speed to fly is the parameter for audio
-                    // map s2f_delta to -5..+5, instead of heaving another set of min/max variables.
-                    ESP_LOGI(FNAME, "S2F delta: %.1f km/h", Speed2Fly.getDelta());
-                    audio_value = - Speed2Fly.getDelta() / Units::kmh_to_mps(10.f);
-                    max = 5.0; // +/- 50km/h range
-                }
-                audio_value = std::clamp( audio_value, -max, max );
-                calculateFrequency(audio_value);
             }
         }
 
