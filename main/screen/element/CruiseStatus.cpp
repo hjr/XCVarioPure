@@ -58,7 +58,7 @@ void CruiseStatus::draw() {
     if (CRMOD.getVMode() == CruiseMode::MODE_REL_NETTO) {
         s = "snet";
     }
-    ESP_LOGI(FNAME, "print netto stat %d - %s", VCMode.isNetto(), s);
+    ESP_LOGI(FNAME, "print netto stat %d - %s", CRMOD.isNetto(), s);
     ESP_LOGI(FNAME, "print x/y %d/%d", _ref_x + SYMBOL_SIZE + 3 - MYUCG->getStrWidth(s), _ref_y + text_offset);
     MYUCG->setFont(ucg_font_fub11_hr, true);
     MYUCG->setPrintPos(_ref_x + SYMBOL_SIZE+3 - MYUCG->getStrWidth(s), _ref_y+text_offset);
