@@ -110,7 +110,7 @@ Read 0 bit:
 #define ONEWIRE_SLOT_BIT_DURATION               60 // duration for each bit to transmit
 // refer to https://www.maximintegrated.com/en/design/technical-documents/app-notes/3/3829.html for more information
 #define ONEWIRE_SLOT_RECOVERY_DURATION          5  // recovery time between each bit, should be longer in parasite power mode
-#define ONEWIRE_SLOT_BIT_SAMPLE_TIME            15 // how long after bit start pulse should the master sample from the bus
+#define ONEWIRE_SLOT_BIT_SAMPLE_TIME            20 // increased for better margin with weak pull-up
 
 typedef struct {
     onewire_bus_t base; /*!< base class */
@@ -157,7 +157,7 @@ const static rmt_transmit_config_t onewire_rmt_tx_config = {
 };
 
 const static rmt_receive_config_t onewire_rmt_rx_config = {
-    .signal_range_min_ns = 1000000000 / ONEWIRE_RMT_RESOLUTION_HZ,
+    .signal_range_min_ns = 1500,
     .signal_range_max_ns = (ONEWIRE_RESET_PULSE_DURATION + ONEWIRE_RESET_WAIT_DURATION) * 1000,
 };
 
@@ -409,14 +409,14 @@ static esp_err_t onewire_bus_rmt_reset(onewire_bus_handle_t bus)
 
     xSemaphoreTake(bus_rmt->bus_mutex, portMAX_DELAY);
     // send reset pulse while receive presence pulse
-    ESP_GOTO_ON_ERROR(rmt_receive(bus_rmt->rx_channel, bus_rmt->rx_symbols_buf, sizeof(rmt_symbol_word_t) * 2, &onewire_rmt_rx_config),
+    ESP_GOTO_ON_ERROR(rmt_receive(bus_rmt->rx_channel, bus_rmt->rx_symbols_buf, sizeof(rmt_symbol_word_t) * 8, &onewire_rmt_rx_config),
                       err, TAG, "1-wire reset pulse receive failed");
     ESP_GOTO_ON_ERROR(rmt_transmit(bus_rmt->tx_channel, bus_rmt->tx_copy_encoder, &onewire_reset_pulse_symbol, sizeof(onewire_reset_pulse_symbol), &onewire_rmt_tx_config),
                       err, TAG, "1-wire reset pulse transmit failed");
 
     // wait and check presence pulse
     rmt_rx_done_event_data_t rmt_rx_evt_data;
-    ESP_GOTO_ON_FALSE(xQueueReceive(bus_rmt->receive_queue, &rmt_rx_evt_data, pdMS_TO_TICKS(1000)) == pdPASS,
+    ESP_GOTO_ON_FALSE(xQueueReceive(bus_rmt->receive_queue, &rmt_rx_evt_data, pdMS_TO_TICKS(1500)) == pdPASS,
                       ESP_ERR_TIMEOUT, err, TAG, "1-wire reset pulse receive timeout");
     if (onewire_rmt_check_presence_pulse(rmt_rx_evt_data.received_symbols, rmt_rx_evt_data.num_symbols) == false) {
         ret = ESP_ERR_NOT_FOUND;
@@ -458,15 +458,17 @@ static esp_err_t onewire_bus_rmt_read_bytes(onewire_bus_handle_t bus, uint8_t *r
     // transmit one bits to generate read clock
     uint8_t tx_buffer[rx_buf_size];
     memset(tx_buffer, 0xFF, rx_buf_size);
-    // transmit 1 bits while receiving
-    ESP_GOTO_ON_ERROR(rmt_receive(bus_rmt->rx_channel, bus_rmt->rx_symbols_buf, rx_buf_size * 8 * sizeof(rmt_symbol_word_t), &onewire_rmt_rx_config),
+
+    size_t rx_symbol_size = rx_buf_size * 8 * sizeof(rmt_symbol_word_t) + 256;
+
+    ESP_GOTO_ON_ERROR(rmt_receive(bus_rmt->rx_channel, bus_rmt->rx_symbols_buf, rx_symbol_size, &onewire_rmt_rx_config),
                       err, TAG, "1-wire data receive failed");
     ESP_GOTO_ON_ERROR(rmt_transmit(bus_rmt->tx_channel, bus_rmt->tx_bytes_encoder, tx_buffer, sizeof(tx_buffer), &onewire_rmt_tx_config),
                       err, TAG, "1-wire data transmit failed");
 
     // wait the transmission finishes and decode data
     rmt_rx_done_event_data_t rmt_rx_evt_data;
-    ESP_GOTO_ON_FALSE(xQueueReceive(bus_rmt->receive_queue, &rmt_rx_evt_data, pdMS_TO_TICKS(1000)) == pdPASS, ESP_ERR_TIMEOUT,
+    ESP_GOTO_ON_FALSE(xQueueReceive(bus_rmt->receive_queue, &rmt_rx_evt_data, pdMS_TO_TICKS(1500)) == pdPASS, ESP_ERR_TIMEOUT,
                       err, TAG, "1-wire data receive timeout");
     onewire_rmt_decode_data(rmt_rx_evt_data.received_symbols, rmt_rx_evt_data.num_symbols, rx_buf, rx_buf_size);
 
@@ -509,7 +511,7 @@ static esp_err_t onewire_bus_rmt_read_bit(onewire_bus_handle_t bus, uint8_t *rx_
 
     // wait the transmission finishes and decode data
     rmt_rx_done_event_data_t rmt_rx_evt_data;
-    ESP_GOTO_ON_FALSE(xQueueReceive(bus_rmt->receive_queue, &rmt_rx_evt_data, pdMS_TO_TICKS(1000)) == pdPASS, ESP_ERR_TIMEOUT,
+    ESP_GOTO_ON_FALSE(xQueueReceive(bus_rmt->receive_queue, &rmt_rx_evt_data, pdMS_TO_TICKS(1500)) == pdPASS, ESP_ERR_TIMEOUT,
                       err, TAG, "1-wire bit receive timeout");
     uint8_t rx_buffer = 0;
     onewire_rmt_decode_data(rmt_rx_evt_data.received_symbols, rmt_rx_evt_data.num_symbols, &rx_buffer, sizeof(rx_buffer));

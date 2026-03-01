@@ -54,7 +54,7 @@ void OneWireBus::ConfigureIntf(int cfg)
     onewire_bus_config_t bus_config = {
         .bus_gpio_num = (gpio_num_t)_ONEWIRE_BUS_GPIO,
         .flags = {
-            .en_pull_up = false,
+            .en_pull_up = true,
         }
     };
     onewire_bus_rmt_config_t rmt_config = {
