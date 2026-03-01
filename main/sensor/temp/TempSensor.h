@@ -18,6 +18,8 @@ public:
     TempSensor();
     ~TempSensor() = default;
     bool probe() override { return false; };
+private:
+    LowPassFilterT<float> _lpf;
 };
 
 

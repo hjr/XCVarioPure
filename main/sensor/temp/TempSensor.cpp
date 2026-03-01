@@ -13,10 +13,13 @@ TempSensor* OATSensor = nullptr;
 constexpr int DUTY_CYCLE_MS = 1000;
 static float temp_buffer[ (SENSOR_HISTORY_DURATION_MS / DUTY_CYCLE_MS) + 1 ];
 
-TempSensor::TempSensor() : SensorTP<float>(temp_buffer, DUTY_CYCLE_MS)
+TempSensor::TempSensor() :
+    SensorTP<float>(temp_buffer, DUTY_CYCLE_MS),
+    _lpf(0.5f)
 {
     _id = SensorId::TEMPERATURE;
     setNVSVar(&OAT);
-    setFilter(new LowPassFilterT<float>(0.3f));
+    _lpf.reset(Units::C_to_K(15.f)); // initial guess for OAT
+    setFilter(&_lpf);
     OATSensor = this;
 }
