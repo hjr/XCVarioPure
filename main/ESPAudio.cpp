@@ -838,7 +838,7 @@ void Audio::setVolume(float vol, bool sync) {
         vario_mode_volume = speaker_volume;
         ESP_LOGI(FNAME, "setvolume() to %f, joint mode", speaker_volume);
     }
-    volumeadjust = 5;
+    volumeadjust = 7; // make a noise for 0,7 sec
     writeVolume(speaker_volume);
 }
 
