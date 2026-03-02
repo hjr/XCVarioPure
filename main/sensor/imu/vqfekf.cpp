@@ -7,10 +7,7 @@
  ***********************************************************/
 
 #include "vqfekf.h"
-#include <cmath>
 
-#include "GyroMPU6050.h"
-#include "logdef.h"
 
 BiasEstimatorEKF::BiasEstimatorEKF() :
     biasP{1e-3f, 1e-3f, 1e-3f} // initial covariance (relativ hoch, da Anfangsunsicherheit) 
@@ -29,7 +26,7 @@ void BiasEstimatorEKF::update(const vector_f& gyro_meas, bool isResting) {
         meas = gyro_meas;  // directly the measurement
         R = restR;
     } else {
-        // During motion: No direct measurement → only process update (no measurement update!)
+        // during motion: No direct measurement → only process update (no measurement update!)
         // or weak update from your main EKF
         meas = {0,0,0};    // dummy
         R = motionR;       // large -> almost no update
@@ -52,8 +49,6 @@ void BiasEstimatorEKF::update(const vector_f& gyro_meas, bool isResting) {
 }
 
 void BiasEstimatorEKF::reset() {
-    // isResting = false;
-    // restTimer = 0.0f;
     biasEstimate = {};
     biasP = {1e-3f, 1e-3f, 1e-3f};
 }
