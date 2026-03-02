@@ -281,6 +281,7 @@ static void doImuCalibration(SetupMenuSelect* p) {
 
     ESP_LOGI(FNAME, "gyro reading: (%f/%f/%f) - %f < %f", gyro.x, gyro.y, gyro.z, gnorm, GyroMPU6050::GYRO_THRESHOLD);
     AUDIO->startSound(AUDIO_TADDA | PRIO_SND_MASK, false, 100);
+    vTaskDelay(pdMS_TO_TICKS(1200)); // tadda is long!
 
     float angle;
     int ret = 0;
@@ -293,19 +294,19 @@ static void doImuCalibration(SetupMenuSelect* p) {
         once = false;
         
         for (int i=0; i<3; i++) {
-            // wait for the first wing movement, save the time
+            // wait for the first wing movement
             while (gyroSensor->isCalm() && accSensor->isCalm() && !abort) {
                 ESP_LOGI(FNAME, "Wait for movement, gcalm %d acalm %d", gyroSensor->isCalm(), accSensor->isCalm());
                 abort = Rotary->readSwitch(700);
             }
-            start_time = Clock::getMillis();
+            start_time = Clock::getMillis(); // save the time when the movement starts, to calculate the gyro integral later
             gyroSensor->resetCalm();
             accSensor->resetCalm();
             
             // wait until movement stops, save the gyro average and integral
             while ( (!gyroSensor->isCalm() || !accSensor->isCalm()) && !abort) {
                 // make a noise if the movement is detected, to support the user in the procedure
-                AUDIO->startSound(AUDIO_KNOCK, false, 100);
+                AUDIO->startSound(AUDIO_KNOCK | PRIO_SND_MASK, false, 100);
                 ESP_LOGI(FNAME, "Wait for standstill, gcalm %d acalm %d", gyroSensor->isCalm(), accSensor->isCalm());
                 abort = Rotary->readSwitch(700);
             }
@@ -319,11 +320,8 @@ static void doImuCalibration(SetupMenuSelect* p) {
             gyro_integral -= gyroSensor->getBias() * (float)((stop_time - start_time) / 100.f); // 10 Hz
             // sample the accel for the bob vector
             ret = accSensor->getMpu().getAccelSamplesAndCalib(gyro_integral, angle);
-            AUDIO->startSound(AUDIO_TADDA, false, 100);
-            if ( ret != i ) {
-                ESP_LOGI(FNAME, "Calibration step %d expected %d", ret, i);
-                // abort = true;
-            }
+            AUDIO->startSound(AUDIO_TADDA | PRIO_SND_MASK, false, 100);
+            vTaskDelay(pdMS_TO_TICKS(1200));
             start_time = Clock::getMillis();
         }
     }
