@@ -45,7 +45,7 @@ class vector_3d {
     vector_3d<T> cross(const vector_3d<T>& v2) const;
     std::common_type_t<T, float> get_norm() const { return std::sqrt(x * x + y * y + z * z); }
     std::common_type_t<T, float> get_norm2() const { return x * x + y * y + z * z; }
-    T normalize();
+    vector_3d<T> normalize();
     vector_3d<T> get_normalized() const;
     // vector_3d<std::common_type_t<T, float>> clamp(float max_norm) const;
     void clamp_inplace(float max_norm);

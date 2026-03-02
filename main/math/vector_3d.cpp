@@ -146,17 +146,17 @@ vector_3d<T> vector_3d<T>::cross(const vector_3d<T> &v2) const
 }
 
 template <typename T>
-T vector_3d<T>::normalize()
+vector_3d<T> vector_3d<T>::normalize()
 {
-    T one_by_sqrt;
-    T norm = get_norm();
+    double one_by_sqrt;
+    double norm = get_norm();
     if ( norm > 0.00001 ) {
-        one_by_sqrt = 1/norm;
+        one_by_sqrt = 1./norm;
         x = x*one_by_sqrt;
         y = y*one_by_sqrt;
         z = z*one_by_sqrt;
     }
-    return norm;
+    return *this;
 }
 
 template <typename T>
