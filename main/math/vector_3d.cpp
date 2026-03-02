@@ -136,9 +136,9 @@ T vector_3d<T>::dot(const vector_3d<T>& v2) const
 }
 
 template <typename T>
-vector_3d<T> vector_3d<T>::cross(const vector_3d &v2) const
+vector_3d<T> vector_3d<T>::cross(const vector_3d<T> &v2) const
 {
-    vector_3d tmp;
+    vector_3d<T> tmp;
     tmp.x = y*v2.z - z*v2.y;
     tmp.y = z*v2.x - x*v2.z;
     tmp.z = x*v2.y - y*v2.x;
