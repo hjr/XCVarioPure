@@ -54,7 +54,7 @@ bool GyroMPU6050::doRead(vector_f& val) {
         // into glider reference system
         val = _my_mpu.rotate(tmpvec);
         // ESP_LOGI(FNAME, "gyro raw: %d/%d/%d scaled: %f/%f/%f", imuRaw.x, imuRaw.y, imuRaw.z, val.x, val.y, val.z);
-        _gyro_lpf_ayd.filter((val.y - getHeadPtr()->y) / getDutyCycleS());
+        _gyro_lpf_dwydt.filter((val.y - getHeadPtr()->y) / getDutyCycleS()); // diverenciate and filter to get dwy/dt for accelerometer compensation
         return true;
     }
 
@@ -104,10 +104,7 @@ bool GyroMPU6050::detectRest() {
     
     // ESP_LOGI(FNAME, "rest detection: gyrVar=(%f, %f, %f) accDev=%f accNormLP=%f, dt=%f", gyrVar.x, gyrVar.y, gyrVar.z, accDev, accNormLP, dt);
     
-    // thresholds (VQF-typical)
-    constexpr float thGyr2 = GYRO_THRESHOLD * GYRO_THRESHOLD; // °/s
-    
-    if (gyrVar.get_norm2() < thGyr2 && _processed.get_norm2() < GYRO_THRESHOLD * 2.f) {
+    if (gyrVar.get_norm2() < GYRO_THRESHOLD2 && _processed.get_norm2() < GYRO_THRESHOLD * 2.f) {
          // min. 1.5–3 sec below threshold → consider as rest
         _restTimer += getDutyCycle();
         if ( _restTimer > 3000) {

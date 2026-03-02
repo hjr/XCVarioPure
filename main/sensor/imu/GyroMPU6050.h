@@ -20,7 +20,7 @@ class GyroMPU6050 final : public SensorTP<vector_f>
 public:
     GyroMPU6050(MpuImu &mmpu);
 
-    static constexpr float GYRO_THRESHOLD = Units::deg_to_rad(0.2f);
+    static constexpr float GYRO_THRESHOLD = Units::deg_to_rad(0.2f); // thresholds (VQF-typical)
     static constexpr float GYRO_THRESHOLD2 = GYRO_THRESHOLD * GYRO_THRESHOLD; // squared for variance comparison
     static constexpr int GYRO_REST_DURATION_MS = 30000; // 30 seconds
 
@@ -31,7 +31,7 @@ public:
     void postProcess() override;
     bool isCalm() const override { return _isResting; }
     void resetCalm();
-    inline float getAxD() const { return _gyro_lpf_ayd.get(); }
+    inline float getAxD() const { return _gyro_lpf_dwydt.get(); }
     bool detectRest();
     void pushGyroBias(vector_f& bias);
     inline const vector_f& getBias() const { return _bias_estimator.getBias(); }
@@ -40,7 +40,7 @@ private:
     MpuImu& _my_mpu;
     const float _scale;
     // low-pass filter for gyro y-axis to get dw/dt
-    LowPassFilterT<float> _gyro_lpf_ayd{0.5f}; // to compensate the accelerometer mounting position in front of CG
+    LowPassFilterT<float> _gyro_lpf_dwydt{0.5f}; // to compensate the accelerometer mounting position in front of CG
     // vqf rest detection and bias estimation
     BiasEstimatorEKF _bias_estimator;
     uint8_t _bias_update = 0;
