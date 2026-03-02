@@ -125,7 +125,6 @@ class MPU
     esp_err_t setAccelOffset(raw_axes_t bias = raw_axes_t());
     raw_axes_t getGyroOffset();
     raw_axes_t getAccelOffset();
-    esp_err_t getMPUSamples(double& avgx, double& avgy, double& avgz, axes_t<int>& gyro);
     esp_err_t computeOffsets(raw_axes_t* accel, raw_axes_t* gyro);
     //! \}
     //! \name Interrupt
