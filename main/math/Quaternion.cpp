@@ -68,6 +68,7 @@ Quaternion operator*(const Quaternion& q1, const Quaternion& q2)
                   (q1._w*q2._x) + (q1._x*q2._w) + (q1._y*q2._z) - (q1._z*q2._y),
                   (q1._w*q2._y) - (q1._x*q2._z) + (q1._y*q2._w) + (q1._z*q2._x),
                   (q1._w*q2._z) + (q1._x*q2._y) - (q1._y*q2._x) + (q1._z*q2._w) );
+    q.normalize();
     return q;
 }
 
