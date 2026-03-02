@@ -101,7 +101,7 @@ void AccMPU6050::postProcess() {
 
     float gravity_trust = 1;
     const vector_f accel = getHead();
-    const vector_f gyro = gyroSensor->getHead(); // - mstate.gyro_bias;
+    const vector_f& gyro = gyroSensor->getP();
     ESP_LOGI( FNAME, " Accel: %.3f,%.3f,%.3f Gyro: %.3f,%.3f,%.3f dt: %.3f", accel.x, accel.y, accel.z, gyro.x, gyro.y, gyro.z, dt );
 
     // create a gyro base rotation delta
