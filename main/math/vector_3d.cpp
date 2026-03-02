@@ -200,7 +200,7 @@ vector_3d<T> vector_3d<T>::clamp(T minl, T maxl) {
 
 
 template class vector_3d<float>; // explicit instantiation
-template class vector_3d<double>;
+// template class vector_3d<double>;
 template class vector_3d<int>;
 template class vector_3d<int16_t>;
 
