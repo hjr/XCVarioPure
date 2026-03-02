@@ -805,10 +805,8 @@ void Audio::startSound(uint16_t style, bool overlay, uint8_t vol) const
 
 void Audio::endAlarm() const
 {
-    if ( _alarm_mode == alarm_type_t::ALARM_PRIORITY ) {
-        AudioEvent ev(END_PRIO_ALARM, 0); // end alarm
-        xQueueSend(AudioQueue, &ev, 0);
-    }
+    AudioEvent ev(END_PRIO_ALARM, 0); // end alarm
+    xQueueSend(AudioQueue, &ev, 0);
 }
 
 uint16_t Audio::encFlarmParam(e_audio_sound_type sound_id, uint8_t alevel, uint8_t side, uint8_t alt_diff)
@@ -1178,9 +1176,6 @@ void Audio::dactask()
                     }
                     if ( sound_id >= AUDIO_ALARMS ) {
                         _alarm_mode = alarm_type_t::ALARM_SIMPLE;
-                        if ( event.param & AudioEvent::Priority ) {
-                            _alarm_mode = alarm_type_t::ALARM_PRIORITY;
-                        }
                         ESP_LOGI(FNAME, "Raise volume");
                         // raise volume +20%, but assure at least 60%
                         sound_vol = (int)std::min(speaker_volume+alarm_volraise.get(), 100.f);
@@ -1191,7 +1186,10 @@ void Audio::dactask()
                         FlarmCode.repetitions = std::max((ae.getLevel() - 1) * 3 - 1, 0);
                         ESP_LOGI(FNAME, "Sound repetitions %d", FlarmCode.repetitions);
                         FlarmCode.timeseq = FlarmLev[ae.getLevel() - 1]->data();
-                    } 
+                    }
+                    if ( ae.param & AudioEvent::Priority ) {
+                        _alarm_mode = alarm_type_t::ALARM_PRIORITY;
+                    }
                     if ( ae.getVolume() > 0 ){
                         sound_vol = ae.getVolume(); // override
                     }
@@ -1224,14 +1222,10 @@ void Audio::dactask()
                 writeVolume(event.getVolume());
             }
             else if ( event.cmd == END_PRIO_ALARM ) {
-                if ( _alarm_mode == alarm_type_t::ALARM_PRIORITY) {
-                    ESP_LOGI(FNAME, "End priority alarm, restore volume");
-                    writeVolume(speaker_volume);
-                    _alarm_mode = alarm_type_t::ALARM_NONE;
-
-                    if (audio_mute_gen.get() == AUDIO_ON) {
-                        current_dmacmd->loadSound(&VarioSound);
-                    }
+                ESP_LOGI(FNAME, "End priority alarm, restore volume");
+                _alarm_mode = alarm_type_t::ALARM_NONE;
+                if (audio_mute_gen.get() == AUDIO_ON) {
+                    current_dmacmd->loadSound(&VarioSound, speaker_volume);
                 }
             }
             else if ( event.cmd == ADD_VOICE ) {
