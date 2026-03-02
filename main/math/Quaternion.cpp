@@ -156,27 +156,27 @@ vector_f Quaternion::rotate(const vector_f& vec) const
         + 2.0f * (a13 * vec.x + a23 * vec.y - a02 * vec.x + a01 * vec.y);
     return result;
 }
-vector_d Quaternion::rotate(const vector_d& vec) const
-{
-    double a00 = _w * _w;
-    double a01 = _w * _x;
-    double a02 = _w * _y;
-    double a03 = _w * _z;
-    double a11 = _x * _x;
-    double a12 = _x * _y;
-    double a13 = _x * _z;
-    double a22 = _y * _y;
-    double a23 = _y * _z;
-    double a33 = _z * _z;
-    vector_d result;
-    result.x = vec.x * (+a00 + a11 - a22 - a33)
-        + 2.0 * (a12 * vec.y + a13 * vec.z + a02 * vec.z - a03 * vec.y);
-    result.y = vec.y * (+a00 - a11 + a22 - a33)
-        + 2.0 * (a12 * vec.x + a23 * vec.z + a03 * vec.x - a01 * vec.z);
-    result.z = vec.z * (+a00 - a11 - a22 + a33)
-        + 2.0 * (a13 * vec.x + a23 * vec.y - a02 * vec.x + a01 * vec.y);
-    return result;
-}
+// vector_d Quaternion::rotate(const vector_d& vec) const
+// {
+//     double a00 = _w * _w;
+//     double a01 = _w * _x;
+//     double a02 = _w * _y;
+//     double a03 = _w * _z;
+//     double a11 = _x * _x;
+//     double a12 = _x * _y;
+//     double a13 = _x * _z;
+//     double a22 = _y * _y;
+//     double a23 = _y * _z;
+//     double a33 = _z * _z;
+//     vector_d result;
+//     result.x = vec.x * (+a00 + a11 - a22 - a33)
+//         + 2.0 * (a12 * vec.y + a13 * vec.z + a02 * vec.z - a03 * vec.y);
+//     result.y = vec.y * (+a00 - a11 + a22 - a33)
+//         + 2.0 * (a12 * vec.x + a23 * vec.z + a03 * vec.x - a01 * vec.z);
+//     result.z = vec.z * (+a00 - a11 - a22 + a33)
+//         + 2.0 * (a13 * vec.x + a23 * vec.y - a02 * vec.x + a01 * vec.y);
+//     return result;
+// }
 
 // return euler angles roll, pitch, yaw in radian
 vector_f Quaternion::toEulerRad() const
@@ -216,43 +216,40 @@ vector_f Quaternion::toEulerRad() const
 }
 
 // Creat a rotation through two vectors, aligning the first to the second
-Quaternion Quaternion::AlignVectors(const vector_f &start, const vector_f &dest)
-{
-	vector_f from = start;
+Quaternion Quaternion::AlignVectors(const vector_f& start, const vector_f& dest) {
+    vector_f from = start;
     from.normalize();
-	vector_f to = dest;
+    vector_f to = dest;
     to.normalize();
 
-	float cosTheta = from.dot(to);
-	vector_f rotationAxis;
+    float cosTheta = from.dot(to);
+    vector_f rotationAxis;
 
-	if (cosTheta < -1 + 0.001f){
-		// special case when vectors in opposite directions:
-		// there is no "ideal" rotation axis
-		// So guess one; any will do as long as it's perpendicular to start
-		rotationAxis = from.cross(vector_f(0.0f, 0.0f, 1.0f));
-		if (rotationAxis.get_norm2() < 0.01 ) // bad luck, they were parallel, try again!
-			rotationAxis = from.cross(vector_f(1.0f, 0.0f, 0.0f));
+    if ( cosTheta > 1.f- 0.0001f) {
+        // vectors are the same
+        return Quaternion();
+    } else if (cosTheta < -1.f + 0.001f) {
+        // special case when vectors in opposite directions:
+        // there is no "ideal" rotation axis
+        // So guess one; any will do as long as it's perpendicular to start
+        rotationAxis = from.cross(vector_f(0.0f, 0.0f, 1.0f));
+        if (rotationAxis.get_norm2() < 0.01)  // bad luck, they were parallel, try again!
+            rotationAxis = from.cross(vector_f(1.0f, 0.0f, 0.0f));
 
-		rotationAxis.normalize();
-		return Quaternion(deg2rad(180.0f), rotationAxis);
-	}
+        rotationAxis.normalize();
+        return Quaternion(deg2rad(180.0f), rotationAxis);
+    }
+    rotationAxis = from.cross(to);
 
-	rotationAxis = from.cross(to);
-
-	float s = std::sqrtf( (1.f+cosTheta)*2.f );
-
-	return Quaternion(
-		s * 0.5f,
-		rotationAxis.x / s,
-		rotationAxis.y / s,
-		rotationAxis.z / s
-	);
+    float s = std::sqrt((1.f + cosTheta) * 2.f);
+    float k = 1.f / s;
+    Quaternion q(s * 0.5f, rotationAxis.x * k, rotationAxis.y * k, rotationAxis.z * k);
+    return q.normalize();
 }
 
-Quaternion Quaternion::fromRotationMatrix(const vector_d &X, const vector_d &Y)
+Quaternion Quaternion::fromRotationMatrix(const vector_f &X, const vector_f &Y)
 {
-    vector_d mat[3];
+    vector_f mat[3];
     mat[0] = X;
     mat[1] = Y;
     mat[2] = X.cross(Y);
@@ -264,7 +261,7 @@ Quaternion Quaternion::fromRotationMatrix(const vector_d &X, const vector_d &Y)
 
     // check the diagonal
     if ( trace > 0.0 ) {
-        double s = std::sqrtf(trace + 1.0);
+        double s = std::sqrt(trace + 1.0);
         result._w = s / 2.0;
         s = 0.5 / s;
 
@@ -283,8 +280,8 @@ Quaternion Quaternion::fromRotationMatrix(const vector_d &X, const vector_d &Y)
         int j = (i + 1) % 3;
         int k = (i + 2) % 3;
 
-        double s = std::sqrtf((mat[i][i] - (mat[j][j] + mat[k][k])) + 1.0);
-        vector_d v;
+        double s = std::sqrt((mat[i][i] - (mat[j][j] + mat[k][k])) + 1.0);
+        vector_f v;
         v[i] = s * 0.5;
         s = 0.5 / s;
 
@@ -461,17 +458,17 @@ void Quaternion::quaternionen_test()
 
     // fromRotationMatrix
     ESP_LOGI(FNAME, "Test import of 3x3 matrix");
-    q = fromRotationMatrix(vector_d(1,0,0), vector_d(0,1,0));
+    q = fromRotationMatrix(vector_f(1,0,0), vector_f(0,1,0));
     ESP_LOGI(FNAME, "Benign case: 1,0,0/0,1,0 - %f %f %f %f", q._w, q._x, q._y, q._z);
     ESP_LOGI(FNAME, "Rotate 90°/Z");
-    q = fromRotationMatrix(vector_d(0,1,0), vector_d(-1,0,0));
+    q = fromRotationMatrix(vector_f(0,1,0), vector_f(-1,0,0));
     ESP_LOGI(FNAME, "Quaternion : %f %f %f %f a:%f", q._w, q._x, q._y, q._z, rad2deg(q.getAngle()) );
     // explicit setup, rotate around z
     qex = Quaternion(deg2rad(90.f), z_axes);
     ESP_LOGI(FNAME, "check equal: %f %f %f %f a:%f", qex._w, qex._x, qex._y, qex._z, rad2deg(qex.getAngle()) );
 
     ESP_LOGI(FNAME, "Rotate 90°/X");
-    q2 = fromRotationMatrix(vector_d(1,0,0), vector_d(0,0,1));
+    q2 = fromRotationMatrix(vector_f(1,0,0), vector_f(0,0,1));
     ESP_LOGI(FNAME, "Quaternion : %f %f %f %f a:%f", q2._w, q2._x, q2._y, q2._z, rad2deg(q2.getAngle()) );
     // explicit setup, rotate around z
     qex = Quaternion(deg2rad(90.f), x_axes);
@@ -487,7 +484,7 @@ void Quaternion::quaternionen_test()
     v1 = q.rotate(vector_f(5,5,5));
     ESP_LOGI(FNAME, "image of 5,5,5: %f %f %f", v1.x, v1.y, v1.z );
     // concatenate
-    qex = fromRotationMatrix(vector_d(0,1,0), vector_d(0,0,1));
+    qex = fromRotationMatrix(vector_f(0,1,0), vector_f(0,0,1));
     ESP_LOGI(FNAME, "check equal: %f %f %f %f a:%f", qex._w, qex._x, qex._y, qex._z, rad2deg(qex.getAngle()) );
     v1 = qex.rotate(x_axes);
     ESP_LOGI(FNAME, "image of x-axes: %f %f %f", v1.x, v1.y, v1.z );

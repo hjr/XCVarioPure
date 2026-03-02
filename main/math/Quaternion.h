@@ -42,10 +42,10 @@ public:
     Quaternion& conjugate();
     Quaternion get_conjugate() const;
     vector_f rotate(const vector_f& p) const;
-    vector_d rotate(const vector_d& p) const;
+    // vector_d rotate(const vector_d& p) const;
     friend Quaternion slerp(Quaternion q1, Quaternion q2, double lambda);
     static Quaternion AlignVectors(const vector_f &start, const vector_f &dest);
-    static Quaternion fromRotationMatrix(const vector_d &X, const vector_d &Y);
+    static Quaternion fromRotationMatrix(const vector_f &X, const vector_f &Y);
     static Quaternion fromAccelerometer(const vector_f& accel);
     static Quaternion fromGyro(const vector_f& w, float time);
     vector_f toEulerRad() const;
