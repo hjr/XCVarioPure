@@ -276,12 +276,14 @@ static void doImuCalibration(SetupMenuSelect* p) {
         abort = Rotary->readSwitch(500);
         gyro = gyroSensor->getAVG(1000) - gyroSensor->getBias();
         gnorm = gyro.get_norm();
-        ESP_LOGI(FNAME, "gyro norm: %f, gcalm %d acalm %d", gnorm, gyroSensor->isCalm(), accSensor->isCalm());
-    } while ((gnorm > GyroMPU6050::GYRO_THRESHOLD || !gyroSensor->isCalm() || !accSensor->isCalm()) && !abort);
+        ESP_LOGI(FNAME, "gyro norm: %f, gcalm %d acalm %d", gnorm, gyroSensor->isResting(), accSensor->isResting());
+    } while ((gnorm > GyroMPU6050::GYRO_THRESHOLD || !gyroSensor->isResting() || !accSensor->isResting()) && !abort);
 
     ESP_LOGI(FNAME, "gyro reading: (%f/%f/%f): %f < %f", gyro.x, gyro.y, gyro.z, gnorm, GyroMPU6050::GYRO_THRESHOLD);
-    AUDIO->startSound(AUDIO_TADDA | PRIO_SND_MASK, false, 100);
-    vTaskDelay(pdMS_TO_TICKS(1200)); // tadda is long!
+    if ( !abort ) {
+        AUDIO->startSound(AUDIO_TADDA | PRIO_SND_MASK, false, 100);
+        vTaskDelay(pdMS_TO_TICKS(1200)); // tadda is long!
+    }
 
     float angle;
     float ground_angle;
@@ -296,19 +298,19 @@ static void doImuCalibration(SetupMenuSelect* p) {
         
         for (int i=0; i<3; i++) {
             // wait for the first wing movement
-            while (gyroSensor->isCalm() && accSensor->isCalm() && !abort) {
-                ESP_LOGI(FNAME, "Wait for movement, gcalm %d acalm %d", gyroSensor->isCalm(), accSensor->isCalm());
+            while (gyroSensor->isResting() && accSensor->isResting() && !abort) {
+                ESP_LOGI(FNAME, "Wait for movement, gcalm %d acalm %d", gyroSensor->isResting(), accSensor->isResting());
                 abort = Rotary->readSwitch(700);
             }
             start_time = Clock::getMillis(); // save the time when the movement starts, to calculate the gyro integral later
-            gyroSensor->resetCalm();
-            accSensor->resetCalm();
+            gyroSensor->resetRest();
+            accSensor->resetRest();
             
             // wait until movement stops, save the gyro average and integral
-            while ( (!gyroSensor->isCalm() || !accSensor->isCalm()) && !abort) {
+            while ( (!gyroSensor->isResting() || !accSensor->isResting()) && !abort) {
                 // make a noise if the movement is detected, to support the user in the procedure
                 AUDIO->startSound(AUDIO_KNOCK | PRIO_SND_MASK, false, 100);
-                ESP_LOGI(FNAME, "Wait for standstill, gcalm %d acalm %d", gyroSensor->isCalm(), accSensor->isCalm());
+                ESP_LOGI(FNAME, "Wait for standstill, gcalm %d acalm %d", gyroSensor->isResting(), accSensor->isResting());
                 abort = Rotary->readSwitch(700);
             }
             if ( abort ) {
@@ -337,10 +339,7 @@ static void doImuCalibration(SetupMenuSelect* p) {
         p->menuPrintLn("... aborted ...", 2);
         nlidx = 4;
         if ( gnorm > GyroMPU6050::GYRO_THRESHOLD ) {
-            p->menuPrintLn("Gyro bias too high,", nlidx++);
-            p->menuPrintLn("try a restart.", nlidx++);
-        } else if (!abort){
-            p->menuPrintLn("Accelerometer bias too high,", nlidx++);
+            p->menuPrintLn("IMU biases too high,", nlidx++);
             p->menuPrintLn("try a restart.", nlidx++);
         }
         accSensor->getMpu().applyImuReference(glider_ground_aa.get(), imu_reference.get());

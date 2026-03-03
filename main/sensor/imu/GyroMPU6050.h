@@ -29,8 +29,8 @@ public:
     bool setup() override { return false; } // setup is done in MpuImu;
     bool doRead(vector_f& val) override;
     void postProcess() override;
-    bool isCalm() const override { return _isResting; }
-    void resetCalm();
+    bool isResting() const override { return _isResting; }
+    void resetRest();
     inline float getAxD() const { return _gyro_lpf_dwydt.get(); }
     bool detectRest();
     void pushGyroBias(vector_f& bias);

@@ -23,8 +23,8 @@ public:
     AccMPU6050(MpuImu &mmpu);
 
     static constexpr float ACCVAR_THRESHOLD2 = Units::ms2_to_g(0.02f * 0.02f); // variance threshold for rest detection (VQF-typical)
-    static constexpr float ACCEL_THRESHOLD = Units::ms2_to_g(0.45f); // thresholds (VQF-typical)
-    static constexpr float ACCEL_THRESHOLD2 = ACCEL_THRESHOLD * ACCEL_THRESHOLD; // squared for variance comparison
+    static constexpr float ACCEL_THRESHOLD = Units::ms2_to_g(1.5f); // thresholds (VQF-typical)
+    static constexpr float ACCEL_THRESHOLD2 = ACCEL_THRESHOLD * ACCEL_THRESHOLD;
 
     const char *name() const override { return _my_mpu.name(); }
     bool probe() override { return false; } // probe is done in MpuImu;
@@ -32,8 +32,8 @@ public:
     bool doRead(vector_f& val) override;
     void postProcess() override;
     bool detectRest();
-    bool isCalm() const override { return _isResting; }
-    void resetCalm();
+    bool isResting() const override { return _isResting; }
+    void resetRest();
 
     temp_status_t getTempStatus() const { return _my_mpu.getTempStatus(); }
     inline float getRollDeg() { return rad2deg(euler_rad.Roll()); }

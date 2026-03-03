@@ -69,7 +69,7 @@ void GyroMPU6050::postProcess() {
     const vector_f& gyro = getHead();
 
     _processed = gyro - _bias_estimator.getBias(); // a corrected measurment
-    bool rest = detectRest() && accSensor->isCalm();
+    bool rest = detectRest() && accSensor->isResting();
 
     // feed the bias filter
     _bias_estimator.update(gyro, rest);
@@ -85,13 +85,13 @@ void GyroMPU6050::postProcess() {
             && bias.get_norm() > GyroMPU6050::GYRO_THRESHOLD // only push if bias is > threshold
             && _bias_update < 3 ) { // only push if we have a stable bias and are airborne
             pushGyroBias(bias);
-            resetCalm(); // to avoid multiple pushes in a row, only update bias once per rest phase
+            resetRest(); // to avoid multiple pushes in a row, only update bias once per rest phase
             _bias_update++;
         }
     }
 }
 
-void GyroMPU6050::resetCalm() {
+void GyroMPU6050::resetRest() {
     _bias_estimator.reset();
     _restTimer = 0;
     _isResting = false;
