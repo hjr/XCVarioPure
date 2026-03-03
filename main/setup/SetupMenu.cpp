@@ -1171,23 +1171,27 @@ void options_menu_create(SetupMenu *opt) { // dynamic!
 }
 
 void system_menu_create_software(SetupMenu *top) {
-	Version V;
-	SetupMenuSelect *ver = new SetupMenuSelect("Software Vers.", RST_NONE, nullptr);
-	ver->addEntry(V.version());
-	ver->lock();
-	top->addEntry(ver);
+    SetupMenuSelect *ahrsid = new SetupMenuSelect("XCV unique Id", RST_NONE);
+    ahrsid->addEntry(SetupCommon::getDefaultID());
+    ahrsid->lock();
+    top->addEntry(ahrsid);
 
-	SetupMenuSelect *upd = new SetupMenuSelect("Software Update", RST_IMMEDIATE, nullptr, &software_update);
-	upd->setHelp(
-			"Software Update over the air (OTA). Starts Wifi AP 'ESP32 OTA' - connect and open http://192.168.4.1 in browser");
-	upd->addEntry("Cancel");
-	upd->addEntry("Start");
-	top->addEntry(upd);
+    Version V;
+    SetupMenuSelect* ver = new SetupMenuSelect("Software Vers.", RST_NONE, nullptr);
+    ver->addEntry(V.version());
+    ver->lock();
+    top->addEntry(ver);
 
-	if ( logged_tests.size() > 0 ) {
-		SetupMenuDisplay *dis = new SetupMenuDisplay("Show Boot Messages", show_boot_log);
-		top->addEntry(dis);
-	}
+    SetupMenuSelect* upd = new SetupMenuSelect("Software Update", RST_IMMEDIATE, nullptr, &software_update);
+    upd->setHelp("Software Update over the air (OTA). Starts Wifi AP 'ESP32 OTA' - connect and open http://192.168.4.1 in browser");
+    upd->addEntry("Cancel");
+    upd->addEntry("Start");
+    top->addEntry(upd);
+
+    if (logged_tests.size() > 0) {
+        SetupMenuDisplay* dis = new SetupMenuDisplay("Show Boot Messages", show_boot_log);
+        top->addEntry(dis);
+    }
 
     SetupMenuSelect* fa = new SetupMenuSelect("Factory Reset", RST_IMMEDIATE, clear_nvs_action, &factory_reset);
     fa->setHelp("Reset all settings to factory defaults (metric system, 5 m/s vario range, etc.)");
@@ -1336,11 +1340,6 @@ void system_menu_create_hardware_ahrs_parameter(SetupMenu *top) {
 }
 
 void system_menu_create_hardware_ahrs(SetupMenu *top) {
-	SetupMenuSelect *ahrsid = new SetupMenuSelect("XCV unique Id", RST_NONE);
-	ahrsid->addEntry(SetupCommon::getDefaultID());
-	ahrsid->lock();
-	top->addEntry(ahrsid);
-
 	SetupMenu *ahrscalib = new SetupMenu("Calibration", system_menu_create_ahrs_calib);
 	ahrscalib->setHelp(
 			 "Bias & Reference of the AHRS Sensor: Place glider on horizontal underground, first the right wing down, then the left wing.");
