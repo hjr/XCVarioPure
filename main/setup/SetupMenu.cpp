@@ -276,14 +276,15 @@ static void doImuCalibration(SetupMenuSelect* p) {
         abort = Rotary->readSwitch(500);
         gyro = gyroSensor->getAVG(1000) - gyroSensor->getBias();
         gnorm = gyro.get_norm();
-        ESP_LOGI(FNAME, "gyro norm: %f", gnorm);
-    } while (gnorm > GyroMPU6050::GYRO_THRESHOLD && !gyroSensor->isCalm() && !accSensor->isCalm() && !abort);
+        ESP_LOGI(FNAME, "gyro norm: %f, gcalm %d acalm %d", gnorm, gyroSensor->isCalm(), accSensor->isCalm());
+    } while ((gnorm > GyroMPU6050::GYRO_THRESHOLD || !gyroSensor->isCalm() || !accSensor->isCalm()) && !abort);
 
-    ESP_LOGI(FNAME, "gyro reading: (%f/%f/%f) - %f < %f", gyro.x, gyro.y, gyro.z, gnorm, GyroMPU6050::GYRO_THRESHOLD);
+    ESP_LOGI(FNAME, "gyro reading: (%f/%f/%f): %f < %f", gyro.x, gyro.y, gyro.z, gnorm, GyroMPU6050::GYRO_THRESHOLD);
     AUDIO->startSound(AUDIO_TADDA | PRIO_SND_MASK, false, 100);
     vTaskDelay(pdMS_TO_TICKS(1200)); // tadda is long!
 
     float angle;
+    float ground_angle;
     int ret = 0;
     bool once = true;
     while (once && !abort)
@@ -319,7 +320,7 @@ static void doImuCalibration(SetupMenuSelect* p) {
             // compensate bias to get actual movement integral
             gyro_integral -= gyroSensor->getBias() * (float)((stop_time - start_time) / 100.f); // 10 Hz
             // sample the accel for the bob vector
-            ret = accSensor->getMpu().getAccelSamplesAndCalib(gyro_integral, angle);
+            ret = accSensor->getMpu().getAccelSamplesAndCalib(gyro_integral, angle, ground_angle);
             AUDIO->startSound(AUDIO_TADDA | PRIO_SND_MASK, false, 100);
             vTaskDelay(pdMS_TO_TICKS(1200));
             start_time = Clock::getMillis();
@@ -338,6 +339,9 @@ static void doImuCalibration(SetupMenuSelect* p) {
         if ( gnorm > GyroMPU6050::GYRO_THRESHOLD ) {
             p->menuPrintLn("Gyro bias too high,", nlidx++);
             p->menuPrintLn("try a restart.", nlidx++);
+        } else if (!abort){
+            p->menuPrintLn("Accelerometer bias too high,", nlidx++);
+            p->menuPrintLn("try a restart.", nlidx++);
         }
         accSensor->getMpu().applyImuReference(glider_ground_aa.get(), imu_reference.get());
         p->menuPrintLn("press button to return", 8, 1);
@@ -350,7 +354,9 @@ static void doImuCalibration(SetupMenuSelect* p) {
     p->menuPrintLn("Success !", 2, 20);
     MYUCG->setPrintPos(1, 150);
     MYUCG->printf("Wing Angle: %.1f°", rad2deg(angle));
-    p->menuPrintLn("press button to return", 8, 1);
+    MYUCG->setPrintPos(1, 175);
+    MYUCG->printf("Ground Angle: %.1f°", rad2deg(ground_angle));
+    p->menuPrintLn("press button to return", 10, 1);
     while (!Rotary->readSwitch(100))
         ;
 }

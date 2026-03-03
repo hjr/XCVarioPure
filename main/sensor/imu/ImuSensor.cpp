@@ -10,6 +10,7 @@
 
 #include "Quaternion.h"
 #include "math/Trigonometry.h"
+#include "math/Floats.h"
 #include "setup/SetupNG.h"
 #include "GyroMPU6050.h"
 #include "AccMPU6050.h"
@@ -198,7 +199,7 @@ class IMU_Ref {
 // 2 := left wing completed
 // 3 := level bob, and calibration completed
 // else returns -1
-int MpuImu::getAccelSamplesAndCalib(vector_f gyro_integral, rad_t& wing_angle) {
+int MpuImu::getAccelSamplesAndCalib(vector_f gyro_integral, rad_t& wing_angle, rad_t& ground_angle) {
     vector_f* bob = &bob_level;
     int16_t side = 0;
     ESP_LOGI(FNAME, "gyro integral: %f/%f/%f", gyro_integral.x, gyro_integral.y, gyro_integral.z);
@@ -275,12 +276,12 @@ int MpuImu::getAccelSamplesAndCalib(vector_f gyro_integral, rad_t& wing_angle) {
         // gyro rotation (to right wing) axes captures the straight from the skid to main gear (in sudo NED space)
         // leverage between gyro rotation to the left wing, which captures the opposite.
         vector_f wiggle_axes = gyro_axis_right - gyro_axis_left;
-        wiggle_axes.normalize();
         ESP_LOGI(FNAME, "wiggle_axes: %f,%f,%f", wiggle_axes.x, wiggle_axes.y, wiggle_axes.z);
         // whereas the X-axes represents the horizontal plane projection of the wiggle axes.
         // the angle between the X-axes and the wiggle axes is the ground angle off the horizontal plane, which we want to compensate for.
-        Quaternion level_correction = Quaternion::AlignVectors(X, wiggle_axes);
-        ESP_LOGI(FNAME, "level correction: %f degree", rad2deg(level_correction.getAngle()));
+        Quaternion level_correction = Quaternion::AlignVectors(X, wiggle_axes); // 0..pi
+        ground_angle = level_correction.getAngle() * fast_signf(level_correction._y); // signed ground angle, according to Y direction
+        ESP_LOGI(FNAME, "level correction: %f degree", rad2deg(ground_angle));
         // Concatenate the correction with the current reference
 
         // Concat level correction, calib rotation, and the current reference
