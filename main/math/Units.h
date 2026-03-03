@@ -88,6 +88,14 @@ inline constexpr rad_t deg_to_rad(float deg)     { return deg * rad_per_deg; }
 inline constexpr float rad_to_deg(rad_t rad)     { return rad * deg_per_rad; }
 
 // ---------------------------------------------------------------------------
+// Inertia
+// ---------------------------------------------------------------------------
+inline constexpr float kgm2_to_kgfm2(float kgm2) { return kgm2 * g0; }
+inline constexpr float kgfm2_to_kgm2(float kgfm2) { return kgfm2 / g0; }
+inline constexpr float g_to_ms2(float g) { return g * g0; }
+inline constexpr float ms2_to_g(float ms2) { return ms2 / g0; }
+
+// ---------------------------------------------------------------------------
 // ISA atmosphere (troposphere, up to ~11km)
 // ---------------------------------------------------------------------------
 inline kelvin_t isa_temperature(meter_t h_m)
