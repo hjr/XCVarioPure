@@ -10,6 +10,7 @@
 
 #include "ImuSensor.h"
 #include "../SensorBase.h"
+#include "Units.h"
 #include "math/vector_3d_fwd.h"
 #include "math/Trigonometry.h"
 #include "math/Quaternion.h"
@@ -21,12 +22,17 @@ class AccMPU6050 final : public SensorTP<vector_f>
 public:
     AccMPU6050(MpuImu &mmpu);
 
+    static constexpr float ACCVAR_THRESHOLD2 = Units::ms2_to_g(0.02f * 0.02f); // variance threshold for rest detection (VQF-typical)
+    static constexpr float ACCEL_THRESHOLD = Units::ms2_to_g(0.45f); // thresholds (VQF-typical)
+    static constexpr float ACCEL_THRESHOLD2 = ACCEL_THRESHOLD * ACCEL_THRESHOLD; // squared for variance comparison
+
     const char *name() const override { return _my_mpu.name(); }
     bool probe() override { return false; } // probe is done in MpuImu;
     bool setup() override { return _my_mpu.setup(); } // setup is done in MpuImu;
     bool doRead(vector_f& val) override;
     void postProcess() override;
-    bool isCalm() const override { return _calm_counter > 5; }
+    bool detectRest();
+    bool isCalm() const override { return _isResting; }
     void resetCalm();
 
     temp_status_t getTempStatus() const { return _my_mpu.getTempStatus(); }
@@ -57,7 +63,8 @@ private:
     // slip angle
     LowPassFilterT<float> _lpf_slip_angle{0.09f}; // 1.5s time constant at 10Hz
     // calm counter
-    int _calm_counter = 0;
+    float _restTimer = 0; // milliseconds since last movement
+    bool _isResting = false;
 };
 
 extern AccMPU6050 *accSensor;

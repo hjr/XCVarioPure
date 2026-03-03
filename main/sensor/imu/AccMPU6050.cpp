@@ -19,6 +19,7 @@
 #include "mpu/math.hpp"
 
 #include <algorithm>
+#include <cmath>
 
 AccMPU6050 *accSensor = nullptr;
 
@@ -102,7 +103,7 @@ void AccMPU6050::postProcess() {
     float gravity_trust = 1;
     const vector_f accel = getHead();
     const vector_f& gyro = gyroSensor->getP();
-    ESP_LOGI( FNAME, " Accel: %.3f,%.3f,%.3f Gyro: %.3f,%.3f,%.3f dt: %.3f", accel.x, accel.y, accel.z, gyro.x, gyro.y, gyro.z, dt );
+    // ESP_LOGI( FNAME, " Accel: %.3f,%.3f,%.3f Gyro: %.3f,%.4f,%.4f dt: %.4f", accel.x, accel.y, accel.z, gyro.x, gyro.y, gyro.z, dt );
 
     // create a gyro base rotation delta
     d_gyro = Quaternion::fromGyro(gyro, dt);
@@ -190,19 +191,42 @@ void AccMPU6050::postProcess() {
     }
 
     // calm status
-    ESP_LOGI(FNAME, "Calm status: accel_norm=%.3f attvd=%.3f", accel.get_norm2(), attvd);
-    if ( (accel.get_norm2() - 1.f) < 0.2025f && attvd < 0.001f ) { // within 5% of 1 g and not changing much
-        // sensor is calm
-        _calm_counter++;
-    }
-    else {
-        _calm_counter = 0;
-    }
+    // ESP_LOGI(FNAME, "Calm status: accel_norm=%.3f attvd=%.3f", accel.get_norm2(), attvd);
+    detectRest();
+    // if ( (accel.get_norm2() - 1.f) < 0.2025f && attvd < 0.001f ) { // within 5% of 1 g and not changing much
+    //     // sensor is calm
+    //     _calm_counter++;
+    // }
+    // else {
+    //     _calm_counter = 0;
+    // }
+}
 
+// rest - detection
+bool AccMPU6050::detectRest() {
+    // accel variance
+    vector_f accVar = getVariance(1000);
+    const vector_f* accel = getHeadPtr();
+    
+    ESP_LOGI(FNAME, "rest detection: accVar=(%f, %f, %f) n2=%f < %f", accVar.x, accVar.y, accVar.z, accVar.get_norm2(), ACCVAR_THRESHOLD2);
+    ESP_LOGI(FNAME, "rest detection: accel=(%f, %f, %f) n2=%f < %f", accel->x, accel->y, accel->z, accel->get_norm2(), ACCEL_THRESHOLD2);
+    
+    if (accVar.get_norm2() < ACCVAR_THRESHOLD2 && std::fabsf(accel->get_norm2() - 1.f) < ACCEL_THRESHOLD2) {
+         // min. 3 sec below threshold, consider as rest
+        _restTimer += getDutyCycle();
+        if ( _restTimer > 3000) {
+            _isResting = true;
+        }
+    } else {
+        _restTimer = 0;
+        _isResting = false;
+    }
+    return _isResting;
 }
 
 void AccMPU6050::resetCalm() {
-    _calm_counter = 0;
+    _restTimer = 0.f;
+    _isResting = false;
 }
 
 // rad_t AccMPU6050::PitchFromAccelRad()
