@@ -82,17 +82,19 @@ dl_action_t GpsMsg::parseGPRMC(NmeaPlugin *plg)
     char warn = *(s + word->at(1));
     float lat = decodeNMEADegMin( s + word->at(2), *(s + word->at(3)) );
     float lon = decodeNMEADegMin( s + word->at(4), *(s + word->at(5)) );
-    sscanf( s + word->at(6), "%f", &Flarm::gndSpeedKnots );
-    sscanf( s + word->at(7), "%f", &Flarm::gndCourse );
+    float tmp;
+    sscanf( s + word->at(6), "%f", &tmp );
+    Flarm::gndSpeed = Units::knots_to_mps(tmp);
+    sscanf( s + word->at(7), "%f", &tmp );
+    Flarm::gndCourse = Units::deg_to_rad(tmp);
     int valid_date_scan = sscanf( s + word->at(8),"%02d%02d%02d", &t.tm_mday, &t.tm_mon, &t.tm_year );
     // ESP_LOGI(FNAME,"SC: %d/%d/%d %02d:%02d:%02d ", t.tm_year, t.tm_mon, t.tm_mday, t.tm_hour, t.tm_min, t.tm_sec );
 
     // ESP_LOGI(FNAME,"G: %s",_gprmc );
-    // ESP_LOGI(FNAME,"parseGPRMC() GPS: %d, Speed: %3.1f knots, Track: %3.1f° warn:%c", Flarm::myGPS_OK, Flarm::gndSpeedKnots, Flarm::gndCourse, warn  );
+    // ESP_LOGI(FNAME,"parseGPRMC() GPS: %d, Speed: %3.1f mps, Track: %3.1f° warn:%c", Flarm::myGPS_OK, Flarm::gndSpeed, Units::rad_to_deg(Flarm::gndCourse), warn);
     // ESP_LOGI(FNAME,"GP%s, GPS_OK:%d warn:%c T:%s D:%s", gprmc+3, myGPS_OK, warn, time, date  );
     // set the GND speed
-    mps_t gndspeed = Units::knots_to_mps(Flarm::gndSpeedKnots);
-    gnd_speed.set(gndspeed);
+    gnd_speed.set(Flarm::gndSpeed);
 
     Flarm::myGPS_OK = (warn == 'A');
     if (Flarm::myGPS_OK) {
@@ -102,7 +104,7 @@ dl_action_t GpsMsg::parseGPRMC(NmeaPlugin *plg)
         }
         if ( BackgroundTaskQueue ) {
             ESP_LOGD(FNAME,"Track: %3.2f, GPRMC: %s", Flarm::gndCourse, sm->_frame.c_str() );
-            circleWind->setNewSample(Vector(Flarm::gndCourse, gndspeed));
+            circleWind->setNewSample(Vector(Flarm::gndCourse, Flarm::gndSpeed));
 
             CalkTaskJob job(CalkTaskJob::CALK_TASK_EVENT_NEW_GPSPOSE);
             xQueueSend(BackgroundTaskQueue, &job, 0);
@@ -129,7 +131,6 @@ dl_action_t GpsMsg::parseGPRMC(NmeaPlugin *plg)
             }
         }
     }
-    // ESP_LOGI(FNAME,"parseGPRMC() GPS: %d, Speed: %3.1f knots, Track: %3.1f° ", myGPS_OK, gndSpeedKnots, gndCourse );
     return DO_ROUTING;
 }
 

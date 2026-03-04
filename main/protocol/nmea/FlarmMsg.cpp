@@ -157,14 +157,15 @@ dl_action_t FlarmMsg::parsePFLAU(NmeaPlugin *plg)
     Flarm::GPS         = atoi(s + word->at(2));
     Flarm::Power       = atoi(s + word->at(3));
     Flarm::AlarmLevel  = atoi(s + word->at(4));
-    Flarm::RelativeBearing  = atoi(s + word->at(5));
+    int tmp = atoi(s + word->at(5));
+    Flarm::RelativeBearing = Units::deg_to_rad(tmp);
     Flarm::RelativeVertical = atoi(s + word->at(7));
     Flarm::RelativeDistance = atoi(s + word->at(8));
     Flarm::IcaoId = 0;
     if ( word->size() >= 10 ) {
         Flarm::IcaoId = atoi(s + word->at(9));
     }
-    ESP_LOGI(FNAME,"RB: %d ALT:%d  DIST %d", Flarm::RelativeBearing, Flarm::RelativeVertical, Flarm::RelativeDistance);
+    ESP_LOGI(FNAME,"RB: %f ALT:%d  DIST %d", Flarm::RelativeBearing, Flarm::RelativeVertical, Flarm::RelativeDistance);
 
     if ( Flarm::AlarmLevel >= flarm_warning.get() && ! Flarm::isConfirmed() ) {
         ESP_LOGI(FNAME,"FLARM ALARM LEVEL %d", Flarm::AlarmLevel);

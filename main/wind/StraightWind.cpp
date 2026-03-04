@@ -125,7 +125,7 @@ bool StraightWind::calculateWind()
 	}
 
 	// Get current ground speed in km/h
-	mps_t cgs = Units::knots_to_mps( Flarm::getGndSpeedKnots() );
+	mps_t cgs = Flarm::getGndSpeed();
 
 	// Get current TAS in km/h
 	mps_t ctas = tas.get();

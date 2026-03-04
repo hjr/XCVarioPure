@@ -68,18 +68,17 @@ void FlarmScreen::display(int mode)
     int na, nb;
     IpsDisplay::clipRectByLine(nullptr, l, above, &na, below, &nb);
 
-    ESP_LOGI(FNAME,"Target in B%d°, dH%dm, dV%dm", Flarm::RelativeBearing, Flarm::RelativeDistance, Flarm::RelativeVertical );
+    ESP_LOGI(FNAME,"Target in B%,1f°, dH%dm, dV%dm", Units::rad_to_deg(Flarm::RelativeBearing), Flarm::RelativeDistance, Flarm::RelativeVertical );
     // calc from distance and bearing the vector to the target
-    Quaternion qtmp(deg2rad(static_cast<float>(-Flarm::RelativeBearing)), vector_f(0.f, 0.f, 1.f));
+    Quaternion qtmp(-Flarm::RelativeBearing, vector_f(0.f, 0.f, 1.f));
     vector_f bearingVec = qtmp.rotate(vector_f(Flarm::RelativeDistance, 0.f, Flarm::RelativeVertical));
     ESP_LOGI(FNAME,"BearingVec %1.1f,%1.1f,%1.1f", bearingVec.x, bearingVec.y, bearingVec.z );
 
     // determine side and altDiff for audio alarm
-    constexpr const int   MID_FUNNEL_DEG = 30;
-    constexpr const float MID_FUNNEL_RAD = 0.577350269; // eval manually .. fast_tan_deg(static_cast<float>(MID_FUNNEL_DEG));
-    float dist = (Flarm::RelativeDistance>0) ? Flarm::RelativeDistance : 0.1f;
-    int alt_bear = (std::abs((float)Flarm::RelativeVertical/dist) < MID_FUNNEL_RAD) ? 1 : (Flarm::RelativeVertical > 0 ? 2 : 0);
-    int side_bear = (std::abs(std::abs(Flarm::RelativeBearing) - 90) < (90 - MID_FUNNEL_DEG)) ? 2 : 1;
+    constexpr const rad_t MID_FUNNEL_RAD = Units::deg_to_rad(30.f);
+    meter_t dist = (Flarm::RelativeDistance>0) ? Flarm::RelativeDistance : 0.1f;
+    int alt_bear = (std::abs(fast_atan((float)Flarm::RelativeVertical/dist)) < MID_FUNNEL_RAD) ? 1 : (Flarm::RelativeVertical > 0 ? 2 : 0);
+    int side_bear = (std::abs(std::abs(Flarm::RelativeBearing)) < MID_FUNNEL_RAD) ? 1 : 2;
     if ( Flarm::RelativeBearing < 0 ) { side_bear = 0; }
         
     // rotate according to own attitude

@@ -811,6 +811,8 @@ void Audio::endAlarm() const
     xQueueSend(AudioQueue, &ev, 0);
 }
 
+// alevel : 0 .. 2 -> low/med/high using different sounds
+// side, alt_diff : 0 .. 2 -> left/same/right, lower/same/higher
 uint16_t Audio::encFlarmParam(e_audio_sound_type sound_id, uint8_t alevel, uint8_t side, uint8_t alt_diff)
 {
     return AudioEvent::encFlarm(sound_id, alevel, side, alt_diff);

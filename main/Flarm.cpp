@@ -7,12 +7,12 @@ int Flarm::TX = 0;
 int Flarm::GPS = 0;
 int Flarm::Power = 0;
 int Flarm::AlarmLevel = 0;
-int Flarm::RelativeBearing = 0;
+rad_t Flarm::RelativeBearing = 0.f; // -pi .. pi
 int Flarm::AlarmType = 0;
-int Flarm::RelativeVertical = 0;
-int Flarm::RelativeDistance = 0;
-float Flarm::gndSpeedKnots = 0;
-float Flarm::gndCourse = 0;
+int Flarm::RelativeVertical = 0; // meter
+int Flarm::RelativeDistance = 0; // meter
+mps_t Flarm::gndSpeed = 0.f;
+rad_t Flarm::gndCourse = 0;
 bool Flarm::myGPS_OK = false;
 int Flarm::IcaoId = 0;
 int Flarm::_confirmedId = 0;
@@ -23,22 +23,22 @@ int Flarm::_numSat=0;
 
 
 
-// bool Flarm::getGPS( mps_t &gndSpeed, float &gndTrack ) {
+// bool Flarm::getGPS( mps_t &gndspeed_par, rad_t &gndTrack ) {
 //     if( myGPS_OK ) {
-//         gndSpeed = Units::knots_to_mps(gndSpeedKnots);
+//         gndspeed_par = gndSpeed;
 //         gndTrack = gndCourse;
 //         return true;
 //     }
-//     else{
+//     else {
 //         return false;
 //     }
 // }
-// bool Flarm::getGPSknots( float &gndSpeed ) {
+// bool Flarm::getGPSSpeed( mps_t &gndspeed_par ) {
 //         if( myGPS_OK ) {
-//             gndSpeed = gndSpeedKnots;
+//             gndspeed_par = gndSpeed;
 //             return true;
 //         }
-//         else{
+//         else {
 //             return false;
 //         }
 // }
