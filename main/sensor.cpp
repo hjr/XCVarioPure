@@ -969,6 +969,11 @@ void system_startup(void *args){
 
     CRMOD.updateCache();  // correct initialization
     AUDIO->initVarioVoice();
+
+    // a final check if the IMU got calibrated
+    if ( accSensor && (imu_reference.get() == Quaternion()) ) {
+        MBOX->pushMessage(2, "Pls. calibrate AHRS for best variometer performance");
+    }
 }
 
 // #include <xtensa/core-macros.h>  // for XTHAL_GET_CCOUNT
