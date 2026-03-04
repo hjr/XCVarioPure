@@ -31,6 +31,7 @@ class VarioFilter final : public SensorTP<float> {
     float getPolarSink() const { return _polar_sink; }
 
    private:
+    LowPassFilterT<float> _tealt_lpf;
     void init(meter_t alt);
     uint32_t _prev_time = 0;
     Average<34, float, float> TEavg;

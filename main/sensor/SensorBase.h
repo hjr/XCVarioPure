@@ -132,17 +132,11 @@ public:
         }
     }
     virtual ~SensorTP() {
-        if ( _filter ) {
-            delete _filter;
-        }
     }
     void setNVSVar( SetupNG<float> *nvsvar ) {
         _nvsvar = nvsvar;
     }
     void setFilter( FilterItf<T>* filter ) {
-        if ( _filter ) {
-            delete _filter;
-        }
         _filter = filter;
     }
     // read current value from sensor hardware
@@ -360,7 +354,7 @@ protected:
 
     FixedSensorHistory<T> _history;
     SetupNG<float> *_nvsvar = nullptr; ///< Optional link to NVS variable for sync etc.
-    FilterItf<T>*   _filter = nullptr; ///< Optional filter plugin
+    FilterItf<T>*   _filter = nullptr; ///< Optional filter plugin, ownership not handled here
     T               _invalid = T{};    ///< Invalid value representation
     T               _processed = T{};  ///< Last valid value as published on the black board
 };

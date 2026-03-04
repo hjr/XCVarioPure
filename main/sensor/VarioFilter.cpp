@@ -125,10 +125,13 @@ struct VarioKF {
 
 static VarioKF vkf;
 
-VarioFilter::VarioFilter() : SensorTP<float>(vario_buffer, DUTY_CYCLE_MS) {
+VarioFilter::VarioFilter() :
+    SensorTP<float>(vario_buffer, DUTY_CYCLE_MS),
+    _tealt_lpf(0.25f)
+{
     _id = SensorId::VARIOMETER;
     setNVSVar(&te_alt);
-    setFilter(new LowPassFilterT<float>(0.25f));
+    setFilter(&_tealt_lpf);
 }
 // ~VarioFilter() {} .. never going to be deleted
     

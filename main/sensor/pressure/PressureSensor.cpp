@@ -33,10 +33,6 @@ PressureSensor::PressureSensor(SensorId id) : SensorTP<pascal_t>((id == SensorId
     if (id == SensorId::STATIC_PRESSURE) {
         setNVSVar(&statp);
     }
-    // else {
-    //     setNVSVar(&te_vario);
-    //     setFilter(new TEVariometerFilter());
-    // }
 }
 
 meter_t PressureSensor::readAltitude(pascal_t qnh, bool& success) {

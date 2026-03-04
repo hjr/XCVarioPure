@@ -24,11 +24,13 @@ AirspeedSensor *asSensor = nullptr;
 constexpr int DUTY_CYCLE_MS = 100; // 10Hz
 static float as_buffer[ (SENSOR_HISTORY_DURATION_MS / DUTY_CYCLE_MS) + 1 ]; // history buffer for airspeed sensor
 
-AirspeedSensor::AirspeedSensor() : SensorTP<float>(as_buffer, DUTY_CYCLE_MS)
+AirspeedSensor::AirspeedSensor() :
+    SensorTP<float>(as_buffer, DUTY_CYCLE_MS),
+    _dynp_lpf(0.25f)
 {
     _id = SensorId::DIFFPRESSURE | SensorFlags::SENSOR_LOCAL;
     setNVSVar(&dynp);
-    setFilter(new LowPassFilterT<float>(0.25f));
+    setFilter(&_dynp_lpf);
 }
 
 static AirspeedSensor* factory(AirspeedSensor::ASens_Type type)
