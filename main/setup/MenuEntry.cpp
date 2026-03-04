@@ -60,6 +60,12 @@ void MenuEntry::menuPrintLn(const char* str, int ln, int x) const {
     MYUCG->print(str);
 }
 
+void MenuEntry::menuClearLn(int ln) const {
+    MYUCG->setColor(COLOR_BLACK);
+    MYUCG->drawBox(1, (ln + 1) * LINE_HEIGHT + 1, dwidth - 2, LINE_HEIGHT);
+    MYUCG->setColor(COLOR_WHITE);
+}
+
 void MenuEntry::menuPrintChar(char chr, int ln, int x) const {
     if ( chr == ' ' ) {
         MYUCG->drawDisc(x+2, (ln+1)*LINE_HEIGHT - 7, 2, UCG_DRAW_ALL);

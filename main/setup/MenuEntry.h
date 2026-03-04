@@ -86,6 +86,7 @@ public:
 	void clearHelpLines(int16_t ln) const;
 	// const MenuEntry* findMenu(const char *title) const;
 	void menuPrintLn(const char* str, int ln, int x=1) const;
+	void menuClearLn(int ln) const;
 	void menuPrintChar(char chr, int ln, int x) const;
 	// void uprint( int x, int y, const char* str );
 	void SavedDelay(bool showit=true);

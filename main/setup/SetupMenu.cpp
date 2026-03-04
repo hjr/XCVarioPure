@@ -254,13 +254,12 @@ static void doImuCalibration(SetupMenuSelect* p) {
     MYUCG->setFont(ucg_font_ncenR14_hr, true);
     p->clear();
     p->menuPrintLn("AHRS Glider Reference", 2, 18);
-    int16_t nlidx = 4;
-    p->menuPrintLn("1.+2. Each wing tip down", nlidx++);
-    p->menuPrintLn("to the ground.", nlidx++);
-    p->menuPrintLn("3. wings level.", nlidx++);
+    constexpr int16_t next_step = 4;
+    int16_t nlidx = next_step;
+    p->menuPrintLn("Checking Gyro Bias", nlidx++);
+    nlidx += 3;
     p->menuPrintLn("Wait for the Chimes, ", nlidx++);
-    p->menuPrintLn("then move on.", nlidx++);
-    p->menuPrintLn("Abort with button", nlidx + 2);
+    p->menuPrintLn("abort with button.", nlidx);
 
     accSensor->getMpu().resetCalibProgress();
     // load the default reference to the IMU
@@ -268,7 +267,7 @@ static void doImuCalibration(SetupMenuSelect* p) {
     // reset lever arm
     accSensor->getMpu().setLeverArm(0.f);
 
-    // double check that the gyro is calibrated, otherwise the procedure would be useless
+    // double check that the gyro is calibrated, otherwise the result would be useless
     vector_f gyro;
     float gnorm;
     bool abort = false;
@@ -277,12 +276,21 @@ static void doImuCalibration(SetupMenuSelect* p) {
         gyro = gyroSensor->getAVG(1000) - gyroSensor->getBias();
         gnorm = gyro.get_norm();
         ESP_LOGI(FNAME, "gyro norm: %f, gcalm %d acalm %d", gnorm, gyroSensor->isResting(), accSensor->isResting());
-    } while ((gnorm > GyroMPU6050::GYRO_THRESHOLD || !gyroSensor->isResting() || !accSensor->isResting()) && !abort);
+    } while ((gnorm > GyroMPU6050::GYRO_THRESHOLD || !gyroSensor->isResting()) && !abort);
 
     ESP_LOGI(FNAME, "gyro reading: (%f/%f/%f): %f < %f", gyro.x, gyro.y, gyro.z, gnorm, GyroMPU6050::GYRO_THRESHOLD);
+    bool button = false;
     if ( !abort ) {
+        nlidx = next_step;
+        p->menuPrintLn("Move first wing tip    ", nlidx++);
+        p->menuPrintLn(" down to the ground.", nlidx++);
+        nlidx += 2;
+        p->menuPrintLn("Start with button press.", nlidx);
+        p->menuClearLn(nlidx+1);
         AUDIO->startSound(AUDIO_TADDA | PRIO_SND_MASK, false, 100);
-        vTaskDelay(pdMS_TO_TICKS(1200)); // tadda is long!
+        while (!Rotary->readSwitch(700)) ;
+        p->menuPrintLn("Wait for the Chimes or press,", nlidx++);
+        p->menuPrintLn("Continue with button press.", nlidx++);
     }
 
     float angle;
@@ -297,24 +305,22 @@ static void doImuCalibration(SetupMenuSelect* p) {
         once = false;
         
         for (int i=0; i<3; i++) {
+
             // wait for the first wing movement
-            while (gyroSensor->isResting() && accSensor->isResting() && !abort) {
-                ESP_LOGI(FNAME, "Wait for movement, gcalm %d acalm %d", gyroSensor->isResting(), accSensor->isResting());
-                abort = Rotary->readSwitch(700);
-            }
+            // while (!button) {
+            //     button = Rotary->readSwitch(700);
+            // }
             start_time = Clock::getMillis(); // save the time when the movement starts, to calculate the gyro integral later
             gyroSensor->resetRest();
             accSensor->resetRest();
             
             // wait until movement stops, save the gyro average and integral
-            while ( (!gyroSensor->isResting() || !accSensor->isResting()) && !abort) {
+            button = false;
+            while ( (!gyroSensor->isResting() || !accSensor->isResting()) && !button) {
                 // make a noise if the movement is detected, to support the user in the procedure
                 AUDIO->startSound(AUDIO_KNOCK | PRIO_SND_MASK, false, 100);
                 ESP_LOGI(FNAME, "Wait for standstill, gcalm %d acalm %d", gyroSensor->isResting(), accSensor->isResting());
-                abort = Rotary->readSwitch(700);
-            }
-            if ( abort ) {
-                break;
+                button = Rotary->readSwitch(700);
             }
             // wing movement stopped, save the gyro integral
             stop_time = Clock::getMillis();
@@ -324,8 +330,21 @@ static void doImuCalibration(SetupMenuSelect* p) {
             // sample the accel for the bob vector
             ret = accSensor->getMpu().getAccelSamplesAndCalib(gyro_integral, angle, ground_angle);
             AUDIO->startSound(AUDIO_TADDA | PRIO_SND_MASK, false, 100);
-            vTaskDelay(pdMS_TO_TICKS(1200));
-            start_time = Clock::getMillis();
+            MYUCG->setColor(COLOR_RED);
+            if (i == 0) {
+                // just finished the first wing down
+                nlidx = next_step;
+                p->menuPrintLn("Move next wing tip    ", nlidx);
+            }
+            else if (i == 1) {
+                // just finished the second wing down
+                nlidx = next_step;
+                p->menuPrintLn("Hold wings level      ", nlidx);
+            }
+            MYUCG->setColor(COLOR_WHITE);
+            if (i<2) {
+                while (!Rotary->readSwitch(700)) ;
+            }
         }
     }
 
@@ -339,7 +358,7 @@ static void doImuCalibration(SetupMenuSelect* p) {
         p->menuPrintLn("... aborted ...", 2);
         nlidx = 4;
         if ( gnorm > GyroMPU6050::GYRO_THRESHOLD ) {
-            p->menuPrintLn("IMU biases too high,", nlidx++);
+            p->menuPrintLn("IMU bias too high,", nlidx++);
             p->menuPrintLn("try a restart.", nlidx++);
         }
         accSensor->getMpu().applyImuReference(glider_ground_aa.get(), imu_reference.get());
@@ -1345,9 +1364,9 @@ void system_menu_create_hardware_ahrs(SetupMenu *top) {
 			 "Bias & Reference of the AHRS Sensor: Place glider on horizontal underground, first the right wing down, then the left wing.");
 	top->addEntry(ahrscalib);
 
-	SetupMenuChar *ahrslc = new SetupMenuChar("License Key", "0A#", 4, RST_NONE, add_key, ahrs_licence.get().id);
-	ahrslc->setHelp("Enter valid AHRS License Key to enabled the 'AHRS Option'");
-	top->addEntry(ahrslc);
+	// SetupMenuChar *ahrslc = new SetupMenuChar("License Key", "0A#", 4, RST_NONE, add_key, ahrs_licence.get().id);
+	// ahrslc->setHelp("Enter valid AHRS License Key to enabled the 'AHRS Option'");
+	// top->addEntry(ahrslc);
 
 #ifdef DEBUG_AND_TEST
 	SetupMenu *ahrspa = new SetupMenu("Parameters", system_menu_create_hardware_ahrs_parameter);
