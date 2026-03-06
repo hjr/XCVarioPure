@@ -28,7 +28,8 @@ static vector_f acc_buffer[ (SENSOR_HISTORY_DURATION_MS / DUTY_CYCLE_MS) + 1 ];
 
 AccMPU6050::AccMPU6050(MpuImu &mmpu) : 
     SensorTP<vector_f>(acc_buffer, DUTY_CYCLE_MS),
-    _my_mpu(mmpu)
+    _my_mpu(mmpu),
+    _lpf_slip_angle(LowPassFilterT<float>::alphaFromTau(1.5, DUTY_CYCLE_MS / 1000.f))
 {
     _id = SensorId::ACC_INERTIAL | SensorFlags::SENSOR_LOCAL;
 
@@ -183,8 +184,9 @@ void AccMPU6050::postProcess() {
 
     // update slip angle
     if (airborne.get()) {
+        // the slip angle: accel in NED, slip angle in ENU (nav frame)
         constexpr const float K = rad2deg(4000.f); // airplane constant and Ay correction factor
-        rad_t slip = -accel.y * K / (tas.get() * tas.get());
+        rad_t slip = accel.y * K / (tas.get() * tas.get());
         slip = std::clamp(slip, -deg2rad(15.f), deg2rad(15.f));
         slip_angle.set( _lpf_slip_angle.filter( slip ) );  // with atan(x) = x for small x
         // ESP_LOGI(FNAME,"AS: %f m/s, CURSL: %f°, SLIP: %f", tas.get(), -accel.y*K / (tas.get() * tas.get()), slip_angle.get() );

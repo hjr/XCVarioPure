@@ -61,7 +61,7 @@ private:
     vector_f att_vector = {};
     vector_f euler_rad = {};
     // slip angle
-    LowPassFilterT<float> _lpf_slip_angle{0.09f}; // 1.5s time constant at 10Hz
+    LowPassFilterT<float> _lpf_slip_angle;
     // calm counter
     float _restTimer = 0; // milliseconds since last movement
     bool _isResting = false;

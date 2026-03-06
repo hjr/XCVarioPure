@@ -50,7 +50,7 @@ void MultiGauge::draw()
         fval = VarioUnit->apply(_nvsvar->get()) * 10.f;
         break;
     case GAUGE_SLIP:
-        fval = _nvsvar->get() * -10.f;
+        fval = -Units::rad_to_deg(_nvsvar->get());
         break;
     default:
         fval = _nvsvar->get();

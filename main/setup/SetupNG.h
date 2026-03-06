@@ -236,7 +236,7 @@ extern SetupNG<mps_t>  		gnd_speed;
 extern SetupNG<meter_t>  		te_alt;
 extern SetupNG<mps_t>  		te_vario;
 extern SetupNG<mps_t>  		te_netto;
-extern SetupNG<float>  		slip_angle;
+extern SetupNG<rad_t>  		slip_angle;
 extern SetupNG<float>  		battery_voltage;
 
 extern SetupNG<int>  		xcv_alive;
