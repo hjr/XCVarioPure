@@ -555,6 +555,10 @@ void IpsDisplay::initDisplay() {
         FLAPSgauge->forceRedraw();
     }
 
+    if (theCenteraid) {
+        theCenteraid->forceRedraw();
+    }
+
     redrawValues();
 }
 
@@ -824,7 +828,7 @@ float getHeading() { // fixme move to compass
 	return heading;
 }
 
-// fixme arg not needed on stack
+// max. 10 Hz update rate for the display
 void IpsDisplay::drawDisplay(){
 	if( !(screens_init & INIT_DISPLAY_RETRO) ){
 		initDisplay();
@@ -880,7 +884,7 @@ void IpsDisplay::drawDisplay(){
     }
 
     // Wind & center aid
-    if (!(tick % 2)) {
+    if (!(tick % 5)) {
         if (theCenteraid && !CRMOD.getCMode()) {
             theCenteraid->drawCenterAid();
         } else if (wind_enable.get() > WA_OFF) {

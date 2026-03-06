@@ -19,6 +19,7 @@
 #include "math/Floats.h"
 #include "ESPAudio.h"
 #include "ESPRotary.h"
+#include "CenterAid.h"
 #include "AnalogInput.h"
 #include "Atmosphere.h"
 #include "IpsDisplay.h"
@@ -237,19 +238,20 @@ void readSensors(void *pvParameters)
 		if (FLAP && FLAP->haveAdcSensor()) { FLAP->progress(); }
 
         // Trace airborne status
-		if( (count % 5) == 0 ) {
-			if ( ! airborne.get() && (ias.get() >  Speed2Fly.getStallSpeed() * 1.1f) ) {
-				airborne.set(true);
-			}
-			else if ( airborne.get() && (ias.get() <  Units::read(Units::kmh, 5.f)) ) {
-				if ( landed++ > 20 ) { // ias < 5 km/h for 10 seconds
-					airborne.set(false);
-				}
-			}
-			else {
-				landed = 0;
-			}
-		}
+        if ((count % 5) == 0) {
+            if (!airborne.get() && (ias.get() > Speed2Fly.getStallSpeed() * 1.1f)) {
+                airborne.set(true);
+            } else if (airborne.get() && (ias.get() < Units::read(Units::kmh, 5.f))) {
+                if (landed++ > 20) {  // ias < 5 km/h for 10 seconds
+                    airborne.set(false);
+                }
+            } else {
+                landed = 0;
+            }
+            if (theCenteraid) {
+                theCenteraid->tick(count);
+            }
+        }
 
         // a 5Hz toy feed
         if( (count % 2) == 0 ) {
@@ -349,6 +351,7 @@ void readSensors(void *pvParameters)
 
         // audio update
         AUDIO->updateTone();
+        
         // UI update, to not flood the UI queue with a binary hand shake
         if ( ui_update_done ) {
             const int screenEvent = ScreenEvent(ScreenEvent::MAIN_SCREEN).raw;

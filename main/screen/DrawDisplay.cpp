@@ -205,14 +205,9 @@ void UiEventLoop(void *arg)
                     gload_warning_active = 0;
                 }
             }
-
-            // fixme no need for this to be here, could be in sensor loop, no display context needed
-            if (theCenteraid) {
-				theCenteraid->tick();
-			}
-		}
-		if( uxTaskGetStackHighWaterMark(NULL) < 512  ) {
-			ESP_LOGW(FNAME,"Warning UiEventLoop stack low: %d bytes", uxTaskGetStackHighWaterMark(NULL) );
-		}
+        }
+        if (uxTaskGetStackHighWaterMark(NULL) < 512) {
+            ESP_LOGW(FNAME, "Warning UiEventLoop stack low: %d bytes", uxTaskGetStackHighWaterMark(NULL));
+        }
     }
 }

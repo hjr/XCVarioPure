@@ -55,7 +55,7 @@ private:
     rad_t filtered_mag_heading = 0;
     vector_f petal = {0,0,0};
     rps_t circle_omega = 0.f;
-    rad_t circle_footing = 0.f;
+    rad_t circle_footing = 0.f; // a relative heading (ENU) w/o north reference
     Quaternion att_quat = Quaternion();
     Quaternion d_gyro = Quaternion();
     vector_f att_vector = {};

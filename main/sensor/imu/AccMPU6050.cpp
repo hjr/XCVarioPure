@@ -113,11 +113,11 @@ void AccMPU6050::postProcess() {
         float loadFactor = accel.get_norm();
         float lf = loadFactor > 2.0 ? 2.0 : loadFactor;
         loadFactor = lf < 0 ? 0 : lf;  // limit to 0..2g
-        Quaternion q_bn = att_quat.get_conjugate(); // rotation from body to navigation frame
-        vector_f z_nav_frame = q_bn.rotate(vector_f{0,0,1});
+        // rotation from navigation to body frame
+        vector_f z_nav_frame = att_quat.rotate(vector_f{0,0,1});
         circle_omega = gyro.dot(z_nav_frame);
         // tan(roll):= petal force/G = m w v / m g
-        float tanw = -circle_omega * tas.get() / Units::g0;
+        float tanw = circle_omega * tas.get() / Units::g0;
         roll = atan(tanw);
         if (ahrs_roll_check.get()) {
             // expected extra load c = sqrt(aa+bb) - 1, here a = 1/9.81 x atan, b=1
@@ -162,8 +162,8 @@ void AccMPU6050::postProcess() {
     euler_rad.clamp(-limit, limit);
 
     float curh = 0;
-    rad_t gyro_heading_step = -circle_omega * dt; // gyro heading change in this step (NED)
-    circle_footing += gyro_heading_step; // integrate gyro heading change to get the current circle footing
+    rad_t gyro_heading_step = circle_omega * dt; // gyro heading change in this step (NED)
+    circle_footing = Vector::normalizePI2(circle_footing + gyro_heading_step); // integrate gyro heading change to get the current circle footing
 
     if (theCompass && theCompass->cur_heading(&curh)) {
         // tuned to plus 7% what gave the best timing swing in response, 2% for compass is far enough
@@ -235,6 +235,6 @@ void AccMPU6050::resetRest() {
 // }
 
 float AccMPU6050::getGyroFooting() const {
-    return Vector::normalizePI2(circle_footing);
+    return circle_footing;
 }
 
