@@ -211,8 +211,8 @@ bool AccMPU6050::detectRest() {
     vector_f accVar = getVariance(1000);
     const vector_f* accel = getHeadPtr();
     
-    ESP_LOGI(FNAME, "rest detection: accVar=(%f, %f, %f) n2=%f < %f", accVar.x, accVar.y, accVar.z, accVar.get_norm2(), ACCVAR_THRESHOLD2);
-    ESP_LOGI(FNAME, "rest detection: accel=(%f, %f, %f) n2=%f < %f", accel->x, accel->y, accel->z, accel->get_norm()-1., ACCEL_THRESHOLD);
+    // ESP_LOGI(FNAME, "rest detection: accVar=(%f, %f, %f) n2=%f < %f", accVar.x, accVar.y, accVar.z, accVar.get_norm2(), ACCVAR_THRESHOLD2);
+    // ESP_LOGI(FNAME, "rest detection: accel=(%f, %f, %f) n2=%f < %f", accel->x, accel->y, accel->z, accel->get_norm()-1., ACCEL_THRESHOLD);
     
     if (accVar.get_norm2() < ACCVAR_THRESHOLD2 && std::fabsf(accel->get_norm() - 1.f) < ACCEL_THRESHOLD) {
          // min. 3 sec below threshold, consider as rest

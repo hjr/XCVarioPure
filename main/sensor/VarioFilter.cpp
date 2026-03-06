@@ -196,7 +196,7 @@ bool VarioFilter::doRead(float& val) {
 
     // linear prediction and innovation gating
     const float max_10thsec_step = 8.0f;  // max 80 m/s vertical speed
-    if (accept(curr_altitude, max_10thsec_step)) {
+    if (accept(curr_altitude, max_10thsec_step) || _prepare_sim_jump) {
         val = curr_altitude;
         // ESP_LOGI(FNAME, "VarioFilter: accepted alt %f", curr_altitude);
     } else {
@@ -322,14 +322,19 @@ void VarioFilter::postProcess() {
         dt = (now - _prev_time) / 1000.0f;
         // ESP_LOGI(FNAME, "VKF: init timing: %f", dt);
     }
+
     vkf.predict(dt);
     _prev_time = now;
     meter_t pred_err = getHead() - vkf.h;
-    // if (fabsf(pred_err) > 60.0f) { // rejct innovation larger than 60m/s
-    //     // reject baro glitch
-    //     ESP_LOGE(FNAME, "VarioFilter: large pred_err %f, rejecting update", pred_err);
-    //     return;
-    // }
+    if (fabsf(pred_err) > 60.0f && _prepare_sim_jump) {
+        // just re-/started sim mode, expect a time and height disruption, prepare KF for it
+        meter_t h0 = getHead();
+        vkf.init(h0);
+        _filter->reset(h0);
+        if (_prepare_sim_jump > 0) _prepare_sim_jump--;
+        ESP_LOGW(FNAME, "VarioFilter SIM: large pred_err %f, re-init KF", pred_err);
+        return;
+    }
     vkf.R = 0.25 * (1 + fabsf(pred_err));
     vkf.R = std::clamp(vkf.R, 0.05f, 1.0f);
 
@@ -346,6 +351,6 @@ void VarioFilter::postProcess() {
         _avg_vario = (getHead() - _history[_avg_filter_idx]) * (10.f / (_avg_filter_idx + 1));  // in m/s
         // ESP_LOGI(FNAME, "VarioFilter: H:%f 1:%f avg:%f", getHead(), _history[_avg_filter_idx], avg);
     }
-    AverageVario::newSample(vkf.v);
+    AverageVario::newSample(vkf.v); // longer term thermal average
 }
 #endif

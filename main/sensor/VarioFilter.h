@@ -27,6 +27,7 @@ class VarioFilter final : public SensorTP<float> {
 
     void configChange();
     void resetKF();  // cope with disruptive events like a QNH adjustment
+    void prepareForSimJump() { _prepare_sim_jump = 40; } // prepare for a disruptive jump in altitude in simulation mode
     float getAvgVario() const { return _avg_vario; }
     float getPolarSink() const { return _polar_sink; }
 
@@ -42,6 +43,7 @@ class VarioFilter final : public SensorTP<float> {
     // some usefull derived values
     float _avg_vario = 0.f;
     float _polar_sink = 0.f;
+    int8_t _prepare_sim_jump = 0;
 };
 
 extern VarioFilter bmpVario;

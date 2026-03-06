@@ -15,6 +15,7 @@
 #include "screen/DrawDisplay.h"
 #include "sensor.h"
 #include "sensor/SensorMgr.h"
+#include "sensor/VarioFilter.h"
 #include "screen/MessageBox.h"
 #include "comm/DeviceMgr.h"
 #include "setup/SetupNG.h"
@@ -234,6 +235,8 @@ dl_action_t FlarmMsg::parsePFLAX(NmeaPlugin *plg)
                     Clock::setSimSpeed(speed);
                 }
             }
+            // always prepare vario for disruptive jump
+            bmpVario.prepareForSimJump();
         }
     }
 
