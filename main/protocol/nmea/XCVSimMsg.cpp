@@ -75,7 +75,7 @@ dl_action_t XCVSimMsg::parse_Sens(NmeaPlugin *plg)
     OATSensor->pushAndPublish(tmp, time);
 
     vector_f vtmp;
-    vtmp.x = -atof(sm->_frame.c_str() + word->at(6));
+    vtmp.x = atof(sm->_frame.c_str() + word->at(6));
     vtmp.y = atof(sm->_frame.c_str() + word->at(7));
     vtmp.z = atof(sm->_frame.c_str() + word->at(8));
     if ( accSensor ) accSensor->pushAndPublish(vtmp, time);
