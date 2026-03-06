@@ -27,10 +27,11 @@ constexpr int UARTEVENTQ_LEN = 10;
 static constexpr std::array<int, 7> baud_rate_table = { 2400, 4800, 9600, 19200, 38400, 57600, 115200 };  // stay compatible with existing setup's
 
 // enumeration is: SM_FLARM, SM_RADIO, SM_XCTNAV_S3, SM_OPENVARIO
-static constexpr std::array<t_serial_cfg, NR_OF_SER_PROFILES> sm_serial_config = {{// baud,      polarity,  pinswp, tx enable
+static constexpr std::array<t_serial_cfg, NR_OF_SER_PROFILES> sm_serial_config = {{
+    // baud,      polarity,   pinswp, tx enable
     {BAUD_19200, RS232_TTL, false, true},
     {BAUD_9600, RS232_TTL, false, true},
-    {BAUD_19200, RS232_TTL, false, true},
+    {BAUD_38400, RS232_TTL, true, true},
     {BAUD_19200, RS232_TTL, false, true}}};
 
 static constexpr std::array<std::string_view, 3> MEMOS = {"S0", "S1", "S2"};
