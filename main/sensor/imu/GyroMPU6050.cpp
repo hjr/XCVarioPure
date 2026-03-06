@@ -69,6 +69,10 @@ void GyroMPU6050::postProcess() {
     const vector_f& gyro = getHead();
 
     _processed = gyro - _bias_estimator.getBias(); // a corrected measurment
+    rps_t gate = Units::deg_to_rad(gyro_gating.get());
+    _processed.x = abs(_processed.x) < gate ? 0.0 : _processed.x;
+    _processed.y = abs(_processed.y) < gate ? 0.0 : _processed.y;
+    _processed.z = abs(_processed.z) < gate ? 0.0 : _processed.z;
     bool rest = detectRest() && accSensor->isResting();
 
     // feed the bias filter
