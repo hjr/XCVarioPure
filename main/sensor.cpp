@@ -212,10 +212,10 @@ void readSensors(void *pvParameters)
                 if (delta < 0) {
                     delta += 1000;
                 }
-                vector_f acc = accSensor->getHead();
-                vector_f gyro_deg = gyroSensor->getHead() * rad2deg(1.f);
+                vector_f acc = accSensor->getRef();
+                vector_f gyro_deg = gyroSensor->getRef() * rad2deg(1.f);
                 sprintf(log + pos, "%d.%03d,%d,%.3f,%.3f,%.3f,%.2f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f", (int)(tv.tv_sec % (60 * 60 * 24)),
-                        (int)(tv.tv_usec / 1000), delta, baroSensor->getHead()/100.f, teSensor->getHead()/100.f, asSensor->getHead(), temp, 
+                        (int)(tv.tv_usec / 1000), delta, baroSensor->getHead()/100.f, teSensor->getHead()/100.f, asSensor->getHead(), Units::K_to_C(temp), 
                         acc.x, acc.y, acc.z, gyro_deg.x, gyro_deg.y, gyro_deg.z);
                 if (theCompass) {
                     pos = strlen(log);

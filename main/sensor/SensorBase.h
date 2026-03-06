@@ -293,7 +293,7 @@ public:
     T get() const {
         return _processed;
     }
-    const T& getP() const {
+    const T& getRef() const {
         return _processed;
     }
 

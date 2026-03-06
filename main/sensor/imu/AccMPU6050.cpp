@@ -103,7 +103,8 @@ void AccMPU6050::postProcess() {
 
     float gravity_trust = 1;
     const vector_f accel = getHead();
-    const vector_f& gyro = gyroSensor->getP();
+    _processed = accel; // todo subtraced soft bias
+    const vector_f& gyro = gyroSensor->getRef();
     // ESP_LOGI( FNAME, " Accel: %.3f,%.3f,%.3f Gyro: %.3f,%.4f,%.4f dt: %.4f", accel.x, accel.y, accel.z, gyro.x, gyro.y, gyro.z, dt );
 
     // create a gyro base rotation delta
