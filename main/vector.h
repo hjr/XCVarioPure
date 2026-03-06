@@ -41,7 +41,6 @@
 typedef struct bitfield_vector {
 	   bool dirtyXY  :1;   // True if X and/or Y have been set, and speed and direction need to be recalculated
        bool dirtyDR  :1;
-	   bool _isValid :1;
 }bitfield_vector_t;
 
 class Vector
@@ -50,7 +49,7 @@ public:
 
     Vector();
     Vector(const Vector&) = default;
-    Vector(const float angle, const float speed);
+    Vector(rad_t angle, mps_t speed);
 
     ~Vector();
 
@@ -61,8 +60,14 @@ public:
     static degree_t normalizeDeg180(degree_t angle);
     static rad_t angleDiff(rad_t ang1, rad_t ang2);    // RAD
     static degree_t angleDiffDeg(degree_t ang1, degree_t ang2);    // DEG
-
     static degree_t reverseBearing(degree_t angle);
+    static rad_t reverseBearingRad(rad_t angle);
+
+    void reset();
+    bool isValid() const { return flags.dirtyDR == false || flags.dirtyXY == false; }
+    Vector cross(Vector& v);
+    float  dot(Vector& v);
+
     /**
      * Get angle in degrees.
      */
@@ -128,40 +133,30 @@ public:
      */
     Vector& operator = (const Vector& x);
 
-    /**
-     * + operator for Vector.
-     */
-    Vector operator + (Vector& x);
-
-    /**
-     * - operator for Vector.
-     */
-    Vector operator - (Vector& x);
-
-    /**
-     * / operator for Vector.
-     */
-    float operator / (Vector& x);
+    Vector operator+(Vector& v);
+    Vector operator-(Vector& v);
+    float normBy(float x);
+    Vector operator/(float x);
 
     /**
      * operator for Vector.
      */
-    float operator * (Vector& x);
+    float operator*(Vector& x);
 
     /**
      * != operator for Vector
      */
-    bool operator != ( Vector& x);
+    // bool operator != ( Vector& x);
 
     /**
       * == operator for Vector
       */
-    bool operator == ( Vector& x);
+    // bool operator == ( Vector& x);
 
     /**
      * minus prefix operator for Vector
      */
-    Vector operator - ();
+    // Vector operator - ();
 
     // /**
     //  * * prefix operator for Vector
@@ -177,31 +172,9 @@ public:
     void add(Vector arg);
 
     /**
-     * Returns a copy of the object
+     * Reverses the direction of the vector.
      */
-    Vector clone();
-
-    /**
-     * Sets the distance to be invalid
-     */
-    void setInvalid()
-    {
-        flags._isValid=false;
-        flags.dirtyXY=true;
-        flags.dirtyDR=true;
-        _angle=0;
-        _x=0;
-        _y=0;
-        _speed=0;
-    };
-
-    /**
-     * Gets if the distance is valid
-     */
-    bool isValid() const
-    {
-      return flags._isValid;
-    };
+    Vector reverse();
 
 protected: // Protected attributes
 
@@ -239,7 +212,7 @@ private:
 };
 
 /** operators for vector. */
-Vector operator * (float left, Vector& right);
+// Vector operator * (float left, Vector& right);
 Vector operator * (Vector& left, float right);
 Vector operator / (Vector& left, float right);
 Vector operator / (Vector& left, int right);

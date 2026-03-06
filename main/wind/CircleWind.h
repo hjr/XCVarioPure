@@ -43,13 +43,6 @@ public:
   ~CircleWind();
   void tick();
 
-  // Call for wind measurement result. The result is included in wind,
-  // the jitter of the measurement (1-5; 1 is bad, 5 is excellent) in jitter.
-  void getWind(Vector &wind, int &qual) const {
-    wind = result;
-    qual = jitter;
-  };
-
   // Called if the flight mode changes
   void newFlightMode(t_circling newMode);
   t_circling getFlightMode() const { return flightMode; };
@@ -80,12 +73,11 @@ public:
   mps_t getSpeed() { return result.getSpeed(); }
   int getAge() const { return _age; }
   static void resetAge();
-  int getQuality() const { return rint(100.0 - jitter); } // 0..100 %
   const char *getStatus() const { return status; }
   const char *getFlightModeStr() const;
 
 private:
-  void _calcWind();
+  void calcWind();
   int circleCount = 0; // we are counting the number of circles, the first onces are
                    // probably not very round
   bool circleLeft = false; // true=left, false=right
@@ -98,7 +90,7 @@ private:
   Vector minVector;
   Vector maxVector;
   Vector result;
-  float jitter = 0;
+  mps_t minVecTas, maxVecTas;
   t_circling flightMode = undefined;
   static int16_t _age;
   const char *status;
@@ -107,7 +99,7 @@ private:
   uint8_t turn_left;
   uint8_t turn_right;
   uint8_t fly_straight;
-  float lastWindDir;
+  rad_t lastWindDir;
   mps_t lastWindSpeed;
   Vector flarmVec;
 };

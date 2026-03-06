@@ -301,12 +301,12 @@ void change_cruise() {
 }
 
 void resetSWindAge() {
-	if( swind_dir.get() != 0 && swind_speed.get() != 0 ) { // do not reset age at initial sync
+	if( swind_speed.get() < 0.2f ) { // do not reset age at initial sync
 		StraightWind::resetAge();
 	}
 }
 void resetCWindAge() {
-	if( cwind_dir.get() != 0 && cwind_speed.get() != 0 ) {
+	if( cwind_speed.get() < 0.2f ) {
 		CircleWind::resetAge();
 	}
 }
@@ -425,7 +425,7 @@ SetupNG<kelvin_t>  		OAT( "OAT", -1000., false, SYNC_BIDIR, VOLATILE );   // out
 SetupNG<float>  		swind_dir( "SWDD", 0.0, false, SYNC_FROM_MASTER, VOLATILE, resetSWindAge );
 SetupNG<mps_t>  		swind_speed( "SWDS", 0.0, false, SYNC_FROM_MASTER, VOLATILE, resetSWindAge );
 SetupNG<float>  		swind_sideslip_lim( "SWSL", 2.0, false, SYNC_FROM_MASTER, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(0, 45.0, 0.1));
-SetupNG<float>  		cwind_dir( "CWDD", 0.0, false, SYNC_FROM_MASTER, VOLATILE, resetCWindAge );
+SetupNG<rad_t>  		cwind_dir( "CWDD", 0.0, false, SYNC_FROM_MASTER, VOLATILE, resetCWindAge );
 SetupNG<mps_t>  		cwind_speed( "CWDS", 0.0, false, SYNC_FROM_MASTER, VOLATILE, resetCWindAge );
 SetupNG<int>  			extwind_sptc_dir( "EWDD", 0.0, false, SYNC_BIDIR, VOLATILE ); // synoptic and
 SetupNG<mps_t>  		extwind_sptc_speed( "EWDS", 0.0, false, SYNC_BIDIR, VOLATILE );
@@ -618,9 +618,9 @@ SetupNG<float>			airspeed_max("ASMAX", 0 );
 // SetupNG<float>		    gload_alarm_volume("GLOADAVOL", 100, true, SYNC_NONE, PERSISTENT, nullptr, QUANT_NONE, &percentage_limits);
 SetupNG<int>        	display_variant("DISPLAY_VARIANT", 0 );
 SetupNG<int>        	compass_dev_auto("COMPASS_DEV", 0 );
-SetupNG<float>       	max_circle_wind_diff("CI_WINDDM", 60.0, true, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(0, 90.0, 1.0));
-SetupNG<float>       	max_circle_wind_delta_deg("CIMDELD", 20.0, true, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(0.0, 60.0, 0.1));
-SetupNG<float>       	max_circle_wind_delta_speed("CIMDELS", 5.0, true, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(0.0, 20.0, 0.1));
+SetupNG<degree_t>    	max_circle_wind_diff("CI_WINDDM", 60.0, true, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(0, 90.0, 1.0));
+SetupNG<degree_t>    	max_circle_wind_delta_deg("CIMDELD", 20.0, true, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(0.0, 60.0, 0.1));
+SetupNG<kmh_t>       	max_circle_wind_delta_speed("CIMDELS", 5.0, true, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(0.0, 20.0, 0.1));
 SetupNG<float>       	circle_wind_lowpass("CI_WINDLOW", 5, true, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(1, 10, 1));
 SetupNG<int> 			can_speed( "CANSPEED", CAN_SPEED_1MBIT, true, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(CAN_SPEED_250KBIT, CAN_SPEED_1MBIT, 1));
 SetupNG<float> 			master_xcvario( "MSXCV", 0, false, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(1000, 9999, 1));

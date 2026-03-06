@@ -70,9 +70,6 @@ void ShowCirclingWind::display(int mode)
 		sprintf( buffer, "Wind Age : %d sec   ", circleWind->getAge() );
 		menuPrintLn(buffer, i++);
 
-		sprintf( buffer, "Quality : %d %%  ", circleWind->getQuality() );
-		menuPrintLn(buffer, i++);
-
 		sprintf( buffer, "Status : %s    ", circleWind->getStatus() );
 		menuPrintLn(buffer, i++);
 
