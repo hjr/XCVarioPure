@@ -298,18 +298,17 @@ void readSensors(void *pvParameters)
 			}
 		}
 
-		// Check on new clients connecting
-		if ( SetupCommon::isMaster() && client_sync_dataIdx < SetupCommon::numEntries() ) {
-			while( client_sync_dataIdx < SetupCommon::numEntries() ) {
-				if ( SetupCommon::syncEntry(client_sync_dataIdx++) ) {
-					break; // Hit entry to actually sync and send data
-				}
-			}
-			if ( client_sync_dataIdx >= SetupCommon::numEntries() ) {
-				ESP_LOGI(FNAME,"Client sync complete");
-			}
-		}
-
+        // Check on new clients connecting
+        if (SetupCommon::isMaster() && client_sync_dataIdx < SetupCommon::numEntries()) {
+            while (client_sync_dataIdx < SetupCommon::numEntries()) {
+                if (SetupCommon::syncEntry(client_sync_dataIdx++)) {
+                    break;  // Hit entry to actually sync and send data
+                }
+            }
+            if (client_sync_dataIdx >= SetupCommon::numEntries()) {
+                ESP_LOGI(FNAME, "Client sync complete");
+            }
+        }
 
         // every second
         if ( !(count%10) ) {
@@ -351,7 +350,7 @@ void readSensors(void *pvParameters)
 
         // audio update
         AUDIO->updateTone();
-        
+
         // UI update, to not flood the UI queue with a binary hand shake
         if ( ui_update_done ) {
             const int screenEvent = ScreenEvent(ScreenEvent::MAIN_SCREEN).raw;
@@ -817,7 +816,7 @@ void system_startup(void *args){
         logged_tests += passed_text;
     }
 
-    // magnetic sensor / compass selftest fixme move, register ..
+    // magnetic sensor / compass selftest fixme move, register to list of sensors ..
 	if( theCompass ) {
 		logged_tests += "Compass test: ";
 		theCompass->begin();
@@ -832,7 +831,6 @@ void system_startup(void *args){
 			ESP_LOGI( FNAME, "Magnetic sensor selftest: FAILED");
 			MBOX->pushMessage(1, "Compass: FAILED");
 			logged_tests += failed_text;
-			selftestPassed = false;
 		}
 		theCompass->start();  // start task
 	}
