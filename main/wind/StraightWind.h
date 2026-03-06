@@ -42,9 +42,9 @@ public:
 		_age = 0;
 	}
 
-	void calculateWind( float tc, mps_t gs, float th, mps_t tas, float deviation  );
+	void calculateWind( float tc, mps_t gs, float th, float deviation );
 	static void calculateSpeedAndAngle( float angle1, mps_t speed1, float angle2, mps_t speed2, mps_t& speed, float& angle );
-	void newCirclingWind( float angle, mps_t speed );
+	void newCirclingWind(rad_t angle, mps_t speed);
 	void test();
 	int getAge() { return _age; }
 	static void resetAge() { _age = 0; }
@@ -57,15 +57,14 @@ public:
 	const char *getStatus() { return status; }
 
 private:
-	mps_t averageTas;         // TAS
 	float averageTH;          // sum of Compass true heading
-	float averageTC;          // sum of GPS heading (true course)
+	rad_t averageTC;          // sum of GPS heading (true course)
 	mps_t averageGS;		  // average ground speed
-	float windDir;            // calculated wind direction
+	rad_t windDir;            // calculated wind direction
 	mps_t windSpeed;          // calculated wind speed
-	bool   lowAirspeed;
-	float  circlingWindDir;
-	float  circlingWindDirReverse;
+	bool   noWindMeasuring;
+	rad_t  circlingWindDir;
+	rad_t  circlingWVecDir;
 	mps_t  circlingWindSpeed;
 	int    circlingWindAge;
 	float  airspeedCorrection;
@@ -78,7 +77,7 @@ private:
 	float  jitter;
 	std::list<Vector> windVectors;
 	mps_t newWindSpeed;
-	float newWindDir;
+	rad_t newWindDir;
 	float slipAverage;
 	float lastHeading;
 	float lastGroundCourse;

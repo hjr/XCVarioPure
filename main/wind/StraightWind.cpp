@@ -47,15 +47,14 @@ int16_t StraightWind::_age = 10000;
 
 
 StraightWind::StraightWind() :
-	averageTas(0),
 	averageTH( 0.0 ),
 	averageTC( 0.0 ),
 	averageGS(0.0),
 	windDir( -1.0 ),
 	windSpeed( -1.0 ),
-	lowAirspeed( false ),
+	noWindMeasuring( false ),
 	circlingWindDir( -1.0 ),
-	circlingWindDirReverse( -1.0 ),
+	circlingWVecDir( -1.0 ),
 	circlingWindSpeed( -1.0 ),
 	circlingWindAge( 0 ),
 	airspeedCorrection( 1.0 ),
@@ -86,7 +85,7 @@ void StraightWind::tick(){
 
 bool StraightWind::getWind(int16_t *direction, mps_t *speed)
 {
-	*direction = fast_iroundf(swind_dir.get());
+	*direction = fast_iroundf(Units::rad_to_deg(swind_dir.get()));
 	*speed = swind_speed.get();
 	if( _age < 7200 )
 		return true;
@@ -127,25 +126,18 @@ bool StraightWind::calculateWind()
 	// Get current ground speed in km/h
 	mps_t cgs = Flarm::getGndSpeed();
 
-	// Get current TAS in km/h
-	mps_t ctas = tas.get();
-
-	// Check, if we have a AS value > minimum, default is 25 km/h.
-	// If GS is nearly zero, the measurement makes also sense (wave), hence if we are not flying it doesn't
-	const mps_t wind_as_min = Units::kmh_to_mps(25.f);
-
-	if( ctas < wind_as_min )
+	if( ! airborne.get() )
 	{
 		// We start a new measurement cycle.
-		if( !lowAirspeed ) {
-			ESP_LOGI(FNAME,"Low Airspeed, stop wind calculation, AS %3.1f  < %3.1f Kmh", Units::pipe(ctas, Units::kmh),  Units::pipe(wind_as_min, Units::kmh) );
-			lowAirspeed = true;
+		if( !noWindMeasuring ) {
+			ESP_LOGI(FNAME,"Low Airspeed, stop wind calculation");
+			noWindMeasuring = true;
 		}
 		status="Low AS";
 	}else{
-		if( lowAirspeed ) {
-			ESP_LOGI(FNAME,"Airspeed OK, start wind calculation, AS %3.1f  < %3.1f Kmh", Units::pipe(ctas, Units::kmh),  Units::pipe(wind_as_min, Units::kmh) );
-			lowAirspeed = false;
+		if( noWindMeasuring ) {
+			ESP_LOGI(FNAME,"Airspeed OK, start wind calculation");
+			noWindMeasuring = false;
 		}
 	}
 	// Get current true heading from compass.
@@ -161,14 +153,10 @@ bool StraightWind::calculateWind()
 		}
 	}
 
-	// Get current true course from GPS
-	float ctc = Flarm::getGndCourse();
+	// Get current true course from GPS .. Calculate average true course TC
+	averageTC = Flarm::getGndCourse();
 	// averageTC = Vector::normalize( averageTC + (ctc - averageTC) * 1/wind_gps_lowpass.get());
-	averageTas = ctas;
 	averageGS += (cgs -averageGS) * 1/wind_gps_lowpass.get();
-
-	// Calculate average true course TC
-	averageTC = ctc;
 
 	// WCA in radians
 	magneticHeading = averageTH;
@@ -177,10 +165,13 @@ bool StraightWind::calculateWind()
 
 	if( (logging.get() != LOGG_DISABLE) && theCompass ){
 		if( logging.get() & LOGG_WIND ){
-		        char log[ProtocolItf::MAX_LEN];
-		        sprintf( log, "$WIND;");
-		        int pos = strlen(log);
-			sprintf( log+pos, "%d;%.1f;%.1f;%.1f;%.1f;%.1f;%.1f;%.1f;%.1f;%.1f;%.1f;%.1f;%d;%d;%.1f", _tick, averageTC, cgs, averageTH, ctas, newWindDir, newWindSpeed, windDir, windSpeed, circlingWindDir, circlingWindSpeed, (airspeedCorrection-1)*100, circleWind->getFlightMode(), gpsStatus, deviation );
+			char log[ProtocolItf::MAX_LEN];
+			sprintf( log, "$WIND;");
+			int pos = strlen(log);
+			sprintf( log+pos, "%d;%.1f;%.1f;%.1f;%.1f;%.1f;%.1f;%.1f;%.1f;%.1f;%.1f;%.1f;%d;%d;%.1f", _tick, Units::rad_to_deg(averageTC), 
+					cgs, Units::rad_to_deg(averageTH), tas.get(), Units::rad_to_deg(newWindDir), Units::mps_to_kmh(newWindSpeed), 
+					Units::rad_to_deg(windDir), Units::mps_to_kmh(windSpeed), Units::rad_to_deg(circlingWindDir), Units::mps_to_kmh(circlingWindSpeed), 
+					(airspeedCorrection-1)*100, static_cast<uint8_t>(circleWind->getFlightMode()), gpsStatus, deviation );
 			pos=strlen(log);
 			sprintf( log+pos, "\n");
 			const NmeaPrtcl *prtcl = DEVMAN->getNMEA(NAVI_DEV); // Todo preliminary solution ..
@@ -209,14 +200,14 @@ bool StraightWind::calculateWind()
 		}
 	}
 
-	if( (circleWind->getFlightMode() != straight) || lowAirspeed || !THok || !gpsStatus ){
+	if( (circleWind->getFlightMode() != circling_t::straight) || noWindMeasuring || !THok || !gpsStatus ){
 		// ESP_LOGI(FNAME,"In Circling, stop ");
 		return false;
 	}
 
 	status="Calculating";
-	// ESP_LOGI(FNAME,"%d TC: %3.1f (avg:%3.1f) GS:%3.1f TH: %3.1f (avg:%3.1f) TAS: %3.1f", nunberOfSamples, ctc, averageTC, cgs, cth, averageTH, ctas );
-	calculateWind( averageTC, averageGS, averageTH, averageTas, deviation  );
+	// ESP_LOGI(FNAME,"%d TC: %3.1f GS:%3.1f TH: %3.1f (avg:%3.1f) TAS: %3.1f", nunberOfSamples, averageTC, cgs, cth, averageTH, tas.get() );
+	calculateWind( averageTC, averageGS, averageTH, deviation );
 	return true;
 }
 
@@ -240,8 +231,10 @@ void StraightWind::calculateSpeedAndAngle( float angle1, mps_t speed1, float ang
 float StraightWind::getAngle() { return swind_dir.get(); };
 float StraightWind::getSpeed() { return swind_speed.get(); };
 
-void StraightWind::calculateWind( float tc, mps_t gs, float th, mps_t tas, float deviation  ){
-	// ESP_LOGI(FNAME,"calculateWind: TC:%3.1f GS:%3.1f TH:%3.1f TAS:%3.1f Dev:%2.2f", tc, gs, th, tas, deviation );
+void StraightWind::calculateWind( float tc, mps_t gs, float th, float deviation  ){
+
+	mps_t mytas = tas.get();
+	// ESP_LOGI(FNAME,"calculateWind: TC:%3.1f GS:%3.1f TH:%3.1f TAS:%3.1f Dev:%2.2f", tc, gs, th, mytas, deviation );
 	// Wind correction angle WCA
 	if( gs < Units::kmh_to_mps(5.f) ){
 		tc = th;   // what will deliver heading and airspeed for wind
@@ -283,14 +276,14 @@ void StraightWind::calculateWind( float tc, mps_t gs, float th, mps_t tas, float
 			airspeed = groundTrack.getSpeed();
 			heading = groundTrack.getAngleDeg();
 //#ifdef VERBOSE_LOG
-			ESP_LOGI(FNAME,"Using CWind: %.2f°/%.2f, TC/GS: %.1f°/%.1f, HD/AS: %.2f°/%.2f, tas=%.2f, ASdelta %.3f", circlingWindDir, circlingWindSpeed, tc, gs, heading, airspeed, tas, airspeed-tas );
+			ESP_LOGI(FNAME,"Using CWind: %.2f°/%.2f, TC/GS: %.1f°/%.1f, HD/AS: %.2f°/%.2f, tas=%.2f, ASdelta %.3f", circlingWindDir, circlingWindSpeed, tc, gs, heading, airspeed, mytas, airspeed-mytas );
 // #endif
-			if( abs( airspeed - tas ) > wind_straight_speed_tolerance.get() ){  // 30 percent max deviation
+			if( abs( airspeed - mytas ) > wind_straight_speed_tolerance.get() ){  // 30 percent max deviation
 				status = "AS OOB";
-				ESP_LOGI(FNAME,"Estimated Airspeed/Groundspeed OOB, max delta: %f km/h, delta: %f km/h", wind_straight_speed_tolerance.get(), abs( airspeed - tas ) );
+				ESP_LOGI(FNAME,"Estimated Airspeed/Groundspeed OOB, max delta: %f km/h, delta: %f km/h", wind_straight_speed_tolerance.get(), abs( airspeed - mytas ) );
 				return;
 			}
-			airspeedCorrection +=  (airspeed/tas - airspeedCorrection) * wind_as_filter.get();
+			airspeedCorrection +=  (airspeed/mytas - airspeedCorrection) * wind_as_filter.get();
 			if( airspeedCorrection > 1.01 ) // we consider 1% as maximum needed correction
 				airspeedCorrection = 1.01;
 			else if( airspeedCorrection < 0.99 )
@@ -303,12 +296,12 @@ void StraightWind::calculateWind( float tc, mps_t gs, float th, mps_t tas, float
 				status = "No Compass";
 				return;
 			}
-			// ESP_LOGI(FNAME,"Calculated TH/TAS: %3.1f°/%3.1f km/h  Measured TH/TAS: %3.1f°/%3.1f, asCorr:%2.3f, deltaAS:%3.2f, Age:%d", tH, airspeed, averageTH, tas, airspeedCorrection , airspeed-tas, circlingWindAge );
+			// ESP_LOGI(FNAME,"Calculated TH/TAS: %3.1f°/%3.1f km/h  Measured TH/TAS: %3.1f°/%3.1f, asCorr:%2.3f, deltaAS:%3.2f, Age:%d", tH, airspeed, averageTH, mytas, airspeedCorrection , airspeed-mytas, circlingWindAge );
 		}
 	}else{
 		status = "No Circ Wind";
 		// float airspeed = calculateSpeed( windDir, windSpeed, tc, gs );
-		// airspeedCorrection +=  (airspeed/tas - airspeedCorrection) * wind_as_filter.get();
+		// airspeedCorrection +=  (airspeed/mytas - airspeedCorrection) * wind_as_filter.get();
 	}
 	if( !devOK ){ // data is not plausible/useful
 			ESP_LOGI( FNAME, "Calculated deviation out of bounds: Drop also this wind calculation");
@@ -317,11 +310,11 @@ void StraightWind::calculateWind( float tc, mps_t gs, float th, mps_t tas, float
 	}
 
     // wind speed and direction
-	calculateSpeedAndAngle( tc, gs, th+deviation, tas*airspeedCorrection, newWindSpeed, newWindDir );
+	calculateSpeedAndAngle( tc, gs, th+deviation, mytas*airspeedCorrection, newWindSpeed, newWindDir );
 	// ESP_LOGI( FNAME, "Calculated raw windspeed %.1f jitter:%.1f", newWindSpeed, jitter );
 
 	Vector v;
-	v.setAngle( newWindDir );
+	v.setAngleRad( newWindDir );
 	v.setSpeed( newWindSpeed );
 
 	windVectors.push_back( v );
@@ -329,14 +322,14 @@ void StraightWind::calculateWind( float tc, mps_t gs, float th, mps_t tas, float
 		windVectors.pop_front();
 	}
 
-	Vector result = Vector( 0.0, 0.0 );
-	for( auto it=std::begin(windVectors); it != std::end(windVectors); it++ ){
-			result.add( *it );
-			// ESP_LOGI(FNAME,"angle %.1f speed %.1f", it->getAngleDeg(), it->getSpeed() );
+	Vector result;
+	for( auto it=windVectors.begin(); it != windVectors.end(); it++ ){
+		result.add( *it );
+		// ESP_LOGI(FNAME,"angle %.1f speed %.1f", it->getAngleDeg(), it->getSpeed() );
 	}
 
-	windDir   = result.getAngleDeg(); // Vector::normalizeDeg( result.getAngleDeg()/circle_wind_lowpass.get() );
-	windSpeed = result.getSpeed() / windVectors.size();
+	windDir   = result.getAngleRad(); // Vector::normalizeDeg( result.getAngleDeg()/circle_wind_lowpass.get() );
+	windSpeed = result.normBy(windVectors.size());
 
 	// ESP_LOGI(FNAME,"New AVG WindDirection: %3.1f deg,  Strength: %3.1f km/h JI:%2.1f", windDir, windSpeed, jitter );
 	_age = 0;
@@ -349,11 +342,11 @@ void StraightWind::calculateWind( float tc, mps_t gs, float th, mps_t tas, float
 }
 
 
-void StraightWind::newCirclingWind( float angle, mps_t speed ){
+void StraightWind::newCirclingWind( rad_t angle, mps_t speed ){
 	ESP_LOGI(FNAME,"New good circling wind %3.2f°/%3.2f", angle, speed );
 	circlingWindDir = angle;
-	circlingWindDirReverse = Vector::reverseBearing( angle );      // revers windvector
-	ESP_LOGI(FNAME,"Wind dir %3.2f, reverse circling wind dir %3.2f", angle, circlingWindDirReverse );
+	circlingWVecDir = Vector::reverseBearingRad(angle); // windvector
+	ESP_LOGI(FNAME,"Wind dir %3.2f, reverse circling wind dir %3.2f", angle, circlingWVecDir );
 	circlingWindSpeed = speed;
 	circlingWindAge = 0;
 }

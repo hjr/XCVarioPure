@@ -212,7 +212,7 @@ extern SetupNG<float>  		bugs;
 
 extern SetupNG<int>  		cruise_mode;
 extern SetupNG<kelvin_t>    OAT;   // outside temperature
-extern SetupNG<float>  		swind_dir;   // straight wind direction
+extern SetupNG<rad_t>  		swind_dir;   // straight wind direction
 extern SetupNG<mps_t>  		swind_speed;
 extern SetupNG<float>  		swind_sideslip_lim;
 extern SetupNG<rad_t>  		cwind_dir;   // cirling wind direction

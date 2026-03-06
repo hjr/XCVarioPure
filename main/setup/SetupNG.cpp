@@ -422,7 +422,7 @@ SetupNG<float>  		bugs( "BUGS", 0.0, true, SYNC_BIDIR, VOLATILE, change_bugs, qu
 
 SetupNG<int>  			cruise_mode( "CRUISE", 0, false, SYNC_BIDIR, VOLATILE, change_cruise ); // use the CruiseMode wrapper to access and modify
 SetupNG<kelvin_t>  		OAT( "OAT", -1000., false, SYNC_BIDIR, VOLATILE );   // outside air temperature, sensor on any side
-SetupNG<float>  		swind_dir( "SWDD", 0.0, false, SYNC_FROM_MASTER, VOLATILE, resetSWindAge );
+SetupNG<rad_t>  		swind_dir( "SWDD", 0.0, false, SYNC_FROM_MASTER, VOLATILE, resetSWindAge );
 SetupNG<mps_t>  		swind_speed( "SWDS", 0.0, false, SYNC_FROM_MASTER, VOLATILE, resetSWindAge );
 SetupNG<float>  		swind_sideslip_lim( "SWSL", 2.0, false, SYNC_FROM_MASTER, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(0, 45.0, 0.1));
 SetupNG<rad_t>  		cwind_dir( "CWDD", 0.0, false, SYNC_FROM_MASTER, VOLATILE, resetCWindAge );
