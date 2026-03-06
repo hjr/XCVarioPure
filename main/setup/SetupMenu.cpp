@@ -287,20 +287,7 @@ static void doImuCalibration(SetupMenuSelect* p) {
     } while ((gnorm > GyroMPU6050::GYRO_THRESHOLD || !gyroSensor->isResting()) && !abort);
 
     ESP_LOGI(FNAME, "gyro reading: (%f/%f/%f): %f < %f", gyro.x, gyro.y, gyro.z, gnorm, GyroMPU6050::GYRO_THRESHOLD);
-    bool button = false;
-    if ( !abort ) {
-        nlidx = next_step;
-        p->menuPrintLn("Move first wing tip    ", nlidx++);
-        p->menuPrintLn(" down to the ground.", nlidx++);
-        nlidx += 2;
-        p->menuPrintLn("Start with button press.", nlidx);
-        p->menuClearLn(nlidx+1);
-        AUDIO->startSound(AUDIO_TADDA | PRIO_SND_MASK, false, 100);
-        while (!Rotary->readSwitch(700)) ;
-        p->menuPrintLn("Wait for the Chimes or press,", nlidx++);
-        p->menuPrintLn("Continue with button press.", nlidx++);
-    }
-
+    
     float angle;
     float ground_angle;
     int ret = 0;
@@ -310,14 +297,39 @@ static void doImuCalibration(SetupMenuSelect* p) {
         uint32_t start_time;
         uint32_t stop_time;
         vector_f gyro_integral;
+        bool button = false;
         once = false;
-        
+
+        AUDIO->startSound(AUDIO_TADDA | PRIO_SND_MASK, false, 100);
+
         for (int i=0; i<3; i++) {
 
+            if (i == 0) {
+                // first wing down
+                nlidx = next_step;
+                p->menuPrintLn("Move first wing tip    ", nlidx++);
+                p->menuPrintLn(" down to the ground.", nlidx++);
+            }
+            else if (i == 1) {
+                // second wing down
+                nlidx = next_step;
+                MYUCG->setColor(COLOR_RED);
+                p->menuPrintLn("Move next wing tip    ", next_step);
+            }
+            else if (i == 2) {
+                // wings level
+                MYUCG->setColor(COLOR_RED);
+                p->menuPrintLn("Hold wings level      ", next_step);
+            }
+            MYUCG->setColor(COLOR_WHITE);
+            nlidx = next_step + 4;
+            p->menuPrintLn("Start with button press.", nlidx);
+            p->menuClearLn(nlidx+1);
+            while (!Rotary->readSwitch(700)) ;
+            p->menuPrintLn("Wait for the Chimes or press,", nlidx++);
+            p->menuPrintLn("when motion finished.", nlidx++);
+
             // wait for the first wing movement
-            // while (!button) {
-            //     button = Rotary->readSwitch(700);
-            // }
             start_time = Clock::getMillis(); // save the time when the movement starts, to calculate the gyro integral later
             gyroSensor->resetRest();
             accSensor->resetRest();
@@ -338,21 +350,6 @@ static void doImuCalibration(SetupMenuSelect* p) {
             // sample the accel for the bob vector
             ret = accSensor->getMpu().getAccelSamplesAndCalib(gyro_integral, angle, ground_angle);
             AUDIO->startSound(AUDIO_TADDA | PRIO_SND_MASK, false, 100);
-            MYUCG->setColor(COLOR_RED);
-            if (i == 0) {
-                // just finished the first wing down
-                nlidx = next_step;
-                p->menuPrintLn("Move next wing tip    ", nlidx);
-            }
-            else if (i == 1) {
-                // just finished the second wing down
-                nlidx = next_step;
-                p->menuPrintLn("Hold wings level      ", nlidx);
-            }
-            MYUCG->setColor(COLOR_WHITE);
-            if (i<2) {
-                while (!Rotary->readSwitch(700)) ;
-            }
         }
     }
 

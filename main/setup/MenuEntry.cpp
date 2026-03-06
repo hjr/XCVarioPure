@@ -62,7 +62,7 @@ void MenuEntry::menuPrintLn(const char* str, int ln, int x) const {
 
 void MenuEntry::menuClearLn(int ln) const {
     MYUCG->setColor(COLOR_BLACK);
-    MYUCG->drawBox(1, (ln + 1) * LINE_HEIGHT + 1, dwidth - 2, LINE_HEIGHT);
+    MYUCG->drawBox(1, ln * LINE_HEIGHT + 1, dwidth - 2, LINE_HEIGHT);
     MYUCG->setColor(COLOR_WHITE);
 }
 
