@@ -29,12 +29,12 @@
 #include <cmath>
 #include <list>
 
-typedef enum e_circling {
+enum class circling_t : uint8_t {
   undefined,
   straight,
   circlingL,
   circlingR
-} t_circling;
+};
 
 
 class CircleWind {
@@ -44,8 +44,8 @@ public:
   void tick();
 
   // Called if the flight mode changes
-  void newFlightMode(t_circling newMode);
-  t_circling getFlightMode() const { return flightMode; };
+  void newFlightMode(circling_t newMode);
+  circling_t getFlightMode() const { return flightMode; };
 
   // Calculate flightmode from heading diff if circling is left or right
   void calcFlightMode(rad_t diff, mps_t speed);
@@ -85,13 +85,13 @@ private:
   rad_t lastHeading = 0.;   // Last processed heading
   int satCnt = 0;
   static constexpr int minSatCnt = 5;
-  t_circling circlingMode = undefined;
+  circling_t circlingMode = circling_t::undefined;
   int gpsStatus = false;
   Vector minVector;
   Vector maxVector;
   Vector result;
   mps_t minVecTas, maxVecTas;
-  t_circling flightMode = undefined;
+  circling_t flightMode = circling_t::undefined;
   static int16_t _age;
   const char *status;
   LowPassFilterT<float> _lp_headdiff; // we filter the heading a bit to get a more stable circle detection

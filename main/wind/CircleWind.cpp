@@ -80,12 +80,12 @@ void CircleWind::newSample() {
     // circle detection
     rad_t headingDiff = _lp_headdiff.filter(Vector::angleDiff(flarmVec.getAngleRad(), lastHeading));
     calcFlightMode(headingDiff, flarmVec.getSpeed());
-    if (flightMode == circlingL || flightMode == circlingR) {
+    if (flightMode == circling_t::circlingL || flightMode == circling_t::circlingR) {
         circleArc += fabs(headingDiff);
     }
 
     lastHeading = flarmVec.getAngleRad();
-    if (flightMode != circlingL && flightMode != circlingR) {
+    if (flightMode != circling_t::circlingL && flightMode != circling_t::circlingR) {
         // ESP_LOGI(FNAME,"FlightMode not circling %d", flightMode );
         status = "Not Circling";
         circleArc = 0;
@@ -121,9 +121,9 @@ void CircleWind::newSample() {
 void CircleWind::calcFlightMode(rad_t headingDiff, mps_t speed) {
     // ESP_LOGI(FNAME,"calcFlightMode head diff:%3.2f gs:%3.2f", headingDiff, speed  );
     if (speed < Units::kmh_to_mps(25)) {
-        if (flightMode != undefined) {
-            newFlightMode(undefined);
-            flightMode = undefined;
+        if (flightMode != circling_t::undefined) {
+            newFlightMode(circling_t::undefined);
+            flightMode = circling_t::undefined;
             ESP_LOGI(FNAME, "New flightmode: undefined, no GS");
         }
     } else {
@@ -131,27 +131,27 @@ void CircleWind::calcFlightMode(rad_t headingDiff, mps_t speed) {
             if (turn_right < 4)  // hold down
                 turn_right++;
             fly_straight = 0;
-            if (flightMode != circlingR && turn_right > 2) {
-                newFlightMode(circlingR);
-                flightMode = circlingR;
+            if (flightMode != circling_t::circlingR && turn_right > 2) {
+                newFlightMode(circling_t::circlingR);
+                flightMode = circling_t::circlingR;
                 // ESP_LOGI(FNAME,"New flightmode: circle right");
             }
         } else if (headingDiff < -MINTURNINGDIFF) {
             if (turn_left < 4)
                 turn_left++;
             fly_straight = 0;
-            if (flightMode != circlingL && turn_left > 2) {
-                newFlightMode(circlingL);
-                flightMode = circlingL;
+            if (flightMode != circling_t::circlingL && turn_left > 2) {
+                newFlightMode(circling_t::circlingL);
+                flightMode = circling_t::circlingL;
                 // ESP_LOGI(FNAME,"New flightmode: circle left");
             }
         } else {
             turn_left = turn_right = 0;
             if (fly_straight < 4)
                 fly_straight++;
-            if (flightMode != straight && fly_straight > 2) {
-                newFlightMode(straight);
-                flightMode = straight;
+            if (flightMode != circling_t::straight && fly_straight > 2) {
+                newFlightMode(circling_t::straight);
+                flightMode = circling_t::straight;
                 // ESP_LOGI(FNAME,"New flightmode: straight");
             }
         }
@@ -159,11 +159,11 @@ void CircleWind::calcFlightMode(rad_t headingDiff, mps_t speed) {
 }
 
 /** Called if the flight mode changes */
-void CircleWind::newFlightMode(t_circling newFlightMode) {
+void CircleWind::newFlightMode(circling_t newFlightMode) {
     // Reset the circle counter for each flight mode change. The important thing
     // to measure is the number of turns in a thermal per turn direction.
-    ESP_LOGI(FNAME, "newFlightMode %d", newFlightMode);
-    if (newFlightMode == circlingL || newFlightMode == circlingR) {
+    ESP_LOGI(FNAME, "newFlightMode %d", (uint8_t)newFlightMode);
+    if (newFlightMode == circling_t::circlingL || newFlightMode == circling_t::circlingR) {
         if (circlingMode != newFlightMode) {
             circlingMode = newFlightMode;
             restartCycle(true);
@@ -172,11 +172,11 @@ void CircleWind::newFlightMode(t_circling newFlightMode) {
 }
 
 const char* CircleWind::getFlightModeStr() const {
-    if (flightMode == straight)
+    if (flightMode == circling_t::straight)
         return "straight";
-    else if (flightMode == circlingL)
+    else if (flightMode == circling_t::circlingL)
         return "circle left";
-    else if (flightMode == circlingR)
+    else if (flightMode == circling_t::circlingR)
         return "circle right";
     else
         return "undefined";

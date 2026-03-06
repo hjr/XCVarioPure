@@ -5,6 +5,7 @@
  *      Author: iltis
  */
 
+#include "CenterAid.h"
 #include "freertos/idf_additions.h"
 #include "math/Floats.h"
 #include "setup/SetupMenu.h"
@@ -104,6 +105,13 @@ int gload_reset(SetupMenuSelect *p) {
 		set_parent_dirty(p);
 	}
 	return 0;
+}
+
+static int caid_reference(SetupMenuSelect* p) {
+    if ( theCenteraid ) {
+        theCenteraid->setGliderOnTop(p->getSelect() != 2);
+    }
+    return 0;
 }
 
 static int clear_nvs_action(SetupMenuSelect* p) {
@@ -999,9 +1007,11 @@ static void screens_menu_create_vario(SetupMenu *top) {
     // ncolor->addEntry("Orange");
     // ncolor->addEntry("Red");
     // top->addEntry(ncolor);
-    SetupMenuSelect *scrcaid = new SetupMenuSelect("Thermal-Assist", RST_NONE, nullptr, &vario_centeraid);
-    scrcaid->setHelp("Enable/disable display of the thermal assistant");
-    scrcaid->mkEnable();
+    SetupMenuSelect *scrcaid = new SetupMenuSelect("Therm.-Assist", RST_NONE, caid_reference, &vario_centeraid);
+    scrcaid->setHelp("The thermal assistant; with reference on top, or on the side.");
+    scrcaid->addEntry(ENABLE_MODE[0].data());
+    scrcaid->addEntry("Topref");
+    scrcaid->addEntry("Sideref");
     top->addEntry(scrcaid);
 
     SetupMenuSelect *tgauge = new SetupMenuSelect("Upper Gauge", RST_NONE, nullptr, &vario_upper_gauge);
