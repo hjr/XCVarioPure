@@ -13,6 +13,7 @@ enum class quantity_t : uint8_t;
 using meter_t    = float;
 using mps_t      = float;
 using kmh_t      = float;
+using knots_t    = float;
 using pascal_t   = float;
 using kelvin_t   = float;
 using celsius_t  = float;
