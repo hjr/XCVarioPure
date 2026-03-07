@@ -100,11 +100,6 @@ void NmeaPrtcl::sendStdXCVario()
     }
     Message *msg = newMessage();
 
-    float temp = Units::pipe(OAT.get(), Units::celsius);
-    if ( temp < Units::pipe(-1000.f, Units::celsius) ) {
-        temp = 0;
-    }
-
     msg->buffer = "$PXCV,";
     char str[50];
     std::sprintf(str, "%3.1f", te_vario.get());
@@ -119,6 +114,7 @@ void NmeaPrtcl::sendStdXCVario()
         msg->buffer += str;
     }
     msg->buffer += ',' + std::to_string(!CRMOD.getCMode());
+    celsius_t temp = OAT.getValid() ? Units::pipe(OAT.get(), Units::celsius) : 0; 
     std::sprintf(str, ",%2.1f", std::roundf(temp * 10.f) / 10.f);
     msg->buffer += str;
     std::sprintf(str, ",%4.1f", Units::pipe(QNH.get(), Units::hpa));

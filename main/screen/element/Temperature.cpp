@@ -11,6 +11,7 @@
 #include "sensor/imu/ImuSensor.h"
 #include "Colors.h"
 #include "AdaptUGC.h"
+#include "logdefnone.h"
 
 #include <cstdio>
 
@@ -19,35 +20,41 @@ extern AdaptUGC *MYUCG;
 
 void Temperature::draw(kelvin_t t, temp_status_t mputemp)
 {
-    if ( std::abs(t - _temp) > 0.1 || _dirty ) {
-        _temp = t;
-
-        if (_large) {
-            MYUCG->setFont(ucg_font_fub20_hn, false);
-        } else {
-            MYUCG->setFont(ucg_font_fub14_hn, false);
-        }
-        char s[32];
-        if (t > -1000.) {
-            float tu = std::roundf(TempUnit->apply(t) * 10.f) / 10.f;
-            if ( tu < 100.f ) {
-                std::sprintf(s, "  %.1f ", tu);
+    if (std::isnan(t)) {
+        t = -1000.f; // invalid value to trigger the -/- display
+        ESP_LOGI(FNAME, "Temperature reading is NAN");
+    }
+    bool changed = std::abs(t - _temp) > 0.1;
+    if (changed || mputemp != _imut || _dirty) {
+        if (changed || _dirty) {
+            _temp = t;
+            if (_large) {
+                MYUCG->setFont(ucg_font_fub20_hn, false);
             } else {
-                std::sprintf(s, "  %.0f ", tu);
+                MYUCG->setFont(ucg_font_fub14_hn, false);
             }
-            if (t < -0.05f) {
-                MYUCG->setColor(COLOR_BBLUE);
+            char s[32];
+            if (t != -1000.f) {
+                float tu = std::roundf(TempUnit->apply(t) * 10.f) / 10.f;
+                if ( tu < 100.f ) {
+                    std::sprintf(s, "  %.1f ", tu);
+                } else {
+                    std::sprintf(s, "  %.0f ", tu);
+                }
+                if (tu < -0.05f) {
+                    MYUCG->setColor(COLOR_BBLUE);
+                } else {
+                    MYUCG->setColor(COLOR_WHITE);
+                }
             } else {
+                strcpy(s, "     -/- ");
                 MYUCG->setColor(COLOR_WHITE);
             }
-        } else {
-            strcpy(s, "  -/- ");
-            MYUCG->setColor(COLOR_WHITE);
+            ESP_LOGI(FNAME,"drawTemperature: %d,%d %s", _ref_x, _ref_y, s);
+            int16_t fl = MYUCG->getStrWidth(s);
+            MYUCG->setPrintPos(_ref_x + _x_offset - fl, _ref_y - (_large ? 0 : 7));
+            MYUCG->print(s);
         }
-        // ESP_LOGI(FNAME,"drawTemperature: %d,%d %s", _ref_x, _ref_y, s);
-        int16_t fl = MYUCG->getStrWidth(s);
-        MYUCG->setPrintPos(_ref_x + _x_offset - fl, _ref_y - (_large ? 0 : 7));
-        MYUCG->print(s);
         // the number overlapps the little ° symbol, so alway repaint
     // }
     // if ( mputemp != _imut || _dirty ) {

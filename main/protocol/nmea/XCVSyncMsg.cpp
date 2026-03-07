@@ -67,7 +67,7 @@ bool XCVSyncMsg::sendItem(const char *key, char type, void *value, int len)
     msg->buffer.push_back(',');
     char buf[40];
     if (type == 'F') {
-        sprintf(buf, "%.3f", *(float *)(value));
+        sprintf(buf, "%.7f", *(float *)(value));
     } else if (type == 'I') {
         sprintf(buf, "%d", *(int *)(value));
     }

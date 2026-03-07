@@ -47,8 +47,8 @@ void NmeaPrtcl::sendBorgelt()
     }
     Message* msg = newMessage();
 
-    float temp = OAT.getValid() ? Units::pipe(OAT.get(), Units::celsius) : 0; 
-    float iaskn = Units::pipe(ias.get(), Units::kts);
+    celsius_t temp = OAT.getValid() ? Units::pipe(OAT.get(), Units::celsius) : 0;
+    knots_t iaskn = Units::pipe(ias.get(), Units::kts);
 
     msg->buffer = "$PBB50,";
     char buffer[50];

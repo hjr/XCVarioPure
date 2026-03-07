@@ -183,6 +183,9 @@ bool SetupNG<T>::set( T aval, bool dosync, bool doAct ) {
     }
     _value = aval;
     flags._valid = true;
+    if constexpr (std::is_same_v<T, float>) {
+        flags._valid = !std::isnan(aval);
+    }
     if ( dosync ) {
         // ESP_LOGI( FNAME,"Syncing %s after set", _key.data());
         sync();
@@ -323,9 +326,17 @@ static void calc_speeds() {
     ias.set(tmp);
 
     // IAS to TAS conversion
-    if (OAT.getValid() && statp.getValid()) {
-        tas.set(Atmosphere::TAS(ias.get(), statp.get(), OAT.get()));
-        ESP_LOGI(FNAME, "calc_speeds: IAS=%.2f, statp=%.2f, OAT=%.2f -> TAS=%.2f", ias.get(), statp.get(), OAT.get(), tas.get());
+    kelvin_t temp = OAT.get();
+    if (!OAT.getValid()) {
+        temp = Units::isa_temperature(altitude.get());
+        // ESP_LOGW(FNAME,"T invalid, using 15 deg");
+    }
+    if (statp.getValid()) {
+        tas.set(Atmosphere::TAS(ias.get(), statp.get(), temp));
+        ESP_LOGI(FNAME, "calc_speeds: IAS=%.2f, statp=%.2f, OAT=%.2f -> TAS=%.2f", ias.get(), statp.get(), temp, tas.get());
+    }
+    else {
+        tas.setInvalid();
     }
 }
 
@@ -421,7 +432,7 @@ SetupNG<kilogram_t>		gross_weight( "GROSS_WGT", 350, true, SYNC_NONE, VOLATILE )
 SetupNG<float>  		bugs( "BUGS", 0.0, true, SYNC_BIDIR, VOLATILE, change_bugs, quantity_t::QUANT_NONE, LIMITS(0.0, 50, 1));
 
 SetupNG<int>  			cruise_mode( "CRUISE", 0, false, SYNC_BIDIR, VOLATILE, change_cruise ); // use the CruiseMode wrapper to access and modify
-SetupNG<kelvin_t>  		OAT( "OAT", -1000., false, SYNC_BIDIR, VOLATILE );   // outside air temperature, sensor on any side
+SetupNG<kelvin_t>  		OAT( "OAT", NAN, false, SYNC_BIDIR, VOLATILE );   // outside air temperature, sensor on any side
 SetupNG<rad_t>  		swind_dir( "SWDD", 0.0, false, SYNC_FROM_MASTER, VOLATILE, resetSWindAge );
 SetupNG<mps_t>  		swind_speed( "SWDS", 0.0, false, SYNC_FROM_MASTER, VOLATILE, resetSWindAge );
 SetupNG<float>  		swind_sideslip_lim( "SWSL", 2.0, false, SYNC_FROM_MASTER, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(0, 45.0, 0.1));
