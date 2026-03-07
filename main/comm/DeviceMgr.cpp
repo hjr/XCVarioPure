@@ -23,8 +23,8 @@
 #include "setup/DataMonitor.h"
 #include "setup/SetupNG.h"
 #include "Compass.h"
-#include "sensor/temp/OwSens.h"
 #include "sensor/gps/GpsVSensor.h"
+#include "sensor/temp/ds18b20.h"
 #include "sensor/temp/TempVSens.h"
 
 #include "sensor.h"
@@ -140,7 +140,7 @@ constexpr std::pair<DeviceId, DeviceAttributes> DEVATTR[] = {
     {DeviceId::RADIO_REMOTE_DEV, {"Radio remote", {{WIFI_APSTA}}, {{KRT2_REMOTE_P}, 1}, 8882, IS_SEL, &radio_host_setup}},
     {DeviceId::RADIO_KRT2_DEV, {"KRT 2", {{S2_RS232}}, {{KRT2_REMOTE_P}, 1}, 0, IS_SEL, &krt_devsetup}},
     {DeviceId::RADIO_ATR833_DEV, {"ATR833", {{S2_RS232}}, {{ATR833_REMOTE_P}, 1}, 0, IS_SEL, &atr_devsetup}},
-    {DeviceId::TEMPSENS_DEV, {"Temp. Sensor", {{OW_BUS}}, {{NO_ONE}, 0}, 0, IS_SEL, nullptr}},
+    {DeviceId::TEMPSENS_DEV, {"Temp. Sensor", {{OW_BUS}}, {{NO_ONE}, 0}, 0, IS_SEL, &temp_devsetup}},
 };
 
 // Lookup functions
@@ -472,17 +472,16 @@ Device* DeviceManager::addDevice(DeviceId did, ProtocolType proto, int listen_po
         else {
             // a sensor w/o a data link?
             if ( iid == OW_BUS && OneWIRE && did == TEMPSENS_DEV ) {
-                dev->_sensor = OneWIRE->probeAndSetup(0x28); // DS18B20
+                dev->_sensor = OneWIRE->probeAndSetup(DS18B20_FAMILY); // DS18B20
             } else if ( iid == NO_PHY && did == TEMPSENS_DEV ) {
                 dev->_sensor = new TempVSens();
             }
             
             if ( ! dev->_sensor ) {
                 ESP_LOGW(FNAME, "Could not create sensor for device %d on itf %d", did, iid);
-                delete dev;
-                return nullptr;
+                // this will suppress making it permanent
+                nvsave = false;
             }
-                
         }
     }
 
@@ -773,7 +772,8 @@ void DeviceManager::reserectFromNvs()
             ESP_LOGI(FNAME, "Nmea: sendport%d", nvs->getNmeaSPort());
             // more nmea plug options
             for ( int i=1; i<ProtocolList::maxProto; i++ ) {
-                if ( nvs->setup.getProto(i) ) {
+                if ( nvs->setup.getProto(i) || i == 1) {
+                    // A simple sensor device might go with any ptorocoll
                     ESP_LOGI(FNAME, "plugin: %d", nvs->setup.getProto(i));
                     addDevice(did, nvs->setup.getProto(i), listen_port, nvs->getNmeaSPort(), iid);
                     nr_set_up++;
@@ -1010,13 +1010,15 @@ int Device::getListenPort() const
     return (_link) ? _link->getPort() : 0;
 }
 
-// get all setup lines to write into nvs for this device
+// get all setup data to write into nvs for this device
 DeviceNVS Device::getNvsData() const
 {
     ESP_LOGI(FNAME, "NvsData did%d", _id);
     DeviceNVS entry;
     if ( ! _link ) {
-        entry.setup.flags=0; // fixme
+        // a simple sensor only device
+        entry.target = RoutingTarget(_id, _itf->getId(), 0);
+        entry.setup.flags = 1; // now a valid entry
         return entry;
     }
     entry.target = RoutingTarget(_id, _link->getTarget());

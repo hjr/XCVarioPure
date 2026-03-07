@@ -448,4 +448,4 @@ extern SetupNG<DeviceNVS>	flarm_host2_setup;
 extern SetupNG<DeviceNVS>	radio_host_setup;
 extern SetupNG<DeviceNVS>	krt_devsetup;
 extern SetupNG<DeviceNVS>	atr_devsetup;
-
+extern SetupNG<DeviceNVS>	temp_devsetup;
