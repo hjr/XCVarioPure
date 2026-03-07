@@ -1,3 +1,9 @@
+#Index:
+#  Background: Build  # Erzwingt vollständige Indexierung
+#Diagnostics:
+#  Suppress: false  # Mehr Diagnosen anzeigen
+#CompileFlags:
+#  Add: [-std=c++17]  # Passe an deine C++-Version an, falls relevant
 
 If:
   PathMatch: .*\.(h|hpp)

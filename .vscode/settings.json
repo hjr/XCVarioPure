@@ -183,7 +183,7 @@
 
 {
   "clangd.arguments": [
-    "--compile-commands-dir=build",
+    "--compile-commands-dir=build/",
     "--query-driver=**/xtensa-esp32-elf-*"
     "--background-index",
     "--header-insertion=never",
