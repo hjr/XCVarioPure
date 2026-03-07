@@ -476,7 +476,7 @@ SetupNG<float>  		s2f_auto_lag( "S2F_HYST", 5, true, SYNC_BIDIR, PERSISTENT, nul
 						// set audio volume exclusively through the Audio class
 SetupNG<float> 			audio_volume("AUD_VOL", 10, true, SYNC_BIDIR, VOLATILE, change_volume, quantity_t::QUANT_NONE, &percentage_limits);
 SetupNG<float>  		default_volume( "DEFAULT_VOL", 25.0, true, SYNC_BIDIR, PERSISTENT, nullptr, quantity_t::QUANT_NONE, &percentage_limits);
-SetupNG<float>          alarm_volraise( "FLARM_VOL", 20, true, SYNC_BIDIR, PERSISTENT, nullptr, quantity_t::QUANT_NONE, &percentage_limits);
+SetupNG<float>          alarm_volraise( "FLARM_VOL", 40, true, SYNC_BIDIR, PERSISTENT, nullptr, quantity_t::QUANT_NONE, &percentage_limits);
 SetupNG<int>  			audio_split_vol( "AUD_SPLIT", 0, true, SYNC_BIDIR );
 SetupNG<int>  			audio_range( "AUDIO_RANGE" , AUDIO_RANGE_5_MS, true, SYNC_BIDIR );
 SetupNG<float>  		center_freq( "AUDIO_CENTER_F", 500.0, true, SYNC_BIDIR, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(200.0, 2000.0, 10.0));
