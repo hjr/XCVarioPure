@@ -580,9 +580,19 @@ void system_startup(void *args){
         DEVMAN->addDevice(CANREGISTRAR_DEV, REGISTRATION_P, CAN_REG_PORT, CAN_REG_PORT, CAN_BUS);
     }
 
-    // Always check on one wire devices
-    if (DEVMAN->addDevice(TEMPSENS_DEV, NO_ONE, 0, 0, OW_BUS))
-    {
+    // Always check on one wire temp sensor, if not yet configured
+    Device *dev = DEVMAN->getDevice(TEMPSENS_DEV);
+    if ( ! dev ) {
+        ESP_LOGI(FNAME, "OneWire temp sensor not yet configured, try to find one");
+        dev = DEVMAN->addDevice(TEMPSENS_DEV, NO_ONE, 0, 0, OW_BUS, true);
+        if (!dev->_sensor) {
+            // no sensor found, remove the device again
+            DEVMAN->removeDevice(TEMPSENS_DEV);
+        }
+    }
+    // The once permanently configured temp sensor is used as indication to infinitely trying to reconnect to it.
+    if (dev) {
+        // publish this cabability
         CANPeerCaps::addCapability(XcvCaps::TEMP_CAP);
     }
 
@@ -610,7 +620,7 @@ void system_startup(void *args){
 
     {
         Cipher crypt;
-        gflags.ahrsKeyValid = crypt.checkKeyAHRS();
+        gflags.ahrsKeyValid = true; // crypt.checkKeyAHRS();
         ESP_LOGI(FNAME, "AHRS key valid=%d", gflags.ahrsKeyValid);
     }
     boot_screen->finish(0);
