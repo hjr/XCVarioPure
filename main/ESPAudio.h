@@ -60,8 +60,6 @@ public:
     void setVolume(float vol, bool sync = true); // vol: 0.0 .. 100.0 logarythmic scale
     void updateAudioMode();                     // call on cruise mode change
     void updateTone();                          // call after sensor update
-    void mute();                                // mute the sound entirely
-    void unmute();                              // unmutes
     bool haveCAT5171() const;
     void dump();
 
@@ -73,6 +71,8 @@ private:
     bool inDeadBand(float a) const { return (a > _deadband_n && a < _deadband_p); }
     void calculateFrequency(float a);       // determine frequency to be generated depending on TE value
     void writeVolume(float volume);
+    void mute();                                // mute the sound entirely
+    void unmute();                              // unmutes
 
     static void dactask_starter(void *arg); // start task to control HW generator
     void dactask();                         // task for control of HW generator

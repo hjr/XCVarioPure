@@ -887,18 +887,6 @@ void Audio::updateTone()
     }
 }
 
-// unmute/mute the default voice
-void Audio::unmute()
-{
-    ESP_LOGI(FNAME, "enable amplifier");
-    gpio_set_level(GPIO_NUM_19, 1);
-}
-void Audio::mute()
-{
-    ESP_LOGI(FNAME, "disable amplifier");
-    gpio_set_level(GPIO_NUM_19, 0 );
-}
-
 bool Audio::haveCAT5171() const
 {
     if ( _poti ) {
@@ -1070,6 +1058,18 @@ void Audio::writeVolume(float volume) {
     if (_poti) {
         _poti->softSetVolume(volume);
     }
+}
+
+// mute/unmute the ampifier
+void Audio::mute()
+{
+    ESP_LOGI(FNAME, "disable amplifier");
+    gpio_set_level(GPIO_NUM_19, 0 );
+}
+void Audio::unmute()
+{
+    ESP_LOGI(FNAME, "enable amplifier");
+    gpio_set_level(GPIO_NUM_19, 1);
 }
 
 void Audio::dactask_starter(void *arg)
