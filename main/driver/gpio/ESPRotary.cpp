@@ -1,5 +1,5 @@
 
-#include "ESPRotary.h"
+#include "driver/gpio/ESPRotary.h"
 
 #include "setup/SetupNG.h"
 #include "screen/DrawDisplay.h"

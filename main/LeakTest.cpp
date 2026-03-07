@@ -3,7 +3,7 @@
 #include "sensor/press_diff/AirspeedSensor.h"
 #include "sensor/pressure/PressureSensor.h"
 #include "IpsDisplay.h"
-#include "ESPRotary.h"
+#include "driver/gpio/ESPRotary.h"
 #include "sensor.h"
 #include "logdefnone.h"
 

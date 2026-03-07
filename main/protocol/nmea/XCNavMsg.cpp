@@ -12,7 +12,7 @@
 #include "setup/SetupNG.h"
 #include "screen/UiEvents.h"
 #include "screen/DrawDisplay.h"
-#include "ESPAudio.h"
+#include "driver/audio/ESPAudio.h"
 #include "sensor.h"
 
 #include "logdefnone.h"

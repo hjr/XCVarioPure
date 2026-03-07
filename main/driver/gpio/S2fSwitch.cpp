@@ -6,7 +6,7 @@
  ***       Copyright (C) Rohs Engineering Design         ***
  ***********************************************************/
 
-#include "S2fSwitch.h"
+#include "driver/gpio/S2fSwitch.h"
 
 #include "protocol/Clock.h"
 #include "setup/CruiseMode.h"

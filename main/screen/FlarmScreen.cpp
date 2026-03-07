@@ -12,7 +12,7 @@
 #include "UiEvents.h"
 #include "IpsDisplay.h"
 #include "DrawDisplay.h"
-#include "ESPAudio.h"
+#include "driver/audio/ESPAudio.h"
 #include "sensor/imu/AccMPU6050.h"
 #include "Flarm.h"
 #include "math/Trigonometry.h"

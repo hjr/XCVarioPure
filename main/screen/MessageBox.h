@@ -9,7 +9,7 @@
 #pragma once
 
 #include "protocol/ClockIntf.h"
-#include "ESPRotary.h"
+#include "driver/gpio/ESPRotary.h"
 #include "comm/Mutex.h"
 
 #include <queue>

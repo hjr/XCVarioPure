@@ -23,7 +23,7 @@ Author: Axel Pauli, deviation and refactoring by Eckhard Völlm Dec 2021
 #include "vector.h"
 #include "protocol/Clock.h"
 #include "setup/SetupNG.h"
-#include "ESPRotary.h"
+#include "driver/gpio/ESPRotary.h"
 #include "sensor.h"
 #include "logdef.h"
 

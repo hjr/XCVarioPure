@@ -1,7 +1,7 @@
 
 #include "Flap.h"
 
-#include "AnalogInput.h"
+#include "driver/gpio/AnalogInput.h"
 #include "setup/SetupNG.h"
 #include "sensor/imu/AccMPU6050.h"
 #include "math/Floats.h"

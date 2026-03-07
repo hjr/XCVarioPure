@@ -9,7 +9,7 @@
 #include "setup/SetupMenu.h"
 #include "setup/SetupCommon.h"
 #include "Colors.h"
-#include "ESPAudio.h"
+#include "driver/audio/ESPAudio.h"
 #include "AdaptUGC.h"
 #include "logdefnone.h"
 

@@ -8,7 +8,7 @@
 
 #include "setup/SubMenuAudio.h"
 
-#include "ESPAudio.h"
+#include "driver/audio/ESPAudio.h"
 #include "setup/SetupMenu.h"
 #include "setup/SetupMenuSelect.h"
 #include "setup/SetupMenuValFloat.h"

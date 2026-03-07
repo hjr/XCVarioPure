@@ -6,11 +6,11 @@
  ***       Copyright (C) Rohs Engineering Design         ***
  ***********************************************************/
 
-#include "ESPAudio.h"
+#include "driver/audio/ESPAudio.h"
 
 #include "mcp4018.h"
 #include "cat5171.h"
-#include "S2fSwitch.h"
+#include "driver/gpio/S2fSwitch.h"
 #include "S2F.h"
 #include "I2Cbus.hpp"
 #include "setup/CruiseMode.h"

@@ -7,7 +7,7 @@
 
 #pragma once
 
-#include "ESPRotary.h"
+#include "driver/gpio/ESPRotary.h"
 #include "setup/SetupMenuCommon.h"
 
 #include <string>

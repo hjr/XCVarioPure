@@ -5,7 +5,7 @@
  *      Author: iltis
  */
 
-#include "AnalogInput.h"
+#include "driver/gpio/AnalogInput.h"
 
 #include "protocol/Clock.h"
 #include "logdefnone.h"
