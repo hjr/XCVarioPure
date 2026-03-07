@@ -9,7 +9,7 @@
 #include "OneWireBus.h"
 
 #include "sensor/temp/ds18b20.h"
-#include "comm/Devices.h"
+#include "comm/DeviceMgr.h"
 #include "logdefnone.h"
 
 #include <onewire_bus.h>
@@ -21,6 +21,13 @@
 
 #include <vector>
 
+// 
+// The OneWire bus is sadly dur to low stability, low support from chip manufacturer besides Dallas, etc. a dedicated
+// temperature sensor peer to peer connection.
+// So, this module is dedicated to discover and connect a temperature sensor of the family (id 0x28), nothing more.
+// 
+
+// Singleton instance of the OneWireBus
 OneWireBus *OneWIRE = nullptr;
 
 const int OneWireBus::_ONEWIRE_BUS_GPIO = GPIO_NUM_23;
@@ -109,7 +116,7 @@ SensorBase* OneWireBus::probeAndSetup(uint8_t famid) {
             }
 
             switch (family) {
-                case 0x28:  // DS18B20 (also covers DS18S20 variants in some libs)
+                case DS18B20_FAMILY:  // DS18B20 (also covers DS18S20 variants in some libs)
                 // case 0x10:  // DS18S20
                 // case 0x22:  // DS1822
                     {
@@ -141,7 +148,7 @@ SensorBase* OneWireBus::probeAndSetup(uint8_t famid) {
 
 void OneWireBus::busReset()
 {
-    onewire_bus_reset(_onewire);
+    _onewire->reset(_onewire);
 }
 
 esp_err_t OneWireBus::sendCommand(onewire_device_address_t addr, uint8_t cmd)
@@ -152,17 +159,17 @@ esp_err_t OneWireBus::sendCommand(onewire_device_address_t addr, uint8_t cmd)
     memcpy(&tx_buffer[1], &addr, sizeof(addr));
     tx_buffer[sizeof(addr) + 1] = cmd;
 
-    return onewire_bus_write_bytes(_onewire, tx_buffer, sizeof(tx_buffer));
+    return _onewire->write_bytes(_onewire, tx_buffer, sizeof(tx_buffer));
 }
 
 esp_err_t OneWireBus::writeBytes(const uint8_t *buf, uint8_t size)
 {
-    return onewire_bus_write_bytes(_onewire, buf, size);
+    return _onewire->write_bytes(_onewire, buf, size);
 }
 
 esp_err_t OneWireBus::readBytes(uint8_t *buf, size_t size)
 {
-    return onewire_bus_read_bytes(_onewire, buf, size);
+    return _onewire->read_bytes(_onewire, buf, size);
 }
 
 uint8_t OneWireBus::crc8(const uint8_t *data, size_t len)
@@ -177,16 +184,23 @@ bool OneWireBus::groupUpdate(uint32_t now_ms)
     const uint32_t UPDATE_INTERVAL_MS = 1000;  // Desired update interval
     const uint32_t MAX_CONVERSION_TIME_MS = 750;  // Max time for 12-bit conversion
 
-    // if ( errors > 10 ) {
-    //     ESP_LOGW(FNAME, "Too many errors on OneWire bus, attempting recovery");
-    //     recover();
-    //     busReset();
-    //     for ( auto s : _all_sensor ) {
-    //         probeAndSetup(s->family());
-    //     }
-    //     errors = 0;
-    //     return false;
-    // }
+    if ( errors > 100 ) {
+        ESP_LOGW(FNAME, "Too many errors on OneWire bus, attempting recovery");
+        busReset();
+        for ( auto s : _all_sensor ) {
+            probeAndSetup(s->family()); // a reconnect attempt for all known devices
+        }
+        if ( _all_sensor.empty() ) {
+            // a delayed first connect
+            ESP_LOGE(FNAME, "No OneWire devices found after recovery");
+            Device *dev = DEVMAN->getDevice(TEMPSENS_DEV);
+            if ( dev && !dev->_sensor ) {
+                dev->_sensor = probeAndSetup(DS18B20_FAMILY);
+            }
+        }
+        errors = 0; // reset counter in any case
+        return false;
+    }
 
     // Read all sensors individually
     for (auto* sensor : _all_sensor) {
@@ -198,7 +212,7 @@ bool OneWireBus::groupUpdate(uint32_t now_ms)
             // Start conversion
             if (! sensor->primeRead(now_ms)) {
                 ESP_LOGE(FNAME, "Failed to trigger conversion");
-                // errors++;
+                errors++;
             }
             continue;
         }
@@ -209,27 +223,23 @@ bool OneWireBus::groupUpdate(uint32_t now_ms)
         
         float val;
         if ( !sensor->doRead(val) ) {
-            // errors++;
+            errors++;
             ESP_LOGE(FNAME, "Failed to read sensor %016llX", sensor->getAddress());
-            continue;
+            val = NAN; // Invalid value to indicate error (temp only)
         }
         sensor->pushAndPublish(val, sensor->getConvertStartMs());
 
         ESP_LOGI(FNAME, "OW sensor %016llX: %umsec %.2f", sensor->getAddress(), (unsigned)sensor->getConvertStartMs(), val);
     }
 
+    // Auto connect the temp sensor in case it was not connected during first probe
+    // The existance of the bus instance is prove of a configured devices for it.
+    if ( _all_sensor.empty() ) {
+        errors++;
+    }
+
     return true;
 }
-
-// void OneWireBus::recover()
-// {
-//     gpio_set_direction((gpio_num_t)_ONEWIRE_BUS_GPIO, GPIO_MODE_OUTPUT);
-//     gpio_set_level((gpio_num_t)_ONEWIRE_BUS_GPIO, 0);
-//     vTaskDelay(pdMS_TO_TICKS(5));   // > reset time
-
-//     gpio_set_direction((gpio_num_t)_ONEWIRE_BUS_GPIO, GPIO_MODE_INPUT);
-//     vTaskDelay(pdMS_TO_TICKS(1));
-// }
 
 //
 // private helper
