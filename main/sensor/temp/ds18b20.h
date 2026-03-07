@@ -12,6 +12,8 @@
 
 struct onewire_bus_t;
 
+constexpr int DS18B20_FAMILY = 0x28;
+
 class DS18B20 final : public OwSens
 {
 public:
@@ -22,6 +24,6 @@ public:
     bool doRead(float &val) override;
 
     // OW
-    uint8_t family() override { return 0x28; }
+    uint8_t family() override { return DS18B20_FAMILY; }
     bool primeRead(uint32_t now_ms) override;
 };

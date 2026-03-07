@@ -18,7 +18,6 @@
 #include <cmath>
 
 #define EXAMPLE_ONEWIRE_BUS_GPIO    GPIO_NUM_23
-constexpr int OW_SENSOR_ID = 0x28;
 constexpr int DS18B20_RESOLUTION_12B = 0x7f; // 12-bit resolution
 
 #define DS18B20_CMD_CONVERT_TEMP      0x44
