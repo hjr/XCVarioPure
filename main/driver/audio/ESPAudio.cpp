@@ -42,6 +42,8 @@ enum class alarm_type_t : uint8_t { ALARM_NONE = 0, ALARM_SIMPLE, ALARM_PRIORITY
 // the global access to the audio functions
 Audio *AUDIO = nullptr;
 
+bool Audio::_muted = true;
+
 // Internal queue to handle audio sequences and multi voice
 static QueueHandle_t AudioQueue = nullptr;
 
@@ -554,7 +556,6 @@ static inline int8_t lfsr_noise(void) {
     return (int8_t)(((lfsr >> 24) & 0x7F) - 63);
 }
 
-
 // DMA callback
 static bool IRAM_ATTR dacdma_done(dac_continuous_handle_t h, const dac_event_data_t *e, void *user_data)
 {
@@ -740,16 +741,15 @@ Audio::~Audio()
 }
 
 // call this to get current setting effective
-void Audio::applySetup()
-{
-	ESP_LOGI(FNAME,"Audio setup");
-	if( audio_range.get() == AUDIO_RANGE_5_MS ) {
-		_range = 5.0;
-	} else if( audio_range.get() == AUDIO_RANGE_10_MS ) {
-		_range = 10.0;
-	} else {
-		_range = scale_range.get();
-	}
+void Audio::applySetup() {
+    ESP_LOGI(FNAME, "Audio setup");
+    if (audio_range.get() == AUDIO_RANGE_5_MS) {
+        _range = 5.0;
+    } else if (audio_range.get() == AUDIO_RANGE_10_MS) {
+        _range = 10.0;
+    } else {
+        _range = scale_range.get();
+    }
     if (vario_vconf[1].gain_adjust != audio_harmonics.get()) {
         vario_vconf[1].gain_adjust = audio_harmonics.get();
     }
@@ -954,28 +954,19 @@ bool Audio::startAudio(int16_t ch)
 
     if ( ! _poti ) {
         ESP_LOGI(FNAME,"Find digital poti");
-        _poti = new MCP4018(&i2c1);
-        _poti->begin();
-        if (_poti->haveDevice()) {
+        _poti = new MCP4018(&i2c1, mute, unmute);
+        if (_poti->haveDevice() && _poti->begin()) {
             ESP_LOGI(FNAME, "MCP4018 digital Poti found");
         } else {
             ESP_LOGI(FNAME, "Try CAT5171 digital Poti");
             delete _poti;
-            _poti = new CAT5171(&i2c1);
-            _poti->begin();
-            if (_poti->haveDevice()) {
+            _poti = new CAT5171(&i2c1, mute, unmute);
+            if (_poti->haveDevice() && _poti->begin()) {
                 ESP_LOGI(FNAME, "CAT5171 digital Poti found");
             } else {
                 ESP_LOGW(FNAME, "NO digital Poti found !");
                 delete _poti;
                 _poti = nullptr;
-            }
-        }
-        if ( _poti ) {
-            if( _poti->writeWiper( 5, true ) ) {
-                ESP_LOGI(FNAME,"writeWiper(5) returned Ok");
-            } else {
-                ESP_LOGI(FNAME,"readWiper returned error");
             }
         }
     }
@@ -1034,9 +1025,11 @@ void  Audio::calculateFrequency(float val) {
     }
     if ( (inDeadBand(val) || speaker_volume < 1.0) && volumeadjust-- < 0) {
         vario_seq[0].step = vario_extra[0].step = vario_seq[1].step = vario_extra[1].step = 0;
+        if ( current_dmacmd->repcount == -1 ) { mute(); } // stop only the vario sound
     }
     else {
         // frequencies
+        unmute();
         vario_seq[0].setStep(freq);
         vario_extra[0].setStep(freq * 5.);
         if ( CRMOD.audioIsChopping() && val > 0 ) {
@@ -1064,12 +1057,18 @@ void Audio::writeVolume(float volume) {
 void Audio::mute()
 {
     ESP_LOGI(FNAME, "disable amplifier");
-    gpio_set_level(GPIO_NUM_19, 0 );
+    if ( ! _muted ) {
+        _muted = true;
+        gpio_set_level(GPIO_NUM_19, 0 );
+    }
 }
 void Audio::unmute()
 {
     ESP_LOGI(FNAME, "enable amplifier");
-    gpio_set_level(GPIO_NUM_19, 1);
+    if ( _muted ) {
+        _muted = false;
+        gpio_set_level(GPIO_NUM_19, 1);
+    }
 }
 
 void Audio::dactask_starter(void *arg)

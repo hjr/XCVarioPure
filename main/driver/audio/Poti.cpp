@@ -15,20 +15,32 @@
 #include <cmath>
 
 
-int Poti::RANGE;
+float Poti::RANGE;
 
-Poti::Poti(i2cbus::I2C *i2cbus, uint8_t addr) : Clock_I(1), bus(i2cbus), I2C_ADDR(addr)
+Poti::Poti(i2cbus::I2C *i2cbus, uint8_t addr, void (*mcb)(), void (*ucb)()) :
+    Clock_I(1),
+    bus(i2cbus),
+    I2C_ADDR(addr),
+    _mute_cb(mcb),
+    _unmute_cb(ucb)
 {
 }
 
-bool Poti::begin()
-{
-    int wiper;
-    if (readWiper(wiper))
-    {
-        ESP_LOGI(FNAME, "wiper=%d", wiper);
-        return (true);
+bool Poti::begin() {
+    uint16_t wiper;
+    constexpr int test = 5;
+
+    if (writeWiper(5)) {
+        if (readWiper(wiper) && wiper == test) {
+            ESP_LOGI(FNAME, "wiper==test");
+            return true;
+        }
     }
+    ESP_LOGE(FNAME, "CAT5171 Error writing wiper, error count %d, write 5 != read %d", errorcount, wiper);
+
+    // ESP_LOGI(FNAME,"CAT5171 write wiper OK");
+    return false;
+
     // else
     ESP_LOGE(FNAME, "Error reading wiper!");
     return (false);
@@ -53,6 +65,9 @@ bool Poti::tick() {
         lastWiperValue += std::abs(targetWiperValue - lastWiperValue) > 5 ? step * 5 : step;
         writeWiper(lastWiperValue);
         ESP_LOGI(FNAME, "soft %d, ival %d", targetWiperValue, lastWiperValue);
+        if ( lastWiperValue == 0 ) {
+            _mute_cb();
+        }
         return false;
     }
 
@@ -62,6 +77,10 @@ bool Poti::tick() {
 void Poti::softSetVolume(float val)
 {
     targetWiperValue = calcDbFromVolume(val);
+    if (targetWiperValue > 0) {
+        _unmute_cb();
+    }
+
     if (lastWiperValue != targetWiperValue)
     {
         Clock::start(this);
@@ -76,7 +95,7 @@ void Poti::softSetVolume(float val)
 bool Poti::writeVolume(float val)
 {
     int ival = calcDbFromVolume(val);
-    ESP_LOGI(FNAME, "range %d, ival %d", RANGE, ival);
+    ESP_LOGI(FNAME, "range %d, ival %d", (int)RANGE, ival);
 
     return writeWiper(ival);
 }

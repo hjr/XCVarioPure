@@ -11,14 +11,14 @@ class CAT5171 : public Poti
 public:
     // Connect module using I2C port
     CAT5171() = delete;
-    explicit CAT5171(i2cbus::I2C *i2cbus);
+    explicit CAT5171(i2cbus::I2C *i2cbus, void (*mute_cb)(), void (*unmute_cb)());
     virtual ~CAT5171() {}
 
     bool reset() override;
     e_poti_type getType() const override { return POTI_CAT5171; }
-    bool writeWiper(int val, bool validate = false) override;
 
 private:
-    bool readWiper(int &val) override;
+    bool writeWiper(uint16_t val) override;
+    bool readWiper(uint16_t &val) override;
     static constexpr int CAT5171RANGE = 80; // do not use the full range of 255
 };

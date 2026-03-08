@@ -71,8 +71,8 @@ private:
     bool inDeadBand(float a) const { return (a > _deadband_n && a < _deadband_p); }
     void calculateFrequency(float a);       // determine frequency to be generated depending on TE value
     void writeVolume(float volume);
-    void mute();                                // mute the sound entirely
-    void unmute();                              // unmutes
+    static void mute();                     // mute the amplifier entirely
+    static void unmute();                   // unmutes
 
     static void dactask_starter(void *arg); // start task to control HW generator
     void dactask();                         // task for control of HW generator
@@ -80,6 +80,7 @@ private:
     float vario_mode_volume;
     float s2f_mode_volume;
     float speaker_volume;
+    static bool _muted;
     int volumeadjust = -1; // make a noise when turning the knob
     int16_t _channel;
     dac_continuous_handle_t _dac_chan = nullptr;
