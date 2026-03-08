@@ -45,19 +45,20 @@ void Battery::blank()
 
 void Battery::draw(float volt)
 {
-	if ( volt < bat_red_volt.get() && ! _dirty ) {
-		blank();
+    if (volt < bat_red_volt.get() && !_dirty) {
+        blank();
         return;
-	}
-	int chargev = (int)(volt*10);
-	if ( _charge == chargev && ! _dirty  ) {
+    }
+    int chargev = (int)(volt * 10);
+    if (_charge == chargev && !_dirty) {
         return;
-	}
+    }
     _charge = chargev;
     _dirty = false;
+    float chargef = chargev / 10.0f;
 
-    int chargep = (int)((volt - bat_low_volt.get())*100)/( bat_full_volt.get() - bat_low_volt.get());
-    ESP_LOGI(FNAME,"Charge: %d , Volt: %.1f V, Delta %.1f V", chargep, volt, (bat_full_volt.get() - bat_low_volt.get()) );
+    int chargep = (int)((chargef - bat_low_volt.get())*100)/( bat_full_volt.get() - bat_low_volt.get());
+    ESP_LOGI(FNAME,"Charge: %d , Volt: %.1f V, Delta %.1f V", chargep, chargef, (bat_full_volt.get() - bat_low_volt.get()) );
     if(chargep < 0)
         chargep = 0;
     if( chargep > 100 )
@@ -91,14 +92,14 @@ void Battery::draw(float volt)
     }
     else if ( battery_display.get() == BAT_VOLTAGE ) {
         // MYUCG->setPrintPos(x-40,y-8);
-        MYUCG->printf("%2.1f", volt);
+        MYUCG->printf("%2.1f", chargef);
         MYUCG->setColor( COLOR_HEADER );
         MYUCG->print("V ");
     }
     else if ( battery_display.get() == BAT_VOLTAGE_BIG ) {
         MYUCG->setPrintPos(_ref_x-50, _ref_y+11);
         MYUCG->setFont(ucg_font_fub14_hr, true);
-        MYUCG->printf("%2.1f", volt);
+        MYUCG->printf("%2.1f", chargef);
         MYUCG->setColor( COLOR_HEADER );
         MYUCG->print("V ");
     }
