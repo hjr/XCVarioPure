@@ -291,20 +291,20 @@ const SOUND NoSound = { no_tone_tim.data(), { silence_seq.data(), nullptr, nullp
 constexpr float HIGH_TONE_VAR = toneFactor(2); // major prime up
 
 // Audio check ok sound
-const std::array<DURATION, 15> check_tim = {{ {150}, {150}, {150}, {150}, {150}, {150}, {150}, {150}, {150}, {150}, {150}, {150},     {4*150}, {4*150}, {0} }};
-const std::array<TONE, 15> check_seq1 = {{ {fD5}, {fDs5}, {fE5}, {fF5}, {fFs5}, {fG5}, {fGs5}, {fA5}, {fBd5}, {fB5}, {fC6}, {fCs6},   {fD6}, {fD6}, {0} }};
-const std::array<TONE, 15> check_seq2 = {{ {fD5}, {fDs5}, {fE5}, {fF5}, {fFs5}, {fG5}, {fGs5}, {fA5}, {fFs5}, {fF5}, {fE5}, {fDs5},   {fD5}, {fD4}, {0} }};
-const std::array<TONE, 15> check_seq3 = {{ {0}, {0}, {0}, {0},          {fD5}, {fD5}, {fD5}, {fD5},   {0}, {0}, {0}, {0},             {fFs5}, {fFs5},{0} }};
-const std::array<TONE, 15> check_seq4 = {{ {0}, {0}, {0}, {0},          {0}, {0}, {0}, {0},           {0}, {0}, {0}, {0},             {fA5}, {fA5},  {0} }};
+const std::array<DURATION, 16> check_tim = {{ {150}, {150}, {150}, {150}, {150}, {150}, {150}, {150}, {150}, {150}, {150}, {150},     {4*150}, {4*150}, {1000}, {0} }};
+const std::array<TONE, 16> check_seq1 = {{ {fD5}, {fDs5}, {fE5}, {fF5}, {fFs5}, {fG5}, {fGs5}, {fA5}, {fBd5}, {fB5}, {fC6}, {fCs6},   {fD6}, {fD6}, {0}, {0} }};
+const std::array<TONE, 16> check_seq2 = {{ {fD5}, {fDs5}, {fE5}, {fF5}, {fFs5}, {fG5}, {fGs5}, {fA5}, {fFs5}, {fF5}, {fE5}, {fDs5},   {fD5}, {fD4}, {0}, {0} }};
+const std::array<TONE, 16> check_seq3 = {{ {0}, {0}, {0}, {0},          {fD5}, {fD5}, {fD5}, {fD5},   {0}, {0}, {0}, {0},             {fFs5}, {fFs5},{0}, {0} }};
+const std::array<TONE, 16> check_seq4 = {{ {0}, {0}, {0}, {0},          {0}, {0}, {0}, {0},           {0}, {0}, {0}, {0},             {fA5}, {fA5},  {0}, {0} }};
 const std::array<VOICECONF, 4> check_vconf = {{ {0, 128}, {0, 128}, {0, 128}, {0, 128}  }};
 const SOUND CheckSound = { check_tim.data(), { check_seq1.data(), check_seq2.data(), check_seq3.data(), check_seq4.data() }, check_vconf.data(), 0 };
 
 // Audio check fail sound
-const std::array<DURATION, 15> fail_tim = {{ {150}, {150}, {150}, {150}, {150}, {150}, {150}, {150}, {150}, {150}, {150}, {150},     {4*150}, {4*150}, {0} }};
-const std::array<TONE, 15> fail_seq1 = {{ {fD5}, {fDs5}, {fE5}, {fF5}, {fFs5}, {fG5}, {fGs5}, {fA5}, {fBd5}, {fB5}, {fB5}, {fBd5},   {fA5}, {fA5}, {0} }};
-const std::array<TONE, 15> fail_seq2 = {{ {fD5}, {fDs5}, {fE5}, {fF5}, {fFs5}, {fG5}, {fGs5}, {fA5}, {fFs5}, {fF5}, {fE5}, {fDs5},   {fD5}, {fD5}, {0} }};
-const std::array<TONE, 15> fail_seq3 = {{ {0}, {0}, {0}, {0},          {fD5}, {fD5}, {fD5}, {fD5},   {0}, {0}, {0}, {0},             {fF5}, {fF5},{0} }};
-const std::array<TONE, 15> fail_seq4 = {{ {0}, {0}, {0}, {0},          {0}, {0}, {0}, {0},           {0}, {0}, {0}, {0},             {0},   {fD4},  {0} }};
+const std::array<DURATION, 16> fail_tim = {{ {150}, {150}, {150}, {150}, {150}, {150}, {150}, {150}, {150}, {150}, {150}, {150},     {4*150}, {4*150}, {1000}, {0} }};
+const std::array<TONE, 16> fail_seq1 = {{ {fD5}, {fDs5}, {fE5}, {fF5}, {fFs5}, {fG5}, {fGs5}, {fA5}, {fBd5}, {fB5}, {fB5}, {fBd5},   {fA5}, {fA5}, {0}, {0} }};
+const std::array<TONE, 16> fail_seq2 = {{ {fD5}, {fDs5}, {fE5}, {fF5}, {fFs5}, {fG5}, {fGs5}, {fA5}, {fFs5}, {fF5}, {fE5}, {fDs5},   {fD5}, {fD5}, {0}, {0} }};
+const std::array<TONE, 16> fail_seq3 = {{ {0}, {0}, {0}, {0},          {fD5}, {fD5}, {fD5}, {fD5},   {0}, {0}, {0}, {0},             {fF5}, {fF5},{0}, {0} }};
+const std::array<TONE, 16> fail_seq4 = {{ {0}, {0}, {0}, {0},          {0}, {0}, {0}, {0},           {0}, {0}, {0}, {0},             {0},   {fD4},  {0}, {0} }};
 const std::array<VOICECONF, 4> fail_vconf = {{ {0, 128}, {0, 128}, {0, 128}, {0, 128}  }};
 const SOUND FailSound = { fail_tim.data(), { fail_seq1.data(), fail_seq2.data(), fail_seq3.data(), fail_seq4.data() }, fail_vconf.data(), 0 };
 
