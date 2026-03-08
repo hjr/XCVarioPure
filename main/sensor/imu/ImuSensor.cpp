@@ -202,7 +202,7 @@ class IMU_Ref {
 int MpuImu::getAccelSamplesAndCalib(vector_f gyro_integral, rad_t& wing_angle, rad_t& ground_angle) {
     vector_f* bob = &bob_level;
     int16_t side = 0;
-    ESP_LOGI(FNAME, "gyro integral: %f/%f/%f", gyro_integral.x, gyro_integral.y, gyro_integral.z);
+    ESP_LOGI(FNAME, "gyro integral: %f/%f/%f n:%f", gyro_integral.x, gyro_integral.y, gyro_integral.z, gyro_integral.get_norm());
     if ( progress == 3 ) {
         side = 3;
     }
@@ -245,14 +245,18 @@ int MpuImu::getAccelSamplesAndCalib(vector_f gyro_integral, rad_t& wing_angle, r
         // Corrected wing down bob vectores
         vector_f pureBr = bob_right_wing - bias;
         vector_f pureBl = bob_left_wing - bias;
+        vector_f pureBlev = bob_level - bias;
         ESP_LOGI(FNAME, "pureBr:\t%f\t%f\t%f \tL%.2f", pureBr.x, pureBr.y, pureBr.z, pureBr.get_norm());
         ESP_LOGI(FNAME, "pureBl:\t%f\t%f\t%f \tL%.2f", pureBl.x, pureBl.y, pureBl.z, pureBl.get_norm());
+        ESP_LOGI(FNAME, "pureBlev:\t%f\t%f\t%f \tL%.2f", pureBlev.x, pureBlev.y, pureBlev.z, pureBlev.get_norm());
 
         // Check on wing angle is at least 4 degree
         wing_angle = Quaternion::AlignVectors(vector_f(bob_right_wing.x, bob_right_wing.y, bob_right_wing.z),
                                                 vector_f(bob_left_wing.x, bob_left_wing.y, bob_left_wing.z)).getAngle();
         ESP_LOGI(FNAME, "Wing Angle: %f degree.", rad2deg(wing_angle / 2.));
-        if (wing_angle < deg2rad(8.f)) {
+        if (wing_angle < deg2rad(8.f)
+            || gyro_axis_right.get_norm() < deg2rad(8.f)
+            || gyro_axis_left.get_norm() < deg2rad(8.f)) {
             progress = 0;  // resert the progress
             return -1;
         }
@@ -264,7 +268,11 @@ int MpuImu::getAccelSamplesAndCalib(vector_f gyro_integral, rad_t& wing_angle, r
         ESP_LOGI(FNAME, "X: %f,%f,%f", X.x, X.y, X.z);
         // The Z in glider reference
         // The bob in glider ref, skid stil on the ground (points up)
-        vector_f Z(pureBr + pureBl);
+        vector_f Z_plane_normal = pureBl.cross(pureBr) + pureBl.cross(pureBlev) + pureBlev.cross(pureBr); // Bl x Br + Bl x Blev + Blev x Br
+        Z_plane_normal.normalize();
+        // project pureBlev into plane
+        vector_f Z(pureBlev - Z_plane_normal * pureBlev.dot(Z_plane_normal)); // Blev - (Blev dot plane normal) * plane normal
+        // vector_f Z(pureBr + pureBl + 2 * pureBlev); // weighted average
         Z.normalize();
         // The Y in glider reference
         vector_f Y = Z.cross(X);
