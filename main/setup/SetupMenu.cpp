@@ -365,6 +365,9 @@ static void doImuCalibration(SetupMenuSelect* p) {
         if ( gnorm > GyroMPU6050::GYRO_THRESHOLD ) {
             p->menuPrintLn("IMU bias too high,", nlidx++);
             p->menuPrintLn("try a restart.", nlidx++);
+        } else {
+            p->menuPrintLn("The movement covered", nlidx++);
+            p->menuPrintLn("too small an angle.", nlidx++);
         }
         accSensor->getMpu().applyImuReference(glider_ground_aa.get(), imu_reference.get());
         p->menuPrintLn("press button to return", 8, 1);
