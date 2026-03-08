@@ -196,7 +196,7 @@ public:
         for (int i = 0; i < count; ++i) {
             sum += _history[i];
         }
-        return sum;
+        return sum * getDutyCycleS();
     }
     
     // get average of the last X milli seconds
