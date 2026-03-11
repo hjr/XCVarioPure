@@ -109,7 +109,7 @@ Read 0 bit:
 #define ONEWIRE_SLOT_START_DURATION             2  // bit start pulse duration
 #define ONEWIRE_SLOT_BIT_DURATION               60 // duration for each bit to transmit
 // refer to https://www.maximintegrated.com/en/design/technical-documents/app-notes/3/3829.html for more information
-#define ONEWIRE_SLOT_RECOVERY_DURATION          5  // recovery time between each bit, should be longer in parasite power mode
+#define ONEWIRE_SLOT_RECOVERY_DURATION          10  // recovery time between each bit, should be longer in parasite power mode
 #define ONEWIRE_SLOT_BIT_SAMPLE_TIME            20 // increased for better margin with weak pull-up
 
 typedef struct {
@@ -226,6 +226,7 @@ static bool onewire_rmt_check_presence_pulse(rmt_symbol_word_t *rmt_symbols, siz
             }
         }
     }
+    // ESP_LOGI(TAG, "NUM:%d S0L1:%u S0L0:%u S1L1:%u S1L0:%u Presence:%d",  symbol_num, rmt_symbols[0].duration1, rmt_symbols[0].duration0, rmt_symbols[1].duration1, rmt_symbols[1].duration0, ret ); 
     return ret;
 }
 
@@ -239,6 +240,7 @@ static void onewire_rmt_decode_data(rmt_symbol_word_t *rmt_symbols, size_t symbo
         } else { // 1 bit
             rx_buf[byte_pos] |= 1 << bit_pos;
         }
+	// ESP_LOGI(TAG,"symb: %d dur0:%d Bit:%d" , i, rmt_symbols[i].duration0, (rmt_symbols[i].duration0 < ONEWIRE_SLOT_BIT_SAMPLE_TIME) );
         bit_pos ++;
         if (bit_pos >= 8) {
             bit_pos = 0;
