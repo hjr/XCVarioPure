@@ -213,6 +213,36 @@ esp_err_t I2C::readBytes(uint8_t devAddr, uint8_t regAddr, size_t length, uint8_
 }
 
 
+esp_err_t I2C::read8bit( uint8_t addr, uint16_t *word, int32_t timeout )
+{
+    i2c_cmd_handle_t cmd = i2c_cmd_link_create();
+    uint8_t datal;
+    i2c_master_start(cmd);
+    i2c_master_write_byte(cmd, (addr<<1)| I2C_MASTER_READ , I2C_MASTER_ACK);
+    esp_err_t ret = i2c_master_read_byte(cmd, &datal, I2C_MASTER_NACK); //Read data back on B
+    i2c_master_stop(cmd);
+    ret |= i2c_master_cmd_begin(port, cmd, pdMS_TO_TICKS(timeout) );
+    *word = (uint16_t)datal;
+    i2c_cmd_link_delete(cmd);
+    return ret;
+}
+
+
+esp_err_t I2C::write8bit( uint8_t addr, uint16_t word, int32_t timeout )
+{
+    // I2CBUS_LOGI("write8bit NS");
+    i2c_cmd_handle_t cmd = i2c_cmd_link_create();
+    uint8_t datal=(uint8_t(word & 0xFF));
+    i2c_master_start(cmd);
+    i2c_master_write_byte(cmd, (addr<<1)| I2C_MASTER_WRITE , I2C_MASTER_ACK);
+    esp_err_t ret = i2c_master_write_byte(cmd, datal , I2C_MASTER_NACK);  // ACK = 0, NACK = 1
+    i2c_master_stop(cmd);
+    ret |= i2c_master_cmd_begin(port, cmd, pdMS_TO_TICKS(timeout) );
+    i2c_cmd_link_delete(cmd);
+    return ret;
+}
+
+
 /*******************************************************************************
  * UTILS
  ******************************************************************************/

@@ -36,9 +36,9 @@ bool Poti::begin() {
             return true;
         }
     }
-    ESP_LOGE(FNAME, "CAT5171 Error writing wiper, error count %d, write 5 != read %d", errorcount, wiper);
+    ESP_LOGE(FNAME, "Error writing wiper, error count %d, write 5 != read %d", errorcount, wiper);
 
-    // ESP_LOGI(FNAME,"CAT5171 write wiper OK");
+    // ESP_LOGI(FNAME,"write wiper OK");
     return false;
 
     // else
