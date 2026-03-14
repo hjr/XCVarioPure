@@ -10,8 +10,6 @@ MCP4018::MCP4018(i2cbus::I2C* i2cbus, void (*mcb)(), void (*ucb)()) : Poti(i2cbu
     RANGE = MCP4018RANGE;
 }
 
-// esp_err_t readByte(uint8_t devAddr, uint8_t regAddr, uint8_t *data, int32_t timeout = -1);
-
 bool MCP4018::readWiper(uint16_t& val) {
     esp_err_t err = bus->read8bit(MPC4018_I2C_ADDR, &val);
     if (err == ESP_OK) {
