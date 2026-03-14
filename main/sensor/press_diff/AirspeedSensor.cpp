@@ -149,11 +149,11 @@ bool AirspeedSensor::setup()
         }
         _offset = fast_iroundf(float(rawOffset) / samples);
         if (offsetPlausible(_offset)) {
-            ESP_LOGI(FNAME, "Offset procedure finished, offset: %d", (int)_offset);
+            printf("AS offset procedure finished, offset: %d\n", (int)_offset);
             as_offset.set(_offset);
         }
         else {
-            ESP_LOGW(FNAME, "Offset out of tolerance, ignore odd offset value");
+            printf("AS offset out of tolerance, ignore odd offset value\n");
         }
     }
     else

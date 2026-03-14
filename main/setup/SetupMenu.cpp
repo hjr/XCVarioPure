@@ -144,10 +144,19 @@ static int set_rotary_increment(SetupMenuSelect *p) {
 	return 0;
 }
 
-int speedcal_change(SetupMenuValFloat *p) {
-	if (asSensor)
-		asSensor->changeConfig();
-	return 0;
+static int speedcal_change(SetupMenuValFloat* p) {
+    if (asSensor) {
+        asSensor->changeConfig();
+    }
+    return 0;
+}
+
+static int airspeed_zero(SetupMenuSelect *p) {
+    if (asSensor) {
+        as_offset.set(-1); // invalidate offset to force recalibration with new speedcal
+        asSensor->setup();
+    }
+    return 0;
 }
 
 int set_ahrs_defaults(SetupMenuSelect *p) {
@@ -903,14 +912,22 @@ void options_menu_create_units(SetupMenu *top) {
 }
 
 static void system_menu_create_airspeed(SetupMenu *top) {
-	SetupMenuValFloat *spc = new SetupMenuValFloat("AS Calibration", "%", speedcal_change, false, &speedcal);
-	spc->setHelp("Calibration of airspeed sensor (AS). Normally not needed, unless the pressure probe has a systematic error");
-	top->addEntry(spc);
+    SetupMenuValFloat* spc = new SetupMenuValFloat("AS Calibration", "%", speedcal_change, false, &speedcal);
+    spc->setHelp("Calibration of airspeed sensor (AS). Normally not needed, unless the pressure probe has a systematic error");
+    top->addEntry(spc);
 
-	SetupMenuSelect *stawaen = new SetupMenuSelect("Stall Warning", RST_NONE, nullptr, &stall_warning);
-	stawaen->setHelp("Enable alarm sound when speed goes below configured stall speed (until 30% less)");
-	stawaen->mkEnable();
-	top->addEntry(stawaen);
+    SetupMenuSelect* stawaen = new SetupMenuSelect("Stall Warning", RST_NONE, nullptr, &stall_warning);
+    stawaen->setHelp("Enable alarm sound when speed goes below configured stall speed (until 30% less)");
+    stawaen->mkEnable();
+    top->addEntry(stawaen);
+
+    if ( !airborne.get() ) {
+        SetupMenuSelect* asze = new SetupMenuSelect("Zero Airspeed Sensor", RST_NONE, airspeed_zero, nullptr);
+        top->addEntry(asze);
+        asze->setHelp("Recalculate zero point for airspeed sensor right now");
+        asze->addEntry("Cancel");
+        asze->addEntry("Start");
+    }
 }
 
 static void options_menu_create_altimeter(SetupMenu *top) {
