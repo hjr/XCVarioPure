@@ -613,7 +613,7 @@ SetupNG<float> 			flap_takeoff("FLAPTOp", 0,  false, SYNC_BIDIR, PERSISTENT, nul
 SetupNG<int> 			audio_mute_sink( "AUDISS", 0 );
 SetupNG<int> 			audio_mute_gen( "AUDISG", AUDIO_ON );
 SetupNG<int>			vario_mode("VAMOD", CRUISE_ONLY_NETTO, true, SYNC_NONE, PERSISTENT, change_cruise);  // switch to netto mode when cruising
-SetupNG<int>			airspeed_sensor("PTYPE", AirspeedSensor::PS_NONE, false);
+SetupNG<int>			airspeed_sensor("PTYPE", AirspeedSensor::NONE, false);
 SetupNG<int>			cruise_audio_mode("CAUDIO", 0 );
 SetupNG<int>			netto_mode("NETMOD", NETTO_RELATIVE, true, SYNC_NONE, PERSISTENT, change_cruise);  // regard polar sink
 SetupNG<kmh_t>			v_max("VMAX", 270, true, SYNC_BIDIR, PERSISTENT, nullptr, quantity_t::QUANT_HSLEGACY, &polar_speed_limits);

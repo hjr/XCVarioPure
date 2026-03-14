@@ -40,7 +40,7 @@ const float min_pascal = 10.0;
 
 MP5004DP::MP5004DP() : AirspeedSensor(), _mcp(&i2c1)
 {
-    _multiplier = MP50040P_CORR;
+    setMultiplier(MP50040P_CORR);
     changeConfig();
 }
 
@@ -55,7 +55,8 @@ bool MP5004DP::probe()
 
 void MP5004DP::changeConfig()
 {
-    _multiplier = MP50040P_CORR * ((100.0 + speedcal.get()) / 100.0);
+    setMultiplier(MP50040P_CORR * ((100.0 + speedcal.get()) / 100.0));
+    ESP_LOGI(FNAME, "changeConfig, speed multiplier %f, speed cal: %f", getMultiplier(), speedcal.get());
 }
 
 bool MP5004DP::fetch_pressure(int32_t &p, uint16_t &t)

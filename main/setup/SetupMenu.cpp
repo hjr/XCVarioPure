@@ -159,6 +159,12 @@ static int airspeed_zero(SetupMenuSelect *p) {
     return 0;
 }
 
+static int tube_swap(SetupMenuSelect* p) {
+    speedcal_change(nullptr);
+    airspeed_zero(nullptr);
+    return 0;
+}
+
 int set_ahrs_defaults(SetupMenuSelect *p) {
 	if (p->getSelect() == 1) {
 		ahrs_gyro_factor.set(ahrs_gyro_factor.getDefault());
@@ -927,6 +933,15 @@ static void system_menu_create_airspeed(SetupMenu *top) {
         asze->setHelp("Recalculate zero point for airspeed sensor right now");
         asze->addEntry("Cancel");
         asze->addEntry("Start");
+    }
+
+    if ( airspeed_sensor.get() == AirspeedSensor::ABPMRR || airspeed_sensor.get() == AirspeedSensor::TE4525 ) {
+        // offer the option to swizch in-between them, call it swapped tubes
+        SetupMenuSelect* asswap = new SetupMenuSelect("Swapped tubes", RST_NONE, tube_swap, &airspeed_sensor);
+        top->addEntry(asswap);
+        asswap->setHelp("Some airspeed sensors have pressure tubes swapped, resulting in no IAS indication.");
+        asswap->addEntry("Straight", AirspeedSensor::ABPMRR);
+        asswap->addEntry("Swapped", AirspeedSensor::TE4525);
     }
 }
 

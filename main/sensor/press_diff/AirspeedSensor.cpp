@@ -37,16 +37,16 @@ static AirspeedSensor* factory(AirspeedSensor::ASens_Type type)
 {
     AirspeedSensor* tmp = nullptr;
     switch (type) {
-    case AirspeedSensor::PS_ABPMRR:
-        tmp = new MS4525DO(true);
+    case AirspeedSensor::ABPMRR:
+        tmp = new MS4525DO(); // Only the multiplier has different sign, alias swapped tubes
         break;
-    case AirspeedSensor::PS_TE4525:
+    case AirspeedSensor::TE4525:
         tmp = new MS4525DO();
         break;
-    case AirspeedSensor::PS_MP3V5004:
+    case AirspeedSensor::MP3V5004:
         tmp = new MP5004DP();
         break;
-    case AirspeedSensor::PS_MCPH21:
+    case AirspeedSensor::MCPH21:
         tmp = new MCPH21();
         break;
     default:
@@ -63,7 +63,7 @@ AirspeedSensor* AirspeedSensor::autoSetup()
 {
     ESP_LOGI(FNAME, "Airspeed sensor init..  type configured: %d", airspeed_sensor.get());
     AirspeedSensor *as_sens = nullptr;
-    if (airspeed_sensor.get() != PS_NONE)
+    if (airspeed_sensor.get() != AirspeedSensor::NONE)
     {
         as_sens = factory((ASens_Type)airspeed_sensor.get());
 
@@ -80,7 +80,7 @@ AirspeedSensor* AirspeedSensor::autoSetup()
     {
         ESP_LOGI(FNAME, "Configured AS sensor not found, probing all known types...");
         // behaves same as above, so we can't detect this, needs to be setup in factory
-        for ( ASens_Type t = PS_ABPMRR; t < PS_MAX_TYPES; t = static_cast<ASens_Type>(t + 1) ) {
+        for ( ASens_Type t = ABPMRR; t < MAX_TYPES; t = static_cast<ASens_Type>(t + 1) ) {
             as_sens = factory(t);
             ESP_LOGI(FNAME, "Try %s", as_sens->name());
             if ( as_sens && as_sens->probe() ) {
@@ -92,7 +92,7 @@ AirspeedSensor* AirspeedSensor::autoSetup()
                 delete as_sens;
                 as_sens = nullptr;
             }
-            vTaskDelay(100 / portTICK_PERIOD_MS);
+            vTaskDelay(pdMS_TO_TICKS(100));
         }
     }
 

@@ -1,6 +1,7 @@
 #include "ms4525do.h"
 
 #include "setup/SetupNG.h"
+#include "logdefnone.h"
 
 #include <I2Cbus.hpp>
 
@@ -28,16 +29,13 @@ const int16_t MS4525Span = MS4525FullScaleCounts - MS4525MinScaleCounts;
 // MS4525D sensor differential pressure
 // const int16_t MS4525ZeroCounts = (MS4525MinScaleCounts + MS4525FullScaleCounts) / 2;
 
-MS4525DO::MS4525DO(bool is_abpmrr) : AsSensI2c(&i2c1, I2C_ADDRESS_MS4525DO), _is_abpmrr(is_abpmrr)
+MS4525DO::MS4525DO() : AsSensI2c(&i2c1, I2C_ADDRESS_MS4525DO)
 {
     changeConfig();
 }
 
 const char *MS4525DO::name() const {
-    if ( PS_NONE == airspeed_sensor.get() ) {
-        return "undefined";
-    }
-    if (_is_abpmrr) {
+    if (isAbpmrr()) {
         return "ABPMRR";
     }
     else {
@@ -45,29 +43,22 @@ const char *MS4525DO::name() const {
     }
 }
 
-void MS4525DO::changeConfig() {
-    _multiplier = (2.f * 6894.76 / MS4525Span) * ((100.0 + speedcal.get()) / 100.0);
-    _multiplier *= (!_is_abpmrr) ? -1.0f : 1.0f;
+void MS4525DO::changeConfig()
+{
+    setMultiplier((2.f * 6894.76 / MS4525Span) * ((100.0 + speedcal.get()) / 100.0) * (isAbpmrr() ? 1.0f : -1.0f));
+    ESP_LOGI(FNAME, "changeConfig, speed multiplier %f, speed cal: %f", getMultiplier(), speedcal.get());
 }
 
 
-void MS4525DO::setSubType(bool positive)
+bool MS4525DO::isAbpmrr() const
 {
-    // This will set the correct sensor type for the next XCV boot and
-    // provide the proper zero offset tollerances
-    _is_abpmrr = positive;
-    changeConfig();
-    if ( _is_abpmrr ) {
-        airspeed_sensor.set( AirspeedSensor::PS_ABPMRR );
-    }
-    else {
-        airspeed_sensor.set( AirspeedSensor::PS_TE4525 );
-    }
+    // This translates the airspeed sensor type into a bool
+    return airspeed_sensor.get() == AirspeedSensor::ABPMRR;
 }
 
 bool MS4525DO::offsetPlausible(int32_t offset)
 {
-    if ( _is_abpmrr ) {
+    if ( isAbpmrr() ) {
         constexpr int lower_val = 8192 - 200;
         constexpr int upper_val = 8192 + 200;
         return (offset > lower_val) && (offset < upper_val);

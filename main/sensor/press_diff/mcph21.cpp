@@ -66,8 +66,8 @@ bool MCPH21::setup()
 
 void MCPH21::changeConfig()
 {
-	_multiplier = 6250.f / 8388608.f * ((100.0 + speedcal.get()) / 100.0);
-	ESP_LOGI(FNAME,"changeConfig, speed multiplier %f, speed cal: %f ", _multiplier, speedcal.get() );
+    setMultiplier(6250.f / 8388608.f * ((100.0 + speedcal.get()) / 100.0));
+    ESP_LOGI(FNAME, "changeConfig, speed multiplier %f, speed cal: %f ", _multiplier, speedcal.get());
 }
 
 
