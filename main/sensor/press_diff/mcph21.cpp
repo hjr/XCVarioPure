@@ -9,7 +9,11 @@
 #define I2C_ADDRESS_MCPH21    0x7F  //  Datasheet testcode: IC_Send(0xFE,..) what is 7F shifted right 1 bit
 
 // Long term stability of Sensor as from datasheet FS* 0.15 + 0.3 (dT) % per year -> 16777216 * 0.00015 = 2516
-#define MAX_AUTO_CORRECTED_OFFSET 73000    // pressure for minimum of 60 Pa: 911868 Offset according to datasheet: 838861, difference: ~73000 and ~1% FS of 7549746
+// pressure for minimum of 60 Pa: 911868 Offset according to datasheet: 838861, difference: ~73000 and ~1% FS of 7549746
+// raised to 100000 to be on the safe side, which is ~1.3% FS, but still much less than 10% FS which is the minimum step 
+// size of the sensor output according to the datasheet (10% of 2^24 counts = 1677721 counts) and also much less than the 
+// typical long term drift of the sensor (0.15% FS per year = 2516 counts per year)
+#define MAX_AUTO_CORRECTED_OFFSET 100000
 
 // MCPH21D sensor full scale range and units
 // const int16_t MCPH21FullScaleRange = 0.725;  //  psi
