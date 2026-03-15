@@ -108,7 +108,7 @@ int Clock::getSeconds()
 {
     return msec_counter / 1000;
 }
-int32_t Clock::getMilisMidnightUTC()
+int32_t Clock::getMillisMidnightUTC()
 {
     int64_t utc = getMillisUTC();
     int32_t day_ms = static_cast<int32_t>(utc % 86400000LL);

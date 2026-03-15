@@ -154,6 +154,44 @@ static void toyFeed(int count) // Called at 5Hz from clientLoop or sensorloop
     }
 }
 
+static void sensFeed(const NmeaPrtcl* prtcl) // called with full 10Hz rate from sensor loop
+{
+    kelvin_t temp = OAT.get();
+    if (!OAT.getValid()) {
+        temp = Units::isa_temperature(altitude.get());
+        // ESP_LOGW(FNAME,"T invalid, using 15 deg");
+    }
+
+    char log[ProtocolItf::MAX_LEN];
+    sprintf(log, "$SENS,");
+    int pos = strlen(log);
+
+    int daymillis = Clock::getMillisMidnightUTC();
+    int delta = (GpsSensor) ? Clock::getMillis() - GpsSensor->getLastUpdateTimeMs() : 0;
+    if (delta < 0) {
+        delta += 1000;
+    }
+
+    sprintf(log + pos, "%d.%03d,%d,%.3f,%.3f,%.3f,%.2f", daymillis % (60 * 60 * 24), daymillis / 1000, delta, 
+            baroSensor->getHead()/100.f, teSensor->getHead()/100.f, asSensor->getHead(), Units::K_to_C(temp));
+    pos = strlen(log);
+    if (accSensor) {
+        vector_f acc = accSensor->getRef();
+        vector_f gyro_deg = gyroSensor->getRef() * rad2deg(1.f);
+        sprintf(log + pos, ",%.4f,%.4f,%.4f,%.4f,%.4f,%.4f", acc.x, acc.y, acc.z, gyro_deg.x, gyro_deg.y, gyro_deg.z);
+    } else {
+        sprintf(log + pos, ",,,,,,");
+    }
+    if (theCompass) {
+        pos = strlen(log);
+        sprintf(log + pos, ",%.4f,%.4f,%.4f", theCompass->rawX(), theCompass->rawY(), theCompass->rawZ());
+    }
+    pos = strlen(log);
+    sprintf(log + pos, "\r\n");
+
+    prtcl->sendXCV(log);
+}
+
 static int client_sync_dataIdx = 10000;
 void startClientSync() {
     // Start the client sync in a moment
@@ -195,38 +233,10 @@ void readSensors(void *pvParameters)
         }
 
         // the SENS logging
-        if (SetupCommon::isMaster() && accSensor) {
-            kelvin_t temp = OAT.get();
-            if (!OAT.getValid()) {
-                temp = Units::isa_temperature(altitude.get());
-                // ESP_LOGW(FNAME,"T invalid, using 15 deg");
-            }
-
-            if (logging.get()) {
-                char log[ProtocolItf::MAX_LEN];
-                struct timeval tv;
-                gettimeofday(&tv, NULL);
-                sprintf(log, "$SENS,");
-                int pos = strlen(log);
-                int delta = (GpsSensor) ? Clock::getMillis() - GpsSensor->getLastUpdateTimeMs() : 0;
-                if (delta < 0) {
-                    delta += 1000;
-                }
-                vector_f acc = accSensor->getRef();
-                vector_f gyro_deg = gyroSensor->getRef() * rad2deg(1.f);
-                sprintf(log + pos, "%d.%03d,%d,%.3f,%.3f,%.3f,%.2f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f", (int)(tv.tv_sec % (60 * 60 * 24)),
-                        (int)(tv.tv_usec / 1000), delta, baroSensor->getHead()/100.f, teSensor->getHead()/100.f, asSensor->getHead(), Units::K_to_C(temp), 
-                        acc.x, acc.y, acc.z, gyro_deg.x, gyro_deg.y, gyro_deg.z);
-                if (theCompass) {
-                    pos = strlen(log);
-                    sprintf(log + pos, ",%.4f,%.4f,%.4f", theCompass->rawX(), theCompass->rawY(), theCompass->rawZ());
-                }
-                pos = strlen(log);
-                sprintf(log + pos, "\n");
-                const NmeaPrtcl* prtcl = DEVMAN->getNMEA(NAVI_DEV);  // Todo preliminary solution ..
-                if (prtcl) {
-                    prtcl->sendXCV(log);
-                }
+        if (logging.get() == LOGG_RAW_SENSOR_DATA && SetupCommon::isMaster()) {
+            const NmeaPrtcl* prtcl = DEVMAN->getNMEA(NAVI_DEV);  // Todo preliminary solution ..
+            if (prtcl) {
+                sensFeed(prtcl);
             }
         }
 
