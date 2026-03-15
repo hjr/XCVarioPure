@@ -31,17 +31,6 @@ mps_t Atmosphere::IAS(mps_t tas, pascal_t sp, kelvin_t temp) {
     return tas / std::sqrtf(Units::rho0 / (sp / (Units::R_air * temp)));
 }
 
-mps_t Atmosphere::pascal2ms(pascal_t pressure) {
-    if ( pressure < 0.0f ) {
-        return 0.0f;
-    }
-    return std::sqrtf(2.f * pressure / Units::rho0);
-}
-
-pascal_t Atmosphere::ms2pascal(mps_t speed) {
-    return (speed * speed) * Units::rho0 / 2.;
-}
-
 meter_t Atmosphere::calcAltitude(pascal_t SeaLevel_Pres, pascal_t pressure) {
     return (Units::T0divL * (1.0f - std::powf(pressure / SeaLevel_Pres, 1.0f / Units::g0divRxL)));
 }

@@ -3,6 +3,7 @@
 #pragma once
 
 #include <cstdint>
+#include <cmath>
 #include <string_view>
 
 enum class quantity_t : uint8_t;
@@ -99,10 +100,13 @@ inline constexpr float ms2_to_g(float ms2) { return ms2 / g0; }
 // ---------------------------------------------------------------------------
 // ISA atmosphere (troposphere, up to ~11km)
 // ---------------------------------------------------------------------------
-inline kelvin_t isa_temperature(meter_t h_m)
-{
-    return T0 - L * h_m;
+constexpr kelvin_t isa_temperature(meter_t height) { return T0 - L * height; }
+// Speed & Pressure
+constexpr mps_t pascal_to_mps(pascal_t pressure) {
+    if (pressure < 0.0f) { return 0.0f; }
+    return std::sqrtf(2.f * pressure / rho0);
 }
+constexpr pascal_t mps_to_pascal(mps_t speed) { return (speed * speed) * rho0 / 2.; }
 
 
 // ---------------------------------------------------------------------------

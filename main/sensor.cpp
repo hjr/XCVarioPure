@@ -675,7 +675,7 @@ void system_startup(void *args){
             bool as_ok = asSensor->setup();
             pascal_t p;
             if (asSensor->doRead(p) && p > 60.f) {
-                ias.set(Atmosphere::pascal2ms(p)); // initial ias from sensor
+                ias.set(Units::pascal_to_mps(p)); // initial ias from sensor
             }
 
             // Initialize the airborne status

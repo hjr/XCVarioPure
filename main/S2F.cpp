@@ -9,6 +9,7 @@
 
 #include "glider/Polars.h"
 #include "math/Floats.h"
+#include "math/Units.h"
 #include "sensor/imu/AccMPU6050.h"
 #include "comm/DeviceMgr.h"
 #include "protocol/NMEA.h"
@@ -82,7 +83,7 @@ void S2F::setPolar()
 	polar_wingload.set( p.wingload );
 	// set default min speed as estimated stall_speed * 1.05 )
 	// Vstall := sqrt( (2 * W/S * g) / ( rho * Clmax ) ) [m/s]
-	_stall_speed = std::sqrtf( ( 2.f * polar_wingload.get() * 9.81f) / (1.225f * 1.4f ) ) * 1.05f;
+	_stall_speed = std::sqrtf( ( 2.f * polar_wingload.get() * Units::g0) / (Units::rho0 * 1.4f ) ) * 1.05f;
 	polar_stall_speed.set(_stall_speed * 3.6);
 	polar_max_ballast.set( p.max_ballast );
 	polar_wingarea.set( p.wingarea, true, false );
@@ -250,13 +251,13 @@ void S2F::recalcSinkNSpeeds() {
     _circling_sink = sink(_circling_speed);
     // use user defined/confirmed stall speed
     const float loading_factor = std::sqrtf((myballast + 100.0) / 100.0);
-    _stall_speed = polar_stall_speed.get() / 3.6 * std::sqrtf(loading_factor);
+    _stall_speed = Units::kmh_to_mps(polar_stall_speed.get()) * std::sqrtf(loading_factor);
 
-    ESP_LOGI(FNAME, "Airspeed @ min Sink =%3.1f kmh", _min_sink_speed * 3.6);
+    ESP_LOGI(FNAME, "Airspeed @ min Sink =%3.1f kmh", Units::mps_to_kmh(_min_sink_speed));
     ESP_LOGI(FNAME, "          min Sink  =%2.3f m/s", _min_sink);
-    ESP_LOGI(FNAME, "Circling Speed      =%3.1f kmh", _circling_speed * 3.6);
+    ESP_LOGI(FNAME, "Circling Speed      =%3.1f kmh", Units::mps_to_kmh(_circling_speed));
     ESP_LOGI(FNAME, "Stall    Speed      =%2.3f km/h", polar_stall_speed.get());
-    ESP_LOGI(FNAME, "Stall warn @        =%2.3f", _stall_speed * 3.6f);
+    ESP_LOGI(FNAME, "Stall warn @        =%2.3f", Units::mps_to_kmh(_stall_speed));
 }
 
 float S2F::getBallastPercent() {
