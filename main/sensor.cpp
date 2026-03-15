@@ -165,23 +165,24 @@ void readSensors(void *pvParameters)
     esp_task_wdt_add(NULL);
     int count = 0;
     int16_t landed = 0;  // airborne detection counter
-    uint32_t spartse_time;
-    [[maybe_unused]] static int max_time = 0;
-    [[maybe_unused]] static float avg_delta = 0;
+    uint32_t sparse_time;
+    [[maybe_unused]] int max_time = 0;
+    [[maybe_unused]] int max_time_to = 0;
+    [[maybe_unused]] float avg_delta = 0;
 
     while (1) {
         TickType_t xLastWakeTime = xTaskGetTickCount();
         count++;  // 10x per second
 
         // pick the time
-        spartse_time = Clock::getMillis();
+        sparse_time = Clock::getMillis();
 
         // read all sensors
         for (SensorEntry *e = SensorRegistry::begin(); e != SensorRegistry::end(); ++e)
         {
             if ( ! e->isActive() ) break;
             if ( isLocalSensor(e->id) && !(count%e->dutycycle) ) {
-                e->sensor->update(spartse_time);
+                e->sensor->update(sparse_time);
             }
         }
 
@@ -385,11 +386,15 @@ void readSensors(void *pvParameters)
             // DeviceManager* dm = DeviceManager::Instance();
             // static_cast<TestQuery*>(dm->getProtocol( TEST_DEV2, TEST_P ))->sendTestQuery();  // all 5 seconds on burst
         }
-        int delta = Clock::getMillis() - spartse_time;
+        int delta = Clock::getMillis() - sparse_time;
         if (delta > max_time)
         {
             max_time = delta;
+            max_time_to = sparse_time + 30000;
             ESP_LOGI(FNAME, "Sensor loop max time: %d ms", max_time);
+        }
+        else if ( max_time_to < sparse_time ) {
+            max_time = 0; // reset max time measurement every 5 seconds, to not catch single spikes from the past
         }
         avg_delta = avg_delta + (delta - avg_delta) * 0.1;
 #endif
