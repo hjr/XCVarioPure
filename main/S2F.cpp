@@ -154,8 +154,8 @@ mps_t S2F::calculate(mps_t netto_vario, bool circling)
         return _min_sink_speed;
     }
 
-    mps_t stf = std::clamp(std::sqrtf(arg), _min_sink_speed, v_max.get() / 3.6f);
-    ESP_LOGI(FNAME, "S2F::calculate()  %.2f", stf * 3.6f);
+    mps_t stf = std::clamp(std::sqrtf(arg), _min_sink_speed, Units::kmh_to_mps(v_max.get()));
+    ESP_LOGI(FNAME, "S2F::calculate()  %.2f", Units::mps_to_kmh(stf));
 
     _s2f_delta = _lpf_delta.filter(stf - ias.get());
 
@@ -163,20 +163,20 @@ mps_t S2F::calculate(mps_t netto_vario, bool circling)
 }
 
 // v_in : [m/s]
-mps_t S2F::sink( mps_t v_in ) {
+mps_t S2F::getSink( mps_t v_in ) {
 	float v_stall = _stall_speed * 0.9;
 	if ( v_in < v_stall || !_valid ){
 		// ESP_LOGI(FNAME,"S2F::sink, warning, airspeed %.1f below minimum speed %.1f km/h", v_in, v_stall );
 		return 0.0;
 	}
-	float n=getN();
+	float n=getLoadFactor();
 	float sqn = std::sqrtf(n);
 	mps_t s = a0*n*sqn + a1*v_in*n + a2*v_in*v_in*sqn;
 	// ESP_LOGI(FNAME,"S2F::sink() V:%0.1f sink:%2.2f G-Load:%1.2f", v_in, s, n );
 	return s;
 }
 
-mps_t S2F::circlingSink(mps_t v) {
+mps_t S2F::getCirclingSink(mps_t v) {
     if (v > _stall_speed * 0.6)
         return _circling_sink;
     else
@@ -185,10 +185,10 @@ mps_t S2F::circlingSink(mps_t v) {
 
 
 // v : [m/s]
-float S2F::cw( mps_t v ) {
+float S2F::getCw( mps_t v ) {
 	float cw = 0;
 	if( v > 14.0 ) {
-		mps_t cur_sink = sink(v);
+		mps_t cur_sink = getSink(v);
 		// ESP_LOGI(FNAME,"S2F::cw( %0.1f ) sink: %2.1f cw. %2.2f  G: %1.1f", v, sink, cw, getN() );
 		cw = cur_sink / v;
 	}
@@ -247,9 +247,9 @@ void S2F::recalcSinkNSpeeds() {
     }
     // 2*a2*v + a1 = 0
     _min_sink_speed = -a1 / (2 * a2);
-    _min_sink = sink(_min_sink_speed);
+    _min_sink = getSink(_min_sink_speed);
     _circling_speed = 1.2 * _min_sink_speed; // fixme calculate to current g-load
-    _circling_sink = sink(_circling_speed);
+    _circling_sink = getSink(_circling_speed);
     // use user defined/confirmed stall speed
     const float loading_factor = std::sqrtf((myballast + 100.0) / 100.0);
     _stall_speed = Units::kmh_to_mps(polar_stall_speed.get()) * std::sqrtf(loading_factor);
@@ -265,22 +265,24 @@ float S2F::getBallastPercent() {
     return bal_percent;
 }
 
-float S2F::getN() {
-	float g = 1.0;
-	if ( accSensor ) {
-		g = accSensor->getGload();
-	}
-	if( g < 0.3 ) // Polars and airfoils physics behave different negative or even low g forces, we stop here impacting from g force at 0.3 g
-		return 0.3;
-	return g;
+float S2F::getLoadFactor() {
+    float g = 1.0;
+    if (accSensor) {
+        g = accSensor->getGload();
+    }
+    // Polars and airfoils physics behave different negative or even low g forces, we stop here impacting from g force at 0.3 g
+    if (g < 0.3)
+        return 0.3;
+    return g;
 }
 
-float S2F::getVn( float v ){
-	float Vn = v*std::powf(getN(),0.5);
-	if( Vn > _stall_speed )
-		return Vn;
-	else
-		return _stall_speed;
+float S2F::getVn(float v) {
+    float Vn = v * std::sqrtf(getLoadFactor());
+    if (Vn > _stall_speed) {
+        return Vn;
+    } else {
+        return _stall_speed;
+    }
 }
 
 bool S2F::calcValidPolar() {

@@ -180,7 +180,7 @@ bool VarioFilter::doRead(float& val) {
             curr_altitude = getHead();  // ignore readout when failed
         }
         mps_t ta_speed = tas.get();  // m/s
-        float cw = Speed2Fly.cw(ta_speed);
+        float cw = Speed2Fly.getCw(ta_speed);
         float ealt = ((ta_speed * ta_speed) / (2 * Units::g0)) * (1 + (te_comp_adjust.get() / 100.0)) * (1 - cw);  // Ekin ~ h = v²/2g  * adjust * (1-cw)
         curr_altitude += ealt;
         ESP_LOGD(FNAME, "Energy Alt @%0.1f km/h: %0.1f cw: %f", tas.get(), ealt, cw);
@@ -343,7 +343,7 @@ void VarioFilter::postProcess() {
         // ESP_LOGI(FNAME, "VKF(%.3f/%.3f/%.3f/%.3f): pre: %.3f inn:%f R:%.3f up: %.3f", vkf.P00, vkf.P01, vkf.P10, vkf. P11, vkf.h, pred_err, vkf.R, vkf.v);
     // if (fabsf(pred_err) < 6.0f) {
         te_vario.set(vkf.v);
-        _polar_sink = Speed2Fly.sink(ias.get());
+        _polar_sink = Speed2Fly.getSink(ias.get());
         te_netto.set(vkf.v - _polar_sink);
     // }
 

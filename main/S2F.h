@@ -27,10 +27,11 @@ public:
 	mps_t calculate(mps_t net_vario, bool circling=false ); // call after sensor reads 10 Hz
 	mps_t getDelta() const { return _s2f_delta; }
 	mps_t getStallSpeed() const { return _stall_speed; }
-	mps_t sink( mps_t v );
-	mps_t minsink_speed() { return _min_sink_speed; };
-	mps_t circlingSink(mps_t v);
-	float cw( mps_t v );
+	mps_t getSink( mps_t v );
+	mps_t getMinsinkSpeed() { return _min_sink_speed; };
+	mps_t getCirclingSink(mps_t v);
+	float getCw( mps_t v );
+	static float getLoadFactor();
 	void test(void);
 
 private:
@@ -38,7 +39,6 @@ private:
 	void calculateOverweight();
 	void recalcSinkNSpeeds();
 	static float getBallastPercent();
-	float getN();
 	float getVn( float v );
 	bool calcValidPolar();
 

@@ -845,8 +845,8 @@ void IpsDisplay::drawDisplay(){
 		te_avg_ms -= polar_sink_ms; // average
 	}
 	if ( CRMOD.getVMode() == CruiseMode::MODE_REL_NETTO ) { // Super Netto, considering circling sink
-		te_ms += Speed2Fly.circlingSink( ias.get() );
-		te_avg_ms += Speed2Fly.circlingSink( ias.get() );
+		te_ms += Speed2Fly.getCirclingSink( ias.get() );
+		te_avg_ms += Speed2Fly.getCirclingSink( ias.get() );
 	}
 
     // average Climb

@@ -1113,7 +1113,7 @@ void Audio::dactask()
                             audio_value -= bmpVario.getPolarSink();
                         }
                         if ( CRMOD.getVMode() == CruiseMode::MODE_REL_NETTO ) {
-                            audio_value += Speed2Fly.circlingSink( ias.get() );
+                            audio_value += Speed2Fly.getCirclingSink( ias.get() );
                         }
                     }
                     else {
