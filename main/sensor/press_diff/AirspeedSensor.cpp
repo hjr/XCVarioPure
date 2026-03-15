@@ -149,12 +149,7 @@ bool AirspeedSensor::doRead(float &val)
         }
     }
     int raw_diff = p_raw - _offset;
-    float tmpv = static_cast<float>(raw_diff) * _multiplier;
-    if (tmpv < 0.f) {
-        val = 0.f;
-        return true;
-    }
-    val = tmpv;
+    val = static_cast<float>(raw_diff) * _multiplier;
     // ESP_LOGI(FNAME,"P:%f offset:%d raw:%d  raw-off:%d m:%f T:%u", val, (int)_offset, (int)p_raw, raw_diff, _multiplier, (unsigned)t_dat);
     return true;
 }
