@@ -415,9 +415,7 @@ static int imu_calib(SetupMenuSelect* p) {
         case 2:
         {
             // reset to default
-            Quaternion base = MpuImu::getDefaultImuReference();
-            accSensor->getMpu().applyImuReference(glider_ground_aa.get(), base);
-            imu_reference.set(Quaternion(), false);  // nvs
+            accSensor->getMpu().resetImuReference();
             break;
         }
         default:

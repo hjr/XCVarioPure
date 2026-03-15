@@ -40,6 +40,7 @@ public:
     void applyImuReference(const degree_t gAA, const Quaternion& basic) {
         _ref_rot = concatGaaAndImuReference(gAA, basic);
     }
+    void resetImuReference(bool save_nvs=true);
     void resetCalibProgress() { progress = 0; }
     int getAccelSamplesAndCalib(vector_f gyro_integral, rad_t& wing_angle, rad_t& ground_angle);
     inline void setLeverArm(float la) { _leverarm = la; }

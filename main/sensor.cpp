@@ -567,7 +567,7 @@ void system_startup(void *args){
 
     // DEVMAN serialization, read in all configured devices.
     DEVMAN->reserectFromNvs();
-    if (gflags.first_devices_run) {
+    if (gflags.first_pro_run) {
         DEVMAN->introduceDevices(); // create a flarm etc.
     }
     if (CAN) {
@@ -1022,28 +1022,28 @@ extern "C" void  app_main(void)
     // check on legacy nvs variables to detect a XCVpro update
     if (!flarm_devsetup.exists()) {
         ESP_LOGI(FNAME, "Init devices");
-        gflags.first_devices_run = true;
+        gflags.first_pro_run = true;
     }
-    ESP_LOGI(FNAME,"Init all NVS Setup items");
-	SetupCommon::initSetup();
-    Units::setAll(); // set all units according to setup
+    ESP_LOGI(FNAME, "Init all NVS Setup items");
+    SetupCommon::initSetup();
+    Units::setAll();  // set all units according to setup
 
-	// ESP_LOGI(FNAME,"Measure add %ucount", (unsigned int)cycle_count());
+    // ESP_LOGI(FNAME,"Measure add %ucount", (unsigned int)cycle_count());
 
-	// Instance to a simple esp timer based clock
-	[[maybe_unused]] Clock *MY_CLOCK = new Clock(); // no need for delete, lives all time, only static methods used
+    // Instance to a simple esp timer based clock
+    [[maybe_unused]] Clock* MY_CLOCK = new Clock();  // no need for delete, lives all time, only static methods used
 
-	// Figure HW revision first
-	if( hardwareRevision.get() == HW_UNKNOWN ){  // per default we assume there is XCV-20
-		ESP_LOGI( FNAME, "Hardware Revision unknown, set revision 2 (XCV-20)");
-		hardwareRevision.set(XCVARIO_20);
-		// Schedule a reboot after hardware revision got clarified
-		gflags.schedule_reboot = true;
-	}
+    // Figure HW revision first
+    if (hardwareRevision.get() == HW_UNKNOWN) {  // per default we assume there is XCV-20
+        ESP_LOGI(FNAME, "Hardware Revision unknown, set revision 2 (XCV-20)");
+        hardwareRevision.set(XCVARIO_20);
+        // Schedule a reboot after hardware revision got clarified
+        gflags.schedule_reboot = true;
+    }
 
-	// start i2c bus 1
-	ESP_LOGI( FNAME, "Now setup I2C bus IO 21/22");
-	i2c1.begin(GPIO_NUM_21, GPIO_NUM_22, 100000 );
+    // start i2c bus 1
+    ESP_LOGI(FNAME, "Now setup I2C bus GPIO 21/22");
+    i2c1.begin(GPIO_NUM_21, GPIO_NUM_22, 100000);
 
     // probe on IMU
     MpuImu *imu = new MpuImu();
@@ -1061,6 +1061,10 @@ extern "C" void  app_main(void)
                 ESP_LOGI(FNAME, "ICM20602 detected -> hardwareRevision (XCV-25)");
             }
         }
+        if ( gflags.first_pro_run ) {
+            // Set the IMU reference to default, because Pro is now on "NED"
+            imu->resetImuReference();
+        }
     } else {
         ESP_LOGI(FNAME, "No MPU6050/ICM20602 detected");
         delete imu;
@@ -1068,15 +1072,14 @@ extern "C" void  app_main(void)
     }
 
     // Init ui and screen UiEventLoop task recources
-	uiEventQueue = xQueueCreate(10, sizeof(int));
+    uiEventQueue = xQueueCreate(10, sizeof(int));
 
-	// Init of rotary
-	if( hardwareRevision.get() == XCVARIO_20 ){
-		Rotary = new ESPRotary( GPIO_NUM_4, GPIO_NUM_2, GPIO_NUM_0); // XCV-20 uses GPIO_2 for Rotary
-	}
-	else {
-		Rotary = new ESPRotary( GPIO_NUM_39, GPIO_NUM_36, GPIO_NUM_0);
-	}
+    // Init of rotary
+    if (hardwareRevision.get() == XCVARIO_20) {
+        Rotary = new ESPRotary(GPIO_NUM_4, GPIO_NUM_2, GPIO_NUM_0);  // XCV-20 uses GPIO_2 for Rotary
+    } else {
+        Rotary = new ESPRotary(GPIO_NUM_39, GPIO_NUM_36, GPIO_NUM_0);
+    }
 
 #ifdef Math_Test // Todo need more unit test code
     for (float v = 1.1; v>0.9; ) {
@@ -1088,13 +1091,13 @@ extern "C" void  app_main(void)
     }
 #endif
 #ifdef Quaternionen_Test
-		Quaternion::quaternionen_test();
+    Quaternion::quaternionen_test();
 #endif
 #ifdef WMM_Test
-		WMM_Model::geomag_test();
+    WMM_Model::geomag_test();
 #endif
-	system_startup( 0 );
+    system_startup(0);
 
-	Rotary->updateRotDir();   // Update Rotary direction after XCVario hardware has been detected
-	vTaskDelete( NULL );
+    Rotary->updateRotDir();  // Update Rotary direction after XCVario hardware has been detected
+    vTaskDelete(NULL);
 }

@@ -166,6 +166,14 @@ Quaternion MpuImu::getDefaultImuReference() {
     return accelDefaultRef;
 }
 
+void MpuImu::resetImuReference(bool save_nvs) {
+    Quaternion base = getDefaultImuReference();
+    applyImuReference(glider_ground_aa.get(), base);
+    if (save_nvs) {
+        imu_reference.set(Quaternion(), false); // nvs
+    }
+}
+
 // Concatenation of ground angle of attack and the basic reference calibration rotation
 Quaternion MpuImu::concatGaaAndImuReference(const degree_t gAA, const Quaternion& basic) {
     Quaternion rot = Quaternion(deg2rad(-gAA), vector_f(0, 1, 0)) * basic;  // rotate positive around Y
