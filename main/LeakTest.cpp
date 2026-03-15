@@ -4,7 +4,7 @@
 #include "sensor/pressure/PressureSensor.h"
 #include "IpsDisplay.h"
 #include "driver/gpio/ESPRotary.h"
-#include "sensor.h"
+#include "math/Units.h"
 #include "logdefnone.h"
 
 #include <cmath>
@@ -45,9 +45,9 @@ void LeakTest::start(PressureSensor* bmpBA, PressureSensor* bmpTE, AirspeedSenso
 				}
 			}
 			float tmp;
-			if ( bmpBA->doRead(tmp) ) ba += tmp;
-			if ( bmpTE->doRead(tmp) ) te += tmp;
-			delay(33);
+			if ( bmpBA->doRead(tmp) ) ba += Units::pa_to_hpa(tmp);
+			if ( bmpTE->doRead(tmp) ) te += Units::pa_to_hpa(tmp);
+			vTaskDelay(pdMS_TO_TICKS(33));
 		}
 
 		ba *= INV_LOOPS;
@@ -114,7 +114,7 @@ void LeakTest::start(PressureSensor* bmpBA, PressureSensor* bmpTE, AirspeedSenso
 	// Wait for rotary press
 	int switchState = Rotary->readBootupStatus();
 	while (!switchState) {
-		delay(100);
+		vTaskDelay(pdMS_TO_TICKS(100));
 		switchState = Rotary->readBootupStatus();
 		ESP_LOGI(FNAME, "Read Rotary: %d", switchState);
 	}

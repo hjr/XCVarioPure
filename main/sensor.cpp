@@ -879,6 +879,7 @@ void system_startup(void *args){
     }
 
     if (Rotary->readBootupStatus()) {
+        BootUpScreen::terminate();
         LeakTest::start(baroSensor, teSensor, asSensor);
     }
 
