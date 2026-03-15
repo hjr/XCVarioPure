@@ -180,7 +180,7 @@ void AirspeedSensor::postProcess()
     }
 
     // airborne status update
-    if ( !(_counter++ % 5) ) {
+    if ( !(_counter % 5) ) {
         if (!airborne.get() && (ias.get() > Speed2Fly.getStallSpeed())) {
             airborne.set(true);
             ESP_LOGI(FNAME, "Airborne detected by airspeed sensor");
@@ -189,14 +189,14 @@ void AirspeedSensor::postProcess()
             ESP_LOGI(FNAME, "Landed detected by airspeed sensor");
         }
     }
-
+    _counter++; // increment counter for auto offset correction, starts with 0 after setup
     if (_counter < 3001) {
-        if ( !(_counter%50) ) {
+        if ( !(_counter % 50) ) {
             // check every 5 seconds for a rest phase and do an auto offset correction
-            ESP_LOGI(FNAME,"AS check for offset calib");
-            if (_isResting) {
-                float avg = getAVG(1000);
-                _offset = fast_iroundf((float(3 * _offset) + avg / getMultiplier()) / 3.f);
+            float raw = getAVG(1000) / getMultiplier() + _offset; // convert to raw value
+            ESP_LOGI(FNAME,"AS raw value during rest: %f, raw offset: %d", raw, (int)_offset);
+            if ( offsetPlausible(raw) ) {
+                _offset = fast_iroundf((float(2 * _offset) + raw) / 3.f);
                 printf("AS new offset calib %ld\n", _offset);
             }
             if (_counter == 3000 && offsetPlausible(_offset)) {
