@@ -16,7 +16,7 @@
 #include "setup/SetupNG.h"
 #include "S2F.h"
 #include "math/Floats.h"
-#include "logdefnone.h"
+#include "logdef.h"
 
 #include <freertos/FreeRTOS.h>
 
@@ -189,8 +189,9 @@ void AirspeedSensor::postProcess()
         if ( !(_counter % 50) ) {
             // check every 5 seconds for a rest phase and do an auto offset correction
             float raw = getAVG(1000) / getMultiplier() + _offset; // convert to raw value
-            ESP_LOGI(FNAME,"AS raw value during rest: %f, raw offset: %d", raw, (int)_offset);
-            if ( offsetPlausible(raw) ) {
+            // ESP_LOGI(FNAME,"AS raw value during rest: %f, raw offset: %d, variance: %f", raw, (int)_offset, getVariance(1000));
+            // dump(1000);
+            if ( offsetPlausible(raw) && getVariance(1000) < DYNP_THRESHOLD ) {
                 _offset = fast_iroundf((float(2 * _offset) + raw) / 3.f);
                 printf("AS new offset calib %ld\n", _offset);
             }
