@@ -24,7 +24,7 @@ extern AdaptUGC *MYUCG;
 constexpr const int16_t BOX_WIDTH  = 28;
 // constexpr const int16_t BOX_LENGTH = 100; // w/o corners
 constexpr const int16_t BOX_CORNER = 8;
-constexpr const int16_t LABEL_SPACING = 40;
+constexpr const int16_t LABEL_SPACING = 20;
 // constexpr const float   PIX_PER_MPS = ((float)(BOX_LENGTH)-2*BOX_CORNER) / (Units::kmh_to_mps(26.f) + std::max(BOX_LENGTH-100, 0)/Units::kmh_to_mps(30.f)); // m/s range on flap box
 constexpr const int     SOUND_LATENCY = 5; // frames
 
@@ -120,24 +120,23 @@ void FlapsBox::drawLabels(FBoxStateHash cs)
     MYUCG->setClipRange(boxx, boxy, boxw, boxh);
     int16_t green_top =  _ref_y + cs.top_pix;
     if ( cs.top_pix > -BOX_LENGTH/2 ) { // start with grey top
-        MYUCG->setColor(COLOR_WGREY);
+        MYUCG->setColor(COLOR_MGREY);
         MYUCG->drawBox(boxx, boxy, boxw, BOX_LENGTH/2 + cs.top_pix);
     }
     if ( green_top < _ref_y + boxh ) { // continue with green 
         MYUCG->setColor(COLOR_DGREEN);
         MYUCG->drawBox(boxx, green_top, boxw, _ref_y - green_top + cs.bottom_pix);
         if ( cs.bottom_pix < BOX_LENGTH/2 ) { // and finish with grey bottom
-            MYUCG->setColor(COLOR_WGREY);
+            MYUCG->setColor(COLOR_MGREY);
             MYUCG->drawBox(boxx, _ref_y + cs.bottom_pix, boxw, BOX_LENGTH/2 - cs.bottom_pix);
         }
     }
     MYUCG->undoClipRange();
 
     // foreground labels
-    MYUCG->setFont(ucg_font_fub11_hr);
-    const int from = std::max((int)(std::floorf(cs.getWk())) - 1, 0);
-    const int range = (from == (int)(std::floorf(cs.getWk()))) ? 1 : 2;
-    const int to   = std::min(from + range, _flap->getNrPositions() - 1);
+    MYUCG->setFont(ucg_font_fub14_hr);
+    const int from = std::max((int)(std::floorf(cs.getWk() + 0.2)), 0);
+    const int to   = ((from + 1) == fast_iroundf(cs.getWk() + 0.3)) ? from + 1 : from;
     for (int wk = from; wk <= to; wk++)
     {
         const char *label = _flap->getFL(wk)->label;
@@ -149,14 +148,14 @@ void FlapsBox::drawLabels(FBoxStateHash cs)
 
         if ( (pixoff - _LFH/2) <= cs.top_pix && (pixoff + _LFH/2) >= cs.top_pix ) {
             // clipped top grey to green band
-            MYUCG->setColor(1, COLOR_WGREY);
-            MYUCG->setClipRange(boxx, boxy+1, boxw, std::min((int16_t)(cs.top_pix + BOX_LENGTH/2), (int16_t)(boxh-2)));
+            MYUCG->setColor(1, COLOR_MGREY);
+            MYUCG->setClipRange(boxx+1, boxy+1, boxw-1, std::min((int16_t)(cs.top_pix + BOX_LENGTH/2), (int16_t)(boxh-2)));
             MYUCG->print(label);
             MYUCG->setColor(1, COLOR_DGREEN);
             MYUCG->undoClipRange();
             int16_t top = std::max((int16_t)(_ref_y + cs.top_pix+1), (int16_t)(boxy+1));
             // int16_t bot = std::min(BOX_LENGTH/2 - cs.top_pix);
-            MYUCG->setClipRange(boxx, top, boxw, _ref_y + BOX_LENGTH / 2 - 2 - top);
+            MYUCG->setClipRange(boxx+1, top, boxw-1, _ref_y + BOX_LENGTH / 2 - 2 - top);
             MYUCG->setPrintPos(_ref_x + (BOX_WIDTH - lwidth)/2 + 1, _ref_y + pixoff + _LFH/2);
             MYUCG->print(label);
             MYUCG->undoClipRange();
@@ -164,21 +163,21 @@ void FlapsBox::drawLabels(FBoxStateHash cs)
         else if ( (pixoff - _LFH/2) <= cs.bottom_pix && (pixoff + _LFH/2) >= cs.bottom_pix ) {
             // clipped bottom green to grey band
             MYUCG->setColor(1, COLOR_DGREEN);
-            MYUCG->setClipRange(boxx, boxy+1, boxw, std::min((int16_t)(cs.bottom_pix + BOX_LENGTH/2), (int16_t)(boxh-2)));
+            MYUCG->setClipRange(boxx+1, boxy+1, boxw-1, std::min((int16_t)(cs.bottom_pix + BOX_LENGTH/2), (int16_t)(boxh-2)));
             MYUCG->print(label);
             MYUCG->undoClipRange();
             int16_t top = std::max((int16_t)(_ref_y + cs.bottom_pix+1), (int16_t)(boxy+1));
-            MYUCG->setClipRange(boxx, top, boxw, _ref_y + BOX_LENGTH / 2 - 2 - top);
-            MYUCG->setColor(1, COLOR_WGREY);
+            MYUCG->setClipRange(boxx+1, top, boxw-1, _ref_y + BOX_LENGTH / 2 - 2 - top);
+            MYUCG->setColor(1, COLOR_MGREY);
             MYUCG->setPrintPos(_ref_x + (BOX_WIDTH - lwidth)/2 + 1, _ref_y + pixoff + _LFH/2);
             MYUCG->print(label);
             MYUCG->undoClipRange();
         }
         else {
-            MYUCG->setClipRange(boxx, boxy+1, boxw, boxh);
+            MYUCG->setClipRange(boxx+1, boxy+1, boxw-1, boxh-1);
             // no clipping, just choose the right background
             if ((pixoff + _LFH/2) < cs.top_pix || (pixoff - _LFH/2) > cs.bottom_pix) {
-                MYUCG->setColor(1, COLOR_WGREY);
+                MYUCG->setColor(1, COLOR_MGREY);
             }
             else {
                 MYUCG->setColor(1, COLOR_DGREEN);
