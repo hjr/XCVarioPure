@@ -84,7 +84,8 @@ void S2F::setPolar()
 	// set default min speed as estimated stall_speed * 1.05 )
 	// Vstall := sqrt( (2 * W/S * g) / ( rho * Clmax ) ) [m/s]
 	_stall_speed = std::sqrtf( ( 2.f * polar_wingload.get() * Units::g0) / (Units::rho0 * 1.4f ) ) * 1.05f;
-	polar_stall_speed.set(_stall_speed * 3.6);
+	polar_stall_speed.set(Units::mps_to_kmh(_stall_speed));
+	ESP_LOGI(FNAME,"Estimated stall speed: %.1f km/h", polar_stall_speed.get());
 	polar_max_ballast.set( p.max_ballast );
 	polar_wingarea.set( p.wingarea, true, false );
 	empty_weight.set( (p.wingload * p.wingarea) - 80.0, true, false ); // Calculate default for emtpy mass

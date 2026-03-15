@@ -1549,14 +1549,13 @@ void setup_create_root(SetupMenu *top) {
 	SetupMenuValFloat *bal = SetupMenu::createBallastMenu();
 	top->addEntry(bal);
 
-	SetupMenuValFloat *crewball = new SetupMenuValFloat("Crew Weight", "kg", start_weight_adj, false, &crew_weight, RST_NONE, true);
-	crewball->setPrecision(0);
-	crewball->setHelp(
-			"Weight of the pilot(s) including parachute (everything on top of the empty weight apart from ballast)");
-	crewball->setNeverInline();
-	top->addEntry(crewball);
+    SetupMenuValFloat* crewball = new SetupMenuValFloat("Crew Weight", "kg", start_weight_adj, false, &crew_weight, RST_NONE, true);
+    crewball->setPrecision(0);
+    crewball->setHelp("Weight of the pilot(s) including parachute (everything on top of the empty weight apart from ballast)");
+    crewball->setNeverInline();
+    top->addEntry(crewball);
 
-	SetupMenuValFloat *qnh_menu = SetupMenu::createQNHMenu();
+    SetupMenuValFloat *qnh_menu = SetupMenu::createQNHMenu();
 	top->addEntry(qnh_menu);
 
 	SetupMenuValFloat *afe = new SetupMenuValFloat("Airfield Elevation", "", nullptr, true, &airfield_elevation);
@@ -1605,7 +1604,7 @@ SetupMenuValFloat* SetupMenu::createQNHMenu() {
 }
 
 SetupMenuValFloat* SetupMenu::createBallastMenu() {
-    SetupMenuValFloat *bal = new SetupMenuValFloat("Ballast", "litre", water_adj, true, &ballast_kg, RST_NONE, true);
+    SetupMenuValFloat *bal = new SetupMenuValFloat("Ballast", "liter", water_adj, true, &ballast_kg, RST_NONE, true);
     bal->setHelp("Amount of water ballast added to the over all weight");
     bal->setPrecision(0);
     bal->setNeverInline();
