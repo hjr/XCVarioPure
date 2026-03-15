@@ -14,6 +14,7 @@
 #include "../SensorMgr.h"
 #include "../Filters.h"
 #include "setup/SetupNG.h"
+#include "S2F.h"
 #include "math/Floats.h"
 #include "logdefnone.h"
 
@@ -103,64 +104,32 @@ bool AirspeedSensor::setup()
 {
     ESP_LOGI(FNAME, "Airspeed sensor %s", name());
 
-    _offset = as_offset.get();
-    if (_offset < 0) {
-        ESP_LOGI(FNAME, "offset not yet done: need to recalibrate");
+    _counter = 0; // start a series of auto offset corrections
+    if (as_offset.get() > 0.) {
+        _offset = as_offset.get();
+        printf("AS offset from NVS: %d\n", (int)_offset);
+        return true;
     }
-    else {
-        ESP_LOGI(FNAME, "offset from NVS: %d", (int)_offset);
-    }
+    ESP_LOGI(FNAME, "offset not yet done: init auto calibration");
 
-    int32_t adcval = 0;
-    uint16_t temp;
-    fetch_pressure(adcval, temp);
-
-    ESP_LOGI(FNAME, "offset from ADC %ld", adcval);
-
-    bool plausible = offsetPlausible(adcval);
-    if (plausible) {
-        ESP_LOGI(FNAME, "offset from ADC is plausible");
-    }
-    else {
-        ESP_LOGI(FNAME, "offset from ADC is NOT plausible");
-    }
-
-    bool deviation_ok = std::abs(adcval - _offset) < getMaxACOffset();
-    if (deviation_ok) {
-        ESP_LOGI(FNAME, "Deviation in bounds");
-    }
-    else {
-        ESP_LOGI(FNAME, "Deviation out of bounds");
-    }
-
-    // Long term stability of Sensor as from datasheet 0.5% per year -> 4000 * 0.005 = 20
-    if (_offset < 0 || (plausible && deviation_ok))
-    {
-        ESP_LOGI(FNAME, "Airspeed OFFSET correction ongoing, calculate new _offset...");
-        int32_t rawOffset = 0;
-        int samples = 0;
-        for (int i = 0; i < 100; i++)
-        {
-            if ( fetch_pressure(adcval, temp) ) {
-                samples++;
-                rawOffset += adcval;
+    bool plausible = false;
+    int trials = 10;
+    while ( !plausible && trials-- > 0) {
+        int32_t adcval = 0;
+        uint16_t temp;
+        if ( fetch_pressure(adcval, temp) ) {
+            plausible = offsetPlausible(adcval);
+            ESP_LOGI(FNAME, "AS from ADC %ld, plausible=%d", adcval, plausible);
+            if ( plausible ) {
+                _offset = adcval;
+                printf("AS initial offset from sensor: %d\n", (int)_offset);
+                break;
             }
-            vTaskDelay(10 / portTICK_PERIOD_MS);
         }
-        _offset = fast_iroundf(float(rawOffset) / samples);
-        if (offsetPlausible(_offset)) {
-            printf("AS offset procedure finished, offset: %d\n", (int)_offset);
-            as_offset.set(_offset);
-        }
-        else {
-            printf("AS offset out of tolerance, ignore odd offset value\n");
-        }
+        vTaskDelay(pdMS_TO_TICKS(10));
     }
-    else
-    {
-        ESP_LOGI(FNAME, "No new Calibration: flying with plausible pressure");
-    }
-    return true;
+
+    return plausible;
 }
 
 bool AirspeedSensor::doRead(float &val)
@@ -186,7 +155,54 @@ bool AirspeedSensor::doRead(float &val)
         return true;
     }
     val = tmpv;
-    ESP_LOGI(FNAME,"P:%f offset:%d raw:%d  raw-off:%d m:%f T:%u", val, (int)_offset, (int)p_raw, raw_diff, _multiplier, (unsigned)t_dat);
+    // ESP_LOGI(FNAME,"P:%f offset:%d raw:%d  raw-off:%d m:%f T:%u", val, (int)_offset, (int)p_raw, raw_diff, _multiplier, (unsigned)t_dat);
     return true;
 }
 
+void AirspeedSensor::postProcess()
+{
+    // rest detection and potential reset of the offset
+    // ESP_LOGI(FNAME, "dynp: %f, integ: %f < %f", getHead(), getIntegral(1000), DYNP_THRESHOLD);
+    bool rest_old = _isResting;
+    if (std::fabsf(getHead()) < DYNP_THRESHOLD && std::fabsf(getIntegral(1000)) < DYNP_THRESHOLD) {
+         // min. 3 sec below threshold, consider as rest
+        _restTimer += getDutyCycle();
+        if ( _restTimer > 3000) {
+            _isResting = true;
+        }
+    } else {
+        _restTimer = 0;
+        _isResting = false;
+    }
+    
+    if ( _isResting != rest_old) {
+        ESP_LOGI(FNAME, "rest state changed: %c -> %c", rest_old ? 'R' : 'F', _isResting ? 'R' : 'F');
+    }
+
+    // airborne status update
+    if ( !(_counter++ % 5) ) {
+        if (!airborne.get() && (ias.get() > Speed2Fly.getStallSpeed())) {
+            airborne.set(true);
+            ESP_LOGI(FNAME, "Airborne detected by airspeed sensor");
+        } else if (airborne.get() && _isResting) {
+            airborne.set(false);
+            ESP_LOGI(FNAME, "Landed detected by airspeed sensor");
+        }
+    }
+
+    if (_counter < 3001) {
+        if ( !(_counter%50) ) {
+            // check every 5 seconds for a rest phase and do an auto offset correction
+            ESP_LOGI(FNAME,"AS check for offset calib");
+            if (_isResting) {
+                float avg = getAVG(1000);
+                _offset = fast_iroundf((float(3 * _offset) + avg / getMultiplier()) / 3.f);
+                printf("AS new offset calib %ld\n", _offset);
+            }
+            if (_counter == 3000 && offsetPlausible(_offset)) {
+                as_offset.set(_offset);
+                printf("AS offset correction applied, new offset: %d\n", (int)_offset);
+            }
+        }
+    }
+}

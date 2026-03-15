@@ -21,7 +21,7 @@ protected:
     int getMaxACOffset() override;
 
 private:
-    bool isAbpmrr() const;
+    static bool isAbpmrr();
     float getTemperature(); // returns temperature of last measurement
     uint16_t t_dat; // 11 bit temperature data
 };

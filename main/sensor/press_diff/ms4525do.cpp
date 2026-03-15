@@ -50,7 +50,7 @@ void MS4525DO::changeConfig()
 }
 
 
-bool MS4525DO::isAbpmrr() const
+bool MS4525DO::isAbpmrr()
 {
     // This translates the airspeed sensor type into a bool
     return airspeed_sensor.get() == AirspeedSensor::ABPMRR;
