@@ -75,7 +75,7 @@ bool MP5004DP::fetch_pressure(int32_t &p, uint16_t &t)
  */
 bool MP5004DP::offsetPlausible(int32_t offset)
 {
-    ESP_LOGI(FNAME, "MP5004DP offsetPlausible( %d )", offset);
+    ESP_LOGI(FNAME, "MP5004DP offsetPlausible( %d )", (unsigned)offset);
     constexpr int lower_val = 608;
     constexpr int upper_val = 1067;
 
