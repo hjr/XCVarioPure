@@ -164,7 +164,6 @@ void readSensors(void *pvParameters)
 {
     esp_task_wdt_add(NULL);
     int count = 0;
-    int16_t landed = 0;  // airborne detection counter
     uint32_t sparse_time;
     [[maybe_unused]] int max_time = 0;
     [[maybe_unused]] int max_time_to = 0;
@@ -231,32 +230,23 @@ void readSensors(void *pvParameters)
             }
         }
 
-        // ESP_LOGI(FNAME,"count %d ccp %d", count, ccp );
+        // low rate update of long term climb average
 		if( !(count % ccp) ) {
 			ESP_LOGI(FNAME,"count %d ccp %d", count, ccp );
 			AverageVario::recalcAvgClimb();
 		}
 		if (FLAP && FLAP->haveAdcSensor()) { FLAP->progress(); }
 
-        // Trace airborne status
+        // The center aid
         if ((count % 5) == 0) {
-            if (!airborne.get() && (ias.get() > Speed2Fly.getStallSpeed() * 1.1f)) {
-                airborne.set(true);
-            } else if (airborne.get() && (ias.get() < Units::read(Units::kmh, 5.f))) {
-                if (landed++ > 20) {  // ias < 5 km/h for 10 seconds
-                    airborne.set(false);
-                }
-            } else {
-                landed = 0;
-            }
             if (theCenteraid) {
                 theCenteraid->tick(count);
             }
         }
 
         // a 5Hz toy feed
-        if( (count % 2) == 0 ) {
-			toyFeed(count);
+        if ((count % 2) == 0) {
+            toyFeed(count);
         }
 
         // big todo
