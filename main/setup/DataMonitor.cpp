@@ -5,7 +5,6 @@
 #include "setup/SetupNG.h"
 #include "Colors.h"
 #include "AdaptUGC.h"
-#include "sensor.h"
 #include "logdefnone.h"
 
 constexpr int SCROLL_TOP = 20;
@@ -152,7 +151,7 @@ void DataMonitor::longPress()
 	ESP_LOGI(FNAME,"stop");
 	paused = true; // stop scrolled output
 	DEVMAN->stopMonitoring(); // stop the feed
-	delay(100); // streaming and controlling tasks are different ones ..
+	vTaskDelay(pdMS_TO_TICKS(100)); // streaming and controlling tasks are different ones ..
 	MYUCG->scrollLines( 0 ); // then reset scroll lines
 	DM = nullptr;
 	exit();

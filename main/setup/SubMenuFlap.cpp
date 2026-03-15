@@ -15,7 +15,6 @@
 #include "setup/SetupMenuChar.h"
 #include "setup/SetupMenuValFloat.h"
 #include "AdaptUGC.h"
-#include "sensor.h"
 #include "logdefnone.h"
 
 #include <string>
@@ -55,7 +54,7 @@ static int select_flap_sens_pin(SetupMenuSelect *p)
                 MYUCG->printf("Sensor: %d       ", FLAP->getSensorRaw());
             }
         }
-        delay(800);
+        vTaskDelay(pdMS_TO_TICKS(800));
         p->clear();
         // add the flap sensor to my caps
         my_caps.set( my_caps.get() | XcvCaps::FLAPSENS_CAP );
@@ -102,7 +101,7 @@ static int flap_cal_act(SetupMenuSelect *p)
         p->clear();
         MYUCG->setPrintPos(1, 60);
         MYUCG->printf("No Sensor, Abort");
-        delay(2000);
+        vTaskDelay(pdMS_TO_TICKS(2000));
         ESP_LOGI(FNAME, "Abort calibration, no signal");
         return 0;
     }
@@ -125,7 +124,7 @@ static int flap_cal_act(SetupMenuSelect *p)
         MYUCG->setPrintPos(1, 260);
         MYUCG->setFont(ucg_font_ncenR14_hr, true);
         MYUCG->printf("Saved");
-        delay(800);
+        vTaskDelay(pdMS_TO_TICKS(800));
         p->clear();
     }
     p->setSelect(0);

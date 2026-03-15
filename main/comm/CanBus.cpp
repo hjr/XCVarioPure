@@ -3,7 +3,6 @@
 
 #include "DataLink.h"
 #include "setup/SetupNG.h"
-#include "sensor.h"
 #include "logdefnone.h"
 
 #include <freertos/FreeRTOS.h>
@@ -214,7 +213,7 @@ void CANbus::recover()
             // recovery is only possible in this state
             ESP_LOGW(FNAME, "CANbus recover");
             twai_initiate_recovery();
-            delay(10);
+            vTaskDelay(pdMS_TO_TICKS(10));
             twai_start();
         }
     }
@@ -257,7 +256,7 @@ bool CANbus::selfTest()
     driverInstall(TWAI_MODE_NO_ACK, true);
     bool res = false;
     int id = CANTEST_ID;
-    delay(100);
+    vTaskDelay(pdMS_TO_TICKS(100));
     _slope_support = false;
     for (int gpio_level = 0; gpio_level <=1; gpio_level++)
     {
