@@ -239,6 +239,9 @@ public:
         return M2 / (float)count;  // population variance
     }
 
+    // a bit of debugging feature to dump the history, e.g. for calibration
+    void dump(int interval_ms) const;
+
     /**
      * @brief Retrieve full history (caller provides buffer).
      * @param out_buffer Buffer to fill (must be at least HistoryCapacity long).
