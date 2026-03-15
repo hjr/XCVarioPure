@@ -16,7 +16,7 @@
 #include "setup/SetupNG.h"
 #include "S2F.h"
 #include "math/Floats.h"
-#include "logdef.h"
+#include "logdefnone.h"
 
 #include <freertos/FreeRTOS.h>
 
@@ -148,8 +148,8 @@ bool AirspeedSensor::doRead(float &val)
             return false;
         }
     }
-    int raw_diff = p_raw - _offset;
-    val = static_cast<float>(raw_diff) * _multiplier;
+    float raw_diff = static_cast<float>(p_raw) - _offset;
+    val = raw_diff * _multiplier;
     // ESP_LOGI(FNAME,"P:%f offset:%d raw:%d  raw-off:%d m:%f T:%u", val, (int)_offset, (int)p_raw, raw_diff, _multiplier, (unsigned)t_dat);
     return true;
 }
@@ -191,13 +191,16 @@ void AirspeedSensor::postProcess()
             float raw = getAVG(1000) / getMultiplier() + _offset; // convert to raw value
             // ESP_LOGI(FNAME,"AS raw value during rest: %f, raw offset: %d, variance: %f", raw, (int)_offset, getVariance(1000));
             // dump(1000);
-            if ( offsetPlausible(raw) && getVariance(1000) < DYNP_THRESHOLD ) {
-                _offset = fast_iroundf((float(2 * _offset) + raw) / 3.f);
-                printf("AS new offset calib %ld\n", _offset);
+            if ( offsetPlausible(raw) && getVariance(1000) < DYNP_THRESHOLD / 2.f ) {
+                float noff = ((2.f * _offset) + raw) / 3.f;
+                if ( floatEqualFast(_offset, noff) ) {
+                    printf("AS new offset calib %f\n", _offset);
+                }
+                _offset = noff;
             }
             if (_counter == 3000 && offsetPlausible(_offset)) {
                 as_offset.set(_offset);
-                printf("AS offset correction applied, new offset: %d\n", (int)_offset);
+                printf("AS final offset correction applied: %f\n", _offset);
             }
         }
     }
