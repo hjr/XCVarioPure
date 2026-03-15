@@ -41,9 +41,6 @@ bool ui_update_done = false;
 void UiEventLoop(void *arg)
 {
     ESPRotary &knob = *static_cast<ESPRotary *>(arg);
-    int16_t stall_warning_active = 0;
-    int16_t gload_warning_active = 0;
-    bool gear_warning_active = false;
 
     xQueueReset(uiEventQueue);
 
@@ -52,7 +49,7 @@ void UiEventLoop(void *arg)
         // handle button events in this context
         ui_update_done = true; // accept an UI screen event again (flood protection)
         int eparam;
-        if (xQueueReceive(uiEventQueue, &eparam, pdMS_TO_TICKS(20)) == pdTRUE)
+        if (xQueueReceive(uiEventQueue, &eparam, pdMS_TO_TICKS(100)) == pdTRUE)
         {
             UiEvent event(eparam);
             uint8_t detail = event.getUDetail();
@@ -145,67 +142,6 @@ void UiEventLoop(void *arg)
             }
         }
 
-        if ( ! BootUpScreen::isActive() )
-        {
-            // Stall Warning fixme no need for this to be here, could be in sensor loop, no display context needed
-            if (stall_warning.get() && screen_gmeter.get() != SCREEN_PRIMARY && airborne.get()) {
-                // In aerobatics stall warning is contra productive, we concentrate on G-Load Display if permanent enabled
-                float acceleration = accSensor ? accSensor->getGload() : 1.f;
-                if (acceleration < 0.3) {
-                    acceleration = 0.3; // limit acceleration effect to minimum 0.3g
-                }
-                // accelerated and ballast(ed) stall speed
-                mps_t acc_stall = Speed2Fly.getStallSpeed() * std::sqrtf(acceleration);
-                if (ias.get() < acc_stall && ias.get() > acc_stall * 0.7 && airborne.get()) {
-                    if (!stall_warning_active) {
-                        MBOX->pushMessage(4, "! STALL !", 20); // 20 sec
-                    }
-                    if (stall_warning_active % 50 == 0) {
-                        AUDIO->startSound(AUDIO_ALARM_STALL);
-                    }
-                    stall_warning_active++;
-                }
-                else if ( stall_warning_active ) {
-                    stall_warning_active = 0;
-                    MBOX->popMessage();
-                }
-            }
-            // Gear Warning fixme no need for this to be here, could be in sensor loop, no display context needed
-            if (gear_warning.get()) {
-                int gw = 0;
-                if (gear_warning.get() == GW_EXTERNAL) {
-                    gw = gflags.gear_warn_external;
-                } else {
-                    gw = gpio_get_level(SetupMenu::getGearWarningIO());
-                    if (gear_warning.get() == GW_FLAP_SENSOR_INV || gear_warning.get() == GW_S2_RS232_RX_INV) {
-                        gw = !gw;
-                    }
-                }
-                if (gw) {
-                    if (!gear_warning_active && !stall_warning_active) {
-                        AUDIO->startSound(AUDIO_ALARM_GEAR);
-                        MBOX->pushMessage(4, "! GEAR !", 20);
-                        gear_warning_active = true;
-                    }
-                } else {
-                    gear_warning_active = false;
-                }
-            }
-
-            // G-Load alarm when limits reached
-            if (screen_gmeter.get() != SCREEN_OFF && accSensor) {
-                float currg = accSensor->getGload();
-                if (currg > gload_pos_limit.get() || currg < gload_neg_limit.get()) {
-                    if (gload_warning_active % 10 == 0) {
-                        AUDIO->startSound(AUDIO_ALARM_GLOAD);
-                        gload_warning_active++;
-                    }
-                }
-                else if (gload_warning_active) {
-                    gload_warning_active = 0;
-                }
-            }
-        }
         if (uxTaskGetStackHighWaterMark(NULL) < 512) {
             ESP_LOGW(FNAME, "Warning UiEventLoop stack low: %d bytes", uxTaskGetStackHighWaterMark(NULL));
         }

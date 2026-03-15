@@ -192,6 +192,69 @@ static void sensFeed(const NmeaPrtcl* prtcl) // called with full 10Hz rate from 
     prtcl->sendXCV(log);
 }
 
+static void checkWarnings()
+{
+    static int16_t stall_warning_active = 0;
+    static int16_t gload_warning_active = 0;
+    static bool gear_warning_active = false;
+
+    if (stall_warning.get() && screen_gmeter.get() != SCREEN_PRIMARY && airborne.get()) {
+        // In aerobatics stall warning is contra productive, we concentrate on G-Load Display if permanent enabled
+        float acceleration = S2F::getLoadFactor();
+
+        // accelerated and ballast(ed) stall speed
+        mps_t acc_stall = Speed2Fly.getStallSpeed() * std::sqrtf(acceleration);
+        if (ias.get() < acc_stall && ias.get() > acc_stall * 0.7 && airborne.get()) {
+            if (!stall_warning_active) {
+                MBOX->pushMessage(4, "! STALL !", 20); // 20 sec
+            }
+            if (stall_warning_active % 50 == 0) {
+                AUDIO->startSound(AUDIO_ALARM_STALL);
+            }
+            stall_warning_active++;
+        }
+        else if ( stall_warning_active ) {
+            stall_warning_active = 0;
+            MBOX->popMessage();
+        }
+    }
+    // Gear Warning fixme no need for this to be here, could be in sensor loop, no display context needed
+    if (gear_warning.get()) {
+        int gw = 0;
+        if (gear_warning.get() == GW_EXTERNAL) {
+            gw = gflags.gear_warn_external;
+        } else {
+            gw = gpio_get_level(SetupMenu::getGearWarningIO());
+            if (gear_warning.get() == GW_FLAP_SENSOR_INV || gear_warning.get() == GW_S2_RS232_RX_INV) {
+                gw = !gw;
+            }
+        }
+        if (gw) {
+            if (!gear_warning_active && !stall_warning_active) {
+                AUDIO->startSound(AUDIO_ALARM_GEAR);
+                MBOX->pushMessage(4, "! GEAR !", 30);
+                gear_warning_active = true;
+            }
+        } else {
+            gear_warning_active = false;
+        }
+    }
+
+    // G-Load alarm when limits reached
+    if (screen_gmeter.get() != SCREEN_OFF && accSensor) {
+        float currg = accSensor->getGload();
+        if (currg > gload_pos_limit.get() || currg < gload_neg_limit.get()) {
+            if (gload_warning_active % 10 == 0) {
+                AUDIO->startSound(AUDIO_ALARM_GLOAD);
+                gload_warning_active++;
+            }
+        }
+        else if (gload_warning_active) {
+            gload_warning_active = 0;
+        }
+    }
+}
+
 static int client_sync_dataIdx = 10000;
 void startClientSync() {
     // Start the client sync in a moment
@@ -317,7 +380,7 @@ void readSensors(void *pvParameters)
             if ( SetupCommon::isMaster() ) {
                 battery_voltage.set(BatVoltage->get());
                 if (theCompass) {
-                theCompass->ageIncr();
+                theCompass->ageIncr(); // huh
                 }
             }
 
@@ -351,6 +414,9 @@ void readSensors(void *pvParameters)
 
         // audio update
         AUDIO->updateTone();
+
+        // Check on warnings
+        checkWarnings();
 
         // UI update, to not flood the UI queue with a binary hand shake
         if ( ui_update_done ) {
