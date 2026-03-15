@@ -93,7 +93,7 @@ void UiEventLoop(void *arg)
                                 break;
                             case SCREEN_GMETER:
                                 assert(accSensor);
-                                Display->drawLoadDisplay( accSensor->getHeadPtr()->z );
+                                Display->drawLoadDisplay( accSensor->getGload() );
                                 break;
                             case SCREEN_HORIZON:
                                 HorizonPage::HORIZON()->draw( accSensor->getAHRSQuaternion() );
@@ -150,12 +150,12 @@ void UiEventLoop(void *arg)
             // Stall Warning fixme no need for this to be here, could be in sensor loop, no display context needed
             if (stall_warning.get() && screen_gmeter.get() != SCREEN_PRIMARY && airborne.get()) {
                 // In aerobatics stall warning is contra productive, we concentrate on G-Load Display if permanent enabled
-                float acceleration = accSensor ? accSensor->getHeadPtr()->z : 1.f;
+                float acceleration = accSensor ? accSensor->getGload() : 1.f;
                 if (acceleration < 0.3) {
                     acceleration = 0.3; // limit acceleration effect to minimum 0.3g
                 }
                 // accelerated and ballast(ed) stall speed
-                mps_t acc_stall = Speed2Fly.getStallSpeed() * sqrt(acceleration);
+                mps_t acc_stall = Speed2Fly.getStallSpeed() * std::sqrtf(acceleration);
                 if (ias.get() < acc_stall && ias.get() > acc_stall * 0.7 && airborne.get()) {
                     if (!stall_warning_active) {
                         MBOX->pushMessage(4, "! STALL !", 20); // 20 sec
@@ -194,7 +194,7 @@ void UiEventLoop(void *arg)
 
             // G-Load alarm when limits reached
             if (screen_gmeter.get() != SCREEN_OFF && accSensor) {
-                float currg = accSensor->getHeadPtr()->z;
+                float currg = accSensor->getGload();
                 if (currg > gload_pos_limit.get() || currg < gload_neg_limit.get()) {
                     if (gload_warning_active % 10 == 0) {
                         AUDIO->startSound(AUDIO_ALARM_GLOAD);

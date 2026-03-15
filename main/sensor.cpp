@@ -328,7 +328,7 @@ void readSensors(void *pvParameters)
 
         // MinMax tracking
         if (accSensor) {
-            float g = accSensor->getHeadPtr()->z;
+            float g = accSensor->getGload();
             if (g > gload_pos_max.get()) {
                 gload_pos_max.set(g);
             }

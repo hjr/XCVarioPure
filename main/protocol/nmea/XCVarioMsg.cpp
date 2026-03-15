@@ -159,13 +159,14 @@ void NmeaPrtcl::sendXcvRPYL()
     Message *msg = newMessage();
 
     // LEVIL_AHRS  $RPYL,Roll,Pitch,MagnHeading,SideSlip,YawRate,G,errorcode,
+    assert(accSensor);
     msg->buffer = "$RPYL,";
     char str[50];
     sprintf(str, "%d,%d,%d,0,0,%d,0",
             (int)fast_iroundf(accSensor->getRollDeg() * 10.f),
             (int)fast_iroundf(accSensor->getPitchDeg() * 10.f),
             (int)fast_iroundf(accSensor->getMagnHeadingDeg() * 10.f),
-            (int)fast_iroundf(accSensor->getHeadPtr()->z * 1000.f));
+            (int)fast_iroundf(accSensor->getGload() * 1000.f));
     msg->buffer += str;
     msg->buffer += "*" + NMEA::CheckSum(msg->buffer.c_str()) + "\r\n";
     DEV::Send(msg);

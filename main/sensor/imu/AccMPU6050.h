@@ -44,6 +44,7 @@ public:
     inline float getMagnHeadingDeg() { return rad2deg(filtered_mag_heading); }
     inline float getCircleOmegaENUDeg() { return rad2deg(-circle_omega); }
     inline Quaternion getAHRSQuaternion() { return att_quat; }
+    float getGload() const { return getHead().z; }
     float getVerticalAcceleration();
     MpuImu& getMpu() const { return _my_mpu; }
 
