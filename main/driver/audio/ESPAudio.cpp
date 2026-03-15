@@ -1056,16 +1056,16 @@ void Audio::writeVolume(float volume) {
 // mute/unmute the ampifier
 void Audio::mute()
 {
-    ESP_LOGI(FNAME, "disable amplifier");
     if ( ! _muted ) {
+        ESP_LOGI(FNAME, "disable amplifier");
         _muted = true;
         gpio_set_level(GPIO_NUM_19, 0 );
     }
 }
 void Audio::unmute()
 {
-    ESP_LOGI(FNAME, "enable amplifier");
     if ( _muted ) {
+        ESP_LOGI(FNAME, "enable amplifier");
         _muted = false;
         gpio_set_level(GPIO_NUM_19, 1);
     }
@@ -1121,7 +1121,7 @@ void Audio::dactask()
                         // map s2f_delta to -5..+5, instead of heaving another set of min/max variables.
                         // ESP_LOGI(FNAME, "S2F delta: %.1f km/h", Speed2Fly.getDelta());
                         audio_value = - Speed2Fly.getDelta() / Units::kmh_to_mps(10.f);
-                        max = 5.0; // +/- 50km/h range
+                        max = 5.0; // +/- 50km/h range, same audio as +/-5m/s
                     }
                     audio_value = std::clamp( audio_value, -max, max );
                     calculateFrequency(audio_value);
