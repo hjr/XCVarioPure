@@ -63,7 +63,7 @@ private:
     // slip angle
     LowPassFilterT<float> _lpf_slip_angle;
     // calm counter
-    float _restTimer = 0; // milliseconds since last movement
+    int _restTimer = 0; // milliseconds since last movement
     bool _isResting = false;
 };
 

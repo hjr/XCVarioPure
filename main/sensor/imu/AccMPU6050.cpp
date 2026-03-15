@@ -228,7 +228,7 @@ bool AccMPU6050::detectRest() {
 }
 
 void AccMPU6050::resetRest() {
-    _restTimer = 0.f;
+    _restTimer = 0;
     _isResting = false;
 }
 
