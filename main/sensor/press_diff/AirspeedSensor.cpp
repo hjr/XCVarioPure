@@ -192,7 +192,7 @@ void AirspeedSensor::postProcess()
             // ESP_LOGI(FNAME,"AS raw value during rest: %f, raw offset: %d, variance: %f", raw, (int)_offset, getVariance(1000));
             // dump(1000);
             if ( offsetPlausible(raw) && getVariance(1000) < DYNP_THRESHOLD / 2.f ) {
-                _offset = ((2.f * _offset) + raw) / 3.f;
+                _offset = ((4.f * _offset) + raw) / 5.f;
                 if ( ! floatEqualFast(_offset, raw) ) {
                     _offset = ((2.f * _offset) + raw) / 3.f;
                     _batch_counter++;
