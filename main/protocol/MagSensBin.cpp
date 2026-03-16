@@ -38,7 +38,7 @@ dl_control_t MagSensBin::nextBytes(const char *cptr, int count)
     // Just check on 6 bytes telegram length
     if ( count == 6 ) {
         if ( theCompass ) {
-            theCompass->getSink()->fromExternal((vector_i16*)(cptr));
+            theCompass->dataSink()->fromExternal((vector_i16*)(cptr));
         }
 
         if ( _connected > 0 ) {

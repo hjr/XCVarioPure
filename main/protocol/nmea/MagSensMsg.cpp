@@ -83,7 +83,7 @@ dl_action_t MagSensMsg::streamData(NmeaPlugin *plg)
         tmp.y = atoi(sm->_frame.c_str() + word->at(2));
         tmp.z = atoi(sm->_frame.c_str() + word->at(3));
         if ( theCompass ) {
-            theCompass->getSink()->fromExternal(&tmp);
+            theCompass->dataSink()->fromExternal(&tmp);
         }
     }
     else if ( sm->_frame.at(6) == 'c' ) {
