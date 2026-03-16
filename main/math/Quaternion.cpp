@@ -343,20 +343,6 @@ Quaternion Quaternion::fromGyro(const vector_f& omega, float dtime)
     return result;
 }
 
-// Grad
-float Compass_atan2( float y, float x )
-{
-    float result = rad2deg(atan2f(y, x));
-
-    // As left turn means plus, euler angles come with 0° for north, -90° for east, -+180 degree for south and for 90° west
-    // compass rose goes vice versa, so east is 90° means we need to invert
-    if ( std::signbit(y) ) {
-        result += 360.f;
-    }
-
-    return result;
-}
-
 #ifdef Quaternionen_Test
 
 // Test quaternion performance against a matrix mapping

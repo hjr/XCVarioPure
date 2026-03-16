@@ -14,8 +14,6 @@
 
 // #define Quaternionen_Test 1
 
-float Compass_atan2( float y, float x );
-
 // Quaternion class in the form:
 // q = a + bi + cj + dk
 
