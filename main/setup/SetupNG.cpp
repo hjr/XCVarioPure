@@ -319,8 +319,8 @@ static void calc_altis() {
 }
 static void calc_speeds() {
     float tmp = Units::pascal_to_mps(dynp.get());
-    // clamp to zero for speeds < 15km/h (to avoid noise around zero)
-    if ( tmp < Units::kmh_to_mps(15.0f) ) {
+    // clamp to zero for speeds < 25km/h (to avoid noise around zero)
+    if ( tmp < Units::kmh_to_mps(25.0f) ) {
         tmp = 0.0f;
     }
     ias.set(tmp);
