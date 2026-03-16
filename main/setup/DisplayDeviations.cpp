@@ -18,7 +18,7 @@ Last update: 2021-02-25
  ****************************************************************************/
 
 #include "setup/SetupMenuDisplay.h"
-#include "Compass.h"
+#include "sensor/mag/Compass.h"
 #include "Colors.h"
 #include "AdaptUGC.h"
 

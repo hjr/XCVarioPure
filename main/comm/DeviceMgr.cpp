@@ -22,7 +22,7 @@
 #include "protocol/CANPeerCaps.h"
 #include "setup/DataMonitor.h"
 #include "setup/SetupNG.h"
-#include "Compass.h"
+#include "sensor/mag/Compass.h"
 #include "sensor/gps/GpsVSensor.h"
 #include "sensor/temp/ds18b20.h"
 #include "sensor/temp/TempVSens.h"

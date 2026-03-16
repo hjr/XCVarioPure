@@ -7,7 +7,7 @@
 
 #pragma once
 
-#include "Compass.h"
+#include "sensor/mag/Compass.h"
 #include "comm/Configuration.h"
 #include "math/Units.h"
 #include "setup/SetupCommon.h"

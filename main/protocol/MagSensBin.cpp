@@ -8,7 +8,7 @@
 
 #include "MagSensBin.h"
 
-#include "Compass.h"
+#include "sensor/mag/Compass.h"
 #include "Clock.h"
 #include "protocol/AliveMonitor.h"
 

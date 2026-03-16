@@ -25,7 +25,7 @@
 #include "Units.h"
 #include "protocol/ProtocolItf.h"
 #include "protocol/NMEA.h"
-#include "Compass.h"
+#include "sensor/mag/Compass.h"
 #include "Flarm.h"
 #include "setup/SetupNG.h"
 #include "sensor.h"

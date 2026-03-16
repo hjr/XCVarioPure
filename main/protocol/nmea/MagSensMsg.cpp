@@ -6,8 +6,8 @@
 #include "comm/Messages.h"
 #include "comm/DeviceMgr.h"
 #include "protocol/MagSensBin.h"
-#include "Compass.h"
-#include "QMCMagCAN.h"
+#include "sensor/mag/Compass.h"
+#include "sensor/mag/QMCMagCAN.h"
 
 #include "sensor.h"
 #include "setup/SetupNG.h"
