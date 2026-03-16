@@ -8,7 +8,7 @@
 
 #pragma once
 
-#include <cinttypes>
+#include <cstdint>
 
 class ScreenElement
 {
