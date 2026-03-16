@@ -22,7 +22,6 @@
 #include <cmath>
 #include <algorithm>
 
-#define FILTER 3
 
 VarioFilter bmpVario; // static instance of it
 
@@ -43,6 +42,7 @@ void VarioFilter::init(meter_t alt)
     lastAltitude = alt;
 }
 
+#if FILTER == 3
 struct VarioKF {
     // State
     meter_t h;  // altitude [m]
@@ -123,6 +123,7 @@ struct VarioKF {
 };
 
 static VarioKF vkf;
+#endif
 
 VarioFilter::VarioFilter() :
     SensorTP<float>(vario_buffer, DUTY_CYCLE_MS),
@@ -138,19 +139,24 @@ void VarioFilter::configChange() {
     // vario needle damping
     _te_filter_idx = fast_iroundf(vario_delay.get() * 10.0f / 3);
     _lpf.setTau(vario_delay.get(), 0.1f); // 10 Hz
+#if FILTER == 3
     vkf.setTau(vario_delay.get()); // KF
+#endif
     // vario averager damping
     _avg_filter_idx = (vario_av_delay.get() / 0.1) - 1;
     ESP_LOGI(FNAME, "configChange damping:%f filter_len:%d", _lpf.getAlpha(), _avg_filter_idx);
-
+#if FILTER == 0
     avgTE.setLength( vario_av_delay.get() );
+#endif
     TEavg.setLength( rint(vario_delay.get()*(10.0/3)) );
 }
+#if FILTER == 3
 void VarioFilter::resetKF() {
     meter_t h0 = altitude_isa.get();
     vkf.init(h0); // KF
     _filter->reset(h0);
 }
+#endif
 
 bool VarioFilter::setup() {
     // Decide if sensor readings come from local sensor or master (ctor gets called too early for this)
@@ -163,7 +169,9 @@ bool VarioFilter::setup() {
     ESP_LOGI(FNAME, "VarioFilter setup as %s sensor with alt %f", (isLocalSensor(_id) ? "local" : "remote"), altitude.get());
     init(altitude_isa.get());
     configChange();
+#if FILTER == 3
     resetKF(); // reset the te_alt filter before entering the sensor loop
+#endif
     _prev_time = Clock::getMillis();
     return true;
 }
@@ -209,6 +217,7 @@ bool VarioFilter::doRead(float& val) {
 // apply filters individually as desired from settings
 
 #if defined(FILTER) && FILTER == 0
+// a legacy copy
 void VarioFilter::postProcess() {
     static float _errorval = 1.6;
     static mps_t _TEF = 0.f;
@@ -247,6 +256,7 @@ void VarioFilter::postProcess() {
     AverageVario::newSample(_TEF);
 }
 #elif defined(FILTER) && FILTER == 1
+// a legacy copy with some adjustments and more logging, no change in the actual filter behavior
 void VarioFilter::postProcess() {
     // TE vario calculation
     pascal_t te = 0.f;
@@ -294,6 +304,7 @@ void VarioFilter::postProcess() {
     AverageVario::newSample( _TEF );
 }
 #elif defined(FILTER) && FILTER == 2
+// a stupid straight exponential moving average
 void VarioFilter::postProcess() {
     // TE vario calculation
     mps_t te = 0.f;
@@ -302,7 +313,7 @@ void VarioFilter::postProcess() {
         te = (tecurr - _history[1]) * 10.f;  // in m/s
     }
     te_vario.set(_lpf.filter(te));
-    _polar_sink = Speed2Fly.sink(ias.get());
+    _polar_sink = Speed2Fly.getSink(ias.get());
     te_netto.set(te - _polar_sink);
 
     // the big AVG value
@@ -314,6 +325,7 @@ void VarioFilter::postProcess() {
     AverageVario::newSample(_lpf.get());
 }
 #elif defined(FILTER) && FILTER == 3
+// Kalman Filter based TE compensation, no additional LPF
 void VarioFilter::postProcess() {
     uint32_t now = Clock::getMillis();
     second_t dt = 0.1f;
