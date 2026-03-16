@@ -443,8 +443,8 @@ SetupNG<mps_t>  		extwind_sptc_speed( "EWDS", 0.0, false, SYNC_BIDIR, VOLATILE )
 SetupNG<int>  			extwind_inst_dir( "EIWDD", 0.0, false, SYNC_BIDIR, VOLATILE ); // instant external wind
 SetupNG<mps_t> 			extwind_inst_speed( "EIWDS", 0.0, false, SYNC_BIDIR, VOLATILE );
 SetupNG<int>  			extwind_status( "EWST", -1, false, SYNC_BIDIR, VOLATILE );
-SetupNG<float>  		mag_hdm( "HDM", -1.0, false, SYNC_FROM_MASTER, VOLATILE );
-SetupNG<float>  		mag_hdt( "HDT", -1.0, false, SYNC_FROM_MASTER, VOLATILE );
+SetupNG<rad_t>  		mag_hdm( "HDM", -1.0, false, SYNC_FROM_MASTER, VOLATILE );
+SetupNG<degree_t>  		mag_hdt( "HDT", -1.0, false, SYNC_FROM_MASTER, VOLATILE );
 SetupNG<float>  		average_climb( "AVCL", 0.0, false, SYNC_NONE, VOLATILE );
 SetupNG<float>  		flap_pos( "FLPS", 0.0, false, SYNC_BIDIR, VOLATILE );
 SetupNG<pascal_t>  		statp( "STAT", 0.0, false, SYNC_FROM_MASTER, VOLATILE, calc_altis );

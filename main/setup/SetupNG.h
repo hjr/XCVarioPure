@@ -222,8 +222,8 @@ extern SetupNG<mps_t>  		extwind_sptc_speed;
 extern SetupNG<int>  		extwind_inst_dir; // instant external wind
 extern SetupNG<mps_t>  		extwind_inst_speed;
 extern SetupNG<int>  		extwind_status;
-extern SetupNG<float>  		mag_hdm;
-extern SetupNG<float>  		mag_hdt;
+extern SetupNG<rad_t>  		mag_hdm;
+extern SetupNG<degree_t>  	mag_hdt;
 extern SetupNG<float>  		average_climb;
 extern SetupNG<float>  		flap_pos;
 extern SetupNG<pascal_t>  	statp;
