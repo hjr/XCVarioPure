@@ -102,7 +102,7 @@ void SetupMenuSelect::press()
 	}
 	if( _select_save != _select ){
 		if( bits._restart == RST_ON_EXIT ) {
-			_restart = true;
+			scheduleReboot();
 		}else if( bits._restart == RST_IMMEDIATE ){
 			if( _nvs ) {
 				_nvs->commit();

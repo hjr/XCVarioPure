@@ -427,7 +427,7 @@ static uint8_t create_dev(DeviceId did, InterfaceId iid)
         CANPeerCaps::updateCapsFromDev(did, true);
         if ( iid == BT_SPP || iid == BT_LE ) return RESTART_BT_CHANGE;
         if ( iid == WIFI_APSTA ) return RESTART_WIFI_CHANGE;
-
+        if ( did == MAGLEG_DEV ) return RESTART_SCHEDULED; // should not be needed -> fixme
     }
     return 0;
 }
@@ -444,7 +444,11 @@ static int create_device_action(SetupMenuSelect *p)
         if ( new_device == NAVI_DEV ) {
             ret |= create_dev(FLARM_HOST_DEV, new_interface);
         }
-        p->unscheduleReboot(ret); // option to clear a previous scheduled reboot
+        if ( ret == RESTART_SCHEDULED ) {
+            p->scheduleReboot();
+        } else {
+            p->unscheduleReboot(ret); // option to clear a previous scheduled reboot
+        }
         p->getParent()->getParent()->setDirty();
     }
     p->setTerminateMenu();
