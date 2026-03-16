@@ -73,8 +73,8 @@ StraightWind::StraightWind() :
 }
 
 void StraightWind::begin(){
-	if( compass_dev_auto.get() )
-		airspeedCorrection = wind_as_calibration.get();
+	// if( compass_dev_auto.get() )
+	// 	airspeedCorrection = wind_as_calibration.get();
 }
 
 void StraightWind::tick(){
@@ -161,7 +161,7 @@ bool StraightWind::calculateWind()
 	// WCA in radians
 	magneticHeading = averageTH;
 
-	float deviation = theCompass->getDeviation( averageTH );
+	float deviation = 0.f; // theCompass->getDeviation( averageTH );
 
 	if( (logging.get() != LOGG_DISABLE) && theCompass ){
 		if( logging.get() & LOGG_WIND ){
@@ -263,7 +263,7 @@ void StraightWind::calculateWind( float tc, mps_t gs, float th, float deviation 
 			return;
 	}
 
-	if( circlingWindSpeed > 0 && compass_dev_auto.get() ){
+	if( circlingWindSpeed > 0 ) { // && compass_dev_auto.get() ){
 		if( circlingWindAge > 1200 ){
 			status = "OLD CIRC WIND";
 			ESP_LOGI(FNAME,"Circling Wind exired");
@@ -290,8 +290,8 @@ void StraightWind::calculateWind( float tc, mps_t gs, float th, float deviation 
 				airspeedCorrection = 0.99;
 			if( abs( wind_as_calibration.get() - airspeedCorrection )*100 > 0.5 )
 					wind_as_calibration.set( airspeedCorrection );
-			if( theCompass )
-				devOK = theCompass->newDeviation( th, heading );
+			// if( theCompass )
+			// 	devOK = theCompass->newDeviation( th, heading );
 			else{
 				status = "No Compass";
 				return;

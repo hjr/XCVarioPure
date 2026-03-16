@@ -52,8 +52,8 @@ Compass *Compass::createCompass(InterfaceId iid)
 // Creates instance for I2C connection with passing the desired parameters.
 // No action is done at the bus. The default address of the chip is 0x0D.
 Compass::Compass( MagnetSensor *sens ) :
-	Deviation(),
-	Clock_I(5), // 50ms duty cycle
+	// Deviation(),
+	// Clock_I(5), // 50ms duty cycle
 	mysensor(sens)
 {
 	m_magn_heading = 0;
@@ -77,13 +77,13 @@ Compass::Compass( MagnetSensor *sens ) :
 
 Compass::~Compass()
 {
-	Clock::stop(this);
+	// Clock::stop(this);
 	delete mysensor;
 }
 
 void Compass::ageIncr(){
 	// ESP_LOGI( FNAME, "Compass::tick()");
-	Deviation::tick();
+	// Deviation::tick();
 	age++;
 	_tick++;
 	mysensor->age_incr();
@@ -121,16 +121,16 @@ rad_t Compass::getGyroHeading( bool *ok, bool addDecl ){
  * This is the compass task called periodically in a fixed time raster. It Reads
  * the current heading from the sensor and apply a low pass filter, deviation and more
  */
-bool Compass::tick()
-{
-	if( !theCompass->calibrationIsRunning() ){
-		theCompass->progress();
-	}
-	else {
-		theCompass->calcCalibration();
-	}
-	return false;
-}
+// bool Compass::tick()
+// {
+// 	if( !theCompass->calibrationIsRunning() ){
+// 		theCompass->progress();
+// 	}
+// 	else {
+// 		theCompass->calcCalibration();
+// 	}
+// 	return false;
+// }
 
 void Compass:: progress(){
 	bool rok;
@@ -154,16 +154,16 @@ void Compass:: progress(){
 }
 
 void Compass::begin(){
-	Deviation::begin();
+	// Deviation::begin();
 	loadCalibration();
 
 	mag_hdm.set( -1 );
 	mag_hdt.set( -1 );
 }
 
-void Compass::start(){
-	Clock::start(this);
-}
+// void Compass::start(){
+// 	Clock::start(this);
+// }
 
 // rad_t Compass::filteredHeading( bool *okIn )
 // {

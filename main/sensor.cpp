@@ -914,7 +914,7 @@ void system_startup(void *args){
 			MBOX->pushMessage(1, "Compass: FAILED");
 			logged_tests += failed_text;
 		}
-		theCompass->start();  // start task
+		// theCompass->start();  // start task
 	}
 
 	// hardware components now got all detected

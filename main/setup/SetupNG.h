@@ -406,7 +406,7 @@ extern SetupNG<float>		gload_neg_max;
 extern SetupNG<float>		airspeed_max;
 // extern SetupNG<float>		gload_alarm_volume; fixme no use
 extern SetupNG<int>		    display_variant;
-extern SetupNG<int>       	compass_dev_auto;
+// extern SetupNG<int>       	compass_dev_auto;
 extern SetupNG<degree_t>  	max_circle_wind_diff;
 extern SetupNG<degree_t>  	max_circle_wind_delta_deg;
 extern SetupNG<kmh_t>     	max_circle_wind_delta_speed;

@@ -21,7 +21,7 @@ Last update: 2021-03-07
 
 #include "comm/InterfaceCtrl.h"
 #include "protocol/ClockIntf.h"
-#include "Deviation.h"
+// #include "Deviation.h"
 #include "MagnetSensor.h"
 #include "math/vector_3d.h"
 #include "math/Units.h"
@@ -29,7 +29,7 @@ Last update: 2021-03-07
 
 class MagnetSensor;
 
-class CompassSink_I;
+// class CompassSink_I;
 
 struct float_axes {
 	float x;
@@ -65,7 +65,7 @@ union bitfield_compass{
 	};
 };
 
-class Compass: public Deviation, public Clock_I
+class Compass //: public Deviation, public Clock_I
 {
 private:
     // Creates instance for I2C connection with passing the desired parameters.
@@ -79,7 +79,7 @@ public:
 
 	// system related methods
 	void begin();
-	void start();
+	// void start();
 	void ageIncr();
 
 	// sensor related interface
@@ -125,7 +125,7 @@ private:
 
 	// internal task management
 	void progress();
-	bool tick() override;  // ticker for compass reading
+	// bool tick() override;  // ticker for compass reading
 
 	// Saves a done compass calibration.
 	void saveCalibration();
