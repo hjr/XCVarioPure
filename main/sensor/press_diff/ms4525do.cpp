@@ -58,14 +58,16 @@ bool MS4525DO::isAbpmrr()
 
 bool MS4525DO::offsetPlausible(int32_t offset)
 {
-    if ( isAbpmrr() ) {
+    ESP_LOGI(FNAME, "offsetPlausible (%ld)", offset);
+    if ( isAbpmrr() ) { // typical offset measured 8192, the sensor is temperature compemsated and highly stable +-2.4% are plausible
         constexpr int lower_val = 8192 - 200;
         constexpr int upper_val = 8192 + 200;
         return (offset > lower_val) && (offset < upper_val);
     }
-    else {
+    else {  // typical offset's measured are 8052 for MS4525, type is temperature compensated but not fully stable
+	    // range a bit extended for more symmetry and tolerance of older type to ~+-3%
         constexpr int lower_val = 7700;
-        constexpr int upper_val = 8300;
+        constexpr int upper_val = 8350;
         return (offset > lower_val) && (offset < upper_val);
     }
 }

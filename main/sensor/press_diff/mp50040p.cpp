@@ -2,7 +2,7 @@
 #include "mp50040p.h"
 
 #include "../adc/mcp3221.h"
-#include "logdef.h"
+#include "logdefnone.h"
 
 #include <I2Cbus.hpp>
 
@@ -76,7 +76,7 @@ bool MP5004DP::fetch_pressure(int32_t &p, uint16_t &t)
 bool MP5004DP::offsetPlausible(int32_t offset)
 {
     ESP_LOGI(FNAME, "MP5004DP offsetPlausible (%ld)", offset);
-    constexpr int lower_val = 608;
+    constexpr int lower_val = 573;  // crosschecked and recalculated by datasheet
     constexpr int upper_val = 1067;
 
     return (offset > lower_val) && (offset < upper_val);
