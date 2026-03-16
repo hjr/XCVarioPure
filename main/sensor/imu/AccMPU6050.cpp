@@ -116,8 +116,8 @@ void AccMPU6050::postProcess() {
         float lf = loadFactor > 2.0 ? 2.0 : loadFactor;
         loadFactor = lf < 0 ? 0 : lf;  // limit to 0..2g
         // rotation from navigation to body frame
-        vector_f z_nav_frame = att_quat.rotate(vector_f{0,0,1});
-        circle_omega = gyro.dot(z_nav_frame);
+        vector_f z_nav_in_body = att_quat.rotate(vector_f{0,0,1});
+        circle_omega = gyro.dot(z_nav_in_body);
         // tan(roll):= petal force/G = m w v / m g
         float tanw = circle_omega * tas.get() / Units::g0;
         roll = atan(tanw);
@@ -146,33 +146,34 @@ void AccMPU6050::postProcess() {
         circle_omega = 0.f;
     }
     // ESP_LOGI( FNAME, " ax1:%f ay1:%f az1:%f Gx:%f Gy:%f GZ:%f dT:%f", petal.x, petal.y, petal.z, gyro.x, gyro.y, gyro.z, dt );
-    vector_f att_prev = att_vector;
+    // vector_f att_prev = att_vector;
     update_fused_vector(att_vector, gravity_trust, petal, d_gyro.get_conjugate());
     // ESP_LOGI(FNAME,"attv: %.3f %.3f %.3f ProjAccel: %f", att_vector.x, att_vector.y, att_vector.z, accel.dot(att_vector));
     att_quat = Quaternion::fromAccelerometer(att_vector);
     // ESP_LOGI(FNAME,"attq: %.3f %.3f %.3f %.3f", att_quat._x, att_quat._y, att_quat._z, att_quat._w );
     // ESP_LOGI(FNAME,"Circle Omega: %f", circle_omega );
     euler_rad = att_quat.toEulerRad() * -1.f;
-    float attvd = (att_vector - att_prev).get_norm2();
-    if (attvd > 0.5) {
-        [[maybe_unused]] vector_f euler = euler_rad * rad2deg(1.f);
-        ESP_LOGI(FNAME, "Euler R:%.1f P:%.1f OR:%.1f IMUP:%.1f", euler.Roll(), euler.Pitch(), rad2deg(roll), rad2deg(pitch));
-    }
+    // debug
+    // float attvd = (att_vector - att_prev).get_norm2();
+    // if (attvd > 0.5) {
+    //     [[maybe_unused]] vector_f euler = euler_rad * rad2deg(1.f);
+    //     ESP_LOGI(FNAME, "Euler R:%.1f P:%.1f OR:%.1f IMUP:%.1f", euler.Roll(), euler.Pitch(), rad2deg(roll), rad2deg(pitch));
+    // }
 
     // treat gimbal lock, limit to 88 deg
     constexpr const float limit = deg2rad(88.);
     euler_rad.clamp(-limit, limit);
 
-    float curh = 0;
     rad_t gyro_heading_step = circle_omega * dt; // gyro heading change in this step (NED)
     circle_footing = Vector::normalizePI2(circle_footing + gyro_heading_step); // integrate gyro heading change to get the current circle footing
 
+    rad_t curh = 0;
     if (theCompass && theCompass->cur_heading(&curh)) {
         // tuned to plus 7% what gave the best timing swing in response, 2% for compass is far enough
         // gyro and compass are time displaced, gyro comes immediate, compass a second later
-        fused_mag_heading += Vector::angleDiff(deg2rad(curh), fused_mag_heading) * 0.02 + gyro_heading_step;
+        fused_mag_heading += Vector::angleDiff(curh, fused_mag_heading) * 0.02 + gyro_heading_step;
         filtered_mag_heading = Vector::normalizePI2(fused_mag_heading);
-        theCompass->setGyroHeading(rad2deg(filtered_mag_heading));
+        theCompass->setGyroHeading(filtered_mag_heading);
         // ESP_LOGI( FNAME,"cur magn head %.2f gyro yaw: %.4f fused: %.1f Gyro(%.3f/%.3f/%.3f)", curh, gyroYaw, gh, gyroX, gyroY, gyroZ );
     } else {
         fused_mag_heading +=  gyro_heading_step;
@@ -194,15 +195,7 @@ void AccMPU6050::postProcess() {
     }
 
     // calm status
-    // ESP_LOGI(FNAME, "Calm status: accel_norm=%.3f attvd=%.3f", accel.get_norm2(), attvd);
     detectRest();
-    // if ( (accel.get_norm2() - 1.f) < 0.2025f && attvd < 0.001f ) { // within 5% of 1 g and not changing much
-    //     // sensor is calm
-    //     _calm_counter++;
-    // }
-    // else {
-    //     _calm_counter = 0;
-    // }
 }
 
 // rest - detection
