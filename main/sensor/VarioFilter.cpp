@@ -110,16 +110,15 @@ struct VarioKF {
         v += K1 * y;
 
         // Covariance update
-        float P00_ = (1 - K0) * P00;
-        float P01_ = (1 - K0) * P01;
+        float P00_ = P00 - K0 * P00;
+        float P01_ = P01 - K0 * P01;
         float P10_ = P10 - K1 * P00;
         float P11_ = P11 - K1 * P01;
 
         P00 = P00_;
-        P01 = P01_;
-        P10 = P10_;
+        P01 = P10 = 0.5f * (P01_ + P10_); // enforce symmetry
         P11 = P11_;
-        // ESP_LOGI(FNAME, "VKF(%.3f/%.3f/%.3f/%.3f): pre: %.3f err:%f R:%.3f up: %.3f", P00, P01, P10,  P11, h, y, R, v);
+        ESP_LOGI(FNAME, "VKF(%.3f/%.3f/%.3f/%.3f): K(%.3f,%.3f) pre: %.3f err:%f R:%.3f up: %.3f", P00, P01, P10, P11, K0, K1, h, y, R, v);
     }
 };
 
@@ -238,7 +237,7 @@ void VarioFilter::postProcess() {
 	_TEF += ((TEAVG - _TEF)) * _lpf.getAlpha();
 
     te_vario.set(_TEF);
-    _polar_sink = Speed2Fly.sink(ias.get());
+    _polar_sink = Speed2Fly.getSink(ias.get());
     te_netto.set(_TEF - _polar_sink);
 
 	if( !(N%10) ){ // every second one sample
@@ -256,7 +255,7 @@ void VarioFilter::postProcess() {
         te = (tecurr - _history[1]) * 10.f;  // in m/s
     }
     te_vario.set(_lpf.filter(te));
-    _polar_sink = Speed2Fly.sink(ias.get());
+    _polar_sink = Speed2Fly.getSink(ias.get());
     te_netto.set(te - _polar_sink);
 
     constexpr const float errorval = 1.6;
@@ -283,7 +282,7 @@ void VarioFilter::postProcess() {
 
     te_vario.set(_TEF);
     // ESP_LOGI(FNAME, "VarioFilter ias: %f", ias.get());
-    _polar_sink = Speed2Fly.sink(ias.get());
+    _polar_sink = Speed2Fly.getSink(ias.get());
     te_netto.set(_TEF - _polar_sink);
 
     // the big AVG value
