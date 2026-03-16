@@ -329,10 +329,10 @@ void readSensors(void *pvParameters)
 				// Trigger heading reading and low pass filtering. That job must be
 				// done periodically.
 				bool ok;
-				float heading = theCompass->getGyroHeading( &ok );
+				rad_t heading = theCompass->getGyroHeading( &ok );
 				if(ok){
-					if( (int)heading != (int)mag_hdm.get() && !(count%10) ){
-						mag_hdm.set( heading );
+					if( (int)Units::rad_to_deg(heading) != (int)mag_hdm.get() && !(count%10) ){
+						mag_hdm.set(heading);
 					}
 					if( !(count%5) && compass_nmea_hdm.get() == true ) {
 						if ( ToyNmeaPrtcl ) {
@@ -344,21 +344,22 @@ void readSensors(void *pvParameters)
 					if( mag_hdm.get() != -1 )
 						mag_hdm.set( -1 );
 				}
-				float theading = theCompass->filteredTrueHeading( &ok );
-				if(ok){
-					if( (int)theading != (int)mag_hdt.get() && !(count%10) ){
-						mag_hdt.set( theading );
-					}
-					if( !(count%5) && ( compass_nmea_hdt.get() == true )  ) {
-						if ( ToyNmeaPrtcl ) {
-							ToyNmeaPrtcl->sendXCVNmeaHDT(heading);
-						}
-					}
-				}
-				else{
-					if( mag_hdt.get() != -1 )
-						mag_hdt.set( -1 );
-				}
+                // no true heading any more ..
+				// rad_t theading = theCompass->filteredTrueHeading( &ok );
+				// if(ok){
+				// 	if( (int)theading != (int)mag_hdt.get() && !(count%10) ){
+				// 		mag_hdt.set( theading );
+				// 	}
+				// 	if( !(count%5) && ( compass_nmea_hdt.get() == true )  ) {
+				// 		if ( ToyNmeaPrtcl ) {
+				// 			ToyNmeaPrtcl->sendXCVNmeaHDT(heading);
+				// 		}
+				// 	}
+				// }
+				// else{
+				// 	if( mag_hdt.get() != -1 )
+				// 		mag_hdt.set( -1 );
+				// }
 			}
 		}
 

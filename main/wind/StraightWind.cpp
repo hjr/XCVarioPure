@@ -142,9 +142,9 @@ bool StraightWind::calculateWind()
 	}
 	// Get current true heading from compass.
 	bool THok = false;
-	if( theCompass ) {
-		averageTH = theCompass->filteredTrueHeading( &THok, false ); // no deviation considered here (we add ourselfs as for reverse calculation we need also the pure heading)
-	}
+	// if( theCompass ) {
+	// 	averageTH = theCompass->filteredTrueHeading( &THok, false ); // no deviation considered here (we add ourselfs as for reverse calculation we need also the pure heading)
+	// }
 	if( THok == false ) {
 		// No valid heading available
 		status="No Compass";
