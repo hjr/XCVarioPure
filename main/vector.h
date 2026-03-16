@@ -53,7 +53,7 @@ public:
 
     ~Vector();
 
-    static rad_t polar(rad_t y, rad_t x);
+    static rad_t polar(float y, float x);
     static rad_t normalizePI2(rad_t angle);
     static rad_t normalizePI(rad_t angle);
     static degree_t normalizeDeg(degree_t angle);

@@ -74,7 +74,7 @@ rad_t Vector::reverseBearingRad(rad_t angle) {
 
 //  in: -oo < x,y < oo
 // out: 0 .. 2*pi
-rad_t Vector::polar(rad_t y, rad_t x) {
+rad_t Vector::polar(float y, float x) {
     rad_t angle = atan2f(y, x);  // range: (–π, π]
     if (angle < 0.0f) {
         angle += PI2f;  // convert to [0, 2π)
