@@ -172,7 +172,7 @@ static void sensFeed(const NmeaPrtcl* prtcl) // called with full 10Hz rate from 
         delta += 1000;
     }
 
-    sprintf(log + pos, "%d.%03d,%d,%.3f,%.3f,%.3f,%.2f", daymillis % (60 * 60 * 24), daymillis / 1000, delta, 
+    sprintf(log + pos, "%d.%03d,%d,%.3f,%.3f,%.3f,%.2f", daymillis / 1000, daymillis % 1000, delta, 
             baroSensor->getHead()/100.f, teSensor->getHead()/100.f, asSensor->getHead(), Units::K_to_C(temp));
     pos = strlen(log);
     if (accSensor) {
