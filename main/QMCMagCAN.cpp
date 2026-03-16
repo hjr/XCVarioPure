@@ -56,7 +56,7 @@ bool QMCMagCAN::readRaw( vector_i16 &mag )
 {
 	if ( age < 5 ) {
 		mag.x = can.x;
-		mag.y = -can.y;
+		mag.y = can.y;
 		mag.z = can.z;
 		// if ( age == 0 ) {
 		// ESP_LOGI( FNAME, "Mag Average: X:%d Y:%d Z:%d  Raw: X:%d Y:%d Z:%d", mag.x, mag.y, mag.z, can.x, can.y, can.z );
