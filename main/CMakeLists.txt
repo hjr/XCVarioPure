@@ -3,6 +3,10 @@ idf_component_register(SRC_DIRS "."
                        EMBED_TXTFILES ${project_dir}/server_certs/ca_cert.pem
                        REQUIRES soc driver nvs_flash esp_adc esp_driver_dac esp_wifi esp_system esp_http_server esp_https_ota bt I2Cbus MPUdriver ESP32-coredump eglib qrcodegen simplex glider onewire_bus )
 
+
+# global compiler settings
+target_compile_options(${COMPONENT_LIB} PRIVATE -Wno-error=format)
+
 add_subdirectory("comm")
 add_subdirectory("driver")
 add_subdirectory("math")
