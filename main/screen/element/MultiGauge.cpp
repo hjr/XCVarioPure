@@ -49,8 +49,9 @@ void MultiGauge::draw()
     case GAUGE_NETTO:
         fval = VarioUnit->apply(_nvsvar->get()) * 10.f;
         break;
+    case GAUGE_HEADING:
     case GAUGE_SLIP:
-        fval = -Units::rad_to_deg(_nvsvar->get());
+        fval = Units::rad_to_deg(_nvsvar->get());
         break;
     default:
         fval = _nvsvar->get();
@@ -106,7 +107,7 @@ void MultiGauge::drawUnit() const
         mode_str = "NET";
         unit_str = VarioUnit->getName();
         break;
-    case MultiGauge::GAUGE_HEADING:
+    case GAUGE_HEADING:
         mode_str = "HDG";
         [[fallthrough]];
     case GAUGE_SLIP:
@@ -135,9 +136,6 @@ void MultiGauge::update_nvs()
     case MultiGauge::GAUGE_GND_SPEED:
         _nvsvar = &gnd_speed;
         break;
-    case MultiGauge::GAUGE_SLIP:
-        _nvsvar = &slip_angle;
-        break;
     case MultiGauge::GAUGE_S2F:
         _nvsvar = &s2f_ideal;
         break;
@@ -145,7 +143,10 @@ void MultiGauge::update_nvs()
         _nvsvar = &te_netto;
         break;
     case MultiGauge::GAUGE_HEADING:
-        _nvsvar = &mag_hdt;
+        _nvsvar = &mag_hdm;
+        break;
+    case MultiGauge::GAUGE_SLIP:
+        _nvsvar = &slip_angle;
         break;
     // case GAUGE_TRACK:
     // 	_nvsvar = &;
