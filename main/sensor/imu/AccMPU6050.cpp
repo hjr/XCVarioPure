@@ -51,7 +51,7 @@ bool AccMPU6050::doRead(vector_f& val) {
         // ESP_LOGI(FNAME, "tmpvec X:%f Y:%f Z:%f", tmp_ned.x, tmp_ned.y, tmp_ned.z);
 
         // Check on irrational changes
-        if ((tmp_ned - *getHeadPtr()).get_norm2() > 25) {
+        if ((tmp_ned - *getHeadPtr()).get_norm2() > 25.f) {
             // vector_f d(tmpvec-prev_accel);
             ESP_LOGE(FNAME, "accelaration change > 5 g in 0.1 sec");
             // return false;
