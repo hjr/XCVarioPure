@@ -192,7 +192,7 @@ void SetupMenuValFloat::press()
 		ESP_LOGI(FNAME,"Yes restart:%d", bits._restart);
 		_value_safe = _value;
 		if( bits._restart == RST_ON_EXIT ) {
-			_restart = true;
+			scheduleReboot();
 		}else if( bits._restart == RST_IMMEDIATE ){
 			MenuEntry::reBoot();
 		}

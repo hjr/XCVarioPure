@@ -34,7 +34,7 @@ bool SensorRegistry::registerSensor(SensorBase *s)
     for (auto& e : all_sensors) {
         if (!e.isActive()) {
             e = { id, s, s->getDutyCycle() / 100 }; // store dutycycle in 100ms units
-            ESP_LOGI(FNAME, "%d. %s sensor 0x%x registered with dutycycle %d msec", idx, idmemo[static_cast<int>(id) & 0x3f], static_cast<int>(id), e.dutycycle);
+            ESP_LOGI(FNAME, "%d. %s sensor 0x%x registered with dutycycle %d00msec", idx, idmemo[static_cast<int>(id) & 0x3f], static_cast<int>(id), e.dutycycle);
             return true;
         }
         idx++;

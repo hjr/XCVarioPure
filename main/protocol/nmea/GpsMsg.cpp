@@ -100,7 +100,7 @@ dl_action_t GpsMsg::parseGPRMC(NmeaPlugin *plg)
     if (Flarm::myGPS_OK) {
         if (!std::isnan(lat) && !std::isnan(lon)) {
            // valid fix
-           GpsSensor->inject(lat, lon);
+           gpsSensor->inject(lat, lon);
         }
         if ( BackgroundTaskQueue ) {
             ESP_LOGD(FNAME,"Track: %3.2f, GPRMC: %s", Flarm::gndCourse, sm->_frame.c_str() );
@@ -176,7 +176,7 @@ dl_action_t GpsMsg::parseGPGGA(NmeaPlugin *plg)
         // GPGGA altitude is defined in meters (MSL)
         // Unit field should be 'M', ignore otherwise
         if ((sm->_frame.c_str() + word->at(8))[0] == 'M') {
-            GpsSensor->setExternalAltitude(alt);
+            gpsSensor->setExternalAltitude(alt);
         }
 
     }

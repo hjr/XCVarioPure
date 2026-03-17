@@ -35,10 +35,10 @@ class CompassMenu
   ~CompassMenu();
 
   /** Compass Menu Action method to set deviations. */
-  static int deviationAction( SetupMenuSelect *p );
+  // static int deviationAction( SetupMenuSelect *p );
 
   /** Compass Menu Action method to reset all deviations to 0. */
-  static int resetDeviationAction( SetupMenuSelect *p );
+  // static int resetDeviationAction( SetupMenuSelect *p );
 
   /** Compass Menu Action method to set declination valid. */
   static int declinationAction( SetupMenuValFloat *p );
@@ -51,7 +51,7 @@ class CompassMenu
 
   static bool showSensorRawData(SetupMenuSelect *p);
 
-  static SetupNG<float>* const deviations[8];
+  // static SetupNG<float>* const deviations[8];
 
   // Backup for calibration data
   private:

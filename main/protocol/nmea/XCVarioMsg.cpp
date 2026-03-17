@@ -285,7 +285,7 @@ void NmeaPrtcl::sendXCVVersion(int v)
     2) M = magnetic
     3) Checksum
 */
-void NmeaPrtcl::sendXCVNmeaHDM(float heading)
+void NmeaPrtcl::sendXCVNmeaHDM(rad_t heading)
 {
     if ( _dl.isBinActive() ) {
         return; // no NMEA output in binary mode
@@ -294,8 +294,8 @@ void NmeaPrtcl::sendXCVNmeaHDM(float heading)
 
     msg->buffer = "$HCHDM,";
     char str[12];
-    sprintf( str,"%3.1f,M", heading );
-    ESP_LOGI(FNAME,"Magnetic Heading: %3.1f", heading );
+    sprintf( str,"%3.1f,M", Units::rad_to_deg(heading) );
+    ESP_LOGI(FNAME,"Magnetic Heading: %3.1f", Units::rad_to_deg(heading) );
     msg->buffer += str;
     msg->buffer += "*" + NMEA::CheckSum(msg->buffer.c_str()) + "\r\n";
     DEV::Send(msg);
@@ -313,7 +313,7 @@ void NmeaPrtcl::sendXCVNmeaHDM(float heading)
     2) T = True
     3) Checksum
 */
-void NmeaPrtcl::sendXCVNmeaHDT( float heading )
+void NmeaPrtcl::sendXCVNmeaHDT(rad_t heading)
 {
     if ( _dl.isBinActive() ) {
         return; // no NMEA output in binary mode
@@ -322,8 +322,8 @@ void NmeaPrtcl::sendXCVNmeaHDT( float heading )
 
     msg->buffer = "$HCHDT,";
     char str[12];
-    sprintf( str,"%3.1f,T", heading );
-    ESP_LOGI(FNAME,"True Heading: %3.1f", heading );
+    sprintf( str,"%3.1f,T", Units::rad_to_deg(heading) );
+    ESP_LOGI(FNAME,"True Heading: %3.1f", Units::rad_to_deg(heading) );
     msg->buffer += str;
     msg->buffer += "*" + NMEA::CheckSum(msg->buffer.c_str()) + "\r\n";
     DEV::Send(msg);

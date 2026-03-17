@@ -19,9 +19,11 @@ Last update: 2021-12-30
 
 #include "CompassMenu.h"
 
+#include "freertos/idf_additions.h"
+#include "freertos/projdefs.h"
 #include "setup/SetupMenu.h"
 #include "AdaptUGC.h"
-#include "sensor.h"  // we need spiMutex
+// #include "sensor.h"  // we need spiMutex
 #include "vector.h"
 #include "Colors.h"
 #include "logdefnone.h"
@@ -34,15 +36,15 @@ extern AdaptUGC *MYUCG;
 SetupMenuSelect* CompassMenu::menuPtr = nullptr;
 
 // Initialise static members
-SetupNG<float>* const CompassMenu::deviations[8] = {
-		&compass_dev_0,
-		&compass_dev_45,
-		&compass_dev_90,
-		&compass_dev_135,
-		&compass_dev_180,
-		&compass_dev_225,
-		&compass_dev_270,
-		&compass_dev_315 };
+// SetupNG<float>* const CompassMenu::deviations[8] = {
+// 		&compass_dev_0,
+// 		&compass_dev_45,
+// 		&compass_dev_90,
+// 		&compass_dev_135,
+// 		&compass_dev_180,
+// 		&compass_dev_225,
+// 		&compass_dev_270,
+// 		&compass_dev_315 };
 /**
  * Creates a compass menu instance with an active compass object.
  */
@@ -55,106 +57,106 @@ CompassMenu::~CompassMenu()
 }
 
 // Compass Menu Action Routine
-int CompassMenu::deviationAction( SetupMenuSelect *p )
-{
-	ESP_LOGI( FNAME, "Compass deviation setup for direction '%s'",	p->value() );
+// int CompassMenu::deviationAction( SetupMenuSelect *p )
+// {
+// 	ESP_LOGI( FNAME, "Compass deviation setup for direction '%s'",	p->value() );
 
-	if( !theCompass || !(theCompass->haveSensor()) )
-	{
-		p->clear();
-		MYUCG->setFont( ucg_font_ncenR14_hr );
-		MYUCG->setPrintPos( 1, 30 );
-		MYUCG->printf( "No magnetic Sensor, Abort" );
-		ESP_LOGI( FNAME, "Abort calibration, no sensor signal" );
-		return 0;
-	}
-	short direction = strtol( p->value(), nullptr, 10 );
-	// Calibration menu is requested
-	p->clear();
-	MYUCG->setFont( ucg_font_ncenR14_hr );
-	MYUCG->setPrintPos( 1, 60 );
-	MYUCG->printf( "Turn airplane to %s  ", p->value() );
-	MYUCG->setPrintPos( 1, 90 );
-	MYUCG->printf( "and push button when done" );
-	delay( 500 );
+// 	if( !theCompass || !(theCompass->haveSensor()) )
+// 	{
+// 		p->clear();
+// 		MYUCG->setFont( ucg_font_ncenR14_hr );
+// 		MYUCG->setPrintPos( 1, 30 );
+// 		MYUCG->printf( "No magnetic Sensor, Abort" );
+// 		ESP_LOGI( FNAME, "Abort calibration, no sensor signal" );
+// 		return 0;
+// 	}
+// 	short direction = strtol( p->value(), nullptr, 10 );
+// 	// Calibration menu is requested
+// 	p->clear();
+// 	MYUCG->setFont( ucg_font_ncenR14_hr );
+// 	MYUCG->setPrintPos( 1, 60 );
+// 	MYUCG->printf( "Turn airplane to %s  ", p->value() );
+// 	MYUCG->setPrintPos( 1, 90 );
+// 	MYUCG->printf( "and push button when done" );
+// 	delay( 500 );
 
-	static float heading = 0.0;
-	float deviation = 0;
-	static float last_heading = 0.0;
+// 	static float heading = 0.0;
+// 	float deviation = 0;
+// 	static float last_heading = 0.0;
 
-	while( ! Rotary->readSwitch(50) )
-	{
-		bool ok = true;
-		heading += Vector::angleDiffDeg( theCompass->rawHeading( &ok ), last_heading )*0.05;
-		heading = Vector::normalizeDeg( heading );
-		last_heading = heading;
-		if( ok == false )
-		{
-			continue;
-		}
-		MYUCG->setPrintPos( 1, 150 );
-		MYUCG->setFont( ucg_font_fub25_hf );
-		MYUCG->printf( "Heading: %.1f°  ", heading );
-		MYUCG->setPrintPos( 1, 200 );
-		deviation = Vector::angleDiffDeg( direction, heading );
-		MYUCG->printf( "Deviation: %.1f°  ", deviation );
-	}
+// 	while( ! Rotary->readSwitch(50) )
+// 	{
+// 		bool ok = true;
+// 		heading += Vector::angleDiffDeg( theCompass->rawHeading( &ok ), last_heading )*0.05;
+// 		heading = Vector::normalizeDeg( heading );
+// 		last_heading = heading;
+// 		if( ok == false )
+// 		{
+// 			continue;
+// 		}
+// 		MYUCG->setPrintPos( 1, 150 );
+// 		MYUCG->setFont( ucg_font_fub25_hf );
+// 		MYUCG->printf( "Heading: %.1f°  ", heading );
+// 		MYUCG->setPrintPos( 1, 200 );
+// 		deviation = Vector::angleDiffDeg( direction, heading );
+// 		MYUCG->printf( "Deviation: %.1f°  ", deviation );
+// 	}
 
-	// Save and update deviation value
-	theCompass->newDeviation( heading, direction, true );
-	MYUCG->setPrintPos( 1, 270 );
-	MYUCG->setFont( ucg_font_ncenR14_hr );
-	MYUCG->printf( "Saved" );
-	delay(500);
-	MYUCG->setPrintPos( 1, 300 );
-	p->getParent()->incHighlight();
-	if(p->getParent()->getHighlight() > 7 )
-		p->getParent()->highlightTop();
-	MYUCG->printf( "Press key for next" );
-	ESP_LOGI( FNAME, "Compass deviation action for %s is finished",	p->value() );
-	return 0;
-}
+// 	// Save and update deviation value
+// 	theCompass->newDeviation( heading, direction, true );
+// 	MYUCG->setPrintPos( 1, 270 );
+// 	MYUCG->setFont( ucg_font_ncenR14_hr );
+// 	MYUCG->printf( "Saved" );
+// 	delay(500);
+// 	MYUCG->setPrintPos( 1, 300 );
+// 	p->getParent()->incHighlight();
+// 	if(p->getParent()->getHighlight() > 7 )
+// 		p->getParent()->highlightTop();
+// 	MYUCG->printf( "Press key for next" );
+// 	ESP_LOGI( FNAME, "Compass deviation action for %s is finished",	p->value() );
+// 	return 0;
+// }
 
 /** Compass Menu Action method to reset all deviations to 0. */
-int CompassMenu::resetDeviationAction( SetupMenuSelect *p )
-{
-	if( p->getSelect() == 0 )
-	{
-		// Cancel is selected
-		return 0;
-	}
-	else if( p->getSelect() == 1 )
-	{
-		p->clear();
-		MYUCG->setFont( ucg_font_ncenR14_hr );
-		MYUCG->setPrintPos( 1, 60 );
-		MYUCG->printf( "Reset all compass" );
-		MYUCG->setPrintPos( 1, 90 );
-		MYUCG->printf( "deviation data" );
-		// Reset deviation
-		for( int i = 0; i < 8; i++ )
-		{
-			deviations[i]->set( 0.0 );
-		}
-		ESP_LOGI( FNAME, "All compass deviations values were reset" );
-		delay( 1000 );
-	}
-	// Reload compass interpolation data
+// int CompassMenu::resetDeviationAction( SetupMenuSelect *p )
+// {
+// 	if( p->getSelect() == 0 )
+// 	{
+// 		// Cancel is selected
+// 		return 0;
+// 	}
+// 	else if( p->getSelect() == 1 )
+// 	{
+// 		p->clear();
+// 		MYUCG->setFont( ucg_font_ncenR14_hr );
+// 		MYUCG->setPrintPos( 1, 60 );
+// 		MYUCG->printf( "Reset all compass" );
+// 		MYUCG->setPrintPos( 1, 90 );
+// 		MYUCG->printf( "deviation data" );
+// 		// Reset deviation
+// 		for( int i = 0; i < 8; i++ )
+// 		{
+// 			deviations[i]->set( 0.0 );
+// 		}
+// 		ESP_LOGI( FNAME, "All compass deviations values were reset" );
+// 		delay( 1000 );
+// 	}
+// 	// Reload compass interpolation data
 
 
-	p->clear();
-	MYUCG->setFont( ucg_font_ncenR14_hr );
-	MYUCG->setPrintPos( 1, 300 );
-	if( theCompass ){
-		theCompass->resetDeviation();
-		MYUCG->printf( "Saved        " );
-	}
-	else
-		MYUCG->printf( "Compass not configured" );
-	delay( 2000 );
+// 	p->clear();
+// 	MYUCG->setFont( ucg_font_ncenR14_hr );
+// 	MYUCG->setPrintPos( 1, 300 );
+// 	if( theCompass ){
+// 		theCompass->resetDeviation();
+// 		MYUCG->printf( "Saved        " );
+// 	}
+// 	else
+// 		MYUCG->printf( "Compass not configured" );
+// 	delay( 2000 );
 
-	return 0;
-}
+// 	return 0;
+// }
 
 int CompassMenu::declinationAction( SetupMenuValFloat *p )
 {
@@ -231,7 +233,7 @@ int CompassMenu::sensorCalibrationAction( SetupMenuSelect *p )
 		MYUCG->setFont( ucg_font_ncenR14_hr, true );
 		MYUCG->setPrintPos( 1, 30 );
 		MYUCG->printf( "Compass not configured" );
-		delay(2000);
+		vTaskDelay(pdMS_TO_TICKS(2000));
 		return 0;
 	}
 
@@ -255,7 +257,7 @@ int CompassMenu::sensorCalibrationAction( SetupMenuSelect *p )
 		MYUCG->printf( "Press button to finish" );
 		theCompass->calibrate( calibrationReport, false);
 		MYUCG->setPrintPos( 1, 250 );
-		delay( 1000 );
+		vTaskDelay(pdMS_TO_TICKS(1000));
 		p->clear();
 	}
 

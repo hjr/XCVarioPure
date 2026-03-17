@@ -6,8 +6,7 @@
 #include "comm/Messages.h"
 #include "comm/DeviceMgr.h"
 #include "protocol/MagSensBin.h"
-#include "Compass.h"
-#include "QMCMagCAN.h"
+#include "sensor/mag/MagVSensor.h"
 
 #include "sensor.h"
 #include "setup/SetupNG.h"
@@ -78,12 +77,11 @@ dl_action_t MagSensMsg::streamData(NmeaPlugin *plg)
     }
     ESP_LOGI(FNAME,"PMMD stream data %s", sm->_frame.c_str());
     if ( sm->_frame.at(6) == 'r' ) {
-        vector_i16 tmp;
-        tmp.x = atoi(sm->_frame.c_str() + word->at(1));
-        tmp.y = atoi(sm->_frame.c_str() + word->at(2));
-        tmp.z = atoi(sm->_frame.c_str() + word->at(3));
-        if ( theCompass ) {
-            theCompass->getSink()->fromExternal(&tmp);
+        int16_t x_ = atoi(sm->_frame.c_str() + word->at(1));
+        int16_t y_ = atoi(sm->_frame.c_str() + word->at(2));
+        int16_t z_ = atoi(sm->_frame.c_str() + word->at(3));
+        if ( magSensor ) {
+            magSensor->inject(x_, y_, z_);
         }
     }
     else if ( sm->_frame.at(6) == 'c' ) {

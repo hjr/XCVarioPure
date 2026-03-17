@@ -267,8 +267,8 @@ void CenterAid::calcFlightMode( rad_t headingDiff ){
 // > tick : a 10 Hz counter
 void CenterAid::tick(int tick){
     rad_t new_heading = -1.0;
-    if( theCompass ) { // this is the best source for a heading, use this when avail
-        new_heading = Units::deg_to_rad(mag_hdt.get()); // fixme
+    if( mag_hdt.getValid() ) { // this is the best source for a heading, use this when avail
+        new_heading = mag_hdt.get();
     }
     if( new_heading < 0.f )  {         // fall back to GPS course and fuse gps heading with gyro
         rad_t gyro_footing = accSensor ? accSensor->getGyroFooting() : 0.f;
@@ -283,7 +283,7 @@ void CenterAid::tick(int tick){
             gyro_last = gyro;
             rad_t diff = Vector::angleDiff( gpshead, gps_heading );
             gps_heading += (diff*0.01 + gyro_delta*1.07);
-            new_heading = Vector::normalizeDeg( gps_heading );
+            new_heading = Vector::normalizePI2( gps_heading );
             // ESP_LOGI(FNAME,"GPS OK TC:%f gdY:%f fused:%f diff:%f", gpshead, gyro_delta, new_heading, diff );
         }else{     // trust as last resort just only gyro for Center Aid
             new_heading = gyro_footing;

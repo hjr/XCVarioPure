@@ -41,7 +41,8 @@ private:
     // rest counter
     int _restTimer = 0;
     bool _isResting = false;
-    int _counter = 0;
+    uint16_t _counter = 0; // these counter may roll over, that is fine
+    uint16_t _batch_counter = 0;
 };
 
 extern AirspeedSensor *asSensor;

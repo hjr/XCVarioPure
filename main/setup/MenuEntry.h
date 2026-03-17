@@ -98,8 +98,8 @@ public:
 	static int16_t dwidth;
 	static int16_t dheight;
 
-protected:
-	static uint8_t _restart; // restart bit field. 0x80 = scheduled, 0x01 = because of BT change, 0x02 = because of WIFI change
+private:
+    static uint8_t _restart; // restart bit field. 0x80 = scheduled, 0x01 = because of BT change, 0x02 = because of WIFI change
 
 protected:
 	SetupMenu  *_parent = nullptr;

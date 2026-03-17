@@ -185,23 +185,28 @@ void AirspeedSensor::postProcess()
         }
     }
     _counter++; // increment counter for auto offset correction, starts with 0 after setup
-    if (_counter < 3001) {
+    if (!airborne.get()) {
         if ( !(_counter % 50) ) {
-            // check every 5 seconds for a rest phase and do an auto offset correction
+            // check every 5 seconds for a usefull offset correction measurement
             float raw = getAVG(1000) / getMultiplier() + _offset; // convert to raw value
             // ESP_LOGI(FNAME,"AS raw value during rest: %f, raw offset: %d, variance: %f", raw, (int)_offset, getVariance(1000));
             // dump(1000);
             if ( offsetPlausible(raw) && getVariance(1000) < DYNP_THRESHOLD / 2.f ) {
-                float noff = ((2.f * _offset) + raw) / 3.f;
-                if ( floatEqualFast(_offset, noff) ) {
-                    printf("AS new offset calib %f\n", _offset);
+                _offset = ((4.f * _offset) + raw) / 5.f;
+                if ( ! floatEqualFast(_offset, raw) ) {
+                    _offset = ((2.f * _offset) + raw) / 3.f;
+                    _batch_counter++;
+                    printf("AS new offset batch %d: %f\n", _batch_counter, _offset);
                 }
-                _offset = noff;
-            }
-            if (_counter == 3000 && offsetPlausible(_offset)) {
-                as_offset.set(_offset);
-                printf("AS final offset correction applied: %f\n", _offset);
             }
         }
+    }
+    else if ( _batch_counter > 20 ) {
+        // Increments were tested plausible, no test here again necessary
+        as_offset.set(_offset);
+        printf("AS final offset correction applied: %f\n", _offset);
+
+        // reset batch counter to option for another auto offset correction after landing
+        _batch_counter = 0;
     }
 }

@@ -44,6 +44,7 @@ public:
     inline float getMagnHeadingDeg() { return rad2deg(filtered_mag_heading); }
     inline float getCircleOmegaENUDeg() { return rad2deg(-circle_omega); }
     inline Quaternion getAHRSQuaternion() { return att_quat; }
+    inline vector_f getAttVector() { return att_vector; }
     float getGload() const { return getHead().z; }
     float getVerticalAcceleration();
     MpuImu& getMpu() const { return _my_mpu; }
@@ -57,7 +58,7 @@ private:
     vector_f petal = {0,0,0};
     rps_t circle_omega = 0.f;
     rad_t circle_footing = 0.f; // a relative heading (ENU) w/o north reference
-    Quaternion att_quat = Quaternion();
+    Quaternion att_quat = Quaternion(); // a nav to body frame rotation
     Quaternion d_gyro = Quaternion();
     vector_f att_vector = {};
     vector_f euler_rad = {};

@@ -17,6 +17,7 @@ Author: Axel Pauli, deviation and refactoring by Eckhard Völlm Dec 2021
  **************************************************************************/
 
 #include "Compass.h"
+#include "Units.h"
 #include "sensor/imu/AccMPU6050.h"
 #include "QMCMagCAN.h"
 #include "math/Quaternion.h"
@@ -25,7 +26,7 @@ Author: Axel Pauli, deviation and refactoring by Eckhard Völlm Dec 2021
 #include "setup/SetupNG.h"
 #include "driver/gpio/ESPRotary.h"
 #include "sensor.h"
-#include "logdef.h"
+#include "logdefnone.h"
 
 #include <esp_system.h>
 
@@ -48,11 +49,11 @@ Compass *Compass::createCompass(InterfaceId iid)
 }
 
 
-//   Creates instance for I2C connection with passing the desired parameters.
-//   No action is done at the bus. The default address of the chip is 0x0D.
+// Creates instance for I2C connection with passing the desired parameters.
+// No action is done at the bus. The default address of the chip is 0x0D.
 Compass::Compass( MagnetSensor *sens ) :
-	Deviation(),
-	Clock_I(5), // 50ms duty cycle
+	// Deviation(),
+	// Clock_I(5), // 50ms duty cycle
 	mysensor(sens)
 {
 	m_magn_heading = 0;
@@ -76,13 +77,13 @@ Compass::Compass( MagnetSensor *sens ) :
 
 Compass::~Compass()
 {
-	Clock::stop(this);
+	// Clock::stop(this);
 	delete mysensor;
 }
 
 void Compass::ageIncr(){
 	// ESP_LOGI( FNAME, "Compass::tick()");
-	Deviation::tick();
+	// Deviation::tick();
 	age++;
 	_tick++;
 	mysensor->age_incr();
@@ -101,13 +102,13 @@ bool Compass::overflowFlag(){
 	return mysensor->overflowFlag();
 }
 
-void Compass::setGyroHeading( float hd ){
+void Compass::setGyroHeading( rad_t hd ){
 	// ESP_LOGI( FNAME, "setGyroHeading(): %3.2f", hd );
 	m_gyro_fused_heading = hd;
 	gyro_age = 0;
 }
 
-float Compass::getGyroHeading( bool *ok, bool addDecl ){
+rad_t Compass::getGyroHeading( bool *ok, bool addDecl ){
 	*ok = true;
 	if( gyro_age > 10 )
 		*ok = false;
@@ -120,20 +121,20 @@ float Compass::getGyroHeading( bool *ok, bool addDecl ){
  * This is the compass task called periodically in a fixed time raster. It Reads
  * the current heading from the sensor and apply a low pass filter, deviation and more
  */
-bool Compass::tick()
-{
-	if( !theCompass->calibrationIsRunning() ){
-		theCompass->progress();
-	}
-	else {
-		theCompass->calcCalibration();
-	}
-	return false;
-}
+// bool Compass::tick()
+// {
+// 	if( !theCompass->calibrationIsRunning() ){
+// 		theCompass->progress();
+// 	}
+// 	else {
+// 		theCompass->calcCalibration();
+// 	}
+// 	return false;
+// }
 
 void Compass:: progress(){
 	bool rok;
-	float hd = heading( &rok );
+	rad_t hd = calc_heading( &rok );
 	if( rok == false ){
 		m_headingValid = false;
 	}else{
@@ -141,51 +142,51 @@ void Compass:: progress(){
 		m_headingValid = true;
 	}
 
-	float diff = Vector::angleDiffDeg( m_gyro_fused_heading, _heading_average );
+	rad_t diff = Vector::angleDiff( m_gyro_fused_heading, _heading_average );
 	if( _heading_average == -1000 ) {
 		_heading_average = m_gyro_fused_heading;
 	}
 	else {
 		_heading_average += diff * (1/(10*compass_damping.get()));
 	}
-	_heading_average = Vector::normalizeDeg( _heading_average );
+	_heading_average = Vector::normalizePI2( _heading_average );
 	// ESP_LOGI(FNAME,"average hd=%.1f mag:%.1f gfh:%.1f", _heading_average, m_magn_heading, m_gyro_fused_heading );
 }
 
 void Compass::begin(){
-	Deviation::begin();
+	// Deviation::begin();
 	loadCalibration();
 
-	mag_hdm.set( -1 );
-	mag_hdt.set( -1 );
+	// mag_hdm.set( -1 );
+	// mag_hdt.set( -1 );
 }
 
-void Compass::start(){
-	Clock::start(this);
-}
+// void Compass::start(){
+// 	Clock::start(this);
+// }
 
-float Compass::filteredHeading( bool *okIn )
-{
-	*okIn = m_headingValid;
-	return _heading_average;
-}
+// rad_t Compass::filteredHeading( bool *okIn )
+// {
+// 	*okIn = m_headingValid;
+// 	return _heading_average;
+// }
 
-float Compass::rawHeading( bool *okIn )
+rad_t Compass::rawHeading( bool *okIn )
 {
 	*okIn = m_headingValid;
 	return m_magn_heading;
 }
 
-float Compass::filteredTrueHeading( bool *okIn, bool withDeviation ){ // consider deviation table
-	float fth = _heading_average;
-	if( withDeviation ){
-		float deviation_cur = getDeviation(  _heading_average );
-		fth = Vector::normalizeDeg( _heading_average + deviation_cur );
-	}
-	*okIn = m_headingValid;
-	// ESP_LOGI(FNAME,"filteredTrueHeading head=%.1f hddev=%.1f ok=%d", _heading_average, fth, *okIn   );
-	return fth;
-}
+// float Compass::filteredTrueHeading( bool *okIn, bool withDeviation ){ // consider deviation table
+// 	float fth = _heading_average;
+// 	if( withDeviation ){
+// 		float deviation_cur = getDeviation(  _heading_average );
+// 		fth = Vector::normalizeDeg( _heading_average + deviation_cur );
+// 	}
+// 	*okIn = m_headingValid;
+// 	// ESP_LOGI(FNAME,"filteredTrueHeading head=%.1f hddev=%.1f ok=%d", _heading_average, fth, *okIn   );
+// 	return fth;
+// }
 
 // calibration calculation in sync with data received in compass task
 void Compass::calcCalibration(){
@@ -377,7 +378,7 @@ bool Compass::loadCalibration()
 	return true;
 }
 
-bool Compass::cur_heading( float *head ) {
+bool Compass::cur_heading( rad_t *head ) {
     // ESP_LOGI( FNAME, "current heading %.1f, age:%d", _heading, age );
     if (age > 10)
         return false;
@@ -386,10 +387,10 @@ bool Compass::cur_heading( float *head ) {
 }
 
 /**
- * Reads the heading in degrees of 0...359. Ok is set to true,
+ * Reads the heading in radians of 0...2pi. Ok is set to true,
  * if heading data is valid, otherwise it is set to false.
  */
-float Compass::heading( bool *ok )
+rad_t Compass::calc_heading( bool *ok )
 {
 	*ok = false;
 
@@ -425,27 +426,24 @@ float Compass::heading( bool *ok )
 			*ok = true;
 			return _heading;
 		}
-		// rotate -90Z and then 180X, to have the same orientation as the IMU reference system
-		// then move to NED reference system with Z down, X forward, Y right (-X, Y, -Z)
-		fx =   ((float)magRaw.y - bias.y) * scale.y;
-		fy = - ((float)magRaw.x - bias.x) * scale.x;
+		// rotate -90° around Z (the data sheet of the used QMC5883L sensor shows a wrong axes orientation)
+		// the move to NED reference system does not need any other rotation anymore
+		fx = - ((float)magRaw.y - bias.y) * scale.y;
+		fy =   ((float)magRaw.x - bias.x) * scale.x;
 		fz =   ((float)magRaw.z - bias.z) * scale.z;
 	}
 	errors = 0;
 	age = 0;
 
-	vector_f mv( fx,fy,fz ); // uT magnetic vector, relative to glider
+    vector_f mv(fx, fy, fz);  // uT magnetic vector, relative to glider
     assert(accSensor);
-	vector_f mev = accSensor->getAHRSQuaternion().conjugate().rotate(mv);  // rotate magnetic vector back in ENU ref sys
-	// ESP_LOGI(FNAME, "gravity a %.2f, b %.2f, c %.2f MV: a %.2f, b %.2f, c %.2f ", gravity_vector.a, gravity_vector.b, gravity_vector.c, mv.a, mv.b, mv.c );
-	// ESP_LOGI(FNAME, "gravity a %.2f, b %.2f, c %.2f ME a %.2f, b %.2f, c %.2f MEV: a %.2f, b %.2f, c %.2f ", gravity_vector.a, gravity_vector.b, gravity_vector.c, mv.a, mv.b, mv.c, mev.a, mev.b, mev.c );
-	// ESP_LOGI(FNAME, "rot a %.2f, b %.2f, c %.2f, w %.2f - %.2f ", q.b, q.c, q.d, q.a, RAD_TO_DEG*q.getAngle() );
-	_heading = Compass_atan2( mev.y, mev.x );
-	_heading = Vector::normalizeDeg( _heading );  // normalize the +-180 degree model to 0..360°
-	ESP_LOGI(FNAME,"mag (%.2f,%.2f,%.2f) heading %.2f", mev.x, mev.y, mev.z, _heading);
-	// ESP_LOGI(FNAME,"normalized heading %.2f", _heading);
+    vector_f d = accSensor->getAttVector().get_normalized();  // a down vector, relative to glider
+    vector_f north = mv - d * mv.dot(d);
+    // vector_f north = accSensor->getAHRSQuaternion().conjugate().rotate(mv); // works but is more expensive than the above calculation
+    _heading = Vector::polar(-north.y, north.x);  // the "-" translates into a ENU nav frame
+    ESP_LOGI(FNAME, "mag (%.2f,%.2f,%.2f) heading %.2f", north.x, north.y, north.z, Units::rad_to_deg(_heading));
 
-	// ESP_LOGI(FNAME,"Magn-Eul:(Y:%.1f P:%.1f R:%.1f) Magn-Vec:(%.4f %.4f %.4f) G-Vec:(%.4f/%.4f/%.4f) G-Eul:(P:%.1f R:%.1f)", _heading, ce.pitch, ce.roll , mv.a, mv.b, mv.c, gravity_vector.a,gravity_vector.b,gravity_vector.c, accSensor->getPitch(), accSensor->getRoll() );
+    // ESP_LOGI(FNAME,"Magn-Eul:(Y:%.1f P:%.1f R:%.1f) Magn-Vec:(%.4f %.4f %.4f) G-Vec:(%.4f/%.4f/%.4f) G-Eul:(P:%.1f R:%.1f)", _heading, ce.pitch, ce.roll , mv.a, mv.b, mv.c, gravity_vector.a,gravity_vector.b,gravity_vector.c, accSensor->getPitch(), accSensor->getRoll() );
 #if 0
 	if( wind_logging.get() ){
 		char log[120];

@@ -177,7 +177,7 @@ void SetupMenuChar::longPress(){
         SavedDelay(_dirty);
     }
     if (_dirty && bits._restart) {
-        _restart = true;
+        scheduleReboot();
     }
     if (bits._end_setup) {
         exit(-1);

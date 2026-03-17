@@ -135,8 +135,8 @@ public:
     void sendXCVEmptyWeight(kilogram_t w);
     void sendXCVWaterWeight(kilogram_t v);
     void sendXCVVersion(int v);
-    void sendXCVNmeaHDM(float heading);
-    void sendXCVNmeaHDT(float heading);
+    void sendXCVNmeaHDM(rad_t heading);
+    void sendXCVNmeaHDT(rad_t heading);
     void sendXCVNmeaMWV(float angle, mps_t speed);
     void sendXCV(const char *str) const;
 

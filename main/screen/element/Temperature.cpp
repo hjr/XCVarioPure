@@ -21,7 +21,7 @@ extern AdaptUGC *MYUCG;
 void Temperature::draw(kelvin_t t, temp_status_t mputemp)
 {
     if (std::isnan(t)) {
-        t = -1000.f; // invalid value to trigger the -/- display
+        t = -1000.f; // invalid value to trigger the --- display
         ESP_LOGI(FNAME, "Temperature reading is NAN");
     }
     bool changed = std::abs(t - _temp) > 0.1;
@@ -47,7 +47,7 @@ void Temperature::draw(kelvin_t t, temp_status_t mputemp)
                     MYUCG->setColor(COLOR_WHITE);
                 }
             } else {
-                strcpy(s, "     -/- ");
+                strcpy(s, "     --- ");
                 MYUCG->setColor(COLOR_WHITE);
             }
             ESP_LOGI(FNAME,"drawTemperature: %d,%d %s", _ref_x, _ref_y, s);

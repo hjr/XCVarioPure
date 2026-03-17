@@ -21,14 +21,15 @@ Last update: 2021-03-07
 
 #include "comm/InterfaceCtrl.h"
 #include "protocol/ClockIntf.h"
-#include "Deviation.h"
+// #include "Deviation.h"
 #include "MagnetSensor.h"
 #include "math/vector_3d.h"
+#include "math/Units.h"
 #include "average.h"
 
 class MagnetSensor;
 
-class CompassSink_I;
+// class CompassSink_I;
 
 struct float_axes {
 	float x;
@@ -64,7 +65,7 @@ union bitfield_compass{
 	};
 };
 
-class Compass: public Deviation, public Clock_I
+class Compass //: public Deviation, public Clock_I
 {
 private:
     // Creates instance for I2C connection with passing the desired parameters.
@@ -78,7 +79,7 @@ public:
 
 	// system related methods
 	void begin();
-	void start();
+	// void start();
 	void ageIncr();
 
 	// sensor related interface
@@ -87,7 +88,7 @@ public:
 
 	// Heading related methods
 	bool cur_heading( float *head );
-	float rawHeading( bool *okIn );      //  Returns the low pass filtered magnetic heading without deviation
+	rad_t rawHeading( bool *okIn );      //  Returns the low pass filtered magnetic heading without deviation
 	float rawX() { return fx; };
 	float rawY() { return fy; };
 	float rawZ() { return fz; };
@@ -100,10 +101,10 @@ public:
 
 	void fetchRaw() { mysensor->readRaw( magRaw ); };
 	vector_i16 getRawAxes() { return magRaw; };
-	float filteredHeading( bool *okIn );
-	float filteredTrueHeading( bool *okIn, bool withDeviation=true );
-	void setGyroHeading( float hd );
-	float getGyroHeading( bool *ok, bool addDeclination=true );
+	// rad_t filteredHeading( bool *okIn );
+	// rad_t filteredTrueHeading( bool *okIn, bool withDeviation=true );
+	void setGyroHeading( rad_t hd );
+	rad_t getGyroHeading( bool *ok, bool addDeclination=true );
 	inline bool headingValid() { return m_headingValid;	}
 
 	// Calibration releated methods
@@ -116,15 +117,15 @@ public:
 	// Returns total number of read errors
 	int getReadError(){ return totalReadErrors; };
 	void calcCalibration();
-	CompassSink_I* getSink() const { return mysensor; }
+	CompassSink_I* dataSink() const { return mysensor; }
 
 private:
 	// Calculates tilt compensated heading in degrees of 0...359. The ok flag is set to true if fine, else false
-	float heading( bool *ok );
+	rad_t calc_heading( bool *ok );
 
 	// internal task management
 	void progress();
-	bool tick() override;  // ticker for compass reading
+	// bool tick() override;  // ticker for compass reading
 
 	// Saves a done compass calibration.
 	void saveCalibration();
@@ -132,14 +133,14 @@ private:
 	bool loadCalibration();
 
 	// fully gyro fused heading
-	float m_gyro_fused_heading;
+	rad_t m_gyro_fused_heading;
 	/** Pure averaged magnetic heading */
-	float m_magn_heading;
+	rad_t m_magn_heading;
 	/** Control flag of filtered heading. */
 	bool m_headingValid;
 
 	int _tick;
-	float _heading_average;
+	rad_t _heading_average;
 	int gyro_age;
 
 	/** Variables used by calibration. */
@@ -165,7 +166,7 @@ private:
 	float fx; //bias corrected
 	float fy;
 	float fz;
-	float _heading;
+	rad_t _heading;
 	vector_i16 magRaw;
 };
 

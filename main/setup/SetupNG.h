@@ -7,7 +7,7 @@
 
 #pragma once
 
-#include "Compass.h"
+#include "sensor/mag/Compass.h"
 #include "comm/Configuration.h"
 #include "math/Units.h"
 #include "setup/SetupCommon.h"
@@ -222,8 +222,8 @@ extern SetupNG<mps_t>  		extwind_sptc_speed;
 extern SetupNG<int>  		extwind_inst_dir; // instant external wind
 extern SetupNG<mps_t>  		extwind_inst_speed;
 extern SetupNG<int>  		extwind_status;
-extern SetupNG<float>  		mag_hdm;
-extern SetupNG<float>  		mag_hdt;
+extern SetupNG<rad_t>  		mag_hdm;
+extern SetupNG<rad_t>  	mag_hdt;
 extern SetupNG<float>  		average_climb;
 extern SetupNG<float>  		flap_pos;
 extern SetupNG<pascal_t>  	statp;
@@ -406,7 +406,7 @@ extern SetupNG<float>		gload_neg_max;
 extern SetupNG<float>		airspeed_max;
 // extern SetupNG<float>		gload_alarm_volume; fixme no use
 extern SetupNG<int>		    display_variant;
-extern SetupNG<int>       	compass_dev_auto;
+// extern SetupNG<int>       	compass_dev_auto;
 extern SetupNG<degree_t>  	max_circle_wind_diff;
 extern SetupNG<degree_t>  	max_circle_wind_delta_deg;
 extern SetupNG<kmh_t>     	max_circle_wind_delta_speed;

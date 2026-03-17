@@ -135,7 +135,7 @@ void FlapsBox::drawLabels(FBoxStateHash cs)
 
     // foreground labels
     MYUCG->setFont(ucg_font_fub14_hr);
-    const int from = std::max((int)(std::floorf(cs.getWk() + 0.2)), 0);
+    const int from = std::max((int)(fast_floorf(cs.getWk() + 0.2)), 0);
     const int to   = ((from + 1) == fast_iroundf(cs.getWk() + 0.3)) ? from + 1 : from;
     for (int wk = from; wk <= to; wk++)
     {
@@ -201,7 +201,7 @@ void FlapsBox::draw(mps_t ias)
         MYUCG->drawRFrame(_ref_x, _ref_y-BOX_LENGTH/2-BOX_CORNER, BOX_WIDTH, BOX_LENGTH + 2*BOX_CORNER, BOX_CORNER);
         MYUCG->drawDisc(_ref_x, _ref_y + Units::kmh_to_mps(10)*PIX_PER_MPS, 3, UCG_DRAW_ALL);
         MYUCG->drawDisc(_ref_x, _ref_y - Units::kmh_to_mps(10)*PIX_PER_MPS, 3, UCG_DRAW_ALL);
-        MYUCG->setColor(COLOR_WHITE);
+        MYUCG->setColor(COLOR_RED);
         MYUCG->drawDisc(_ref_x, _ref_y, 3, UCG_DRAW_ALL);
     }
 
@@ -209,6 +209,15 @@ void FlapsBox::draw(mps_t ias)
     bool have_sens = Flap::sensAvailable();
     if ( have_sens ) {
         curr_fp = _flap->getFlapPosition();
+        // rasterize to .0, and .5 for better readability
+        float fp_base = fast_floorf(curr_fp);
+        if ( curr_fp - fp_base < 0.25f ) {
+            curr_fp = fp_base;
+        } else if ( curr_fp - fp_base < 0.75f ) {
+            curr_fp = fp_base + 0.5f;
+        } else {
+            curr_fp = fp_base + 1.f;
+        }
     } else {
         curr_fp = (int)std::ceilf(_flap->getOptimum(ias));
     }
@@ -218,8 +227,8 @@ void FlapsBox::draw(mps_t ias)
     mps_t minv, maxv;
     minv = _flap->getSpeedBand(curr_fp, maxv);
     if ( airborne.get() == false ) {
-        // on ground, set a virtual green band for the correct start position (ias "0km/h")
-        ias = _flap->getSpeed(flap_takeoff.get() - 0.5); // pretend start speed
+        // on ground, set the ias virtually into the green band for the correct start position
+        ias = _flap->getSpeed(flap_takeoff.get() - 0.55); // pretend start speed
         ESP_LOGI(FNAME, "on ground, set ias to %.1f for flap position %.1f", ias, curr_fp);
     }
     minv -= ias;

@@ -5,8 +5,8 @@
 #include "setup/SetupMenu.h"
 #include "setup/SetupMenuSelect.h"
 
-#include "DisplayDeviations.h"
-#include "ShowCompassSettings.h"
+// #include "DisplayDeviations.h"
+// #include "ShowCompassSettings.h"
 #include "ShowCirclingWind.h"
 #include "ShowStraightWind.h"
 #include "CompassMenu.h"
@@ -16,16 +16,16 @@
 #include "wind/WindCalcTask.h"
 
 // compass menu handlers.
-static int compassDeviationAction(SetupMenuSelect *p) {
-	if (p->getSelect() == 0) {
-		CompassMenu::deviationAction(p);
-	}
-	return 0;
-}
+// static int compassDeviationAction(SetupMenuSelect *p) {
+// 	if (p->getSelect() == 0) {
+// 		CompassMenu::deviationAction(p);
+// 	}
+// 	return 0;
+// }
 
-static int compassResetDeviationAction(SetupMenuSelect *p) {
-	return CompassMenu::resetDeviationAction(p);
-}
+// static int compassResetDeviationAction(SetupMenuSelect *p) {
+// 	return CompassMenu::resetDeviationAction(p);
+// }
 
 static int compassDeclinationAction(SetupMenuValFloat *p) {
 	return CompassMenu::declinationAction(p);
@@ -46,16 +46,16 @@ static int windResourcesAction(SetupMenuSelect *p) {
     return 0;
 }
 
-static void options_menu_create_compasswind_compass_dev(SetupMenu *top) {
-	const char *skydirs[8] = { "0°", "45°", "90°", "135°", "180°", "225°",
-			"270°", "315°" };
-	for (int i = 0; i < 8; i++) {
-		SetupMenuSelect *sms = new SetupMenuSelect("Direction", RST_NONE, compassDeviationAction);
-		sms->setHelp("Push button to start deviation action");
-		sms->addEntry(skydirs[i]);
-		top->addEntry(sms);
-	}
-}
+// static void options_menu_create_compasswind_compass_dev(SetupMenu *top) {
+// 	const char *skydirs[8] = { "0°", "45°", "90°", "135°", "180°", "225°",
+// 			"270°", "315°" };
+// 	for (int i = 0; i < 8; i++) {
+// 		SetupMenuSelect *sms = new SetupMenuSelect("Direction", RST_NONE, compassDeviationAction);
+// 		sms->setHelp("Push button to start deviation action");
+// 		sms->addEntry(skydirs[i]);
+// 		top->addEntry(sms);
+// 	}
+// }
 
 static void options_menu_create_compasswind_compass_nmea(SetupMenu *top) {
 	SetupMenuSelect *nmeaHdm = new SetupMenuSelect("Magnetic Heading", RST_NONE, nullptr, &compass_nmea_hdm);
@@ -87,25 +87,25 @@ static void options_menu_create_compasswind_compass(SetupMenu *top) {
 	cd->setHelp("Set compass declination in degrees");
 	top->addEntry(cd);
 
-	SetupMenuSelect *devMenuA = new SetupMenuSelect("AutoDeviation", RST_NONE, nullptr, &compass_dev_auto);
-	devMenuA->setHelp("Automatic adaptive deviation and precise airspeed evaluation method using data from circling wind");
-	devMenuA->addEntry("Disable");
-	devMenuA->addEntry("Enable");
-	top->addEntry(devMenuA);
+	// SetupMenuSelect *devMenuA = new SetupMenuSelect("AutoDeviation", RST_NONE, nullptr, &compass_dev_auto);
+	// devMenuA->setHelp("Automatic adaptive deviation and precise airspeed evaluation method using data from circling wind");
+	// devMenuA->addEntry("Disable");
+	// devMenuA->addEntry("Enable");
+	// top->addEntry(devMenuA);
 
-	SetupMenu *devMenu = new SetupMenu("Setup Deviations", options_menu_create_compasswind_compass_dev);
-	devMenu->setHelp("Compass Deviations");
-	top->addEntry(devMenu);
+	// SetupMenu *devMenu = new SetupMenu("Setup Deviations", options_menu_create_compasswind_compass_dev);
+	// devMenu->setHelp("Compass Deviations");
+	// top->addEntry(devMenu);
 
 	// Show comapss deviations
-	SetupMenuDisplay *smd = new SetupMenuDisplay("Show Deviations", display_deviations_action);
-	top->addEntry(smd);
+	// SetupMenuDisplay *smd = new SetupMenuDisplay("Show Deviations", display_deviations_action);
+	// top->addEntry(smd);
 
-	SetupMenuSelect *sms = new SetupMenuSelect("Reset Deviations ", RST_NONE, compassResetDeviationAction);
-	sms->setHelp("Reset all deviation data to zero");
-	sms->addEntry("Cancel");
-	sms->addEntry("Reset");
-	top->addEntry(sms);
+	// SetupMenuSelect *sms = new SetupMenuSelect("Reset Deviations ", RST_NONE, compassResetDeviationAction);
+	// sms->setHelp("Reset all deviation data to zero");
+	// sms->addEntry("Cancel");
+	// sms->addEntry("Reset");
+	// top->addEntry(sms);
 
 	SetupMenu *nmeaMenu = new SetupMenu("Setup NMEA", options_menu_create_compasswind_compass_nmea);
 	top->addEntry(nmeaMenu);
@@ -116,8 +116,8 @@ static void options_menu_create_compasswind_compass(SetupMenu *top) {
 	compdamp->setHelp("Compass or magnetic heading damping factor in seconds");
 
 	// Show compass settings
-	SetupMenuDisplay *scs = new SetupMenuDisplay("Show Settings", show_compass_setting);
-	top->addEntry(scs);
+	// SetupMenuDisplay *scs = new SetupMenuDisplay("Show Settings", show_compass_setting);
+	// top->addEntry(scs);
 }
 
 static void options_menu_create_compasswind_straightwind_filters(SetupMenu *top) {

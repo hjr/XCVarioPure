@@ -177,15 +177,18 @@ bool SetupNG<int>::inLimits() const {
 
 template <typename T>
 bool SetupNG<T>::set( T aval, bool dosync, bool doAct ) {
+    if constexpr (std::is_same_v<T, float>) {
+        flags._valid = !std::isnan(aval);
+    } else {
+        flags._valid = true;
+    }
+
     if( _value == aval && !dosync && !doAct) {
         // ESP_LOGI(FNAME,"Value already in config: %s(%s)", _key.data(), getValueAsStr().c_str() );
         return( true );
     }
+
     _value = aval;
-    flags._valid = true;
-    if constexpr (std::is_same_v<T, float>) {
-        flags._valid = !std::isnan(aval);
-    }
     if ( dosync ) {
         // ESP_LOGI( FNAME,"Syncing %s after set", _key.data());
         sync();
@@ -319,8 +322,8 @@ static void calc_altis() {
 }
 static void calc_speeds() {
     float tmp = Units::pascal_to_mps(dynp.get());
-    // clamp to zero for speeds < 15km/h (to avoid noise around zero)
-    if ( tmp < Units::kmh_to_mps(15.0f) ) {
+    // clamp to zero for speeds < 25km/h (to avoid noise around zero)
+    if ( tmp < Units::kmh_to_mps(25.0f) ) {
         tmp = 0.0f;
     }
     ias.set(tmp);
@@ -443,8 +446,8 @@ SetupNG<mps_t>  		extwind_sptc_speed( "EWDS", 0.0, false, SYNC_BIDIR, VOLATILE )
 SetupNG<int>  			extwind_inst_dir( "EIWDD", 0.0, false, SYNC_BIDIR, VOLATILE ); // instant external wind
 SetupNG<mps_t> 			extwind_inst_speed( "EIWDS", 0.0, false, SYNC_BIDIR, VOLATILE );
 SetupNG<int>  			extwind_status( "EWST", -1, false, SYNC_BIDIR, VOLATILE );
-SetupNG<float>  		mag_hdm( "HDM", -1.0, false, SYNC_FROM_MASTER, VOLATILE );
-SetupNG<float>  		mag_hdt( "HDT", -1.0, false, SYNC_FROM_MASTER, VOLATILE );
+SetupNG<rad_t>  		mag_hdm( "HDM", -1.0, false, SYNC_FROM_MASTER, VOLATILE );
+SetupNG<rad_t>  		mag_hdt( "HDT", -1.0, false, SYNC_FROM_MASTER, VOLATILE );
 SetupNG<float>  		average_climb( "AVCL", 0.0, false, SYNC_NONE, VOLATILE );
 SetupNG<float>  		flap_pos( "FLPS", 0.0, false, SYNC_BIDIR, VOLATILE );
 SetupNG<pascal_t>  		statp( "STAT", 0.0, false, SYNC_FROM_MASTER, VOLATILE, calc_altis );
@@ -628,7 +631,7 @@ SetupNG<float>			gload_neg_max("GLOADNM", 0);
 SetupNG<float>			airspeed_max("ASMAX", 0 );
 // SetupNG<float>		    gload_alarm_volume("GLOADAVOL", 100, true, SYNC_NONE, PERSISTENT, nullptr, QUANT_NONE, &percentage_limits);
 SetupNG<int>        	display_variant("DISPLAY_VARIANT", 0 );
-SetupNG<int>        	compass_dev_auto("COMPASS_DEV", 0 );
+// SetupNG<int>        	compass_dev_auto("COMPASS_DEV", 0 );
 SetupNG<degree_t>    	max_circle_wind_diff("CI_WINDDM", 60.0, true, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(0, 90.0, 1.0));
 SetupNG<degree_t>    	max_circle_wind_delta_deg("CIMDELD", 20.0, true, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(0.0, 60.0, 0.1));
 SetupNG<kmh_t>       	max_circle_wind_delta_speed("CIMDELS", 5.0, true, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(0.0, 20.0, 0.1));
