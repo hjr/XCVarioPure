@@ -21,6 +21,7 @@
 #include "protocol/NMEA.h"
 #include "protocol/CANPeerCaps.h"
 #include "setup/DataMonitor.h"
+#include "sensor/SensorBase.h"
 #include "sensor.h"
 #include "logdefnone.h"
 
@@ -285,7 +286,8 @@ void connected_devices_menu_create_interfaceCAN(SetupMenu *top)
 
 void connected_devices_menu_create_interfaceOW(SetupMenu *top)
 {
-
+    top->lock();
+    top->setHelp("One Wire interface bus has no config");
 }
 
 
@@ -563,10 +565,10 @@ static void connected_devices_menu_device(SetupMenu *top) // dynamic!
     }
 
     // list protocols
-    device_details.assign("Protocols on ");
-    device_details += dev->_itf->getStringId();
-    device_details += ": ";
     if ( dev->_link ) {
+        device_details.assign("Protocols on ");
+        device_details += dev->_itf->getStringId();
+        device_details += ": ";
         NmeaPrtcl *nmea = dev->_link->getNmea();
         if ( nmea ) {
             const std::vector<NmeaPlugin *> plglist = nmea->getAllPlugs();
@@ -584,6 +586,13 @@ static void connected_devices_menu_device(SetupMenu *top) // dynamic!
             std::string_view tmp = DeviceManager::getPrtclName(binary->getProtocolId());
             device_details += tmp.data();
         }
+    }
+    else if ( dev->_sensor ) {
+        // no link, maybe a sensor only bus/devices
+        device_details.assign("Sensors on ");
+        device_details += dev->_itf->getStringId();
+        device_details += ": ";
+        device_details += dev->_sensor->name();
     }
     top->setHelp(device_details.c_str());
 }

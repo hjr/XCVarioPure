@@ -106,11 +106,11 @@ void MenuEntry::SavedDelay(bool showit)
 
 // Handle the basics to jump in- and out of setup menu levels
 void MenuEntry::enter() {
-    current = this;
-    if ( ! isLeaf() ) { current_menu = static_cast<SetupMenu*>(this); }
-    if (bits._locked) {
+    if (isLocked()) {
         return;
     }
+    current = this;
+    if ( ! isLeaf() ) { current_menu = static_cast<SetupMenu*>(this); }
 
     // enter a level of setup menu
     attach();  // set rotary focus

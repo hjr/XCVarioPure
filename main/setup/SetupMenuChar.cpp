@@ -84,15 +84,13 @@ SetupMenuChar::SetupMenuChar( const char* title, const char *chset, int mlen, e_
 
 void SetupMenuChar::enter()
 {
+    if (isLocked()) { return; }
     MenuEntry::enter();
-    if (!bits._locked) {
-        if ( bits._is_inline && _parent->freeBottomLines() >= 2) {
-            clearHelpLines(_parent->firstHelpLine());
-            menuPrintLn(alternate_help[_mode*2].data(), _parent->firstHelpLine());
-            menuPrintLn(alternate_help[_mode*2+1].data(), _parent->firstHelpLine()+1);
-        }
+    if ( bits._is_inline && _parent->freeBottomLines() >= 2) {
+        clearHelpLines(_parent->firstHelpLine());
+        menuPrintLn(alternate_help[_mode*2].data(), _parent->firstHelpLine());
+        menuPrintLn(alternate_help[_mode*2+1].data(), _parent->firstHelpLine()+1);
     }
-
 }
 
 void SetupMenuChar::display(int mode)

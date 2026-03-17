@@ -102,6 +102,7 @@ SetupMenuValFloat::SetupMenuValFloat( const char* title, const char *unit, int (
 
 void SetupMenuValFloat::enter()
 {
+	if (isLocked()) { return; }
 	_value_safe = _value = _nvs->get();
 	MenuEntry::enter();
 }

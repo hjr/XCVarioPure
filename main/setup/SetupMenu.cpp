@@ -501,6 +501,8 @@ SetupMenu::~SetupMenu() {
 
 void SetupMenu::enter()
 {
+    if (isLocked()) { return; }
+
 	ESP_LOGI(FNAME,"enter inSet %d, mptr: %p", gflags.inSetup, populateMenu );
 	if ((_childs.empty() || dyn_content) && populateMenu) {
 		(populateMenu)(this); // callback needs to be designed for this !!!
