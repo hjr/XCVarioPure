@@ -9,6 +9,7 @@
 #include "HorizonPage.h"
 
 
+#include "Units.h"
 #include "math/Trigonometry.h"
 #include "math/Floats.h"
 
@@ -83,21 +84,18 @@ void HorizonPage::draw( Quaternion q )
         Display->drawPolygon(below, nb);
     }
 
-	// heading
-	if( theCompass ){
-		int heading = fast_iroundf(mag_hdt.get());
-		MYUCG->setFont(ucg_font_fub20_hn, true);
-		MYUCG->setPrintPos(70,310);
-		if( heading >= 360 ) {
-			heading -= 360;
-		}
-		// ESP_LOGI(FNAME,"compass enable, heading: %d", heading );
-		if( heading > 0  && heading != heading_old){
-			MYUCG->setColor( COLOR_WHITE );
-			MYUCG->printf("   %d°   ", heading );
-			heading_old = heading;
-		}
-	}
+    // heading
+    if (mag_hdt.getValid()) {
+        int heading = fast_iroundf(Units::rad_to_deg(mag_hdt.get()));
+        MYUCG->setFont(ucg_font_fub20_hn, true);
+        MYUCG->setPrintPos(70, 310);
+        // ESP_LOGI(FNAME,"compass enable, heading: %d", heading );
+        if (heading > 0 && heading != heading_old) {
+            MYUCG->setColor(COLOR_WHITE);
+            MYUCG->printf("   %d°   ", heading);
+            heading_old = heading;
+        }
+    }
 
     _DIRTY = false;
 }
