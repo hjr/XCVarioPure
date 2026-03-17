@@ -366,7 +366,6 @@ extern SetupNG<float>       compass_z_scale;
 extern SetupNG<int>         compass_calibrated;
 extern SetupNG<float>       compass_declination;
 extern SetupNG<int>         compass_declination_valid;
-extern SetupNG<float>		compass_damping;
 extern SetupNG<int>         compass_nmea_hdm;
 extern SetupNG<int>         compass_nmea_hdt;
 extern SetupNG<float>       wind_as_filter;

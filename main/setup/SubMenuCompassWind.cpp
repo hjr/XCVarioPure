@@ -110,11 +110,6 @@ static void options_menu_create_compasswind_compass(SetupMenu *top) {
 	SetupMenu *nmeaMenu = new SetupMenu("Setup NMEA", options_menu_create_compasswind_compass_nmea);
 	top->addEntry(nmeaMenu);
 
-	SetupMenuValFloat *compdamp = new SetupMenuValFloat("Damping", "sec", nullptr, false, &compass_damping);
-	compdamp->setPrecision(1);
-	top->addEntry(compdamp);
-	compdamp->setHelp("Compass or magnetic heading damping factor in seconds");
-
 	// Show compass settings
 	// SetupMenuDisplay *scs = new SetupMenuDisplay("Show Settings", show_compass_setting);
 	// top->addEntry(scs);
