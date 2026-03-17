@@ -38,4 +38,4 @@ private:
     float _alt = 0.f;
 };
 
-extern GpsVSensor* GpsSensor;
+extern GpsVSensor* gpsSensor;

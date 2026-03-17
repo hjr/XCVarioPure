@@ -11,7 +11,7 @@
 constexpr int DUTY_CYCLE_MS = 1000; // 1Hz Flarm update rate
 static vector_f gps_buffer[ (SENSOR_HISTORY_DURATION_MS / DUTY_CYCLE_MS) + 1 ];
 
-GpsVSensor* GpsSensor = nullptr;
+GpsVSensor* gpsSensor = nullptr;
 
 GpsVSensor::GpsVSensor() : SensorTP<vector_f>(gps_buffer, DUTY_CYCLE_MS)
 {
@@ -20,10 +20,10 @@ GpsVSensor::GpsVSensor() : SensorTP<vector_f>(gps_buffer, DUTY_CYCLE_MS)
 }
 
 GpsVSensor* GpsVSensor::createGpsVSensor() {
-    if ( !GpsSensor ) {
-        GpsSensor = new GpsVSensor();
+    if ( !gpsSensor ) {
+        gpsSensor = new GpsVSensor();
     }
-    return GpsSensor;
+    return gpsSensor;
 }
 
 void GpsVSensor::inject(float lat, float lon)
