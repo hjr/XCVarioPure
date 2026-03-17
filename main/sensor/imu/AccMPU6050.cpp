@@ -167,18 +167,18 @@ void AccMPU6050::postProcess() {
     rad_t gyro_heading_step = circle_omega * dt; // gyro heading change in this step (NED)
     circle_footing = Vector::normalizePI2(circle_footing + gyro_heading_step); // integrate gyro heading change to get the current circle footing
 
-    rad_t curh = 0;
-    if (theCompass && theCompass->cur_heading(&curh)) {
-        // tuned to plus 7% what gave the best timing swing in response, 2% for compass is far enough
-        // gyro and compass are time displaced, gyro comes immediate, compass a second later
-        fused_mag_heading += Vector::angleDiff(curh, fused_mag_heading) * 0.02 + gyro_heading_step;
-        filtered_mag_heading = Vector::normalizePI2(fused_mag_heading);
-        theCompass->setGyroHeading(filtered_mag_heading);
-        // ESP_LOGI( FNAME,"cur magn head %.2f gyro yaw: %.4f fused: %.1f Gyro(%.3f/%.3f/%.3f)", curh, gyroYaw, gh, gyroX, gyroY, gyroZ );
-    } else {
-        fused_mag_heading +=  gyro_heading_step;
-        Vector::normalizePI2( fused_mag_heading );
-    }
+    // rad_t curh = 0;
+    // if (theCompass && theCompass->cur_heading(&curh)) {
+    //     // tuned to plus 7% what gave the best timing swing in response, 2% for compass is far enough
+    //     // gyro and compass are time displaced, gyro comes immediate, compass a second later
+    //     fused_mag_heading += Vector::angleDiff(curh, fused_mag_heading) * 0.02 + gyro_heading_step;
+    //     filtered_mag_heading = Vector::normalizePI2(fused_mag_heading);
+    //     theCompass->setGyroHeading(filtered_mag_heading);
+    //     // ESP_LOGI( FNAME,"cur magn head %.2f gyro yaw: %.4f fused: %.1f Gyro(%.3f/%.3f/%.3f)", curh, gyroYaw, gh, gyroX, gyroY, gyroZ );
+    // } else {
+    //     fused_mag_heading +=  gyro_heading_step;
+    //     Vector::normalizePI2( fused_mag_heading );
+    // }
 
     // ESP_LOGI( FNAME,"GV-Pitch=%.1f  GV-Roll=%.1f filtered_mag_heading: %.2f curh: %.2f GX:%.3f GY:%.3f GZ:%.3f AX:%.3f AY:%.3f AZ:%.3f  FP:%.1f
     // FR:%.1f", euler.Pitch(), euler.Roll(), filtered_mag_heading, curh, gyro.a,gyro.b,gyro.c, accel.a, accel.b, accel.c, filterPitch_rad,

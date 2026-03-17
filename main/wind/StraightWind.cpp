@@ -112,16 +112,19 @@ bool StraightWind::calculateWind()
 	}
 
 	// ESP_LOGI(FNAME,"calculateWind flightMode: %d", CircleStraightWind::getFlightMode() );
-	// Check if straight wind requirements are fulfilled fixme
-	if( ! theCompass || ! theCompass->isCalibrated() ) {
-		if( ! theCompass ) {
-			status="Compass not available";
-		}
-		else if( ! theCompass->isCalibrated() ) {
-			status="Compass not calibrated";
-		}
-		return false;
-	}
+	// Check if straight wind requirements are fulfilled 
+	// fixme
+	return false; // currently no compass
+
+	// if( ! theCompass || ! theCompass->isCalibrated() ) {
+	// 	if( ! theCompass ) {
+	// 		status="Compass not available";
+	// 	}
+	// 	else if( ! theCompass->isCalibrated() ) {
+	// 		status="Compass not calibrated";
+	// 	}
+	// 	return false;
+	// }
 
 	// Get current ground speed in km/h
 	mps_t cgs = Flarm::getGndSpeed();
@@ -181,23 +184,23 @@ bool StraightWind::calculateWind()
 			ESP_LOGI( FNAME,"%s", log );
 		}
 
-		if( logging.get() & LOGG_GYRO_MAG ){
-			char log2[ProtocolItf::MAX_LEN];
-			sprintf( log2, "$IMU;");
-			int pos = strlen(log2);
-			vector_f acc = accSensor->getHead();
-			vector_f gyrodeg = gyroSensor->getHead() * rad2deg(1.f);
-			sprintf( log2+pos, ";%.3f;%.3f;%.3f;%.3f;%.3f;%.3f;%.3f;%.3f;%.3f",
-					theCompass->rawX()/16384.0,theCompass->rawY()/16384.0,theCompass->rawZ()/16384.0,
-					acc.x, acc.y, acc.z, gyrodeg.x, gyrodeg.y, gyrodeg.z );
-			pos = strlen(log2);
-			sprintf(log2+pos, "\n");
-			const NmeaPrtcl *prtcl = DEVMAN->getNMEA(NAVI_DEV); // Todo preliminary solution ..
-			if ( prtcl ) {
-				prtcl->sendXCV(log2);
-			}
-			ESP_LOGI( FNAME,"%s", log2 );
-		}
+		// if( logging.get() & LOGG_GYRO_MAG ){
+		// 	char log2[ProtocolItf::MAX_LEN];
+		// 	sprintf( log2, "$IMU;");
+		// 	int pos = strlen(log2);
+		// 	vector_f acc = accSensor->getHead();
+		// 	vector_f gyrodeg = gyroSensor->getHead() * rad2deg(1.f);
+		// 	sprintf( log2+pos, ";%.3f;%.3f;%.3f;%.3f;%.3f;%.3f;%.3f;%.3f;%.3f",
+		// 			theCompass->rawX()/16384.0,theCompass->rawY()/16384.0,theCompass->rawZ()/16384.0,
+		// 			acc.x, acc.y, acc.z, gyrodeg.x, gyrodeg.y, gyrodeg.z );
+		// 	pos = strlen(log2);
+		// 	sprintf(log2+pos, "\n");
+		// 	const NmeaPrtcl *prtcl = DEVMAN->getNMEA(NAVI_DEV); // Todo preliminary solution ..
+		// 	if ( prtcl ) {
+		// 		prtcl->sendXCV(log2);
+		// 	}
+		// 	ESP_LOGI( FNAME,"%s", log2 );
+		// }
 	}
 
 	if( (circleWind->getFlightMode() != circling_t::straight) || noWindMeasuring || !THok || !gpsStatus ){

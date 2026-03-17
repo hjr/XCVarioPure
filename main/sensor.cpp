@@ -876,29 +876,10 @@ void system_startup(void *args){
         logged_tests += passed_text;
     }
 
-    // magnetic sensor / compass selftest fixme move, register to list of sensors ..
-	if( theCompass ) {
-		logged_tests += "Compass test: ";
-		theCompass->begin();
-		ESP_LOGI( FNAME, "Magnetic sensor enabled: initialize");
-		esp_err_t err = theCompass->selfTest();
-		if( err == ESP_OK )		{
-			// Activate working of magnetic sensor
-			ESP_LOGI( FNAME, "Magnetic sensor selftest: OKAY");
-			logged_tests += passed_text;
-		}
-		else{
-			ESP_LOGI( FNAME, "Magnetic sensor selftest: FAILED");
-			MBOX->pushMessage(1, "Compass: FAILED");
-			logged_tests += failed_text;
-		}
-		// theCompass->start();  // start task
-	}
-
-	// hardware components now got all detected
-	if ( gflags.schedule_reboot ) {
-		MenuEntry::reBoot(3);
-	}
+    // hardware components now got all detected
+    if (gflags.schedule_reboot) {
+        MenuEntry::reBoot(3);
+    }
 
     // Initialize the glider polar data and Speed2Fly calculation
     Speed2Fly.begin();
