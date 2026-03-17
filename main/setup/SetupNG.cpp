@@ -668,7 +668,6 @@ SetupNG<DeviceNVS>		flarm_devsetup("FLARM", DeviceNVS() );
 SetupNG<DeviceNVS>		master_devsetup("MASTER", DeviceNVS() );
 SetupNG<DeviceNVS>		second_devsetup("SECOND", DeviceNVS() );
 SetupNG<DeviceNVS>		magleg_devsetup("MAGLEG", DeviceNVS() );
-SetupNG<DeviceNVS>		magsens_devsetup("MAGSENS", DeviceNVS() );
 SetupNG<DeviceNVS>		navi_devsetup("NAVI", DeviceNVS() );
 SetupNG<DeviceNVS>		flarm_host_setup("NAVIFLARM", DeviceNVS() );
 SetupNG<DeviceNVS>		flarm_host2_setup("NAVIFLDOWN", DeviceNVS() );
