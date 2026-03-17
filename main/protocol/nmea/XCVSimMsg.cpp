@@ -16,6 +16,7 @@
 #include "sensor/temp/TempSensor.h"
 #include "sensor/imu/AccMPU6050.h"
 #include "sensor/imu/GyroMPU6050.h"
+#include "sensor/mag/MagVSensor.h"
 #include "math/Trigonometry.h"
 #include "logdef.h"
 
@@ -84,6 +85,13 @@ dl_action_t XCVSimMsg::parse_Sens(NmeaPlugin *plg)
     vtmp.y = deg2rad(atof(sm->_frame.c_str() + word->at(10)));
     vtmp.z = deg2rad(atof(sm->_frame.c_str() + word->at(11)));
     if ( gyroSensor ) gyroSensor->pushAndPublish(vtmp, time);
+
+    if ( word->size() >= 15 ) {
+        vtmp.x = atof(sm->_frame.c_str() + word->at(12));
+        vtmp.y = atof(sm->_frame.c_str() + word->at(13));
+        vtmp.z = atof(sm->_frame.c_str() + word->at(14));
+        if ( magSensor ) magSensor->pushAndPublish(vtmp, time);
+    }
 
     return NOACTION; // never forward the simulation
 }
