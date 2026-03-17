@@ -22,7 +22,7 @@
 #include "protocol/CANPeerCaps.h"
 #include "setup/DataMonitor.h"
 #include "setup/SetupNG.h"
-#include "sensor/mag/Compass.h"
+#include "sensor/mag/MagVSensor.h"
 #include "sensor/gps/GpsVSensor.h"
 #include "sensor/temp/ds18b20.h"
 #include "sensor/temp/TempVSens.h"
@@ -462,8 +462,9 @@ Device* DeviceManager::addDevice(DeviceId did, ProtocolType proto, int listen_po
             dev->_link->incrDeviceCount();
 
             // for some devices we need to create some gears to process the data stream
+            // Do not straight register the sensors, because sequence matters a lot.
             if ( did == MAGLEG_DEV || did == MAGSENS_DEV ) {
-                Compass::createCompass(itf->getId());
+                MagVSensor::createMagVSensor();
             }
             else if ( did == FLARM_DEV ) {
                 GpsVSensor::createGpsVSensor(); // create flarm processor

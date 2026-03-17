@@ -11,6 +11,7 @@
 #include "sensor/SensorMgr.h"
 #include "sensor/VarioFilter.h"
 #include "sensor/gps/GpsVSensor.h"
+#include "sensor/mag/MagVSensor.h"
 #include "comm/BTspp.h"
 #include "comm/BTnus.h"
 #include "comm/OneWireBus.h"
@@ -151,6 +152,16 @@ static void toyFeed(int count) // Called at 5Hz from clientLoop or sensorloop
         default:
             ESP_LOGE(FNAME, "Protocol %d not supported error", ToyNmeaPrtcl->getProtocolId());
         }
+
+        // Some extra NMEA sentences
+        if( !(count%5) ) {
+            if ( compass_nmea_hdm.get() ) {
+                ToyNmeaPrtcl->sendXCVNmeaHDM(mag_hdm.get());
+            }
+            if ( compass_nmea_hdt.get() ) {
+                ToyNmeaPrtcl->sendXCVNmeaHDT(mag_hdt.get());
+            }
+        }
     }
 }
 
@@ -182,9 +193,10 @@ static void sensFeed(const NmeaPrtcl* prtcl) // called with full 10Hz rate from 
     } else {
         sprintf(log + pos, ",,,,,,");
     }
-    if (theCompass) {
+    if (magSensor) {
         pos = strlen(log);
-        sprintf(log + pos, ",%.4f,%.4f,%.4f", theCompass->rawX(), theCompass->rawY(), theCompass->rawZ());
+        const vector_f &mag = *magSensor->getHeadPtr();
+        sprintf(log + pos, ",%.4f,%.4f,%.4f", mag.x, mag.y, mag.z);
     }
     pos = strlen(log);
     sprintf(log + pos, "\r\n");
@@ -322,47 +334,6 @@ void readSensors(void *pvParameters)
             toyFeed(count);
         }
 
-        // big todo
-		if( theCompass ){
-			// ESP_LOGI(FNAME,"Compass, have sensor=%d  hdm=%d", compass->haveSensor(),  compass_nmea_hdt.get());
-			if( ! theCompass->calibrationIsRunning() ) {
-				// Trigger heading reading and low pass filtering. That job must be
-				// done periodically.
-				bool ok;
-				rad_t heading = theCompass->getGyroHeading( &ok );
-				if(ok){
-					if( (int)Units::rad_to_deg(heading) != (int)mag_hdm.get() && !(count%10) ){
-						mag_hdm.set(heading);
-					}
-					if( !(count%5) && compass_nmea_hdm.get() == true ) {
-						if ( ToyNmeaPrtcl ) {
-							ToyNmeaPrtcl->sendXCVNmeaHDM(heading);
-						}
-					}
-				}
-				else{
-					if( mag_hdm.get() != -1 )
-						mag_hdm.set( -1 );
-				}
-                // no true heading any more ..
-				// rad_t theading = theCompass->filteredTrueHeading( &ok );
-				// if(ok){
-				// 	if( (int)theading != (int)mag_hdt.get() && !(count%10) ){
-				// 		mag_hdt.set( theading );
-				// 	}
-				// 	if( !(count%5) && ( compass_nmea_hdt.get() == true )  ) {
-				// 		if ( ToyNmeaPrtcl ) {
-				// 			ToyNmeaPrtcl->sendXCVNmeaHDT(heading);
-				// 		}
-				// 	}
-				// }
-				// else{
-				// 	if( mag_hdt.get() != -1 )
-				// 		mag_hdt.set( -1 );
-				// }
-			}
-		}
-
         // Check on new clients connecting
         if (SetupCommon::isMaster() && client_sync_dataIdx < SetupCommon::numEntries()) {
             while (client_sync_dataIdx < SetupCommon::numEntries()) {
@@ -380,9 +351,6 @@ void readSensors(void *pvParameters)
             // battery voltage update
             if ( SetupCommon::isMaster() ) {
                 battery_voltage.set(BatVoltage->get());
-                if (theCompass) {
-                theCompass->ageIncr(); // huh
-                }
             }
 
             // Check auto s2f mode filter every second
@@ -529,6 +497,12 @@ void system_startup(void *args){
 	MyGliderPolarIndex = Polars::findMyGlider(glider_type.get());
 
 	AverageVario::begin();
+
+    // a couple volatile setup variable are used as black board are not valid from the beginning
+    // but the ctor does forcly set them valid with an init. value.
+    // work around for those optional values that are not valid until properly set
+    mag_hdm.setInvalid();
+    mag_hdt.setInvalid();
 
 	BatVoltage = new AnalogInput((22.0+1.2)/1200, ADC_CHANNEL_7); // created allways, but only used on master XCV
 	BatVoltage->begin(ADC_ATTEN_DB_0);  // for battery voltage
@@ -844,6 +818,10 @@ void system_startup(void *args){
             ESP_LOGI(FNAME, "Absolute pressure sensor TESTs failed");
         }
 
+        // last registered sensor is the optional mag sensor
+        if ( magSensor ) {
+            SensorRegistry::registerSensor(magSensor);
+        }
     }
     else {
         boot_screen->finish(1);

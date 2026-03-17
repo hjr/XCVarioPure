@@ -177,15 +177,18 @@ bool SetupNG<int>::inLimits() const {
 
 template <typename T>
 bool SetupNG<T>::set( T aval, bool dosync, bool doAct ) {
+    if constexpr (std::is_same_v<T, float>) {
+        flags._valid = !std::isnan(aval);
+    } else {
+        flags._valid = true;
+    }
+
     if( _value == aval && !dosync && !doAct) {
         // ESP_LOGI(FNAME,"Value already in config: %s(%s)", _key.data(), getValueAsStr().c_str() );
         return( true );
     }
+
     _value = aval;
-    flags._valid = true;
-    if constexpr (std::is_same_v<T, float>) {
-        flags._valid = !std::isnan(aval);
-    }
     if ( dosync ) {
         // ESP_LOGI( FNAME,"Syncing %s after set", _key.data());
         sync();
@@ -444,7 +447,7 @@ SetupNG<int>  			extwind_inst_dir( "EIWDD", 0.0, false, SYNC_BIDIR, VOLATILE ); 
 SetupNG<mps_t> 			extwind_inst_speed( "EIWDS", 0.0, false, SYNC_BIDIR, VOLATILE );
 SetupNG<int>  			extwind_status( "EWST", -1, false, SYNC_BIDIR, VOLATILE );
 SetupNG<rad_t>  		mag_hdm( "HDM", -1.0, false, SYNC_FROM_MASTER, VOLATILE );
-SetupNG<degree_t>  		mag_hdt( "HDT", -1.0, false, SYNC_FROM_MASTER, VOLATILE );
+SetupNG<rad_t>  		mag_hdt( "HDT", -1.0, false, SYNC_FROM_MASTER, VOLATILE );
 SetupNG<float>  		average_climb( "AVCL", 0.0, false, SYNC_NONE, VOLATILE );
 SetupNG<float>  		flap_pos( "FLPS", 0.0, false, SYNC_BIDIR, VOLATILE );
 SetupNG<pascal_t>  		statp( "STAT", 0.0, false, SYNC_FROM_MASTER, VOLATILE, calc_altis );

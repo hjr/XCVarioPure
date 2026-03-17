@@ -8,7 +8,7 @@
 
 #include "MagSensBin.h"
 
-#include "sensor/mag/Compass.h"
+#include "sensor/mag/MagVSensor.h"
 #include "Clock.h"
 #include "protocol/AliveMonitor.h"
 
@@ -37,8 +37,9 @@ dl_control_t MagSensBin::nextBytes(const char *cptr, int count)
 
     // Just check on 6 bytes telegram length
     if ( count == 6 ) {
-        if ( theCompass ) {
-            theCompass->dataSink()->fromExternal((vector_i16*)(cptr));
+        if ( magSensor ) {
+            vector_i16 *vptr = (vector_i16*)(cptr);
+            magSensor->inject(vptr->x, vptr->y, vptr->z);
         }
 
         if ( _connected > 0 ) {

@@ -143,7 +143,7 @@ void MultiGauge::update_nvs()
         _nvsvar = &te_netto;
         break;
     case MultiGauge::GAUGE_HEADING:
-        _nvsvar = &mag_hdm;
+        _nvsvar = &mag_hdt;
         break;
     case MultiGauge::GAUGE_SLIP:
         _nvsvar = &slip_angle;

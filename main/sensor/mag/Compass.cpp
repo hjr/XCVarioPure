@@ -157,8 +157,8 @@ void Compass::begin(){
 	// Deviation::begin();
 	loadCalibration();
 
-	mag_hdm.set( -1 );
-	mag_hdt.set( -1 );
+	// mag_hdm.set( -1 );
+	// mag_hdt.set( -1 );
 }
 
 // void Compass::start(){
