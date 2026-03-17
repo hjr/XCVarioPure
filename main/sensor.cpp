@@ -167,7 +167,7 @@ static void sensFeed(const NmeaPrtcl* prtcl) // called with full 10Hz rate from 
     int pos = strlen(log);
 
     int daymillis = Clock::getMillisMidnightUTC();
-    int delta = (GpsSensor) ? Clock::getMillis() - GpsSensor->getLastUpdateTimeMs() : 0;
+    int delta = (gpsSensor) ? Clock::getMillis() - gpsSensor->getLastUpdateTimeMs() : 0;
     if (delta < 0) {
         delta += 1000;
     }
