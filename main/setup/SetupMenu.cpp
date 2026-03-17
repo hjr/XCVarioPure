@@ -1337,28 +1337,13 @@ void system_menu_create_hardware_rotary(SetupMenu *top) {
 	sact->addEntry("Long Press");
 }
 
-void system_menu_create_ahrs_calib(SetupMenu* top) {
-    SetupMenuSelect* ahrs_calib_collect = new SetupMenuSelect("Axis calibration", RST_NONE, imu_calib);
-    ahrs_calib_collect->setHelp("Calibrate IMU to glider reference. Run the procedure by selecting Start.");
-    ahrs_calib_collect->addEntry("Cancel");
-    ahrs_calib_collect->addEntry("Start");
-    ahrs_calib_collect->addEntry("Reset");
-
-    SetupMenuValFloat* ahrs_ground_aa = new SetupMenuValFloat("Ground angle of attack", "°", imu_gaa, false, &glider_ground_aa);
-    ahrs_ground_aa->setHelp(
-        "Angle of attack with tail skid on the ground to adjust the AHRS reference. Change this any time to correct the AHRS horizon "
-        "level.");
-    ahrs_ground_aa->setPrecision(0);
-    top->addEntry(ahrs_calib_collect);
-    top->addEntry(ahrs_ground_aa);
-
+#ifdef DEBUG_AND_TEST
+void system_menu_create_hardware_ahrs_parameter(SetupMenu *top) {
     SetupMenuValFloat* lever_arm = new SetupMenuValFloat("CG Lever Arm", "m", nullptr, false, &imu_leverarm);
     lever_arm->setHelp(
         "Distance from XCVario back to the CG of the glider. Used to compensate accelerometer readings.");
     top->addEntry(lever_arm);
-}
 
-void system_menu_create_hardware_ahrs_parameter(SetupMenu *top) {
 	SetupMenuValFloat *ahrsgf = new SetupMenuValFloat("Gyro Max Trust", "x", nullptr, false, &ahrs_gyro_factor);
 	ahrsgf->setPrecision(0);
 	ahrsgf->setHelp("Maximum Gyro trust factor in artifical horizon");
@@ -1384,25 +1369,39 @@ void system_menu_create_hardware_ahrs_parameter(SetupMenu *top) {
 	gyrog->setHelp("Minimum accepted gyro rate in degree per second");
 	top->addEntry(gyrog);
 
-    SetupMenuValFloat* tcontrol = new SetupMenuValFloat("Temp Control", "°C", nullptr, false, &mpu_temperature);
-    tcontrol->setPrecision(0);
-    tcontrol->setHelp("Target temperature of AHRS sensor temp-controler, if supported in hardware (model > 2023)");
-    top->addEntry(tcontrol);
-
     SetupMenuSelect *ahrsdef = new SetupMenuSelect("Reset to Defaults", RST_NONE, set_ahrs_defaults);
 	top->addEntry(ahrsdef);
 	ahrsdef->setHelp(
 			"Set optimum default values for all AHRS Parameters as determined to the best practice");
 	ahrsdef->addEntry("Cancel");
 	ahrsdef->addEntry("Set Defaults");
-
 }
+#endif
 
 void system_menu_create_hardware_ahrs(SetupMenu *top) {
-	SetupMenu *ahrscalib = new SetupMenu("Calibration", system_menu_create_ahrs_calib);
-	ahrscalib->setHelp(
-			 "Bias & Reference of the AHRS Sensor: Place glider on horizontal underground, first the right wing down, then the left wing.");
-	top->addEntry(ahrscalib);
+    SetupMenuSelect* ahrs_calib_collect = new SetupMenuSelect("Axis calibration", RST_NONE, imu_calib);
+    ahrs_calib_collect->setHelp("Calibrate IMU to glider reference. Run the procedure by selecting Start.");
+    ahrs_calib_collect->addEntry("Cancel");
+    ahrs_calib_collect->addEntry("Start");
+    ahrs_calib_collect->addEntry("Reset");
+
+    SetupMenuValFloat* ahrs_ground_aa = new SetupMenuValFloat("Ground angle of attack", "°", imu_gaa, false, &glider_ground_aa);
+    ahrs_ground_aa->setHelp(
+        "Angle of attack with tail skid on the ground to adjust the AHRS reference. Change this any time to correct the AHRS horizon "
+        "level.");
+    ahrs_ground_aa->setPrecision(0);
+    top->addEntry(ahrs_calib_collect);
+    top->addEntry(ahrs_ground_aa);
+
+	SetupMenuValFloat* tcontrol = new SetupMenuValFloat("Temp Control", "°C", nullptr, false, &mpu_temperature);
+    tcontrol->setPrecision(0);
+    tcontrol->setHelp("Target temperature of AHRS sensor temp-controler, if supported in hardware (model > 2023)");
+    top->addEntry(tcontrol);
+
+	SetupMenuSelect *rpyl = new SetupMenuSelect("AHRS RPYL", RST_NONE, nullptr, &ahrs_rpyl_dataset);
+	top->addEntry(rpyl);
+	rpyl->setHelp("Send LEVIL AHRS like $RPYL sentence for artifical horizon");
+	rpyl->mkEnable();
 
 	// SetupMenuChar *ahrslc = new SetupMenuChar("License Key", "0A#", 4, RST_NONE, add_key, ahrs_licence.get().id);
 	// ahrslc->setHelp("Enter valid AHRS License Key to enabled the 'AHRS Option'");
@@ -1413,11 +1412,6 @@ void system_menu_create_hardware_ahrs(SetupMenu *top) {
 	ahrspa->setHelp("AHRS constants such as gyro trust and filtering");
 	top->addEntry(ahrspa);
 #endif
-
-	SetupMenuSelect *rpyl = new SetupMenuSelect("AHRS RPYL", RST_NONE, nullptr, &ahrs_rpyl_dataset);
-	top->addEntry(rpyl);
-	rpyl->setHelp("Send LEVIL AHRS like $RPYL sentence for artifical horizon");
-	rpyl->mkEnable();
 }
 
 void system_menu_create_hardware(SetupMenu *top) {
