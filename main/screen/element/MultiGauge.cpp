@@ -17,6 +17,7 @@
 #include "logdefnone.h"
 
 #include <cstdio>
+#include <cstring>
 
 
 extern AdaptUGC *MYUCG;
@@ -39,23 +40,28 @@ void MultiGauge::setDisplay(MultiDisplay d)
 void MultiGauge::draw()
 {
     float fval = 0;
-    switch (_display) {
-    case GAUGE_IAS_SPEED:
-    case GAUGE_TAS_SPEED:
-    case GAUGE_GND_SPEED:
-    case GAUGE_S2F:
-        fval = SpeedUnit->apply(_nvsvar->get());
-        break;
-    case GAUGE_NETTO:
-        fval = VarioUnit->apply(_nvsvar->get()) * 10.f;
-        break;
-    case GAUGE_HEADING:
-    case GAUGE_SLIP:
-        fval = Units::rad_to_deg(_nvsvar->get());
-        break;
-    default:
-        fval = _nvsvar->get();
-        break;
+    if ( ! _nvsvar->getValid() ) {
+        _dirty = true;
+    }
+    else {
+        switch (_display) {
+        case GAUGE_IAS_SPEED:
+        case GAUGE_TAS_SPEED:
+        case GAUGE_GND_SPEED:
+        case GAUGE_S2F:
+            fval = SpeedUnit->apply(_nvsvar->get());
+            break;
+        case GAUGE_NETTO:
+            fval = VarioUnit->apply(_nvsvar->get()) * 10.f;
+            break;
+        case GAUGE_HEADING:
+        case GAUGE_SLIP:
+            fval = Units::rad_to_deg(_nvsvar->get());
+            break;
+        default:
+            fval = _nvsvar->get();
+            break;
+        }
     }
     int val = fast_iroundf(fval);
 
@@ -66,16 +72,19 @@ void MultiGauge::draw()
     MYUCG->setFont(ucg_font_fub25_hn, true);
 
     char s[32];
-    if (vario_upper_gauge.get() == GAUGE_SLIP || vario_upper_gauge.get() == GAUGE_NETTO ) {
-        sprintf(s, "  %.1f", fval/10.f);
+    if ( ! _nvsvar->getValid() ) {
+        ESP_LOGI(FNAME, "nvs val not valid");
+        strcpy(s, "  ---");
+    }
+    else if (vario_upper_gauge.get() == GAUGE_SLIP || vario_upper_gauge.get() == GAUGE_NETTO ) {
+        sprintf(s, "  %.1f", fval);
     } else {
         // here we have only positive values
         if ( val >= 0 ) {
             sprintf(s, "  %3d", val);
-        } else {
-            strcpy(s, "---");
         }
     }
+
     MYUCG->setPrintPos(_ref_x - MYUCG->getStrWidth(s), _ref_y);
     MYUCG->print(s);
 
