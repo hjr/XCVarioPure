@@ -13,7 +13,7 @@
 #include "vector.h"
 #include "protocol/Clock.h"
 #include "sensor/imu/AccMPU6050.h"
-#include "logdef.h"
+#include "logdefnone.h"
 
 
 constexpr int DUTY_CYCLE_MS = 500; // 2Hz
