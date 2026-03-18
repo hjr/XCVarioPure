@@ -75,6 +75,9 @@ public:
     static auto begin() { return all_sensors.begin(); }
     static auto end()   { return all_sensors.end(); }
 
+    // for debug purposes
+    static void dump();
+
 private:
     static SensorEntry* find(SensorId id);
     static std::array<SensorEntry, MaxSensors> all_sensors;

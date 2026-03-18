@@ -20,6 +20,7 @@ std::array<SensorEntry, SensorRegistry::MaxSensors> SensorRegistry::all_sensors 
 
 bool SensorRegistry::registerSensor(SensorBase *s)
 {
+    ESP_LOGI(FNAME, "Sensor registration");
     if (!s) {
         ESP_LOGE(FNAME, "Attempt to register nullptr sensor");
         return false;
@@ -44,6 +45,7 @@ bool SensorRegistry::registerSensor(SensorBase *s)
 
 void SensorRegistry::deregisterSensor(SensorBase* s) {
     
+    ESP_LOGI(FNAME, "Sensor deregistration");
     for (auto& e : all_sensors) {
         if (e.sensor == s) {
             ESP_LOGI(FNAME, "Sensor %s deregistered", idmemo[static_cast<int>(e.id) & 0x3f]);
@@ -79,3 +81,14 @@ SensorEntry* SensorRegistry::find(SensorId id) {
         if (e.id == id) return &e;
     return nullptr;
 }
+
+#ifdef DEBUG_AND_TEST
+void SensorRegistry::dump() {
+    printf("Dumping registered sensors:\n");
+    for (const auto& e : all_sensors) {
+        if (e.isActive()) {
+            printf("  Sensor %s (0x%x), dutycycle: %d00ms\n", idmemo[static_cast<int>(e.id) & 0x3f], static_cast<int>(e.id), e.dutycycle);
+        }
+    }
+}
+#endif
