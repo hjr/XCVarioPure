@@ -74,7 +74,7 @@ void MultiGauge::draw()
     char s[32];
     if ( ! _nvsvar->getValid() ) {
         ESP_LOGI(FNAME, "nvs val not valid");
-        strcpy(s, "  ---");
+        strcpy(s, "   ---");
     }
     else if (vario_upper_gauge.get() == GAUGE_SLIP || vario_upper_gauge.get() == GAUGE_NETTO ) {
         sprintf(s, "  %.1f", fval);

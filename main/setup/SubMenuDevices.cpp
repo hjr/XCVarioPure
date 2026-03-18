@@ -429,7 +429,6 @@ static uint8_t create_dev(DeviceId did, InterfaceId iid)
         CANPeerCaps::updateCapsFromDev(did, true);
         if ( iid == BT_SPP || iid == BT_LE ) return RESTART_BT_CHANGE;
         if ( iid == WIFI_APSTA ) return RESTART_WIFI_CHANGE;
-        if ( did == MAGLEG_DEV ) return RESTART_SCHEDULED; // should not be needed -> fixme
     }
     return 0;
 }
