@@ -464,14 +464,18 @@ Device* DeviceManager::addDevice(DeviceId did, ProtocolType proto, int listen_po
             // for some devices we need to create some gears to process the data stream
             // Do not straight register the sensors, because sequence matters a lot.
             if ( did == MAGLEG_DEV || did == MAGSENS_DEV ) {
-                MagVSensor::createMagVSensor();
+                dev->_sensor = MagVSensor::createMagVSensor();
             }
             else if ( did == FLARM_DEV ) {
-                GpsVSensor::createGpsVSensor(); // create flarm processor
+                dev->_sensor = GpsVSensor::createGpsVSensor(); // create flarm processor
+            }
+            if ( nvsave && dev->_sensor ) {
+                SensorRegistry::registerSensor(dev->_sensor); // only when freshly configured (not a boot-up)
             }
         }
         else {
             // a sensor w/o a data link?
+            // currently all thoses are handled from one wire group update and are not registered (!)
             if ( iid == OW_BUS && OneWIRE && did == TEMPSENS_DEV ) {
                 dev->_sensor = OneWIRE->probeAndSetup(DS18B20_FAMILY); // DS18B20
             } else if ( iid == NO_PHY && did == TEMPSENS_DEV ) {
@@ -480,7 +484,7 @@ Device* DeviceManager::addDevice(DeviceId did, ProtocolType proto, int listen_po
             
             if ( ! dev->_sensor ) {
                 ESP_LOGW(FNAME, "Could not create sensor for device %d on itf %d", did, iid);
-                // this will suppress making it permanent
+                // suppress making it permanent
                 nvsave = false;
             }
         }
@@ -634,8 +638,10 @@ uint8_t DeviceManager::removeDevice(DeviceId did, bool nvsave)
     }
     refreshRouteCache();
 
+#ifdef DEBUG_AND_TEST
     ESP_LOGI(FNAME, "After remove device %d.", did);
     dumpMap();
+#endif
 
     return ret;
 }
@@ -865,15 +871,17 @@ void DeviceManager::undoReserveCANId(int prio)
     }
 }
 
+#ifdef DEBUG_AND_TEST
 void DeviceManager::dumpMap() const
 {
-    ESP_LOGI(FNAME, "Device map dump:");
+    printf("Device map dump:\n");
     for ( auto &it : _device_map ) {
         Device* d = it.second;
-        ESP_LOGI(FNAME, "%d: %p (did%d/%s(%d))", it.first, d, d->_id, d->_itf->getStringId(), d->_itf->getId());
+        printf(" %d: %p (did%d/%s(%d))\n", it.first, d, d->_id, d->_itf->getStringId(), d->_itf->getId());
         if ( d->_link ) d->_link->dumpProto();
     }
 }
+#endif
 
 void DeviceManager::startMonitoring(ItfTarget tgt)
 {
