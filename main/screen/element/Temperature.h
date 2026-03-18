@@ -23,7 +23,7 @@ public:
     Temperature(int16_t cx, int16_t cy) : ScreenElement(cx, cy) {}
     // API
     void setLarge(bool l) { _large = l; _x_offset = l ? 10 : 0; }
-    void draw(kelvin_t t, temp_status_t mputemp);
+    void draw(temp_status_t mputemp);
 
     // attributes
 private:

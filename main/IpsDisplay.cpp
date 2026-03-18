@@ -928,7 +928,7 @@ void IpsDisplay::drawDisplay(){
 
     // Temperature Value
     if( !(tick%12) ) {
-        OATgauge->draw(OAT.get(), (accSensor) ? accSensor->getTempStatus() : temp_status_t::MPU_T_UNKNOWN);
+        OATgauge->draw((accSensor) ? accSensor->getTempStatus() : temp_status_t::MPU_T_UNKNOWN);
     }
 
     // WK-Indicator
