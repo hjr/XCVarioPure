@@ -46,10 +46,11 @@ public:
 
 private:
     OwSens* getSensorByAddress(onewire_device_address_t addr);
+    void recoverOwBus();
     onewire_bus_t *_onewire = nullptr;
     static const int _ONEWIRE_BUS_GPIO;
     std::vector<OwSens*> _all_sensor;
-    int8_t errors = 0;
+    int16_t errors = 0;
 };
 
 extern OneWireBus *OneWIRE;

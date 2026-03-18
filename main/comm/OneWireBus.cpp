@@ -112,7 +112,8 @@ SensorBase* OneWireBus::probeAndSetup(uint8_t famid) {
                 // Already registered
                 s->setup(); // re-setup
                 ESP_LOGI(FNAME, "Device %016llX already registered", dev.address);
-                continue;
+                found_sensor = s;
+                break;
             }
 
             switch (family) {
@@ -136,7 +137,7 @@ SensorBase* OneWireBus::probeAndSetup(uint8_t famid) {
                 default:
                     ESP_LOGW(FNAME, "Unsupported OneWire family 0x%02X – ignored", family);
                     break;
-            }
+        }
         }
     }
 
@@ -184,11 +185,17 @@ bool OneWireBus::groupUpdate(uint32_t now_ms)
     const uint32_t UPDATE_INTERVAL_MS = 1000;  // Desired update interval
     const uint32_t MAX_CONVERSION_TIME_MS = 750;  // Max time for 12-bit conversion
 
-    if ( errors > 100 ) {
-        ESP_LOGW(FNAME, "Too many errors on OneWire bus, attempting recovery");
+    if ( errors > 200 ) {
+        ESP_LOGW(FNAME, "Wired OneWire bus errors, attempting hard recovery");
+        recoverOwBus();
+        errors = 0;
+        return false;
+    }
+    else if ( errors > 100 ) {
+        ESP_LOGW(FNAME, "Too many errors on OneWire bus, attempting soft recovery");
         busReset();
         for ( auto s : _all_sensor ) {
-            probeAndSetup(s->family()); // a reconnect attempt for all known devices
+            s->setup(); // re-setup
         }
         if ( _all_sensor.empty() ) {
             // a delayed first connect
@@ -197,8 +204,8 @@ bool OneWireBus::groupUpdate(uint32_t now_ms)
             if ( dev && !dev->_sensor ) {
                 dev->_sensor = probeAndSetup(DS18B20_FAMILY);
             }
+            errors = 0; // reset counter in case there are no sensors yet
         }
-        errors = 0; // reset counter in any case
         return false;
     }
 
@@ -254,4 +261,14 @@ OwSens *OneWireBus::getSensorByAddress(onewire_device_address_t addr)
         }
     }
     return nullptr;
+}
+
+// The big mallet method when everything seems to be lost.
+void OneWireBus::recoverOwBus()
+{
+    gpio_set_direction((gpio_num_t)_ONEWIRE_BUS_GPIO, GPIO_MODE_OUTPUT);
+    gpio_set_level((gpio_num_t)_ONEWIRE_BUS_GPIO, 0);
+    vTaskDelay(pdMS_TO_TICKS(5));   // > reset time
+    gpio_set_direction((gpio_num_t)_ONEWIRE_BUS_GPIO, GPIO_MODE_INPUT);
+    vTaskDelay(pdMS_TO_TICKS(1));
 }
