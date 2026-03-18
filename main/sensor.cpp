@@ -821,6 +821,10 @@ void system_startup(void *args){
             ESP_LOGI(FNAME, "Absolute pressure sensor TESTs failed");
         }
 
+        // register the GPS processer as sensor, it is created when e.g. a connected Flarm is configured
+        if (gpsSensor) {
+            SensorRegistry::registerSensor(gpsSensor);
+        }
         // last registered sensor is the optional mag sensor
         if ( magSensor ) {
             SensorRegistry::registerSensor(magSensor);
