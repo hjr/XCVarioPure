@@ -43,7 +43,7 @@
 #include "sensor/press_diff/AirspeedSensor.h"
 #include "AdaptUGC.h"
 #include "sensor.h"
-#include "logdef.h"
+#include "logdefnone.h"
 
 #include "comm/DeviceMgr.h"
 #include "math/Trigonometry.h"
