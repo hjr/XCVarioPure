@@ -28,14 +28,14 @@ class VarioFilter final : public SensorTP<float> {
     void postProcess() override;
 
     void configChange();
-    void resetKF();  // cope with disruptive events like a QNH adjustment
     void prepareForSimJump() { _prepare_sim_jump = 40; } // prepare for a disruptive jump in altitude in simulation mode
     float getAvgVario() const { return _avg_vario; }
     float getPolarSink() const { return _polar_sink; }
 
    private:
-    LowPassFilterT<float> _tealt_lpf;
     void init(meter_t alt);
+
+    LowPassFilterT<float> _tealt_lpf;
     uint32_t _prev_time = 0;
     Average<34, float, float> TEavg;
 #if FILTER == 0

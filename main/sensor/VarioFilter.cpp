@@ -34,15 +34,6 @@ static meter_t Altitude = 0.f;
 static meter_t predictAlt = 0.f;
 static meter_t lastAltitude = 0.f;
 
-void VarioFilter::init(meter_t alt)
-{
-    averageAlt = alt;
-    Altitude = alt;
-    predictAlt = alt;
-    lastAltitude = alt;
-    _tealt_lpf.reset(alt);
-}
-
 #if FILTER == 3
 struct VarioKF {
     // State
@@ -56,7 +47,7 @@ struct VarioKF {
     float R;     // measurement noise
     float sigma_a;
 
-    void init(meter_t h0) {
+    void reset(meter_t h0) {
         h = h0;
         v = 0.0f;
 
@@ -135,7 +126,20 @@ VarioFilter::VarioFilter() :
     setFilter(&_tealt_lpf);
 }
 // ~VarioFilter() {} .. never going to be deleted
-    
+
+void VarioFilter::init(meter_t alt)
+{
+    averageAlt = alt;
+    Altitude = alt;
+    predictAlt = alt;
+    lastAltitude = alt;
+    _tealt_lpf.reset(alt);
+#if FILTER == 3
+    vkf.reset(alt);
+    _filter->reset(alt);
+#endif
+}
+
 void VarioFilter::configChange() {
     // vario needle damping
     _lpf.setTau(vario_delay.get(), 0.1f); // 10 Hz
@@ -153,14 +157,6 @@ void VarioFilter::configChange() {
 #endif
 }
 
-#if FILTER == 3
-void VarioFilter::resetKF() {
-    meter_t h0 = altitude_isa.get();
-    vkf.init(h0); // KF
-    _filter->reset(h0);
-}
-#endif
-
 bool VarioFilter::setup() {
     // Decide if sensor readings come from local sensor or master (ctor gets called too early for this)
     if (SetupCommon::isMaster()) {
@@ -170,11 +166,8 @@ bool VarioFilter::setup() {
     }
 
     ESP_LOGI(FNAME, "VarioFilter setup as %s sensor with alt %f", (isLocalSensor(_id) ? "local" : "remote"), altitude.get());
-    init(altitude_isa.get());
+    init(altitude_isa.get() - 40); // make some start musik with the -40
     configChange();
-#if FILTER == 3
-    resetKF(); // reset the te_alt filter before entering the sensor loop
-#endif
     _prev_time = Clock::getMillis();
     return true;
 }
@@ -312,7 +305,7 @@ void VarioFilter::postProcess() {
     if (fabsf(pred_err) > 60.0f && _prepare_sim_jump) {
         // just re-/started sim mode, expect a time and height disruption, prepare KF for it
         meter_t h0 = getHead();
-        vkf.init(h0);
+        vkf.reset(h0);
         _filter->reset(h0);
         if (_prepare_sim_jump > 0) _prepare_sim_jump--;
         ESP_LOGW(FNAME, "VarioFilter SIM: large pred_err %f, re-init KF", pred_err);
