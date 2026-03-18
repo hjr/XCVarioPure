@@ -204,6 +204,7 @@ static void sensFeed(const NmeaPrtcl* prtcl) // called with full 10Hz rate from 
     prtcl->sendXCV(log);
 }
 
+// 5 Hz call
 static void checkWarnings()
 {
     static int16_t stall_warning_active = 0;
@@ -220,7 +221,7 @@ static void checkWarnings()
             if (!stall_warning_active) {
                 MBOX->pushMessage(4, "! STALL !", 20); // 20 sec
             }
-            if (stall_warning_active % 50 == 0) {
+            if (stall_warning_active % 10 == 0) { // repeaat sound after 5 sec
                 AUDIO->startSound(AUDIO_ALARM_STALL);
             }
             stall_warning_active++;
@@ -230,7 +231,7 @@ static void checkWarnings()
             MBOX->popMessage();
         }
     }
-    // Gear Warning fixme no need for this to be here, could be in sensor loop, no display context needed
+    // Gear Warning
     if (gear_warning.get()) {
         int gw = 0;
         if (gear_warning.get() == GW_EXTERNAL) {
@@ -243,6 +244,7 @@ static void checkWarnings()
         }
         if (gw) {
             if (!gear_warning_active && !stall_warning_active) {
+                // never repeat sound, only show message until condition is gone
                 AUDIO->startSound(AUDIO_ALARM_GEAR);
                 MBOX->pushMessage(4, "! GEAR !", 30);
                 gear_warning_active = true;
@@ -323,15 +325,18 @@ void readSensors(void *pvParameters)
 		if (FLAP && FLAP->haveAdcSensor()) { FLAP->progress(); }
 
         // The center aid
-        if ((count % 5) == 0) {
+        if ( !(count % 5) ) {
             if (theCenteraid) {
                 theCenteraid->tick(count);
             }
+
+            // Check on warnings
+            checkWarnings();
         }
 
-        // a 5Hz toy feed
-        if ((count % 2) == 0) {
-            toyFeed(count);
+        // 5Hz events
+        if ( !(count % 2) ) {
+            toyFeed(count); // Navi data stream
         }
 
         // Check on new clients connecting
@@ -357,6 +362,9 @@ void readSensors(void *pvParameters)
             if (S2FSWITCH) {
                 S2FSWITCH->checkCruiseMode();
             }
+
+            // Need to be done for client and main vario
+            s2f_ideal.set(Speed2Fly.calculate(te_netto.get(), !CRMOD.getCMode()));
         }
 
         // MinMax tracking
@@ -373,8 +381,6 @@ void readSensors(void *pvParameters)
 			airspeed_max.set( ias.get() );
 		}
 
-        // Need to be done for client and main vario
-        s2f_ideal.set(Speed2Fly.calculate(te_netto.get(), !CRMOD.getCMode()));
 
         if (OneWIRE) {
             // read one wire sensors
@@ -383,9 +389,6 @@ void readSensors(void *pvParameters)
 
         // audio update
         AUDIO->updateTone();
-
-        // Check on warnings
-        checkWarnings();
 
         // UI update, to not flood the UI queue with a binary hand shake
         if ( ui_update_done ) {
