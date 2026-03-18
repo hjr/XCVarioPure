@@ -40,6 +40,7 @@ void VarioFilter::init(meter_t alt)
     Altitude = alt;
     predictAlt = alt;
     lastAltitude = alt;
+    _tealt_lpf.reset(alt);
 }
 
 #if FILTER == 3
@@ -147,8 +148,11 @@ void VarioFilter::configChange() {
 #if FILTER == 0
     avgTE.setLength( vario_av_delay.get() );
 #endif
+#if FILTER == 0 || FILTER == 1
     TEavg.setLength( rint(vario_delay.get()*(10.0/3)) );
+#endif
 }
+
 #if FILTER == 3
 void VarioFilter::resetKF() {
     meter_t h0 = altitude_isa.get();
