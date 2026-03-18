@@ -133,6 +133,9 @@ public:
         }
     }
     virtual ~SensorTP() {
+        if ( _nvsvar ) {
+            _nvsvar->setInvalid();
+        }
     }
     void setNVSVar( SetupNG<float> *nvsvar ) {
         _nvsvar = nvsvar;
