@@ -239,14 +239,14 @@ void VarioFilter::postProcess() {
 	}
 	float err = (abs(curr_altitude - predictAlt) * 1000) + 1;
 	averageAlt += (curr_altitude - averageAlt) * 0.1;
-	float kg = (diff / (err*_errorval + diff)) * 0.2;
+	float kg = (diff / (err*_errorval + diff)) * 0.2; // 0.2 Kalman gain
 	Altitude += (adiff) * kg;
 	meter_t altDiff = Altitude - lastAltitude;
 	// ESP_LOGI(FNAME," altDiff %0.1f diff %0.1f", TE, diff);
 	lastAltitude = Altitude;
 	mps_t TEAVG = TEavg( altDiff / 0.1 ); // in m/s
 	predictAlt = Altitude + (TEAVG * 0.1);
-	_TEF += ((TEAVG - _TEF)) * _lpf.getAlpha();
+	_TEF += ((TEAVG - _TEF)) / vario_delay.get();
 
     te_vario.set(_TEF);
     _polar_sink = Speed2Fly.getSink(ias.get());
