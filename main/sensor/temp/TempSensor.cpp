@@ -18,6 +18,8 @@ TempSensor::TempSensor() :
     _lpf(0.5f)
 {
     _id = SensorId::TEMPERATURE;
+    _latency_ms = 750;      // 0.75 seconds
+    _valid_time_ms = 10000; // 10 seconds
     setNVSVar(&OAT);
     _lpf.reset(Units::C_to_K(15.f)); // initial guess for OAT
     setFilter(&_lpf);

@@ -16,7 +16,8 @@ GpsVSensor* gpsSensor = nullptr;
 GpsVSensor::GpsVSensor() : SensorTP<vector_f>(gps_buffer, DUTY_CYCLE_MS)
 {
     _id = SensorId::POSITION;
-    _latency_ms = 750; // classical Flarm latency
+    _latency_ms = 750;      // classical Flarm latency
+    _valid_time_ms = 5000;  // 5 seconds
 }
 
 GpsVSensor* GpsVSensor::createGpsVSensor() {

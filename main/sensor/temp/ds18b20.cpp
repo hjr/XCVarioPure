@@ -10,7 +10,7 @@
 
 #include "comm/OneWireBus.h"
 #include "math/Units.h"
-#include "logdefnone.h"
+#include "logdef.h"
 
 #include <onewire_bus.h>
 #include <onewire_crc.h>
@@ -77,8 +77,7 @@ bool DS18B20::doRead(float &val)
 
     // 5. Validate CRC
     if (err != ESP_OK || scratch[8] != OneWIRE->crc8(scratch, 8)) {
-        ESP_LOGE(FNAME, "DS18B20 error, return NAN");
-        val = NAN;
+        ESP_LOGE(FNAME, "DS18B20 error, return false");
         return false;
     }
 

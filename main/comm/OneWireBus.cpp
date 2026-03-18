@@ -225,9 +225,10 @@ bool OneWireBus::groupUpdate(uint32_t now_ms)
         if ( !sensor->doRead(val) ) {
             errors++;
             ESP_LOGE(FNAME, "Failed to read sensor %016llX", sensor->getAddress());
-            val = NAN; // Invalid value to indicate error (temp only)
+            sensor->timeoutValidity(); // mark NVS value as invalid
+        } else {
+            sensor->pushAndPublish(val, sensor->getConvertStartMs());
         }
-        sensor->pushAndPublish(val, sensor->getConvertStartMs());
 
         ESP_LOGI(FNAME, "OW sensor %016llX: %umsec %.2f", sensor->getAddress(), (unsigned)sensor->getConvertStartMs(), val);
     }

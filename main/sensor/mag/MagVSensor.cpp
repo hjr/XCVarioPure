@@ -79,7 +79,7 @@ void MagVSensor::inject(int16_t x, int16_t y, int16_t z)
     mv.z =  ((float)z - _bias.z) * _scale.z;
 
     // backdate the timestamp to approximate the actual measurement time
-    int time = Clock::getMillis() - _latency_ms;
+    int time = Clock::getMillis();
     pushAndPublish(mv, time);
 }
 
@@ -111,3 +111,4 @@ bool MagVSensor::loadCalibration() {
 
     return true;
 }
+
