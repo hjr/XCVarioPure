@@ -132,26 +132,26 @@ rad_t Compass::getGyroHeading( bool *ok, bool addDecl ){
 // 	return false;
 // }
 
-void Compass:: progress(){
-	bool rok;
-	rad_t hd = calc_heading( &rok );
-	if( rok == false ){
-		m_headingValid = false;
-	}else{
-		m_magn_heading = hd;
-		m_headingValid = true;
-	}
+// void Compass:: progress(){
+// 	bool rok;
+// 	rad_t hd = calc_heading( &rok );
+// 	if( rok == false ){
+// 		m_headingValid = false;
+// 	}else{
+// 		m_magn_heading = hd;
+// 		m_headingValid = true;
+// 	}
 
-	rad_t diff = Vector::angleDiff( m_gyro_fused_heading, _heading_average );
-	if( _heading_average == -1000 ) {
-		_heading_average = m_gyro_fused_heading;
-	}
-	else {
-		_heading_average += diff * (1/(10*compass_damping.get()));
-	}
-	_heading_average = Vector::normalizePI2( _heading_average );
-	// ESP_LOGI(FNAME,"average hd=%.1f mag:%.1f gfh:%.1f", _heading_average, m_magn_heading, m_gyro_fused_heading );
-}
+// 	rad_t diff = Vector::angleDiff( m_gyro_fused_heading, _heading_average );
+// 	if( _heading_average == -1000 ) {
+// 		_heading_average = m_gyro_fused_heading;
+// 	}
+// 	else {
+// 		_heading_average += diff * (1/(10*compass_damping.get()));
+// 	}
+// 	_heading_average = Vector::normalizePI2( _heading_average );
+// 	// ESP_LOGI(FNAME,"average hd=%.1f mag:%.1f gfh:%.1f", _heading_average, m_magn_heading, m_gyro_fused_heading );
+// }
 
 void Compass::begin(){
 	// Deviation::begin();
