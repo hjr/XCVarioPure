@@ -72,7 +72,6 @@ public:
     void reset() {
         _head = 0;
         _full = false;
-        std::memset(_buffer, 0, sizeof(T) * _capacity);
     }
     T operator[] (int index) const { // Always count from head backwards
         return _buffer[wrap_back(index)];
@@ -107,15 +106,17 @@ public:
     virtual bool isResting() const { return false; } // whether the sensor is in a calm state
     int getDutyCycle() const { return _update_interval_ms; }
     float getDutyCycleS() const { return (float)_update_interval_ms / 1000.0f; }
-    int getLastObservationTime() const { return _last_update_time_ms + _latency_ms; }
     inline int getLastUpdateTimeMs() const { return _last_update_time_ms; }
+    int getLastObservationTime() const { return _last_update_time_ms - _latency_ms; }
     inline int getLatency() const { return _latency_ms; }
+    inline int getValidDuration() const { return _valid_time_ms; }
     inline SensorId getId() const { return _id; }
 
 protected:
-    uint32_t _update_interval_ms;  ///< Expected update interval
-    uint32_t _latency_ms;          ///< Sensor conversion/acquisition latency
-    uint32_t _last_update_time_ms; ///< Time the update got registered
+    uint32_t _update_interval_ms;   ///< Expected update interval
+    uint32_t _latency_ms;           ///< Sensor conversion/acquisition latency
+    uint32_t _last_update_time_ms;  ///< Time the update got registered
+    uint32_t _valid_time_ms;        ///< Time interval the reading is considered valid and might be used
     SensorId _id; /// SensorId as integer
 };
 
@@ -158,7 +159,7 @@ public:
             pushAndPublish(value, now_ms);
         } else {
             // ESP_LOGE(FNAME, "Sensor %s read NAN", name());
-            pushToHistory(_invalid, now_ms);
+            timeoutValidity();
         }
 
         return true;
@@ -185,6 +186,15 @@ public:
     inline void pushAndPublish(const T& value, uint32_t now_ms) {
         pushToHistory(value, now_ms);
         publishNVS();
+    }
+    void timeoutValidity() {
+        _history.reset();
+        if constexpr (std::is_same_v<T, float>) { // only for float types
+            if (_nvsvar && _last_update_time_ms + _valid_time_ms < Clock::getMillis()) {
+                _nvsvar->setInvalid();
+                _processed = _invalid;
+            }
+        }
     }
 
     // get the integral over the las X milli seconds
@@ -314,7 +324,7 @@ public:
         return _history.getHeadPtr();
     }
     bool getHeadValid() const {
-        return _history.level() > 0 && (_last_update_time_ms + _update_interval_ms * 2 > Clock::getMillis());
+        return _history.level() > 0 && (_last_update_time_ms + _valid_time_ms > Clock::getMillis());
     }
     bool isValid(T val) const {
         if ( val != _invalid ) {

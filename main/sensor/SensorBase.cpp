@@ -12,7 +12,11 @@
 #include "SensorMgr.h"
 #include "logdef.h"
 
-SensorBase::SensorBase(int ums) : _update_interval_ms(ums), _latency_ms(0), _last_update_time_ms(0),
+SensorBase::SensorBase(int ums) :
+    _update_interval_ms(ums),
+    _latency_ms(0),
+    _last_update_time_ms(0),
+    _valid_time_ms(3*ums),
     _id(SensorId::NONE)
 {
     // Pls register sensors as needed for the read-sensor loop and in the proper order
