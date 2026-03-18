@@ -252,19 +252,19 @@ static int update_alti_buzz(SetupMenuSelect *p) {
 	return 0;
 }
 
-static int add_key(SetupMenuChar *p) {
-    ESP_LOGI(FNAME, "add_key( %s ) ", p->value());
-    if (p->value()[0] == '@') {
-        // hidden short-cut to delete the license key
-        ahrs_licence.set("");
-        p->reset();
-    } else {
-        ahrs_licence.set(p->value());
-    }
-    Cipher crypt;
-    gflags.ahrsKeyValid = crypt.checkKeyAHRS();
-    return 0;
-}
+// static int add_key(SetupMenuChar *p) {
+//     ESP_LOGI(FNAME, "add_key( %s ) ", p->value());
+//     if (p->value()[0] == '@') {
+//         // hidden short-cut to delete the license key
+//         ahrs_licence.set("");
+//         p->reset();
+//     } else {
+//         ahrs_licence.set(p->value());
+//     }
+//     Cipher crypt;
+//     gflags.ahrsKeyValid = crypt.checkKeyAHRS();
+//     return 0;
+// }
 
 static int imu_gaa(SetupMenuValFloat *f) {
     if (accSensor && !(imu_reference.get() == Quaternion())) {
