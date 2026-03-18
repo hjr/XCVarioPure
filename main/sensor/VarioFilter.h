@@ -9,7 +9,7 @@
 #include <driver/gpio.h>
 
 
-#define FILTER 1
+#define FILTER 0
 
 //
 // Implementation of a stable Vario with flight optimized Iltis-Kalman filter
@@ -41,7 +41,7 @@ class VarioFilter final : public SensorTP<float> {
 #if FILTER == 0
     Average<60, float, float> avgTE;
 #endif
-    int16_t _te_filter_idx;
+    int16_t _te_tau_10;
     LowPassFilterT<float> _lpf{0.25f};
     int16_t _avg_filter_idx;
     // some usefull derived values

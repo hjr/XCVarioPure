@@ -137,7 +137,7 @@ VarioFilter::VarioFilter() :
     
 void VarioFilter::configChange() {
     // vario needle damping
-    _te_filter_idx = fast_iroundf(vario_delay.get() * 10.0f / 3);
+    _te_tau_10 = std::min(fast_iroundf(vario_delay.get() * 10.0f), 1); // map tau [sec] to entry index in 10Hz history buffer
     _lpf.setTau(vario_delay.get(), 0.1f); // 10 Hz
 #if FILTER == 3
     vkf.setTau(vario_delay.get()); // KF
@@ -222,7 +222,6 @@ void VarioFilter::postProcess() {
     static float _errorval = 1.6;
     static mps_t _TEF = 0.f;
     static int N = 0;
-    static mps_t _avgTE = 0.f;
 
     N++;
 	// ESP_LOGI(FNAME,"TE alt: %4.3f m, ST: %.1f PI: %.1f", _currentAlt, barP, (dynP*100) );
@@ -251,23 +250,13 @@ void VarioFilter::postProcess() {
 
 	if( !(N%10) ){ // every second one sample
 		_avg_vario = avgTE( _TEF );
-		// ESP_LOGI(FNAME," _avgTE: %f ", _avg_vario);
+		// ESP_LOGI(FNAME," avgTE: %f ", _avg_vario);
 	}
     AverageVario::newSample(_TEF);
 }
 #elif defined(FILTER) && FILTER == 1
 // a legacy copy with some adjustments and more logging, no change in the actual filter behavior
 void VarioFilter::postProcess() {
-    // TE vario calculation
-    pascal_t te = 0.f;
-    if (_history.level() > _te_filter_idx) {
-        pascal_t tecurr = getHead();
-        te = (tecurr - _history[1]) * 10.f;  // in m/s
-    }
-    te_vario.set(_lpf.filter(te));
-    _polar_sink = Speed2Fly.getSink(ias.get());
-    te_netto.set(te - _polar_sink);
-
     constexpr const float errorval = 1.6;
     static mps_t _TEF = 0.f;
 
@@ -308,11 +297,11 @@ void VarioFilter::postProcess() {
 void VarioFilter::postProcess() {
     // TE vario calculation
     mps_t te = 0.f;
-    if (_history.level() > _te_filter_idx) {
+    if (_history.level() > _te_tau_10) {
         float tecurr = getHead();
-        te = (tecurr - _history[1]) * 10.f;  // in m/s
+        te = (tecurr - _history[_te_tau_10]) * 10.f / _te_tau_10;  // in m/s
     }
-    te_vario.set(_lpf.filter(te));
+    te_vario.set(te);
     _polar_sink = Speed2Fly.getSink(ias.get());
     te_netto.set(te - _polar_sink);
 
