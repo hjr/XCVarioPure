@@ -137,7 +137,6 @@ VarioFilter::VarioFilter() :
     
 void VarioFilter::configChange() {
     // vario needle damping
-    _te_tau_10 = std::min(fast_iroundf(vario_delay.get() * 10.0f), 1); // map tau [sec] to entry index in 10Hz history buffer
     _lpf.setTau(vario_delay.get(), 0.1f); // 10 Hz
 #if FILTER == 3
     vkf.setTau(vario_delay.get()); // KF
@@ -291,27 +290,6 @@ void VarioFilter::postProcess() {
         // ESP_LOGI(FNAME, "VarioFilter: H:%f 1:%f avg:%f", getHead(), _history[_avg_filter_idx], avg);
     }
     AverageVario::newSample( _TEF );
-}
-#elif defined(FILTER) && FILTER == 2
-// a stupid straight exponential moving average
-void VarioFilter::postProcess() {
-    // TE vario calculation
-    mps_t te = 0.f;
-    if (_history.level() > _te_tau_10) {
-        float tecurr = getHead();
-        te = (tecurr - _history[_te_tau_10]) * 10.f / _te_tau_10;  // in m/s
-    }
-    te_vario.set(te);
-    _polar_sink = Speed2Fly.getSink(ias.get());
-    te_netto.set(te - _polar_sink);
-
-    // the big AVG value
-    // ESP_LOGI(FNAME, "VarioFilter::postProcess history level: %d avg_idx: %d", _history.level(), _avg_filter_idx);
-    if (_history.level() > _avg_filter_idx) {
-        _avg_vario = (getHead() - _history[_avg_filter_idx]) * (10.f / (_avg_filter_idx + 1));  // in m/s
-        // ESP_LOGI(FNAME, "VarioFilter: H:%f 1:%f avg:%f", getHead(), _history[_avg_filter_idx], avg);
-    }
-    AverageVario::newSample(_lpf.get());
 }
 #elif defined(FILTER) && FILTER == 3
 // Kalman Filter based TE compensation, no additional LPF
