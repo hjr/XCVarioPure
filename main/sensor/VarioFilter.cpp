@@ -200,16 +200,17 @@ bool VarioFilter::doRead(float& val) {
         curr_altitude = teSensor->readAltitudeISA(success);
     }
 
+    val = curr_altitude;
     // linear prediction and innovation gating
-    const float max_10thsec_step = 8.0f;  // max 80 m/s vertical speed
-    if (accept(curr_altitude, max_10thsec_step) || _prepare_sim_jump) {
-        val = curr_altitude;
-        // ESP_LOGI(FNAME, "VarioFilter: accepted alt %f", curr_altitude);
-    } else {
-        float predicted = predict();
-        val = curr_altitude + max_10thsec_step * ((predicted > curr_altitude) ? 1.0f : -1.0f);
-        ESP_LOGW(FNAME, "VarioFilter: rejected alt %f, predicted %0.2f", curr_altitude, predicted);
-    }
+    // const float max_10thsec_step = 8.0f;  // max 80 m/s vertical speed
+    // if (accept(curr_altitude, max_10thsec_step) || _prepare_sim_jump) {
+    //     val = curr_altitude;
+    //     // ESP_LOGI(FNAME, "VarioFilter: accepted alt %f", curr_altitude);
+    // } else {
+    //     float predicted = predict();
+    //     val = curr_altitude + max_10thsec_step * ((predicted > curr_altitude) ? 1.0f : -1.0f);
+    //     ESP_LOGW(FNAME, "VarioFilter: rejected alt %f, predicted %0.2f", curr_altitude, predicted);
+    // }
     return true;
 }
 
