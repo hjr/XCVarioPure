@@ -20,14 +20,14 @@ std::array<SensorEntry, SensorRegistry::MaxSensors> SensorRegistry::all_sensors 
 
 bool SensorRegistry::registerSensor(SensorBase *s)
 {
-    ESP_LOGI(FNAME, "Sensor registration");
+    // ESP_LOGI(FNAME, "Sensor registration");
     if (!s) {
         ESP_LOGE(FNAME, "Attempt to register nullptr sensor");
         return false;
     }
     SensorId id = s->getId();
     if ( find(id) ) {
-        ESP_LOGI(FNAME, "Sensor %s already registered", idmemo[static_cast<int>(id) & 0x3f]);
+        ESP_LOGW(FNAME, "Sensor %s already registered", idmemo[static_cast<int>(id) & 0x3f]);
         return false; // already registered
     }
 
@@ -35,7 +35,7 @@ bool SensorRegistry::registerSensor(SensorBase *s)
     for (auto& e : all_sensors) {
         if (!e.isActive()) {
             e = { id, s, s->getDutyCycle() / 100 }; // store dutycycle in 100ms units
-            ESP_LOGI(FNAME, "%d. %s sensor 0x%x registered with dutycycle %d00msec", idx, idmemo[static_cast<int>(id) & 0x3f], static_cast<int>(id), e.dutycycle);
+            ESP_LOGW(FNAME, "%d. %s sensor 0x%x registered with dutycycle %d00msec", idx, idmemo[static_cast<int>(id) & 0x3f], static_cast<int>(id), e.dutycycle);
             return true;
         }
         idx++;
@@ -48,7 +48,7 @@ void SensorRegistry::deregisterSensor(SensorBase* s) {
     ESP_LOGI(FNAME, "Sensor deregistration");
     for (auto& e : all_sensors) {
         if (e.sensor == s) {
-            ESP_LOGI(FNAME, "Sensor %s deregistered", idmemo[static_cast<int>(e.id) & 0x3f]);
+            ESP_LOGW(FNAME, "Sensor %s deregistered", idmemo[static_cast<int>(e.id) & 0x3f]);
             e.id = SensorId::NONE;
             e.sensor = nullptr;
             e.dutycycle = 0;
@@ -61,7 +61,7 @@ void SensorRegistry::removeFromUpdateLoop(SensorId id)
 {
     SensorEntry *entry = find(id);
     if (entry) {
-        ESP_LOGI(FNAME, "Sensor %s removed from update loop", idmemo[static_cast<int>(entry->id) & 0x3f]);
+        ESP_LOGW(FNAME, "Sensor %s removed from update loop", idmemo[static_cast<int>(entry->id) & 0x3f]);
         entry->id = entry->id & ~SensorFlags::SENSOR_LOCAL; // clear local sensor flag
     }
 }

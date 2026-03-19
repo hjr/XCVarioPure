@@ -895,7 +895,7 @@ void system_startup(void *args){
 #endif
 
     Version myVersion;
-    ESP_LOGI(FNAME, "Program Version %s", myVersion.version());
+    ESP_LOGI(FNAME, "Firmware Version %s", myVersion.version());
     printf("\n\n%s", logged_tests.c_str());
     if (!selftestPassed) {
         printf("\nSelftest failed, see above LOG for Problems\n\n");
