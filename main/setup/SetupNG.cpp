@@ -670,6 +670,7 @@ SetupNG<DeviceNVS>		magleg_devsetup("MAGLEG", DeviceNVS() );
 SetupNG<DeviceNVS>		navi_devsetup("NAVI", DeviceNVS() );
 SetupNG<DeviceNVS>		flarm_host_setup("NAVIFLARM", DeviceNVS() );
 SetupNG<DeviceNVS>		flarm_host2_setup("NAVIFLDOWN", DeviceNVS() );
+SetupNG<DeviceNVS>		flarm_host3_setup("FLARMDISP", DeviceNVS() );
 SetupNG<DeviceNVS>		radio_host_setup("NAVIRADIO", DeviceNVS() );
 SetupNG<DeviceNVS>		krt_devsetup("KRTRADIO", DeviceNVS() );
 SetupNG<DeviceNVS>		atr_devsetup("ATRIRADIO", DeviceNVS() );

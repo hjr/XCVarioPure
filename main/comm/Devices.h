@@ -34,6 +34,7 @@ enum DeviceId : uint8_t
     FLARM_PROXY,
     RADIO_PROXY,
     TEMPSENS_DEV,
+    FLARM_HOST3_DEV,
     TEST_DEV,
     TEST_DEV2
 };

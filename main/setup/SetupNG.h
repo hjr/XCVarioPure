@@ -443,6 +443,7 @@ extern SetupNG<DeviceNVS>	magleg_devsetup;
 extern SetupNG<DeviceNVS>	navi_devsetup;
 extern SetupNG<DeviceNVS>	flarm_host_setup;
 extern SetupNG<DeviceNVS>	flarm_host2_setup;
+extern SetupNG<DeviceNVS>	flarm_host3_setup;
 extern SetupNG<DeviceNVS>	radio_host_setup;
 extern SetupNG<DeviceNVS>	krt_devsetup;
 extern SetupNG<DeviceNVS>	atr_devsetup;

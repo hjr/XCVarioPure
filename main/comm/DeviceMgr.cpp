@@ -9,6 +9,7 @@
 #include "DeviceMgr.h"
 
 #include "Configuration.h"
+#include "InterfaceCtrl.h"
 #include "Messages.h"
 #include "CanBus.h"
 #include "WifiApSta.h"
@@ -75,6 +76,7 @@ static const std::pair<RoutingTarget, const RoutingTarget*> Routes[] = {
     { RoutingTarget(NAVI_DEV, NO_PHY, 0), navi_routes },
     { RoutingTarget(FLARM_HOST_DEV, NO_PHY, 0), fhost_routes },
     { RoutingTarget(FLARM_HOST2_DEV, NO_PHY, 0), fhost_routes },
+    { RoutingTarget(FLARM_HOST3_DEV, NO_PHY, 0), fhost_routes },
     { RoutingTarget(XCVARIOFIRST_DEV, NO_PHY, 0), xcv_proxy_routes },
     { RoutingTarget(XCVARIOSECOND_DEV, NO_PHY, 0), xcv_proxy_routes }
 };
@@ -137,6 +139,8 @@ constexpr std::pair<DeviceId, DeviceAttributes> DEVATTR[] = {
     {DeviceId::FLARM_HOST2_DEV, {"Flarm Download", {{WIFI_APSTA, BT_SPP}}, {{FLARMHOST_P, FLARMBIN_P}, 2}, 8881, IS_SEL, &flarm_host2_setup}},
     {DeviceId::FLARM_HOST2_DEV, {"", {{BT_SPP}}, {{FLARMHOST_P, FLARMBIN_P}, 2}, 0, 0, nullptr}},
     {DeviceId::FLARM_HOST2_DEV, {"", {{BT_LE}}, {{FLARMHOST_P, FLARMBIN_P}, 2}, 0, 0, nullptr}},
+    {DeviceId::FLARM_HOST3_DEV, {"Flarm Display", {{S1_RS232, S2_RS232}}, {{FLARMHOST_P}, 1}, 0, IS_SEL, &flarm_host3_setup}},
+    {DeviceId::FLARM_HOST3_DEV, {"", {{S2_RS232}}, {{FLARMHOST_P}, 1}, 0, 0, nullptr}},
     {DeviceId::RADIO_REMOTE_DEV, {"Radio remote", {{WIFI_APSTA}}, {{KRT2_REMOTE_P}, 1}, 8882, IS_SEL, &radio_host_setup}},
     {DeviceId::RADIO_KRT2_DEV, {"KRT 2", {{S2_RS232}}, {{KRT2_REMOTE_P}, 1}, 0, IS_SEL, &krt_devsetup}},
     {DeviceId::RADIO_ATR833_DEV, {"ATR833", {{S2_RS232}}, {{ATR833_REMOTE_P}, 1}, 0, IS_SEL, &atr_devsetup}},
