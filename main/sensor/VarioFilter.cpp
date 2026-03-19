@@ -16,7 +16,7 @@
 #include "S2F.h"
 #include "AverageVario.h"
 #include "setup/SetupNG.h"
-#include "logdefnone.h"
+#include "logdef.h"
 
 
 #include <cmath>
@@ -274,7 +274,7 @@ void VarioFilter::postProcess() {
 	lastAltitude = Altitude;
 	float TEAVG = TEavg( altDiff / 0.1 ); // in m/s
 	predictAlt = Altitude + (TEAVG * 0.1);
-	_TEF += ((TEAVG - _TEF)) * _lpf.getAlpha();
+	_TEF += ((TEAVG - _TEF)) / vario_delay.get();
 
     te_vario.set(_TEF);
     // ESP_LOGI(FNAME, "VarioFilter ias: %f", ias.get());
