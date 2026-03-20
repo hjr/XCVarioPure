@@ -6,4 +6,9 @@
  ***       Copyright (C) Rohs Engineering Design         ***
  ***********************************************************/
 
+#include "ScreenElement.h"
+
+#include "Colors.h"
+
+const ucg_color_t ndl_color[3] = {{COLOR_WHITE}, {COLOR_ORANGE}, {COLOR_RED}};
 

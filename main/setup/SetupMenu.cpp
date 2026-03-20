@@ -1033,18 +1033,6 @@ void screens_menu_create_extreme_records(SetupMenu *top) {
 }
 
 static void screens_menu_create_vario(SetupMenu *top) {
-    // SetupMenuSelect *ncolor = new SetupMenuSelect("Needle Color", RST_NONE, nullptr, &needle_color);
-    // ncolor->addEntry("White");
-    // ncolor->addEntry("Orange");
-    // ncolor->addEntry("Red");
-    // top->addEntry(ncolor);
-    SetupMenuSelect *scrcaid = new SetupMenuSelect("Therm.-Assist", RST_NONE, caid_reference, &vario_centeraid);
-    scrcaid->setHelp("The thermal assistant; with reference on top, or on the side.");
-    scrcaid->addEntry(ENABLE_MODE[0].data());
-    scrcaid->addEntry("Topref");
-    scrcaid->addEntry("Sideref");
-    top->addEntry(scrcaid);
-
     SetupMenuSelect *tgauge = new SetupMenuSelect("Upper Gauge", RST_NONE, nullptr, &vario_upper_gauge);
     tgauge->setHelp("Choose the content for this gauge");
     tgauge->addEntry("Disable", MultiGauge::GAUGE_NONE);
@@ -1061,6 +1049,18 @@ static void screens_menu_create_vario(SetupMenu *top) {
     bgauge->setHelp("Choose the content for this gauge");
     bgauge->mkEnable("Altimeter");
     top->addEntry(bgauge);
+
+    SetupMenuSelect* mc = new SetupMenuSelect("McCready Gauge", RST_NONE, nullptr, &vario_mc_gauge);
+    mc->setHelp("Show the currently used McCready setting");
+    mc->mkEnable();
+    top->addEntry(mc);
+
+    SetupMenuSelect *scrcaid = new SetupMenuSelect("Therm.-Assist", RST_NONE, caid_reference, &vario_centeraid);
+    scrcaid->setHelp("The thermal assistant; with reference on top, or on the side.");
+    scrcaid->addEntry(ENABLE_MODE[0].data());
+    scrcaid->addEntry("Topref");
+    scrcaid->addEntry("Sideref");
+    top->addEntry(scrcaid);
 
     SetupMenuSelect *wke = new SetupMenuSelect("Flap-Assist", RST_NONE, nullptr, &flapbox_enable);
     wke->mkEnable();
@@ -1079,6 +1079,12 @@ static void screens_menu_create_vario(SetupMenu *top) {
     batv->addEntry("Voltage");
     batv->addEntry("Voltage Big");
     top->addEntry(batv);
+
+    SetupMenuSelect *ncolor = new SetupMenuSelect("Needle Color", RST_NONE, nullptr, &needle_color);
+    ncolor->addEntry("White");
+    ncolor->addEntry("Orange");
+    ncolor->addEntry("Red");
+    top->addEntry(ncolor);
 }
 
 void screens_menu_create_gload(SetupMenu *top) {
@@ -1133,11 +1139,6 @@ static void options_menu_create_screens(SetupMenu *top) { // dynamic!
 
 		SetupMenu *vario = new SetupMenu("Variometer", screens_menu_create_vario);
 		top->addEntry(vario);
-
-        SetupMenuSelect *mc = new SetupMenuSelect("McCready Gauge", RST_NONE, nullptr, &vario_mc_gauge);
-        mc->setHelp("Show the currently used McCready setting");
-        mc->mkEnable();
-        top->addEntry(mc);
 
 		SetupMenu *gload = new SetupMenu("G-Meter", screens_menu_create_gload);
 		top->addEntry(gload);
