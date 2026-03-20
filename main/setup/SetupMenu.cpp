@@ -1493,7 +1493,6 @@ void system_menu_create(SetupMenu *sye) {
 	// XCV role
 	SetupMenuSelect *role = new SetupMenuSelect("XCV device role", RST_IMMEDIATE, nullptr, &xcv_role);
 	role->setHelp("Set the intended role of this device first (needs a reboot)");
-	// role->addEntry("None", NO_ROLE); hidden, because there is no use case currently
 	role->addEntry("Master", MASTER_ROLE);
 	role->addEntry("Second", SECOND_ROLE);
 	sye->addEntry(role);
