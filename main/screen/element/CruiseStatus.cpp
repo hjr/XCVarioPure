@@ -30,7 +30,7 @@ void CruiseStatus::draw() {
         MYUCG->setColor(COLOR_BLACK);
         MYUCG->drawBox(_ref_x - (SYMBOL_SIZE+3), _ref_y - (SYMBOL_SIZE+3), 2*SYMBOL_SIZE+6, 2*SYMBOL_SIZE+6);
 
-        MYUCG->setColor(COLOR_WHITE);
+        MYUCG->setColor(COLOR_WGREY);
         if (CRMOD.getCMode()) {
             // draw litte arrow
             MYUCG->drawTetragon(_ref_x - SYMBOL_SIZE, _ref_y - 5, _ref_x - SYMBOL_SIZE-1, _ref_y - 1,
@@ -50,7 +50,7 @@ void CruiseStatus::draw() {
 
     // write netto mode in case set
     if (CRMOD.isNetto()) {
-        MYUCG->setColor(COLOR_WHITE);
+        MYUCG->setColor(COLOR_WGREY);
     } else {
         MYUCG->setColor(COLOR_BLACK);
     }

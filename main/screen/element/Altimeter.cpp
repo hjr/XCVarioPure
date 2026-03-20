@@ -68,7 +68,7 @@ void Altimeter::drawUnit()
     else
         sprintf(s, "%d ", fast_iroundf_positive(qnh));
     MYUCG->setPrintPos(_ref_x+5, _ref_y+3-16);
-    MYUCG->setColor( COLOR_WHITE );
+    MYUCG->setColor(COLOR_WGREY);
     MYUCG->print(s);
 }
 

@@ -78,7 +78,7 @@ bool ArrowIndicator::draw(int16_t val)
         int16_t x_2 = _gauge.CosCenteredDeg2(_needle_pos, _root + 7);
         int16_t y_2 = _gauge.SinCenteredDeg2(_needle_pos, _root + 7);
         if( change ){
-            MYUCG->setColor(COLOR_WGREY);
+            MYUCG->setColor(COLOR_MGREY);
             MYUCG->drawTriangle(prev.x_0, prev.y_0, prev.x_1, prev.y_1, x_2, y_2);
         }
 
@@ -88,7 +88,7 @@ bool ArrowIndicator::draw(int16_t val)
 
         // cleanup respecting overlap
         if( change ){  // we need to cleanup only if position has changed, otherwise a redraw at same position is enough
-            MYUCG->setColor(COLOR_WGREY);
+            MYUCG->setColor(COLOR_MGREY);
             // clear area to the side
             if (val > _needle_pos)
             {
@@ -105,7 +105,7 @@ bool ArrowIndicator::draw(int16_t val)
     {
         if( change ){
             // cleanup previous incarnation
-            MYUCG->setColor(COLOR_WGREY);
+            MYUCG->setColor(COLOR_MGREY);
             MYUCG->drawTriangle(prev.x_0, prev.y_0, prev.x_1, prev.y_1, prev.x_2, prev.y_2);
             // draw pointer
             MYUCG->setColor(color.color[0], color.color[1], color.color[2]);

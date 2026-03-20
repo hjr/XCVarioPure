@@ -20,7 +20,7 @@ void McCready::draw(mps_t mc)
 {
     if ( std::abs(mc-_mcval) > 0.05 || _dirty ) {
         _mcval = mc;
-        MYUCG->setColor(COLOR_WHITE);
+        MYUCG->setColor(COLOR_WGREY);
         if( _large ) {
             MYUCG->setFont(ucg_font_fub20_hn, false);
         } else {

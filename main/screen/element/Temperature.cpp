@@ -42,11 +42,11 @@ void Temperature::draw(temp_status_t mputemp)
                 if (tu < -0.05f) {
                     MYUCG->setColor(COLOR_BBLUE);
                 } else {
-                    MYUCG->setColor(COLOR_WHITE);
+                    MYUCG->setColor(COLOR_WGREY);
                 }
             } else {
                 strcpy(s, "     --- ");
-                MYUCG->setColor(COLOR_WHITE);
+                MYUCG->setColor(COLOR_WGREY);
             }
             ESP_LOGI(FNAME,"drawTemperature: %d,%d %s", _ref_x, _ref_y, s);
             int16_t fl = MYUCG->getStrWidth(s);

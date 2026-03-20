@@ -36,7 +36,7 @@ WindIndicator::WindIndicator(PolarGauge &g, bool live) :
         _color = { COLOR_ORANGE };
     }
     else {
-        _color = { COLOR_BBLUE };
+        _color = { COLOR_LBBLUE };
     }
 }
 

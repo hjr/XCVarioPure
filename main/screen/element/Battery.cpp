@@ -84,7 +84,7 @@ void Battery::draw(float volt)
         MYUCG->setFont(ucg_font_fub11_hr, true);
         MYUCG->setPrintPos(_ref_x-42, _ref_y-6);
     }
-    MYUCG->setColor( COLOR_WHITE );
+    MYUCG->setColor(COLOR_WGREY);
     if( battery_display.get() == BAT_PERCENTAGE ) {
         MYUCG->printf("%3d", chargep);
         MYUCG->setColor( COLOR_HEADER );

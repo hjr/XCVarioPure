@@ -428,7 +428,7 @@ void IpsDisplay::initDisplay() {
     }
     MAINgauge->setUnit(VarioUnit->scale);
     MAINgauge->setRange(scale_range.get(), 0.f, log_scale.get());
-    MAINgauge->setColor(VN_COLOR_RED); // fixme temp needle_color.get());
+    MAINgauge->setColor(VN_COLOR_WHITE); // fixme temp needle_color.get());
     if (vario_mc_gauge.get()) {
         if ( !MCgauge ) {
             MCgauge = new McCready(40, DISPLAY_H + 2);
@@ -742,7 +742,7 @@ void IpsDisplay::initLoadDisplay(){
 	MAINgauge->setFigOffset(0, 0);
 	MAINgauge->setUnit(1.);
 	MAINgauge->setRange(max_gscale, 1.f, false);
-	MAINgauge->setColor(VN_COLOR_RED); // temp fixme needle_color.get());
+	MAINgauge->setColor(VN_COLOR_WHITE); // temp fixme needle_color.get());
 	// put the scale colored section into the background
 	MAINgauge->colorRange(gload_pos_limit_low.get(), gload_pos_limit.get(), PolarGauge::ORANGE);
 	MAINgauge->colorRange(gload_pos_limit.get(), max_gscale, PolarGauge::RED);

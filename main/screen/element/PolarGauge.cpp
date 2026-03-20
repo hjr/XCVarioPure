@@ -314,7 +314,7 @@ void PolarGauge::drawBow(int16_t idx, int16_t &old, int16_t w, int16_t off, int1
 
     // potentially clean first
     if (std::abs(idx) < std::abs(old) || idx * old < 0) {
-        MYUCG->setColor(COLOR_WGREY);
+        MYUCG->setColor(COLOR_MGREY);
     }
     else {
         if (cidx>=0) {
@@ -542,7 +542,7 @@ void PolarGauge::drawRose(int16_t at) const
     {
         // ESP_LOGI(FNAME, "dot a:%d", a%360);
         if (!(a % 30)) {
-            drawTwoDots( a, 2, 2);
+            drawTwoDots( a, 2, 1);
         }
         else if (!(a % 10)) {
             drawTwoDots( a, 1, 0);
