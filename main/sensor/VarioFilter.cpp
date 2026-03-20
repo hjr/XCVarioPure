@@ -166,7 +166,7 @@ bool VarioFilter::setup() {
     }
 
     ESP_LOGI(FNAME, "VarioFilter setup as %s sensor with alt %f", (isLocalSensor(_id) ? "local" : "remote"), altitude.get());
-    init(altitude_isa.get() - 40); // make some start musik with the -40
+    init(altitude_isa.get() - 10); // make some start musik with the "- 10"
     configChange();
     _prev_time = Clock::getMillis();
     return true;
