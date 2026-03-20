@@ -936,8 +936,8 @@ static void system_menu_create_airspeed(SetupMenu *top) {
     }
 
     if ( airspeed_sensor.get() == AirspeedSensor::ABPMRR || airspeed_sensor.get() == AirspeedSensor::TE4525 ) {
-        // offer the option to swizch in-between them, call it swapped tubes
-        SetupMenuSelect* asswap = new SetupMenuSelect("Swapped tubes", RST_NONE, tube_swap, &airspeed_sensor);
+        // offer the option to switch in-between them, call it swapped tubes
+        SetupMenuSelect* asswap = new SetupMenuSelect("Swapped Tubes", RST_NONE, tube_swap, &airspeed_sensor);
         top->addEntry(asswap);
         asswap->setHelp("Some airspeed sensors have pressure tubes swapped, resulting in no IAS indication.");
         asswap->addEntry("Straight", AirspeedSensor::ABPMRR);
