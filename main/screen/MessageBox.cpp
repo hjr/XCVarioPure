@@ -50,6 +50,11 @@ MessageBox::~MessageBox()
 
 void MessageBox::pushMessage(int alert_level, const char *str, int to, bool confirm)
 {
+    if (_msg_list.size() >= 10) {
+        ESP_LOGW(FNAME, "Message list full, dropping message: %s", str);
+        return;
+    }
+    
     std::unique_ptr<ScreenMsg> msg = std::make_unique<ScreenMsg>(alert_level, str, to);
     {
         std::lock_guard<SemaphoreMutex> lock(_list_mutex);
