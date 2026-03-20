@@ -15,6 +15,7 @@
 #include "setup/SetupNG.h"
 #include "setup/CruiseMode.h"
 #include "sensor/imu/AccMPU6050.h"
+#include "sensor/imu/GyroMPU6050.h"
 #include "math/Units.h"
 #include "sensor.h"
 
@@ -185,6 +186,31 @@ void NmeaPrtcl::sendXcvAPENV1()
                                         fast_iroundf(Units::pipe(altitude.get(), Units::foot)), 
                                         fast_iroundf(Units::pipe(te_vario.get(), Units::hfpm)));
     msg->buffer += str;
+    msg->buffer += "*" + NMEA::CheckSum(msg->buffer.c_str()) + "\r\n";
+    DEV::Send(msg);
+}
+
+// !XCV,G,gx,gy,gz,A,ax,ay,az*CHK
+//    * G: rotation rate in body frame in deg/s
+//    * A: acceleration in m/s²
+void NmeaPrtcl::sendXcvAhrsRaw()
+{
+    if ( _dl.isBinActive() || !accSensor || !gyroSensor) {
+        return; // no NMEA output in binary mode
+    }
+
+    Message *msg = newMessage();
+
+    msg->buffer = "!XCV,";
+    char str[50];
+    vector_f tmp = gyroSensor->getRef() * Units::deg_per_rad; // deg/s
+    std::sprintf(str, "G,%.3f,%.3f,%.3f,", tmp.x, tmp.y, tmp.z);
+    msg->buffer += str;
+
+    tmp = accSensor->getRef() * Units::g0; // m/s²
+    std::sprintf(str, "A,%.3f,%.3f,%.3f", tmp.x, tmp.y, tmp.z);
+    msg->buffer += str;
+
     msg->buffer += "*" + NMEA::CheckSum(msg->buffer.c_str()) + "\r\n";
     DEV::Send(msg);
 }

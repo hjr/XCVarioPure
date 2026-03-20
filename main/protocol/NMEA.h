@@ -123,6 +123,7 @@ public:
     void sendStdXCVario();
     void sendXcvRPYL();
     void sendXcvAPENV1();
+    void sendXcvAhrsRaw();
     void sendXcvGeneric();
     void sendOpenVario();
     void sendBorgelt();

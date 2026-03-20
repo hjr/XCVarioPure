@@ -424,6 +424,7 @@ extern SetupNG<int> 		gear_warning;
 extern SetupNG<t_tenchar_id>  custom_wireless_id;
 extern SetupNG<int> 		logging;
 extern SetupNG<float>      	display_clock_adj;
+extern SetupNG<int> 		ahrs_raw_data;
 
 extern SetupNG<float> 		glider_ground_aa;
 extern SetupNG<Quaternion> 	imu_reference;

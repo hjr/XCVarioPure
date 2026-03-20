@@ -81,7 +81,6 @@ static void system_menu_create_hardware(SetupMenu *top);
 static void system_menu_create_hardware_type(SetupMenu *top);
 static void system_menu_create_hardware_rotary(SetupMenu *top);
 static void system_menu_create_hardware_ahrs(SetupMenu *top);
-static void system_menu_create_ahrs_calib(SetupMenu *top);
 static void system_menu_create_hardware_ahrs_parameter(SetupMenu *top);
 
 
@@ -1404,6 +1403,11 @@ void system_menu_create_hardware_ahrs(SetupMenu *top) {
 	top->addEntry(rpyl);
 	rpyl->setHelp("Send LEVIL AHRS like $RPYL sentence for artifical horizon");
 	rpyl->mkEnable();
+
+	SetupMenuSelect * araw = new SetupMenuSelect( "AHRS RAW", RST_NONE , nullptr, &ahrs_raw_data );
+	top->addEntry( araw );
+	araw->setHelp( "Send RAW AHRS gyro and accelerator data in XCV,G..,A.. format");
+	araw->mkEnable();
 
 	// SetupMenuChar *ahrslc = new SetupMenuChar("License Key", "0A#", 4, RST_NONE, add_key, ahrs_licence.get().id);
 	// ahrslc->setHelp("Enter valid AHRS License Key to enabled the 'AHRS Option'");

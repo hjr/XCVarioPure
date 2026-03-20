@@ -131,6 +131,10 @@ static void toyFeed(int count) // Called at 5Hz from clientLoop or sensorloop
             ToyNmeaPrtcl->sendXcvRPYL();
             ToyNmeaPrtcl->sendXcvAPENV1();
         }
+        if (ahrs_raw_data.get()) {
+            ToyNmeaPrtcl->sendXcvAhrsRaw();
+        }
+
         switch (ToyNmeaPrtcl->getProtocolId())
         {
         case BORGELT_P:
