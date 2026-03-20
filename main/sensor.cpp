@@ -322,13 +322,14 @@ void readSensors(void *pvParameters)
 			ESP_LOGI(FNAME,"count %d ccp %d", count, ccp );
 			AverageVario::recalcAvgClimb();
 		}
-		if (FLAP && FLAP->haveAdcSensor()) { FLAP->progress(); }
 
-        // The center aid
+        // flap sensor update -> fixme create a external device gpio and a sensor to register
+        if (FLAP && FLAP->haveAdcSensor()) { FLAP->progress(count); }
+
+        // 2Hz tasks
         if ( !(count % 5) ) {
-            if (theCenteraid) {
-                theCenteraid->tick(count);
-            }
+            // thermal assist
+            if (theCenteraid) { theCenteraid->tick(count); }
 
             // Check on warnings
             checkWarnings();

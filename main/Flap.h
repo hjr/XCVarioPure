@@ -93,7 +93,7 @@ public:
     void removeLevel(int idx);
 
     // periodic feed
-    void progress();
+    void progress(int count);
 
     // recommendations
     float getOptimum(mps_t speed) const;
@@ -122,7 +122,6 @@ private:
     bool _legacy_imported = false;
     static const FlapLevel dummy;
     int rawFiltered = 0;
-    int tick = 0;
     mutable float g_force = 1.;
 };
 

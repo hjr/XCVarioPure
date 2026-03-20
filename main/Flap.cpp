@@ -173,7 +173,7 @@ void Flap::removeLevel(int idx)
 
 
 // 10 Hz update
-void Flap::progress() {
+void Flap::progress(int count) {
     if ( sensorAdc ) {
         int wkraw = std::clamp(getSensorRaw(), -1, 4096);
         if (wkraw < 0) {
@@ -183,8 +183,7 @@ void Flap::progress() {
         }
         // ESP_LOGI(FNAME,"flap sensor =%d", wkraw );
         rawFiltered = rawFiltered + (wkraw - rawFiltered) / 4;
-        tick++;
-        if (!(tick % 5)) { // 2 Hz
+        if (!(count % 5)) { // 2 Hz
             float lever = sensorToLeverPosition(rawFiltered);
             // ESP_LOGI(FNAME, "wk sensor=%1.2f  raw=%d", lever, rawFiltered);
             if (lever < 0.) {
