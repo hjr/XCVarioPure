@@ -104,9 +104,6 @@ void SetupMenuSelect::press()
 		if( bits._restart == RST_ON_EXIT ) {
 			scheduleReboot();
 		}else if( bits._restart == RST_IMMEDIATE ){
-			if( _nvs ) {
-				_nvs->commit();
-			}
 			MenuEntry::reBoot();
 		}
 		_select_save = _select;
