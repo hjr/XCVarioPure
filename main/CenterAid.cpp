@@ -272,7 +272,7 @@ void CenterAid::tick(int tick){
     }
     if( new_heading < 0.f )  {         // fall back to GPS course and fuse gps heading with gyro
         rad_t gyro_footing = accSensor ? accSensor->getGyroFooting() : 0.f;
-        // ESP_LOGI(FNAME,"COD %f", gyro_footing );
+        // ESP_LOGI(FNAME,"COD %.1f", Units::rad_to_deg(gyro_footing) );
         if( false ) { // Flarm::gpsStatus() ){
             if( gyro_last == 0 ){
                 gyro_last = gyro_footing;
@@ -289,10 +289,10 @@ void CenterAid::tick(int tick){
             new_heading = gyro_footing;
             // ESP_LOGI(FNAME,"Gyro yaw %f", new_heading);
         }
-        ESP_LOGI(FNAME,"NH %f", new_heading );
+        ESP_LOGI(FNAME,"NH %f", Units::rad_to_deg(new_heading) );
     }
     rad_t diff = Vector::angleDiff( new_heading, cur_heading );
-    // ESP_LOGI(FNAME,"new heading %.1f diff:%.1f", new_heading, diff );
+    ESP_LOGI(FNAME,"new heading %.1f diff:%.1f", Units::rad_to_deg(new_heading), Units::rad_to_deg(diff) );
     if( new_heading != cur_heading ){
         uint32_t rts = Clock::getMillis();
         float dt = (float)(rts - last_rts)/1000.0f;
