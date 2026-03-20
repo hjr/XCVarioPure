@@ -25,8 +25,7 @@ SensorBase::SensorBase(int ums) :
 
 SensorBase::~SensorBase()
 {
-    // deregister is done automatically
-    SensorRegistry::deregisterSensor(this);
+    // deregister is a nogo and would by chance crash the sensor loop grabbing a nullptr
 }
 
 template <typename T>

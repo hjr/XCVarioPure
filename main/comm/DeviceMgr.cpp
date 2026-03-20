@@ -606,14 +606,16 @@ uint8_t DeviceManager::removeDevice(DeviceId did, bool nvsave)
             }
             else if ( itf == BLUEspp ) {
                 ESP_LOGI(FNAME, "stopping BTspp");
-                delete BLUEspp;
+                BTspp *tmp = BLUEspp;
                 BLUEspp = nullptr;
+                delete tmp;
                 ret = RESTART_BT_CHANGE; // restart needed
             }
             else if ( itf == BLUEnus ) {
                 ESP_LOGI(FNAME, "stopping BTle");
-                delete BLUEnus;
+                BTnus *tmp = BLUEnus;
                 BLUEnus = nullptr;
+                delete tmp;
                 ret = RESTART_BT_CHANGE; // restart needed
             }
             else if ( itf == S1 ) {
@@ -626,8 +628,9 @@ uint8_t DeviceManager::removeDevice(DeviceId did, bool nvsave)
             }
             else if ( itf == OneWIRE ) {
                 ESP_LOGI(FNAME, "stopping OneWire");
-                delete OneWIRE;
+                OneWireBus *tmp = OneWIRE;
                 OneWIRE = nullptr;
+                delete tmp;
             }
         }
 

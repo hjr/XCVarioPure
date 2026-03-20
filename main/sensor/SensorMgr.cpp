@@ -43,20 +43,6 @@ bool SensorRegistry::registerSensor(SensorBase *s)
     return false; // full
 }
 
-void SensorRegistry::deregisterSensor(SensorBase* s) {
-    
-    ESP_LOGI(FNAME, "Sensor deregistration");
-    for (auto& e : all_sensors) {
-        if (e.sensor == s) {
-            ESP_LOGW(FNAME, "Sensor %s deregistered", idmemo[static_cast<int>(e.id) & 0x3f]);
-            e.id = SensorId::NONE;
-            e.sensor = nullptr;
-            e.dutycycle = 0;
-            return;
-        }
-    }
-}
-
 void SensorRegistry::removeFromUpdateLoop(SensorId id)
 {
     SensorEntry *entry = find(id);
@@ -84,10 +70,10 @@ SensorEntry* SensorRegistry::find(SensorId id) {
 
 #ifdef DEBUG_AND_TEST
 void SensorRegistry::dump() {
-    printf("Dumping registered sensors:\n");
+    ESP_LOGI(FNAME, "Dumping registered sensors:");
     for (const auto& e : all_sensors) {
         if (e.isActive()) {
-            printf("  Sensor %s (0x%x), dutycycle: %d00ms\n", idmemo[static_cast<int>(e.id) & 0x3f], static_cast<int>(e.id), e.dutycycle);
+            ESP_LOGI(FNAME, "  Sensor %s (0x%x), dutycycle: %d00ms\n", idmemo[static_cast<int>(e.id) & 0x3f], static_cast<int>(e.id), e.dutycycle);
         }
     }
 }
