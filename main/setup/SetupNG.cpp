@@ -322,20 +322,25 @@ static void calc_altis() {
 	altitude_isa.set( Atmosphere::calcAltitudeISA(statp.get()) );
 }
 static void calc_speeds() {
-    float tmp = Units::pascal_to_mps(dynp.get());
-    // clamp to zero for speeds < 25km/h (to avoid noise around zero)
-    if ( tmp < Units::kmh_to_mps(25.0f) ) {
-        tmp = 0.0f;
+    if ( dynp.getValid() ) {
+        float tmp = Units::pascal_to_mps(dynp.get());
+        // clamp to zero for speeds < 25km/h (to avoid noise around zero)
+        if ( tmp < Units::kmh_to_mps(25.0f) ) {
+            tmp = 0.0f;
+        }
+        ias.set(tmp);
     }
-    ias.set(tmp);
-
+    else {
+        ias.setInvalid();
+    }
+    
     // IAS to TAS conversion
     kelvin_t temp = OAT.get();
     if (!OAT.getValid()) {
         temp = Units::isa_temperature(altitude.get());
         // ESP_LOGW(FNAME,"T invalid, using 15 deg");
     }
-    if (statp.getValid()) {
+    if (statp.getValid() && ias.getValid()) {
         tas.set(Atmosphere::TAS(ias.get(), statp.get(), temp));
         ESP_LOGI(FNAME, "calc_speeds: IAS=%.2f, statp=%.2f, OAT=%.2f -> TAS=%.2f", ias.get(), statp.get(), temp, tas.get());
     }
