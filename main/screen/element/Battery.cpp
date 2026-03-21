@@ -67,14 +67,16 @@ void Battery::draw(float volt)
         MYUCG->setColor( COLOR_HEADER );
         MYUCG->drawBox( _ref_x-40,_ref_y-2, 36, 12  );  // Bat body square
         MYUCG->drawBox( _ref_x-4, _ref_y+1, 3, 6  );      // Bat pluspole pimple
-        if ( chargep > _yellow )  // >25% grün
-            MYUCG->setColor( COLOR_GREEN ); // green
-        else if ( chargep < _yellow && chargep > _red )
-            MYUCG->setColor( COLOR_YELLOW ); //  yellow
-        else if ( chargep < _red )
-            MYUCG->setColor( COLOR_RED ); // red
+        float v_red    = bat_red_volt.get();
+        float v_yellow = bat_yellow_volt.get();
+        if (v_yellow < v_red)
+            v_yellow = v_red;
+        if (volt >= v_yellow)
+            MYUCG->setColor( COLOR_GREEN );  // green = moderate to full 
+        else if (volt >= v_red)
+            MYUCG->setColor( COLOR_YELLOW ); // yellow = critical to moderate
         else
-            MYUCG->setColor( COLOR_RED ); // red
+            MYUCG->setColor( COLOR_RED );    // red = empty to critical
         int chgpos=(chargep*32)/100;
         if(chgpos <= 4)
             chgpos = 4;
