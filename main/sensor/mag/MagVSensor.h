@@ -9,7 +9,8 @@
 #pragma once
 
 #include "../SensorBase.h"
-#include "math/vector_3d.h"
+#include "Compass.h"
+#include "math/vector_3d_fwd.h"
 #include "sensor/Filters.h"
 
 
@@ -29,8 +30,14 @@ public:
     // Injection API
     void inject(int16_t x, int16_t y, int16_t z);
 
+    // Legacy calibration API
+    bool calibrate( void (*reporter)(const CompassCalibrationData &data, bool print), bool only_show);
+
 private:
+    void calcCalibration(CompassCalibrationData &data);
     bool loadCalibration();
+    void resetCalibration();
+    void saveCalibration(const vector_f &bias, const vector_f &scale);
 
     vector_f _bias;
     vector_f _scale;

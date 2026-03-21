@@ -15,6 +15,7 @@
 #include "setup/SetupMenuChar.h"
 #include "setup/SetupMenuValFloat.h"
 #include "AdaptUGC.h"
+#include "average.h"
 #include "logdefnone.h"
 
 #include <string>
