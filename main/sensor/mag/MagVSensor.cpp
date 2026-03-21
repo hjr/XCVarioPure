@@ -101,7 +101,7 @@ bool MagVSensor::calibrate( void (*reporter)(const CompassCalibrationData &data,
 	bool ret = true;
 	ESP_LOGI( FNAME, "calibrate/show magnetic sensor, only_show=%d ", only_show );
 	if( !only_show ) {
-		// reset all old calibration data
+		// reset current calibration data to get raw readings during calibration
         _bias = {};
         _scale = { 1.f,1.f,1.f };
         CompassCalibrationData *data = new CompassCalibrationData;
@@ -114,14 +114,16 @@ bool MagVSensor::calibrate( void (*reporter)(const CompassCalibrationData &data,
 
                 // Evaluate the sample for calibration and update the calibration data
                 calcCalibration(*data);
-
-                // Send a calibration report to the subscriber
-                reporter(*data, false);
             } else {
                 ESP_LOGI(FNAME, "Compass reading not valid during calibration");
+                data->sample = {};
+                data->var = {200, 200, 200};
             }
-			if( Rotary->readSwitch(100) )  // more responsive to query every loop
+            // Send a calibration report to the subscriber
+            reporter(*data, false);
+			if( Rotary->readSwitch(100) ) {
 				break;
+            }
 		}
 		ESP_LOGI( FNAME, "Read Cal-Samples=%d", data->nrsamples );
 		if( ! data->bits.allAxesGood() || data->nrsamples < 2 ) {
