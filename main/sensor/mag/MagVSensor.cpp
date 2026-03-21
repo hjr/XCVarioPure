@@ -128,6 +128,8 @@ bool MagVSensor::calibrate( void (*reporter)(const CompassCalibrationData &data,
 		ESP_LOGI( FNAME, "Read Cal-Samples=%d", data->nrsamples );
 		if( ! data->bits.allAxesGood() || data->nrsamples < 2 ) {
 			ESP_LOGI( FNAME, "calibrate min-max xyz not enough samples");
+            // Reload the old calibration
+            loadCalibration();
 			ret = false;
 		}
         else {
@@ -165,7 +167,7 @@ void MagVSensor::calcCalibration(CompassCalibrationData &data) {
 	ESP_LOGI( FNAME, "Mag Var: %7.3f", data.variance );
 
 	// ESP_LOGI( FNAME, "Mag Var X:%.2f Y:%.2f Z:%.2f", data.var.x, data.var.y, data.var.z  );
-	/* Find max/min peak values */
+	// Find max/min peak values
 	data.min.x = (data.sample.x < data.min.x ) ? data.sample.x : data.min.x;
 	data.min.y = (data.sample.y < data.min.y ) ? data.sample.y : data.min.y;
 	data.min.z = (data.sample.z < data.min.z ) ? data.sample.z : data.min.z;
