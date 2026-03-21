@@ -15,7 +15,7 @@
 #include "math/vector_3d.h"
 #include "AdaptUGC.h"
 #include "Colors.h"
-#include "logdef.h"
+#include "logdefnone.h"
 
 #include <cstdlib>
 
@@ -47,6 +47,12 @@ static bool showSensorRawData(SetupMenuSelect *p)
 	return true;
 }
 
+static inline int16_t absmax_sign(int16_t a, int16_t b)
+{
+    int16_t m = (abs(a) > abs(b)) ? abs(a) : abs(b);
+    return (a < 0) ? -m : m;
+}
+
 
 /** Method for receiving intermediate calibration results. */
 static void calibrationReport(const CompassCalibrationData &data, bool print)
@@ -60,7 +66,7 @@ static void calibrationReport(const CompassCalibrationData &data, bool print)
 	MYUCG->setPrintPos( 1, 60 );
 	MYUCG->printf( "X-Scale=%3.1f  ", data.scale.x * 100 );
 	MYUCG->setPrintPos( 160, 60 );
-	MYUCG->printf( "(%.1f)  ", (float)(data.sample.x) * 100.f/32768.f );
+	MYUCG->printf( "(%.1f)  ", data.sample.x * 100.f/32768.f );
 	MYUCG->setPrintPos( 1, 135 );
 	MYUCG->printf( "X-Bias=%3.1f  ", data.bias.x * 100.f/32768.f );
 
@@ -73,7 +79,7 @@ static void calibrationReport(const CompassCalibrationData &data, bool print)
 	MYUCG->setPrintPos( 1, 85 );
 	MYUCG->printf( "Y-Scale=%3.1f  ", data.scale.y * 100);
 	MYUCG->setPrintPos( 160, 85 );
-	MYUCG->printf( "(%.1f)  ", (float)(data.sample.y) * 100.f/32768.f );
+	MYUCG->printf( "(%.1f)  ", data.sample.y * 100.f/32768.f );
 	MYUCG->setPrintPos( 1, 160 );
 	MYUCG->printf( "Y-Bias=%3.1f  ", data.bias.y * 100.f/32768.f );
 
@@ -86,18 +92,31 @@ static void calibrationReport(const CompassCalibrationData &data, bool print)
 	MYUCG->setPrintPos( 1, 110 );
 	MYUCG->printf( "Z-Scale=%3.1f  ", data.scale.z * 100 );
 	MYUCG->setPrintPos( 160, 110 );
-	MYUCG->printf( "(%.1f)  ", (float)(data.sample.z) * 100.f/32768.f );
+	MYUCG->printf( "(%.1f)  ", data.sample.z * 100.f/32768.f );
 	MYUCG->setPrintPos( 1, 185 );
 	MYUCG->printf( "Z-Bias=%3.1f  ", data.bias.z * 100.f/32768.f );
 
 	if( !print ){
-		const uint16_t X = 180;
-		const uint16_t Y = 155;
+		const int16_t X = 180;
+		const int16_t Y = 155;
 		vector_i16 peak;
 
 		peak.x = int16_t(data.sample.x*114.f/32768);
 		peak.y = int16_t(data.sample.y*160.f/32768);
 		peak.z = int16_t(data.sample.z*160.f/32768);
+
+		// remove old circles
+		static vector_i16 old = { 0,0,0 };
+		MYUCG->setColor( COLOR_BLACK );
+		MYUCG->drawCircle( X+old.x, Y-old.x, 2 );
+		MYUCG->drawCircle( X+old.y, Y, 2 );
+		MYUCG->drawCircle( X, Y+old.z,2 );
+
+		// draw lines 3 pixel longer than max(old, new) to overdraw old circles
+		vector_i16 axes;
+		axes.x = absmax_sign(peak.x, old.x);
+		axes.y = absmax_sign(peak.y, old.y);
+		axes.z = absmax_sign(peak.z, old.z);
 
 		// draw mag X alias the glider nose
 		MYUCG->setColor( COLOR_RED );
@@ -107,7 +126,7 @@ static void calibrationReport(const CompassCalibrationData &data, bool print)
 		else if ( peak.x < 0 && data.bits.xmin_green) {
 			MYUCG->setColor( COLOR_GREEN );
 		}
-		MYUCG->drawLine( X, Y, X+peak.x, Y-peak.x);    // 45 degree
+		MYUCG->drawLine( X, Y, X+axes.x+3, Y-axes.x-3);    // 45 degree
 
 		// draw mag Y alias right wing
 		MYUCG->setColor( COLOR_RED );
@@ -117,7 +136,7 @@ static void calibrationReport(const CompassCalibrationData &data, bool print)
 		else if ( peak.y < 0 && data.bits.ymin_green ) {
 			MYUCG->setColor( COLOR_GREEN );
 		}
-		MYUCG->drawLine( X, Y, X+peak.y, Y );
+		MYUCG->drawLine( X, Y, X+axes.y+3, Y );
 
 		// draw mag Z alias down
 		MYUCG->setColor( COLOR_RED );
@@ -127,13 +146,8 @@ static void calibrationReport(const CompassCalibrationData &data, bool print)
 		else if ( peak.z < 0 && data.bits.zmin_green ) {
 			MYUCG->setColor( COLOR_GREEN );
 		}
-		MYUCG->drawLine( X, Y, X, Y+peak.z);
+		MYUCG->drawLine( X, Y, X, Y+axes.z+3);
 
-		static vector_i16 old = { 0,0,0 };
-		MYUCG->setColor( COLOR_BLACK );
-		MYUCG->drawCircle( X+old.x, Y-old.x, 2 );
-		MYUCG->drawCircle( X+old.y, Y, 2 );
-		MYUCG->drawCircle( X, Y+old.z,2 );
 		MYUCG->setColor( COLOR_WHITE );
 		MYUCG->drawCircle( X+peak.x, Y-peak.x, 2 );
 		MYUCG->drawCircle( X+peak.y, Y, 2);
