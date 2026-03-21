@@ -109,7 +109,7 @@ bool MagVSensor::calibrate( void (*reporter)(const CompassCalibrationData &data,
 		{
             // Grab a sample
             if ( magSensor->getHeadValid() && magSensor->getLevel() > 10) {
-                data->sample = magSensor->getAVG(1300); // avg over the last ca. 1sec
+                data->sample = magSensor->getAVG(2000); // avg over the last ca. 2sec
                 data->var = magSensor->getVariance(1300);
 
                 // Evaluate the sample for calibration and update the calibration data
