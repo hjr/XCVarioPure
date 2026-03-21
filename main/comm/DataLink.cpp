@@ -162,10 +162,6 @@ EnumList DataLink::addProtocol(ProtocolType ptyp, DeviceId did, int sendport)
         ESP_LOGI(FNAME, "New XCVsync");
         enforceNmea(did, sendport, ptyp);
         _nmea->addAliveMonitor(new AliveMonitor(&xcv_alive, 800));
-        // The SyncMsg serves on both side, need to know it's role
-        // connect to a client -> you are master
-        if ( xcv_role.get() == NO_ROLE && did==XCVARIOSECOND_DEV ) { xcv_role.set(MASTER_ROLE); }
-        //                                        \/true when on master (!!), only CAN does it automatically
         _nmea->addPlugin(new XCVSyncMsg(*_nmea, did==XCVARIOSECOND_DEV, _itf_id == CAN_BUS));
         tmp = _nmea;
         break;

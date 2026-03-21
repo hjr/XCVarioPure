@@ -166,7 +166,7 @@ bool StraightWind::calculateWind()
 
 	float deviation = 0.f; // theCompass->getDeviation( averageTH );
 
-	if( (logging.get() != LOGG_DISABLE) && theCompass ){
+	if( false ) { // logging.get() != LOGG_DISABLE) && theCompass ){
 		if( logging.get() & LOGG_WIND ){
 			char log[ProtocolItf::MAX_LEN];
 			sprintf( log, "$WIND;");

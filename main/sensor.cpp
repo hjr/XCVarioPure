@@ -1076,6 +1076,17 @@ extern "C" void  app_main(void)
     SetupCommon::initSetup();
     Units::setAll();  // set all units according to setup
 
+    if ( gflags.first_pro_run ) {
+        ESP_LOGI(FNAME, "First Pro run, do some migration work");
+        int tmp;
+        if ( SetupCommon::getOldInt("CANMOD", tmp) ) {
+            if (tmp == 1) {
+                ESP_LOGI(FNAME, "Migrate CANMOD role second");
+                xcv_role.set(SECOND_ROLE);
+            }
+        }
+    }
+
     // ESP_LOGI(FNAME,"Measure add %ucount", (unsigned int)cycle_count());
 
     // Instance to a simple esp timer based clock

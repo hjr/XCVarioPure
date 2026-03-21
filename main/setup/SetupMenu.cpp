@@ -1033,18 +1033,6 @@ void screens_menu_create_extreme_records(SetupMenu *top) {
 }
 
 static void screens_menu_create_vario(SetupMenu *top) {
-    // SetupMenuSelect *ncolor = new SetupMenuSelect("Needle Color", RST_NONE, nullptr, &needle_color);
-    // ncolor->addEntry("White");
-    // ncolor->addEntry("Orange");
-    // ncolor->addEntry("Red");
-    // top->addEntry(ncolor);
-    SetupMenuSelect *scrcaid = new SetupMenuSelect("Therm.-Assist", RST_NONE, caid_reference, &vario_centeraid);
-    scrcaid->setHelp("The thermal assistant; with reference on top, or on the side.");
-    scrcaid->addEntry(ENABLE_MODE[0].data());
-    scrcaid->addEntry("Topref");
-    scrcaid->addEntry("Sideref");
-    top->addEntry(scrcaid);
-
     SetupMenuSelect *tgauge = new SetupMenuSelect("Upper Gauge", RST_NONE, nullptr, &vario_upper_gauge);
     tgauge->setHelp("Choose the content for this gauge");
     tgauge->addEntry("Disable", MultiGauge::GAUGE_NONE);
@@ -1061,6 +1049,18 @@ static void screens_menu_create_vario(SetupMenu *top) {
     bgauge->setHelp("Choose the content for this gauge");
     bgauge->mkEnable("Altimeter");
     top->addEntry(bgauge);
+
+    SetupMenuSelect* mc = new SetupMenuSelect("McCready Gauge", RST_NONE, nullptr, &vario_mc_gauge);
+    mc->setHelp("Show the currently used McCready setting");
+    mc->mkEnable();
+    top->addEntry(mc);
+
+    SetupMenuSelect *scrcaid = new SetupMenuSelect("Therm.-Assist", RST_NONE, caid_reference, &vario_centeraid);
+    scrcaid->setHelp("The thermal assistant; with reference on top, or on the side.");
+    scrcaid->addEntry(ENABLE_MODE[0].data());
+    scrcaid->addEntry("Topref");
+    scrcaid->addEntry("Sideref");
+    top->addEntry(scrcaid);
 
     SetupMenuSelect *wke = new SetupMenuSelect("Flap-Assist", RST_NONE, nullptr, &flapbox_enable);
     wke->mkEnable();
@@ -1079,6 +1079,12 @@ static void screens_menu_create_vario(SetupMenu *top) {
     batv->addEntry("Voltage");
     batv->addEntry("Voltage Big");
     top->addEntry(batv);
+
+    SetupMenuSelect *ncolor = new SetupMenuSelect("Needle Color", RST_NONE, nullptr, &needle_color);
+    ncolor->addEntry("White");
+    ncolor->addEntry("Orange");
+    ncolor->addEntry("Red");
+    top->addEntry(ncolor);
 }
 
 void screens_menu_create_gload(SetupMenu *top) {
@@ -1133,11 +1139,6 @@ static void options_menu_create_screens(SetupMenu *top) { // dynamic!
 
 		SetupMenu *vario = new SetupMenu("Variometer", screens_menu_create_vario);
 		top->addEntry(vario);
-
-        SetupMenuSelect *mc = new SetupMenuSelect("McCready Gauge", RST_NONE, nullptr, &vario_mc_gauge);
-        mc->setHelp("Show the currently used McCready setting");
-        mc->mkEnable();
-        top->addEntry(mc);
 
 		SetupMenu *gload = new SetupMenu("G-Meter", screens_menu_create_gload);
 		top->addEntry(gload);
@@ -1212,10 +1213,21 @@ void options_menu_create(SetupMenu *opt) { // dynamic!
 		opt->addEntry(flarm);
 		flarm->setHelp("Option to display FLARM Warnings depending on FLARM alarm level");
 
-		SetupMenu *compassWindMenu = new SetupMenu("Compass/Wind", options_menu_create_compasswind);
+#ifdef DEBUG_AND_TEST
+		SetupMenu *compassWindMenu = new SetupMenu("Wind", options_menu_create_wind);
 		opt->addEntry(compassWindMenu);
 		compassWindMenu->setHelp("Setup Compass and Wind");
-
+#else
+		// Wind speed observation window
+		SetupMenuSelect *windcal = new SetupMenuSelect("Wind Calculation", RST_NONE, windResourcesAction, &wind_enable);
+		windcal->addEntry("Disable", WA_OFF);
+		windcal->addEntry("Straight", WA_STRAIGHT);
+		windcal->addEntry("Circling", WA_CIRCLING);
+		windcal->addEntry("Both", WA_BOTH);
+		windcal->addEntry("External", WA_EXTERNAL);
+		windcal->setHelp("Enable Wind calculation for straight flight (needs compass), circling, both or external source");
+		opt->addEntry(windcal);
+#endif
 		SetupMenu *screens = new SetupMenu("Screens & Gauges", options_menu_create_screens);
 		opt->addEntry(screens);
 	}
@@ -1423,6 +1435,7 @@ void system_menu_create_hardware_ahrs(SetupMenu *top) {
 void system_menu_create_hardware(SetupMenu *top) {
 	if ( top->getNrChilds() == 0 ) {
 		top->setDynContent();
+
 		SetupMenu *display = new SetupMenu("Display Type", system_menu_create_hardware_type);
 		top->addEntry(display);
 
@@ -1443,6 +1456,9 @@ void system_menu_create_hardware(SetupMenu *top) {
 		gear->addEntry("S2 RS232 negative");
 		gear->addEntry("External");  // A $g,w<n>*CS command from an external device
 
+		SetupMenu *compassMenu = new SetupMenu("Compass", options_menu_create_compass_calib);
+		top->addEntry(compassMenu);
+
 		if (hardwareRevision.get() >= XCVARIO_21) {
 			SetupMenu *ahrs = new SetupMenu("Attitude & Heading RefSys", system_menu_create_hardware_ahrs);
 			top->addEntry(ahrs);
@@ -1452,23 +1468,29 @@ void system_menu_create_hardware(SetupMenu *top) {
         bat->setHelp("Adjust voltage thresholds for battery state indication");
         top->addEntry(bat);
 	}
-	SetupMenu *wkm = static_cast<SetupMenu*>(top->getEntry(2)); // Flap Sensor
-	if ( FLAP ) {
-		wkm->unlock();
-		if ( flap_sensor.get() ) {
-			wkm->setBuzzword(ENABLE_MODE[1].data()); // enabled
-		}
-		else if ( Flap::sensAvailable() ) {
-			wkm->setBuzzword(ENABLE_MODE[4].data()); // from peer
-		}
-		else {
-			wkm->setBuzzword(ENABLE_MODE[0].data()); // disabled
-		}
-	}
-	else {
-		wkm->lock();
-		wkm->setBuzzword("n/a");
-	}
+    SetupMenu* wkm = static_cast<SetupMenu*>(top->getEntry(2));  // Flap Sensor
+    if (FLAP) {
+        wkm->unlock();
+        if (flap_sensor.get()) {
+            wkm->setBuzzword(ENABLE_MODE[1].data());  // enabled
+        } else if (Flap::sensAvailable()) {
+            wkm->setBuzzword(ENABLE_MODE[4].data());  // from peer
+        } else {
+            wkm->setBuzzword(ENABLE_MODE[0].data());  // disabled
+        }
+    } else {
+        wkm->lock();
+        wkm->setBuzzword("n/a");
+    }
+    // compass menu only accessible with a connected compass
+    SetupMenu* cmenu = static_cast<SetupMenu*>(top->getEntry(4));  // Compass
+    if (DEVMAN->getDevice(MAGSENS_DEV) != nullptr || DEVMAN->getDevice(MAGLEG_DEV) != nullptr) {
+        cmenu->unlock();
+        cmenu->setBuzzword();
+    } else {
+        cmenu->lock();
+        cmenu->setBuzzword("n/a");
+    }
 }
 
 void system_menu_create(SetupMenu *sye) {
@@ -1493,7 +1515,6 @@ void system_menu_create(SetupMenu *sye) {
 	// XCV role
 	SetupMenuSelect *role = new SetupMenuSelect("XCV device role", RST_IMMEDIATE, nullptr, &xcv_role);
 	role->setHelp("Set the intended role of this device first (needs a reboot)");
-	// role->addEntry("None", NO_ROLE); hidden, because there is no use case currently
 	role->addEntry("Master", MASTER_ROLE);
 	role->addEntry("Second", SECOND_ROLE);
 	sye->addEntry(role);

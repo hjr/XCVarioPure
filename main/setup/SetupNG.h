@@ -50,7 +50,7 @@ typedef enum e_display_style  { DISPLAY_AIRLINER, DISPLAY_RETRO } display_style_
 typedef enum e_display_variant { DISPLAY_WHITE_ON_BLACK, DISPLAY_BLACK_ON_WHITE } display_variant_t;
 typedef enum e_s2f_type  { S2F_HW_SWITCH, S2F_HW_PUSH_BUTTON, S2F_HW_SWITCH_INVERTED, S2F_SWITCH_DISABLE } e_s2f_type;
 typedef enum e_wireless_type { WL_DISABLE, WL_BLUETOOTH, WL_WLAN_MASTER, WL_WLAN_CLIENT, WL_WLAN_STANDALONE, WL_BLUETOOTH_LE } e_wireless_t;
-enum e_xcvrole { NO_ROLE, MASTER_ROLE, SECOND_ROLE };
+enum e_xcvrole { NO_ROLE, MASTER_ROLE, SECOND_ROLE }; // do not remove NO_ROLE, or change the order. Device nvs store is based on this bitorder.
 enum e_audiomode_type { AM_VARIO, AM_S2F, AM_MANUALLY, AM_AUTOSPEED, AM_FLAP, AM_AHRS };
 enum e_audio_tone_mode { ATM_SINGLE_TONE, ATM_DUAL_TONE };
 enum e_audio_chopping_style { AUDIO_CHOP_SOFT, AUDIO_CHOP_HARD };

@@ -4,43 +4,185 @@
 #include "comm/Devices.h"
 #include "setup/SetupMenu.h"
 #include "setup/SetupMenuSelect.h"
+#include "setup/SetupMenuValFloat.h"
+#include "sensor/mag/MagVSensor.h"
 
-// #include "DisplayDeviations.h"
-// #include "ShowCompassSettings.h"
 #include "ShowCirclingWind.h"
 #include "ShowStraightWind.h"
-#include "CompassMenu.h"
 #include "comm/DeviceMgr.h"
-#include "logdef.h"
 #include "setup/SetupNG.h"
 #include "wind/WindCalcTask.h"
+#include "math/vector_3d.h"
+#include "AdaptUGC.h"
+#include "Colors.h"
+#include "logdef.h"
 
-// compass menu handlers.
-// static int compassDeviationAction(SetupMenuSelect *p) {
-// 	if (p->getSelect() == 0) {
-// 		CompassMenu::deviationAction(p);
-// 	}
-// 	return 0;
-// }
+#include <cstdlib>
 
-// static int compassResetDeviationAction(SetupMenuSelect *p) {
-// 	return CompassMenu::resetDeviationAction(p);
-// }
+extern AdaptUGC *MYUCG;
 
-static int compassDeclinationAction(SetupMenuValFloat *p) {
-	return CompassMenu::declinationAction(p);
+
+static float tesla=0;
+static bool showSensorRawData(SetupMenuSelect *p)
+{
+	const vector_f &raw = *magSensor->getHeadPtr();
+	ESP_LOGI( FNAME, "showSensorRawData() %.2f %.2f %.2f", raw.x, raw.y, raw.z );
+	char buf[100];
+	MYUCG->setColor( COLOR_WHITE );
+	sprintf(buf, "X = %.2f  ", raw.x);
+	p->menuPrintLn(buf, 3);
+	sprintf(buf, "Y = %.2f  ", raw.y);
+	p->menuPrintLn(buf, 4);
+	sprintf(buf, "Z = %.2f  ", raw.z);
+	p->menuPrintLn(buf, 5);
+	float t = raw.get_norm()/150.0;
+	if( abs(t-tesla) > 5 )
+		tesla += (t-tesla)*0.2;
+	else if ( abs(t-tesla) > 1 )
+		tesla += (t-tesla)*0.07;
+	else
+		tesla += (t-tesla)*0.01;
+	sprintf(buf, "Mag. field H = %.1f uT  ", tesla );
+	p->menuPrintLn(buf, 6);
+	return true;
+}
+
+
+/** Method for receiving intermediate calibration results. */
+static void calibrationReport(const CompassCalibrationData &data, bool print)
+{
+	// X
+	if( data.bits.xmax_green && data.bits.xmin_green ) {
+		MYUCG->setColor( COLOR_GREEN );
+	} else {
+		MYUCG->setColor( COLOR_WHITE );
+	}
+	MYUCG->setPrintPos( 1, 60 );
+	MYUCG->printf( "X-Scale=%3.1f  ", data.scale.x * 100 );
+	MYUCG->setPrintPos( 160, 60 );
+	MYUCG->printf( "(%.1f)  ", (float)(data.sample.x) * 100.f/32768.f );
+	MYUCG->setPrintPos( 1, 135 );
+	MYUCG->printf( "X-Bias=%3.1f  ", data.bias.x * 100.f/32768.f );
+
+	// Y
+	if( data.bits.ymax_green && data.bits.ymin_green ) {
+		MYUCG->setColor( COLOR_GREEN );
+	} else {
+		MYUCG->setColor( COLOR_WHITE );
+	}
+	MYUCG->setPrintPos( 1, 85 );
+	MYUCG->printf( "Y-Scale=%3.1f  ", data.scale.y * 100);
+	MYUCG->setPrintPos( 160, 85 );
+	MYUCG->printf( "(%.1f)  ", (float)(data.sample.y) * 100.f/32768.f );
+	MYUCG->setPrintPos( 1, 160 );
+	MYUCG->printf( "Y-Bias=%3.1f  ", data.bias.y * 100.f/32768.f );
+
+	// Z
+	if( data.bits.zmax_green && data.bits.zmin_green ) {
+		MYUCG->setColor( COLOR_GREEN );
+	} else {
+		MYUCG->setColor( COLOR_WHITE );
+	}
+	MYUCG->setPrintPos( 1, 110 );
+	MYUCG->printf( "Z-Scale=%3.1f  ", data.scale.z * 100 );
+	MYUCG->setPrintPos( 160, 110 );
+	MYUCG->printf( "(%.1f)  ", (float)(data.sample.z) * 100.f/32768.f );
+	MYUCG->setPrintPos( 1, 185 );
+	MYUCG->printf( "Z-Bias=%3.1f  ", data.bias.z * 100.f/32768.f );
+
+	if( !print ){
+		const uint16_t X = 180;
+		const uint16_t Y = 155;
+		vector_i16 peak;
+
+		peak.x = int16_t(data.sample.x*114.f/32768);
+		peak.y = int16_t(data.sample.y*160.f/32768);
+		peak.z = int16_t(data.sample.z*160.f/32768);
+
+		// draw mag X alias the glider nose
+		MYUCG->setColor( COLOR_RED );
+		if ( peak.x > 0 && data.bits.xmax_green) {
+			MYUCG->setColor( COLOR_GREEN );
+		}
+		else if ( peak.x < 0 && data.bits.xmin_green) {
+			MYUCG->setColor( COLOR_GREEN );
+		}
+		MYUCG->drawLine( X, Y, X+peak.x, Y-peak.x);    // 45 degree
+
+		// draw mag Y alias right wing
+		MYUCG->setColor( COLOR_RED );
+		if ( peak.y > 0 && data.bits.ymax_green ) {
+			MYUCG->setColor( COLOR_GREEN );
+		}
+		else if ( peak.y < 0 && data.bits.ymin_green ) {
+			MYUCG->setColor( COLOR_GREEN );
+		}
+		MYUCG->drawLine( X, Y, X+peak.y, Y );
+
+		// draw mag Z alias down
+		MYUCG->setColor( COLOR_RED );
+		if( peak.z > 0 && data.bits.zmax_green ) {
+			MYUCG->setColor( COLOR_GREEN );
+		}
+		else if ( peak.z < 0 && data.bits.zmin_green ) {
+			MYUCG->setColor( COLOR_GREEN );
+		}
+		MYUCG->drawLine( X, Y, X, Y+peak.z);
+
+		static vector_i16 old = { 0,0,0 };
+		MYUCG->setColor( COLOR_BLACK );
+		MYUCG->drawCircle( X+old.x, Y-old.x, 2 );
+		MYUCG->drawCircle( X+old.y, Y, 2 );
+		MYUCG->drawCircle( X, Y+old.z,2 );
+		MYUCG->setColor( COLOR_WHITE );
+		MYUCG->drawCircle( X+peak.x, Y-peak.x, 2 );
+		MYUCG->drawCircle( X+peak.y, Y, 2);
+		MYUCG->drawCircle( X, Y+peak.z, 2 );
+		old = peak;
+	}
 }
 
 static int compassSensorCalibrateAction(SetupMenuSelect *p) {
 	ESP_LOGI(FNAME,"compassSensorCalibrateAction()");
-	if (p->getSelect() != 0) { // Start, Show
-		CompassMenu::sensorCalibrationAction(p);
+	if( p->getSelect() == 0 ) {
+		// Cancel is requested
+		return 0;
+	}
+
+	p->clear();
+	switch(p->getSelect()) {
+	case 1: // Start
+		MYUCG->setFont( ucg_font_ncenR14_hr, true );
+		MYUCG->setPrintPos( 1, 30 );
+		MYUCG->printf( "Calibration started" );
+		MYUCG->setPrintPos( 1, 220 );
+		MYUCG->printf( "Now rotate sensor until" );
+		MYUCG->setPrintPos( 1, 245 );
+		MYUCG->printf( "all numbers are green" );
+		MYUCG->setPrintPos( 1, 270 );
+		MYUCG->printf( "Press button to finish" );
+		magSensor->calibrate( calibrationReport, false);
+		MYUCG->setPrintPos( 1, 250 );
+		vTaskDelay(pdMS_TO_TICKS(1000));
+		p->clear();
+		break;
+	case 2: // Show
+		magSensor->calibrate( calibrationReport, true );
+		while( ! Rotary->readSwitch(100) ) ;
+		break;
+	case 3: // Show Raw Data
+		while( ! Rotary->readSwitch(100) ) {
+			showSensorRawData(p);
+		}
+		break;
+	default:
+		ESP_LOGI(FNAME,"Unknown compass sensor calibration action: %d", p->getSelect());
 	}
 	p->setSelect(0);
 	return 0;
 }
 
-static int windResourcesAction(SetupMenuSelect *p) {
+int windResourcesAction(SetupMenuSelect *p) {
     ESP_LOGI(FNAME, "Enable/Disable Wind");
     WindCalcTask::createWindResources();
     return 0;
@@ -57,33 +199,17 @@ static int windResourcesAction(SetupMenuSelect *p) {
 // 	}
 // }
 
-static void options_menu_create_compasswind_compass_nmea(SetupMenu *top) {
-	SetupMenuSelect *nmeaHdm = new SetupMenuSelect("Magnetic Heading", RST_NONE, nullptr, &compass_nmea_hdm);
-	nmeaHdm->addEntry("Disable");
-	nmeaHdm->addEntry("Enable");
-	nmeaHdm->setHelp(
-			"Enable/disable NMEA '$HCHDM' sentence generation for magnetic heading");
-	top->addEntry(nmeaHdm);
-
-	SetupMenuSelect *nmeaHdt = new SetupMenuSelect("True Heading", RST_NONE, nullptr, &compass_nmea_hdt);
-	nmeaHdt->addEntry("Disable");
-	nmeaHdt->addEntry("Enable");
-	nmeaHdt->setHelp(
-			"Enable/disable NMEA '$HCHDT' sentence generation for true heading");
-	top->addEntry(nmeaHdt);
-}
-
-static void options_menu_create_compasswind_compass(SetupMenu *top) {
-	SetupMenuSelect *compSensorCal = new SetupMenuSelect("Sensor Calibration", RST_NONE, compassSensorCalibrateAction);
+void options_menu_create_compass_calib(SetupMenu *top) {
+	SetupMenuSelect *compSensorCal = new SetupMenuSelect("MagSens Calib.", RST_NONE, compassSensorCalibrateAction);
 	compSensorCal->addEntry("Cancel");
 	compSensorCal->addEntry("Start");
 	compSensorCal->addEntry("Show");
 	compSensorCal->addEntry("Show Raw Data");
-	compSensorCal->setHelp("Calibrate Magnetic Sensor, mandatory for operation");
+	compSensorCal->setHelp("Calibrate Magnetic Sensor, mandatory for proper operation");
 	top->addEntry(compSensorCal);
 
 	// Fixme replace by WMM
-	SetupMenuValFloat *cd = new SetupMenuValFloat("Setup Declination", "°", compassDeclinationAction, false, &compass_declination);
+	SetupMenuValFloat *cd = new SetupMenuValFloat("Setup Declination", "°", nullptr, false, &compass_declination);
 	cd->setHelp("Set compass declination in degrees");
 	top->addEntry(cd);
 
@@ -107,8 +233,15 @@ static void options_menu_create_compasswind_compass(SetupMenu *top) {
 	// sms->addEntry("Reset");
 	// top->addEntry(sms);
 
-	SetupMenu *nmeaMenu = new SetupMenu("Setup NMEA", options_menu_create_compasswind_compass_nmea);
-	top->addEntry(nmeaMenu);
+	SetupMenuSelect *nmeaHdm = new SetupMenuSelect("Magnetic Heading", RST_NONE, nullptr, &compass_nmea_hdm);
+	nmeaHdm->mkEnable();
+	nmeaHdm->setHelp("Enable/disable NMEA '$HCHDM' sentence generation for magnetic heading");
+	top->addEntry(nmeaHdm);
+
+	SetupMenuSelect *nmeaHdt = new SetupMenuSelect("True Heading", RST_NONE, nullptr, &compass_nmea_hdt);
+	nmeaHdt->mkEnable();
+	nmeaHdt->setHelp("Enable/disable NMEA '$HCHDT' sentence generation for true heading");
+	top->addEntry(nmeaHdt);
 
 	// Show compass settings
 	// SetupMenuDisplay *scs = new SetupMenuDisplay("Show Settings", show_compass_setting);
@@ -203,39 +336,23 @@ void options_menu_create_compasswind_circlingwind(SetupMenu *top) {
 	top->addEntry(scw);
 }
 
-void options_menu_create_compasswind(SetupMenu *top) { // dynamic!
-	if ( top->getNrChilds() == 0 ) {
-		top->setDynContent();
-		
-		SetupMenu *compassMenu = new SetupMenu("Compass", options_menu_create_compasswind_compass);
-		top->addEntry(compassMenu);
+#ifdef DEBUG_AND_TEST
+void options_menu_create_wind(SetupMenu *top) {
+	// Wind speed observation window
+	SetupMenuSelect *windcal = new SetupMenuSelect("Wind Calculation", RST_NONE, windResourcesAction, &wind_enable);
+	windcal->addEntry("Disable", WA_OFF);
+	windcal->addEntry("Straight", WA_STRAIGHT);
+	windcal->addEntry("Circling", WA_CIRCLING);
+	windcal->addEntry("Both", WA_BOTH);
+	windcal->addEntry("External", WA_EXTERNAL);
+	windcal->setHelp("Enable Wind calculation for straight flight (needs compass), circling, both or external source");
+	top->addEntry(windcal);
 
-		// Wind speed observation window
-		SetupMenuSelect *windcal = new SetupMenuSelect("Wind Calculation", RST_NONE, windResourcesAction, &wind_enable);
-		windcal->addEntry("Disable", WA_OFF);
-		windcal->addEntry("Straight", WA_STRAIGHT);
-		windcal->addEntry("Circling", WA_CIRCLING);
-		windcal->addEntry("Both", WA_BOTH);
-		windcal->addEntry("External", WA_EXTERNAL);
-		windcal->setHelp("Enable Wind calculation for straight flight (needs compass), circling, both or external source");
-		top->addEntry(windcal);
+	SetupMenu *strWindM = new SetupMenu("Straight Wind", options_menu_create_compasswind_straightwind);
+	top->addEntry(strWindM);
+	strWindM->setHelp("Straight flight wind calculation needs compass module active");
 
-		SetupMenu *strWindM = new SetupMenu("Straight Wind", options_menu_create_compasswind_straightwind);
-		top->addEntry(strWindM);
-		strWindM->setHelp("Straight flight wind calculation needs compass module active");
-
-		SetupMenu *cirWindM = new SetupMenu("Circling Wind", options_menu_create_compasswind_circlingwind);
-		top->addEntry(cirWindM);
-	}
-	// compass menu only accessible with a connected compass
-	SetupMenu *cmenu = static_cast<SetupMenu*>(top->getEntry(0));
-	if ( DEVMAN->getDevice(MAGSENS_DEV) != nullptr ||
-			DEVMAN->getDevice(MAGLEG_DEV) != nullptr ) {
-		cmenu->unlock();
-		cmenu->setBuzzword();
-	}
-	else {
-		cmenu->lock();
-		cmenu->setBuzzword("n/a");
-	}
+	SetupMenu *cirWindM = new SetupMenu("Circling Wind", options_menu_create_compasswind_circlingwind);
+	top->addEntry(cirWindM);
 }
+#endif

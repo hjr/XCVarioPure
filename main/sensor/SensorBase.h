@@ -232,7 +232,7 @@ public:
     // get population variance of the last X milli seconds (Welford)
     T getVariance(int interval_ms) {
         int count = getCount(interval_ms);
-        if (count <= 1) return T{};
+        if (count < 2) return T{};
 
         T mean = T{};
         T M2 = T{};
@@ -240,7 +240,7 @@ public:
 
         // Welford online algorithm for numerical stability
         for (int i = 0; i < count; ++i) {
-            T val = _history[i];
+            const T &val = _history[i];
 
             n += 1.f;
             T delta = val - mean;
@@ -338,6 +338,9 @@ public:
     int getFirstUpdateTimeMs() const { 
         int count = _history.level();
         return _last_update_time_ms - (count - 1) * _update_interval_ms;
+    }
+    int getLevel() const {
+        return _history.level();
     }
 
     // simple predictor to implement an innovation gate
