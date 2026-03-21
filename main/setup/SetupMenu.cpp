@@ -1213,10 +1213,21 @@ void options_menu_create(SetupMenu *opt) { // dynamic!
 		opt->addEntry(flarm);
 		flarm->setHelp("Option to display FLARM Warnings depending on FLARM alarm level");
 
-		SetupMenu *compassWindMenu = new SetupMenu("Compass/Wind", options_menu_create_compasswind);
+#ifdef DEBUG_AND_TEST
+		SetupMenu *compassWindMenu = new SetupMenu("Wind", options_menu_create_wind);
 		opt->addEntry(compassWindMenu);
 		compassWindMenu->setHelp("Setup Compass and Wind");
-
+#else
+		// Wind speed observation window
+		SetupMenuSelect *windcal = new SetupMenuSelect("Wind Calculation", RST_NONE, windResourcesAction, &wind_enable);
+		windcal->addEntry("Disable", WA_OFF);
+		windcal->addEntry("Straight", WA_STRAIGHT);
+		windcal->addEntry("Circling", WA_CIRCLING);
+		windcal->addEntry("Both", WA_BOTH);
+		windcal->addEntry("External", WA_EXTERNAL);
+		windcal->setHelp("Enable Wind calculation for straight flight (needs compass), circling, both or external source");
+		opt->addEntry(windcal);
+#endif
 		SetupMenu *screens = new SetupMenu("Screens & Gauges", options_menu_create_screens);
 		opt->addEntry(screens);
 	}
@@ -1424,6 +1435,7 @@ void system_menu_create_hardware_ahrs(SetupMenu *top) {
 void system_menu_create_hardware(SetupMenu *top) {
 	if ( top->getNrChilds() == 0 ) {
 		top->setDynContent();
+
 		SetupMenu *display = new SetupMenu("Display Type", system_menu_create_hardware_type);
 		top->addEntry(display);
 
@@ -1444,6 +1456,9 @@ void system_menu_create_hardware(SetupMenu *top) {
 		gear->addEntry("S2 RS232 negative");
 		gear->addEntry("External");  // A $g,w<n>*CS command from an external device
 
+		SetupMenu *compassMenu = new SetupMenu("Compass", options_menu_create_compass_calib);
+		top->addEntry(compassMenu);
+
 		if (hardwareRevision.get() >= XCVARIO_21) {
 			SetupMenu *ahrs = new SetupMenu("Attitude & Heading RefSys", system_menu_create_hardware_ahrs);
 			top->addEntry(ahrs);
@@ -1453,23 +1468,29 @@ void system_menu_create_hardware(SetupMenu *top) {
         bat->setHelp("Adjust voltage thresholds for battery state indication");
         top->addEntry(bat);
 	}
-	SetupMenu *wkm = static_cast<SetupMenu*>(top->getEntry(2)); // Flap Sensor
-	if ( FLAP ) {
-		wkm->unlock();
-		if ( flap_sensor.get() ) {
-			wkm->setBuzzword(ENABLE_MODE[1].data()); // enabled
-		}
-		else if ( Flap::sensAvailable() ) {
-			wkm->setBuzzword(ENABLE_MODE[4].data()); // from peer
-		}
-		else {
-			wkm->setBuzzword(ENABLE_MODE[0].data()); // disabled
-		}
-	}
-	else {
-		wkm->lock();
-		wkm->setBuzzword("n/a");
-	}
+    SetupMenu* wkm = static_cast<SetupMenu*>(top->getEntry(2));  // Flap Sensor
+    if (FLAP) {
+        wkm->unlock();
+        if (flap_sensor.get()) {
+            wkm->setBuzzword(ENABLE_MODE[1].data());  // enabled
+        } else if (Flap::sensAvailable()) {
+            wkm->setBuzzword(ENABLE_MODE[4].data());  // from peer
+        } else {
+            wkm->setBuzzword(ENABLE_MODE[0].data());  // disabled
+        }
+    } else {
+        wkm->lock();
+        wkm->setBuzzword("n/a");
+    }
+    // compass menu only accessible with a connected compass
+    SetupMenu* cmenu = static_cast<SetupMenu*>(top->getEntry(4));  // Compass
+    if (DEVMAN->getDevice(MAGSENS_DEV) != nullptr || DEVMAN->getDevice(MAGLEG_DEV) != nullptr) {
+        cmenu->unlock();
+        cmenu->setBuzzword();
+    } else {
+        cmenu->lock();
+        cmenu->setBuzzword("n/a");
+    }
 }
 
 void system_menu_create(SetupMenu *sye) {

@@ -14,8 +14,8 @@
 #include "math/vector_3d.h"
 #include "protocol/Clock.h"
 #include "sensor/imu/AccMPU6050.h"
-#include "logdefnone.h"
 #include "driver/gpio/ESPRotary.h"
+#include "logdefnone.h"
 
 
 constexpr int DUTY_CYCLE_MS = 500; // 2Hz

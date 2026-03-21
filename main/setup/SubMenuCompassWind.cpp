@@ -182,7 +182,7 @@ static int compassSensorCalibrateAction(SetupMenuSelect *p) {
 	return 0;
 }
 
-static int windResourcesAction(SetupMenuSelect *p) {
+int windResourcesAction(SetupMenuSelect *p) {
     ESP_LOGI(FNAME, "Enable/Disable Wind");
     WindCalcTask::createWindResources();
     return 0;
@@ -199,7 +199,7 @@ static int windResourcesAction(SetupMenuSelect *p) {
 // 	}
 // }
 
-static void options_menu_create_compasswind_compass(SetupMenu *top) {
+void options_menu_create_compass_calib(SetupMenu *top) {
 	SetupMenuSelect *compSensorCal = new SetupMenuSelect("MagSens Calib.", RST_NONE, compassSensorCalibrateAction);
 	compSensorCal->addEntry("Cancel");
 	compSensorCal->addEntry("Start");
@@ -336,39 +336,23 @@ void options_menu_create_compasswind_circlingwind(SetupMenu *top) {
 	top->addEntry(scw);
 }
 
-void options_menu_create_compasswind(SetupMenu *top) { // dynamic!
-	if ( top->getNrChilds() == 0 ) {
-		top->setDynContent();
-		
-		SetupMenu *compassMenu = new SetupMenu("Compass", options_menu_create_compasswind_compass);
-		top->addEntry(compassMenu);
+#ifdef DEBUG_AND_TEST
+void options_menu_create_wind(SetupMenu *top) {
+	// Wind speed observation window
+	SetupMenuSelect *windcal = new SetupMenuSelect("Wind Calculation", RST_NONE, windResourcesAction, &wind_enable);
+	windcal->addEntry("Disable", WA_OFF);
+	windcal->addEntry("Straight", WA_STRAIGHT);
+	windcal->addEntry("Circling", WA_CIRCLING);
+	windcal->addEntry("Both", WA_BOTH);
+	windcal->addEntry("External", WA_EXTERNAL);
+	windcal->setHelp("Enable Wind calculation for straight flight (needs compass), circling, both or external source");
+	top->addEntry(windcal);
 
-		// Wind speed observation window
-		SetupMenuSelect *windcal = new SetupMenuSelect("Wind Calculation", RST_NONE, windResourcesAction, &wind_enable);
-		windcal->addEntry("Disable", WA_OFF);
-		windcal->addEntry("Straight", WA_STRAIGHT);
-		windcal->addEntry("Circling", WA_CIRCLING);
-		windcal->addEntry("Both", WA_BOTH);
-		windcal->addEntry("External", WA_EXTERNAL);
-		windcal->setHelp("Enable Wind calculation for straight flight (needs compass), circling, both or external source");
-		top->addEntry(windcal);
+	SetupMenu *strWindM = new SetupMenu("Straight Wind", options_menu_create_compasswind_straightwind);
+	top->addEntry(strWindM);
+	strWindM->setHelp("Straight flight wind calculation needs compass module active");
 
-		SetupMenu *strWindM = new SetupMenu("Straight Wind", options_menu_create_compasswind_straightwind);
-		top->addEntry(strWindM);
-		strWindM->setHelp("Straight flight wind calculation needs compass module active");
-
-		SetupMenu *cirWindM = new SetupMenu("Circling Wind", options_menu_create_compasswind_circlingwind);
-		top->addEntry(cirWindM);
-	}
-	// compass menu only accessible with a connected compass
-	SetupMenu *cmenu = static_cast<SetupMenu*>(top->getEntry(0));
-	if ( DEVMAN->getDevice(MAGSENS_DEV) != nullptr ||
-			DEVMAN->getDevice(MAGLEG_DEV) != nullptr ) {
-		cmenu->unlock();
-		cmenu->setBuzzword();
-	}
-	else {
-		cmenu->lock();
-		cmenu->setBuzzword("n/a");
-	}
+	SetupMenu *cirWindM = new SetupMenu("Circling Wind", options_menu_create_compasswind_circlingwind);
+	top->addEntry(cirWindM);
 }
+#endif
