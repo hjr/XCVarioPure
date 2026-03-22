@@ -95,6 +95,12 @@ bool DS18B20::doRead(float &val)
     // 6. Decode temp
     val = (float)calculateTemperature(scratch) / 128.f;
     val += Units::C2K; // convert to Kelvin
+
+    // 7. Plausibility check
+    if (val < 235.f || val > 325.f) {
+        ESP_LOGE(FNAME, "DS18B20 implausible temperature: %f", val);
+        return false;
+    }
     return true;
 }
 
