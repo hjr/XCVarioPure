@@ -117,9 +117,9 @@ SensorBase* OneWireBus::probeAndSetup(uint8_t famid) {
             }
 
             switch (family) {
-                case DS18B20_FAMILY:  // DS18B20 (also covers DS18S20 variants in some libs)
-                // case 0x10:  // DS18S20
-                // case 0x22:  // DS1822
+                case DS18B20MODEL:  // DS18B20 (also covers DS18S20 variants in some libs)
+                case 0x10:  // DS18S20
+                case 0x22:  // DS1822
                     {
                         auto* sensor = new DS18B20(dev.address);
                         sensor->setup();
@@ -202,7 +202,7 @@ bool OneWireBus::groupUpdate(uint32_t now_ms)
             ESP_LOGE(FNAME, "No OneWire devices found after recovery");
             Device *dev = DEVMAN->getDevice(TEMPSENS_DEV);
             if ( dev && !dev->_sensor ) {
-                dev->_sensor = probeAndSetup(DS18B20_FAMILY);
+                dev->_sensor = probeAndSetup(DS18B20MODEL);
             }
             errors = 0; // reset counter in case there are no sensors yet
         }

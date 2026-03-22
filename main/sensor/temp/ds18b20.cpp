@@ -62,6 +62,17 @@ bool DS18B20::primeRead(uint32_t now_ms)
     return _converting;
 }
 
+// Scratchpad locations
+#define TEMP_LSB        0
+#define TEMP_MSB        1
+#define HIGH_ALARM_TEMP 2
+#define LOW_ALARM_TEMP  3
+#define CONFIGURATION   4
+#define INTERNAL_BYTE   5
+#define COUNT_REMAIN    6
+#define COUNT_PER_C     7
+#define SCRATCHPAD_CRC  8
+
 // call when conversion is over to read the temperature
 bool DS18B20::doRead(float &val)
 {
@@ -82,8 +93,37 @@ bool DS18B20::doRead(float &val)
     }
 
     // 6. Decode temp
-    val = (float)((scratch[1] << 8) | scratch[0]) / 16.0f;
+    val = (float)calculateTemperature(scratch) / 128.f;
     val += Units::C2K; // convert to Kelvin
     return true;
+}
+
+// reads scratchpad and returns fixed-point temperature, scaling factor 2^-7
+int16_t DS18B20::calculateTemperature(uint8_t* scratchPad)
+{
+	int16_t fpTemperature = (((int16_t) scratchPad[TEMP_MSB]) << 11) | (((int16_t) scratchPad[TEMP_LSB]) << 3);
+	
+    // DS1820 and DS18S20 have a 9-bit temperature register.
+    // Resolutions greater than 9-bit can be calculated using the data from
+    // the temperature, and COUNT REMAIN and COUNT PER °C registers in the
+    // scratchpad.  The resolution of the calculation depends on the model.
+    // While the COUNT PER °C register is hard-wired to 16 (10h) in a
+    // DS18S20, it changes with temperature in DS1820.
+    // After reading the scratchpad, the TEMP_READ value is obtained by
+    // truncating the 0.5°C bit (bit 0) from the temperature data. The
+    // extended resolution temperature can then be calculated using the
+    // following equation:
+    //                                 COUNT_PER_C - COUNT_REMAIN
+    // TEMPERATURE = TEMP_READ - 0.25 + --------------------------
+    //                                         COUNT_PER_C
+    // Hagai Shatz simplified this to integer arithmetic for a 12 bits
+    // value for a DS18S20, and James Cameron added legacy DS1820 support.
+    // See - http://myarduinotoy.blogspot.co.uk/2013/02/12bit-result-from-ds18s20.html
+
+	if (family() == DS18B20MODEL) {
+		fpTemperature = ((fpTemperature & 0xfff0) << 3) - 16 +
+				(((scratchPad[COUNT_PER_C] - scratchPad[COUNT_REMAIN]) << 7) / scratchPad[COUNT_PER_C]);
+	}
+	return fpTemperature;
 }
 

@@ -12,7 +12,12 @@
 
 struct onewire_bus_t;
 
-constexpr int DS18B20_FAMILY = 0x28;
+// Model IDs
+constexpr uint8_t DS18S20MODEL   = 0x10;  // also DS1820
+constexpr uint8_t DS18B20MODEL   = 0x28;
+constexpr uint8_t DS1822MODEL    = 0x22;
+constexpr uint8_t DS1825MODEL    = 0x3B;
+constexpr uint8_t DS28EA00MODEL  = 0x42;
 
 class DS18B20 final : public OwSens
 {
@@ -24,6 +29,9 @@ public:
     bool doRead(float &val) override;
 
     // OW
-    uint8_t family() override { return DS18B20_FAMILY; }
+    uint8_t family() override { return (uint8_t)(_address && 0xff); }
     bool primeRead(uint32_t now_ms) override;
+
+private:
+    int16_t calculateTemperature(uint8_t* scratchPad);
 };

@@ -481,7 +481,7 @@ Device* DeviceManager::addDevice(DeviceId did, ProtocolType proto, int listen_po
             // a sensor w/o a data link?
             // currently all thoses are handled from one wire group update and are not registered (!)
             if ( iid == OW_BUS && OneWIRE && did == TEMPSENS_DEV ) {
-                dev->_sensor = OneWIRE->probeAndSetup(DS18B20_FAMILY); // DS18B20
+                dev->_sensor = OneWIRE->probeAndSetup(DS18B20MODEL); // DS18B20
             } else if ( iid == NO_PHY && did == TEMPSENS_DEV ) {
                 dev->_sensor = new TempVSens();
             }
