@@ -479,8 +479,8 @@ void register_coredump() {
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////
 // Sensor board init method. Herein all functions that make the XCVario are launched and tested.
+////////////////////////////////////////////////////////////////////////////////////////////////
 void system_startup(void *args){
 
 	bool selftestPassed=true;
@@ -572,6 +572,7 @@ void system_startup(void *args){
             DEVMAN->addDevice(MAGSENS_DEV, MAGSENSBIN_P, MagSensBin::LEGACY_MAGSTREAM_ID, 0, CAN_BUS); // fixme
         }
         BootUpScreen::terminate(); // screen now belongs to OTA
+        Rotary->begin(); // Start rotary to allow aborting by user input.
         MenuRoot->begin(new OTA());
         return; // never coming here
     }
