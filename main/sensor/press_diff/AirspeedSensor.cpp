@@ -139,14 +139,8 @@ bool AirspeedSensor::doRead(float &val)
     bool ok = fetch_pressure(p_raw, t_dat);
     if (!ok)
     {
-        ESP_LOGE(FNAME, "Retry measure, status :%d  p=%ld", ok, p_raw);
-        ok = fetch_pressure(p_raw, t_dat);
-        if (!ok)
-        {
-            ESP_LOGE(FNAME, "Warning, status :%d  p=%ld, bad even retry", ok, p_raw);
-            val = NAN;
-            return false;
-        }
+        ESP_LOGE(FNAME, "Warning, status :%d  p=%ld, bad even retry", ok, p_raw);
+        return false;
     }
     float raw_diff = static_cast<float>(p_raw) - _offset;
     val = raw_diff * _multiplier;
