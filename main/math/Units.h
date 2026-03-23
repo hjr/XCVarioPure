@@ -41,6 +41,7 @@ constexpr kelvin_t C2K 		  = 273.15f;       // K (0°C)
 constexpr pascal_t P0         = 101325.0f;     // Pa
 constexpr float L             = 0.0065f;       // K/m (ISA lapse rate)
 constexpr meter_t T0divL      = T0 / L;        // 44330.76923 m
+constexpr float LdivT0        = L / T0;        // 0.000022556f 1/m
 constexpr float g0divRxL      = g0 / (R_air * L); // 5.25588f, exponent for ISA pressure formula
 constexpr float ft_per_m      = 3.2808399f;    // feet per meter
 constexpr float m_per_ft      = 1.0f / ft_per_m;
@@ -108,6 +109,17 @@ constexpr mps_t pascal_to_mps(pascal_t pressure) {
 }
 constexpr pascal_t mps_to_pascal(mps_t speed) { return (speed * speed) * rho0 / 2.; }
 
+constexpr meter_t calcAltitude(pascal_t seaLevelPressure, pascal_t pressure) {
+    return (Units::T0divL * (1.0f - std::powf(pressure / seaLevelPressure, 1.0f / Units::g0divRxL)));
+}
+inline constexpr meter_t calcAltitudeISA(pascal_t pressure) { return calcAltitude(Units::P0, pressure); }
+constexpr pascal_t calcPressure(pascal_t seaLevelPressure, meter_t alti) {
+    return seaLevelPressure * std::powf(1.0f - (alti / Units::T0divL), Units::g0divRxL);
+}
+inline constexpr pascal_t calcPressureISA(meter_t alti) { return calcPressure(Units::P0, alti); }
+constexpr pascal_t calcQNH(pascal_t pressure, meter_t alti) {
+    return pressure / std::powf(1.0f - (alti / Units::T0divL), Units::g0divRxL);
+}
 
 // ---------------------------------------------------------------------------
 // Helper

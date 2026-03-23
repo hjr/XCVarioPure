@@ -27,19 +27,3 @@ mps_t TasFromDp(pascal_t q, kelvin_t temp)
 //     return (ias / std::sqrtf(288.15 / (temp + 273.15) * (calcPressureISA(altitude) / 1013.25)));
 // }
 
-mps_t Atmosphere::IAS(mps_t tas, pascal_t sp, kelvin_t temp) {
-    return tas / std::sqrtf(Units::rho0 / (sp / (Units::R_air * temp)));
-}
-
-meter_t Atmosphere::calcAltitude(pascal_t SeaLevel_Pres, pascal_t pressure) {
-    return (Units::T0divL * (1.0f - std::powf(pressure / SeaLevel_Pres, 1.0f / Units::g0divRxL)));
-}
-
-// respect temp laps 6.5 K / km
-pascal_t Atmosphere::calcPressure(pascal_t seaLevelPressure, meter_t altitude) {
-    return seaLevelPressure * std::powf(1.0f - (altitude / Units::T0divL), Units::g0divRxL);
-}
-
-pascal_t Atmosphere::calcQNHPressure(pascal_t pressure, meter_t altitude) {
-    return pressure / std::powf((1.0f - (Units::L * altitude) / Units::T0), 5.255f);
-}
