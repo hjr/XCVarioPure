@@ -535,8 +535,11 @@ static void connected_devices_menu_device(SetupMenu *top) // dynamic!
         top->setDynContent();
 
         // the interface
-        SetupMenu *itf = new SetupMenu(DEVMAN->getItfName(dev->_itf->getId()).data(), get_itf_menu_creator(dev->_itf->getId()));
-        top->addEntry(itf);
+        SetupMenu::SetupMenuCreator_t smc = get_itf_menu_creator(dev->_itf->getId());
+        if ( smc ) {
+            SetupMenu *itf = new SetupMenu(DEVMAN->getItfName(dev->_itf->getId()).data(), smc);
+            top->addEntry(itf);
+        }
 
         // all data links to monitor
         if ( dev->_link ) {
