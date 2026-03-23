@@ -34,15 +34,16 @@ void Temperature::draw(temp_status_t mputemp)
             char s[32];
             if (t != -1000.f) {
                 float tu = std::roundf(TempUnit->apply(t) * 10.f) / 10.f;
-                if ( tu < 100.f ) {
-                    std::sprintf(s, "  %.1f ", tu);
-                } else {
-                    std::sprintf(s, "  %.0f ", tu);
-                }
                 if (tu < -0.05f) {
                     MYUCG->setColor(COLOR_BBLUE);
                 } else {
                     MYUCG->setColor(COLOR_WGREY);
+                }
+                tu = std::fabsf(tu);
+                if ( tu < 100.f ) {
+                    std::sprintf(s, "  %.1f ", tu);
+                } else {
+                    std::sprintf(s, "  %.0f ", tu);
                 }
             } else {
                 strcpy(s, "     --- ");
