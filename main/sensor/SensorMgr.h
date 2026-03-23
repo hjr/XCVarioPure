@@ -68,6 +68,7 @@ public:
     static constexpr int MaxSensors = 10;
 
     static bool registerSensor(SensorBase* sensor);
+    static bool isRegistered(SensorId id);
     static void disable(SensorId id);
     static void enterSimMode();
 

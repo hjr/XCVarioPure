@@ -28,10 +28,12 @@ bool SensorRegistry::registerSensor(SensorBase *s)
     SensorId id = s->getId();
     SensorEntry *existing = find(id);
     if ( existing ) {
-        ESP_LOGW(FNAME, "Sensor %s already registered, replacing it", idmemo[static_cast<int>(id) & 0x3f]);
-        SensorBase *old_sensor = existing->sensor;
-        *existing = { id, s, s->getDutyCycle() / 100 };
-        delete old_sensor;
+        if ( existing->sensor != s ) {
+            ESP_LOGW(FNAME, "Sensor %s already registered, replacing it", idmemo[static_cast<int>(id) & 0x3f]);
+            SensorBase *old_sensor = existing->sensor;
+            *existing = { id, s, s->getDutyCycle() / 100 };
+            delete old_sensor;
+        }
         return true;
     }
 
@@ -46,6 +48,11 @@ bool SensorRegistry::registerSensor(SensorBase *s)
     }
     return false; // full
 }
+
+bool SensorRegistry::isRegistered(SensorId id) {
+    return find(id) != nullptr;
+}
+
 
 // suppress the doRead call for this sensor, but keep the sensor registered for post processing and data access
 // one way action (for e.g. sim mode), needs a reboot to revert.
