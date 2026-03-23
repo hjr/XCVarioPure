@@ -48,6 +48,12 @@ OneWireBus* OneWireBus::create()
 OneWireBus::~OneWireBus()
 {
     OneWIRE = nullptr;
+
+    for ( auto s : _all_sensor ) {
+        delete s;
+    }
+    _all_sensor.clear();
+
     if ( _onewire) {
         // onewire_bus_del( (onewire_bus_handle_t)_onewire );
         _onewire->del(_onewire);

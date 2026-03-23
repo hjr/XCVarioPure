@@ -644,6 +644,8 @@ void system_startup(void *args){
             // no sensor found, remove the device again
             DEVMAN->removeDevice(TEMPSENS_DEV);
         }
+        // do not register the temp sensor, because it is not part of the sensor loop
+        // reading one wire sensors is done outside the hard real-time sensor loop
     }
     // The once permanently configured temp sensor is used as indication to infinitely trying to reconnect to it.
     if (dev) {

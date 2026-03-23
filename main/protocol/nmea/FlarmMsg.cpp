@@ -218,9 +218,8 @@ dl_action_t FlarmMsg::parsePFLAX(NmeaPlugin *plg)
                 // XCV extension to switch to simulation mode
                 ESP_LOGI(FNAME,"enter SIMULATION MODE");
                 // replace the temp sensor with a virtual one
-                Device *dev = DEVMAN->addDevice(TEMPSENS_DEV, NO_ONE, 0, 0, NO_PHY);
-                if ( dev && dev->_sensor ) { SensorRegistry::registerSensor(dev->_sensor); }
                 DEVMAN->removeDevice(TEMPSENS_DEV);
+                DEVMAN->addDevice(TEMPSENS_DEV, NO_ONE, 0, 0, NO_PHY);
                 // disable real sensors
                 SensorRegistry::enterSimMode();
                 // add the XCVSimMsg NMEA plugin to the same data link / protocol instance

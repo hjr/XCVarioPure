@@ -26,9 +26,13 @@ bool SensorRegistry::registerSensor(SensorBase *s)
         return false;
     }
     SensorId id = s->getId();
-    if ( find(id) ) {
-        ESP_LOGW(FNAME, "Sensor %s already registered", idmemo[static_cast<int>(id) & 0x3f]);
-        return false; // already registered
+    SensorEntry *existing = find(id);
+    if ( existing ) {
+        ESP_LOGW(FNAME, "Sensor %s already registered, replacing it", idmemo[static_cast<int>(id) & 0x3f]);
+        SensorBase *old_sensor = existing->sensor;
+        *existing = { id, s, s->getDutyCycle() / 100 };
+        delete old_sensor;
+        return true;
     }
 
     int idx = 0;
