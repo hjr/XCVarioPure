@@ -8,12 +8,12 @@
 
 #include "sensor/temp/TempSensor.h"
 
-TempSensor* OATSensor = nullptr;
+TempVSensor* oatSensor = nullptr;
 
 constexpr int DUTY_CYCLE_MS = 1000;
 static float temp_buffer[ (SENSOR_HISTORY_DURATION_MS / DUTY_CYCLE_MS) + 1 ];
 
-TempSensor::TempSensor() :
+TempVSensor::TempVSensor() :
     SensorTP<float>(temp_buffer, DUTY_CYCLE_MS),
     _lpf(0.5f)
 {
@@ -23,5 +23,5 @@ TempSensor::TempSensor() :
     setNVSVar(&OAT);
     _lpf.reset(Units::C_to_K(15.f)); // initial guess for OAT
     setFilter(&_lpf);
-    OATSensor = this;
+    oatSensor = this;
 }

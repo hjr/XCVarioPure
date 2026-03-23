@@ -13,14 +13,14 @@
 #include "../SensorMgr.h"
 
 
-class TempSensor : public SensorTP<float> {
+class TempVSensor : public SensorTP<float> {
 public:
-    TempSensor();
-    ~TempSensor() = default;
-    bool probe() override { return false; };
+    TempVSensor();
+    ~TempVSensor() = default;
+    bool probe() override { return true; };
 private:
     LowPassFilterT<float> _lpf;
 };
 
 
-extern TempSensor* OATSensor;
+extern TempVSensor* oatSensor;

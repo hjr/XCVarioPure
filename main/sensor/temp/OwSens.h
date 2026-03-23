@@ -14,11 +14,11 @@
 #include <cstdint>
 
 
-class OwSens : public TempSensor
+class OwSens : public TempVSensor
 {
 public:
     OwSens() = delete;
-    OwSens(onewire_device_address_t addr) : TempSensor(), _address(addr) {}
+    OwSens(onewire_device_address_t addr) : TempVSensor(), _address(addr) {}
     virtual uint8_t family() = 0;
     virtual bool primeRead(uint32_t now_ms) = 0;
     onewire_device_address_t getAddress() const { return _address; }

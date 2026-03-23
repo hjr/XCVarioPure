@@ -73,7 +73,7 @@ dl_action_t XCVSimMsg::parse_Sens(NmeaPlugin *plg)
     asSensor->pushAndPublish(tmp, time);
 
     tmp = atof(sm->_frame.c_str() + word->at(5)) + Units::C2K; // convert to Kelvin
-    OATSensor->pushAndPublish(tmp, time);
+    oatSensor->pushAndPublish(tmp, time);
 
     vector_f vtmp;
     vtmp.x = atof(sm->_frame.c_str() + word->at(6));

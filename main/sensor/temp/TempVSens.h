@@ -10,10 +10,10 @@
 
 #include "TempSensor.h"
 
-class TempVSens : public TempSensor
+class TempVSens : public TempVSensor
 {
 public:
-    TempVSens() : TempSensor() {}
+    TempVSens() : TempVSensor() {}
     ~TempVSens() = default;
 
     const char* name() const override { return "TempSim"; }
