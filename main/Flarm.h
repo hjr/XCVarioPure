@@ -21,7 +21,6 @@ public:
 	static bool gpsStatus() { return myGPS_OK; }
 	static mps_t getGndSpeed() { return gndSpeed; }
 	static rad_t getGndCourse() { return gndCourse; }
-	static bool validExtAlt() { return ext_alt_timer!=0; } // fixme -> watchdog
 	static void setConfirmed();
 	static bool isConfirmed();
 
@@ -38,7 +37,6 @@ private:
     					// targets and a FLARM-generated ID for Mode-C targets
 	static int _confirmedId;
 	static int _confirmedTime;
-	static int ext_alt_timer;
 	static int _numSat;
 };
 

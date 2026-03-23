@@ -18,7 +18,6 @@ int Flarm::IcaoId = 0;
 int Flarm::_confirmedId = 0;
 int Flarm::_confirmedTime = 0;
 
-int Flarm::ext_alt_timer=0;
 int Flarm::_numSat=0;
 
 

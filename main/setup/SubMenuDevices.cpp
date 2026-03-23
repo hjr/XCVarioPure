@@ -58,7 +58,7 @@ static void connected_devices_menu_create_interfaceS2(SetupMenu *top);
 static void connected_devices_menu_create_interfaceCAN(SetupMenu *top);
 static void connected_devices_menu_create_interfaceOW(SetupMenu *top);
 
-static SetupMenuCreator_t get_itf_menu_creator(InterfaceId iid)
+static SetupMenu::SetupMenuCreator_t get_itf_menu_creator(InterfaceId iid)
 {
     if ( iid == WIFI_APSTA ) {
         return connected_devices_menu_create_wifi;

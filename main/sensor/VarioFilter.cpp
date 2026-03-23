@@ -11,7 +11,6 @@
 
 #include "pressure/PressureSensor.h"
 #include "press_diff/AirspeedSensor.h"
-#include "Atmosphere.h"
 #include "math/Floats.h"
 #include "S2F.h"
 #include "AverageVario.h"
@@ -190,7 +189,7 @@ bool VarioFilter::doRead(float& val) {
     } else if (te_comp_enable.get() == TE_TEK_PRESSURE) {
         pascal_t barP = baroSensor->getHead();
         pascal_t dynP = asSensor->getHead();
-        curr_altitude = Atmosphere::calcAltitudeISA((barP - dynP) * (1 + (te_comp_adjust.get() / 100.0)));  // subtract PI pressure like TEK probe does
+        curr_altitude = Units::calcAltitudeISA((barP - dynP) * (1 + (te_comp_adjust.get() / 100.0)));  // subtract PI pressure like TEK probe does
         // ESP_LOGI(FNAME,"TE alt: %4.3f m, ST: %.1f PI: %.1f", _currentAlt, barP, (dynP*100) );
     } else {  // TE_TEK_PROBE
         bool success;

@@ -9,10 +9,11 @@
 #include "GarminMsg.h"
 
 #include "Flarm.h"
+#include "math/Units.h"
 #include "setup/SetupNG.h"
 #include "sensor.h"
 
-#include <logdefnone.h>
+#include "logdefnone.h"
 
 
 // The Garmin protocol parser.
@@ -24,18 +25,18 @@
 //
 dl_action_t GarminMsg::parsePGRMZ(NmeaPlugin *plg)
 {
-    if (alt_select.get() != AS_EXTERNAL) {
-        return NOACTION;
+    if (alt_select.get() != ALT_EXTERNAL) {
+        return DO_ROUTING;
     }
     ProtocolState *sm = plg->getNMEA().getSM();
     const std::vector<int> *word = &sm->_word_start;
-    ESP_LOGD(FNAME, "parsePGRMZ");
+    ESP_LOGI(FNAME, "parsePGRMZ");
 
-    if ( word->size() == 4 && sm->_frame.at(word->at(1)) == 'F' ) {
+    if (word->size() == 4 && sm->_frame.at(word->at(1)) == 'F') {
         int alt1013_ft = atoi(sm->_frame.c_str()+word->at(0));
-        alt_external = Units::read(Units::foot, alt1013_ft);
+        meter_t alt_external = Units::read(Units::foot, alt1013_ft);
         ESP_LOGI(FNAME, "PGRMZ %d: ALT(1013):%5.0f m", alt1013_ft, alt_external);
-        Flarm::ext_alt_timer = 10; // Fall back to internal Barometer after 10 seconds
+        statp.set(Units::calcPressureISA(alt_external));
     }
     return DO_ROUTING;
 }

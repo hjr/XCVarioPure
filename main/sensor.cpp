@@ -22,7 +22,6 @@
 #include "driver/gpio/ESPRotary.h"
 #include "CenterAid.h"
 #include "driver/gpio/AnalogInput.h"
-#include "Atmosphere.h"
 #include "IpsDisplay.h"
 #include "S2F.h"
 #include "Version.h"
@@ -115,7 +114,6 @@ uint8_t gyro_flash_savings=0;
 global_flags gflags = {};
 
 int   ccp = 60;
-meter_t alt_external;
 
 const constexpr char passed_text[] = "PASSED\n";
 const constexpr char failed_text[] = "FAILED\n";
@@ -931,20 +929,12 @@ void system_startup(void *args){
 
         ESP_LOGI(FNAME, "Master Mode: QNH Autosetup, IAS=%3f (<50 km/h)", ias.get());
         // QNH autosetup
-        meter_t ae = airfield_elevation.get();
-        ESP_LOGI(FNAME, "Airfield Elevation = %4.1f m", ae);
-        if (ae > NO_ELEVATION) {
-            if (Flarm::validExtAlt() && alt_select.get() == AS_EXTERNAL) {
-                // correct altitude according to ISA model = 27ft / hPa
-                ae = alt_external + (QNH.get() - 1013.25f) * 8.2296f;  // fixme alt extr
-            }
-
-            pascal_t baro;
-            if (baroSensor->doRead(baro)) {
-                pascal_t qnh_best = Atmosphere::calcQNHPressure(baro, ae);
-                QNH.set(qnh_best);
-                ESP_LOGI(FNAME, "Auto QNH (direkt) = %4.2f hPa", qnh_best);
-            }
+        meter_t airfield_elev = airfield_elevation.get();
+        ESP_LOGI(FNAME, "Airfield Elevation = %4.1f m (Hist Level = %d)", airfield_elev, baroSensor->getLevel());
+        if (airfield_elev > NO_ELEVATION && alt_select.get() == ALT_BARO_SENSOR) {
+            pascal_t qnh_auto = Units::calcQNH(baroSensor->getAVG(300), airfield_elev);
+            QNH.set(qnh_auto);
+            ESP_LOGI(FNAME, "Auto QNH (direkt) = %4.2f hPa", qnh_auto);
         }
         Display->clear();
 
@@ -1005,6 +995,11 @@ void system_startup(void *args){
     // TE vario "sensor" always needed, but last in line
     bmpVario.setup();
     SensorRegistry::registerSensor(&bmpVario);
+
+    // apply a none default alt_select
+    if ( alt_select.get() != ALT_BARO_SENSOR ) {
+        SetupMenu::switch_alt_source(nullptr);
+    }
 
     Rotary->begin();  // now accept regular user input
 

@@ -6,6 +6,7 @@
  */
 
 #include "CenterAid.h"
+#include "SetupCommon.h"
 #include "freertos/idf_additions.h"
 #include "math/Floats.h"
 #include "setup/SetupMenu.h"
@@ -36,6 +37,7 @@
 #include "Flarm.h"
 #include "protocol/FlarmSim.h"
 #include "sensor/imu/AccMPU6050.h"
+#include "sensor/SensorMgr.h"
 #include "sensor/imu/GyroMPU6050.h"
 #include "sensor/pressure/PressureSensor.h"
 #include "driver/audio/ESPAudio.h"
@@ -251,6 +253,23 @@ static int update_alti_buzz(SetupMenuSelect *p) {
 	return 0;
 }
 
+int SetupMenu::switch_alt_source(SetupMenuSelect* p) {
+    if (alt_select.get() == ALT_BARO_SENSOR) {
+        // point baro pressure input to publish pressure
+        dynamic_cast<PressureSensor*>(baroSensor)->setNVSVar(&statp);
+        dynamic_cast<PressureSensor*>(teSensor)->setNVSVar(nullptr);
+    } else if (alt_select.get() == ALT_TE_SENSOR) {
+        // suppress baro pressure input
+        dynamic_cast<PressureSensor*>(baroSensor)->setNVSVar(nullptr);
+        dynamic_cast<PressureSensor*>(teSensor)->setNVSVar(&statp);
+    } else {
+        // GPS sets the statp directly, suppress pressure input
+        dynamic_cast<PressureSensor*>(baroSensor)->setNVSVar(nullptr);
+        dynamic_cast<PressureSensor*>(teSensor)->setNVSVar(nullptr);
+    }
+    return 0;
+}
+
 // static int add_key(SetupMenuChar *p) {
 //     ESP_LOGI(FNAME, "add_key( %s ) ", p->value());
 //     if (p->value()[0] == '@') {
@@ -427,12 +446,8 @@ static int imu_calib(SetupMenuSelect* p) {
 int qnh_adj(SetupMenuValFloat* p) {
     ESP_LOGI(FNAME, "qnh_adj %f", p->get());
     float alt = 0;
-    if (Flarm::validExtAlt() && alt_select.get() == AS_EXTERNAL) {  // fixme
-        alt = alt_external + (p->get() - Units::P0) * 0.082296;    // correct altitude according to ISA model = 27ft / hPa
-    } else {
-        // catch the 10 samples from the pressure sensor self test
-        alt = (baroSensor) ? Atmosphere::calcAltitude(p->get(), baroSensor->getAVG(5000)) : altitude.get();
-    }
+    // catch the 10 samples from the pressure sensor self test
+    alt = (baroSensor) ? Units::calcAltitude(p->get(), baroSensor->getAVG(5000)) : altitude.get();
     ESP_LOGI(FNAME, "Setup BA alt=%f QNH=%f Pa", alt, p->get());
     MYUCG->setFont(ucg_font_fub25_hf, true);
     alt = AltUnit->apply(alt);
@@ -960,12 +975,15 @@ static void options_menu_create_altimeter(SetupMenu *top) {
 	tral->setHelp("Transition altitude (or transition height, when using QFE) is the altitude/height above which standard pressure (QNE) is set (1013.2 mb/hPa)");
 	top->addEntry(tral);
 
-	SetupMenuSelect *als = new SetupMenuSelect("Alt. Source", RST_NONE, nullptr, &alt_select);
-	top->addEntry(als);
-	als->setHelp("Select source for barometric altitude, either TE sensor or Baro sensor (recommended) or an external source e.g. FLARM (if avail)");
-	als->addEntry("TE Sensor");
-	als->addEntry("Baro Sensor");
-	als->addEntry("External");
+	if ( SetupCommon::isMaster() ) {
+		// only the master XCV has this choice
+		SetupMenuSelect *als = new SetupMenuSelect("Alt. Source", RST_NONE, SetupMenu::switch_alt_source, &alt_select);
+		top->addEntry(als);
+		als->setHelp("Select source for the altitude, either TE sensor or Baro sensor (default), or an external source e.g. FLARM");
+		als->addEntry("Baro Sensor", ALT_BARO_SENSOR);
+		als->addEntry("TE Sensor", ALT_TE_SENSOR);
+		als->addEntry("GPS/FLARM", ALT_EXTERNAL);
+	}
 
 	SetupMenuSelect *alq = new SetupMenuSelect("Alt. Quantization", RST_NONE, nullptr, &alt_quantization);
 	alq->setHelp("Set altimeter mode with discrete steps and rolling last digits");

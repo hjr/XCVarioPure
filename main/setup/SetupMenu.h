@@ -14,12 +14,13 @@
 constexpr const char* FORMATSTRING_AND_SPACE = "%s                ";
 
 class SetupMenuValFloat;
-
-typedef void (*SetupMenuCreator_t)(SetupMenu*);
+class SetupMenuSelect;
 
 class SetupMenu : public MenuEntry
 {
 public:
+	using SetupMenuCreator_t = void (*)(SetupMenu*);
+
 	SetupMenu() = delete;
 	explicit SetupMenu(const char* title, SetupMenuCreator_t, int cont_id=0);
 	virtual ~SetupMenu();
@@ -55,6 +56,7 @@ public:
 	void longPress() override;
 
 	static gpio_num_t getGearWarningIO();
+	static int switch_alt_source(SetupMenuSelect* p);
 
 	static SetupMenu* createTopSetup();
 	static SetupMenuValFloat *createQNHMenu();

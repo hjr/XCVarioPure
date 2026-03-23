@@ -10,7 +10,7 @@
 
 #include "bme280_spi.h"
 #include "spl06_007.h"
-#include "Atmosphere.h"
+#include "math/Units.h"
 #include "../SensorMgr.h"
 #include "setup/SetupNG.h"
 #include "math/Floats.h"
@@ -38,12 +38,12 @@ PressureSensor::PressureSensor(SensorId id) : SensorTP<pascal_t>((id == SensorId
 
 meter_t PressureSensor::readAltitude(pascal_t qnh, bool& success) {
     success = getHeadValid();
-    return Atmosphere::calcAltitude( qnh, getHead() );
+    return Units::calcAltitude( qnh, getHead() );
 }
 
 meter_t PressureSensor::readAltitudeISA(bool& success) {
     success = getHeadValid();
-    return Atmosphere::calcAltitudeISA(getHead());
+    return Units::calcAltitudeISA(getHead());
 }
 
 static PressureSensor* factory(PressureSensor::PSens_Type type, SensorId id)

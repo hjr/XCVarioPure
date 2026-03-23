@@ -318,8 +318,8 @@ void resetCWindAge() {
 	}
 }
 static void calc_altis() {
-	altitude.set( Atmosphere::calcAltitude(QNH.get(), statp.get()) );
-	altitude_isa.set( Atmosphere::calcAltitudeISA(statp.get()) );
+	altitude.set( Units::calcAltitude(QNH.get(), statp.get()) );
+	altitude_isa.set( Units::calcAltitudeISA(statp.get()) );
 }
 static void calc_speeds() {
     if ( dynp.getValid() ) {
@@ -494,7 +494,7 @@ SetupNG<float>  		deadband_neg("DEADBAND_NEG" , -0.3, true, SYNC_BIDIR, PERSISTE
 
 SetupNG<float>  		wifi_max_power( "WIFI_MP" , 50, true, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(10.0, 100.0, 5.0));
 SetupNG<int>  			factory_reset( "FACTORY_RES" , 0 );
-SetupNG<int>  			alt_select( "ALT_SELECT" , AS_BARO_SENSOR ); // fixme not functional right now
+SetupNG<int>  			alt_select( "ALT_SELECT" , ALT_BARO_SENSOR );
 SetupNG<int>  			fl_auto_transition( "FL_AUTO" , 0 );
 SetupNG<int>  			alt_display_mode( "ALT_DISP_MODE" , Altimeter::MODE_QNH );
 SetupNG<float>  		transition_alt( "TRANS_ALT", 50, true, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(0, 400, 10)); // Transition Altitude
