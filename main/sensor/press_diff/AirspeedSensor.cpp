@@ -27,11 +27,11 @@ static float as_buffer[ (SENSOR_HISTORY_DURATION_MS / DUTY_CYCLE_MS) + 1 ]; // h
 
 AirspeedSensor::AirspeedSensor() :
     SensorTP<float>(as_buffer, DUTY_CYCLE_MS),
-    _dynp_lpf(0.25f)
+    _dynp_zoglpf(0.25f, Units::mps_to_pascal(Units::kmh_to_mps(25.0f)))
 {
     _id = SensorId::DIFFPRESSURE | SensorFlags::SENSOR_LOCAL;
     setNVSVar(&dynp);
-    setFilter(&_dynp_lpf);
+    setFilter(&_dynp_zoglpf);
 }
 
 static AirspeedSensor* factory(AirspeedSensor::ASens_Type type)

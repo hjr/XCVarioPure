@@ -122,7 +122,7 @@ void NmeaPrtcl::sendStdXCVario()
     msg->buffer += str;
     std::sprintf(str, ",%4.1f", Units::pipe(statp.get(), Units::hpa));
     msg->buffer += str;
-    std::sprintf(str, ",%.1f", dynp.get());
+    std::sprintf(str, ",%.1f", dynp.getValid() ? dynp.get() : 0.f);
     msg->buffer += str;
 
     // optional IMU additions

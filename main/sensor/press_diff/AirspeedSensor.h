@@ -35,7 +35,7 @@ protected:
     inline float getMultiplier() const { return _multiplier; }
 
 private:
-    LowPassFilterT<float> _dynp_lpf;
+    ZeroOutGatingLPFilter _dynp_zoglpf;
     float _offset = 0;
     float _multiplier = 1.0f;
     // rest counter

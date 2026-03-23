@@ -129,7 +129,7 @@ public:
         _history((T*)buf, HistoryCapacity(ums))
     {
         if constexpr (std::is_same_v<T, float>) { // only for float types
-            _invalid = NAN;
+            _invalid = 0.f;
         }
     }
     virtual ~SensorTP() {

@@ -35,7 +35,7 @@ void NmeaPrtcl::sendOpenVario()
     char buffer[50];
     std::sprintf(buffer, "%0.1f", Units::pipe(statp.get(), Units::hpa));
     msg->buffer += buffer;
-    std::sprintf(buffer, ",Q,%0.1f", dynp.get()); // dyn pressure in pascal
+    std::sprintf(buffer, ",Q,%0.1f", dynp.getValid() ? dynp.get() : 0.f); // dyn pressure in pascal
     msg->buffer += buffer;
     std::sprintf(buffer, ",E,%0.1f", te_vario.get());
     msg->buffer += buffer;

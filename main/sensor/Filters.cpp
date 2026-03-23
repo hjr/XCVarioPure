@@ -17,6 +17,15 @@ T LowPassFilterT<T>::filter(T input)
     return _last_output;
 }
 
+float ZeroOutGatingLPFilter::filter(float input)
+{
+    float tmp = LowPassFilterT<float>::filter(input);
+    if (tmp < _threshold) {
+        return 0.f;
+    }
+    return tmp;
+}
+
 // we explicitly need those instantiations
 template class LowPassFilterT<float>;
 template class LowPassFilterT<vector_f>;
