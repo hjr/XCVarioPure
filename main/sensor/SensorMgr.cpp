@@ -47,7 +47,9 @@ bool SensorRegistry::registerSensor(SensorBase *s)
     return false; // full
 }
 
-void SensorRegistry::removeFromUpdateLoop(SensorId id)
+// suppress the doRead call for this sensor, but keep the sensor registered for post processing and data access
+// one way action (for e.g. sim mode), needs a reboot to revert.
+void SensorRegistry::disable(SensorId id)
 {
     SensorEntry *entry = find(id);
     if (entry) {

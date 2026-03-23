@@ -68,7 +68,7 @@ public:
     static constexpr int MaxSensors = 10;
 
     static bool registerSensor(SensorBase* sensor);
-    static void removeFromUpdateLoop(SensorId id);
+    static void disable(SensorId id);
     static void enterSimMode();
 
     static auto begin() { return all_sensors.begin(); }
