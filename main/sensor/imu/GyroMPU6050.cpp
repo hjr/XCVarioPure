@@ -12,6 +12,7 @@
 #include "AccMPU6050.h"
 #include "../SensorMgr.h"
 #include "SetupNG.h"
+#include "sensor.h"
 #include "logdef.h"
 
 #include "mpu/math.hpp"
@@ -87,7 +88,8 @@ void GyroMPU6050::postProcess() {
         if ( !airborne.get() // only on the ground
             && _restTimer > 30000 // only after a long rest (30sec)
             && bias.get_norm() > GyroMPU6050::GYRO_THRESHOLD // only push if bias is > threshold
-            && _bias_update < 3 ) { // only push if we have a stable bias and are airborne
+            && _bias_update < 3 
+            && !gflags.inSimulationMode ) { // only push if we have a stable bias and are airborne
             pushGyroBias(bias);
             resetRest(); // to avoid multiple pushes in a row, only update bias once per rest phase
             _bias_update++;
