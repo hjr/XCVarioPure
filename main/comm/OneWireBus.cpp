@@ -54,8 +54,7 @@ OneWireBus::~OneWireBus()
     }
     _all_sensor.clear();
 
-    if ( _onewire) {
-        // onewire_bus_del( (onewire_bus_handle_t)_onewire );
+    if ( _onewire ) {
         _onewire->del(_onewire);
     }
 }
@@ -80,6 +79,19 @@ void OneWireBus::ConfigureIntf(int cfg)
     }
     else {
         ESP_LOGE(FNAME, "1-Wire bus installation failed on GPIO%d", _ONEWIRE_BUS_GPIO);
+    }
+}
+
+void OneWireBus::notifySensorDelete(SensorBase *sensor) {
+    // cast to known sensor type
+    OwSens *s = dynamic_cast<OwSens*>(sensor);
+    // remove from my list to not further reference it
+    for(auto it = _all_sensor.begin(); it != _all_sensor.end(); ++it) {
+        if (s == *it) {
+            ESP_LOGI(FNAME, "Sensor %s with address %016llX deleted, removing from OneWireBus", s->name(), s->getAddress());
+            _all_sensor.erase(it);
+            break;
+        }
     }
 }
 
@@ -205,9 +217,9 @@ bool OneWireBus::groupUpdate(uint32_t now_ms)
         }
         if ( _all_sensor.empty() ) {
             // a delayed first connect
-            ESP_LOGE(FNAME, "No OneWire devices found after recovery");
             Device *dev = DEVMAN->getDevice(TEMPSENS_DEV);
             if ( dev && !dev->_sensor ) {
+                ESP_LOGW(FNAME, "Probing the Temp sensor");
                 dev->_sensor = probeAndSetup(DS18B20MODEL);
             }
             errors = 0; // reset counter in case there are no sensors yet

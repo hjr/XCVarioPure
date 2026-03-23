@@ -588,6 +588,7 @@ uint8_t DeviceManager::removeDevice(DeviceId did, bool nvsave)
 
     if ( dev ) {
         InterfaceCtrl *itf = dev->_itf;
+        if ( dev->_sensor ) { itf->notifySensorDelete(dev->_sensor); } // inform the bus that the sensor is gone
         delete dev;
         // is it the last device on this interface
         if ( itf->getNrDLinks() == 0 ) {
@@ -627,10 +628,7 @@ uint8_t DeviceManager::removeDevice(DeviceId did, bool nvsave)
                 S2->stop();
             }
             else if ( itf == OneWIRE ) {
-                ESP_LOGI(FNAME, "stopping OneWire");
-                OneWireBus *tmp = OneWIRE;
-                OneWIRE = nullptr;
-                delete tmp;
+                ESP_LOGI(FNAME, "keeping OneWire");
             }
         }
 

@@ -14,6 +14,7 @@
 #include <map>
 
 class DataLink;
+class SensorBase;
 
 // All managed interfaces -> max 16 (setup uses 4 bits to store)
 typedef enum {
@@ -73,8 +74,9 @@ public:
     // Choose from an enumerated set of configurations, -1: OFF; 0: as is; 1,2,3..: load a preset profile 
     virtual void ConfigureIntf(int cfg) = 0;
     // if blocked returns number of ms for next possible invocation, returned len reflect the sent bytes
-    // a negative return value reflects another error.
+    // a negative return value reflects other errors.
     virtual int Send(const char *msg, int &len, int port=0) = 0;
+    virtual void notifySensorDelete(SensorBase *) {} // to be called by sensors on deletion, so that the interface can cleanup data
     DataLink* newDataLink(int port);
     void addDataLink(DataLink *dl);
     DataLink* MoveDataLink(int port);

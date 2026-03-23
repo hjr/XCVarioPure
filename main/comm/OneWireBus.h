@@ -43,6 +43,7 @@ public:
     const char *getStringId() const override { return "OneWire"; }
     void ConfigureIntf(int cfg) override;
     int Send(const char*, int&, int) override { return 0; }
+    void notifySensorDelete(SensorBase *) override;
 
 private:
     OwSens* getSensorByAddress(onewire_device_address_t addr);
