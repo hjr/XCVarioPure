@@ -120,7 +120,7 @@ bool SPL06_007::selfTest( celsius_t& t, pascal_t& p ){
     for (int i = 0; i < 10; i++) {
         pascal_t tmp;
         doRead(tmp);
-        pushToHistory(tmp, Clock::getMillis());
+        pushAndPublish(tmp, Clock::getMillis());
         p += tmp;
         vTaskDelay(pdMS_TO_TICKS(50));
     }

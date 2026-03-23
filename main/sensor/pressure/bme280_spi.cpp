@@ -281,7 +281,7 @@ bool BME280_SPI::selfTest(celsius_t& t, pascal_t& p) {
         pascal_t tmp_p;
         success = doRead(tmp_p);
         if ( ! success ) break;
-        pushToHistory(tmp_p, Clock::getMillis());
+        pushAndPublish(tmp_p, Clock::getMillis());
         p += tmp_p;
         vTaskDelay(pdMS_TO_TICKS(100));
     }
