@@ -434,7 +434,6 @@ void readSensors(void *pvParameters)
         {
             max_time = delta;
             max_time_to = sparse_time + 30000;
-            ESP_LOGI(FNAME, "Sensor loop max time: %d ms", max_time);
         }
         else if ( max_time_to < sparse_time ) {
             max_time = 0; // reset max time measurement every 5 seconds, to not catch single spikes from the past

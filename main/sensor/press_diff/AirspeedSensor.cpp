@@ -196,7 +196,7 @@ void AirspeedSensor::postProcess()
                 if ( ! floatEqualFast(_offset, raw) ) {
                     _offset = ((2.f * _offset) + raw) / 3.f;
                     _batch_counter++;
-                    printf("AS new offset batch %d: %f\n", _batch_counter, _offset);
+                    if ( !(_batch_counter % 20)) { printf("AS new offset batch %d: %f\n", _batch_counter, _offset); }
                 }
             }
         }
