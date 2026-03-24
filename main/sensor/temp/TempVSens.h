@@ -8,7 +8,7 @@
 
 #pragma once
 
-#include "TempSensor.h"
+#include "TempVSensor.h"
 
 class TempVSens : public TempVSensor
 {
