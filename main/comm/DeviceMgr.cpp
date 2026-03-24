@@ -26,7 +26,7 @@
 #include "sensor/mag/MagVSensor.h"
 #include "sensor/gps/GpsVSensor.h"
 #include "sensor/temp/ds18b20.h"
-#include "sensor/temp/TempVSens.h"
+#include "sensor/temp/TempSim.h"
 
 #include "sensor.h"
 #include "logdefnone.h"
@@ -483,7 +483,7 @@ Device* DeviceManager::addDevice(DeviceId did, ProtocolType proto, int listen_po
             if ( iid == OW_BUS && OneWIRE && did == TEMPSENS_DEV ) {
                 dev->_sensor = OneWIRE->probeAndSetup(DS18B20MODEL); // DS18B20
             } else if ( iid == NO_PHY && did == TEMPSENS_DEV ) {
-                dev->_sensor = new TempVSens();
+                dev->_sensor = new TempSim();
             }
             
             if ( ! dev->_sensor ) {

@@ -10,11 +10,11 @@
 
 #include "TempVSensor.h"
 
-class TempVSens : public TempVSensor
+class TempSim : public TempVSensor
 {
 public:
-    TempVSens() : TempVSensor() {}
-    ~TempVSens() = default;
+    TempSim() : TempVSensor() {}
+    ~TempSim() = default;
 
     const char* name() const override { return "TempSim"; }
     bool setup() override { return true; }
