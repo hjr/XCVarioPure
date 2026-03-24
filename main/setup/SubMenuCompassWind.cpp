@@ -22,30 +22,30 @@
 extern AdaptUGC *MYUCG;
 
 
-static float tesla=0;
-static bool showSensorRawData(SetupMenuSelect *p)
-{
-	const vector_f &raw = *magSensor->getHeadPtr();
-	ESP_LOGI( FNAME, "showSensorRawData() %.2f %.2f %.2f", raw.x, raw.y, raw.z );
-	char buf[100];
-	MYUCG->setColor( COLOR_WHITE );
-	sprintf(buf, "X = %.2f  ", raw.x);
-	p->menuPrintLn(buf, 3);
-	sprintf(buf, "Y = %.2f  ", raw.y);
-	p->menuPrintLn(buf, 4);
-	sprintf(buf, "Z = %.2f  ", raw.z);
-	p->menuPrintLn(buf, 5);
-	float t = raw.get_norm()/150.0;
-	if( abs(t-tesla) > 5 )
-		tesla += (t-tesla)*0.2;
-	else if ( abs(t-tesla) > 1 )
-		tesla += (t-tesla)*0.07;
-	else
-		tesla += (t-tesla)*0.01;
-	sprintf(buf, "Mag. field H = %.1f uT  ", tesla );
-	p->menuPrintLn(buf, 6);
-	return true;
-}
+// static float tesla=0;
+// static bool showSensorRawData(SetupMenuSelect *p)
+// {
+// 	const vector_f &raw = *magSensor->getHeadPtr();
+// 	ESP_LOGI( FNAME, "showSensorRawData() %.2f %.2f %.2f", raw.x, raw.y, raw.z );
+// 	char buf[100];
+// 	MYUCG->setColor( COLOR_WHITE );
+// 	sprintf(buf, "X = %.2f  ", raw.x);
+// 	p->menuPrintLn(buf, 3);
+// 	sprintf(buf, "Y = %.2f  ", raw.y);
+// 	p->menuPrintLn(buf, 4);
+// 	sprintf(buf, "Z = %.2f  ", raw.z);
+// 	p->menuPrintLn(buf, 5);
+// 	float t = raw.get_norm()/150.0;
+// 	if( abs(t-tesla) > 5 )
+// 		tesla += (t-tesla)*0.2;
+// 	else if ( abs(t-tesla) > 1 )
+// 		tesla += (t-tesla)*0.07;
+// 	else
+// 		tesla += (t-tesla)*0.01;
+// 	sprintf(buf, "Mag. field H = %.1f uT  ", tesla );
+// 	p->menuPrintLn(buf, 6);
+// 	return true;
+// }
 
 static inline int16_t absmax_sign(int16_t a, int16_t b)
 {
@@ -55,156 +55,156 @@ static inline int16_t absmax_sign(int16_t a, int16_t b)
 
 
 /** Method for receiving intermediate calibration results. */
-static void calibrationReport(const CompassCalibrationData &data, bool print)
-{
-	// X
-	if( data.bits.xmax_green && data.bits.xmin_green ) {
-		MYUCG->setColor( COLOR_GREEN );
-	} else {
-		MYUCG->setColor( COLOR_WHITE );
-	}
-	MYUCG->setPrintPos( 1, 60 );
-	MYUCG->printf( "X-Scale=%3.1f  ", data.scale.x * 100 );
-	MYUCG->setPrintPos( 160, 60 );
-	MYUCG->printf( "(%.1f)  ", data.sample.x * 100.f/32768.f );
-	MYUCG->setPrintPos( 1, 135 );
-	MYUCG->printf( "X-Bias=%3.1f  ", data.bias.x * 100.f/32768.f );
+// static void calibrationReport(const CompassCalibrationData &data, bool print)
+// {
+// 	// X
+// 	if( data.bits.xmax_green && data.bits.xmin_green ) {
+// 		MYUCG->setColor( COLOR_GREEN );
+// 	} else {
+// 		MYUCG->setColor( COLOR_WHITE );
+// 	}
+// 	MYUCG->setPrintPos( 1, 60 );
+// 	MYUCG->printf( "X-Scale=%3.1f  ", data.scale.x * 100 );
+// 	MYUCG->setPrintPos( 160, 60 );
+// 	MYUCG->printf( "(%.1f)  ", data.sample.x * 100.f/32768.f );
+// 	MYUCG->setPrintPos( 1, 135 );
+// 	MYUCG->printf( "X-Bias=%3.1f  ", data.bias.x * 100.f/32768.f );
 
-	// Y
-	if( data.bits.ymax_green && data.bits.ymin_green ) {
-		MYUCG->setColor( COLOR_GREEN );
-	} else {
-		MYUCG->setColor( COLOR_WHITE );
-	}
-	MYUCG->setPrintPos( 1, 85 );
-	MYUCG->printf( "Y-Scale=%3.1f  ", data.scale.y * 100);
-	MYUCG->setPrintPos( 160, 85 );
-	MYUCG->printf( "(%.1f)  ", data.sample.y * 100.f/32768.f );
-	MYUCG->setPrintPos( 1, 160 );
-	MYUCG->printf( "Y-Bias=%3.1f  ", data.bias.y * 100.f/32768.f );
+// 	// Y
+// 	if( data.bits.ymax_green && data.bits.ymin_green ) {
+// 		MYUCG->setColor( COLOR_GREEN );
+// 	} else {
+// 		MYUCG->setColor( COLOR_WHITE );
+// 	}
+// 	MYUCG->setPrintPos( 1, 85 );
+// 	MYUCG->printf( "Y-Scale=%3.1f  ", data.scale.y * 100);
+// 	MYUCG->setPrintPos( 160, 85 );
+// 	MYUCG->printf( "(%.1f)  ", data.sample.y * 100.f/32768.f );
+// 	MYUCG->setPrintPos( 1, 160 );
+// 	MYUCG->printf( "Y-Bias=%3.1f  ", data.bias.y * 100.f/32768.f );
 
-	// Z
-	if( data.bits.zmax_green && data.bits.zmin_green ) {
-		MYUCG->setColor( COLOR_GREEN );
-	} else {
-		MYUCG->setColor( COLOR_WHITE );
-	}
-	MYUCG->setPrintPos( 1, 110 );
-	MYUCG->printf( "Z-Scale=%3.1f  ", data.scale.z * 100 );
-	MYUCG->setPrintPos( 160, 110 );
-	MYUCG->printf( "(%.1f)  ", data.sample.z * 100.f/32768.f );
-	MYUCG->setPrintPos( 1, 185 );
-	MYUCG->printf( "Z-Bias=%3.1f  ", data.bias.z * 100.f/32768.f );
+// 	// Z
+// 	if( data.bits.zmax_green && data.bits.zmin_green ) {
+// 		MYUCG->setColor( COLOR_GREEN );
+// 	} else {
+// 		MYUCG->setColor( COLOR_WHITE );
+// 	}
+// 	MYUCG->setPrintPos( 1, 110 );
+// 	MYUCG->printf( "Z-Scale=%3.1f  ", data.scale.z * 100 );
+// 	MYUCG->setPrintPos( 160, 110 );
+// 	MYUCG->printf( "(%.1f)  ", data.sample.z * 100.f/32768.f );
+// 	MYUCG->setPrintPos( 1, 185 );
+// 	MYUCG->printf( "Z-Bias=%3.1f  ", data.bias.z * 100.f/32768.f );
 
-	if( !print ){
-		const int16_t X = 180;
-		const int16_t Y = 155;
-		vector_i16 peak;
+// 	if( !print ){
+// 		const int16_t X = 180;
+// 		const int16_t Y = 155;
+// 		vector_i16 peak;
 
-		peak.x = int16_t(data.sample.x*114.f/32768);
-		peak.y = int16_t(data.sample.y*160.f/32768);
-		peak.z = int16_t(data.sample.z*160.f/32768);
+// 		peak.x = int16_t(data.sample.x*114.f/32768);
+// 		peak.y = int16_t(data.sample.y*160.f/32768);
+// 		peak.z = int16_t(data.sample.z*160.f/32768);
 
-		// remove old circles
-		static vector_i16 old = { 0,0,0 };
-		MYUCG->setColor( COLOR_BLACK );
-		MYUCG->drawCircle( X+old.x, Y-old.x, 2 );
-		MYUCG->drawCircle( X+old.y, Y, 2 );
-		MYUCG->drawCircle( X, Y+old.z,2 );
+// 		// remove old circles
+// 		static vector_i16 old = { 0,0,0 };
+// 		MYUCG->setColor( COLOR_BLACK );
+// 		MYUCG->drawCircle( X+old.x, Y-old.x, 2 );
+// 		MYUCG->drawCircle( X+old.y, Y, 2 );
+// 		MYUCG->drawCircle( X, Y+old.z,2 );
 
-		// draw lines 3 pixel longer than max(old, new) to overdraw old circles
-		vector_i16 axes;
-		axes.x = absmax_sign(peak.x, old.x);
-		axes.y = absmax_sign(peak.y, old.y);
-		axes.z = absmax_sign(peak.z, old.z);
+// 		// draw lines 3 pixel longer than max(old, new) to overdraw old circles
+// 		vector_i16 axes;
+// 		axes.x = absmax_sign(peak.x, old.x);
+// 		axes.y = absmax_sign(peak.y, old.y);
+// 		axes.z = absmax_sign(peak.z, old.z);
 
-		// draw mag X alias the glider nose
-		MYUCG->setColor( COLOR_RED );
-		if ( peak.x > 0 && data.bits.xmax_green) {
-			MYUCG->setColor( COLOR_GREEN );
-		}
-		else if ( peak.x < 0 && data.bits.xmin_green) {
-			MYUCG->setColor( COLOR_GREEN );
-		}
-		MYUCG->drawLine( X, Y, X+axes.x+3, Y-axes.x-3);    // 45 degree
+// 		// draw mag X alias the glider nose
+// 		MYUCG->setColor( COLOR_RED );
+// 		if ( peak.x > 0 && data.bits.xmax_green) {
+// 			MYUCG->setColor( COLOR_GREEN );
+// 		}
+// 		else if ( peak.x < 0 && data.bits.xmin_green) {
+// 			MYUCG->setColor( COLOR_GREEN );
+// 		}
+// 		MYUCG->drawLine( X, Y, X+axes.x+3, Y-axes.x-3);    // 45 degree
 
-		// draw mag Y alias right wing
-		MYUCG->setColor( COLOR_RED );
-		if ( peak.y > 0 && data.bits.ymax_green ) {
-			MYUCG->setColor( COLOR_GREEN );
-		}
-		else if ( peak.y < 0 && data.bits.ymin_green ) {
-			MYUCG->setColor( COLOR_GREEN );
-		}
-		MYUCG->drawLine( X, Y, X+axes.y+3, Y );
+// 		// draw mag Y alias right wing
+// 		MYUCG->setColor( COLOR_RED );
+// 		if ( peak.y > 0 && data.bits.ymax_green ) {
+// 			MYUCG->setColor( COLOR_GREEN );
+// 		}
+// 		else if ( peak.y < 0 && data.bits.ymin_green ) {
+// 			MYUCG->setColor( COLOR_GREEN );
+// 		}
+// 		MYUCG->drawLine( X, Y, X+axes.y+3, Y );
 
-		// draw mag Z alias down
-		MYUCG->setColor( COLOR_RED );
-		if( peak.z > 0 && data.bits.zmax_green ) {
-			MYUCG->setColor( COLOR_GREEN );
-		}
-		else if ( peak.z < 0 && data.bits.zmin_green ) {
-			MYUCG->setColor( COLOR_GREEN );
-		}
-		MYUCG->drawLine( X, Y, X, Y+axes.z+3);
+// 		// draw mag Z alias down
+// 		MYUCG->setColor( COLOR_RED );
+// 		if( peak.z > 0 && data.bits.zmax_green ) {
+// 			MYUCG->setColor( COLOR_GREEN );
+// 		}
+// 		else if ( peak.z < 0 && data.bits.zmin_green ) {
+// 			MYUCG->setColor( COLOR_GREEN );
+// 		}
+// 		MYUCG->drawLine( X, Y, X, Y+axes.z+3);
 
-		MYUCG->setColor( COLOR_WHITE );
-		MYUCG->drawCircle( X+peak.x, Y-peak.x, 2 );
-		MYUCG->drawCircle( X+peak.y, Y, 2);
-		MYUCG->drawCircle( X, Y+peak.z, 2 );
-		old = peak;
-	}
-}
+// 		MYUCG->setColor( COLOR_WHITE );
+// 		MYUCG->drawCircle( X+peak.x, Y-peak.x, 2 );
+// 		MYUCG->drawCircle( X+peak.y, Y, 2);
+// 		MYUCG->drawCircle( X, Y+peak.z, 2 );
+// 		old = peak;
+// 	}
+// }
 
-static int compassSensorCalibrateAction(SetupMenuSelect *p) {
-	ESP_LOGI(FNAME,"compassSensorCalibrateAction()");
-	if( p->getSelect() == 0 ) {
-		// Cancel is requested
-		return 0;
-	}
+// static int compassSensorCalibrateAction(SetupMenuSelect *p) {
+// 	ESP_LOGI(FNAME,"compassSensorCalibrateAction()");
+// 	if( p->getSelect() == 0 ) {
+// 		// Cancel is requested
+// 		return 0;
+// 	}
 
-	p->clear();
-	switch(p->getSelect()) {
-	case 1: // Start
-		MYUCG->setFont( ucg_font_ncenR14_hr, true );
-		MYUCG->setPrintPos( 1, 30 );
-		MYUCG->printf( "Calibration started" );
-		MYUCG->setPrintPos( 1, 220 );
-		MYUCG->printf( "Now rotate sensor until" );
-		MYUCG->setPrintPos( 1, 245 );
-		MYUCG->printf( "all numbers are green" );
-		MYUCG->setPrintPos( 1, 270 );
-		MYUCG->printf( "Press button to abort" );
-		magSensor->calibrate( calibrationReport, false);
-		MYUCG->setPrintPos( 1, 30 );
-		MYUCG->printf( "Calibration finished !" );
-		MYUCG->setPrintPos( 1, 250 );
-		vTaskDelay(pdMS_TO_TICKS(3000));
-		p->clear();
-		magSensor->calibrate( calibrationReport, true );
-		MYUCG->setPrintPos( 1, 270 );
-		MYUCG->setColor( COLOR_WHITE );
-		MYUCG->printf( "Press button to finish" );
-		while( ! Rotary->readSwitch(100) ) ;
-		break;
-	case 2: // Show
-		magSensor->calibrate( calibrationReport, true );
-		MYUCG->setColor( COLOR_WHITE );
-		MYUCG->setPrintPos( 1, 270 );
-		MYUCG->printf( "Press button to continue" );
-		while( ! Rotary->readSwitch(100) ) ;
-		break;
-	case 3: // Show Raw Data
-		while( ! Rotary->readSwitch(100) ) {
-			showSensorRawData(p);
-		}
-		break;
-	default:
-		ESP_LOGI(FNAME,"Unknown compass sensor calibration action: %d", p->getSelect());
-	}
-	p->setSelect(0);
-	return 0;
-}
+// 	p->clear();
+// 	switch(p->getSelect()) {
+// 	case 1: // Start
+// 		MYUCG->setFont( ucg_font_ncenR14_hr, true );
+// 		MYUCG->setPrintPos( 1, 30 );
+// 		MYUCG->printf( "Calibration started" );
+// 		MYUCG->setPrintPos( 1, 220 );
+// 		MYUCG->printf( "Now rotate sensor until" );
+// 		MYUCG->setPrintPos( 1, 245 );
+// 		MYUCG->printf( "all numbers are green" );
+// 		MYUCG->setPrintPos( 1, 270 );
+// 		MYUCG->printf( "Press button to abort" );
+// 		magSensor->calibrate( calibrationReport, false);
+// 		MYUCG->setPrintPos( 1, 30 );
+// 		MYUCG->printf( "Calibration finished !" );
+// 		MYUCG->setPrintPos( 1, 250 );
+// 		vTaskDelay(pdMS_TO_TICKS(3000));
+// 		p->clear();
+// 		magSensor->calibrate( calibrationReport, true );
+// 		MYUCG->setPrintPos( 1, 270 );
+// 		MYUCG->setColor( COLOR_WHITE );
+// 		MYUCG->printf( "Press button to finish" );
+// 		while( ! Rotary->readSwitch(100) ) ;
+// 		break;
+// 	case 2: // Show
+// 		magSensor->calibrate( calibrationReport, true );
+// 		MYUCG->setColor( COLOR_WHITE );
+// 		MYUCG->setPrintPos( 1, 270 );
+// 		MYUCG->printf( "Press button to continue" );
+// 		while( ! Rotary->readSwitch(100) ) ;
+// 		break;
+// 	case 3: // Show Raw Data
+// 		while( ! Rotary->readSwitch(100) ) {
+// 			showSensorRawData(p);
+// 		}
+// 		break;
+// 	default:
+// 		ESP_LOGI(FNAME,"Unknown compass sensor calibration action: %d", p->getSelect());
+// 	}
+// 	p->setSelect(0);
+// 	return 0;
+// }
 
 int windResourcesAction(SetupMenuSelect *p) {
     ESP_LOGI(FNAME, "Enable/Disable Wind");
@@ -223,14 +223,14 @@ int windResourcesAction(SetupMenuSelect *p) {
 // 	}
 // }
 
-void options_menu_create_compass_calib(SetupMenu *top) {
-	SetupMenuSelect *compSensorCal = new SetupMenuSelect("MagSens Calib.", RST_NONE, compassSensorCalibrateAction);
-	compSensorCal->addEntry("Cancel");
-	compSensorCal->addEntry("Start");
-	compSensorCal->addEntry("Show");
-	compSensorCal->addEntry("Show Raw Data");
-	compSensorCal->setHelp("Calibrate Magnetic Sensor, mandatory for proper operation");
-	top->addEntry(compSensorCal);
+void options_menu_create_compass_dev(SetupMenu *top) {
+	// SetupMenuSelect *compSensorCal = new SetupMenuSelect("MagSens Calib.", RST_NONE, compassSensorCalibrateAction);
+	// compSensorCal->addEntry("Cancel");
+	// compSensorCal->addEntry("Start");
+	// compSensorCal->addEntry("Show");
+	// compSensorCal->addEntry("Show Raw Data");
+	// compSensorCal->setHelp("Calibrate Magnetic Sensor, mandatory for proper operation");
+	// top->addEntry(compSensorCal);
 
 	// Fixme replace by WMM
 	SetupMenuValFloat *cd = new SetupMenuValFloat("Setup Declination", "°", nullptr, false, &compass_declination);

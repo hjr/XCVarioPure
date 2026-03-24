@@ -1472,9 +1472,6 @@ void system_menu_create_hardware(SetupMenu *top) {
 		gear->addEntry("S2 RS232 negative");
 		gear->addEntry("External");  // A $g,w<n>*CS command from an external device
 
-		SetupMenu *compassMenu = new SetupMenu("Compass", options_menu_create_compass_calib);
-		top->addEntry(compassMenu);
-
 		if (hardwareRevision.get() >= XCVARIO_21) {
 			SetupMenu *ahrs = new SetupMenu("Attitude & Heading RefSys", system_menu_create_hardware_ahrs);
 			top->addEntry(ahrs);

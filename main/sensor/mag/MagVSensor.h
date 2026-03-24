@@ -9,7 +9,7 @@
 #pragma once
 
 #include "../SensorBase.h"
-#include "Compass.h"
+// #include "Compass.h"
 #include "math/vector_3d_fwd.h"
 #include "sensor/Filters.h"
 
@@ -34,10 +34,10 @@ public:
     bool calibrate( void (*reporter)(const CompassCalibrationData &data, bool print), bool only_show);
 
 private:
-    bool calcCalibration(CompassCalibrationData &data);
+    // bool calcCalibration(CompassCalibrationData &data);
     bool loadCalibration();
-    void resetCalibration();
-    void saveCalibration(const vector_f &bias, const vector_f &scale);
+    // void resetCalibration();
+    // void saveCalibration(const vector_f &bias, const vector_f &scale);
 
     vector_f _bias;
     vector_f _scale;
