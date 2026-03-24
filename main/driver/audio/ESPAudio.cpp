@@ -16,7 +16,7 @@
 #include "setup/CruiseMode.h"
 #include "setup/SetupNG.h"
 #include "sensor/VarioFilter.h"
-#include "logdefnone.h"
+#include "logdef.h"
 
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>

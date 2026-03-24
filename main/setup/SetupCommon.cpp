@@ -216,9 +216,13 @@ int SetupCommon::restoreConfigChanges( int len, char *data ){
 			std::string value = line.substr(line.find(',')+1, line.length());
 			ESP_LOGI(FNAME, "%d %s ", i, key.c_str()  );
 			SetupCommon * item = getMember( key.c_str() );
-			ESP_LOGI(FNAME, ", typename: %c \n", item->typeName()  );
-			item->setValueFromStr( value.c_str() );
-			item->commit();  // lets do that lazy later
+			if( item ){
+				ESP_LOGI(FNAME, ", typename: %c \n", item->typeName()  );
+				item->setValueFromStr( value.c_str() );
+				item->commit();  // lets do that lazy later
+			}else{
+				ESP_LOGI(FNAME, ", key not there => dropped\n" );
+			}
 			i++;
 		}
 	}
