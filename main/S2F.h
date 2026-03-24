@@ -52,7 +52,7 @@ private:
 	mps_t _circling_sink = 0.f;
 	mps_t _stall_speed = 0.f;
 	mps_t _s2f_delta = 0.f;
-	LowPassFilterT<float> _lpf_delta{0.1f};
+	LowPassFilterT<float> _lpf_s2f{0.1f};
 	bool _valid = false;
 };
 

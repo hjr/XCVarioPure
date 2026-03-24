@@ -328,6 +328,9 @@ void readSensors(void *pvParameters)
         // flap sensor update -> fixme create a external device gpio and a sensor to register
         if (FLAP && FLAP->haveAdcSensor()) { FLAP->progress(count); }
 
+        // Need to be done for client and main vario
+        s2f_ideal.set(Speed2Fly.calculate(te_netto.get(), !CRMOD.getCMode()));
+
         // 2Hz tasks
         if ( !(count % 5) ) {
             // thermal assist
@@ -365,9 +368,6 @@ void readSensors(void *pvParameters)
             if (S2FSWITCH) {
                 S2FSWITCH->checkCruiseMode();
             }
-
-            // Need to be done for client and main vario
-            s2f_ideal.set(Speed2Fly.calculate(te_netto.get(), !CRMOD.getCMode()));
         }
 
         // MinMax tracking

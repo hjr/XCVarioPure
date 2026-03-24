@@ -67,7 +67,7 @@ void S2F::changeMc()
 }
 void S2F::changeDamping() {
     ESP_LOGI(FNAME,"S2F::change_damping()" );
-    _lpf_delta.setTau(s2f_delay.get(), 0.1f); // 10 Hz update
+    _lpf_s2f.setTau(s2f_delay.get(), .1f); // 10 Hz update
 }
 
 void S2F::setPolar()
@@ -157,7 +157,8 @@ mps_t S2F::calculate(mps_t netto_vario, bool circling)
     mps_t stf = std::clamp(std::sqrtf(arg), _min_sink_speed, Units::kmh_to_mps(v_max.get()));
     ESP_LOGI(FNAME, "S2F::calculate()  %.2f", Units::mps_to_kmh(stf));
 
-    _s2f_delta = _lpf_delta.filter(stf - ias.get());
+    stf = _lpf_s2f.filter(stf);
+    _s2f_delta = stf - ias.get();
 
     return stf;
 }
