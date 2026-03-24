@@ -164,8 +164,6 @@ void SetupRoot::rot(int count)
     else {
         // Volume
         AUDIO->setVolume(audio_volume.get() + count);
-        
-        ESP_LOGI(FNAME,"change_volume -> %f", audio_volume.get() );
     }
 }
 
@@ -201,29 +199,6 @@ void SetupRoot::press()
     if (!menu_long_press.get() && active_screen == SCREEN_VARIO && !gflags.inSetup)
     {
         begin();
-    }
-    // Audio debug: long press on vario screen to jump into audio setup
-    switch ( (int)audio_volume.get() ) {
-        case 0:
-            AUDIO->startSound(AUDIO_NO_SOUND);
-            break;
-        case 20:
-            AUDIO->startSound(AUDIO_KNOCK, false, 100);
-            break;
-        case 30:
-            AUDIO->startSound(AUDIO_TADDA, false, 100);
-            break;
-        case 40:
-            AUDIO->startSound(AUDIO_VARIO_SOUND);
-            break;
-        case 60:
-            AUDIO->startSound(AUDIO_ALARM_FLARM);
-            break;
-        case 80:
-            AUDIO->startSound(AUDIO_ALARM_FCODE);
-            break;
-        default:
-        break;
     }
 }
 
