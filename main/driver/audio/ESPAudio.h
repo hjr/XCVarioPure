@@ -53,7 +53,6 @@ public:
     bool isPotiUp() const { return _poti != nullptr; }
 
     void startSound(uint16_t alarmType, bool overlay = false, uint8_t vol = 0) const; // outputs various alarm sounds according to alarmType
-    void endAlarm() const; // ends a priority alarm, e.g. when the alarm condition is over
     static uint16_t encFlarmParam(e_audio_sound_type sound_id, uint8_t alevel, uint8_t side, uint8_t alt_diff);
 
     // system wide the only point to set audio volume !!!

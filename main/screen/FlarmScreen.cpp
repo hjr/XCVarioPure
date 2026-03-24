@@ -45,7 +45,6 @@ void FlarmScreen::exit(int ups)
 {
     ESP_LOGI(FNAME,"FlarmScreen exit");
 
-    AUDIO->endAlarm();
     FLARMSCREEN = nullptr;
     MenuEntry::exit();
     delete this;

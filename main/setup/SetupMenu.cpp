@@ -386,8 +386,6 @@ static void doImuCalibration(SetupMenuSelect* p) {
         }
     }
 
-    // restart vario sound
-    AUDIO->endAlarm();
     // set lever arm again
     accSensor->getMpu().setLeverArm(imu_leverarm.get());
 

@@ -92,8 +92,7 @@ enum : uint8_t {
     START_SOUND,
     ADD_VOICE,
     DO_VARIO,
-    SET_VOLUME,
-    END_PRIO_ALARM
+    SET_VOLUME
 };
 union AudioEvent {
     struct {
@@ -805,12 +804,6 @@ void Audio::startSound(uint16_t style, bool overlay, uint8_t vol) const
     }
 }
 
-void Audio::endAlarm() const
-{
-    AudioEvent ev(END_PRIO_ALARM, 0); // end alarm
-    xQueueSend(AudioQueue, &ev, 0);
-}
-
 // alevel : 0 .. 2 -> low/med/high using different sounds
 // side, alt_diff : 0 .. 2 -> left/same/right, lower/same/higher
 uint16_t Audio::encFlarmParam(e_audio_sound_type sound_id, uint8_t alevel, uint8_t side, uint8_t alt_diff)
@@ -1023,11 +1016,12 @@ void  Audio::calculateFrequency(float val) {
         vario_tim[0].setSamples(50);
         vario_tim[1].setSamples(50);
     }
-    if ( (inDeadBand(val) || speaker_volume < 1.0) && volumeadjust-- < 0) {
+    if ( (inDeadBand(val) || speaker_volume < 1.0) && volumeadjust == 0) {
         vario_seq[0].step = vario_extra[0].step = vario_seq[1].step = vario_extra[1].step = 0;
         if ( current_dmacmd->repcount == -1 ) { mute(); } // stop only the vario sound
     }
     else {
+        if (volumeadjust>0) { volumeadjust--; }
         // frequencies
         unmute();
         vario_seq[0].setStep(freq);
@@ -1086,6 +1080,7 @@ void Audio::dactask()
     uint8_t curr_idx[MAX_VOICES] = {0};
     uint8_t repetitions[MAX_VOICES] = {0};
     int curr_dmacmd_idx = 0;
+    uint32_t alarm_timeout = 0;
     std::deque<AudioEvent> snd_queue;
     current_dmacmd = &dma_cmd[0];
     current_dmacmd->resetSound(); // silence
@@ -1168,6 +1163,7 @@ void Audio::dactask()
                 snd_queue.push_back(event.raw);
             }
             else if ( event.cmd == REQUEST_SOUND ) {
+                // dma ISR request !!
                 if ( !snd_queue.empty() ) {
                     AudioEvent ae = snd_queue.front();
                     ESP_LOGI(FNAME, "Request sound %d (%d)", ae.getSoundId(), ae.getVolume());
@@ -1179,6 +1175,7 @@ void Audio::dactask()
                     }
                     if ( sound_id >= AUDIO_ALARMS ) {
                         _alarm_mode = alarm_type_t::ALARM_SIMPLE;
+                        alarm_timeout = (int)(flarm_alarm_time.get()) * 1000 + Clock::getMillis();
                         ESP_LOGI(FNAME, "Raise volume");
                         // raise volume +20%, but assure at least 60%
                         sound_vol = (int)std::min(speaker_volume+alarm_volraise.get(), 100.f);
@@ -1192,6 +1189,7 @@ void Audio::dactask()
                     }
                     if ( ae.param & AudioEvent::Priority ) {
                         _alarm_mode = alarm_type_t::ALARM_PRIORITY;
+                        alarm_timeout = (int)(flarm_alarm_time.get()) * 1000 + Clock::getMillis();
                     }
                     if ( ae.getVolume() > 0 ){
                         sound_vol = ae.getVolume(); // override
@@ -1220,16 +1218,10 @@ void Audio::dactask()
                 }
             }
             else if ( event.cmd == SET_VOLUME ) {
-                // during priority alarm, only adjust the alarm volume, not the vario sound
+                // dma ISR !! request announcing priority alarm beeing put to the DAC soon
+                // only adjust the alarm volume, not the vario sound
                 ESP_LOGI(FNAME, "Set volume to %d", event.getVolume());
-                writeVolume(event.getVolume());
-            }
-            else if ( event.cmd == END_PRIO_ALARM ) {
-                ESP_LOGI(FNAME, "End priority alarm, restore volume");
-                _alarm_mode = alarm_type_t::ALARM_NONE;
-                if (audio_mute_gen.get() == AUDIO_ON) {
-                    current_dmacmd->loadSound(&VarioSound, speaker_volume);
-                }
+                writeVolume(event.getVolume()); // synched alarm volume
             }
             else if ( event.cmd == ADD_VOICE ) {
                 // Add voice on top of current sound, no synchronized start required
@@ -1253,6 +1245,13 @@ void Audio::dactask()
             }
         }
 
+        if ( _alarm_mode != alarm_type_t::ALARM_NONE && Clock::getMillis() > alarm_timeout ) {
+            ESP_LOGI(FNAME, "Alarm timeout, restore volume");
+            _alarm_mode = alarm_type_t::ALARM_NONE;
+            if (audio_mute_gen.get() == AUDIO_ON) {
+                current_dmacmd->loadSound(&VarioSound, speaker_volume);
+            }
+        }
 #if defined(AUDIO_DEBUG)
         // ISR benchmark
         int64_t t1 = esp_timer_get_time();
