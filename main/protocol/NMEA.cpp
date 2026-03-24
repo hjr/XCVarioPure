@@ -9,7 +9,7 @@
 #include "NMEA.h"
 
 #include  "comm/DataLink.h"
-#include "AliveMonitor.h"
+#include "driver/time/AliveMonitor.h"
 #include "nmea_util.h"
 #include "logdefnone.h"
 

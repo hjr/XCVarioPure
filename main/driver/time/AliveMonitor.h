@@ -8,7 +8,7 @@
 
 #pragma once
 
-#include "WatchDog.h"
+#include "driver/time/WatchDog.h"
 
 // the alive state of the device or data stream
 enum alive_state_t { ALIVE_NONE, ALIVE_TIMEOUT, ALIVE_OK };

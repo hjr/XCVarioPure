@@ -9,7 +9,7 @@
 
 #include "math/Units.h"
 #include "screen/element/PolarGauge.h"
-#include "protocol/Clock.h"
+#include "driver/time/Clock.h"
 #include "math/Trigonometry.h"
 #include "Flarm.h"
 #include "setup/SetupNG.h"

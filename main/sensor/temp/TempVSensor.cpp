@@ -6,7 +6,7 @@
  ***       Copyright (C) Rohs Engineering Design         ***
  ***********************************************************/
 
-#include "sensor/temp/TempSensor.h"
+#include "TempVSensor.h"
 
 TempVSensor* oatSensor = nullptr;
 

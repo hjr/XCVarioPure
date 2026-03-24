@@ -1,6 +1,6 @@
 #pragma once
 
-#include <protocol/ClockIntf.h>
+#include "driver/time/ClockIntf.h"
 
 #include <cstdint>
 

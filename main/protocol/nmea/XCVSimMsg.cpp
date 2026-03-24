@@ -9,11 +9,11 @@
 #include "XCVSimMsg.h"
 
 #include "protocol/nmea_util.h"
-#include "protocol/Clock.h"
+#include "driver/time/Clock.h"
 #include "comm/Messages.h"
 #include "sensor/pressure/PressureSensor.h"
 #include "sensor/press_diff/AirspeedSensor.h"
-#include "sensor/temp/TempSensor.h"
+#include "sensor/temp/TempVSensor.h"
 #include "sensor/imu/AccMPU6050.h"
 #include "sensor/imu/GyroMPU6050.h"
 #include "sensor/mag/MagVSensor.h"

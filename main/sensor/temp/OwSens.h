@@ -8,7 +8,7 @@
 
 #pragma once
 
-#include "TempSensor.h"
+#include "TempVSensor.h"
 
 #include <onewire_types.h>
 #include <cstdint>

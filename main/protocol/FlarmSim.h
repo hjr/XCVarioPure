@@ -8,7 +8,7 @@
 
 #pragma once
 
-#include "ClockIntf.h"
+#include "driver/time/ClockIntf.h"
 #include "math/vector_3d.h"
 
 class DataLink;

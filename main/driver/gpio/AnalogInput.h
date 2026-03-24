@@ -7,7 +7,7 @@
 
 #pragma once
 
-#include "protocol/ClockIntf.h"
+#include "driver/time/ClockIntf.h"
 
 #include <esp_adc/adc_oneshot.h>
 

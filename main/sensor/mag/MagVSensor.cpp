@@ -12,10 +12,10 @@
 #include "sensor/SensorMgr.h"
 #include "vector.h"
 #include "math/vector_3d.h"
-#include "protocol/Clock.h"
+#include "driver/time/Clock.h"
 #include "sensor/imu/AccMPU6050.h"
 #include "driver/gpio/ESPRotary.h"
-#include "logdef.h"
+#include "logdefnone.h"
 
 
 constexpr int DUTY_CYCLE_MS = 100; // 10Hz
@@ -201,9 +201,7 @@ bool MagVSensor::calcCalibration(CompassCalibrationData &data) {
 
 	// Calculate hard iron correction
 	// calculate average x, y, z magnetic bias.x in counts
-	data.bias.x = (data.max.x + data.min.x) / 2;
-	data.bias.y = (data.max.y + data.min.y) / 2;
-	data.bias.z = (data.max.z + data.min.z) / 2;
+	data.bias = (data.max + data.min) / 2.f;
 
 	// Calculate soft-iron scale factors
 	// calculate average x, y, z axis max chord length in counts

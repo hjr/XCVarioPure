@@ -23,7 +23,7 @@
 #include "comm/Configuration.h"
 #include "comm/SerialLine.h"
 #include "protocol/NMEA.h"
-#include "protocol/AliveMonitor.h"
+#include "driver/time/AliveMonitor.h"
 #include "protocol/nmea/SeeYouMsg.h"
 #include "protocol/nmea/XCVSyncMsg.h"
 #include "screen/element/Battery.h"

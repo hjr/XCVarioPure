@@ -10,7 +10,7 @@
 
 #include "nmea_util.h"
 #include "comm/DeviceMgr.h"
-#include "protocol/Clock.h"
+#include "driver/time/Clock.h"
 #include "math/Trigonometry.h"
 #include "math/Quaternion.h"
 #include "math/Plane.h"

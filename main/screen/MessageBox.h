@@ -8,7 +8,7 @@
 
 #pragma once
 
-#include "protocol/ClockIntf.h"
+#include "driver/time/ClockIntf.h"
 #include "driver/gpio/ESPRotary.h"
 #include "comm/Mutex.h"
 

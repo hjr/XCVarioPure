@@ -9,8 +9,8 @@
 #include "MagSensBin.h"
 
 #include "sensor/mag/MagVSensor.h"
-#include "Clock.h"
-#include "protocol/AliveMonitor.h"
+#include "driver/time/Clock.h"
+#include "driver/time/AliveMonitor.h"
 
 #include "logdef.h"
 

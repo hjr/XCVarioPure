@@ -9,7 +9,7 @@
 #pragma once
 
 #include "protocol/NMEA.h"
-#include "protocol/ClockIntf.h"
+#include "driver/time/ClockIntf.h"
 
 class CANMasterRegMsg  final : public NmeaPlugin, public Clock_I
 {
