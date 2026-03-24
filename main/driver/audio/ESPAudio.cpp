@@ -16,7 +16,7 @@
 #include "setup/CruiseMode.h"
 #include "setup/SetupNG.h"
 #include "sensor/VarioFilter.h"
-#include "logdef.h"
+#include "logdefnone.h"
 
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
@@ -828,14 +828,14 @@ void Audio::setVolume(float vol, bool sync) {
         {
             vario_mode_volume = speaker_volume;
         }
-        ESP_LOGI(FNAME, "setvolume() to %f, for %s", speaker_volume, CRMOD.getCMode() ? "s2f" : "vario");
+        // ESP_LOGI(FNAME, "setvolume() to %f, for %s", speaker_volume, CRMOD.getCMode() ? "s2f" : "vario");
     }
     else
     {
         // copy to both variables in case audio_split_vol enabled later
         s2f_mode_volume = speaker_volume;
         vario_mode_volume = speaker_volume;
-        ESP_LOGI(FNAME, "setvolume() to %f, joint mode", speaker_volume);
+        // ESP_LOGI(FNAME, "setvolume() to %f, joint mode", speaker_volume);
     }
     volumeadjust = 7; // make a noise for 0,7 sec
     writeVolume(speaker_volume);
@@ -1250,21 +1250,21 @@ void Audio::dactask()
         }
 
         if ( _alarm_mode != alarm_type_t::ALARM_NONE && Clock::getMillis() > alarm_timeout ) {
-            if ( !snd_queue.empty() && current_dmacmd->repcount < 0 ) {
-                // Huh
-                ESP_LOGI(FNAME, "Force preempt sound");
-                current_dmacmd->repcount = 0;
+            _alarm_mode = alarm_type_t::ALARM_NONE;
+            if ( !snd_queue.empty() ) {
+                // unlikely case
+                ESP_LOGI(FNAME, "Alarm timeout but sound queue not empty");
+                if ( current_dmacmd->repcount < 0 ) {
+                    current_dmacmd->repcount = 0;
+                    ESP_LOGI(FNAME, "Unexpected force preempt sound");
+                }
             }
             else {
                 ESP_LOGI(FNAME, "Alarm timeout, restore vario tone & volume");
-                _alarm_mode = alarm_type_t::ALARM_NONE;
                 if (audio_mute_gen.get() == AUDIO_ON) {
                     current_dmacmd->loadSound(&VarioSound, speaker_volume);
                 }
             }
-        }
-        if ( _alarm_mode != alarm_type_t::ALARM_NONE && Clock::getMillis() > alarm_timeout && audio_mute_gen.get() == AUDIO_ON && current_dmacmd->repcount == 0 ) {
-            ESP_LOGE(FNAME, "Sound Oopsi");
         }
 #if defined(AUDIO_DEBUG)
         // ISR benchmark
