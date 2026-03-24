@@ -12,6 +12,7 @@
 #include "Colors.h"
 #include "AdaptUGC.h"
 #include "driver/audio/ESPAudio.h"
+#include "driver/time/Clock.h"
 #include "setup/SetupNG.h"
 #include "logdefnone.h"
 #include "math/Floats.h"
@@ -26,7 +27,7 @@ constexpr const int16_t BOX_WIDTH  = 28;
 constexpr const int16_t BOX_CORNER = 8;
 constexpr const int16_t LABEL_SPACING = 20;
 // constexpr const float   PIX_PER_MPS = ((float)(BOX_LENGTH)-2*BOX_CORNER) / (Units::kmh_to_mps(26.f) + std::max(BOX_LENGTH-100, 0)/Units::kmh_to_mps(30.f)); // m/s range on flap box
-constexpr const int     SOUND_LATENCY = 5; // frames
+constexpr const int     SOUND_LATENCY = 5000; // msec to wait before making sound at all
 
 int16_t FlapsBox::BOX_LENGTH = 100;
 float   FlapsBox::PIX_PER_MPS = 11.628f;
@@ -239,6 +240,11 @@ void FlapsBox::draw(mps_t ias)
         ESP_LOGI(FNAME,"wkf:%.1f minv:%.1f maxv:%.1f ias:%.1f", current_state.getWk(), minv, maxv, ias);
         drawLabels(current_state);
     }
+    _dirty = false;
+
+    if ( flapbox_enable.get() == 2 ) {
+        return; // only show the indicator, do not play sounds
+    }
 
     // do sounds when stepping over the speed range (with sensor),
     // or when the recommended position changes (without sensor)
@@ -257,8 +263,7 @@ void FlapsBox::draw(mps_t ias)
     if ( flap_idx != _last_flap_idx ) {
         SwitchEvent current_event = SwitchEvent(_last_flap_idx, flap_idx);
         if ( current_event != _last_event ) {
-            _snd_latency_cnt++;
-            if ( _snd_latency_cnt > SOUND_LATENCY ) {
+            if ( Clock::getMillis() - _snd_event_time > SOUND_LATENCY ) {
                 ESP_LOGI(FNAME, "flap_idx changed from %d to %d", _last_flap_idx, flap_idx);
                 if ( flap_idx > _last_flap_idx ) {
                     // flap back sound
@@ -282,9 +287,9 @@ void FlapsBox::draw(mps_t ias)
         }
     }
     else {
-        _snd_latency_cnt = 0;
+        // reset latency counter when back in same position
+        _snd_event_time = Clock::getMillis();
         _last_event = SwitchEvent(0,0);
     }
 
-    _dirty = false;
 }

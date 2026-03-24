@@ -1080,6 +1080,7 @@ static void screens_menu_create_vario(SetupMenu *top) {
 
     SetupMenuSelect *wke = new SetupMenuSelect("Flap-Assist", RST_NONE, nullptr, &flapbox_enable);
     wke->mkEnable();
+	wke->addEntry("Vis.Only");
     wke->setHelp("An indicator to assist optimum flap setting depending on speed, G-load and ballast");
     top->addEntry(wke);
 
