@@ -47,7 +47,7 @@ enum e_display_type { UNIVERSAL, RAYSTAR_RFJ240L_40P, ST7789_2INCH_12P, ILI9341_
 typedef enum chopping_mode { NO_CHOP=0, VARIO_CHOP=1, S2F_CHOP=2, BOTH_CHOP=3 } chopping_mode_t; // bit masked
 typedef enum ext_device_protocol  { DEV_DISABLE, DEV_FLARM, DEV_KRT2_RADIO, DEV_BECKER_RADIO, DEV_GNSS_UBX, DEV_ANEMOI } ext_device_proto_t;
 typedef enum e_display_style  { DISPLAY_AIRLINER, DISPLAY_RETRO } display_style_t;
-typedef enum e_display_variant { DISPLAY_WHITE_ON_BLACK, DISPLAY_BLACK_ON_WHITE } display_variant_t;
+enum e_display_variant { DISPLAY_WHITE_ON_BLACK, DISPLAY_BLACK_ON_WHITE };
 typedef enum e_s2f_type  { S2F_HW_SWITCH, S2F_HW_PUSH_BUTTON, S2F_HW_SWITCH_INVERTED, S2F_SWITCH_DISABLE } e_s2f_type;
 typedef enum e_wireless_type { WL_DISABLE, WL_BLUETOOTH, WL_WLAN_MASTER, WL_WLAN_CLIENT, WL_WLAN_STANDALONE, WL_BLUETOOTH_LE } e_wireless_t;
 enum e_xcvrole { NO_ROLE, MASTER_ROLE, SECOND_ROLE }; // do not remove NO_ROLE, or change the order. Device nvs store is based on this bitorder.

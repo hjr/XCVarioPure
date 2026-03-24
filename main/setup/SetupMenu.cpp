@@ -1096,12 +1096,6 @@ static void screens_menu_create_vario(SetupMenu *top) {
     batv->addEntry("Voltage");
     batv->addEntry("Voltage Big");
     top->addEntry(batv);
-
-    SetupMenuSelect *ncolor = new SetupMenuSelect("Needle Color", RST_NONE, nullptr, &needle_color);
-    ncolor->addEntry("White");
-    ncolor->addEntry("Orange");
-    ncolor->addEntry("Red");
-    top->addEntry(ncolor);
 }
 
 void screens_menu_create_gload(SetupMenu *top) {
@@ -1163,7 +1157,13 @@ static void options_menu_create_screens(SetupMenu *top) { // dynamic!
 		SetupMenu *horizon = new SetupMenu("Horizon", screens_menu_create_horizon);
 		top->addEntry(horizon);
 
-        SetupMenuSelect *disva = new SetupMenuSelect("Color Variant", RST_NONE, nullptr, &display_variant);
+        SetupMenuSelect* ncolor = new SetupMenuSelect("Needle Color", RST_NONE, nullptr, &needle_color);
+        ncolor->addEntry("White");
+        ncolor->addEntry("Orange");
+        ncolor->addEntry("Red");
+        top->addEntry(ncolor);
+
+        SetupMenuSelect* disva = new SetupMenuSelect("Color Variant", RST_NONE, nullptr, &display_variant);
         top->addEntry(disva);
         disva->setHelp("Display variant white on black (W/B) or black on white (B/W)");
         disva->addEntry("W/B");
@@ -1180,10 +1180,10 @@ static void options_menu_create_screens(SetupMenu *top) { // dynamic!
 		tmp_menu->lock();
 	}
 
-	tmp_menu = static_cast<SetupMenu*>(top->getEntry(2)); // gload
+	tmp_menu = static_cast<SetupMenu*>(top->getEntry(1)); // gload
 	tmp_menu->setBuzzword(ENABLE_MODE[screen_gmeter.get()].data());
 
-	tmp_menu = static_cast<SetupMenu*>(top->getEntry(3)); // horizon
+	tmp_menu = static_cast<SetupMenu*>(top->getEntry(2)); // horizon
 	if ( screen_gmeter.get() == SCREEN_PRIMARY ) {
 		tmp_menu->setBuzzword(ENABLE_MODE[0].data());
 		tmp_menu->lock();
