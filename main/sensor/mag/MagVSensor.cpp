@@ -15,20 +15,20 @@
 #include "protocol/Clock.h"
 #include "sensor/imu/AccMPU6050.h"
 #include "driver/gpio/ESPRotary.h"
-#include "logdefnone.h"
+#include "logdef.h"
 
 
-constexpr int DUTY_CYCLE_MS = 500; // 2Hz
-// provide a 10Hz sized buffer, but only process it with 2Hz
-static vector_f mag_buffer[ (SENSOR_HISTORY_DURATION_MS / 100) + 1 ];
+constexpr int DUTY_CYCLE_MS = 100; // 10Hz
+static vector_f mag_buffer[ (SENSOR_HISTORY_DURATION_MS / DUTY_CYCLE_MS) + 1 ];
 
 MagVSensor* magSensor = nullptr;
 
 MagVSensor::MagVSensor() : SensorTP<vector_f>(mag_buffer, DUTY_CYCLE_MS),
-    _lpf_heading(LowPassFilterT<float>::alphaFromTau(1.f, DUTY_CYCLE_MS / 1000.f))
+    _lpf_heading(LowPassFilterT<float>::alphaFromTau(1.f, .5f))
 {
     _id = SensorId::MAGNETO;
     _latency_ms = 20; // estimated latency of CAN sensor
+    _valid_time_ms = 2000; // 2 seconds
 }
 
 MagVSensor* MagVSensor::createMagVSensor() {
@@ -50,13 +50,16 @@ bool MagVSensor::setup() {
 
 void MagVSensor::postProcess()
 {
+    static uint8_t tick = 0;
+    if ( ++tick % 5 != 0 ) return; // only process every 5th reading
+
     if ( ! getHeadValid() ) {
         mag_hdm.setInvalid();
         mag_hdt.setInvalid();
-        ESP_LOGI(FNAME, "mag reading not valid");
+        // ESP_LOGI(FNAME, "mag reading not valid");
         return;
     }
-    const vector_f mv = getAVG(800); // avg over the last ca. 0.5sec
+    const vector_f mv = getAVG(500); // avg over the last ca. 0.5sec
     ESP_LOGI(FNAME, "mag reading AVG(0.5s): (%.2f,%.2f,%.2f)", mv.x, mv.y, mv.z);
     assert(accSensor);
     vector_f d = accSensor->getAttVector().get_normalized();  // a down vector, relative to glider
@@ -109,8 +112,10 @@ bool MagVSensor::calibrate( void (*reporter)(const CompassCalibrationData &data,
 		{
             // Grab a sample
             if ( magSensor->getHeadValid() && magSensor->getLevel() > 10) {
-                data->sample = magSensor->getAVG(2000); // avg over the last ca. 2sec
-                data->var = magSensor->getVariance(1300);
+                data->sample = magSensor->getAVG(1700); // avg over the last ca. 2sec
+                data->var = magSensor->getVariance(1200);
+                // ESP_LOGI(FNAME, "calibrate: var (%.2f,%.2f,%.2f)", data->var.x, data->var.y, data->var.z);
+                // magSensor->dump(1200);
 
                 // Evaluate the sample for calibration and update the calibration data
                 calcCalibration(*data);
@@ -162,8 +167,7 @@ bool MagVSensor::calibrate( void (*reporter)(const CompassCalibrationData &data,
 void MagVSensor::calcCalibration(CompassCalibrationData &data) {
 	data.nrsamples++;
 	// Variance low pass filtered
-	// data.variance += (data.var.get_norm2() - data.variance) / 50.f;
-    data.variance += (data.var.get_norm() - data.variance) / 5.f;
+    data.variance += (data.var.get_norm() - data.variance) / 3.f;
 	ESP_LOGI( FNAME, "Mag Var: %7.3f", data.variance );
 
 	// ESP_LOGI( FNAME, "Mag Var X:%.2f Y:%.2f Z:%.2f", data.var.x, data.var.y, data.var.z  );
@@ -176,7 +180,7 @@ void MagVSensor::calcCalibration(CompassCalibrationData &data) {
 	data.max.z = (data.sample.z > data.max.z ) ? data.sample.z : data.max.z;
 
 	constexpr float minval = (32768/100)*1.2; // 1.2% full scale
-    constexpr float maxvar = 1000.f; // empirically determined maximum variance for a valid sample
+    constexpr float maxvar = 1200.f; // empirically determined maximum variance for a valid sample
     ESP_LOGI( FNAME, "Mag Sample: x=%.2f y=%.2f z=%.2f, < %.2f, var=%.2f < %.2f", data.sample.x, data.sample.y, data.sample.z, minval, data.variance, maxvar );
 	if( abs(data.sample.x) < minval && abs(data.sample.y) < minval && data.variance < maxvar && data.sample.z > 2*minval  )
 		data.bits.zmax_green = true;
