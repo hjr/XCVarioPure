@@ -13,6 +13,7 @@
 #include "setup/SetupMenuSelect.h"
 #include "setup/SetupMenuChar.h"
 #include "setup/SetupMenuValFloat.h"
+#include "setup/SubMenuCompassWind.h"
 #include "SetupAction.h"
 #include "comm/DeviceMgr.h"
 #include "comm/CanBus.h"
@@ -49,12 +50,23 @@ static int getFlvEnumFromProto(ProtocolType ptyp)
 }
 
 //
+// Device special menus
+//
+static SetupMenu::SetupMenuCreator_t get_itf_menu_creator(DeviceId did)
+{
+    if ( did == MAGLEG_DEV ) {
+        return options_menu_create_compass_dev;
+    }
+    return nullptr;
+}
+
+
+//
 // Interfaces
 //
 static void connected_devices_menu_create_wifi(SetupMenu *top);
 static void connected_devices_menu_create_bluetooth(SetupMenu *top);
-static void connected_devices_menu_create_interfaceS1(SetupMenu *top);
-static void connected_devices_menu_create_interfaceS2(SetupMenu *top);
+static void connected_devices_menu_create_interfaceSX(SetupMenu *top);
 static void connected_devices_menu_create_interfaceCAN(SetupMenu *top);
 static void connected_devices_menu_create_interfaceOW(SetupMenu *top);
 
@@ -67,10 +79,10 @@ static SetupMenu::SetupMenuCreator_t get_itf_menu_creator(InterfaceId iid)
         return connected_devices_menu_create_bluetooth;
     }
     else if ( iid == S1_RS232 ) {
-        return connected_devices_menu_create_interfaceS1;
+        return connected_devices_menu_create_interfaceSX;
     }
     else if ( iid == S2_RS232 ) {
-        return connected_devices_menu_create_interfaceS2;
+        return connected_devices_menu_create_interfaceSX;
     }
     else if ( iid == CAN_BUS ) {
         return connected_devices_menu_create_interfaceCAN;
@@ -81,6 +93,28 @@ static SetupMenu::SetupMenuCreator_t get_itf_menu_creator(InterfaceId iid)
     return nullptr;
 }
 
+static const char* baudLbl[] = {"2400 baud", "4800 baud", "9600 baud", "19200 baud", "38400 baud", "57600 baud", "115200 baud" };
+static const char* canLbl[] = {"", "250 kbit", "500 kbit", "1000 kbit" };
+const char* get_itf_buzz(InterfaceId iid)
+{
+    if ( iid == WIFI_APSTA || iid == BT_SPP || iid == BT_LE ) {
+        ESP_LOGI(FNAME, "Custom ID buzz: %s", custom_wireless_id.get().id);
+        t_tenchar_id *ptr = (t_tenchar_id *)custom_wireless_id.getPtr();
+        return (char *)(ptr->id);
+    }
+    else if ( iid == S1_RS232 || iid == S2_RS232 ) {
+        return baudLbl[ (iid == S1_RS232) ? serial1_speed.get() : serial2_speed.get() ];
+    }
+    else if ( iid == CAN_BUS ) {
+        return canLbl[can_speed.get()];
+    }
+    return nullptr;
+}
+
+
+//
+// menu actions
+//
 static int update_wifi_power(SetupMenuValFloat *p)
 {
     ESP_ERROR_CHECK(esp_wifi_set_max_tx_power(int(p->get() * 80.0 / 100.0)));
@@ -91,6 +125,7 @@ static int update_id(SetupMenuChar *p) {
 	ESP_LOGI(FNAME,"New id %s", p->value());
 	char id[10] = { 0 };
 	strncpy(id, p->value(), 10);
+	id[9] = '\0'; // ensure null termination
 	custom_wireless_id.set(id);
 	return 0;
 }
@@ -115,7 +150,6 @@ static int scan_for_master(SetupMenuSelect *p) {
 static void options_menu_custom_id(SetupMenu *top)
 {
     SetupMenuChar *cusid = new SetupMenuChar("Custom-ID", "0A#", 6, RST_NONE, update_id, custom_wireless_id.get().id);
-
     cusid->setHelp("Select custom ID (SSID) for wireless BT (or WIFI) interface, e.g. D-1234. Restart device to activate");
     top->addEntry(cusid);
 }
@@ -148,129 +182,87 @@ static void connected_devices_menu_create_bluetooth(SetupMenu *top)
     options_menu_custom_id(top);
 }
 
-static int update_s1_baud(SetupMenuSelect *p)
+static int update_sX_baud(SetupMenuSelect *p)
 {
     ESP_LOGI(FNAME, "Select baudrate: %d", p->getSelect());
-    S1->setBaud((e_baud)(p->getSelect())); // 0: 2400, 1:4800, etc
+    int sx = p->getParent()->getContId();
+    ((sx==S1_RS232) ? S1 : S2)->setBaud((e_baud)(p->getSelect())); // 0: 2400, 1:4800, etc
+    p->getParent()->setBuzzword(baudLbl[p->getSelect()]);
     return 0;
 }
 
-static int update_s1_pol(SetupMenuSelect *p)
+static int update_sX_pol(SetupMenuSelect *p)
 {
     ESP_LOGI(FNAME, "Select RX/TX polarity: %d", p->getSelect());
-    S1->setLineInverse(p->getSelect()); // 0 off, 1 invers or TTL (always both, RX/TX)
+    int sx = p->getParent()->getContId();
+    ((sx==S1_RS232) ? S1 : S2)->setLineInverse(p->getSelect()); // 0 off, 1 invers or TTL (always both, RX/TX)
     return 0;
 }
 
-static int update_s1_pin(SetupMenuSelect *p)
+static int update_sX_pin(SetupMenuSelect *p)
 {
     ESP_LOGI(FNAME, "Select Pin Swap: %d", p->getSelect());
-    S1->setPinSwap(p->getSelect()); // 0 normal (3:TX 4:RX), 1 swapped (3:RX 4:TX)
+    int sx = p->getParent()->getContId();
+    ((sx==S1_RS232) ? S1 : S2)->setPinSwap(p->getSelect()); // 0 normal (3:TX 4:RX), 1 swapped (3:RX 4:TX)
     return 0;
 }
 
-static int update_s1_txena(SetupMenuSelect *p)
+static int update_sX_txena(SetupMenuSelect *p)
 {
     ESP_LOGI(FNAME, "Select TX Enable: %d", p->getSelect());
-    S1->setTxOn(p->getSelect()); // 0 RO Listener, 1 TX enabled
+    int sx = p->getParent()->getContId();
+    ((sx==S1_RS232) ? S1 : S2)->setTxOn(p->getSelect()); // 0 RO Listener, 1 TX enabled
     return 0;
 }
 
-static void connected_devices_menu_create_interfaceS1(SetupMenu *top)
+
+static void connected_devices_menu_create_interfaceSX(SetupMenu *top)
 {
-    SetupMenuSelect *s1sp2 = new SetupMenuSelect("Baudrate", RST_NONE, update_s1_baud, &serial1_speed);
-    s1sp2->addEntry("2400 baud");
-    s1sp2->addEntry("4800 baud");
-    s1sp2->addEntry("9600 baud");
-    s1sp2->addEntry("19200 baud");
-    s1sp2->addEntry("38400 baud");
-    s1sp2->addEntry("57600 baud");
-    s1sp2->addEntry("115200 baud");
-    top->addEntry(s1sp2);
+    int sx = top->getContId();
 
-    SetupMenuSelect *stxi2 = new SetupMenuSelect("Signaling", RST_NONE, update_s1_pol, &serial1_ttl_signals);
-    stxi2->setHelp("A logical '1' is represented by a negative voltage in RS232 Standard, whereas in RS232 TTL "
-                    "uses a positive voltage");
-    stxi2->addEntry("RS232 Standard");
-    stxi2->addEntry("RS232 TTL");
-    top->addEntry(stxi2);
+    if ( top->getNrChilds() == 0 ) {
+        top->setDynContent();
 
-    SetupMenuSelect *srxtw2 = new SetupMenuSelect("Swap RX/TX", RST_NONE, update_s1_pin, &serial1_pin_swap);
-    srxtw2->setHelp("Option to swap RX and TX line, a Flarm needs Normal, a Navi usually swapped.");
-    srxtw2->addEntry("Normal");
-    srxtw2->addEntry("Swapped");
-    top->addEntry(srxtw2);
+        SetupMenuSelect *sXspeed = new SetupMenuSelect("Baudrate", RST_NONE, update_sX_baud, &serial1_speed);
+        sXspeed->addEntry(baudLbl[0]);
+        sXspeed->addEntry(baudLbl[1]);
+        sXspeed->addEntry(baudLbl[2]);
+        sXspeed->addEntry(baudLbl[3]);
+        sXspeed->addEntry(baudLbl[4]);
+        sXspeed->addEntry(baudLbl[5]);
+        sXspeed->addEntry(baudLbl[6]);
+        top->addEntry(sXspeed);
 
-    SetupMenuSelect *stxdis1 = new SetupMenuSelect("TX line", RST_NONE, update_s1_txena, &serial1_tx_enable);
-    stxdis1->setHelp("Option to listen only on the RX line, disables TX line to receive only data");
-    stxdis1->mkEnable();
-    top->addEntry(stxdis1);
+        SetupMenuSelect *stxi2 = new SetupMenuSelect("Signaling", RST_NONE, update_sX_pol, &serial1_ttl_signals);
+        stxi2->setHelp("A logical '1' is represented by a negative voltage in RS232 Standard, whereas in RS232 TTL "
+                        "uses a positive voltage");
+        stxi2->addEntry("RS232 Standard");
+        stxi2->addEntry("RS232 TTL");
+        top->addEntry(stxi2);
+
+        SetupMenuSelect *srxtw2 = new SetupMenuSelect("Swap RX/TX", RST_NONE, update_sX_pin, &serial1_pin_swap);
+        srxtw2->setHelp("Option to swap RX and TX line, a Flarm needs Normal, a Navi usually swapped.");
+        srxtw2->addEntry("Normal");
+        srxtw2->addEntry("Swapped");
+        top->addEntry(srxtw2);
+
+        SetupMenuSelect *stxdis1 = new SetupMenuSelect("TX line", RST_NONE, update_sX_txena, &serial1_tx_enable);
+        stxdis1->setHelp("Option to listen only on the RX line, disables TX line to receive only data");
+        stxdis1->mkEnable();
+        top->addEntry(stxdis1);
+    }
+    static_cast<SetupMenuSelect*>(top->getEntry(0))->setNvsVar( (sx==S1_RS232) ? &serial1_speed : &serial2_speed );
+    static_cast<SetupMenuSelect*>(top->getEntry(1))->setNvsVar( (sx==S1_RS232) ? &serial1_ttl_signals : &serial2_ttl_signals );
+    static_cast<SetupMenuSelect*>(top->getEntry(2))->setNvsVar( (sx==S1_RS232) ? &serial1_pin_swap : &serial2_pin_swap );
+    static_cast<SetupMenuSelect*>(top->getEntry(3))->setNvsVar( (sx==S1_RS232) ? &serial1_tx_enable : &serial2_tx_enable );
 }
 
-static int update_s2_baud(SetupMenuSelect *p)
-{
-    ESP_LOGI(FNAME, "Select baudrate: %d", p->getSelect()); // coldstart
-    S2->setBaud((e_baud)(p->getSelect()));
-    return 0;
-}
-
-static int update_s2_pol(SetupMenuSelect *p)
-{
-    ESP_LOGI(FNAME, "Select RX/TX polarity: %d", p->getSelect());
-    S2->setLineInverse(p->getSelect()); // 0 off, 1 invers or TTL (always both, RX/TX)
-    return 0;
-}
-
-static int update_s2_pin(SetupMenuSelect *p)
-{
-    ESP_LOGI(FNAME, "Select Pin Swap: %d", p->getSelect());
-    S2->setPinSwap(p->getSelect()); // 0 normal (3:TX 4:RX), 1 swapped (3:RX 4:TX)
-    return 0;
-}
-
-static int update_s2_txena(SetupMenuSelect *p)
-{
-    ESP_LOGI(FNAME, "Select TX Enable: %d", p->getSelect());
-    S2->setTxOn(p->getSelect());
-    return 0;
-}
-
-void connected_devices_menu_create_interfaceS2(SetupMenu *top)
-{
-    SetupMenuSelect *s2sp2 = new SetupMenuSelect("Baudrate", RST_NONE, update_s2_baud, &serial2_speed);
-    s2sp2->addEntry("2400 baud");
-    s2sp2->addEntry("4800 baud");
-    s2sp2->addEntry("9600 baud");
-    s2sp2->addEntry("19200 baud");
-    s2sp2->addEntry("38400 baud");
-    s2sp2->addEntry("57600 baud");
-    s2sp2->addEntry("115200 baud");
-    top->addEntry(s2sp2);
-
-    SetupMenuSelect *stxi2 = new SetupMenuSelect("Signaling", RST_NONE, update_s2_pol, &serial2_ttl_signals);
-    stxi2->setHelp("A logical '1' is represented by a negative voltage in RS232 Standard, whereas in RS232 TTL "
-                    "uses a positive voltage");
-    stxi2->addEntry("RS232 Standard");
-    stxi2->addEntry("RS232 TTL");
-    top->addEntry(stxi2);
-
-    SetupMenuSelect *srxtw2 = new SetupMenuSelect("Swap RX/TX", RST_NONE, update_s2_pin, &serial2_pin_swap);
-    srxtw2->setHelp("Option to swap RX and TX line, a Flarm needs Normal, a Navi usually swapped.");
-    srxtw2->addEntry("Normal");
-    srxtw2->addEntry("Swapped");
-    top->addEntry(srxtw2);
-
-    ESP_LOGI(FNAME,"menu creation tx_ena %d", serial2_tx_enable.get() );
-    SetupMenuSelect *stxdis2 = new SetupMenuSelect("TX line", RST_NONE, update_s2_txena, &serial2_tx_enable);
-    stxdis2->setHelp("Option to listen only on the RX line, disables TX line to receive only data");
-    stxdis2->mkEnable();
-    top->addEntry(stxdis2);
-}
 
 static int update_can_datarate(SetupMenuSelect *p)
 {
     ESP_LOGI(FNAME, "New CAN data rate: %d", p->getSelect());
     CAN->ConfigureIntf(1);
+    p->getParent()->setBuzzword(canLbl[can_speed.get()]);
     return 0;
 }
 
@@ -534,15 +526,23 @@ static void connected_devices_menu_device(SetupMenu *top) // dynamic!
     if ( top->getNrChilds() == 0 ) {
         top->setDynContent();
 
-        // the interface
-        SetupMenu::SetupMenuCreator_t smc = get_itf_menu_creator(dev->_itf->getId());
+        // the device special
+        SetupMenu::SetupMenuCreator_t smc = get_itf_menu_creator(did);
         if ( smc ) {
-            SetupMenu *itf = new SetupMenu(DEVMAN->getItfName(dev->_itf->getId()).data(), smc);
+            // add it straight into this menu
+            (*smc)(top);
+        }
+
+        // the interface
+        smc = get_itf_menu_creator(dev->_itf->getId());
+        if ( smc ) {
+            SetupMenu *itf = new SetupMenu(DEVMAN->getItfName(dev->_itf->getId()).data(), smc, dev->_itf->getId());
+            itf->setBuzzword(get_itf_buzz(dev->_itf->getId()));
             top->addEntry(itf);
         }
 
-        // all data links to monitor
-        if ( dev->_link ) {
+        // all the data links to monitor
+        if ( dev->_link && !airborne.get() ) {
             std::string tmp;
             int lport = dev->_link->getPort();
             tmp = "Data Monitor";
@@ -597,6 +597,7 @@ static void connected_devices_menu_device(SetupMenu *top) // dynamic!
         device_details += dev->_sensor->name();
     }
     top->setHelp(device_details.c_str());
+    top->setNeverInline();
 }
 
 ///////////////////////////////////

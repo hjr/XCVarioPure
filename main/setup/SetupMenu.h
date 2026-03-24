@@ -71,7 +71,7 @@ protected:
 	int highlight = -1;
 	bool dyn_content = false; // reentrant create routine required, call it when dirty
 	bool dirty = false; // need to refresh content/child list
-	int content_id;
+	int content_id; // for dynamic content creation, eg device id for device menu
 	const char *buzzword = nullptr;
 private:
     bool _help_dirty = false;

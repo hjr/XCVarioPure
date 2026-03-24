@@ -33,6 +33,7 @@ public:
 	void longPress() override;
 	const char *value() const override;
 	void setTerminateMenu() { bits._end_menu = true; }
+	void setNvsVar(SetupNG<int> *anvs) { _nvs = anvs; refresh(); }
 
 	bool existsEntry(const char* ent);
     void addEntry(const char* ent, int val);
