@@ -15,7 +15,7 @@
 #include "driver/time/Clock.h"
 #include "sensor/imu/AccMPU6050.h"
 #include "driver/gpio/ESPRotary.h"
-#include "logdef.h"
+#include "logdefnone.h"
 
 
 constexpr int DUTY_CYCLE_MS = 100; // 10Hz

@@ -1096,6 +1096,7 @@ void Audio::dactask()
             // ESP_LOGI(FNAME, "AE len %d: %x (%d,%d,%d)", uxQueueMessagesWaiting(AudioQueue), (unsigned)event.raw, event.cmd, event.param, event.vol);
             // Process audio events
             if ( event.cmd == DO_VARIO) {
+                // just vario tone adjustments, no sound sequence changes
                 if ( _alarm_mode == alarm_type_t::ALARM_NONE ) {
                     // update vario sound (10Hz)
                     // pull the intput value from vario indicator, or speed respectively
@@ -1123,6 +1124,7 @@ void Audio::dactask()
                 }
             }
             else if ( event.cmd == VLOAD_DONE ) {
+                // overlays to the current sound sequence request more data
                 uint8_t vid = event.param;
                 // ESP_LOGI(FNAME, "Voice done %d", vid);
                 if ( ! next_time ) {
@@ -1150,6 +1152,7 @@ void Audio::dactask()
                 }
             }
             else if ( event.cmd == START_SOUND ) {
+                // external request to play a sound
                 if ( snd_queue.size() > 5 ) {
                     ESP_LOGW(FNAME, "Sound queue overflow, dropping sound");
                     continue;
@@ -1214,6 +1217,7 @@ void Audio::dactask()
                     }
                     else {
                         current_dmacmd->resetSound();
+                        ESP_LOGI(FNAME, "Silence vario sound");
                     }
                 }
             }
@@ -1224,7 +1228,7 @@ void Audio::dactask()
                 writeVolume(event.getVolume()); // synched alarm volume
             }
             else if ( event.cmd == ADD_VOICE ) {
-                // Add voice on top of current sound, no synchronized start required
+                // external add voice on top of current sound, no synchronized start required
                 if ( current_dmacmd->repcount < 0 ) { // double check only the endless vario is playing
                     const SOUND* snd = sound_list[event.param];
                     next_time = snd->timeseq;
@@ -1246,11 +1250,21 @@ void Audio::dactask()
         }
 
         if ( _alarm_mode != alarm_type_t::ALARM_NONE && Clock::getMillis() > alarm_timeout ) {
-            ESP_LOGI(FNAME, "Alarm timeout, restore volume");
-            _alarm_mode = alarm_type_t::ALARM_NONE;
-            if (audio_mute_gen.get() == AUDIO_ON) {
-                current_dmacmd->loadSound(&VarioSound, speaker_volume);
+            if ( !snd_queue.empty() && current_dmacmd->repcount < 0 ) {
+                // Huh
+                ESP_LOGI(FNAME, "Force preempt sound");
+                current_dmacmd->repcount = 0;
             }
+            else {
+                ESP_LOGI(FNAME, "Alarm timeout, restore vario tone & volume");
+                _alarm_mode = alarm_type_t::ALARM_NONE;
+                if (audio_mute_gen.get() == AUDIO_ON) {
+                    current_dmacmd->loadSound(&VarioSound, speaker_volume);
+                }
+            }
+        }
+        if ( _alarm_mode != alarm_type_t::ALARM_NONE && Clock::getMillis() > alarm_timeout && audio_mute_gen.get() == AUDIO_ON && current_dmacmd->repcount == 0 ) {
+            ESP_LOGE(FNAME, "Sound Oopsi");
         }
 #if defined(AUDIO_DEBUG)
         // ISR benchmark
