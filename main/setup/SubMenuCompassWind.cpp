@@ -174,14 +174,24 @@ static int compassSensorCalibrateAction(SetupMenuSelect *p) {
 		MYUCG->setPrintPos( 1, 245 );
 		MYUCG->printf( "all numbers are green" );
 		MYUCG->setPrintPos( 1, 270 );
-		MYUCG->printf( "Press button to finish" );
+		MYUCG->printf( "Press button to abort" );
 		magSensor->calibrate( calibrationReport, false);
+		MYUCG->setPrintPos( 1, 30 );
+		MYUCG->printf( "Calibration finished !" );
 		MYUCG->setPrintPos( 1, 250 );
-		vTaskDelay(pdMS_TO_TICKS(1000));
+		vTaskDelay(pdMS_TO_TICKS(3000));
 		p->clear();
+		magSensor->calibrate( calibrationReport, true );
+		MYUCG->setPrintPos( 1, 270 );
+		MYUCG->setColor( COLOR_WHITE );
+		MYUCG->printf( "Press button to finish" );
+		while( ! Rotary->readSwitch(100) ) ;
 		break;
 	case 2: // Show
 		magSensor->calibrate( calibrationReport, true );
+		MYUCG->setColor( COLOR_WHITE );
+		MYUCG->setPrintPos( 1, 270 );
+		MYUCG->printf( "Press button to continue" );
 		while( ! Rotary->readSwitch(100) ) ;
 		break;
 	case 3: // Show Raw Data

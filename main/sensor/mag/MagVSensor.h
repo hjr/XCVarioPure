@@ -34,7 +34,7 @@ public:
     bool calibrate( void (*reporter)(const CompassCalibrationData &data, bool print), bool only_show);
 
 private:
-    void calcCalibration(CompassCalibrationData &data);
+    bool calcCalibration(CompassCalibrationData &data);
     bool loadCalibration();
     void resetCalibration();
     void saveCalibration(const vector_f &bias, const vector_f &scale);

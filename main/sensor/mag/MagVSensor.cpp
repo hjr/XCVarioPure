@@ -108,7 +108,8 @@ bool MagVSensor::calibrate( void (*reporter)(const CompassCalibrationData &data,
         _bias = {};
         _scale = { 1.f,1.f,1.f };
         CompassCalibrationData *data = new CompassCalibrationData;
-		while( true )
+        bool finished = false;
+		while( !finished )
 		{
             // Grab a sample
             if ( magSensor->getHeadValid() && magSensor->getLevel() > 10) {
@@ -118,7 +119,7 @@ bool MagVSensor::calibrate( void (*reporter)(const CompassCalibrationData &data,
                 // magSensor->dump(1200);
 
                 // Evaluate the sample for calibration and update the calibration data
-                calcCalibration(*data);
+                finished = calcCalibration(*data);
             } else {
                 ESP_LOGI(FNAME, "Compass reading not valid during calibration");
                 data->sample = {};
@@ -127,8 +128,9 @@ bool MagVSensor::calibrate( void (*reporter)(const CompassCalibrationData &data,
             // Send a calibration report to the subscriber
             reporter(*data, false);
 			if( Rotary->readSwitch(100) ) {
-				break;
+				finished = true;
             }
+
 		}
 		ESP_LOGI( FNAME, "Read Cal-Samples=%d", data->nrsamples );
 		if( ! data->bits.allAxesGood() || data->nrsamples < 2 ) {
@@ -157,14 +159,13 @@ bool MagVSensor::calibrate( void (*reporter)(const CompassCalibrationData &data,
         data->scale = _scale;
 		reporter( *data, true );
         delete data;
-		while( ! Rotary->readSwitch(100) ) ; // wait for button
 	}
 
     return ret;
 }
 
 // calibration calculation in sync with data received in compass task
-void MagVSensor::calcCalibration(CompassCalibrationData &data) {
+bool MagVSensor::calcCalibration(CompassCalibrationData &data) {
 	data.nrsamples++;
 	// Variance low pass filtered
     data.variance += (data.var.get_norm() - data.variance) / 3.f;
@@ -180,7 +181,7 @@ void MagVSensor::calcCalibration(CompassCalibrationData &data) {
 	data.max.z = (data.sample.z > data.max.z ) ? data.sample.z : data.max.z;
 
 	constexpr float minval = (32768/100)*1.2; // 1.2% full scale
-    constexpr float maxvar = 1200.f; // empirically determined maximum variance for a valid sample
+    constexpr float maxvar = 3200.f; // empirically determined maximum variance for a valid sample
     ESP_LOGI( FNAME, "Mag Sample: x=%.2f y=%.2f z=%.2f, < %.2f, var=%.2f < %.2f", data.sample.x, data.sample.y, data.sample.z, minval, data.variance, maxvar );
 	if( abs(data.sample.x) < minval && abs(data.sample.y) < minval && data.variance < maxvar && data.sample.z > 2*minval  )
 		data.bits.zmax_green = true;
@@ -196,7 +197,7 @@ void MagVSensor::calcCalibration(CompassCalibrationData &data) {
 		data.bits.xmin_green = true;
 
 	if( data.nrsamples < 2 )
-		return;
+		return false;
 
 	// Calculate hard iron correction
 	// calculate average x, y, z magnetic bias.x in counts
@@ -211,6 +212,8 @@ void MagVSensor::calcCalibration(CompassCalibrationData &data) {
 	data.scale.x = cord_avgerage / chord.x;
 	data.scale.y = cord_avgerage / chord.y;
 	data.scale.z = cord_avgerage / chord.z;
+
+	return( data.bits.zmax_green && data.bits.zmin_green && data.bits.ymax_green && data.bits.ymin_green && data.bits.xmax_green && data.bits.xmin_green );
 }
 
 
