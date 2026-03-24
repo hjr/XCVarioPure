@@ -9,7 +9,7 @@
 #include "FlarmMsg.h"
 #include "protocol/FlarmBin.h"
 #include "protocol/nmea/XCVSimMsg.h"
-#include "protocol/Clock.h"
+#include "driver/time/Clock.h"
 #include "Flarm.h"
 #include "screen/UiEvents.h"
 #include "screen/DrawDisplay.h"

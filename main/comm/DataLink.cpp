@@ -30,7 +30,7 @@
 #include "protocol/TestQuery.h"
 #include "DeviceMgr.h"
 #include "setup/DataMonitor.h"
-#include "protocol/AliveMonitor.h"
+#include "driver/time/AliveMonitor.h"
 #include "setup/SetupNG.h"
 #include "logdefnone.h"
 

@@ -9,7 +9,7 @@
 #include "XCVSimMsg.h"
 
 #include "protocol/nmea_util.h"
-#include "protocol/Clock.h"
+#include "driver/time/Clock.h"
 #include "comm/Messages.h"
 #include "sensor/pressure/PressureSensor.h"
 #include "sensor/press_diff/AirspeedSensor.h"

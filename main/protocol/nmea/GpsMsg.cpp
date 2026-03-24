@@ -11,7 +11,7 @@
 #include "sensor/gps/GpsVSensor.h"
 #include "wind/CircleWind.h"
 #include "wind/WindCalcTask.h"
-#include "protocol/Clock.h"
+#include "driver/time/Clock.h"
 #include "setup/SetupNG.h"
 #include "math/Units.h"
 #include "sensor.h"

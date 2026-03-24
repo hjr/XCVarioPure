@@ -1,6 +1,6 @@
 #include "Flarm.h"
 
-#include <protocol/Clock.h>
+#include "driver/time/Clock.h"
 
 int Flarm::RX = 0;
 int Flarm::TX = 0;

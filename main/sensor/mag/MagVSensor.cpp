@@ -12,7 +12,7 @@
 #include "sensor/SensorMgr.h"
 #include "vector.h"
 #include "math/vector_3d.h"
-#include "protocol/Clock.h"
+#include "driver/time/Clock.h"
 #include "sensor/imu/AccMPU6050.h"
 #include "driver/gpio/ESPRotary.h"
 #include "logdef.h"

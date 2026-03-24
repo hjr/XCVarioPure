@@ -8,7 +8,7 @@
 
 #include "driver/gpio/S2fSwitch.h"
 
-#include "protocol/Clock.h"
+#include "driver/time/Clock.h"
 #include "setup/CruiseMode.h"
 #include "setup/SetupNG.h"
 #include "screen/UiEvents.h"

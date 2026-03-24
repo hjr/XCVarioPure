@@ -11,7 +11,7 @@
 #include "Colors.h"
 #include "DrawDisplay.h"
 #include "UiEvents.h"
-#include "protocol/Clock.h"
+#include "driver/time/Clock.h"
 #include "setup/ShowBootMsg.h"
 #include "setup/SetupMenuDisplay.h"
 #include "AdaptUGC.h"

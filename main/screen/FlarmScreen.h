@@ -9,7 +9,7 @@
 #pragma once
 
 #include "setup/MenuEntry.h"
-#include "protocol/WatchDog.h"
+#include "driver/time/WatchDog.h"
 
 #include <atomic>
 

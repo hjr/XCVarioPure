@@ -29,7 +29,7 @@
 #include "Flarm.h"
 #include "S2F.h"
 #include "sensor.h"
-#include "protocol/WatchDog.h"
+#include "driver/time/WatchDog.h"
 #include "logdefnone.h"
 
 

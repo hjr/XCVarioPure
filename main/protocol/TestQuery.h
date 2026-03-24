@@ -9,7 +9,7 @@
 #pragma once
 
 #include "ProtocolItf.h"
-#include "ClockIntf.h"
+#include "driver/time/ClockIntf.h"
 
 
 class TestQuery final : public ProtocolItf, public Clock_I

@@ -10,7 +10,7 @@
 
 #include "setup/MenuEntry.h"
 #include "setup/SetupMenu.h"
-#include "protocol/WatchDog.h"
+#include "driver/time/WatchDog.h"
 
 enum ScreenTypes // bit field
 {

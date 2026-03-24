@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "protocol/ClockIntf.h"
+#include "driver/time/ClockIntf.h"
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"

@@ -36,7 +36,7 @@
 #include "comm/WifiApSta.h"
 #include "comm/BTspp.h"
 #include "comm/BTnus.h"
-#include "protocol/AliveMonitor.h"
+#include "driver/time/AliveMonitor.h"
 #include "setup/SetupNG.h"
 #include "CenterAid.h"
 #include "AdaptUGC.h"

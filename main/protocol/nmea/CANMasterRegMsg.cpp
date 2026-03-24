@@ -9,7 +9,7 @@
 #include "CANMasterRegMsg.h"
 
 #include "protocol/nmea_util.h"
-#include "protocol/Clock.h"
+#include "driver/time/Clock.h"
 #include "protocol/CANPeerCaps.h"
 #include "comm/DeviceMgr.h"
 #include "comm/Messages.h"

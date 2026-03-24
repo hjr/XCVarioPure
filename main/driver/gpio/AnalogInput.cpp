@@ -7,7 +7,7 @@
 
 #include "driver/gpio/AnalogInput.h"
 
-#include "protocol/Clock.h"
+#include "driver/time/Clock.h"
 #include "logdefnone.h"
 
 #include <esp_adc/adc_cali.h>

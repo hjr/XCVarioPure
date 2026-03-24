@@ -8,7 +8,7 @@
 
 #include "Poti.h"
 #include "I2Cbus.hpp"
-#include "protocol/Clock.h"
+#include "driver/time/Clock.h"
 #include "logdefnone.h"
 
 #include <esp_system.h>
