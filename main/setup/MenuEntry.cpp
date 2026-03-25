@@ -195,13 +195,13 @@ void MenuEntry::setHelp( const char *txt )
 void MenuEntry::doHighlight(int sel) const
 {
 	MYUCG->setColor(COLOR_WHITE);
-	MYUCG->drawFrame(1, (sel+1)*LINE_HEIGHT+2, dwidth-2, LINE_HEIGHT );
+	MYUCG->drawFrame(1, (sel+1)*LINE_HEIGHT+2, dwidth-2, LINE_HEIGHT-1 );
 }
 
 void MenuEntry::unHighlight(int sel) const
 {
 	MYUCG->setColor(COLOR_BLACK);
-	MYUCG->drawFrame(1, (sel+1)*LINE_HEIGHT+2, dwidth-2, LINE_HEIGHT );
+	MYUCG->drawFrame(1, (sel+1)*LINE_HEIGHT+2, dwidth-2, LINE_HEIGHT-1 );
 }
 
 void MenuEntry::indentHighlight(int sel)
@@ -209,9 +209,9 @@ void MenuEntry::indentHighlight(int sel)
 	cur_indent = MYUCG->getStrWidth(_title.c_str()) + 4;
 	cur_row = sel+1;
 	MYUCG->setColor(COLOR_BLACK);
-	MYUCG->drawFrame(1, cur_row*LINE_HEIGHT + 2, dwidth-2, LINE_HEIGHT);
+	MYUCG->drawFrame(1, cur_row*LINE_HEIGHT + 2, dwidth-2, LINE_HEIGHT-1);
 	MYUCG->setColor(COLOR_WHITE);
-	MYUCG->drawFrame(cur_indent, cur_row*LINE_HEIGHT + 2, dwidth-cur_indent-1, LINE_HEIGHT);
+	MYUCG->drawFrame(cur_indent, cur_row*LINE_HEIGHT + 2, dwidth-cur_indent-1, LINE_HEIGHT-1);
 }
 
 void MenuEntry::indentPrintLn(const char *str) const
@@ -278,7 +278,7 @@ bool MenuEntry::showhelp(bool inln)
 
         clearHelpLines(first_hln);
         MYUCG->setColor(COLOR_BBLUE);
-        MYUCG->drawLine(30, first_hln * LINE_HEIGHT + 1, dwidth - 30, first_hln * LINE_HEIGHT + 1);  // separator
+        MYUCG->drawLine(30, first_hln * LINE_HEIGHT + 2, dwidth - 30, first_hln * LINE_HEIGHT + 2);  // separator
         MYUCG->setColor(COLOR_WHITE);
 
         MYUCG->setFont(ucg_font_ncenR14_hr);
@@ -314,9 +314,9 @@ void MenuEntry::clear() {
 void MenuEntry::clearHelpLines(int16_t ln) const
 {
 	ESP_LOGI(FNAME,"clearHelpLines %s", _title.c_str());
-	int16_t hy = ln * LINE_HEIGHT + 1;
+	int16_t hy = ln * LINE_HEIGHT + 2;
 	MYUCG->setColor(COLOR_BLACK);
-	MYUCG->drawBox(0, hy, dwidth, dheight-hy);
+	MYUCG->drawBox(0, hy, dwidth, dheight-hy-1);
 	MYUCG->setFont(ucg_font_ncenR14_hr);
 	MYUCG->setColor(COLOR_WHITE);
 }
