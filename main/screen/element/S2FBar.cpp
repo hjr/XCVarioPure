@@ -8,12 +8,11 @@
 
 #include "S2FBar.h"
 
-#include "math/Floats.h"
+#include "setup/SetupNG.h"
 #include "Colors.h"
 #include "AdaptUGC.h"
 #include "logdefnone.h"
 
-#include <cstdio>
 #include <cmath>
 #include <algorithm>
 
@@ -69,7 +68,7 @@ void S2FBar::drawArrow(int16_t x, int16_t y, int16_t level, bool del)
         if (del) {
             MYUCG->setColor(COLOR_WGREY);
         } else {
-            MYUCG->setColor(COLOR_WHITE);
+            MYUCG->setColor(ndl_color[needle_color.get()].color[0], ndl_color[needle_color.get()].color[1], ndl_color[needle_color.get()].color[2]);
         }
     }
     else if (del) {
