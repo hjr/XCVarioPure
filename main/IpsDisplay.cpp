@@ -434,7 +434,7 @@ void IpsDisplay::initDisplay() {
             MCgauge = new McCready(40, DISPLAY_H + 2);
         }
         if ( !S2FBARgauge) {
-            S2FBARgauge = new S2FBar(DISPLAY_W - 50, AMIDY, 28, 32);
+            S2FBARgauge = new S2FBar(DISPLAY_W - 50, AMIDY, 28, 16);
         }
    }
     else {
@@ -522,7 +522,7 @@ void IpsDisplay::initDisplay() {
         if (display_orientation.get() == DISPLAY_NINETY) {
             S2FBARgauge->setRef(DISPLAY_W - 120, AMIDY);
             S2FBARgauge->setWidth(36);
-            S2FBARgauge->setGap(2);
+            S2FBARgauge->setGap(8);
         } else {
             if (FLAPSgauge) {
                 S2FBARgauge->setRef(DISPLAY_W - 50, AMIDY);
@@ -531,7 +531,7 @@ void IpsDisplay::initDisplay() {
                 S2FBARgauge->setRef(DISPLAY_W - 34, AMIDY);
                 S2FBARgauge->setWidth(50);
             }
-            S2FBARgauge->setGap(32);
+            S2FBARgauge->setGap(16);
         }
     }
     if (FLAPSgauge) {

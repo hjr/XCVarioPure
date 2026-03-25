@@ -21,8 +21,8 @@ extern AdaptUGC *MYUCG;
 
 S2FBar::S2FBar(int16_t cx, int16_t cy, int16_t width, int16_t gap) :
     ScreenElement(cx, cy),
-    _width_h(width/2),
-    _gap_v(gap/2)
+    _width_half(width/2),
+    _gap_half(gap/2)
 {
     stepFromWidth(width);
     MYUCG->setFont(ucg_font_fub11_hr);
@@ -30,29 +30,29 @@ S2FBar::S2FBar(int16_t cx, int16_t cy, int16_t width, int16_t gap) :
 
 // v : IAS [m/s]
 // center-aligned to value in 25 font size, no unit displayed
-void S2FBar::drawSpeed(mps_t v)
-{
-	int16_t airspeed = fast_iroundf(SpeedUnit->apply(v));
-    if ( airspeed == _prev_s2f_speed && !_dirty) {
-        return;
-    }
+// void S2FBar::drawSpeed(mps_t v)
+// {
+// 	int16_t airspeed = fast_iroundf(SpeedUnit->apply(v));
+//     if ( airspeed == _prev_s2f_speed && !_dirty) {
+//         return;
+//     }
 
-    _prev_s2f_speed = airspeed;
-    if ( _prev_s2f_level == 0 ) {
-	    MYUCG->setColor(COLOR_DGREEN);
-    }
-    else {
-        MYUCG->setColor(COLOR_WGREY);
-    }
-    MYUCG->setFont(ucg_font_fub11_hr, true);
-    char s[32];
-    sprintf(s, " %3d ", airspeed);
-    int16_t toleft = (_gap_v < 8) ? 2 * _width_h : 0;
-    MYUCG->setFontPosCenter();
-    MYUCG->setPrintPos(_ref_x + toleft - MYUCG->getStrWidth(s) / 2, _ref_y);
-    MYUCG->print(s);
-    MYUCG->setFontPosBottom();
-}
+//     _prev_s2f_speed = airspeed;
+//     if ( _prev_s2f_level == 0 ) {
+// 	    MYUCG->setColor(COLOR_DGREEN);
+//     }
+//     else {
+//         MYUCG->setColor(COLOR_WGREY);
+//     }
+//     MYUCG->setFont(ucg_font_fub11_hr, true);
+//     char s[32];
+//     sprintf(s, " %3d ", airspeed);
+//     int16_t toleft = (_gap_v < 8) ? 2 * _width_h : 0;
+//     MYUCG->setFontPosCenter();
+//     MYUCG->setPrintPos(_ref_x + toleft - MYUCG->getStrWidth(s) / 2, _ref_y);
+//     MYUCG->print(s);
+//     MYUCG->setFontPosBottom();
+// }
 
 void S2FBar::drawArrow(int16_t x, int16_t y, int16_t level, bool del)
 {
@@ -84,12 +84,33 @@ void S2FBar::drawArrow(int16_t x, int16_t y, int16_t level, bool del)
         height = -height;
         l = level + init;
     }
-    MYUCG->drawTriangle(x, y + l * (_step + gap), x, y + l * (_step + gap) + height, x - _width_h, y + l * gap);
-    MYUCG->drawTriangle(x, y + l * (_step + gap), x + _width_h, y + l * gap, x, y + l * (_step + gap) + height);
+    MYUCG->drawTriangle(x, y + l * (_step + gap), x, y + l * (_step + gap) + height, x - _width_half, y + l * gap);
+    MYUCG->drawTriangle(x, y + l * (_step + gap), x + _width_half, y + l * gap, x, y + l * (_step + gap) + height);
 }
 
-// speed to fly delta given in kmh, s2fd > 0 means speed up
-// bars dice up 10 kmh steps
+void S2FBar::drawBlock(int16_t level)
+{
+    int16_t prev = _prev_s2f_level/2;
+    level = std::abs(level/2);
+
+    if ( level == std::abs(prev) && !_dirty) {
+        return;
+    }
+
+    if (level == 0 ) {
+        MYUCG->setColor(COLOR_DGREEN);
+    }
+    else if (level == 1) {
+        MYUCG->setColor(COLOR_MGREY);
+    }
+    else {
+        MYUCG->setColor(COLOR_BLACK);
+    }
+    MYUCG->drawRBox(_ref_x - _width_half + 1, _ref_y - _gap_half + 2, 2 * _width_half - 2, 2 * _gap_half - 4, 2);
+}
+
+// speed to fly delta given in m/s, s2fd > 0 means speed up
+// bars dice up 10 km/h steps
 void S2FBar::draw(mps_t s2fd, mps_t s2f_speed)
 {
     int16_t level = s2fd / LEVEL_DELTA; // dice up into 10 kmh steps
@@ -111,7 +132,7 @@ void S2FBar::draw(mps_t s2fd, mps_t s2f_speed)
         {
             if (i != 0)
             {
-                drawArrow(_ref_x, _ref_y + (i > 0 ? 1 : -1) * _gap_v, i, i * inc < 0);
+                drawArrow(_ref_x, _ref_y + (i > 0 ? 1 : -1) * _gap_half, i, i * inc < 0);
                 // ESP_LOGI(FNAME,"s2fbar draw %d,%d", i, (i*inc < 0)?0:inc);
             }
         }
@@ -119,11 +140,14 @@ void S2FBar::draw(mps_t s2fd, mps_t s2f_speed)
     }
     _prev_s2f_level = level;
 
-
+    // Fill the gap with a block if the speed is close to the target, otherwise clear it
+    drawBlock(level);
+    
     // draw additional speed value if given
-    if ( s2f_speed > 0.0f ) {
-        drawSpeed(s2f_speed);
-    }
+    // commented until further user input
+    // if ( s2f_speed > 0.0f ) {
+    //     drawSpeed(s2f_speed);
+    // }
 
     _dirty = false;
 }
