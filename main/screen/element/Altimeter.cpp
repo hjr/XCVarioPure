@@ -210,7 +210,7 @@ void Altimeter::draw(meter_t alt_input)
             // Roll leading digit independant of quant setting in 2 * (mod/10) range
             int lead_quant = 2 * base; // eg. 2 for Q=1 and Q=5
             int rollover = ((int)(alt_f) % mod) / base;
-            if ((rollover < 1 && alt_leadpart != 0) || (rollover > 8) || _dirty)
+            if ((rollover < 1 && alt_leadpart != 0) || (rollover > 8))
             { // [9.1,..,0.9]: roll-over needs clarification on leading digit
                 // Re-Quantized leading altitude part
                 fraction = (float)((int)((alt_f + base) * 10) % (mod * 10)) / (lead_quant * 10);
@@ -219,6 +219,9 @@ void Altimeter::draw(meter_t alt_input)
                 // ESP_LOGI(FNAME,"Lead %f/%d: %f - %f m%d %d.", altitude, alt_leadpart, fraction, m, lead_digit);
                 nr_rolling_digits++; // one less digit remains to print
                 xp -= _char_width;   // one to the left
+                s[len - 1] = '\0';
+                len--; // chop another digits
+
                 // MYUCG->drawFrame(xp-1, _ref_y - _char_height-1, _char_width+1, _char_height+1);
                 MYUCG->setClipRange(xp, _ref_y - _char_height, _char_width - 1, _char_height - 1);
                 MYUCG->setPrintPos(xp, _ref_y + m - _char_height);
@@ -226,9 +229,7 @@ void Altimeter::draw(meter_t alt_input)
                 MYUCG->setPrintPos(xp, _ref_y + m);
                 MYUCG->print((lead_digit + 9) % 10);
                 MYUCG->undoClipRange();
-                // ESP_LOGI(FNAME,"ld4: %d", (lead_digit+9)%10 );
-                s[len - 1] = '\0';
-                len--; // chop another digits
+                ESP_LOGI(FNAME,"ld4: %d, len %d", (lead_digit+9)%10, len );
             }
         }
         MYUCG->setPrintPos(_ref_x - MYUCG->getStrWidth(s) - nr_rolling_digits * _char_width, _ref_y);
