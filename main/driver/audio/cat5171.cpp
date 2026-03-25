@@ -28,7 +28,6 @@ bool CAT5171::writeWiper(uint16_t val) {
     ESP_LOGI(FNAME, "CAT5171 write wiper %d", val);
     esp_err_t err = bus->writeByte(CAT5171_I2C_ADDR, 0, (uint8_t)val);
     if (err != ESP_OK) {
-        // ESP_LOGV(FNAME,"CAT5171 write wiper OK");
         ESP_LOGE(FNAME, "CAT5171 Error writing wiper, error count %d", errorcount);
         errorcount++;
         return false;

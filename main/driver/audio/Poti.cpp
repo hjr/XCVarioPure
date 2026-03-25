@@ -64,7 +64,7 @@ bool Poti::tick() {
         int step = (targetWiperValue > lastWiperValue) ? 1 : -1;
         lastWiperValue += std::abs(targetWiperValue - lastWiperValue) > 5 ? step * 5 : step;
         writeWiper(lastWiperValue);
-        // ESP_LOGI(FNAME, "soft %d, ival %d", targetWiperValue, lastWiperValue);
+        ESP_LOGI(FNAME, "write %d", lastWiperValue);
         if ( lastWiperValue == 0 ) {
             _mute_cb();
         }
