@@ -101,7 +101,7 @@ static union {
         uint8_t bottom_dirty       : 1;
         uint8_t mode_dirty         : 1;
         uint8_t flarm_connected    : 1;
-        uint8_t flaps_mbox_shown   : 1;
+        uint8_t flp_speed_msg_shown : 1;
     };
     uint8_t packed;
 } flags = {};
@@ -534,6 +534,13 @@ void IpsDisplay::initDisplay() {
             S2FBARgauge->setGap(16);
         }
     }
+    if (VCSTATgauge) {
+        if (display_orientation.get() == DISPLAY_NINETY) {
+            VCSTATgauge->setRef(INNER_RIGHT_ALIGN + 6, AMIDY - 12);
+        } else {
+            VCSTATgauge->setRef(INNER_RIGHT_ALIGN - 6, 22);
+        }
+    }
     if (FLAPSgauge) {
         if (display_orientation.get() == DISPLAY_NINETY) {
             FLAPSgauge->setLength(120);
@@ -936,9 +943,9 @@ void IpsDisplay::drawDisplay(){
     if (FLAPSgauge && !(tick % 3)) {
         FLAPSgauge->draw(ias.get());
         // Check on flap speeds defined
-        if ( FLAP->getNrPositions() == 0 && ! flags.flaps_mbox_shown) {
+        if ( FLAP->getNrPositions() == 0 && ! flags.flp_speed_msg_shown) {
             MBOX->pushMessage(2, "Pls. set flap speeds" );
-            flags.flaps_mbox_shown = true;
+            flags.flp_speed_msg_shown = true;
         }
     }
 

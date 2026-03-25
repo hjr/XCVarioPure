@@ -20,6 +20,7 @@ public:
     ScreenElement() = delete;
     ScreenElement(int16_t refx, int16_t refy) : _ref_x(refx), _ref_y(refy) {}
     ~ScreenElement() = default;
+    void setRef(int16_t x, int16_t y) { _ref_x=x; _ref_y=y; }
     void forceRedraw() { _dirty = true; }
 
 public:
