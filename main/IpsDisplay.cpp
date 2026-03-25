@@ -833,6 +833,7 @@ void IpsDisplay::drawDisplay(){
 	if( !(screens_init & INIT_DISPLAY_RETRO) ){
 		initDisplay();
 		screens_init |= INIT_DISPLAY_RETRO;
+        return; // split the first draw into a couple calls
 	}
 	tick++;
 

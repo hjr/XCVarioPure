@@ -25,7 +25,7 @@ public:
     // API
     void setRef(int16_t x, int16_t y) { _ref_x=x; _ref_y=y; }
     void setWidth(int16_t width) { _width_h=width/2; stepFromWidth(width); }
-    void setGap(int16_t gap) { _gap_h=gap/2; }
+    void setGap(int16_t gap) { _gap_v=gap/2; }
     void draw(mps_t s2fd, mps_t s2f_speed = -1.0f);
 
 private:
@@ -37,6 +37,6 @@ private: // attributes
     int16_t _prev_s2f_level = 0;
     int16_t _prev_s2f_speed = 0;
     int16_t _width_h;
-    int16_t _gap_h;
+    int16_t _gap_v;
     int16_t _step;
 };

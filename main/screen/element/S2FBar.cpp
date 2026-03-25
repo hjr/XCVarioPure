@@ -22,14 +22,14 @@ extern AdaptUGC *MYUCG;
 S2FBar::S2FBar(int16_t cx, int16_t cy, int16_t width, int16_t gap) :
     ScreenElement(cx, cy),
     _width_h(width/2),
-    _gap_h(gap/2)
+    _gap_v(gap/2)
 {
     stepFromWidth(width);
     MYUCG->setFont(ucg_font_fub11_hr);
 }
 
 // v : IAS [m/s]
-// right-aligned to value in 25 font size, no unit displayed
+// center-aligned to value in 25 font size, no unit displayed
 void S2FBar::drawSpeed(mps_t v)
 {
 	int16_t airspeed = fast_iroundf(SpeedUnit->apply(v));
@@ -47,7 +47,7 @@ void S2FBar::drawSpeed(mps_t v)
     MYUCG->setFont(ucg_font_fub11_hr, true);
     char s[32];
     sprintf(s, " %3d ", airspeed);
-    int16_t toleft = (_gap_h < 8) ? 2 * _width_h : 0;
+    int16_t toleft = (_gap_v < 8) ? 2 * _width_h : 0;
     MYUCG->setFontPosCenter();
     MYUCG->setPrintPos(_ref_x + toleft - MYUCG->getStrWidth(s) / 2, _ref_y);
     MYUCG->print(s);
@@ -111,7 +111,7 @@ void S2FBar::draw(mps_t s2fd, mps_t s2f_speed)
         {
             if (i != 0)
             {
-                drawArrow(_ref_x, _ref_y + (i > 0 ? 1 : -1) * _gap_h, i, i * inc < 0);
+                drawArrow(_ref_x, _ref_y + (i > 0 ? 1 : -1) * _gap_v, i, i * inc < 0);
                 // ESP_LOGI(FNAME,"s2fbar draw %d,%d", i, (i*inc < 0)?0:inc);
             }
         }
