@@ -101,12 +101,12 @@ void S2FBar::drawBlock(int16_t level)
         MYUCG->setColor(COLOR_DGREEN);
     }
     else if (level == 1) {
-        MYUCG->setColor(COLOR_MGREY);
+        MYUCG->setColor(COLOR_WGREY);
     }
     else {
         MYUCG->setColor(COLOR_BLACK);
     }
-    MYUCG->drawRBox(_ref_x - _width_half + 1, _ref_y - _gap_half + 2, 2 * _width_half - 2, 2 * _gap_half - 4, 2);
+    MYUCG->drawRBox(_ref_x - _width_half + 6, _ref_y - _gap_half + 1, 2 * _width_half - 12, 2 * _gap_half - 3, 2);
 }
 
 // speed to fly delta given in m/s, s2fd > 0 means speed up
