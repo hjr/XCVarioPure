@@ -95,7 +95,7 @@ void MenuEntry::SavedDelay(bool showit)
 {
 	if ( showit ) {
 		MYUCG->setColor( COLOR_BLACK );
-		MYUCG->drawBox(1, dheight-50, dwidth, 50);
+		MYUCG->drawBox(1, dheight-LINE_HEIGHT, dwidth, LINE_HEIGHT);
 		MYUCG->setPrintPos(1, dheight-3);
 		MYUCG->setColor( COLOR_WHITE );
 		MYUCG->print("Saved");
