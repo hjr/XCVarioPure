@@ -451,7 +451,7 @@ void IpsDisplay::initDisplay() {
         OATgauge = new Temperature(58, 32);
     }
     if (!BATgauge) {
-        BATgauge = new Battery(DISPLAY_W - 10, DISPLAY_H - 12);
+        BATgauge = new Battery(DISPLAY_W - 10, DISPLAY_H - 12, display_orientation.get() == DISPLAY_NINETY);
     }
     if ( !VCSTATgauge ) {
         VCSTATgauge = new CruiseStatus(INNER_RIGHT_ALIGN - 6, 22);
