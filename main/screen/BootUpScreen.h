@@ -10,6 +10,8 @@
 
 #include "driver/time/ClockIntf.h"
 
+#include <cstdint>
+
 // draw a startup XCV logo
 // precondition:
 // - ucg adapter for the connected display
@@ -38,12 +40,10 @@ private:
     void animate();
 
     unsigned char *logo_bitmap = nullptr;
-    int width;
-    int height;
-    int radius;
-    int x_offset;
-    int y_offset;
+    int16_t x_offset;
+    int16_t y_offset;
     int fini_part;
     int yline;
     int yline_to;
+    bool _branded = false;
 };

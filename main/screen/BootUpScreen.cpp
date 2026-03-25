@@ -26,8 +26,8 @@ extern AdaptUGC *MYUCG;
 
 BootUpScreen *BootUpScreen::inst = nullptr;
 
-#define LOGO_WIDTH 216
-#define LOGO_HEIGHT 191
+constexpr int16_t LOGO_WIDTH = 216;
+constexpr int16_t LOGO_HEIGHT = 191;
 
 const uint8_t logo_bitmap_rle[] = {
     // 'XC Vario', 216x191px
@@ -146,9 +146,9 @@ constexpr const int MAX_PIXELS_PER_FRAME = 12;
 BootUpScreen::BootUpScreen() :
     Clock_I(1)
 {
-    int width = MYUCG->getDisplayWidth()/2;
-    int height = MYUCG->getDisplayHeight()/2;
-    int radius = (width<height) ? width : height;
+    int16_t width = MYUCG->getDisplayWidth()/2;
+    int16_t height = MYUCG->getDisplayHeight()/2;
+    int16_t radius = (width<height) ? width : height;
 
     // draw a blue disc
     MYUCG->setColor(COLOR_BLUE);
@@ -204,6 +204,15 @@ BootUpScreen::~BootUpScreen()
 // otherwise skip a part
 void BootUpScreen::finish(int part)
 {
+    if ( ! _branded ) {
+        MYUCG->setColor(1, COLOR_BLUE);
+        MYUCG->setColor(COLOR_WHITE);
+        MYUCG->setFont(ucg_font_fub11_hr, false);
+        MYUCG->setPrintPos(MYUCG->getDisplayWidth()/2 - 20, MYUCG->getDisplayHeight()/2 + 20);
+        MYUCG->print("club");
+        MYUCG->setColor(1, g_col_background, g_col_background, g_col_background);
+        _branded = true;
+    }
     if ( gflags.schedule_reboot ) {
         SetupMenuDisplay bm("", show_boot_log);
         bm.display(part+1); // factory only case .. no display synch here
@@ -228,8 +237,8 @@ void BootUpScreen::animate()
     MYUCG->setColor(COLOR_WHITE);
     if ( ! fini_part ) {
         for (int i = 0; i < MAX_PIXELS_PER_FRAME; ) {
-            int x = rand() % LOGO_WIDTH;
-            int y = rand() % LOGO_HEIGHT;
+            int16_t x = rand() % LOGO_WIDTH;
+            int16_t y = rand() % LOGO_HEIGHT;
 
             int byte = logo_bitmap[y*LOGO_WIDTH/8 + x/8];
             int bit = 7 - (x % 8);
@@ -239,13 +248,13 @@ void BootUpScreen::animate()
             }
         }
     } else {
-        for (int y = yline; y > std::max(yline_to, yline-MAX_PIXELS_PER_FRAME/2); y--) {
-            for (int xi = 0; xi < LOGO_WIDTH; xi+=8) {
+        for (int16_t y = yline; y > std::max(yline_to, yline-MAX_PIXELS_PER_FRAME/2); y--) {
+            for (int16_t xi = 0; xi < LOGO_WIDTH; xi+=8) {
                 int byte = logo_bitmap[y*LOGO_WIDTH/8 + xi/8];
                 if ( byte == 0 ) { continue; }
 
                 int bit = 0x80;
-                int bitcount = 0;
+                int16_t bitcount = 0;
                 while (bitcount < 8) { // && xi+bitcount < LOGO_WIDTH (for all LOGO_WIDTH%8 != 0)
                     if (byte & bit) {
                         MYUCG->drawPixel(xi + bitcount + x_offset, y + y_offset);
