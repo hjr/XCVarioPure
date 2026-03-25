@@ -18,8 +18,9 @@
 
 extern AdaptUGC *MYUCG;
 
-Battery::Battery(int16_t cx, int16_t cy) :
-    ScreenElement(cx, cy)
+Battery::Battery(int16_t cx, int16_t cy, bool sbs) :
+    ScreenElement(cx, cy),
+    _side_text(sbs)
 {
     setThresholds();
 }
@@ -84,25 +85,28 @@ void Battery::draw(float volt)
         MYUCG->setColor( DARK_GREY );
         MYUCG->drawBox( _ref_x-40+2+chgpos, _ref_y, 32-chgpos, 8 );  // Empty bat bar
         MYUCG->setFont(ucg_font_fub11_hr, true);
-        MYUCG->setPrintPos(_ref_x-42, _ref_y-6);
     }
     MYUCG->setColor(COLOR_WGREY);
+    int16_t tpos_y = (_side_text || battery_display.get() == BAT_VOLTAGE_BIG) ? _ref_y + 12 : _ref_y - 6;
+    int16_t tpos_x = (_side_text && battery_display.get() != BAT_VOLTAGE_BIG) ? _ref_x - 58 : _ref_x - 10;
+    char s[32];
     if( battery_display.get() == BAT_PERCENTAGE ) {
-        MYUCG->printf("%3d", chargep);
-        MYUCG->setColor( COLOR_HEADER );
-        MYUCG->print("% ");
+        sprintf(s, " %3d", chargep);
+        MYUCG->setPrintPos(tpos_x - MYUCG->getStrWidth(s), tpos_y);
     }
-    else if ( battery_display.get() == BAT_VOLTAGE ) {
-        // MYUCG->setPrintPos(x-40,y-8);
-        MYUCG->printf("%2.1f", chargef);
-        MYUCG->setColor( COLOR_HEADER );
-        MYUCG->print("V ");
+    else {
+        if ( battery_display.get() == BAT_VOLTAGE_BIG ) {
+            MYUCG->setFont(ucg_font_fub14_hr, true);
+        }
+        sprintf(s, " %2.1f", chargef);
+        MYUCG->setPrintPos(tpos_x - MYUCG->getStrWidth(s), tpos_y);
     }
-    else if ( battery_display.get() == BAT_VOLTAGE_BIG ) {
-        MYUCG->setPrintPos(_ref_x-50, _ref_y+11);
-        MYUCG->setFont(ucg_font_fub14_hr, true);
-        MYUCG->printf("%2.1f", chargef);
-        MYUCG->setColor( COLOR_HEADER );
-        MYUCG->print("V ");
+    MYUCG->print(s);
+    MYUCG->setColor( COLOR_HEADER );
+    if( battery_display.get() == BAT_PERCENTAGE ) {
+        MYUCG->print("%");
+    }
+    else {
+        MYUCG->print("V");
     }
 }

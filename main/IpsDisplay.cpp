@@ -101,7 +101,7 @@ static union {
         uint8_t bottom_dirty       : 1;
         uint8_t mode_dirty         : 1;
         uint8_t flarm_connected    : 1;
-        uint8_t flaps_mbox_shown   : 1;
+        uint8_t flp_speed_msg_shown : 1;
     };
     uint8_t packed;
 } flags = {};
@@ -434,7 +434,7 @@ void IpsDisplay::initDisplay() {
             MCgauge = new McCready(40, DISPLAY_H + 2);
         }
         if ( !S2FBARgauge) {
-            S2FBARgauge = new S2FBar(DISPLAY_W - 50, AMIDY, 28, 32);
+            S2FBARgauge = new S2FBar(DISPLAY_W - 50, AMIDY, 28, 8);
         }
    }
     else {
@@ -451,7 +451,7 @@ void IpsDisplay::initDisplay() {
         OATgauge = new Temperature(58, 32);
     }
     if (!BATgauge) {
-        BATgauge = new Battery(DISPLAY_W - 10, DISPLAY_H - 12);
+        BATgauge = new Battery(DISPLAY_W - 10, DISPLAY_H - 12, display_orientation.get() == DISPLAY_NINETY);
     }
     if ( !VCSTATgauge ) {
         VCSTATgauge = new CruiseStatus(INNER_RIGHT_ALIGN - 6, 22);
@@ -522,16 +522,21 @@ void IpsDisplay::initDisplay() {
         if (display_orientation.get() == DISPLAY_NINETY) {
             S2FBARgauge->setRef(DISPLAY_W - 120, AMIDY);
             S2FBARgauge->setWidth(36);
-            S2FBARgauge->setGap(2);
         } else {
             if (FLAPSgauge) {
-                S2FBARgauge->setRef(DISPLAY_W - 50, AMIDY);
+                S2FBARgauge->setRef(DISPLAY_W - 50, AMIDY - 20);
                 S2FBARgauge->setWidth(28);
             } else {
-                S2FBARgauge->setRef(DISPLAY_W - 34, AMIDY);
+                S2FBARgauge->setRef(DISPLAY_W - 34, AMIDY - 20);
                 S2FBARgauge->setWidth(50);
             }
-            S2FBARgauge->setGap(32);
+        }
+    }
+    if (VCSTATgauge) {
+        if (display_orientation.get() == DISPLAY_NINETY) {
+            VCSTATgauge->setRef(INNER_RIGHT_ALIGN + 6, AMIDY - 12);
+        } else {
+            VCSTATgauge->setRef(INNER_RIGHT_ALIGN - 6, 22);
         }
     }
     if (FLAPSgauge) {
@@ -936,9 +941,9 @@ void IpsDisplay::drawDisplay(){
     if (FLAPSgauge && !(tick % 3)) {
         FLAPSgauge->draw(ias.get());
         // Check on flap speeds defined
-        if ( FLAP->getNrPositions() == 0 && ! flags.flaps_mbox_shown) {
+        if ( FLAP->getNrPositions() == 0 && ! flags.flp_speed_msg_shown) {
             MBOX->pushMessage(2, "Pls. set flap speeds" );
-            flags.flaps_mbox_shown = true;
+            flags.flp_speed_msg_shown = true;
         }
     }
 

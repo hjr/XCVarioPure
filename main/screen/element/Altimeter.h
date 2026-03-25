@@ -25,7 +25,6 @@ public:
     using AltitudeDisplay = enum { MODE_QNH, MODE_QFE };
     using AltQuantisation = enum { ALT_QUANT_DISABLE, ALT_QUANT_2, ALT_QUANT_5, ALT_QUANT_10, ALT_QUANT_20 };
 
-    void setRef(int16_t x, int16_t y) { _ref_x=x; _ref_y=y; }
     void drawUnit();
     void draw(meter_t alt);
 

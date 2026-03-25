@@ -23,20 +23,20 @@ public:
     S2FBar(int16_t cx, int16_t cy, int16_t width, int16_t gap);
 
     // API
-    void setRef(int16_t x, int16_t y) { _ref_x=x; _ref_y=y; }
-    void setWidth(int16_t width) { _width_h=width/2; stepFromWidth(width); }
-    void setGap(int16_t gap) { _gap_v=gap/2; }
+    void setWidth(int16_t width) { _width_half=width/2; stepFromWidth(width); }
+    void setGap(int16_t gap) { _gap_half=gap/2; }
     void draw(mps_t s2fd, mps_t s2f_speed = -1.0f);
 
 private:
     void stepFromWidth(int16_t width) { _step = (width+4)/8; }
-    void drawSpeed(mps_t v);
+    // void drawSpeed(mps_t v);
+    void drawBlock(int16_t level);
     void drawArrow(int16_t x, int16_t y, int16_t level, bool del);
 
 private: // attributes
     int16_t _prev_s2f_level = 0;
     int16_t _prev_s2f_speed = 0;
-    int16_t _width_h;
-    int16_t _gap_v;
+    int16_t _width_half;
+    int16_t _gap_half;
     int16_t _step;
 };
