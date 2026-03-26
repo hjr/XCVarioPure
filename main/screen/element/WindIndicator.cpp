@@ -12,6 +12,7 @@
 #include "PolarGauge.h"
 #include "Colors.h"
 #include "AdaptUGC.h"
+#include "setup/SetupNG.h"
 #include "logdefnone.h"
 
 #include <cstdio>
@@ -33,7 +34,7 @@ WindIndicator::WindIndicator(PolarGauge &g, bool live) :
     ESP_LOGI(FNAME, "sw %d", _cwidth);
 
     if ( _live ) {
-        _color = { COLOR_ORANGE };
+        _color = { ndl_color[needle_color.get()].color[0], ndl_color[needle_color.get()].color[1], ndl_color[needle_color.get()].color[2] };
     }
     else {
         _color = { COLOR_LBBLUE };
