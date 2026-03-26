@@ -71,18 +71,18 @@ void MultiGauge::draw()
     MYUCG->setColor(COLOR_WHITE);
     MYUCG->setFont(ucg_font_fub25_hn, true);
 
-    char s[32];
-    if ( ! _nvsvar->getValid() ) {
-        ESP_LOGI(FNAME, "nvs val not valid");
-        strcpy(s, "   ---");
-    }
-    else if (vario_upper_gauge.get() == GAUGE_SLIP || vario_upper_gauge.get() == GAUGE_NETTO ) {
-        sprintf(s, "  %.1f", fval);
-    } else {
-        // here we have only positive values
-        if ( val >= 0 ) {
-            sprintf(s, "  %3d", val);
+    char s[32] = {"   ---"};
+    if (_nvsvar->getValid()) {
+        if (vario_upper_gauge.get() == GAUGE_SLIP || vario_upper_gauge.get() == GAUGE_NETTO ) {
+            sprintf(s, "  %.1f", fval);
+        } else {
+            // here we have only positive values
+            if ( val >= 0 ) {
+                sprintf(s, "  %3d", val);
+            }
         }
+    } else {
+        ESP_LOGI(FNAME, "nvs val not valid");
     }
 
     MYUCG->setPrintPos(_ref_x - MYUCG->getStrWidth(s), _ref_y);
