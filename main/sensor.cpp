@@ -503,6 +503,9 @@ void system_startup(void *args){
 
 	AverageVario::begin();
 
+    // Design the club
+    gflags.isPro = false;
+
     // a couple volatile setup variable are used as black board are not valid from the beginning
     // but the ctor does forcly set them valid with an init. value.
     // work around for those optional values that are not valid until properly set

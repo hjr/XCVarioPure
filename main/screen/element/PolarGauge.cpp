@@ -58,14 +58,20 @@ public:
 // PolarGauge
 
 // pixel, pixel, degree, pixel
-PolarGauge::PolarGauge(int16_t refx, int16_t refy, int16_t scale_end, int16_t radius, int16_t flavor) :
+PolarGauge::PolarGauge(int16_t refx, int16_t refy, int16_t scale_end, int16_t radius, GaugeFlavor flavor) :
     ScreenElement(refx, refy),
+    _flavor(flavor),
     _scale_max(deg2rad((float)scale_end)),
     _radius(radius)
 {
     func = new GaugeFunc(1.,0.);
     if ( flavor != COMPASS ) {
-        _arrow = new ArrowIndicator(*this, _radius-4, 22, 10);
+        if ( _flavor == XCVPRO ) {
+            _arrow = new ArrowIndicator(*this, _radius-4, 22, 10);
+        }
+        else {
+            _arrow = new ArrowIndicator(*this, _radius+8, 50, 4);
+        }
     }
     else {
         _wind_avg = new WindIndicator(*this, false);
@@ -173,12 +179,17 @@ void PolarGauge::draw(float a)
     a *= _unit_fac;
     int16_t val = dice_up(clipValue(a));
     // ESP_LOGI(FNAME,"draw  a:%f - %d", a, val);
-    if (_arrow->draw(val))
-    {
-        // Draw colored bow
-        int16_t bar_val = (val > 0) ? val : 0;
-        // draw green vario bar
-        drawBow(bar_val, _old_bow_idx, 5, 1, GREEN);
+    if ( _flavor == XCVPRO ) {
+        if (_arrow->draw(val))
+        {
+            // Draw colored bow
+            int16_t bar_val = (val > 0) ? val : 0;
+            // draw green vario bar
+            drawBow(bar_val, _old_bow_idx, 5, 1, GREEN);
+        }
+    }
+    else {
+        _arrow->draw(val);
     }
     _dirty = false;
 }
@@ -299,6 +310,7 @@ void PolarGauge::drawOneScaleLine(float a, int16_t l2, int16_t w, int16_t cidx) 
     int16_t xn_3 = _ref_x - fast_iroundf(co * l2 - si * w0);
     int16_t yn_3 = _ref_y - fast_iroundf(si * l2 + co * w0);
     // ESP_LOGI(FNAME,"drawTetragon  x0:%d y0:%d x1:%d y1:%d x2:%d y2:%d x3:%d y3:%d", xn_0, yn_0, xn_1, yn_1, xn_2, yn_2, xn_3, yn_3 );
+    cidx = std::clamp(cidx, (int16_t)0, (int16_t)2);  
     MYUCG->setColor(lne_color[cidx].color[0], lne_color[cidx].color[1], lne_color[cidx].color[2]);
     MYUCG->drawTetragon(xn_0, yn_0, xn_1, yn_1, xn_2, yn_2, xn_3, yn_3);
 }
@@ -360,25 +372,36 @@ void PolarGauge::drawBow(int16_t idx, int16_t &old, int16_t w, int16_t off, int1
 void PolarGauge::drawOneLabel(float val, int16_t labl) const
 {
     // ESP_LOGI( FNAME,"drawOneLabel val %.2f, label %d", val, labl );
-    float to_side = 0.05;
-    float incr = (_scale_max - std::abs(val)) * 2; // increase pos towards 0
-    int16_t pos = _radius + 12 + (int)incr - 3;
-    if (val > 0)
-    {
-        to_side += incr / ((My_PIf / 2.f) * 80);
-    }
-    else
-    {
-        to_side = -to_side;
-        to_side -= incr / ((My_PIf / 2.f) * 80);
-    }
-    // ESP_LOGI( FNAME,"drawOneLabel val:%.2f label:%d  toside:%.2f inc:%.2f", val, labl, to_side, incr );
-    int x = CosCentered(val + to_side, pos + (2 * incr));
-    int y = SinCentered(val + to_side, pos + (2 * incr));
+    int16_t x, y;
+    char s[10];
+    if ( _flavor == XCVPRO) {
+        float to_side = 0.05;
+        float incr = (_scale_max - std::abs(val)) * 2; // increase pos towards 0
+        int16_t pos = _radius + 12 + (int)incr - 3;
+        if (val > 0)
+        {
+            to_side += incr / ((My_PIf / 2.f) * 80);
+        }
+        else
+        {
+            to_side = -to_side;
+            to_side -= incr / ((My_PIf / 2.f) * 80);
+        }
+        // ESP_LOGI( FNAME,"drawOneLabel val:%.2f label:%d  toside:%.2f inc:%.2f", val, labl, to_side, incr );
+        x = CosCentered(val + to_side, pos + (2 * incr));
+        y = SinCentered(val + to_side, pos + (2 * incr));
 
-    MYUCG->setColor(COLOR_LBBLUE);
+        MYUCG->setColor(COLOR_LBBLUE);
+    }
+    else {
+        std::sprintf(s, "%d", std::abs(labl));
+        x = CosCenteredDeg2(dice_rad(val), _radius - 16) - MYUCG->getStrWidth(s)/2;
+        y = SinCenteredDeg2(dice_rad(val), _radius - 16);
+        MYUCG->setFont(ucg_font_fub20_hn);
+        MYUCG->setColor(COLOR_WHITE);
+    }
     MYUCG->setPrintPos(x, y);
-    MYUCG->print(abs(labl));
+    MYUCG->print(s);
 }
 
 void PolarGauge::colorRange(float from, float to, int16_t color)
@@ -394,6 +417,13 @@ void PolarGauge::colorRange(float from, float to, int16_t color)
 // opt. small area refresh at [scale], or <0 from at to - range
 void PolarGauge::drawScale(float at)
 {
+    // line width in pixel
+    int16_t w1 = 1, w2 = 2, w3 = 3;
+    if ( _flavor == CLUB ) {
+        w1 = 0;
+        w2 = 0;
+        w3 = 6;
+    }
     // line density on outer scale area
     int16_t modulo = (_range > 10) ? 20 : (_range < 6) ? 5 : 10;
 
@@ -456,14 +486,14 @@ void PolarGauge::drawScale(float at)
         {
             float val = (*func)(static_cast<float>(a) / 10.);
             // a line to draw
-            int16_t width = 1; // .1 little/short lines
+            int16_t width = w1; // .1 little/short lines
             int16_t end = _radius + 7;
 
             if (!(a % 5))
             {
                 // .5 small line
-                width = 2;
-                end = _radius + 12;
+                width = w2;
+                end = _radius + (_flavor == CLUB ? 30 : 12);
             }
 
             if (!(a % 10))
@@ -471,31 +501,35 @@ void PolarGauge::drawScale(float at)
                 // every integer big line
                 if (modulo < 11 || a == l_start || a == l_stop || a == mid_lpos_upper || a == mid_lpos_lower || a == zeroat)
                 {
-                    width = 3;
-                    end = _radius + 15;
+                    width = w3;
+                    end = _radius + 15 + (_flavor == CLUB ? 10 : 0);
                 }
                 draw_label = a != zeroat && (draw_label || _range < 5. || a == mid_lpos_upper || a == mid_lpos_lower || a == l_start || a == l_stop);
             }
             ESP_LOGI(FNAME, "lines a:%d end:%d label: %d  width: %d", a, end, draw_label, width );
 
-            drawOneScaleLine(val, end, width, width-1);
-            if (draw_label)
-            {
-                drawOneLabel(val, a / 10);
+            if (width) {
+                drawOneScaleLine(val, end, width, width-1);
+                if (draw_label || _flavor == CLUB)
+                {
+                    drawOneLabel(val, a / 10);
+                }
             }
             draw_label = false;
         }
     }
-    int16_t prev = dice_up(start/10.) +12; // overdraw a bit
-    int16_t to = dice_up(stop/10.) -12;
-    if (start > 0)
-    {
-        drawBow(to, prev, _radius - _arrow->getBase(), 0);
-    }
-    else
-    {
-        // draw bow towards zero to get the background color
-        drawBow(prev, to, _radius - _arrow->getBase(), 0);
+    if (_flavor == XCVPRO) {
+        int16_t prev = dice_up(start/10.) +12; // overdraw a bit
+        int16_t to = dice_up(stop/10.) -12;
+        if (start > 0)
+        {
+            drawBow(to, prev, _radius - _arrow->getBase(), 0);
+        }
+        else
+        {
+            // draw bow towards zero to get the background color
+            drawBow(prev, to, _radius - _arrow->getBase(), 0);
+        }
     }
     MYUCG->setFontPosBottom();
 }
