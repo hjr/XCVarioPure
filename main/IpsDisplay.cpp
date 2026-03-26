@@ -18,6 +18,7 @@
 #include "screen/element/Altimeter.h"
 #include "screen/element/CruiseStatus.h"
 #include "screen/element/FlapsBox.h"
+#include "screen/element/Connection.h"
 #include "screen/MessageBox.h"
 
 #include "sensor/imu/AccMPU6050.h"
@@ -26,16 +27,12 @@
 #include "math/Floats.h"
 #include "math/Quaternion.h"
 #include "math/vector_3d_fwd.h"
-#include "comm/DeviceMgr.h"
 #include "math/Units.h"
 #include "Flap.h"
 #include "Flarm.h"
 #include "setup/CruiseMode.h"
 #include "wind/StraightWind.h"
 #include "wind/CircleWind.h"
-#include "comm/WifiApSta.h"
-#include "comm/BTspp.h"
-#include "comm/BTnus.h"
 #include "driver/time/AliveMonitor.h"
 #include "setup/SetupNG.h"
 #include "CenterAid.h"
@@ -46,7 +43,6 @@
 #include <cmath>
 #include <cstdint>
 #include <cstdio>
-#include <cstring>
 #include <algorithm>
 
 ////////////////////////////
@@ -70,15 +66,10 @@ MultiGauge*	IpsDisplay::TOPgauge = nullptr;
 CruiseStatus* IpsDisplay::VCSTATgauge = nullptr;
 FlapsBox*   IpsDisplay::FLAPSgauge = nullptr;
 Temperature* IpsDisplay::OATgauge = nullptr;
+Connection* IpsDisplay::CONNgauge = nullptr;
 
 int16_t DISPLAY_H;
 int16_t DISPLAY_W;
-
-#define BTSIZE  5
-#define BTW    15
-#define BTH    24
-
-#define FLOGO  24
 
 IpsDisplay *Display = nullptr;
 
@@ -97,10 +88,8 @@ Point IpsDisplay::screen_edge[4];
 
 static union {
     struct {
-        uint8_t wireless_alive     : 1;
         uint8_t bottom_dirty       : 1;
         uint8_t mode_dirty         : 1;
-        uint8_t flarm_connected    : 1;
         uint8_t flp_speed_msg_shown : 1;
     };
     uint8_t packed;
@@ -326,6 +315,10 @@ IpsDisplay::~IpsDisplay() {
     //     delete OATgauge;
     //     OATgauge = nullptr;
     // }
+    // if (CONNgauge) {
+    //     delete CONNgauge;
+    //     CONNgauge = nullptr;
+    // }
     // if (S2FBARgauge) {
     //     delete S2FBARgauge;
     //     S2FBARgauge = nullptr;
@@ -450,6 +443,9 @@ void IpsDisplay::initDisplay() {
     if ( !OATgauge ) {
         OATgauge = new Temperature(58, 32);
     }
+    if ( !CONNgauge ) {
+        CONNgauge = new Connection(DISPLAY_W-25, 24, display_orientation.get() == DISPLAY_NINETY);
+    }
     if (!BATgauge) {
         BATgauge = new Battery(DISPLAY_W - 10, DISPLAY_H - 12, display_orientation.get() == DISPLAY_NINETY);
     }
@@ -570,11 +566,11 @@ void IpsDisplay::initDisplay() {
 void IpsDisplay::redrawValues()
 {
     // ESP_LOGI(FNAME,"IpsDisplay::redrawValues()");
-    flags.wireless_alive = false;
     if (MCgauge) {
         MCgauge->forceRedraw();
     }
     OATgauge->forceRedraw();
+    CONNgauge->forceRedraw();
     BATgauge->forceRedraw();
     if (ALTgauge) {
         ALTgauge->forceRedraw();
@@ -591,109 +587,6 @@ void IpsDisplay::redrawValues()
         FLAPSgauge->forceRedraw();
     }
 }
-
-void IpsDisplay::drawBT() {
-	bool bta=true;
-	if( DEVMAN->isIntf(BT_SPP) && BLUEspp )
-		bta = BLUEspp->isConnected();
-	else if( DEVMAN->isIntf(BT_LE) && BLUEnus )
-		bta = BLUEnus->isConnected();
-	if( bta != flags.wireless_alive || flarm_alive.get() > ALIVE_NONE ) {
-		int16_t btx=DISPLAY_W-18;
-		int16_t bty=(BTH/2) + 6;
-		if( ! bta )
-			ucg->setColor( COLOR_MGREY );
-		else
-			ucg->setColor( COLOR_BLUE );  // blue
-
-		ucg->drawRBox( btx-BTW/2, bty-BTH/2, BTW, BTH, BTW/2-1);
-		// inner symbol
-		if( flarm_alive.get() == ALIVE_OK )
-			ucg->setColor( COLOR_GREEN );
-		else
-			ucg->setColor( COLOR_WHITE );
-		ucg->drawTriangle( btx, bty, btx+BTSIZE, bty-BTSIZE, btx, bty-2*BTSIZE );
-		ucg->drawTriangle( btx, bty, btx+BTSIZE, bty+BTSIZE, btx, bty+2*BTSIZE );
-		ucg->drawLine( btx, bty, btx-BTSIZE, bty-BTSIZE );
-		ucg->drawLine( btx, bty, btx-BTSIZE, bty+BTSIZE );
-
-		flags.wireless_alive = bta;
-		flags.flarm_connected = flarm_alive.get();
-	}
-	if( SetupCommon::isWired() ) {
-		drawCable(DISPLAY_W-20, BTH + 22);
-	}
-}
-
-void IpsDisplay::drawCable(int16_t x, int16_t y)
-{
-	const int16_t CANH = 8;
-	const int16_t CANW = 14;
-
-	int connectedXCV = xcv_alive.get();
-	int connectedMag = mags_alive.get();
-
-	(connectedXCV == ALIVE_OK)? ucg->setColor(COLOR_LBLUE) : ucg->setColor(COLOR_MGREY);
-	// lower horizontal line
-	if (connectedMag) {
-		ucg->setColor(COLOR_GREEN);
-	}
-	ucg->drawLine( x-CANW/2, y+CANH/2, x+3, y+CANH/2 );
-	ucg->drawLine( x-CANW/2, y+CANH/2-1, x+3, y+CANH/2-1 );
-	ucg->drawDisc( x-CANW/2, y+CANH/2, 2, UCG_DRAW_ALL);
-	(connectedMag == ALIVE_OK)? ucg->setColor(COLOR_LBLUE) : ucg->setColor(COLOR_MGREY);
-	// Z diagonal line
-	if (flarm_alive.get() == ALIVE_OK) { ucg->setColor(COLOR_GREEN); }
-	ucg->drawLine( x+2, y+CANH/2, x-4, y-CANH/2 );
-	ucg->drawLine( x+3, y+CANH/2-1, x-3, y-CANH/2-1 );
-	// upper horizontal line
-	(connectedXCV == ALIVE_OK)? ucg->setColor(COLOR_LBLUE) : ucg->setColor(COLOR_MGREY);
-	ucg->drawLine( x-3, y-CANH/2, x+CANW/2, y-CANH/2 );
-	ucg->drawLine( x-3, y-CANH/2-1, x+CANW/2, y-CANH/2-1 );
-	ucg->drawDisc( x+CANW/2, y-CANH/2, 2, UCG_DRAW_ALL);
-}
-
-void IpsDisplay::drawWifi( int x, int y ) {
-	if( !DEVMAN->isIntf(WIFI_APSTA) ) {
-		return;
-	}
-	bool wla = WIFI->isAlive();
-	if( wla != flags.wireless_alive || flarm_alive.get() > ALIVE_NONE ){
-		ESP_LOGI(FNAME,"IpsDisplay::drawWifi %d %d %d", x,y,wla);
-		if( ! wla ) {
-			ucg->setColor(COLOR_MGREY);
-		} else {
-			ucg->setColor( COLOR_BLUE );
-		}
-		ucg->drawCircle( x, y, 9, UCG_DRAW_UPPER_RIGHT);
-		ucg->drawCircle( x, y, 10, UCG_DRAW_UPPER_RIGHT);
-		ucg->drawCircle( x, y, 16, UCG_DRAW_UPPER_RIGHT);
-		ucg->drawCircle( x, y, 17, UCG_DRAW_UPPER_RIGHT);
-		if( flarm_alive.get() == ALIVE_OK ) {
-			ucg->setColor( COLOR_GREEN );
-		}
-		ucg->drawDisc( x, y, 3, UCG_DRAW_ALL );
-		flags.flarm_connected = flarm_alive.get();
-		flags.wireless_alive = wla;
-	}
-	if( SetupCommon::isWired() ) {
-		drawCable(DISPLAY_W-20, y+18);
-	}
-}
-
-void IpsDisplay::drawConnection( int16_t x, int16_t y )
-{
-	if ( DEVMAN->isIntf(BT_SPP) || DEVMAN->isIntf(BT_LE) ) {
-		drawBT();
-	}
-	else if( DEVMAN->isIntf(WIFI_APSTA) ) {
-		drawWifi(x, y);
-	}
-	else if( SetupCommon::isWired() ) {
-		drawCable(DISPLAY_W-18, y);
-	}
-}
-
 
 void IpsDisplay::setBottomDirty()
 {
@@ -874,10 +767,9 @@ void IpsDisplay::drawDisplay(){
     }
 
     // Bluetooth etc
-	if( !(tick%12) )
-	{
-		drawConnection(DISPLAY_W-25, FLOGO );
-	}
+    if (!(tick % 12)) {
+        CONNgauge->draw();
+    }
 
     // Upper gauge
     if (vario_upper_gauge.get() && !(tick % 3)) {

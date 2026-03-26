@@ -29,6 +29,7 @@ class MultiGauge;
 class CruiseStatus;
 class FlapsBox;
 class Quaternion;
+class Connection;
 
 // fixme needs a home
 float getHeading();
@@ -98,6 +99,7 @@ public:
     static CruiseStatus *VCSTATgauge;
     static FlapsBox *FLAPSgauge;
     static Temperature* OATgauge;
+    static Connection* CONNgauge;
 
     static int tick;
 

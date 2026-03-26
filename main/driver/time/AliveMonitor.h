@@ -11,7 +11,7 @@
 #include "driver/time/WatchDog.h"
 
 // the alive state of the device or data stream
-enum alive_state_t { ALIVE_NONE, ALIVE_TIMEOUT, ALIVE_OK };
+enum alive_state_t : uint8_t { ALIVE_NONE, ALIVE_TIMEOUT, ALIVE_OK };
 
 
 template<typename T>
