@@ -596,6 +596,9 @@ static void connected_devices_menu_device(SetupMenu *top) // dynamic!
         device_details += ": ";
         device_details += dev->_sensor->name();
     }
+    else {
+        device_details.clear();
+    }
     top->setHelp(device_details.c_str());
     top->setNeverInline();
 }
