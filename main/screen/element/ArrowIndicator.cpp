@@ -11,7 +11,8 @@
 #include "PolarGauge.h"
 #include "math/Trigonometry.h"
 #include "Colors.h"
-#include "logdef.h"
+#include "math/Floats.h"
+#include "logdefnone.h"
 
 #include <cmath>
 
@@ -26,7 +27,8 @@ ArrowIndicator::ArrowIndicator(PolarGauge &g, int16_t tipradius, int16_t length,
     _tip(tipradius),
         // correct for cutting the radius from base points
     _root(cos(atan(static_cast<float>(half_base)/(_tip-length))) * (_tip-length)),
-    _shoulder_val_offset(atan(static_cast<float>(half_base)/(_tip-length))*g.IDX_SCALE)
+    _shoulder_val_offset(atan(static_cast<float>(half_base)/(_tip-length))*g.IDX_SCALE),
+    _half_width(half_base)
 {
     color = { COLOR_RED };
     ESP_LOGI(FNAME,"Base  tl:%d off:%d tip:%d base:%d", _tip-length, _shoulder_val_offset, _tip, _root );
@@ -38,6 +40,14 @@ ArrowIndicator::ArrowIndicator(PolarGauge &g, int16_t tipradius, int16_t length,
     prev.y_0 -= _half_width;
     prev.x_2 = _gauge.CosCenteredDeg2(0, _tip); // tip
     prev.y_2 = _gauge.SinCenteredDeg2(0, _tip);
+    if ( _gauge._flavor == PolarGauge::CLUB) {
+        prev.x_2 = _gauge.CosCenteredDeg2(0, _tip); // tip upper corner
+        prev.y_2 = _gauge.SinCenteredDeg2(0, _tip);
+        prev.x_2 = prev.x_2; // tip lower corner
+        prev.y_2 = prev.y_2 + _half_width;
+        prev.y_2 -= _half_width;
+        _root = tipradius - length;
+    }
 }
 
 
@@ -116,4 +126,37 @@ bool ArrowIndicator::draw(int16_t val)
     prev = n;
     _needle_pos = val;
     return change;
+}
+
+bool ArrowIndicator::drawOver(int16_t val,float a)
+{
+    if (val == _needle_pos && !_gauge._dirty) {
+        return false; // nothing painted
+    }
+    ESP_LOGI(FNAME,"draw over val %d", val);
+    float si = fast_sin_idx(val);
+    float co = fast_cos_idx(val);
+    int16_t l1 = _root;
+    int16_t w = _half_width;
+    int16_t l2 = _tip;
+    Triangle_t n {
+        (int16_t)(_gauge._ref_x - fast_iroundf(co * l1 - si * w)),
+        (int16_t)(_gauge._ref_y - fast_iroundf(si * l1 + co * w)),
+        (int16_t)(_gauge._ref_x - fast_iroundf(co * l1 + si * w)),
+        (int16_t)(_gauge._ref_y - fast_iroundf(si * l1 - co * w)),
+        (int16_t)(_gauge._ref_x - fast_iroundf(co * l2 + si * w)),
+        (int16_t)(_gauge._ref_y - fast_iroundf(si * l2 - co * w)),
+        (int16_t)(_gauge._ref_x - fast_iroundf(co * l2 - si * w)),
+        (int16_t)(_gauge._ref_y - fast_iroundf(si * l2 + co * w)),
+    };
+    ESP_LOGI(FNAME,"drawTetragon  x0:%d y0:%d x1:%d y1:%d x2:%d y2:%d x3:%d y3:%d", n.x_0, n.y_0, n.x_1, n.y_1, n.x_2, n.y_2, n.x_3, n.y_3 );
+    MYUCG->setColor(COLOR_BLACK);
+    MYUCG->drawTetragon(prev.x_0, prev.y_0, prev.x_1, prev.y_1, prev.x_2, prev.y_2, prev.x_3, prev.y_3);
+    _gauge.drawScale(_last_a, _last_a); // redraw scale at last position to clean up artifacts
+    MYUCG->setColor(color.color[0], color.color[1], color.color[2]);
+    MYUCG->drawTetragon(n.x_0, n.y_0, n.x_1, n.y_1, n.x_2, n.y_2, n.x_3, n.y_3);
+    prev = n;
+    _needle_pos = val;
+    _last_a = a;
+    return true;
 }

@@ -70,7 +70,7 @@ PolarGauge::PolarGauge(int16_t refx, int16_t refy, int16_t scale_end, int16_t ra
             _arrow = new ArrowIndicator(*this, _radius-4, 22, 10);
         }
         else {
-            _arrow = new ArrowIndicator(*this, _radius+8, 50, 4);
+            _arrow = new ArrowIndicator(*this, _radius+4, 50, 3);
         }
     }
     else {
@@ -129,16 +129,16 @@ void PolarGauge::forceAllRedraw()
     _old_avc = -1.f;
 }
 
-void PolarGauge::setRange(float pos_range, float zero_at, bool log)
+void PolarGauge::setRange(float pos_range, float center_at, bool log)
 {
     _range = pos_range * _unit_fac;
-    _mrange = 2 * zero_at - _range;
+    _mrange = 2 * center_at - _range;
     if ( func ) delete func;
     if ( log ) {
-        func = new LogGaugeFunc(_scale_max / fast_log2f((_range - zero_at) + 1.), zero_at);
+        func = new LogGaugeFunc(_scale_max / fast_log2f((_range - center_at) + 1.), center_at);
     }
     else {
-        func = new LinGaugeFunc(_scale_max / (_range - zero_at), zero_at);
+        func = new LinGaugeFunc(_scale_max / (_range - center_at), center_at);
     }
 }
 
@@ -162,17 +162,6 @@ void PolarGauge::setFigOffset(int16_t ox, int16_t oy)
     }
 }
 
-float PolarGauge::clipValue(float a) const
-{
-    if (a > _range) {
-        a = _range;
-    }
-    else if (a < _mrange) {
-        a = _mrange;
-    }
-    return a;
-}
-
 // > in [m/s]
 void PolarGauge::draw(float a)
 {
@@ -189,7 +178,7 @@ void PolarGauge::draw(float a)
         }
     }
     else {
-        _arrow->draw(val);
+        _arrow->drawOver(val, a);
     }
     _dirty = false;
 }
@@ -220,7 +209,7 @@ void PolarGauge::drawAVG(){
     if (_old_avc > .0) {
         drawDisc(_old_avc, true);
         ESP_LOGI(FNAME, "clean scale at: %f", _old_avc);
-        drawScale(_old_avc);
+        drawScale(_old_avc, _old_avc);
     }
     if (delta > (mean_climb_major_change.get()) / core_climb_history.get()) {
         MYUCG->setColor(COLOR_GREEN);
@@ -414,8 +403,9 @@ void PolarGauge::colorRange(float from, float to, int16_t color)
 // with radius _radius
 // to _ref_xy center [pixel]
 // and zero label offset according to (_mrange + _range) / 2
-// opt. small area refresh at [scale], or <0 from at to - range
-void PolarGauge::drawScale(float at)
+// optional: (when from < -1000)
+// refresh small area from [scale], to [scale] ( from > to .. always)
+void PolarGauge::drawScale(float from, float to)
 {
     // line width in pixel
     int16_t w1 = 1, w2 = 2, w3 = 3;
@@ -425,7 +415,7 @@ void PolarGauge::drawScale(float at)
         w3 = 6;
     }
     // line density on outer scale area
-    int16_t modulo = (_range > 10) ? 20 : (_range < 6) ? 5 : 10;
+    int16_t modulo = (_range > 10) ? 20 : (_range < 6) ? 5 : 10; // typically start in "no details" area
 
     // for larger ranges put at least on extra label in the middle of each half scale
     int16_t mid_lpos_upper = fast_iroundf(func->invers(0.5 * (*func)(_range))) * 10;
@@ -442,25 +432,13 @@ void PolarGauge::drawScale(float at)
     // increment in 1/10 scale steps
     int16_t start = fast_iroundf(_range)*10, stop = fast_iroundf(_mrange)*10;
     int16_t l_start = start, l_stop = stop; // for labels
-    if (at > -1000.)
+    if (from > -1000.)
     {
         // partial scale repainting
-        at = std::clamp(at, _mrange, _range);
-        if ( at > 0 ) { // Redraw the AVG area
-            int16_t tmp = (int)(at * 10) + 5; // alias .5
-            if (tmp < start) {
-                start = tmp;
-            }
-            tmp = (int)(at * 10) - 5;
-            if (tmp > stop) {
-                stop = tmp;
-            }
-            if (std::abs(start) <= 10) {
-                modulo = (dist > 24) ? 1 : (dist > 16) ? 2 : (dist > 8) ? 5 : 10;
-            }
-        }
-        else {
-            start = 10 * at;
+        start = (int)(clipValue(from) * 10) + 3; // alias .3
+        stop = (int)(clipValue(to) * 10) - 3;
+        if (std::abs(start) <= 10) {
+            modulo = (dist > 24) ? 1 : (dist > 16) ? 2 : (dist > 8) ? 5 : 10;
         }
     }
     ESP_LOGI(FNAME, "scale from %d to %d", start, stop);
@@ -474,11 +452,11 @@ void PolarGauge::drawScale(float at)
             draw_label = true;
             if (a > 0)
             {
-                modulo = (dist > 24) ? 1 : (dist > 16) ? 2 : (dist > 8) ? 5 : 10;
+                modulo = (dist > 24) ? 1 : (dist > 16) ? 2 : (dist > 8) ? 5 : 10; // go into the details around zero
             }
             else
             {
-                modulo = (_range > 10) ? 20 : (_range < 6) ? 5 : 10;
+                modulo = (_range > 10) ? 20 : (_range < 6) ? 5 : 10; // leave the details around zero
             }
         }
 
@@ -536,10 +514,10 @@ void PolarGauge::drawScale(float at)
 
 void PolarGauge::drawScaleBottom()
 {
-    // Area of -60° to -90° is concerned
-    // start repaint <0 from /60def onwards
+    // Area of -60° to -120° is concerned
+    // start repaint from /60def onwards to the end of the scale
     ESP_LOGI(FNAME, "restore scale at: %f", func->invers(deg2rad(-60.)) );
-    drawScale( func->invers(deg2rad(-60.)) );
+    drawScale( func->invers(deg2rad(-60.)), _mrange );
 }
 
 // a [deg]; 0° ref on top

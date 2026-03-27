@@ -12,6 +12,8 @@
 #include "math/Trigonometry.h"
 #include "math/Units.h"
 
+#include <algorithm>
+
 class ArrowIndicator;
 class WindIndicator;
 class LargeFigure;
@@ -51,12 +53,11 @@ public:
     ~PolarGauge();
     void enableWindIndicator(bool avg, bool live);
     void forceAllRedraw();
-    void setRange(float pos_range, float zero_at, bool log);
+    void setRange(float pos_range, float center_at, bool log);
     float getMRange() const { return _mrange; }
     void setUnit(float uf) { _unit_fac = uf; }
     void setColor(int color_idx);
     void setFigOffset(int16_t ox, int16_t oy);
-    float clipValue(float a) const;
     void setWindRef(int wref) { _wind_ref = static_cast<WindReference>(wref); }
 
     void draw(float a);
@@ -67,7 +68,7 @@ public:
     void drawWind(int16_t wdir, mps_t wval, int16_t idir, mps_t ival);
     using BowColorIdx = enum { GREEN, BLUE, ORANGE, RED };
     void colorRange(float from, float to, int16_t color);
-    void drawScale(float at = -1000.);
+    void drawScale(float from = -1000., float to = -1000.);
     void drawScaleBottom();
     void drawRose(int16_t at = -1000) const;
     void clearGauge();
@@ -110,6 +111,7 @@ public:
     int16_t CosDeg2(int16_t val, int16_t len) const;
 
     // gauge helpers
+    inline float clipValue(float a) const { return std::clamp(a, _mrange, _range); };
     void drawDisc(float val, bool clean=false) const;
     void drawOneScaleLine(float a, int16_t l2, int16_t w, int16_t cidx) const;
     void drawBow(int16_t idx, int16_t &old, int16_t w, int16_t off, int16_t cidx = 0) const;

@@ -38,6 +38,7 @@
 #include "CenterAid.h"
 #include "AdaptUGC.h"
 #include "Colors.h"
+#include "sensor.h"
 #include "logdefnone.h"
 
 #include <cmath>
@@ -268,14 +269,14 @@ Point IpsDisplay::clipToScreenCenter(Point p)
 
 static void initRefs()
 {
-	AVGOFFX = -5-38;
+	AVGOFFX = gflags.isPro ? -5-38 : 0;
 	SPEEDYPOS = OPT_Y_IN * DISPLAY_H + 19;
 	INNER_RIGHT_ALIGN = DISPLAY_W - 44;
 	LOAD_MPG_POS = DISPLAY_H*0.3;
 	LOAD_MIAS_POS = DISPLAY_H*0.7;
 
 	// grab screen layout
-	AMIDX = (DISPLAY_W/2 + 30);
+	AMIDX = gflags.isPro ? (DISPLAY_W/2 + 30) : (DISPLAY_W/2 + 20);
 	AMIDY = (DISPLAY_H)/2;
 	if ( display_orientation.get() == DISPLAY_NINETY ) {
 		INNER_RIGHT_ALIGN = DISPLAY_W - 74;
@@ -415,9 +416,10 @@ void IpsDisplay::initDisplay() {
     // Create common elements
     initRefs();
 
-    if (!MAINgauge) { // shared with
-        int16_t scale_geometry = (display_orientation.get() == DISPLAY_NINETY) ? 120 : 90;
-        MAINgauge = new PolarGauge(AMIDX, AMIDY, scale_geometry, DISPLAY_H / 2 - 20, PolarGauge::VARIO);
+    if (!MAINgauge) {
+        int16_t scale_geometry = (display_orientation.get() == DISPLAY_NINETY || !gflags.isPro) ? 120 : 90;
+        MAINgauge = new PolarGauge(AMIDX, AMIDY, scale_geometry, DISPLAY_H/2 - (gflags.isPro ? 20 : 40), 
+                            gflags.isPro ? PolarGauge::XCVPRO : PolarGauge::CLUB);
     }
     MAINgauge->setUnit(VarioUnit->scale);
     MAINgauge->setRange(scale_range.get(), 0.f, log_scale.get());
@@ -441,16 +443,16 @@ void IpsDisplay::initDisplay() {
         }
     }
     if ( !OATgauge ) {
-        OATgauge = new Temperature(58, 32);
+        // OATgauge = new Temperature(58, 32);
     }
     if ( !CONNgauge ) {
-        CONNgauge = new Connection(DISPLAY_W-25, 24, display_orientation.get() == DISPLAY_NINETY);
+        // CONNgauge = new Connection(DISPLAY_W-25, 24, display_orientation.get() == DISPLAY_NINETY);
     }
     if (!BATgauge) {
-        BATgauge = new Battery(DISPLAY_W - 10, DISPLAY_H - 12, display_orientation.get() == DISPLAY_NINETY);
+        // BATgauge = new Battery(DISPLAY_W - 10, DISPLAY_H - 12, display_orientation.get() == DISPLAY_NINETY);
     }
     if ( !VCSTATgauge ) {
-        VCSTATgauge = new CruiseStatus(INNER_RIGHT_ALIGN - 6, 22);
+        // VCSTATgauge = new CruiseStatus(INNER_RIGHT_ALIGN - 6, 22);
     }
     if ( FLAP && flapbox_enable.get() ) {
         if (!FLAPSgauge) {
@@ -485,11 +487,15 @@ void IpsDisplay::initDisplay() {
         CenterAid::remove();
     }
 
-    VCSTATgauge->useSymbol(true);
+    if (VCSTATgauge) {
+        VCSTATgauge->useSymbol(true);
+    }
     if (MCgauge) {
         MCgauge->setLarge(display_orientation.get() != DISPLAY_NINETY);
     }
-    OATgauge->setLarge(display_orientation.get() != DISPLAY_NINETY);
+    if ( OATgauge ) {
+        OATgauge->setLarge(display_orientation.get() != DISPLAY_NINETY);
+    }
 
 
     if (vario_lower_gauge.get()) {
@@ -569,9 +575,15 @@ void IpsDisplay::redrawValues()
     if (MCgauge) {
         MCgauge->forceRedraw();
     }
-    OATgauge->forceRedraw();
-    CONNgauge->forceRedraw();
-    BATgauge->forceRedraw();
+    if ( OATgauge ) {
+        OATgauge->forceRedraw();
+    }
+    if ( CONNgauge ) {
+        CONNgauge->forceRedraw();
+    }
+    if ( BATgauge ) {
+        BATgauge->forceRedraw();
+    }
     if (ALTgauge) {
         ALTgauge->forceRedraw();
     }
@@ -768,7 +780,9 @@ void IpsDisplay::drawDisplay(){
 
     // Bluetooth etc
     if (!(tick % 12)) {
-        CONNgauge->draw();
+        if ( CONNgauge ) {
+            CONNgauge->draw();
+        }
     }
 
     // Upper gauge
@@ -821,12 +835,16 @@ void IpsDisplay::drawDisplay(){
 
     // Battery
     if (!(tick % 15)) {
-        BATgauge->draw(battery_voltage.get());
+        if ( BATgauge ) {
+            BATgauge->draw(battery_voltage.get());
+        }
     }
 
     // Temperature Value
     if( !(tick%12) ) {
-        OATgauge->draw((accSensor) ? accSensor->getTempStatus() : temp_status_t::MPU_T_UNKNOWN);
+        if ( OATgauge ) {
+            OATgauge->draw((accSensor) ? accSensor->getTempStatus() : temp_status_t::MPU_T_UNKNOWN);
+        }
     }
 
     // WK-Indicator
@@ -841,7 +859,9 @@ void IpsDisplay::drawDisplay(){
 
     // Cruise mode or circling
     if( flags.mode_dirty ) {
-        VCSTATgauge->draw();
+        if (VCSTATgauge) {
+            VCSTATgauge->draw();
+        }
         WNDgauge->clearGauge();
         if (!vario_centeraid.get() || CRMOD.getCMode()) {
             WNDgauge->drawRose();
@@ -866,7 +886,9 @@ void IpsDisplay::drawDisplay(){
         {
             MCgauge->forceRedraw();
         }
-        BATgauge->forceRedraw();
+        if ( BATgauge ) {
+            BATgauge->forceRedraw();
+        }
     }
     // ESP_LOGI(FNAME,"IpsDisplay::drawDisplay  TE=%0.1f  x0:%d y0:%d x2:%d y2:%d", te, x0, y0, x2,y2 );
 }
