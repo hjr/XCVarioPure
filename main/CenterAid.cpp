@@ -267,9 +267,9 @@ void CenterAid::calcFlightMode( rad_t headingDiff ){
 // > tick : a 10 Hz counter
 void CenterAid::tick(int tick){
     rad_t new_heading = -1.0;
-    if( mag_hdt.getValid() ) { // this is the best source for a heading, use this when avail
-        new_heading = mag_hdt.get();
-    }
+    // if( mag_hdt.getValid() ) { // this is the best source for a heading, use this when avail
+    //     new_heading = mag_hdt.get();
+    // }
     if( new_heading < 0.f )  {         // fall back to GPS course and fuse gps heading with gyro
         rad_t gyro_footing = accSensor ? accSensor->getGyroFooting() : 0.f;
         // ESP_LOGI(FNAME,"COD %.1f", Units::rad_to_deg(gyro_footing) );
