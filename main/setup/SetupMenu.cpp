@@ -425,7 +425,15 @@ static int imu_calib(SetupMenuSelect* p) {
         case 0:
             break;  // cancel
         case 1:
-            // collect samples
+            if (airborne.get()) {
+                // cannot do this in flight
+                p->clear();
+                p->menuPrintLn("Cannot start calibration", 2);
+                p->menuPrintLn("while airborne!", 3);
+                xTaskDelay(pdMS_TO_TICKS(1500));
+                break;
+            }
+            // do the calibration procedure
             doImuCalibration(p);
             break;
         case 2:
@@ -1409,7 +1417,7 @@ void system_menu_create_hardware_ahrs_parameter(SetupMenu *top) {
 #endif
 
 void system_menu_create_hardware_ahrs(SetupMenu *top) {
-    SetupMenuSelect* ahrs_calib_collect = new SetupMenuSelect("Axis calibration", RST_NONE, imu_calib);
+    SetupMenuSelect* ahrs_calib_collect = new SetupMenuSelect("Axis Calibration", RST_NONE, imu_calib);
     ahrs_calib_collect->setHelp("Calibrate IMU to glider reference. Run the procedure by selecting Start.");
     ahrs_calib_collect->addEntry("Cancel");
     ahrs_calib_collect->addEntry("Start");
@@ -1450,20 +1458,20 @@ void system_menu_create_hardware_ahrs(SetupMenu *top) {
 }
 
 void system_menu_create_hardware(SetupMenu *top) {
-	if ( top->getNrChilds() == 0 ) {
-		top->setDynContent();
+    if (top->getNrChilds() == 0) {
+        top->setDynContent();
 
-		SetupMenu *display = new SetupMenu("Display Type", system_menu_create_hardware_type);
-		top->addEntry(display);
+        SetupMenu* display = new SetupMenu("Display Type", system_menu_create_hardware_type);
+        top->addEntry(display);
 
-		SetupMenu *rotary = new SetupMenu("Rotary Knob", system_menu_create_hardware_rotary);
-		top->addEntry(rotary);
+        SetupMenu* rotary = new SetupMenu("Rotary Knob", system_menu_create_hardware_rotary);
+        top->addEntry(rotary);
 
-		// Flap::setupMenue(top);
-		SetupMenu* wkm = new SetupMenu("Flap Sensor", flap_menu_create_flap_sensor);
-		top->addEntry( wkm );
+        // Flap::setupMenue(top);
+        SetupMenu* wkm = new SetupMenu("Flap Sensor", flap_menu_create_flap_sensor);
+        top->addEntry(wkm);
 
-		SetupMenuSelect *gear = new SetupMenuSelect("Gear Warn", RST_NONE, config_gear_warning, &gear_warning);
+        SetupMenuSelect *gear = new SetupMenuSelect("Gear Warn", RST_NONE, config_gear_warning, &gear_warning);
 		top->addEntry(gear);
 		gear->setHelp("Enable gear warning on S2 flap sensor or serial RS232 pin (pos. or neg. signal) or by external command");
 		gear->addEntry("Disable");
@@ -1473,15 +1481,15 @@ void system_menu_create_hardware(SetupMenu *top) {
 		gear->addEntry("S2 RS232 negative");
 		gear->addEntry("External");  // A $g,w<n>*CS command from an external device
 
-		if (hardwareRevision.get() >= XCVARIO_21) {
-			SetupMenu *ahrs = new SetupMenu("Attitude & Heading RefSys", system_menu_create_hardware_ahrs);
-			top->addEntry(ahrs);
-		}
+        if (accSensor) {
+            SetupMenu* ahrs = new SetupMenu("Attitude & Heading RefSys", system_menu_create_hardware_ahrs);
+            top->addEntry(ahrs);
+        }
 
         SetupMenu *bat = new SetupMenu("Battery Meter", system_menu_create_battery);
         bat->setHelp("Adjust voltage thresholds for battery state indication");
         top->addEntry(bat);
-	}
+    }
     SetupMenu* wkm = static_cast<SetupMenu*>(top->getEntry(2));  // Flap Sensor
     if (FLAP) {
         wkm->unlock();
@@ -1495,15 +1503,6 @@ void system_menu_create_hardware(SetupMenu *top) {
     } else {
         wkm->lock();
         wkm->setBuzzword("n/a");
-    }
-    // compass menu only accessible with a connected compass
-    SetupMenu* cmenu = static_cast<SetupMenu*>(top->getEntry(4));  // Compass
-    if (DEVMAN->getDevice(MAGSENS_DEV) != nullptr || DEVMAN->getDevice(MAGLEG_DEV) != nullptr) {
-        cmenu->unlock();
-        cmenu->setBuzzword();
-    } else {
-        cmenu->lock();
-        cmenu->setBuzzword("n/a");
     }
 }
 
