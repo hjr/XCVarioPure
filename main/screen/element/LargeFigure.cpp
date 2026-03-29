@@ -56,4 +56,5 @@ void LargeFigure::draw(float val) {
         _value = ival;
         MYUCG->setFontPosBottom();
     }
+    _dirty = false;
 }
