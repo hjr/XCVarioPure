@@ -558,14 +558,6 @@ void IpsDisplay::initDisplay() {
         TOPgauge->drawUnit();
     }
 
-    if (FLAPSgauge) {
-        FLAPSgauge->forceRedraw();
-    }
-
-    if (theCenteraid) {
-        theCenteraid->forceRedraw();
-    }
-
     redrawValues();
 }
 
@@ -597,6 +589,10 @@ void IpsDisplay::redrawValues()
 
     if ( FLAPSgauge ) {
         FLAPSgauge->forceRedraw();
+    }
+
+    if (theCenteraid) {
+        theCenteraid->forceRedraw();
     }
 }
 
