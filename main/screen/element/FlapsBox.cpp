@@ -200,10 +200,10 @@ void FlapsBox::draw(mps_t ias)
     if ( _dirty ) {
         MYUCG->setColor(COLOR_HEADER);
         MYUCG->drawRFrame(_ref_x, _ref_y-BOX_LENGTH/2-BOX_CORNER, BOX_WIDTH, BOX_LENGTH + 2*BOX_CORNER, BOX_CORNER);
-        MYUCG->drawDisc(_ref_x, _ref_y + Units::kmh_to_mps(10)*PIX_PER_MPS, 3, UCG_DRAW_ALL);
-        MYUCG->drawDisc(_ref_x, _ref_y - Units::kmh_to_mps(10)*PIX_PER_MPS, 3, UCG_DRAW_ALL);
+        MYUCG->drawDisc(_ref_x, _ref_y + Units::kmh_to_mps(10)*PIX_PER_MPS, 3, EGLIB_DRAW_UPPER_LEFT|EGLIB_DRAW_LOWER_LEFT);
+        MYUCG->drawDisc(_ref_x, _ref_y - Units::kmh_to_mps(10)*PIX_PER_MPS, 3, EGLIB_DRAW_UPPER_LEFT|EGLIB_DRAW_LOWER_LEFT);
         MYUCG->setColor(ndl_color[needle_color.get()].color[0], ndl_color[needle_color.get()].color[1], ndl_color[needle_color.get()].color[2]);
-        MYUCG->drawDisc(_ref_x, _ref_y, 3, UCG_DRAW_ALL);
+        MYUCG->drawDisc(_ref_x, _ref_y, 3, EGLIB_DRAW_UPPER_LEFT|EGLIB_DRAW_LOWER_LEFT);
     }
 
     float curr_fp;
