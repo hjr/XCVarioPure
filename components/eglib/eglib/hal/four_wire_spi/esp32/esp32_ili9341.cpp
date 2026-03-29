@@ -75,22 +75,22 @@ static void einit(eglib_t *eglib)
 }
 
 static void esleep_in(eglib_t *_eglib) {
-	ESP_LOGI("ILI9341","sleep in");
+	// ESP_LOGI("ILI9341","sleep in");
 	vTaskDelay( 120 / portTICK_PERIOD_MS);
 }
 
 static void esleep_out(eglib_t *_eglib) {
-	ESP_LOGI("ILI9341","sleep out");
+	// ESP_LOGI("ILI9341","sleep out");
 	vTaskDelay( 120 / portTICK_PERIOD_MS);
 }
 
 static void edelay_ns(eglib_t *_eglib, uint32_t ns) {
-	ESP_LOGI("ILI9341","delay %d ms", (int)ns/1000000 );
+	// ESP_LOGI("ILI9341","delay %d ms", (int)ns/1000000 );
 	vTaskDelay( (ns/1000000) / portTICK_PERIOD_MS);
 }
 
 static void eset_reset(eglib_t *_eglib, bool state) {
-	ESP_LOGI("ILI9341","reset IO:%d state=%d", config->gpio_rs, state );
+	// ESP_LOGI("ILI9341","reset IO:%d state=%d", config->gpio_rs, state );
 	gpio_set_level(config->gpio_rs, (unsigned int)state );
 }
 

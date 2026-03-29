@@ -5,7 +5,6 @@
 #include <esp_log.h>
 #include <string.h>
 
-
 // static const char* FNAME = "drawing.c";
 #define degrees_to_radians(degrees) ((degrees) * M_PI / 180.0)
 /**
@@ -13,6 +12,10 @@
  * =====
  *
  * Define a clipping range or box. All subsequent operations will be restricted to that area
+ *
+ * Area is defined by top left corner (x,y) and width and height. 
+ * Pixel belonging to the area are those with coordinates in the range [x, x+w-1] and [y, y+h-1]
+ *
  * Stack the current clipping range as global vs. local c.r.
  */
 
@@ -29,14 +32,15 @@ void eglib_setClipRange(
     eglib->drawing.clbs_ymax = eglib->drawing.clip_ymax;
     eglib->drawing.clbs_ymin = eglib->drawing.clip_ymin;
     // Set a new one, it have to reduce the given
-    // eglib->drawing.clip_xmax = eglib_GetWidth(eglib);
-    // eglib->drawing.clip_xmin = 0;
-    // eglib->drawing.clip_ymax = eglib_GetHeight(eglib);
-    // eglib->drawing.clip_ymin = 0;
+    //ESP_LOGI( "dl>", "S given x:%d y:%d w:%d h:%d", x, y, w, h );
     if ( (x >= eglib->drawing.clip_xmin) && (x < eglib->drawing.clip_xmax)) eglib->drawing.clip_xmin = x;
+    else eglib->drawing.clip_xmin = 0;
     if ( ((x+w) >= eglib->drawing.clip_xmin) && ((x+w) < eglib->drawing.clip_xmax)) eglib->drawing.clip_xmax = x+w;
+    else eglib->drawing.clip_xmax = eglib_GetWidth(eglib);
     if ( (y >= eglib->drawing.clip_ymin) && (y < eglib->drawing.clip_ymax)) eglib->drawing.clip_ymin = y;
+    else eglib->drawing.clip_ymin = 0;
     if ( ((y+h) >= eglib->drawing.clip_ymin) && ((y+h) < eglib->drawing.clip_ymax)) eglib->drawing.clip_ymax = y+h;
+    else eglib->drawing.clip_ymax = eglib_GetHeight(eglib);
     // ESP_LOGI( "dl>", "S xmin:%d xmax:%d ymin:%d ymax:%d", eglib->drawing.clip_xmin, eglib->drawing.clip_xmax, eglib->drawing.clip_ymin, eglib->drawing.clip_ymax );
     return;
 };
@@ -88,9 +92,9 @@ void eglib_SetIndexColor(
 // includes pixels of bounding box
 bool eglib_inClipArea(eglib_t * eglib, coordinate_t x, coordinate_t y ){
 	if( x >=  eglib->drawing.clip_xmin &&
-		x <= eglib->drawing.clip_xmax &&
+		x < eglib->drawing.clip_xmax &&
 		y >=  eglib->drawing.clip_ymin &&
-		y <= eglib->drawing.clip_ymax ){
+		y < eglib->drawing.clip_ymax ){
 		return true;
 	}
 	else{
@@ -150,7 +154,7 @@ static color_t get_next_gradient_color(struct _gradient_t *gradient) {
   return color;
 }
 
-static color_t get_color_index_0(eglib_t *eglib) {
+static inline color_t get_color_index_0(eglib_t *eglib) {
   return eglib->drawing.color_index[0];
 }
 
@@ -195,56 +199,75 @@ static void draw_fast_90_line(
 
     switch(direction) {
     case DISPLAY_LINE_DIRECTION_RIGHT:
-    	if((y1 > eglib->drawing.clip_ymax) || (y1 < eglib->drawing.clip_ymin))
+    	if((y1 >= eglib->drawing.clip_ymax) || (y1 < eglib->drawing.clip_ymin))
     		return;
     	if( x2 >= eglib->drawing.clip_xmax )
-    		x2 = eglib->drawing.clip_xmax;
-    	if (x1 <= eglib->drawing.clip_xmin)
+    		x2 = eglib->drawing.clip_xmax - 1;
+    	if (x1 < eglib->drawing.clip_xmin)
     		x1 = eglib->drawing.clip_xmin;
-    	length = x2-x1;
+    	length = x2-x1+1;
     	break;
 
     case DISPLAY_LINE_DIRECTION_LEFT:
-    	if((y1 > eglib->drawing.clip_ymax) || (y1 < eglib->drawing.clip_ymin))
+    	if((y1 >= eglib->drawing.clip_ymax) || (y1 < eglib->drawing.clip_ymin))
     		return;
     	if (x1 >= eglib->drawing.clip_xmax)
-    		x1 = eglib->drawing.clip_xmax;
-    	if (x2 <= eglib->drawing.clip_xmin)
+    		x1 = eglib->drawing.clip_xmax - 1;
+    	if (x2 < eglib->drawing.clip_xmin)
     		x2 = eglib->drawing.clip_xmin;
-    	length = x1-x2;
+    	length = x1-x2+1;
   		break;
 
   	case DISPLAY_LINE_DIRECTION_DOWN:
-  		if((x1 > eglib->drawing.clip_xmax) || (x1 < eglib->drawing.clip_xmin))
+  		if((x1 >= eglib->drawing.clip_xmax) || (x1 < eglib->drawing.clip_xmin))
   			return;
   		if(y2 >= eglib->drawing.clip_ymax)
-  			y2 = eglib->drawing.clip_ymax;
-  		if(y1 <= eglib->drawing.clip_ymin )
+  			y2 = eglib->drawing.clip_ymax - 1;
+  		if(y1 < eglib->drawing.clip_ymin )
   			y1 = eglib->drawing.clip_ymin;
-  		length = y2-y1;
+  		length = y2-y1+1;
   		break;
 
   	case DISPLAY_LINE_DIRECTION_UP:
-  		if((x1 > eglib->drawing.clip_xmax) || (x1 < eglib->drawing.clip_xmin))
+  		if((x1 >= eglib->drawing.clip_xmax) || (x1 < eglib->drawing.clip_xmin))
   			return;
   		if(y1 >= eglib->drawing.clip_ymax)
-  			y1 = eglib->drawing.clip_ymax;
-  		if(y2 <= eglib->drawing.clip_ymin )
-  			y1 = eglib->drawing.clip_ymin;
-  		length = y1-y2;
+  			y1 = eglib->drawing.clip_ymax - 1;
+  		if(y2 < eglib->drawing.clip_ymin )
+  			y2 = eglib->drawing.clip_ymin;
+  		length = y1-y2+1;
   		break;
   	}
     if(length < 1)
       return;
 
     // ESP_LOGI( "dl1", "x:%d y:%d, len:%d", x1, y1, length );
-    eglib->display.driver->draw_line(
-      eglib,
-      x1, y1,
-      direction,
-      length,
-      get_next_color
-    );
+    eglib->display.driver->draw_line(eglib, x1, y1, direction, length, get_next_color );
+}
+
+// precondition: DISPLAY_LINE_DIRECTION_RIGHT (pg filling algorithm relies on this)
+static void buffer_scan_line(eglib_t *eglib, coordinate_t x, coordinate_t y, coordinate_t len) {
+    if((y >= eglib->drawing.clip_ymax) || (y < eglib->drawing.clip_ymin))
+      return;
+    if( (x + len) > eglib->drawing.clip_xmax )
+      len = eglib->drawing.clip_xmax - x;
+    if (x < eglib->drawing.clip_xmin)
+      x = eglib->drawing.clip_xmin;
+    
+    if(len < 1)
+      return;
+
+    color_t color = eglib->drawing.color_index[0];
+
+    // calc offest in buffer
+    uint8_t *buffer = eglib->drawing.buffer 
+                + ((y - eglib->drawing.clip_ymin) * (eglib->drawing.clip_xmax - eglib->drawing.clip_xmin) * 3) // rows
+                + ((x - eglib->drawing.clip_xmin) * 3); // columns
+    for(coordinate_t i=0 ; i < len ; i++) {
+      *buffer++ = color.r;
+      *buffer++ = color.g;
+      *buffer++ = color.b;
+    }
 }
 
 // keep in sync with draw_generic_line()
@@ -340,7 +363,7 @@ static void draw_line(
   coordinate_t x2, coordinate_t y2,
   color_t (*get_next_color)(eglib_t *eglib)
 ) {
-  if((x1 == x2) || (y1 == y2))
+  if(x1 == x2 || y1 == y2)
     draw_fast_90_line(eglib, x1, y1, x2, y2, get_next_color);
   else
     draw_generic_line(eglib, x1, y1, x2, y2, get_next_color);
@@ -352,6 +375,30 @@ void eglib_DrawLine(
   coordinate_t x2, coordinate_t y2
 ) {
   draw_line(eglib, x1, y1, x2, y2, get_color_index_0);
+}
+
+void eglib_DrawHLine(eglib_t *eglib, coordinate_t x, coordinate_t y, coordinate_t len) {
+  // draw_fast_90_line(eglib, x, y, x + len, y, get_color_index_0);
+  if (len < 0) {
+    x += len;
+    len = -len;
+  }
+
+  if((y >= eglib->drawing.clip_ymax) || (y < eglib->drawing.clip_ymin))
+    return;
+  if (x < eglib->drawing.clip_xmin) {
+    len -= eglib->drawing.clip_xmin - x;
+    x = eglib->drawing.clip_xmin;
+  }
+  if( x + len > eglib->drawing.clip_xmax )
+    len = eglib->drawing.clip_xmax - x;
+
+  // ESP_LOGI( "dhl", "x:%d y:%d, len:%d", x, y, len );
+  if (eglib->do_buffer) {
+    buffer_scan_line(eglib, x, y, len);
+  } else {
+    eglib->display.driver->draw_line(eglib, x, y, DISPLAY_LINE_DIRECTION_RIGHT, len, get_color_index_0);
+  }
 }
 
 void eglib_DrawGradientLine(
@@ -515,7 +562,7 @@ static uint8_t pg_prepare(pg_struct *pg)
 
 static void pg_hline(pg_struct *pg, eglib_t *eglib)
 {
-  pg_word_t x1, x2, y;
+  pg_word_t x1, x2, y, tmp;
   x1 = pg->pge[PG_LEFT].current_x;
   x2 = pg->pge[PG_RIGHT].current_x;
   y = pg->pge[PG_RIGHT].current_y;
@@ -524,29 +571,23 @@ static void pg_hline(pg_struct *pg, eglib_t *eglib)
     return;
   if ( y >= eglib_GetHeight(eglib) )
     return;
-  if ( x1 < x2 )
-  {
-    if ( x2 < 0 )
-      return;
-    if ( x1 >= eglib_GetWidth(eglib) )
-      return;
-    if ( x1 < 0 )
-      x1 = 0;
-    if ( x2 >= eglib_GetWidth(eglib) )
-      x2 = eglib_GetWidth(eglib);
-    eglib_DrawHLine(eglib, x1, y, x2 - x1);
+  if ( x2 < x1 ) {
+    tmp = x2;
+    x2 = x1;
+    x1 = tmp;
   }
-  else
-  {
-    if ( x1 < 0 )
-      return;
-    if ( x2 >= eglib_GetWidth(eglib) )
-      return;
-    if ( x2 < 0 )
-      x1 = 0;
-    if ( x1 >= eglib_GetWidth(eglib) )
-      x1 = eglib_GetWidth(eglib);
-    eglib_DrawHLine(eglib, x2, y, x1 - x2);
+  if ( x2 < 0 )
+    return;
+  if ( x1 >= eglib->drawing.clip_xmax )
+    return;
+  if ( x1 < 0 )
+    x1 = 0;
+  if ( x2 >= eglib->drawing.clip_xmax )
+    x2 = eglib->drawing.clip_xmax;
+  if ( eglib->do_buffer ) {
+    buffer_scan_line(eglib, x1, y, x2 - x1 + 1);
+  } else {
+    eglib_DrawHLine(eglib, x1, y, x2 - x1 + 1);
   }
 }
 
@@ -681,8 +722,8 @@ void eglib_DrawFrame(
 ) {
   eglib_DrawHLine(eglib, x, y, width);
   eglib_DrawHLine(eglib, x, y + height, width);
-  eglib_DrawVLine(eglib, x, y, height + 1);
-  eglib_DrawVLine(eglib, x + width, y, height + 1);
+  eglib_DrawVLine(eglib, x, y, height);
+  eglib_DrawVLine(eglib, x + width, y, height);
 }
 
 void eglib_DrawGradientFrame(
@@ -724,11 +765,11 @@ void eglib_DrawRoundFrame(
   eglib_DrawArc(eglib, x + radius, y + radius, radius, 270, 360);
   eglib_DrawHLine(eglib, x + radius, y, width - diameter);
   eglib_DrawArc(eglib, x + width - radius, y + radius, radius, 0, 90);
-  eglib_DrawVLine(eglib, x + width, y + radius, height - diameter);
+  // eglib_DrawVLine(eglib, x + width, y + radius, height - diameter);
   eglib_DrawArc(eglib, x + width - radius, y + height - radius, radius, 90, 180);
   eglib_DrawHLine(eglib, x + radius, y + height, width - diameter);
   eglib_DrawArc(eglib, x + radius, y + height - radius, radius, 180, 270);
-  eglib_DrawVLine(eglib, x, y + radius, height - diameter);
+  // eglib_DrawVLine(eglib, x, y + radius, height - diameter);
 }
 
 //
@@ -1044,29 +1085,29 @@ static void eglib_draw_disc_section(eglib_t *eglib, int16_t x, int16_t y, int16_
     /* upper right */
     if ( option & EGLIB_DRAW_UPPER_RIGHT )
     {
-      eglib_DrawVLine(eglib, x0+x, y0-y, y+1);
-      eglib_DrawVLine(eglib, x0+y, y0-x, x+1);
+      eglib_DrawVLine(eglib, x0+x, y0-y, y);
+      eglib_DrawVLine(eglib, x0+y, y0-x, x);
     }
     
     /* upper left */
     if ( option & EGLIB_DRAW_UPPER_LEFT )
     {
-      eglib_DrawVLine(eglib, x0-x, y0-y, y+1);
-      eglib_DrawVLine(eglib, x0-y, y0-x, x+1);
+      eglib_DrawVLine(eglib, x0-x, y0-y, y);
+      eglib_DrawVLine(eglib, x0-y, y0-x, x);
     }
     
     /* lower right */
     if ( option & EGLIB_DRAW_LOWER_RIGHT )
     {
-      eglib_DrawVLine(eglib, x0+x, y0, y+1);
-      eglib_DrawVLine(eglib, x0+y, y0, x+1);
+      eglib_DrawVLine(eglib, x0+x, y0, y);
+      eglib_DrawVLine(eglib, x0+y, y0, x);
     }
     
     /* lower left */
     if ( option & EGLIB_DRAW_LOWER_LEFT )
     {
-      eglib_DrawVLine(eglib, x0-x, y0, y+1);
-      eglib_DrawVLine(eglib, x0-y, y0, x+1);
+      eglib_DrawVLine(eglib, x0-x, y0, y);
+      eglib_DrawVLine(eglib, x0-y, y0, x);
     }
 }
 
@@ -1212,41 +1253,54 @@ struct font_t {
 void eglib_DrawGlyph(eglib_t *eglib, coordinate_t x, coordinate_t y, const struct glyph_t *glyph) {
 	if(glyph == NULL)
 		return;
-	// uint8_t *buffer;
+	uint8_t *buffer = eglib->drawing.buffer;
 	int16_t ascent = eglib->drawing.font->ascent;
 	int16_t descent = eglib->drawing.font->descent;
 	int16_t ascheight = ascent - descent;
-	int16_t alignment = 0; // FONT_BOTTOM
+	int16_t alignment = -ascheight; // FONT_BOTTOM
 	// ESP_LOGI("eglib_DrawGlyph 1","x:%d, y:%d, gly width:%d adv:%d hei:%d asc:%d dec:%d", x,y, glyph->width, glyph->advance, eglib->drawing.font->pixel_size, ascent, descent );
-
-  if( eglib->drawing.font_origin == FONT_MIDDLE )
-		alignment = ascent/2 - descent;
-	else if( eglib->drawing.font_origin == FONT_TOP )
-		alignment = ascheight;
 
 	int16_t width = glyph->advance;
 	int16_t height = eglib->drawing.font->pixel_size > ascheight ? eglib->drawing.font->pixel_size : ascheight;
-
 	int16_t top = glyph->top;
 	int16_t head = ascent - top;
-	uint32_t pos3 = 0;
 
+  if( eglib->drawing.font_origin == FONT_MIDDLE ) {
+		alignment = - ascheight / 2; //  descent - (ascent+1) / 2;
+    // ESP_LOGI("eglib_DrawGlyph 1","hei:%d asc:%d top:%d head:%d", height, ascheight, top, head );
+  }
+	else if( eglib->drawing.font_origin == FONT_TOP )
+		alignment = - ascheight;
+
+	int pos3 = 0;
+
+  // calc min. bounding box to minimize buffer to transfer
 	int16_t startx = MAX;
 	int16_t starty = MAX;
 	int16_t lenx = 0;
 	int16_t leny = 0;
 
-  static uint8_t buffer[4000]; // max. ever needed is 27 * 48 * 3
 	int16_t y1 = 0;
 	if( eglib->drawing.filled_mode == false ){
 		y1 =  height/8;   // WA as fonts bounding boxes to high over the top
 	}
 
 	for(coordinate_t v1=y1; v1 < height ; v1++){
+    int16_t screen_y = y + alignment + v1;
 		//char line[width+1];
+    if ( screen_y < eglib->drawing.clip_ymin || screen_y >= eglib->drawing.clip_ymax )
+      continue;
+    if ( eglib->do_buffer ) {
+      // calc offset into partial frame buffer
+      buffer = eglib->drawing.buffer 
+          + ((screen_y-eglib->drawing.clip_ymin) * (eglib->drawing.clip_xmax - eglib->drawing.clip_xmin) * 3) // y offset
+          + ((x - eglib->drawing.clip_xmin) * 3); // x offset
+      pos3 = 0;
+    }
 		for(coordinate_t u=0 ; u < width; u++) {
 			coordinate_t v = v1 - head;  // read glyph from right row
-			if( eglib_inClipArea( eglib, u+x+1, v1-height+y+alignment ) ){
+      int16_t screen_x = u + x;
+			if( eglib_inClipArea( eglib, screen_x, screen_y ) ){
 				if( startx > u )  // the following code captures the minimum bounding box from what is rendered
 					startx = u;
 				if( starty > v1 )
@@ -1255,7 +1309,7 @@ void eglib_DrawGlyph(eglib_t *eglib, coordinate_t x, coordinate_t y, const struc
 					lenx = u-startx;
 				if( leny < v1-starty )
 					leny = v1-starty;
-				*(color_t *)(buffer+pos3) = eglib->drawing.color_index[1];  // preinitialize with background
+				if ( ! eglib->do_buffer ) *(color_t *)(buffer+pos3) = eglib->drawing.color_index[1];  // preinitialize with background
 				// line[u] = '.';
 				if( (u < glyph->width) && (v < glyph->height) && v>=0 && u>=0  )
 				{
@@ -1273,13 +1327,15 @@ void eglib_DrawGlyph(eglib_t *eglib, coordinate_t x, coordinate_t y, const struc
 	lenx += 1;
 	leny += 1;
 
-	// if( startx >= MAX || starty >= MAX ){ // glyph is off clip area
-	// 	return;
-	// }
+	if( startx >= MAX || starty >= MAX ){
+		return; // glyph is off clip area
+	}
 	// ESP_LOGI("eglib_DrawGlyph 2","Window starts x:%d y:%d len x:%d y:%d", startx, starty, lenx, leny );
-	// ESP_LOGI("eglib_DrawGlyph 3","x:%d, y:%d, sx:%d sy:%d, wid:%d hei:%d", x,y, x+startx, y+alignment+starty -(height-leny), lenx, leny );
-	eglib->display.driver->send_buffer( eglib, buffer, x+startx, y+alignment+starty -(height-leny), lenx, leny );
-  // eglib_DrawLine(eglib, x, y, x+10, y);
+	// ESP_LOGI("eglib_DrawGlyph 3","x:%d, y:%d, sx:%d sy:%d, wid:%d hei:%d", x,y, x+startx, y+alignment+starty, lenx, leny );
+  if ( ! eglib->do_buffer ) {
+    eglib->display.driver->send_buffer( eglib, buffer, x+startx, y+alignment+starty, lenx, leny );
+  }
+  eglib_DrawLine(eglib, x, y, x+10, y);
 }
 
 

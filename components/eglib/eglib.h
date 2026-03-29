@@ -27,7 +27,7 @@ struct _eglib_struct {
 		void *config_ptr;
 		bool refreshing : 1;
 	} display;
-
+    bool do_buffer : 1; // whether to use the buffer for drawing, or write directly to display
 	drawing_t drawing;
 };
 

@@ -25,6 +25,7 @@ typedef struct s_drawing{
 		const struct font_t *font;
 		bool filled_mode;
 		e_font_origin font_origin;
+        uint8_t *buffer;
         coordinate_t clip_xmin, clip_xmax, clip_ymin, clip_ymax;
         coordinate_t clbs_xmin, clbs_xmax, clbs_ymin, clbs_ymax; // two level clip region stack
 } drawing_t;
@@ -167,7 +168,7 @@ void eglib_DrawLine(eglib_t *eglib, coordinate_t x1, coordinate_t y1, coordinate
  *
  * :See also: :c:func:`eglib_SetIndexColor`.
  */
-#define eglib_DrawHLine(eglib, x, y, len) eglib_DrawLine(eglib, x, y, x + len, y);
+void eglib_DrawHLine(eglib_t *eglib, coordinate_t x, coordinate_t y, coordinate_t len);
 
 /**
  * Draw vertical line starting at (`x`, `y`) with length `len` using color from

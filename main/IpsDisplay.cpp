@@ -373,7 +373,7 @@ void IpsDisplay::setupDisplay() {
     ucg->begin();
 	// ESP_LOGI(FNAME,"IpsDisplay::bootDisplay()");
 	if( display_type.get() == ST7789_2INCH_12P )
-		ucg->setRedBlueTwist( true );
+		ucg->setRedBlueSwap( true );
 	if( display_type.get() == ILI9341_TFT_18P )
 		ucg->invertDisplay( true );
 	// ESP_LOGI(FNAME,"clear boot");

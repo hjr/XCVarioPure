@@ -86,9 +86,9 @@ public:
 	void begin();
 	int16_t getDisplayWidth() const;
 	int16_t getDisplayHeight() const;
-	void invertDisplay( bool inv ) {invertDisp=inv;};  	        // solved in grafic layer
-	void setRedBlueTwist( bool twist ) {twistRB= twist;};   	    // no more needed, type of displays phased out
-	inline void undoClipRange() { eglib_undoClipRange(eglib);};
+	void invertDisplay( bool inv ) {invertDisp=inv;}          // solved in grafic layer
+	void setRedBlueSwap( bool swap ) {twistRB=swap;}       // no more needed, type of displays phased out
+	inline void undoClipRange() { eglib_undoClipRange(eglib);}
 	// color
 	inline void setColor( uint8_t idx, uint8_t r, uint8_t g, uint8_t b ) {
 		twistRB?
@@ -131,17 +131,22 @@ public:
 	// Font related
 	void setFont(const uint8_t *f, bool filled=false );
 	void setFontMode( uint8_t is_transparent ) {};  // no concept for transparent fonts in eglib, as it appears
-	inline void setFontPosBottom() { eglib_setFontOrigin( eglib, FONT_BOTTOM ); };
-	inline void setFontPosCenter() { eglib_setFontOrigin( eglib, FONT_MIDDLE ); };
-	inline int16_t getFontAscent() { return eglib->drawing.font->ascent; };
-	inline int16_t getFontDescent() { return eglib->drawing.font->descent; };
+	inline void setFontPosBottom() { eglib_setFontOrigin( eglib, FONT_BOTTOM ); }
+	inline void setFontPosCenter() { eglib_setFontOrigin( eglib, FONT_MIDDLE ); }
+	inline void setFontPosTop() { eglib_setFontOrigin( eglib, FONT_TOP ); }
+	inline int16_t getFontAscent() { return eglib->drawing.font->ascent; }
+	inline int16_t getFontDescent() { return eglib->drawing.font->descent; }
 
 
 	// scrolling, clipping, clear
-	inline void clearScreen(){ eglib_ClearScreen( eglib ); };
-	inline void scrollLines(int16_t lines) {  eglib_scrollScreen( eglib, lines ); };                    // display driver function  todo
-	inline void scrollSetMargins( int16_t top, int16_t bottom ) { eglib_setScrollMargins( eglib, top, bottom ); }; // display driver function
-	inline void setClipRange( int16_t x, int16_t y, int16_t w, int16_t h ) { eglib_setClipRange(eglib, x, y, w, h );};
+	inline void clearScreen() { eglib_ClearScreen( eglib ); }
+	inline void scrollLines(int16_t lines) {  eglib_scrollScreen( eglib, lines ); }                    // display driver function  todo
+	inline void scrollSetMargins( int16_t top, int16_t bottom ) { eglib_setScrollMargins( eglib, top, bottom ); } // display driver function
+	inline void setClipRange( int16_t x, int16_t y, int16_t w, int16_t h ) { eglib_setClipRange(eglib, x, y, w, h ); }
+
+	// partial frame buffer add-on
+	void startBuffering( int16_t x, int16_t y, int16_t w, int16_t h );
+    void finshBuffering();
 
 private:
 	inline void advanceCursor( size_t delta );
