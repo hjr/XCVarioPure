@@ -55,6 +55,7 @@ public:
     void forceAllRedraw();
     void setRange(float pos_range, float center_at, bool log);
     float getMRange() const { return _mrange; }
+    int16_t getDist05() const { return _dist05; }
     void setUnit(float uf) { _unit_fac = uf; }
     void setColor(int color_idx);
     void setFigOffset(int16_t ox, int16_t oy);
@@ -84,6 +85,7 @@ public:
     int16_t _radius = 50; // pixel
     float _range = 5.; // max positive value of the scale
     float _mrange = -5.; // resulting from range and zero_at, assuming an always symetric scale
+    int16_t _dist05;
     static constexpr const float IDX_SCALE = 360.f/My_PIf; // cut the scale range into discrete 0.5deg steps [rad]
     float _unit_fac = 1.f; // scale  from SI units to the guage unit
     int16_t _old_idx = 360; // discretized previous index value

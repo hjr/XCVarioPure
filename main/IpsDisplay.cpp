@@ -418,7 +418,7 @@ void IpsDisplay::initDisplay() {
 
     if (!MAINgauge) {
         int16_t scale_geometry = (display_orientation.get() == DISPLAY_NINETY || !gflags.isPro) ? 120 : 90;
-        MAINgauge = new PolarGauge(AMIDX, AMIDY, scale_geometry, DISPLAY_H/2 - (gflags.isPro ? 20 : 40), 
+        MAINgauge = new PolarGauge(AMIDX, AMIDY, scale_geometry, DISPLAY_H/2 - (gflags.isPro ? 20 : 36), 
                             gflags.isPro ? PolarGauge::XCVPRO : PolarGauge::CLUB);
     }
     MAINgauge->setUnit(VarioUnit->scale);

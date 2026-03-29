@@ -70,7 +70,7 @@ PolarGauge::PolarGauge(int16_t refx, int16_t refy, int16_t scale_end, int16_t ra
             _arrow = new ArrowIndicator(*this, _radius-4, 22, 10);
         }
         else {
-            _arrow = new ArrowIndicator(*this, _radius+4, 50, 3);
+            _arrow = new ArrowIndicator(*this, _radius+6, 50, 3, 3);
         }
     }
     else {
@@ -140,6 +140,8 @@ void PolarGauge::setRange(float pos_range, float center_at, bool log)
     else {
         func = new LinGaugeFunc(_scale_max / (_range - center_at), center_at);
     }
+    // pre-calc pixel dist for interval 0.5-1 on scale bow
+    _dist05 = fast_iroundf(((*func)(1.) - (*func)(0.5)) * _radius); // in pixel
 }
 
 void PolarGauge::setColor(int color_idx)
@@ -384,10 +386,11 @@ void PolarGauge::drawOneLabel(float val, int16_t labl) const
     }
     else {
         std::sprintf(s, "%d", std::abs(labl));
+        MYUCG->setFont(ucg_font_fub20_hn, false);
         x = CosCenteredDeg2(dice_rad(val), _radius - 16) - MYUCG->getStrWidth(s)/2;
         y = SinCenteredDeg2(dice_rad(val), _radius - 16);
-        MYUCG->setFont(ucg_font_fub20_hn);
-        MYUCG->setColor(COLOR_WHITE);
+        if ( labl == 0) { ESP_LOGI( FNAME,"drawOneLabel swidth:%d label:%d  x:%d y:%d", MYUCG->getStrWidth(s), labl, x, y ); }
+        MYUCG->setColor(COLOR_LBBLUE);
     }
     MYUCG->setPrintPos(x, y);
     MYUCG->print(s);
@@ -425,9 +428,7 @@ void PolarGauge::drawScale(float from, float to)
     MYUCG->setFontPosCenter();
     MYUCG->setFont(ucg_font_fub14_hn);
 
-    // calc pixel dist for interval 0.5-1 on scale bow
-    int16_t dist = fast_iroundf(((*func)(1.) - (*func)(0.5)) * _radius); // in pixel
-    ESP_LOGI(FNAME, "range %f/%f lines go m%d %d %d", _range, _mrange, modulo, dist, mid_lpos_upper);
+    ESP_LOGI(FNAME, "range %f/%f lines go m%d %d %d", _range, _mrange, modulo, _dist05, mid_lpos_upper);
 
     // increment in 1/10 scale steps
     int16_t start = fast_iroundf(_range)*10, stop = fast_iroundf(_mrange)*10;
@@ -435,10 +436,10 @@ void PolarGauge::drawScale(float from, float to)
     if (from > -1000.)
     {
         // partial scale repainting
-        start = (int)(clipValue(from) * 10) + 3; // alias .3
-        stop = (int)(clipValue(to) * 10) - 3;
+        start = (int)(clipValue(from) * 10) + 2; // alias .2
+        stop = (int)(clipValue(to) * 10) - 2;
         if (std::abs(start) <= 10) {
-            modulo = (dist > 24) ? 1 : (dist > 16) ? 2 : (dist > 8) ? 5 : 10;
+            modulo = (_dist05 > 24) ? 1 : (_dist05 > 16) ? 2 : (_dist05 > 8) ? 5 : 10;
         }
     }
     ESP_LOGI(FNAME, "scale from %d to %d", start, stop);
@@ -452,7 +453,7 @@ void PolarGauge::drawScale(float from, float to)
             draw_label = true;
             if (a > 0)
             {
-                modulo = (dist > 24) ? 1 : (dist > 16) ? 2 : (dist > 8) ? 5 : 10; // go into the details around zero
+                modulo = (_dist05 > 24) ? 1 : (_dist05 > 16) ? 2 : (_dist05 > 8) ? 5 : 10; // go into the details around zero
             }
             else
             {
@@ -471,7 +472,7 @@ void PolarGauge::drawScale(float from, float to)
             {
                 // .5 small line
                 width = w2;
-                end = _radius + (_flavor == CLUB ? 30 : 12);
+                end = _radius + (_flavor == CLUB ? 24 : 12);
             }
 
             if (!(a % 10))
@@ -480,7 +481,7 @@ void PolarGauge::drawScale(float from, float to)
                 if (modulo < 11 || a == l_start || a == l_stop || a == mid_lpos_upper || a == mid_lpos_lower || a == zeroat)
                 {
                     width = w3;
-                    end = _radius + 15 + (_flavor == CLUB ? 10 : 0);
+                    end = _radius + 15 + (_flavor == CLUB ? 7 : 0);
                 }
                 draw_label = a != zeroat && (draw_label || _range < 5. || a == mid_lpos_upper || a == mid_lpos_lower || a == l_start || a == l_stop);
             }
