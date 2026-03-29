@@ -5,11 +5,11 @@
  *      Author: iltis
  */
 
+#include "SetupMenu.h"
+
 #include "CenterAid.h"
 #include "SetupCommon.h"
-#include "freertos/idf_additions.h"
 #include "math/Floats.h"
-#include "setup/SetupMenu.h"
 #include "setup/SubMenuAudio.h"
 #include "setup/SubMenuDevices.h"
 #include "setup/SubMenuCompassWind.h"
@@ -23,21 +23,17 @@
 #include "S2F.h"
 #include "Version.h"
 #include "glider/Polars.h"
-#include "Cipher.h"
 #include "math/Units.h"
-#include "Atmosphere.h"
 #include "driver/gpio/S2fSwitch.h"
 #include "Flap.h"
 #include "setup/SetupMenuSelect.h"
 #include "setup/SetupMenuValFloat.h"
-#include "setup/SetupMenuChar.h"
 #include "setup/SetupMenuDisplay.h"
 #include "setup/SetupAction.h"
 #include "setup/SetupNG.h"
 #include "Flarm.h"
 #include "protocol/FlarmSim.h"
 #include "sensor/imu/AccMPU6050.h"
-#include "sensor/SensorMgr.h"
 #include "sensor/imu/GyroMPU6050.h"
 #include "sensor/pressure/PressureSensor.h"
 #include "driver/audio/ESPAudio.h"
@@ -430,7 +426,7 @@ static int imu_calib(SetupMenuSelect* p) {
                 p->clear();
                 p->menuPrintLn("Cannot start calibration", 2);
                 p->menuPrintLn("while airborne!", 3);
-                xTaskDelay(pdMS_TO_TICKS(1500));
+                vTaskDelay(pdMS_TO_TICKS(1500));
                 break;
             }
             // do the calibration procedure
