@@ -87,7 +87,7 @@ public:
     float _mrange = -5.; // resulting from range and zero_at, assuming an always symetric scale
     int16_t _dist05;
     static constexpr const float IDX_SCALE = 360.f/My_PIf; // cut the scale range into discrete 0.5deg steps [rad]
-    float _unit_fac = 1.f; // scale  from SI units to the guage unit
+    float _unit_fac = 1.f; // scale  from SI units to the gauge units
     int16_t _old_idx = 360; // discretized previous index value
     int16_t _old_bow_idx = 0;
     int16_t _old_polar_sink = 0;

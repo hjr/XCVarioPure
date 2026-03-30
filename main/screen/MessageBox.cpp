@@ -118,7 +118,7 @@ bool MessageBox::nextMsg()
         MYUCG->setColor(COLOR_RED);
     }
     MYUCG->drawHLine(0, height - 26, width);
-    MYUCG->setFont(ucg_font_ncenR14_hr);
+    MYUCG->setFont(ucg_font_ncenR14_hr, true);
     _print_pos = 1;
     if  ( current->alert_level == 4 ) {
         // center text
@@ -174,7 +174,7 @@ bool MessageBox::draw()
             _nr_scroll--;
             _print_pos--;
             MYUCG->undoClipRange();
-            MYUCG->setFont(ucg_font_ncenR14_hr);
+            MYUCG->setFont(ucg_font_ncenR14_hr, true);
             MYUCG->setColor(COLOR_WHITE);
             MYUCG->setFontPosBottom();
             MYUCG->setPrintPos(_print_pos, height-2);
@@ -192,7 +192,7 @@ bool MessageBox::draw()
             else {
                 MYUCG->setColor(COLOR_WHITE);
             }
-            MYUCG->setFont(ucg_font_ncenR14_hr);
+            MYUCG->setFont(ucg_font_ncenR14_hr, true);
             MYUCG->setFontPosBottom();
             MYUCG->setPrintPos(_print_pos, height-2);
             MYUCG->print(current->text.c_str());

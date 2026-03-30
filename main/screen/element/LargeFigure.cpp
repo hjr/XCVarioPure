@@ -33,7 +33,7 @@ void LargeFigure::draw(float val) {
     if (_value != ival || _dirty) {
         // only print if there is a change in rounded numeric string
         char s[32];
-        MYUCG->setFont(ucg_font_fub35_hn, false);
+        MYUCG->setFont(ucg_font_fub35_hn, true);
         MYUCG->setFontPosCenter();
         if ( std::abs(ival) < 100 ) {
             sprintf(s, "%2.1f", float(std::abs(ival)) / 10.0f);
