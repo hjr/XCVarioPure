@@ -180,14 +180,5 @@ constexpr inline float read(const unit_t& u, float v) {
 	return u.from(v);
 }
 
-void setAll();
-
 } // namespace Units
-
-extern const Units::unit_t *AltUnit;
-extern const Units::unit_t *SpeedUnit;
-extern const Units::unit_t *VarioUnit;
-extern const Units::unit_t *TempUnit;
-extern const Units::unit_t *DistanceUnit;
-extern const Units::unit_t *PressureUnit;
 

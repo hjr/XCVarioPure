@@ -9,7 +9,7 @@
 #pragma once
 
 #include "../SensorBase.h"
-#include "Units.h"
+#include "math/Units.h"
 
 class AirspeedSensor : public SensorTP<float> {
 public:

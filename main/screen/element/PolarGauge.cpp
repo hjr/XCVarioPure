@@ -14,6 +14,7 @@
 #include "math/Trigonometry.h"
 #include "math/Floats.h"
 #include "math/Units.h"
+#include "Atmosphere.h"
 #include "Colors.h"
 #include "AdaptUGC.h"
 #include "setup/SetupNG.h"

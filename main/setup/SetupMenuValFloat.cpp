@@ -10,9 +10,8 @@
 #include "setup/SetupMenu.h"
 #include "AdaptUGC.h"
 #include "IpsDisplay.h"
-#include "sensor/VarioFilter.h"
 #include "math/Units.h"
-#include "sensor.h"
+#include "Atmosphere.h"
 #include "logdefnone.h"
 
 #include <algorithm>

@@ -11,8 +11,8 @@
 #include "Colors.h"
 #include "math/Floats.h"
 #include "math/Units.h"
+#include "Atmosphere.h"
 #include "AdaptUGC.h"
-#include "sensor.h"
 #include "setup/SetupNG.h"
 #include "logdefnone.h"
 

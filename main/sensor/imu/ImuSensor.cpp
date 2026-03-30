@@ -8,7 +8,7 @@
 
 #include "ImuSensor.h"
 
-#include "Quaternion.h"
+#include "math/Quaternion.h"
 #include "math/Trigonometry.h"
 #include "math/Floats.h"
 #include "setup/SetupNG.h"

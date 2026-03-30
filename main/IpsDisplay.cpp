@@ -28,6 +28,7 @@
 #include "math/Quaternion.h"
 #include "math/vector_3d_fwd.h"
 #include "math/Units.h"
+#include "Atmosphere.h"
 #include "Flap.h"
 #include "Flarm.h"
 #include "setup/CruiseMode.h"

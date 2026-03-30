@@ -19,11 +19,11 @@ Last update: 2021-04-18
 
 #include "wind/StraightWind.h"
 #include "ShowStraightWind.h"
+#include "Atmosphere.h"
 #include "setup/SetupNG.h"
 #include "AdaptUGC.h"
-#include "math/Units.h"
 
-#include "logdef.h"
+#include "logdefnone.h"
 
 extern AdaptUGC *MYUCG;
 

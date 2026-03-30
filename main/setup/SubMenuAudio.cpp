@@ -15,10 +15,10 @@
 #include "setup/SetupMenu.h"
 #include "setup/SetupNG.h"
 #include "math/Floats.h"
-#include "math/Units.h"
+#include "Atmosphere.h"
 #include "logdef.h"
 
-#include <cinttypes>
+#include <cstdint>
 #include <string>
 #include <string_view>
 

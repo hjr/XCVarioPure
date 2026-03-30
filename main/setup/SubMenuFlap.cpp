@@ -9,6 +9,7 @@
 #include "SubMenuFlap.h"
 
 #include "Flap.h"
+#include "Atmosphere.h"
 #include "setup/SetupNG.h"
 #include "setup/SetupMenu.h"
 #include "setup/SetupMenuSelect.h"

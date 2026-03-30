@@ -1,9 +1,18 @@
 #include "drawing.h"
 #include "display.h"
+
+#include "math/fast_math_cstub.h"
+
 #include <math.h>
 #include <stdlib.h>
 #include <esp_log.h>
 #include <string.h>
+
+
+static int myfast_iroundf(float a) {
+    return (int)((a >= 0.0f) ? (a + 0.5f) : (a - 0.5f));
+}
+
 
 // static const char* FNAME = "drawing.c";
 #define degrees_to_radians(degrees) ((degrees) * M_PI / 180.0)
@@ -874,8 +883,8 @@ static void draw_arc(
   for(float angle=start_angle ; angle <= end_angle ; angle+= angle_step) {
     coordinate_t curr_x, curr_y;
 
-    curr_x = x + round(cos(angle) * radius);
-    curr_y = y + round(sin(angle) * radius);
+    curr_x = x + myfast_iroundf(fast_cos_rad(angle) * radius);
+    curr_y = y + myfast_iroundf(fast_sin_rad(angle) * radius);
 
     if(curr_x == last_x && curr_y == last_y)
       continue;
@@ -911,8 +920,8 @@ static coordinate_t get_arc_pixel_count(
   for(float angle=start_angle ; angle <= end_angle ; angle+= angle_step) {
     coordinate_t curr_x, curr_y;
 
-    curr_x = x + round(cos(angle) * radius);
-    curr_y = y + round(sin(angle) * radius);
+    curr_x = x + myfast_iroundf(fast_cos_rad(angle) * radius);
+    curr_y = y + myfast_iroundf(fast_sin_rad(angle) * radius);
 
     if(curr_x == last_x && curr_y == last_y)
       continue;

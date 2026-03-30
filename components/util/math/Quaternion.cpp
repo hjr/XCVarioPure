@@ -9,13 +9,13 @@
 #include "math/Quaternion.h"
 #include "math/Trigonometry.h"
 #include "math/vector_3d.h"
-#include "logdefnone.h"
+#include "esp_log.h"
 
-#include <esp_timer.h>
+//#include <esp_timer.h>
 
 #include <cmath>
 
-
+#define TAG "Quaternion"
 
 // basic constructor
 Quaternion::Quaternion(float w, float x, float y, float z)
@@ -53,7 +53,7 @@ rad_t Quaternion::getAngleAndAxis(vector_f& axis) const
     axis.y = _y;
     axis.z = _z;
     axis *= sinphi2;
-    // ESP_LOGI(FNAME,"naxisv: %.3f", axis.get_norm() );
+    // ESP_LOGI(TAG,"naxisv: %.3f", axis.get_norm() );
 
     return angle;
 }
@@ -104,7 +104,7 @@ Quaternion Quaternion::get_normalized() const
 {
     float len = std::sqrtf(_w*_w + _x*_x + _y*_y + _z*_z);
     Quaternion q2( _w/len, _x/len, _y/len, _z/len );
-    // ESP_LOGI(FNAME,"Q1: a=%.3f b=%.3f c=%.3f d=%.3f  Q2: a=%.3f b=%.3f c=%.3f d=%.3f", a, b, c, d, q2.a, q2.b, q2.c, q2.d );
+    // ESP_LOGI(TAG,"Q1: a=%.3f b=%.3f c=%.3f d=%.3f  Q2: a=%.3f b=%.3f c=%.3f d=%.3f", a, b, c, d, q2.a, q2.b, q2.c, q2.d );
     return q2;
 }
 // Normalize quaternion
@@ -207,7 +207,7 @@ vector_f Quaternion::toEulerRad() const
     // // float xx = asin(2*(q0*q2 - q3*q1))*180/My_PIf;
     // result.y = (-My_PIf/2. + 2* atan2(sqrt(1+ 2*(q0*q2 - q1*q3)), sqrt(1- 2*(q0*q2 - q1*q3))));
     // //result.pitch = asin(2*(q0*q2 - q3*q1))*180/My_PIf;
-    // // ESP_LOGI( FNAME,"EulerPitch sin:%.4f atan2:%.4f", xx, result.pitch);
+    // // ESP_LOGI( TAG,"EulerPitch sin:%.4f atan2:%.4f", xx, result.pitch);
     // if (d==0)
     //     result.z = 0.0;
     // else
@@ -253,11 +253,11 @@ Quaternion Quaternion::fromRotationMatrix(const vector_f &X, const vector_f &Y)
     mat[0] = X;
     mat[1] = Y;
     mat[2] = X.cross(Y);
-    // ESP_LOGI(FNAME, "Z: %f,%f,%f", mat[2].x, mat[2].y, mat[2].z);
+    // ESP_LOGI(TAG, "Z: %f,%f,%f", mat[2].x, mat[2].y, mat[2].z);
 
     Quaternion result;
     const double trace = mat[0].x + mat[1].y + mat[2].z;
-    // ESP_LOGI(FNAME, "trace: %f", trace);
+    // ESP_LOGI(TAG, "trace: %f", trace);
 
     // check the diagonal
     if ( trace > 0.0 ) {
@@ -300,20 +300,20 @@ Quaternion Quaternion::fromAccelerometer(const vector_f& accel_par)
     // Normalize
     vector_f an = accel_par;
     an.normalize();
-    // ESP_LOGI(FNAME,"ax=%.3f ay=%.3f az=%.3f", an.x, an.y, an.z);
+    // ESP_LOGI(TAG,"ax=%.3f ay=%.3f az=%.3f", an.x, an.y, an.z);
 
     // There is a singularity at an.z == -1
     if ( an.z < -0.999999f ) {
         float half_cos = std::sqrtf(0.5f*(1.0f - an.z));
         float temp = .5f / half_cos;
         Quaternion orientation( -an.y*temp, half_cos, 0.0, an.x*temp );
-        //ESP_LOGI(FNAME,"Quat: %.3f %.3f %.3f %.3f", orientation.a, orientation.b, orientation.c, orientation.d );
+        //ESP_LOGI(TAG,"Quat: %.3f %.3f %.3f %.3f", orientation.a, orientation.b, orientation.c, orientation.d );
         return orientation;
     } else {
         float half_cos = std::sqrtf(0.5f*(1.0f + an.z));
         float temp = .5f / half_cos;
         Quaternion orientation( half_cos, -an.y*temp, an.x*temp, 0.0 );
-        //ESP_LOGI(FNAME,"Quat: %.3f %.3f %.3f %.3f", orientation.a, orientation.b, orientation.c, orientation.d );
+        //ESP_LOGI(TAG,"Quat: %.3f %.3f %.3f %.3f", orientation.a, orientation.b, orientation.c, orientation.d );
         return orientation;
     }
 }
@@ -321,7 +321,7 @@ Quaternion Quaternion::fromAccelerometer(const vector_f& accel_par)
 // omega in radians per second: dtime in seconds
 Quaternion Quaternion::fromGyro(const vector_f& omega, float dtime)
 {
-    // ESP_LOGI(FNAME,"Quat: %.3f %.3f %.3f", omega.a, omega.b, omega.c );
+    // ESP_LOGI(TAG,"Quat: %.3f %.3f %.3f", omega.a, omega.b, omega.c );
     float alpha = 0.5*dtime;
     float a,b,c,d;
     b = alpha*(omega.x);
@@ -330,7 +330,7 @@ Quaternion Quaternion::fromGyro(const vector_f& omega, float dtime)
     a = 1.f - 0.5f*(b*b+c*c+d*d);
     Quaternion result(a,b,c,d);
     result.normalize();
-    // ESP_LOGI(FNAME,"Quat1: %.3f %.3f %.3f %.3f", result.a, result.b, result.c, result.d );
+    // ESP_LOGI(TAG,"Quat1: %.3f %.3f %.3f %.3f", result.a, result.b, result.c, result.d );
 
     // Often found in literature and identic for small angles.
     // // omega=(alpha,beta,gamma)
@@ -339,7 +339,7 @@ Quaternion Quaternion::fromGyro(const vector_f& omega, float dtime)
     // float theta_05 = norm * 0.5 * dtime;
     // Quaternion result2(cos(theta_05), omega.a * sin(theta_05), omega.b * sin(theta_05), omega.c * sin(theta_05));
     // result = result2;
-    // ESP_LOGI(FNAME,"Quat2: %.3f %.3f %.3f %.3f", result.a, result.b, result.c, result.d );
+    // ESP_LOGI(TAG,"Quat2: %.3f %.3f %.3f %.3f", result.a, result.b, result.c, result.d );
     return result;
 }
 
@@ -384,124 +384,124 @@ void Quaternion::quaternionen_test()
     int64_t t0 = esp_timer_get_time();
     Quaternion q = Quaternion::AlignVectors(v1,v2);
     int64_t t1 = esp_timer_get_time();
-    ESP_LOGI(FNAME,"Setup");
-    ESP_LOGI(FNAME,"Align v1 to v2: (%f,%f,%f) - (%f,%f,%f)", v1.x, v1.y, v1.z, v2.x, v2.y, v2.z );
-    ESP_LOGI(FNAME,"%-4lldusec: %f %f %f %f a:%f", t1-t0, q._w, q._x, q._y, q._z, rad2deg(q.getAngle()) );
+    ESP_LOGI(TAG,"Setup");
+    ESP_LOGI(TAG,"Align v1 to v2: (%f,%f,%f) - (%f,%f,%f)", v1.x, v1.y, v1.z, v2.x, v2.y, v2.z );
+    ESP_LOGI(TAG,"%-4lldusec: %f %f %f %f a:%f", t1-t0, q._w, q._x, q._y, q._z, rad2deg(q.getAngle()) );
     // explicit setup, rotate around y
     Quaternion qex = Quaternion(deg2rad(-90.f), y_axes);
-    ESP_LOGI(FNAME,"equal to: %f %f %f %f a:%f", qex._w, qex._x, qex._y, qex._z, rad2deg(qex.getAngle()) );
+    ESP_LOGI(TAG,"equal to: %f %f %f %f a:%f", qex._w, qex._x, qex._y, qex._z, rad2deg(qex.getAngle()) );
 
     // rotate
     t0 = esp_timer_get_time();
     v3 = q.rotate(v1);
     t1 = esp_timer_get_time();
-    ESP_LOGI(FNAME,"Mapping (%lldusec)", t1-t0);
-    ESP_LOGI(FNAME,"rotate v1 -> v2: %f %f %f", v3.x, v3.y, v3.z );
+    ESP_LOGI(TAG,"Mapping (%lldusec)", t1-t0);
+    ESP_LOGI(TAG,"rotate v1 -> v2: %f %f %f", v3.x, v3.y, v3.z );
     // compare to matrix mapping
     Matrix m(v2, y_axes);
     t0 = esp_timer_get_time();
     v3 = m * v1;
     t1 = esp_timer_get_time();
-    ESP_LOGI(FNAME,"Matrixing (%lldusec)", t1-t0);
-    ESP_LOGI(FNAME,"rotate v1 -> v2: %f %f %f", v3.x, v3.y, v3.z );
+    ESP_LOGI(TAG,"Matrixing (%lldusec)", t1-t0);
+    ESP_LOGI(TAG,"rotate v1 -> v2: %f %f %f", v3.x, v3.y, v3.z );
 
     // Zero rotation
     q = Quaternion(1,0,0,0);
     v3 = q.rotate(v1);
-    ESP_LOGI(FNAME,"rotate zero v1 -> v1: %f %f %f", v3.x, v3.y, v3.z );
+    ESP_LOGI(TAG,"rotate zero v1 -> v1: %f %f %f", v3.x, v3.y, v3.z );
 
     // slerp
-    ESP_LOGI(FNAME,"Slerp: (v1+v2)/2, v2");
+    ESP_LOGI(TAG,"Slerp: (v1+v2)/2, v2");
     Quaternion q2 = Quaternion::AlignVectors(v1,vector_f(0.707106781, 0, 0.707106781));
-    ESP_LOGI(FNAME,"Q: %f %f %f %f a:%f", q2._w, q2._x, q2._y, q2._z, rad2deg(q2.getAngle()) );
+    ESP_LOGI(TAG,"Q: %f %f %f %f a:%f", q2._w, q2._x, q2._y, q2._z, rad2deg(q2.getAngle()) );
     Quaternion qs = slerp(q, q2, 1.f);
-    ESP_LOGI(FNAME,"-> (45°+90°)/2");
-    ESP_LOGI(FNAME,"slerp: %f %f %f %f a:%f", qs._w, qs._x, qs._y, qs._z, rad2deg(qs.getAngle()) );
+    ESP_LOGI(TAG,"-> (45°+90°)/2");
+    ESP_LOGI(TAG,"slerp: %f %f %f %f a:%f", qs._w, qs._x, qs._y, qs._z, rad2deg(qs.getAngle()) );
 
     // toEuler
     q = Quaternion(1,0,0,0);
     vector_f e = q.toEulerRad() * rad2deg(1.f);
-    ESP_LOGI( FNAME,"Euler zero r/p/y %.4f/%.4f/%.4f", e.Roll(), e.Pitch(), e.Yaw());
+    ESP_LOGI( TAG,"Euler zero r/p/y %.4f/%.4f/%.4f", e.Roll(), e.Pitch(), e.Yaw());
     // 45° around X
     q = Quaternion::AlignVectors(vector_f(0,0,1), vector_f(0,-1,1));
     e = q.toEulerRad() * rad2deg(1.f);
-    ESP_LOGI( FNAME,"Euler +45X r/p/y %.4f/%.4f/%.4f", e.Roll(), e.Pitch(), e.Yaw());
+    ESP_LOGI( TAG,"Euler +45X r/p/y %.4f/%.4f/%.4f", e.Roll(), e.Pitch(), e.Yaw());
 
     // compass atan2
-    ESP_LOGI(FNAME,"Check compass atan2");
-    ESP_LOGI(FNAME,"  0? %f", Compass_atan2(0, 0));
-    ESP_LOGI(FNAME,"  0: %f", Compass_atan2(0, 1));
-    ESP_LOGI(FNAME," 45: %f", Compass_atan2(1, 1));
-    ESP_LOGI(FNAME," 45: %f", Compass_atan2(0.6, 0.6)); // norm?
-    ESP_LOGI(FNAME," 90: %f", Compass_atan2(1., 0.));
-    ESP_LOGI(FNAME,"135: %f", Compass_atan2(0.6, -0.6));
-    ESP_LOGI(FNAME,"180: %f", Compass_atan2(0., -1.));
-    ESP_LOGI(FNAME,"180: %f", Compass_atan2(-0.00001, -1.));
-    ESP_LOGI(FNAME,"225: %f", Compass_atan2(-0.6, -0.6));
-    ESP_LOGI(FNAME,"270: %f", Compass_atan2(-1., 0.));
-    ESP_LOGI(FNAME,"315: %f", Compass_atan2(-0.6, 0.6));
+    ESP_LOGI(TAG,"Check compass atan2");
+    ESP_LOGI(TAG,"  0? %f", Compass_atan2(0, 0));
+    ESP_LOGI(TAG,"  0: %f", Compass_atan2(0, 1));
+    ESP_LOGI(TAG," 45: %f", Compass_atan2(1, 1));
+    ESP_LOGI(TAG," 45: %f", Compass_atan2(0.6, 0.6)); // norm?
+    ESP_LOGI(TAG," 90: %f", Compass_atan2(1., 0.));
+    ESP_LOGI(TAG,"135: %f", Compass_atan2(0.6, -0.6));
+    ESP_LOGI(TAG,"180: %f", Compass_atan2(0., -1.));
+    ESP_LOGI(TAG,"180: %f", Compass_atan2(-0.00001, -1.));
+    ESP_LOGI(TAG,"225: %f", Compass_atan2(-0.6, -0.6));
+    ESP_LOGI(TAG,"270: %f", Compass_atan2(-1., 0.));
+    ESP_LOGI(TAG,"315: %f", Compass_atan2(-0.6, 0.6));
 
 
     // fromRotationMatrix
-    ESP_LOGI(FNAME, "Test import of 3x3 matrix");
+    ESP_LOGI(TAG, "Test import of 3x3 matrix");
     q = fromRotationMatrix(vector_f(1,0,0), vector_f(0,1,0));
-    ESP_LOGI(FNAME, "Benign case: 1,0,0/0,1,0 - %f %f %f %f", q._w, q._x, q._y, q._z);
-    ESP_LOGI(FNAME, "Rotate 90°/Z");
+    ESP_LOGI(TAG, "Benign case: 1,0,0/0,1,0 - %f %f %f %f", q._w, q._x, q._y, q._z);
+    ESP_LOGI(TAG, "Rotate 90°/Z");
     q = fromRotationMatrix(vector_f(0,1,0), vector_f(-1,0,0));
-    ESP_LOGI(FNAME, "Quaternion : %f %f %f %f a:%f", q._w, q._x, q._y, q._z, rad2deg(q.getAngle()) );
+    ESP_LOGI(TAG, "Quaternion : %f %f %f %f a:%f", q._w, q._x, q._y, q._z, rad2deg(q.getAngle()) );
     // explicit setup, rotate around z
     qex = Quaternion(deg2rad(90.f), z_axes);
-    ESP_LOGI(FNAME, "check equal: %f %f %f %f a:%f", qex._w, qex._x, qex._y, qex._z, rad2deg(qex.getAngle()) );
+    ESP_LOGI(TAG, "check equal: %f %f %f %f a:%f", qex._w, qex._x, qex._y, qex._z, rad2deg(qex.getAngle()) );
 
-    ESP_LOGI(FNAME, "Rotate 90°/X");
+    ESP_LOGI(TAG, "Rotate 90°/X");
     q2 = fromRotationMatrix(vector_f(1,0,0), vector_f(0,0,1));
-    ESP_LOGI(FNAME, "Quaternion : %f %f %f %f a:%f", q2._w, q2._x, q2._y, q2._z, rad2deg(q2.getAngle()) );
+    ESP_LOGI(TAG, "Quaternion : %f %f %f %f a:%f", q2._w, q2._x, q2._y, q2._z, rad2deg(q2.getAngle()) );
     // explicit setup, rotate around z
     qex = Quaternion(deg2rad(90.f), x_axes);
-    ESP_LOGI(FNAME, "check equal: %f %f %f %f a:%f", qex._w, qex._x, qex._y, qex._z, rad2deg(qex.getAngle()) );
+    ESP_LOGI(TAG, "check equal: %f %f %f %f a:%f", qex._w, qex._x, qex._y, qex._z, rad2deg(qex.getAngle()) );
 
-    ESP_LOGI(FNAME, "Concat Rotate 90°/Z and Rotate 90°/X");
+    ESP_LOGI(TAG, "Concat Rotate 90°/Z and Rotate 90°/X");
     q = q * q2; // concatenate
-    ESP_LOGI(FNAME, "Quaternion : %f %f %f %f a:%f", q._w, q._x, q._y, q._z, rad2deg(q.getAngle()) );
+    ESP_LOGI(TAG, "Quaternion : %f %f %f %f a:%f", q._w, q._x, q._y, q._z, rad2deg(q.getAngle()) );
     v1 = q.rotate(x_axes);
-    ESP_LOGI(FNAME, "image of x-axes: %f %f %f", v1.x, v1.y, v1.z );
+    ESP_LOGI(TAG, "image of x-axes: %f %f %f", v1.x, v1.y, v1.z );
     v1 = q.rotate(y_axes);
-    ESP_LOGI(FNAME, "image of y-axes: %f %f %f", v1.x, v1.y, v1.z );
+    ESP_LOGI(TAG, "image of y-axes: %f %f %f", v1.x, v1.y, v1.z );
     v1 = q.rotate(vector_f(5,5,5));
-    ESP_LOGI(FNAME, "image of 5,5,5: %f %f %f", v1.x, v1.y, v1.z );
+    ESP_LOGI(TAG, "image of 5,5,5: %f %f %f", v1.x, v1.y, v1.z );
     // concatenate
     qex = fromRotationMatrix(vector_f(0,1,0), vector_f(0,0,1));
-    ESP_LOGI(FNAME, "check equal: %f %f %f %f a:%f", qex._w, qex._x, qex._y, qex._z, rad2deg(qex.getAngle()) );
+    ESP_LOGI(TAG, "check equal: %f %f %f %f a:%f", qex._w, qex._x, qex._y, qex._z, rad2deg(qex.getAngle()) );
     v1 = qex.rotate(x_axes);
-    ESP_LOGI(FNAME, "image of x-axes: %f %f %f", v1.x, v1.y, v1.z );
+    ESP_LOGI(TAG, "image of x-axes: %f %f %f", v1.x, v1.y, v1.z );
     v1 = qex.rotate(y_axes);
-    ESP_LOGI(FNAME, "image of y-axes: %f %f %f", v1.x, v1.y, v1.z );
+    ESP_LOGI(TAG, "image of y-axes: %f %f %f", v1.x, v1.y, v1.z );
     v1 = qex.rotate(vector_f(5,5,5));
-    ESP_LOGI(FNAME, "image of 5,5,5: %f %f %f", v1.x, v1.y, v1.z );
+    ESP_LOGI(TAG, "image of 5,5,5: %f %f %f", v1.x, v1.y, v1.z );
 
     // fromAccelerometer
-    ESP_LOGI(FNAME, "Test accelerometer vector conversion");
+    ESP_LOGI(TAG, "Test accelerometer vector conversion");
     q = fromAccelerometer(vector_f(0,0,1));
     vector_f euler = q.toEulerRad() * rad2deg(1.f);
-    ESP_LOGI(FNAME, "Check zero case: R/P/Y: %f %f %f", euler.Roll(), euler.Pitch(), euler.Yaw());
+    ESP_LOGI(TAG, "Check zero case: R/P/Y: %f %f %f", euler.Roll(), euler.Pitch(), euler.Yaw());
     q = fromAccelerometer(vector_f(0,1,1));
     euler = q.toEulerRad() * rad2deg(1.f);
-    ESP_LOGI(FNAME, "Check Roll-45°X case: R/P/Y: %f %f %f", euler.Roll(), euler.Pitch(), euler.Yaw());
+    ESP_LOGI(TAG, "Check Roll-45°X case: R/P/Y: %f %f %f", euler.Roll(), euler.Pitch(), euler.Yaw());
 
     // fromGyro
-    ESP_LOGI(FNAME, "Test gyro vector conversion");
+    ESP_LOGI(TAG, "Test gyro vector conversion");
     q = fromGyro(vector_f(deg2rad(30.f),0,0), 0.5f);
     euler = q.toEulerRad() * rad2deg(1.f);
-    ESP_LOGI(FNAME, "Check X:30°/s,0.5s: X/Y/Z: %f %f %f", euler.Roll(), euler.Pitch(), euler.Yaw());
+    ESP_LOGI(TAG, "Check X:30°/s,0.5s: X/Y/Z: %f %f %f", euler.Roll(), euler.Pitch(), euler.Yaw());
     q = fromGyro(vector_f(0,deg2rad(-30.f),0), 0.5f);
     euler = q.toEulerRad() * rad2deg(1.f);
-    ESP_LOGI(FNAME, "Check Y:-30°/s,0.5s: X/Y/Z: %f %f %f", euler.Roll(), euler.Pitch(), euler.Yaw());
+    ESP_LOGI(TAG, "Check Y:-30°/s,0.5s: X/Y/Z: %f %f %f", euler.Roll(), euler.Pitch(), euler.Yaw());
     q = fromGyro(vector_f(0,0,deg2rad(30.f)), 0.5f);
     euler = q.toEulerRad() * rad2deg(1.f);
-    ESP_LOGI(FNAME, "Check Z:30°/s,0.5s: X/Y/Z: %f %f %f", euler.Roll(), euler.Pitch(), euler.Yaw());
+    ESP_LOGI(TAG, "Check Z:30°/s,0.5s: X/Y/Z: %f %f %f", euler.Roll(), euler.Pitch(), euler.Yaw());
     q = fromGyro(vector_f(deg2rad(30.f),deg2rad(30.f),deg2rad(30.f)), 0.5f);
     euler = q.toEulerRad() * rad2deg(1.f);
-    ESP_LOGI(FNAME, "Check All:30°/s,0.5s: X/Y/Z: %f %f %f", euler.Roll(), euler.Pitch(), euler.Yaw());
+    ESP_LOGI(TAG, "Check All:30°/s,0.5s: X/Y/Z: %f %f %f", euler.Roll(), euler.Pitch(), euler.Yaw());
 }
 
 #endif

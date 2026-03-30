@@ -20,7 +20,7 @@
 #include "sensor.h"
 
 #include "logdefnone.h"
-#include "vector_3d_fwd.h"
+#include "math/vector_3d_fwd.h"
 
 #include <string>
 #include <cmath>

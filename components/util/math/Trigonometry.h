@@ -29,8 +29,10 @@ int angleDiffDeg(int a1, int a2);
 // fast gauge routines with reduced precision
 rad_t fast_sin_deg(degree_t angle);
 rad_t fast_cos_deg(degree_t angle);
+extern "C" {
 rad_t fast_sin_rad(rad_t rad);
 rad_t fast_cos_rad(rad_t rad);
+}
 rad_t fast_sin_idx(int16_t idx);
 rad_t fast_cos_idx(int idx);
 

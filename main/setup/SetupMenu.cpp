@@ -24,6 +24,7 @@
 #include "Version.h"
 #include "glider/Polars.h"
 #include "math/Units.h"
+#include "Atmosphere.h"
 #include "driver/gpio/S2fSwitch.h"
 #include "Flap.h"
 #include "setup/SetupMenuSelect.h"

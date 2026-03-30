@@ -1,11 +1,14 @@
+idf_component_register(SRC_DIRS "math"
+                       INCLUDE_DIRS "." 
+                       REQUIRES 
+)
 
-file(GLOB SUB_SRCS "*.cpp")
+# explicit set C++17 standard for this component
+set_target_properties(${COMPONENT_LIB} PROPERTIES
+    CXX_STANDARD 17
+    CXX_STANDARD_REQUIRED ON
+    CXX_EXTENSIONS OFF
+)
 
-target_sources(${COMPONENT_LIB} PRIVATE ${SUB_SRCS})
-target_include_directories(${COMPONENT_LIB} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-
-# Add optimization flags only for math sources
-# target_compile_options(${COMPONENT_LIB} PRIVATE
-#     $<$<COMPILE_LANGUAGE:CXX>:-O2>
-#     $<$<COMPILE_LANGUAGE:C>:-O2>
-# )
+# using <cmath> etc.
+target_link_libraries(${COMPONENT_LIB} PRIVATE m)

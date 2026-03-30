@@ -10,9 +10,9 @@
 
 #include "Colors.h"
 #include "math/Floats.h"
-#include "sensor/press_diff/AirspeedSensor.h"
 #include "setup/SetupNG.h"
 #include "math/Units.h"
+#include "Atmosphere.h"
 #include "AdaptUGC.h"
 #include "logdefnone.h"
 

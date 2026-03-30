@@ -20,10 +20,10 @@ Last update: 2021-04-18
 #include "ShowCirclingWind.h"
 
 #include "wind/CircleWind.h"
+#include "Atmosphere.h"
 #include "setup/SetupNG.h"
 #include "AdaptUGC.h"
-#include "math/Units.h"
-#include "logdef.h"
+#include "logdefnone.h"
 
 extern AdaptUGC *MYUCG;
 
