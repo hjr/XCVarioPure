@@ -273,8 +273,8 @@ static void initRefs()
 	AVGOFFX = gflags.isPro ? -5-38 : 0;
 	SPEEDYPOS = OPT_Y_IN * DISPLAY_H + 19;
 	INNER_RIGHT_ALIGN = DISPLAY_W - 44;
-	LOAD_MPG_POS = DISPLAY_H*0.3;
-	LOAD_MIAS_POS = DISPLAY_H*0.7;
+	LOAD_MPG_POS = DISPLAY_H*0.33;
+	LOAD_MIAS_POS = DISPLAY_H*0.63;
 
 	// grab screen layout
 	AMIDX = gflags.isPro ? (DISPLAY_W/2 + 30) : (DISPLAY_W/2 + 20);
@@ -684,7 +684,7 @@ void IpsDisplay::drawLoadDisplay( float loadFactor ){
 	// Min/Max values
 	if( old_gmax != gload_pos_max.get() || old_gmin != gload_neg_max.get() || !(tick%10) ) {
 		if( gload_pos_max.get() < gload_pos_limit.get() && gload_neg_max.get() > gload_neg_limit.get()) {
-			ucg->setColor( COLOR_WHITE );
+			ucg->setColor( COLOR_LGREY );
 		}
 		else {
 			ucg->setColor( COLOR_RED );
@@ -701,7 +701,7 @@ void IpsDisplay::drawLoadDisplay( float loadFactor ){
 	}
 	if( old_ias_max != airspeed_max.get() || !(tick%10)){
 		if( airspeed_max.get() < v_max.get() ) {
-			ucg->setColor( COLOR_WHITE );
+			ucg->setColor( COLOR_LGREY );
 		} else {
 			ucg->setColor( COLOR_RED );
 		}

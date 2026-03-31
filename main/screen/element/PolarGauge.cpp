@@ -188,7 +188,12 @@ void PolarGauge::draw(float a)
 
 void PolarGauge::drawIndicator(float a)
 {
-    _arrow->draw(dice_up(clipValue(a)));
+    if ( _flavor == XCVPRO ) {
+        _arrow->draw(dice_up(clipValue(a)));
+    }
+    else {
+        _arrow->drawOver(dice_up(clipValue(a)), a);
+    }
 }
 
 // sink speed in [m/s]
@@ -390,8 +395,12 @@ void PolarGauge::drawOneLabel(float val, int16_t labl) const
         MYUCG->setFont(ucg_font_fub20_hn, false);
         x = CosCenteredDeg2(dice_rad(val), _radius - 16) - MYUCG->getStrWidth(s)/2;
         y = SinCenteredDeg2(dice_rad(val), _radius - 16);
-        if ( labl == 0) { ESP_LOGI( FNAME,"drawOneLabel swidth:%d label:%d  x:%d y:%d", MYUCG->getStrWidth(s), labl, x, y ); }
-        MYUCG->setColor(COLOR_LBBLUE);
+        if ( labl < 0 ) {
+            MYUCG->setColor(COLOR_LBBLUE);
+        }
+        else {
+            MYUCG->setColor(COLOR_LGREY);
+        }
     }
     MYUCG->setPrintPos(x, y);
     MYUCG->print(s);

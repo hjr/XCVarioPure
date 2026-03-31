@@ -25,7 +25,6 @@ LargeFigure::LargeFigure(int16_t x, int16_t y) :
     ScreenElement(x, y)
 {
     MYUCG->setFont(ucg_font_fub35_hn, false);
-    _ref_x += 2;
 }
 
 void LargeFigure::draw(float val) {
@@ -50,7 +49,7 @@ void LargeFigure::draw(float val) {
         } else {
             MYUCG->setColor(COLOR_WHITE);
         }
-        MYUCG->setPrintPos(_ref_x - tmp, _ref_y);
+        MYUCG->setPrintPos(_ref_x - tmp + 2, _ref_y + 2);
         MYUCG->print(s);
         _value = ival;
         MYUCG->setFontPosBottom();
