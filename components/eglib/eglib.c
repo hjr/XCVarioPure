@@ -13,7 +13,7 @@ void eglib_Init(eglib_t *eglib, const hal_t *hal_driver, void *hal_driver_config
 	eglib->hal.driver = hal_driver;
 	eglib->hal.config_ptr = hal_driver_config_ptr;
 	eglib->hal.comm_active = false;
-	eglib->hal.i2c_send_slave_addr = 0;
+	// eglib->hal.i2c_send_slave_addr = 0;
 
 	eglib->display.driver = display_driver;
 	eglib->display.config_ptr = display_config_ptr;
