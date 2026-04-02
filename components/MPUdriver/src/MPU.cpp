@@ -895,32 +895,6 @@ raw_axes_t MPU::getAccelOffset()
 	return bias;
 }
 
-/**
- * @brief Compute Accelerometer and Gyroscope offsets.
- *
- * This takes about ~400ms to compute offsets.
- * When calculating the offsets the MPU must remain as horizontal as possible (0 degrees), facing
- * up. It is better to call computeOffsets() before any configuration is done (better right after
- * initialize()).
- *
- * Note: Gyro offset output are LSB in 1000DPS format.
- * Note: Accel offset output are LSB in 16G format.
- * */
-esp_err_t MPU::computeOffsets(raw_axes_t* accel, raw_axes_t* gyro)
-{
-	constexpr accel_fs_t kAccelFS = ACCEL_FS_2G;     // most sensitive
-	constexpr gyro_fs_t kGyroFS   = GYRO_FS_250DPS;  // most sensitive
-	if (MPU_ERR_CHECK(getBiases(kAccelFS, kGyroFS, accel, gyro, false))) return err;
-	// convert offsets to 16G and 1000DPS format and invert values
-	for (int i = 0; i < 3; i++) {
-		(*accel)[i] = -((*accel)[i] >> (types::ACCEL_FS_16G - kAccelFS));
-		(*gyro)[i]  = -((*gyro)[i] >> (types::GYRO_FS_1000DPS - kGyroFS));
-	}
-	// add currently set gyro offset register values
-	*gyro  += getGyroOffset();
-
-	return err;
-}
 
 /**
  * @brief Read accelerometer raw data.
@@ -2342,6 +2316,7 @@ esp_err_t MPU::gyroSelfTest(raw_axes_t& regularBias, raw_axes_t& selfTestBias, u
  * This algorithm takes about ~400ms to compute offsets.
  * As is a good approach to cope with the first time powered uncalibrated variometer.
  * */
+#ifdef MPU_Test
 esp_err_t MPU::getBiases(accel_fs_t accelFS, gyro_fs_t gyroFS, raw_axes_t* accelBias, raw_axes_t* gyroBias,
 		bool selftest)
 {
@@ -2420,8 +2395,8 @@ esp_err_t MPU::getBiases(accel_fs_t accelFS, gyro_fs_t gyroFS, raw_axes_t* accel
 		accelAvg.x -= gravityLSB;
 	}
 	else {
-		// consider topdown mode for offset compensation
-		accelAvg.x += gravityLSB;
+		// bad sensor X axes alignment to gravity
+		MPU_LOGE("Bad sensor alignment to gravity, X axis bias may be wrong!");
 	}
 
 	// save biases
@@ -2439,5 +2414,5 @@ esp_err_t MPU::getBiases(accel_fs_t accelFS, gyro_fs_t gyroFS, raw_axes_t* accel
 	if (MPU_ERR_CHECK(setAccelOffset(curr_offset))) return err;
 	return err;
 }
-
+#endif
 }  // namespace mpud

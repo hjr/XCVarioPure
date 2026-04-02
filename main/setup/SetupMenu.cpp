@@ -382,14 +382,14 @@ static void doImuCalibration(SetupMenuSelect* p) {
             gyro_integral -= gyroSensor->getBias() * (float)((stop_time - start_time) / 100.f); // 10 Hz
             // sample the accel for the bob vector
             ret = accSensor->getMpu().getAccelSamplesAndCalib(gyro_integral, angle, ground_angle);
-            AUDIO->startSound(AUDIO_TADDA | PRIO_SND_MASK, false, 100);
+            if (i<2 || ret == 4) AUDIO->startSound(AUDIO_TADDA | PRIO_SND_MASK, false, 100);
         }
     }
 
     // set lever arm again
     accSensor->getMpu().setLeverArm(imu_leverarm.get());
 
-    if (ret < 3 || abort) {
+    if (ret < 4 || abort) {
         p->clear();
         p->menuPrintLn("... aborted ...", 2);
         nlidx = 4;
@@ -400,7 +400,9 @@ static void doImuCalibration(SetupMenuSelect* p) {
             p->menuPrintLn("The movement covered", nlidx++);
             p->menuPrintLn("too small an angle.", nlidx++);
         }
-        accSensor->getMpu().applyImuReference(glider_ground_aa.get(), imu_reference.get());
+        accSensor->getMpu().setRefRot(backup);
+        axes_i16_abi tmp = accl_bias.get(); 
+        accSensor->pushBias(mpud::raw_axes_t(tmp.x, tmp.y, tmp.z));
         p->menuPrintLn("press button to return", 8, 1);
         while (!Rotary->readSwitch(100))
             ;
