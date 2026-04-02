@@ -8,6 +8,7 @@
 
 #include "FlarmScreen.h"
 
+#include "MessageBox.h"
 #include "Colors.h"
 #include "UiEvents.h"
 #include "IpsDisplay.h"
@@ -90,6 +91,9 @@ void FlarmScreen::display(int mode)
         ESP_LOGI(FNAME,"Cannot project point");
         return;
     }
+
+    // put the word TRAFFIC under the screen
+    MBOX->pushMessage(4, "! TRAFFIC !", 20); // 20 sec
 
     // draw horizon
     MYUCG->setColor( COLOR_SKYBLUE );
@@ -175,6 +179,7 @@ void FlarmScreen::remove()
 {
     ESP_LOGI(FNAME,"FlarmScreen remove - called");
     // protect double/competing exit calls from watch dog and e.g. UI interaction
+    MBOX->popMessage();
     int expected = 0;
     if ( atomic_compare_exchange_strong(&_done, &expected, 1) ) {
         ESP_LOGI(FNAME,"FlarmScreen remove - done");
