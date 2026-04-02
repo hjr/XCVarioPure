@@ -559,7 +559,7 @@ void IpsDisplay::initDisplay() {
 
     // Unit's
     ucg->setFont(ucg_font_fub11_hr);
-    ucg->setPrintPos(4, 60);
+    ucg->setPrintPos(4, 70);
     ucg->setColor(COLOR_HEADER);
     ucg->print(VarioUnit->getName());
     if (TOPgauge) {
@@ -892,6 +892,9 @@ void IpsDisplay::drawDisplay(){
         }
         if ( BATgauge ) {
             BATgauge->forceRedraw();
+        }
+        if ( ALTgauge && gflags.isPro ) {
+            ALTgauge->forceRedraw();
         }
     }
     // ESP_LOGI(FNAME,"IpsDisplay::drawDisplay  TE=%0.1f  x0:%d y0:%d x2:%d y2:%d", te, x0, y0, x2,y2 );

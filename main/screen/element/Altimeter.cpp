@@ -44,16 +44,16 @@ void Altimeter::drawUnit()
     char s[16];
     MYUCG->setFont(ucg_font_fub11_hr, true);
     MYUCG->setColor( COLOR_HEADER );
-    MYUCG->setPrintPos(_ref_x+5, _ref_y+ ((_aattr&ATTR_SMALL) ? 0 : 3+16));
+    MYUCG->setPrintPos(_ref_x + ((_aattr&ATTR_SMALL) ? 3 : 5), _ref_y+ ((_aattr&ATTR_SMALL) ? 0 : 3+16));
     sprintf(s, "%s  ", AU[(int)_unit_drawn]->getName());
     MYUCG->print(s); // e.g. 'm', 'ft' ..
 
-    if ( _aattr & ATTR_SMALL ) {
-        return; // no more in small mode
-    }
-
     // QNH, QFE
-    MYUCG->setPrintPos(_ref_x+5, _ref_y+3);
+    if ( ! (_aattr & ATTR_SMALL) ) {
+        MYUCG->setPrintPos(_ref_x+5, _ref_y+3);
+    } else {
+        MYUCG->setPrintPos(4, _ref_y - _char_height - 2);
+    }
     const char *dmode = "";
     if (_isa_alt) {
         dmode = "STD ";
@@ -65,6 +65,10 @@ void Altimeter::drawUnit()
         dmode = "QNH ";
     }
     MYUCG->print(dmode);
+
+    if ( _aattr & ATTR_SMALL ) {
+        return; // no more in small mode
+    }
 
     // QNH number
     pascal_t qnh = QNH.get();
