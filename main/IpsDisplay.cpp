@@ -288,7 +288,7 @@ static void initRefs()
 	}
     else if ( !gflags.isPro ) {
         INNER_RIGHT_ALIGN = 68;
-        UPPERYPOS = 19;
+        UPPERYPOS = 32;
         LOWERYPOS = DISPLAY_H - 1;
     }
 }
@@ -518,10 +518,9 @@ void IpsDisplay::initDisplay() {
     }
     if (vario_upper_gauge.get()) {
         if (!TOPgauge) {
-            TOPgauge = new MultiGauge(INNER_RIGHT_ALIGN, UPPERYPOS, (MultiGauge::MultiDisplay)vario_upper_gauge.get());
-        } else {
-            TOPgauge->setDisplay((MultiGauge::MultiDisplay)(vario_upper_gauge.get()));
+            TOPgauge = new MultiGauge(INNER_RIGHT_ALIGN, UPPERYPOS, (MultiGauge::MultiDisplay)vario_upper_gauge.get(), gflags.isPro);
         }
+        TOPgauge->setDisplay((MultiGauge::MultiDisplay)(vario_upper_gauge.get()));
     } else {
         if (TOPgauge) {
             delete TOPgauge;

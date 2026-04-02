@@ -22,9 +22,10 @@
 
 extern AdaptUGC *MYUCG;
 
-MultiGauge::MultiGauge(int16_t cx, int16_t cy, MultiDisplay d) :
+MultiGauge::MultiGauge(int16_t cx, int16_t cy, MultiDisplay d, bool l) :
     ScreenElement(cx, cy),
-    _display(d)
+    _display(d),
+    _large(l)
 {
     update_nvs();
 }
@@ -52,7 +53,10 @@ void MultiGauge::draw()
             fval = SpeedUnit->apply(_nvsvar->get());
             break;
         case GAUGE_NETTO:
-            fval = VarioUnit->apply(_nvsvar->get()) * 10.f;
+            fval = VarioUnit->apply(_nvsvar->get());
+            break;
+        case GAUGE_OAT:
+            fval = TempUnit->apply(_nvsvar->get());
             break;
         case GAUGE_HEADING:
         case GAUGE_SLIP:
@@ -68,8 +72,13 @@ void MultiGauge::draw()
     if (val_prev == val && ! _dirty) return;
     ESP_LOGI(FNAME, "draw val %d (old: %d)", val, val_prev);
 
-    MYUCG->setColor(COLOR_WHITE);
-    MYUCG->setFont(ucg_font_fub25_hn, true);
+    if ( _large ) {
+        MYUCG->setColor(COLOR_WHITE);
+        MYUCG->setFont(ucg_font_fub25_hn, true);
+    } else {
+        MYUCG->setColor(COLOR_WGREY);
+        MYUCG->setFont(ucg_font_fub20_hn, true);
+    }
 
     char s[32] = {"   ---"};
     if (_nvsvar->getValid()) {
@@ -116,6 +125,9 @@ void MultiGauge::drawUnit() const
         mode_str = "NET";
         unit_str = VarioUnit->getName();
         break;
+    case GAUGE_OAT:
+        unit_str = TempUnit->getName();
+        break;
     case GAUGE_HEADING:
         mode_str = "HDG";
         [[fallthrough]];
@@ -127,10 +139,17 @@ void MultiGauge::drawUnit() const
         mode_str = "";
         break;
     }
-    MYUCG->setPrintPos(_ref_x+5,_ref_y-3);
-    MYUCG->print(unit_str);
-    MYUCG->setPrintPos(_ref_x+5,_ref_y-17);
-    MYUCG->print(mode_str);
+    if ( _large ) {
+        MYUCG->setPrintPos(_ref_x+5,_ref_y-3);
+        MYUCG->print(unit_str);
+        MYUCG->setPrintPos(_ref_x+5,_ref_y-17);
+        MYUCG->print(mode_str);
+    } else {
+        MYUCG->setPrintPos(_ref_x+3,_ref_y-12);
+        MYUCG->print(unit_str);
+        MYUCG->setPrintPos(4, _ref_y + 18);
+        MYUCG->print(mode_str);
+    }
 }
 
 void MultiGauge::update_nvs()
@@ -153,6 +172,9 @@ void MultiGauge::update_nvs()
         break;
     case MultiGauge::GAUGE_HEADING:
         _nvsvar = &mag_hdt;
+        break;
+    case MultiGauge::GAUGE_OAT:
+        _nvsvar = &OAT;
         break;
     case MultiGauge::GAUGE_SLIP:
         _nvsvar = &slip_angle;
