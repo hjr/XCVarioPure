@@ -12,7 +12,7 @@
 #include "math/Trigonometry.h"
 #include "Colors.h"
 #include "math/Floats.h"
-#include "logdef.h"
+#include "logdefnone.h"
 
 #include <cmath>
 
