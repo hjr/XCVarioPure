@@ -832,7 +832,7 @@ void IpsDisplay::drawDisplay(){
 
     // Vario indicator
     MAINgauge->draw(te_ms);
-    if (CRMOD.isGross()) {
+    if (gflags.isPro && CRMOD.isGross()) {
         MAINgauge->drawPolarSink(polar_sink_ms);
     }
 
