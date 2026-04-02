@@ -24,12 +24,17 @@ extern AdaptUGC *MYUCG;
 static const Units::unit_t* AU[] = { &Units::meter, &Units::foot, &Units::flightlevel };
 static const int16_t QantTable[] = { 0, 2, 5, 10, 20 };
 
-Altimeter::Altimeter(int16_t cx, int16_t cy) :
-    ScreenElement(cx, cy)
+Altimeter::Altimeter(int16_t cx, int16_t cy, bool big) :
+    ScreenElement(cx, cy),
+    _aattr(big ? 0 : ATTR_SMALL)
 {
-    MYUCG->setFont(ucg_font_fub25_hf, true);
+    if ( _aattr & ATTR_SMALL ) {
+        MYUCG->setFont(ucg_font_fub20_hn, true);
+    } else {
+        MYUCG->setFont(ucg_font_fub25_hf, true);
+    }
     _char_width = MYUCG->getStrWidth("2");
-    _char_height = MYUCG->getFontAscent() - MYUCG->getFontDescent() - 4;
+    _char_height = MYUCG->getFontAscent() - MYUCG->getFontDescent() - ((_aattr&ATTR_SMALL) ? 2 : 4);
     _unit = _unit_drawn = (alt_unit_t)alt_unit.get();
 }
 
@@ -39,9 +44,13 @@ void Altimeter::drawUnit()
     char s[16];
     MYUCG->setFont(ucg_font_fub11_hr, true);
     MYUCG->setColor( COLOR_HEADER );
-    MYUCG->setPrintPos(_ref_x+5, _ref_y+3+16);
+    MYUCG->setPrintPos(_ref_x+5, _ref_y+ ((_aattr&ATTR_SMALL) ? 0 : 3+16));
     sprintf(s, "%s  ", AU[(int)_unit_drawn]->getName());
     MYUCG->print(s); // e.g. 'm', 'ft' ..
+
+    if ( _aattr & ATTR_SMALL ) {
+        return; // no more in small mode
+    }
 
     // QNH, QFE
     MYUCG->setPrintPos(_ref_x+5, _ref_y+3);
@@ -151,10 +160,17 @@ void Altimeter::draw(meter_t alt_input)
     { // cleanup artefacts from higher digits
         _last_quant = used_quant;
         MYUCG->setColor(COLOR_BLACK);
-        MYUCG->drawBox(_ref_x - 2 * _char_width, _ref_y - _char_height * 1.5, 2 * _char_width, _char_height * 2);
+        if ( !(_aattr & ATTR_SMALL) ) {
+            MYUCG->drawBox(_ref_x - 2 * _char_width, _ref_y - _char_height * 1.5, 2 * _char_width, _char_height * 2);
+        }
     }
-    MYUCG->setFont(ucg_font_fub25_hf, true);
-    MYUCG->setColor(COLOR_WHITE);
+    if ( _aattr & ATTR_SMALL ) {
+        MYUCG->setFont(ucg_font_fub20_hn, true);
+        MYUCG->setColor(COLOR_WGREY);
+    } else {
+        MYUCG->setFont(ucg_font_fub25_hf, true);
+        MYUCG->setColor(COLOR_WHITE);
+    }
     
     if (!used_quant)
     {
@@ -169,6 +185,11 @@ void Altimeter::draw(meter_t alt_input)
         // for meter and feet
         int len = std::strlen(s);
         int nr_rolling_digits = (used_quant > 9) ? 2 : 1; // maximum two rolling last digits
+
+        if ( _aattr & ATTR_SMALL ) {
+            // MYUCG->drawFrame(_ref_x - 4*_char_width -1, _ref_y - _char_height*1.1 -1, 4*_char_width +1, _char_height*1.1 +1); // checker box
+            MYUCG->setClipRange(_ref_x - 4*_char_width, _ref_y - _char_height*1.1, 4*_char_width, _char_height*1.1);
+        }
 
         // Quantized altitude, strip and save sign
         meter_t alt_f = std::abs(altitude);           // float altitude w/o sign
@@ -189,7 +210,7 @@ void Altimeter::draw(meter_t alt_input)
             // ESP_LOGI(FNAME,"Last %f/%d: %f m%d .%d", altitude, alt, fraction, m, lastdigit);
             int16_t xp = _ref_x - nr_rolling_digits * _char_width;
             // MYUCG->drawFrame(xp-1, _ref_y - _char_height* 1.35 -1, _char_width*nr_rolling_digits, _char_height*1.8 +1); // checker box
-            MYUCG->setClipRange(xp, _ref_y - _char_height * 1.35, _char_width * nr_rolling_digits - 1, _char_height * 1.8); // space to get 2 digits displayed uncut
+            if (!(_aattr&ATTR_SMALL)) MYUCG->setClipRange(xp, _ref_y - _char_height * 1.35, _char_width * nr_rolling_digits - 1, _char_height * 1.8); // space to get 2 digits displayed uncut
             MYUCG->setPrintPos(xp, _ref_y - m - _char_height);
             char tmp[32];
             sprintf(tmp, "%0*u", nr_rolling_digits, abs((lastdigit + (sign * used_quant)) % mod));
@@ -205,7 +226,7 @@ void Altimeter::draw(meter_t alt_input)
             // ESP_LOGI(FNAME,"tmp2 %s ld: %d rd:%d s:%d aq:%d las:%d ", tmp, (lastdigit-(sign*used_quant))%mod, nr_rolling_digits, sign, used_quant, lastdigit );
             MYUCG->print(tmp); // one below
             fraction_prev = fraction;
-            MYUCG->undoClipRange();
+            if (!(_aattr&ATTR_SMALL)) MYUCG->undoClipRange();
 
             // Roll leading digit independant of quant setting in 2 * (mod/10) range
             int lead_quant = 2 * base; // eg. 2 for Q=1 and Q=5
@@ -223,12 +244,12 @@ void Altimeter::draw(meter_t alt_input)
                 len--; // chop another digits
 
                 // MYUCG->drawFrame(xp-1, _ref_y - _char_height-1, _char_width+1, _char_height+1);
-                MYUCG->setClipRange(xp, _ref_y - _char_height, _char_width - 1, _char_height - 1);
+                if (!(_aattr&ATTR_SMALL)) MYUCG->setClipRange(xp, _ref_y - _char_height, _char_width - 1, _char_height - 1);
                 MYUCG->setPrintPos(xp, _ref_y + m - _char_height);
                 MYUCG->print(lead_digit); // one above
                 MYUCG->setPrintPos(xp, _ref_y + m);
                 MYUCG->print((lead_digit + 9) % 10);
-                MYUCG->undoClipRange();
+                if (!(_aattr&ATTR_SMALL)) MYUCG->undoClipRange();
                 ESP_LOGI(FNAME,"ld4: %d, len %d", (lead_digit+9)%10, len );
             }
         }
@@ -238,6 +259,10 @@ void Altimeter::draw(meter_t alt_input)
             MYUCG->print(s);
             // ESP_LOGI(FNAME,"s5: %s", s );
             strcpy(altpart_prev_s, s);
+        }
+
+        if ( _aattr & ATTR_SMALL ) {
+            MYUCG->undoClipRange();
         }
     }
     _dirty = false;

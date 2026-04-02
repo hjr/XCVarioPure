@@ -78,7 +78,8 @@ IpsDisplay *Display = nullptr;
 static int16_t AMIDY;
 static int16_t AMIDX;
 static int16_t AVGOFFX;
-static int16_t SPEEDYPOS;
+static int16_t UPPERYPOS;
+static int16_t LOWERYPOS;
 constexpr const float OPT_Y_IN = 0.262f;
 
 static int16_t INNER_RIGHT_ALIGN = 170;
@@ -270,20 +271,26 @@ Point IpsDisplay::clipToScreenCenter(Point p)
 
 static void initRefs()
 {
-	AVGOFFX = gflags.isPro ? -5-38 : 0;
-	SPEEDYPOS = OPT_Y_IN * DISPLAY_H + 19;
+	AVGOFFX = gflags.isPro ? -5-38 : -4;
+    UPPERYPOS = OPT_Y_IN * DISPLAY_H + 19;
+    LOWERYPOS = (1. - OPT_Y_IN) * DISPLAY_H + 19;
 	INNER_RIGHT_ALIGN = DISPLAY_W - 44;
 	LOAD_MPG_POS = DISPLAY_H*0.33;
 	LOAD_MIAS_POS = DISPLAY_H*0.63;
 
 	// grab screen layout
-	AMIDX = gflags.isPro ? (DISPLAY_W/2 + 30) : (DISPLAY_W/2 + 20);
+	AMIDX = gflags.isPro ? (DISPLAY_W/2 + 30) : (DISPLAY_W/2 + 16);
 	AMIDY = (DISPLAY_H)/2;
 	if ( display_orientation.get() == DISPLAY_NINETY ) {
 		INNER_RIGHT_ALIGN = DISPLAY_W - 74;
 		AMIDX = DISPLAY_W/2 - 43;
 		AVGOFFX = -2;
 	}
+    else if ( !gflags.isPro ) {
+        INNER_RIGHT_ALIGN = 68;
+        UPPERYPOS = 19;
+        LOWERYPOS = DISPLAY_H - 1;
+    }
 }
 
 ////////////////////////////
@@ -418,7 +425,7 @@ void IpsDisplay::initDisplay() {
     initRefs();
 
     if (!MAINgauge) {
-        int16_t scale_geometry = (display_orientation.get() == DISPLAY_NINETY || !gflags.isPro) ? 120 : 90;
+        int16_t scale_geometry = (display_orientation.get() == DISPLAY_NINETY) ? 120 : (gflags.isPro ? 90 : 128 );
         MAINgauge = new PolarGauge(AMIDX, AMIDY, scale_geometry, DISPLAY_H/2 - (gflags.isPro ? 20 : 36), 
                             gflags.isPro ? PolarGauge::XCVPRO : PolarGauge::CLUB);
     }
@@ -501,7 +508,7 @@ void IpsDisplay::initDisplay() {
 
     if (vario_lower_gauge.get()) {
         if (!ALTgauge) {
-            ALTgauge = new Altimeter(INNER_RIGHT_ALIGN, (1. - OPT_Y_IN) * DISPLAY_H + 19);
+            ALTgauge = new Altimeter(INNER_RIGHT_ALIGN, LOWERYPOS, gflags.isPro);
         }
     } else {
         if (ALTgauge) {
@@ -511,7 +518,7 @@ void IpsDisplay::initDisplay() {
     }
     if (vario_upper_gauge.get()) {
         if (!TOPgauge) {
-            TOPgauge = new MultiGauge(INNER_RIGHT_ALIGN, SPEEDYPOS, (MultiGauge::MultiDisplay)vario_upper_gauge.get());
+            TOPgauge = new MultiGauge(INNER_RIGHT_ALIGN, UPPERYPOS, (MultiGauge::MultiDisplay)vario_upper_gauge.get());
         } else {
             TOPgauge->setDisplay((MultiGauge::MultiDisplay)(vario_upper_gauge.get()));
         }
