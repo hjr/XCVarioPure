@@ -281,7 +281,7 @@ void PolarGauge::drawDisc(float a, bool clean) const
     }
     int16_t val = dice_up(clipValue(a));
     ESP_LOGI( FNAME,"draw disc val %.2f diced: %d", a, val );
-    int16_t pos = _radius + 8;
+    int16_t pos = _radius + 12;
     int x = CosCenteredDeg2(val, pos);
     int y = SinCenteredDeg2(val, pos);
     MYUCG->drawDisc(x, y, 4, UCG_DRAW_ALL);
