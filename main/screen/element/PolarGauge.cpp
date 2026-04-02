@@ -566,9 +566,6 @@ void PolarGauge::drawRose(int16_t at) const
         if (!(a % 30)) {
             drawTwoDots( a, 2, 1);
         }
-        else if (!(a % 10)) {
-            drawTwoDots( a, 1, 0);
-        }
         if (!(a%180) ) {
             MYUCG->setColor(COLOR_LBBLUE);
             if ( _wind_ref == WR_NORTH) {
