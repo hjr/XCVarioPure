@@ -42,7 +42,7 @@ void Altimeter::drawUnit()
 {
     // 'm', 'ft', ..
     char s[16];
-    MYUCG->setFont(ucg_font_fub11_hr, true);
+    MYUCG->setFont(ucg_font_fub11_hr, false);
     MYUCG->setColor( COLOR_HEADER );
     MYUCG->setPrintPos(_ref_x + ((_aattr&ATTR_SMALL) ? 3 : 5), _ref_y+ ((_aattr&ATTR_SMALL) ? 0 : 3+16));
     sprintf(s, "%s  ", AU[(int)_unit_drawn]->getName());

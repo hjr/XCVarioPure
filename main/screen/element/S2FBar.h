@@ -26,6 +26,7 @@ public:
     void setWidth(int16_t width) { _width_half=width/2; stepFromWidth(width); }
     void setGap(int16_t gap) { _gap_half=gap/2; }
     void draw(mps_t s2fd, mps_t s2f_speed = -1.0f);
+    void clear();
 
 private:
     void stepFromWidth(int16_t width) { _step = (width+4)/8; }

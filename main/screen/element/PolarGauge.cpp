@@ -71,7 +71,7 @@ PolarGauge::PolarGauge(int16_t refx, int16_t refy, int16_t scale_end, int16_t ra
             _arrow = new ArrowIndicator(*this, _radius-4, 22, 10);
         }
         else {
-            _arrow = new ArrowIndicator(*this, _radius+6, 50, 3, 3);
+            _arrow = new ArrowIndicator(*this, _radius+8, 50, 5, 7);
         }
     }
     else {

@@ -1078,8 +1078,8 @@ static void screens_menu_create_vario(SetupMenu *top) {
     bgauge->mkEnable("Altimeter");
     top->addEntry(bgauge);
 
-    SetupMenuSelect* mc = new SetupMenuSelect("McCready Gauge", RST_NONE, nullptr, &vario_mc_gauge);
-    mc->setHelp("Show the currently used McCready setting");
+    SetupMenuSelect* mc = new SetupMenuSelect("MC & S2F", RST_NONE, nullptr, &vario_mc_gauge);
+    mc->setHelp("Show the McCready setting and the recommended speed to fly");
     mc->mkEnable();
     top->addEntry(mc);
 

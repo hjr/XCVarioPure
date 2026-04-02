@@ -150,3 +150,9 @@ void S2FBar::draw(mps_t s2fd, mps_t s2f_speed)
 
     _dirty = false;
 }
+
+void S2FBar::clear() {
+    if ( _prev_s2f_level != 0 ) {
+        draw(0.0f);
+    }
+}

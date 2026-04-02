@@ -113,7 +113,7 @@ void FlapsBox::drawLabels(FBoxStateHash cs)
             MYUCG->setColor(COLOR_BLACK);
         }
         MYUCG->setClipRange(boxx, boxy + boxh, boxw, BOX_CORNER);
-        MYUCG->drawRBox(boxx+1, boxy + boxh - BOX_CORNER + 1, boxw-1, 2 * BOX_CORNER, BOX_CORNER - 2);
+        MYUCG->drawRBox(boxx+1, boxy + boxh - BOX_CORNER - 1, boxw-1, 2 * BOX_CORNER, BOX_CORNER - 2);
         MYUCG->undoClipRange();
     }
 

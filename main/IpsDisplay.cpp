@@ -432,22 +432,26 @@ void IpsDisplay::initDisplay() {
     MAINgauge->setUnit(VarioUnit->scale);
     MAINgauge->setRange(scale_range.get(), 0.f, log_scale.get());
     MAINgauge->setColor(needle_color.get());
-    if (vario_mc_gauge.get()) {
-        if ( !MCgauge ) {
+    if (vario_mc_gauge.get() ) {
+        if (!S2FBARgauge) {
+            S2FBARgauge = new S2FBar(DISPLAY_W - 15, AMIDY - 64, 28, 8);
+        }
+    }
+    else {
+        if ( S2FBARgauge) {
+            delete S2FBARgauge;
+            S2FBARgauge = nullptr;
+        }
+    }
+    if (vario_mc_gauge.get() && gflags.isPro) {
+        if (!MCgauge) {
             MCgauge = new McCready(40, DISPLAY_H + 2);
         }
-        if ( !S2FBARgauge) {
-            S2FBARgauge = new S2FBar(DISPLAY_W - 50, AMIDY, 28, 8);
-        }
-   }
+    }
     else {
         if ( MCgauge ) {
             delete MCgauge;
             MCgauge = nullptr;
-        }
-        if ( S2FBARgauge) {
-            delete S2FBARgauge;
-            S2FBARgauge = nullptr;
         }
     }
     if ( !OATgauge ) {
@@ -457,14 +461,14 @@ void IpsDisplay::initDisplay() {
         // CONNgauge = new Connection(DISPLAY_W-25, 24, display_orientation.get() == DISPLAY_NINETY);
     }
     if (!BATgauge) {
-        // BATgauge = new Battery(DISPLAY_W - 10, DISPLAY_H - 12, display_orientation.get() == DISPLAY_NINETY);
+        BATgauge = new Battery(DISPLAY_W - 10, DISPLAY_H - 12, display_orientation.get() == DISPLAY_NINETY || !gflags.isPro);
     }
     if ( !VCSTATgauge ) {
         // VCSTATgauge = new CruiseStatus(INNER_RIGHT_ALIGN - 6, 22);
     }
     if ( FLAP && flapbox_enable.get() ) {
         if (!FLAPSgauge) {
-            FLAPSgauge = new FlapsBox(FLAP, DISPLAY_W - 28, AMIDY, DISPLAY_H > DISPLAY_W);
+            FLAPSgauge = new FlapsBox(FLAP, DISPLAY_W - 29, AMIDY + (gflags.isPro ? 0 : 22), DISPLAY_H > DISPLAY_W);
         }
     }
     else {
@@ -481,8 +485,8 @@ void IpsDisplay::initDisplay() {
     MAINgauge->setFigOffset(AVGOFFX, 0);
 
     if (!WNDgauge) {
-        // create it always, because also the center aid is using it (keep it simple here)
-        WNDgauge = new PolarGauge(AMIDX + AVGOFFX, AMIDY, 360, 50, PolarGauge::COMPASS);
+        // create it always, because also the center aid is using it
+        WNDgauge = new PolarGauge(AMIDX + AVGOFFX, AMIDY, 360, 52, PolarGauge::COMPASS);
     }
     WNDgauge->enableWindIndicator(wind_enable.get() > WA_OFF, wind_enable.get() == WA_EXTERNAL);
     WNDgauge->setWindRef(wind_reference.get());
@@ -533,11 +537,11 @@ void IpsDisplay::initDisplay() {
             S2FBARgauge->setWidth(36);
         } else {
             if (FLAPSgauge) {
-                S2FBARgauge->setRef(DISPLAY_W - 50, AMIDY - 20);
+                S2FBARgauge->setRef(DISPLAY_W - 15, AMIDY - 64);
                 S2FBARgauge->setWidth(28);
             } else {
-                S2FBARgauge->setRef(DISPLAY_W - 34, AMIDY - 20);
-                S2FBARgauge->setWidth(50);
+                S2FBARgauge->setRef(DISPLAY_W - 17, AMIDY);
+                S2FBARgauge->setWidth(28);
             }
         }
     }
@@ -746,7 +750,7 @@ void IpsDisplay::drawDisplay(){
 	if( !(screens_init & INIT_DISPLAY_RETRO) ){
 		initDisplay();
 		screens_init |= INIT_DISPLAY_RETRO;
-        return; // split the first draw into a couple calls
+        return; // split the first draw into two calls
 	}
 	tick++;
 
@@ -769,7 +773,7 @@ void IpsDisplay::drawDisplay(){
     }
 
     // S2F bar
-    if (!(tick % 11) && S2FBARgauge) {
+    if (!(tick % 11) && S2FBARgauge && CRMOD.getCMode() ) {
         // static float s=0; // check the bar code
         // s2fd = sin(s) * 42.;
         // s+=0.04;
@@ -862,8 +866,14 @@ void IpsDisplay::drawDisplay(){
 
     // Cruise mode or circling
     if( flags.mode_dirty ) {
-        if (VCSTATgauge) {
-            VCSTATgauge->draw();
+        if (gflags.isPro) {
+            if (VCSTATgauge) {
+                VCSTATgauge->draw();
+            }
+        } else {
+            if (S2FBARgauge && !CRMOD.getCMode()) {
+                S2FBARgauge->clear();
+            }
         }
         WNDgauge->clearGauge();
         if (!vario_centeraid.get() || CRMOD.getCMode()) {
@@ -892,7 +902,7 @@ void IpsDisplay::drawDisplay(){
         if ( BATgauge ) {
             BATgauge->forceRedraw();
         }
-        if ( ALTgauge && gflags.isPro ) {
+        if ( ALTgauge && ! gflags.isPro ) {
             ALTgauge->forceRedraw();
         }
     }
