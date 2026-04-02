@@ -21,6 +21,7 @@ extern AdaptUGC *MYUCG;
 MessageBox *MBOX; // the global representation
 
 const int CLOCK_DIVIDER = 8;
+constexpr const int16_t MSG_BOX_HEIGHT = 26;
 
 // A message is represented throught
 // - alert level (1,2,3,4)
@@ -134,7 +135,7 @@ bool MessageBox::nextMsg()
     MYUCG->print(current->text.c_str());
 
     // Exclude the message area for the rest of the system
-    MYUCG->setClipRange(0, 0, width, height - 27);
+    MYUCG->setClipRange(0, 0, width, height - MSG_BOX_HEIGHT);
 
     // set time counter
     _start_scroll = 0;
@@ -148,7 +149,7 @@ bool MessageBox::nextMsg()
 void MessageBox::removeMsg()
 {
     MYUCG->setColor(COLOR_BLACK);
-    MYUCG->drawBox(0, height - 26, width, 26);
+    MYUCG->drawBox(0, height - MSG_BOX_HEIGHT, width, MSG_BOX_HEIGHT);
     MYUCG->setColor(COLOR_WHITE);
 }
 
@@ -179,7 +180,7 @@ bool MessageBox::draw()
             MYUCG->setFontPosBottom();
             MYUCG->setPrintPos(_print_pos, height-2);
             MYUCG->print(current->text.c_str());
-            MYUCG->setClipRange(0, 0, width, height - 27);
+            MYUCG->setClipRange(0, 0, width, height - MSG_BOX_HEIGHT);
         }
     }
     else {
@@ -196,7 +197,7 @@ bool MessageBox::draw()
             MYUCG->setFontPosBottom();
             MYUCG->setPrintPos(_print_pos, height-2);
             MYUCG->print(current->text.c_str());
-            MYUCG->setClipRange(0, 0, width, height - 27);
+            MYUCG->setClipRange(0, 0, width, height - MSG_BOX_HEIGHT);
             MYUCG->setColor(COLOR_WHITE);
         }
     }
