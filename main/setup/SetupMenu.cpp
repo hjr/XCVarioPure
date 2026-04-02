@@ -79,7 +79,7 @@ static void system_menu_create_battery(SetupMenu *top);
 static void system_menu_create_hardware(SetupMenu *top);
 static void system_menu_create_hardware_type(SetupMenu *top);
 static void system_menu_create_hardware_rotary(SetupMenu *top);
-static void system_menu_create_hardware_ahrs(SetupMenu *top);
+static void system_menu_create_hardware_imu(SetupMenu *top);
 static void system_menu_create_hardware_ahrs_parameter(SetupMenu *top);
 
 
@@ -291,7 +291,7 @@ static int imu_gaa(SetupMenuValFloat *f) {
 static void doImuCalibration(SetupMenuSelect* p) {
     MYUCG->setFont(ucg_font_ncenR14_hr, true);
     p->clear();
-    p->menuPrintLn("AHRS Glider Reference", 2, 18);
+    p->menuPrintLn("IMU Glider Reference", 2, 18);
     constexpr int16_t next_step = 4;
     int16_t nlidx = next_step;
     p->menuPrintLn("Checking Gyro Bias", nlidx++);
@@ -301,9 +301,12 @@ static void doImuCalibration(SetupMenuSelect* p) {
 
     accSensor->getMpu().resetCalibProgress();
     // load the default reference to the IMU
+    Quaternion backup = accSensor->getMpu().getRefRot();
     accSensor->getMpu().applyImuReference(0, MpuImu::getDefaultImuReference());
     // reset lever arm
     accSensor->getMpu().setLeverArm(0.f);
+    // need to reset the acc bias, because this is the only way we can really measure it
+    accSensor->resetBias();
 
     // double check that the gyro is calibrated, otherwise the result would be useless
     vector_f gyro;
@@ -317,7 +320,7 @@ static void doImuCalibration(SetupMenuSelect* p) {
     } while ((gnorm > GyroMPU6050::GYRO_THRESHOLD || !gyroSensor->isResting()) && !abort);
 
     ESP_LOGI(FNAME, "gyro reading: (%f/%f/%f): %f < %f", gyro.x, gyro.y, gyro.z, gnorm, GyroMPU6050::GYRO_THRESHOLD);
-    
+
     float angle;
     float ground_angle;
     int ret = 0;
@@ -416,8 +419,8 @@ static void doImuCalibration(SetupMenuSelect* p) {
 }
 
 static int imu_calib(SetupMenuSelect* p) {
-    ESP_LOGI(FNAME, "Collect AHRS data (%d)", p->getSelect());
-    int sel = p->getSelect();
+    ESP_LOGI(FNAME, "Collect AHRS data (%d)", p->getValue());
+    int sel = p->getValue();
     switch (sel) {
         case 0:
             break;  // cancel
@@ -434,11 +437,13 @@ static int imu_calib(SetupMenuSelect* p) {
             doImuCalibration(p);
             break;
         case 2:
-        {
             // reset to default
             accSensor->getMpu().resetImuReference();
             break;
-        }
+        case 3:
+            // set bias to zero
+            accSensor->getMpu().zeroBiases();
+            break;
         default:
             break;
     }
@@ -1413,19 +1418,27 @@ void system_menu_create_hardware_ahrs_parameter(SetupMenu *top) {
 }
 #endif
 
-void system_menu_create_hardware_ahrs(SetupMenu *top) {
-    SetupMenuSelect* ahrs_calib_collect = new SetupMenuSelect("Axis Calibration", RST_NONE, imu_calib);
-    ahrs_calib_collect->setHelp("Calibrate IMU to glider reference. Run the procedure by selecting Start.");
-    ahrs_calib_collect->addEntry("Cancel");
-    ahrs_calib_collect->addEntry("Start");
-    ahrs_calib_collect->addEntry("Reset");
+void system_menu_create_hardware_imu(SetupMenu *top) {
+    SetupMenuSelect* imu_calib_collect = new SetupMenuSelect("Axis Calibration", RST_NONE, imu_calib);
+    imu_calib_collect->setHelp("Calibrate IMU to glider reference. Run the procedure by selecting Start.");
+    imu_calib_collect->addEntry("Cancel");
+    imu_calib_collect->addEntry("Start");
+    imu_calib_collect->addEntry("Reset");
+    top->addEntry(imu_calib_collect);
 
-    SetupMenuValFloat* ahrs_ground_aa = new SetupMenuValFloat("Ground angle of attack", "°", imu_gaa, false, &glider_ground_aa);
+    if (!airborne.get()) {
+        SetupMenuSelect* bias_zero = new SetupMenuSelect("Bias Zero", RST_NONE, imu_calib);
+        bias_zero->setHelp("Set IMU bias back to zero. Use only as a last measure.");
+        bias_zero->addEntry("Cancel");
+        bias_zero->addEntry("Zero", 3);
+        top->addEntry(bias_zero);
+    }
+
+    SetupMenuValFloat* ahrs_ground_aa = new SetupMenuValFloat("Ground Angle of Attack", "°", imu_gaa, false, &glider_ground_aa);
     ahrs_ground_aa->setHelp(
-        "Angle of attack with tail skid on the ground to adjust the AHRS reference. Change this any time to correct the AHRS horizon "
+        "Angle of attack with tail skid on the ground to adjust the AHRS horizon level. Change this any time"
         "level.");
     ahrs_ground_aa->setPrecision(0);
-    top->addEntry(ahrs_calib_collect);
     top->addEntry(ahrs_ground_aa);
 
 	SetupMenuValFloat* tcontrol = new SetupMenuValFloat("Temp Control", "°C", nullptr, false, &mpu_temperature);
@@ -1479,7 +1492,7 @@ void system_menu_create_hardware(SetupMenu *top) {
 		gear->addEntry("External");  // A $g,w<n>*CS command from an external device
 
         if (accSensor) {
-            SetupMenu* ahrs = new SetupMenu("Attitude & Heading RefSys", system_menu_create_hardware_ahrs);
+            SetupMenu* ahrs = new SetupMenu("IMU Reference", system_menu_create_hardware_imu);
             top->addEntry(ahrs);
         }
 

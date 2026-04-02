@@ -114,11 +114,11 @@ bool MpuImu::setup() {
 
     // Load reference calibration
     Quaternion basic_ref = imu_reference.get();
-    if (basic_ref == Quaternion()) {
-        // If unset, set to a rough default
-        basic_ref = getDefaultImuReference();
-    }
     _ref_rot = concatGaaAndImuReference(glider_ground_aa.get(), basic_ref);
+    if (basic_ref == Quaternion()) {
+        // If unset, set the default, but do not apply the GAA (!)
+        _ref_rot = getDefaultImuReference();
+    }
 
     return true;
 }
@@ -168,10 +168,17 @@ Quaternion MpuImu::getDefaultImuReference() {
 
 void MpuImu::resetImuReference(bool save_nvs) {
     Quaternion base = getDefaultImuReference();
-    applyImuReference(glider_ground_aa.get(), base);
+    applyImuReference(0.f, base); // do not add the GAA onto the default reference
     if (save_nvs) {
         imu_reference.set(Quaternion(), false); // nvs
     }
+}
+
+void MpuImu::zeroBiases() {
+    gyro_bias.set({});
+    accl_bias.set({});
+    myMPU.setGyroOffset({});
+    myMPU.setAccelOffset({});
 }
 
 // Concatenation of ground angle of attack and the basic reference calibration rotation

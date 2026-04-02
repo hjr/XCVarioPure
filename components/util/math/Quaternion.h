@@ -34,7 +34,7 @@ public:
     // API
     rad_t getAngle() const;
     rad_t getAngleAndAxis(vector_f& axis) const;
-    friend Quaternion operator*(const Quaternion& left, const Quaternion& right);
+    friend Quaternion operator*(const Quaternion& left, const Quaternion& right); // left after right
     Quaternion get_normalized() const;
     Quaternion& normalize();
     Quaternion& conjugate();
