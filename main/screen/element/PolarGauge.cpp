@@ -435,9 +435,6 @@ void PolarGauge::drawScale(float from, float to)
     mid_lpos_upper = (mid_lpos_upper / modulo) * modulo; // round down to the next modulo hit
     int16_t mid_lpos_lower = fast_iroundf(func->invers(0.5 * (*func)(_mrange))) * 10;
     mid_lpos_lower = (mid_lpos_lower / modulo) * modulo;
-    MYUCG->setFontPosCenter();
-    MYUCG->setFont(ucg_font_fub14_hn);
-
     ESP_LOGI(FNAME, "range %f/%f lines go m%d %d %d", _range, _mrange, modulo, _dist05, mid_lpos_upper);
 
     // increment in 1/10 scale steps
@@ -452,6 +449,19 @@ void PolarGauge::drawScale(float from, float to)
             modulo = (_dist05 > 24) ? 1 : (_dist05 > 16) ? 2 : (_dist05 > 8) ? 5 : 10;
         }
     }
+    else {
+        // put scale unit on to of the last scale
+        int16_t ival = dice_up(_range);
+        int16_t x0 = CosCenteredDeg2(ival, _radius+30) - MYUCG->getStrWidth(VarioUnit->getName());
+        int16_t y0 = SinCenteredDeg2(ival, _radius+30);
+        MYUCG->setFont(ucg_font_fub11_hr);
+        MYUCG->setPrintPos(x0, y0);
+        MYUCG->setColor(COLOR_HEADER);
+        MYUCG->print(VarioUnit->getName());
+    }
+
+    MYUCG->setFontPosCenter();
+    MYUCG->setFont(ucg_font_fub14_hn);
     ESP_LOGI(FNAME, "scale from %d to %d", start, stop);
     bool draw_label = false;
     int zeroat = 10 * func->getZero();
