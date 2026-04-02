@@ -26,6 +26,7 @@ static int myfast_iroundf(float a) {
  * Pixel belonging to the area are those with coordinates in the range [x, x+w-1] and [y, y+h-1]
  *
  * Stack the current clipping range as global vs. local c.r.
+ * A stacked area never can enlarge the previous one!
  */
 
 void eglib_setClipRange(
@@ -43,13 +44,9 @@ void eglib_setClipRange(
     // Set a new one, it have to reduce the given
     //ESP_LOGI( "dl>", "S given x:%d y:%d w:%d h:%d", x, y, w, h );
     if ( (x >= eglib->drawing.clip_xmin) && (x < eglib->drawing.clip_xmax)) eglib->drawing.clip_xmin = x;
-    else eglib->drawing.clip_xmin = 0;
     if ( ((x+w) >= eglib->drawing.clip_xmin) && ((x+w) < eglib->drawing.clip_xmax)) eglib->drawing.clip_xmax = x+w;
-    else eglib->drawing.clip_xmax = eglib_GetWidth(eglib);
     if ( (y >= eglib->drawing.clip_ymin) && (y < eglib->drawing.clip_ymax)) eglib->drawing.clip_ymin = y;
-    else eglib->drawing.clip_ymin = 0;
     if ( ((y+h) >= eglib->drawing.clip_ymin) && ((y+h) < eglib->drawing.clip_ymax)) eglib->drawing.clip_ymax = y+h;
-    else eglib->drawing.clip_ymax = eglib_GetHeight(eglib);
     // ESP_LOGI( "dl>", "S xmin:%d xmax:%d ymin:%d ymax:%d", eglib->drawing.clip_xmin, eglib->drawing.clip_xmax, eglib->drawing.clip_ymin, eglib->drawing.clip_ymax );
     return;
 };
