@@ -468,7 +468,7 @@ void IpsDisplay::initDisplay() {
     }
     if ( FLAP && flapbox_enable.get() ) {
         if (!FLAPSgauge) {
-            FLAPSgauge = new FlapsBox(FLAP, DISPLAY_W - 29, AMIDY + (gflags.isPro ? 0 : 22), DISPLAY_H > DISPLAY_W);
+            FLAPSgauge = new FlapsBox(FLAP, DISPLAY_W - 29, AMIDY + (gflags.isPro ? 0 : (display_orientation.get() == DISPLAY_NINETY) ? 0 : 22), true);
         }
     }
     else {
@@ -512,7 +512,7 @@ void IpsDisplay::initDisplay() {
 
     if (vario_lower_gauge.get()) {
         if (!ALTgauge) {
-            ALTgauge = new Altimeter(INNER_RIGHT_ALIGN, LOWERYPOS, gflags.isPro);
+            ALTgauge = new Altimeter(INNER_RIGHT_ALIGN, LOWERYPOS, gflags.isPro || display_orientation.get() == DISPLAY_NINETY);
         }
     } else {
         if (ALTgauge) {
@@ -522,7 +522,7 @@ void IpsDisplay::initDisplay() {
     }
     if (vario_upper_gauge.get()) {
         if (!TOPgauge) {
-            TOPgauge = new MultiGauge(INNER_RIGHT_ALIGN, UPPERYPOS, (MultiGauge::MultiDisplay)vario_upper_gauge.get(), gflags.isPro);
+            TOPgauge = new MultiGauge(INNER_RIGHT_ALIGN, UPPERYPOS, (MultiGauge::MultiDisplay)vario_upper_gauge.get(), gflags.isPro || display_orientation.get() == DISPLAY_NINETY);
         }
         TOPgauge->setDisplay((MultiGauge::MultiDisplay)(vario_upper_gauge.get()));
     } else {
