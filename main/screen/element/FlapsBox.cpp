@@ -26,11 +26,11 @@ constexpr const int16_t BOX_WIDTH  = 28;
 // constexpr const int16_t BOX_LENGTH = 100; // w/o corners
 constexpr const int16_t BOX_CORNER = 8;
 constexpr const int16_t LABEL_SPACING = 20;
-// constexpr const float   PIX_PER_MPS = ((float)(BOX_LENGTH)-2*BOX_CORNER) / (Units::kmh_to_mps(26.f) + std::max(BOX_LENGTH-100, 0)/Units::kmh_to_mps(30.f)); // m/s range on flap box
+// constexpr const float   PIX_PER_MPS = ((float)(BOX_LENGTH)/2) / Units::kmh_to_mps(10.f); // 10 km/h range on half flap box
 constexpr const int     SOUND_LATENCY = 5000; // msec to wait before making sound at all
 
 int16_t FlapsBox::BOX_LENGTH = 100;
-float   FlapsBox::PIX_PER_MPS = 11.628f;
+float   FlapsBox::PIX_PER_MPS = 17.999f;
 
 /////////////////////////
 // FBoxStateHash
@@ -82,7 +82,7 @@ FlapsBox::FlapsBox(Flap* flap, int16_t cx, int16_t cy, bool vertical) :
 void FlapsBox::setLength(int16_t length)
 {
     BOX_LENGTH = length;
-    PIX_PER_MPS = ((float)(BOX_LENGTH)-2*BOX_CORNER) / (Units::kmh_to_mps(26.f) + std::max(BOX_LENGTH-100, 0)/Units::kmh_to_mps(30.f)); // 30 km/h range on half flap box
+    PIX_PER_MPS = ((float)(BOX_LENGTH)/2) / Units::kmh_to_mps(10.f); // 10 km/h range on half flap box
     ESP_LOGI(FNAME, "setLength %d, PIX_PER_MPS %.3f", BOX_LENGTH, PIX_PER_MPS);
 }
 
@@ -200,8 +200,8 @@ void FlapsBox::draw(mps_t ias)
     if ( _dirty ) {
         MYUCG->setColor(COLOR_HEADER);
         MYUCG->drawRFrame(_ref_x, _ref_y-BOX_LENGTH/2-BOX_CORNER, BOX_WIDTH, BOX_LENGTH + 2*BOX_CORNER, BOX_CORNER);
-        MYUCG->drawDisc(_ref_x, _ref_y + Units::kmh_to_mps(10)*PIX_PER_MPS, 3, EGLIB_DRAW_UPPER_LEFT|EGLIB_DRAW_LOWER_LEFT);
-        MYUCG->drawDisc(_ref_x, _ref_y - Units::kmh_to_mps(10)*PIX_PER_MPS, 3, EGLIB_DRAW_UPPER_LEFT|EGLIB_DRAW_LOWER_LEFT);
+        // MYUCG->drawDisc(_ref_x, _ref_y + Units::kmh_to_mps(10)*PIX_PER_MPS, 3, EGLIB_DRAW_UPPER_LEFT|EGLIB_DRAW_LOWER_LEFT);
+        // MYUCG->drawDisc(_ref_x, _ref_y - Units::kmh_to_mps(10)*PIX_PER_MPS, 3, EGLIB_DRAW_UPPER_LEFT|EGLIB_DRAW_LOWER_LEFT);
         MYUCG->setColor(ndl_color[needle_color.get()].color[0], ndl_color[needle_color.get()].color[1], ndl_color[needle_color.get()].color[2]);
         MYUCG->drawDisc(_ref_x, _ref_y, 3, EGLIB_DRAW_UPPER_LEFT|EGLIB_DRAW_LOWER_LEFT);
     }
