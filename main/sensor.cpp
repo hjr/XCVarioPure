@@ -535,7 +535,12 @@ void system_startup(void *args){
 	MYUCG->begin();
 	Display = new IpsDisplay( MYUCG );
 	Display->setupDisplay();
-	MenuRoot = new SetupRoot(Display); // the root setup menu, screens still disabled
+
+    // MBOX instance, used from everywher and depends on the display
+    BootUpScreen *boot_screen = BootUpScreen::create();
+    MessageBox::createMessageBox();
+
+    MenuRoot = new SetupRoot(Display); // the root setup menu, screens still disabled
 
 	Version V;
 	std::string ver( " Ver.: " );
@@ -551,8 +556,6 @@ void system_startup(void *args){
     // Start UI task responsible to manage screens and display. Needed to habe the boot screen and message box working
     xTaskCreate(&UiEventLoop, "UIloop", 6144, Rotary, 4, NULL); // increase stack by 1K
 
-    BootUpScreen *boot_screen = BootUpScreen::create();
-    MessageBox::createMessageBox();
     if (gflags.schedule_reboot) {
         MBOX->pushMessage(3, "Detecting XCV hardware");
     }
