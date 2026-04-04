@@ -29,7 +29,7 @@
 #include "protocol/NMEA.h"
 #include "protocol/nmea/XCVSyncMsg.h"
 #include "protocol/CANPeerCaps.h"
-#include "screen/SetupRoot.h"
+#include "screen/ScreenRoot.h"
 #include "screen/BootUpScreen.h"
 #include "screen/MessageBox.h"
 #include "screen/DrawDisplay.h"
