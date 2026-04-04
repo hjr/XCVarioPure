@@ -126,6 +126,7 @@ void MultiGauge::drawUnit() const
         unit_str = VarioUnit->getName();
         break;
     case GAUGE_OAT:
+        mode_str = "OAT";
         unit_str = TempUnit->getName();
         break;
     case GAUGE_HEADING:

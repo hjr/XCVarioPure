@@ -1069,6 +1069,7 @@ static void screens_menu_create_vario(SetupMenu *top) {
     tgauge->addEntry("GND Speed", MultiGauge::GAUGE_GND_SPEED);
     tgauge->addEntry("Speed2Fly", MultiGauge::GAUGE_S2F);
     tgauge->addEntry("Net. Vario", MultiGauge::GAUGE_NETTO);
+    tgauge->addEntry("OATemp.", MultiGauge::GAUGE_OAT);
     tgauge->addEntry("Heading", MultiGauge::GAUGE_HEADING);
     tgauge->addEntry("Slip Angle", MultiGauge::GAUGE_SLIP);
     top->addEntry(tgauge);
