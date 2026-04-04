@@ -36,12 +36,12 @@ constexpr const int16_t LINE_HEIGHT = 25;
 
 class PressureSensor;
 class SetupMenu;
-class SetupRoot;
+class ScreenRoot;
 
 
 class MenuEntry : public RotaryObserver
 {
-	friend class SetupRoot;
+	friend class ScreenRoot;
 
 public:
 	MenuEntry(const char *t);

@@ -86,7 +86,7 @@ int MyGliderPolarIndex; // Todo make private in S2F?
 AnalogInput *BatVoltage = nullptr;
 
 AdaptUGC *MYUCG = 0;  // ( SPI_DC, CS_Display, RESET_Display );
-SetupRoot  *MenuRoot = nullptr;
+ScreenRoot  *MenuRoot = nullptr;
 WatchDog_C *uiMonitor = nullptr;
 
 // Magnetic sensor / compass
@@ -540,7 +540,7 @@ void system_startup(void *args){
     BootUpScreen *boot_screen = BootUpScreen::create();
     MessageBox::createMessageBox();
 
-    MenuRoot = new SetupRoot(Display); // the root setup menu, screens still disabled
+    MenuRoot = new ScreenRoot(Display); // the root setup menu, screens still disabled
 
 	Version V;
 	std::string ver( " Ver.: " );
@@ -1010,7 +1010,7 @@ void system_startup(void *args){
     WindCalcTask::createWindResources();
 
     // Init the vario screens
-    SetupRoot::initScreens();
+    ScreenRoot::initScreens();
 
     if (flapbox_enable.get()) {
         FLAP = Flap::theFlap();  // check on FLAP pointer further on

@@ -26,7 +26,7 @@
 // set to zero for boot-up
 static uint32_t all_screens;
 
-SetupRoot::SetupRoot(IpsDisplay *display) :
+ScreenRoot::ScreenRoot(IpsDisplay *display) :
     SetupMenu("Setup Root", nullptr),
     _ui_mon_wd(this)
 {
@@ -42,24 +42,24 @@ SetupRoot::SetupRoot(IpsDisplay *display) :
     }
 }
 
-SetupRoot::~SetupRoot()
+ScreenRoot::~ScreenRoot()
 {
     detach();
 }
 
-void SetupRoot::display(int mode)
+void ScreenRoot::display(int mode)
 {
-    ESP_LOGI(FNAME,"SetupRoot display mode %d", mode);
+    ESP_LOGI(FNAME,"ScreenRoot display mode %d", mode);
 }
 
 // time-out on UI interaction while airborne and walking through setup
-void SetupRoot::barked()
+void ScreenRoot::barked()
 {
     int exitMenu = ButtonEvent(ButtonEvent::ESCAPE).raw;
     xQueueSend(uiEventQueue, &exitMenu, 0);
 }
 
-void SetupRoot::initScreens()
+void ScreenRoot::initScreens()
 {
     all_screens = 0;
     if ( screen_gmeter.get() ) {
@@ -72,7 +72,7 @@ void SetupRoot::initScreens()
     all_screens |= SCREEN_VARIO; // always
 }
 
-void SetupRoot::begin(MenuEntry *setup)
+void ScreenRoot::begin(MenuEntry *setup)
 {
     ESP_LOGI(FNAME,"SetupMenu %s", _title.c_str());
     // root will always own only one child
@@ -101,7 +101,7 @@ void SetupRoot::begin(MenuEntry *setup)
     SetupMenu::initGearWarning(); // Huh fixme
 }
 
-void SetupRoot::pushTop(MenuEntry *menu)
+void ScreenRoot::pushTop(MenuEntry *menu)
 {
     ESP_LOGI(FNAME,"Push Menu on top %s", menu->getTitle());
     gflags.inSetup = true;
@@ -117,7 +117,7 @@ void SetupRoot::pushTop(MenuEntry *menu)
     menu->enter();
 }
 
-void SetupRoot::exit(int levels)
+void ScreenRoot::exit(int levels)
 {
     ESP_LOGI(FNAME,"End Setup Menu");
     if ( uiMonitor ) {
@@ -153,7 +153,7 @@ void SetupRoot::exit(int levels)
     }
 }
 
-void SetupRoot::rot(int count)
+void ScreenRoot::rot(int count)
 {
     // ESP_LOGI(FNAME,"root: rot");
     if (rot_default.get() == 1) {
@@ -166,7 +166,7 @@ void SetupRoot::rot(int count)
     }
 }
 
-void SetupRoot::press()
+void ScreenRoot::press()
 {
     ESP_LOGI(FNAME,"root press active_srceen %d (0x%x)", active_screen, (unsigned)all_screens);
 
@@ -201,7 +201,7 @@ void SetupRoot::press()
     }
 }
 
-void SetupRoot::longPress()
+void ScreenRoot::longPress()
 {
     // enter setup from any screen
     if (!gflags.inSetup) {

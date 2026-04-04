@@ -23,11 +23,11 @@ enum ScreenTypes // bit field
 
 class IpsDisplay;
 
-class SetupRoot final : public SetupMenu, public WDBark_I
+class ScreenRoot final : public SetupMenu, public WDBark_I
 {
 public:
-    SetupRoot(IpsDisplay *display); // defines root
-    virtual ~SetupRoot();
+    ScreenRoot(IpsDisplay *display); // defines root
+    virtual ~ScreenRoot();
     void display(int mode=0) override;
     const char* value() const override { return nullptr; }
     void barked() override;
