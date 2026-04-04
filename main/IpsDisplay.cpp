@@ -769,11 +769,11 @@ void IpsDisplay::drawDisplay(){
     }
 
     // S2F bar
-    if (!(tick % 11) && S2FBARgauge && CRMOD.getCMode() ) {
+    if (!(tick % 11) && S2FBARgauge ) {
         // static float s=0; // check the bar code
         // s2fd = sin(s) * 42.;
         // s+=0.04;
-        S2FBARgauge->draw(Speed2Fly.getDelta(), s2f_ideal.get());
+        S2FBARgauge->draw(Speed2Fly.getDelta(), CRMOD.getCMode());
     }
 
     // MC val
@@ -865,10 +865,6 @@ void IpsDisplay::drawDisplay(){
         if (gflags.isPro) {
             if (VCSTATgauge) {
                 VCSTATgauge->draw();
-            }
-        } else {
-            if (S2FBARgauge && !CRMOD.getCMode()) {
-                S2FBARgauge->clear();
             }
         }
         WNDgauge->clearGauge();
