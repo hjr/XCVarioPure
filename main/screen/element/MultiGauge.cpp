@@ -106,7 +106,7 @@ void MultiGauge::drawUnit() const
     MYUCG->setFont(ucg_font_fub11_hr);
     MYUCG->setColor( COLOR_HEADER );
     const char *unit_str = "";
-    const char *mode_str = nullptr;
+    const char *mode_str = "";
     switch (_display) {
     case GAUGE_GND_SPEED:
         mode_str = "GndV";
@@ -136,7 +136,6 @@ void MultiGauge::drawUnit() const
         unit_str = "deg";
         break;
     default:
-        mode_str = "";
         break;
     }
     if ( _large ) {
