@@ -199,7 +199,7 @@ bool ArrowIndicator::drawOver(int16_t val,float a)
     if ( _arrowhead > 0 ) {
         MYUCG->drawTriangle(n.x_4, n.y_4, n.x_5, n.y_5, n.x_6, n.y_6);
     }
-    MYUCG->finshBuffering();
+    MYUCG->finishBuffering();
     MYUCG->drawTetragon(n.x_0, n.y_0, n.x_1, n.y_1, n.x_4, n.y_4, n.x_5, n.y_5);
     if ( _arrowhead > 0 ) {
         MYUCG->drawTriangle(n.x_4, n.y_4, n.x_5, n.y_5, n.x_6, n.y_6);
