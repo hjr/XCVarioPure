@@ -283,7 +283,7 @@ static void initRefs()
 	AMIDY = (DISPLAY_H)/2;
 	if ( display_orientation.get() == DISPLAY_NINETY ) {
 		INNER_RIGHT_ALIGN = DISPLAY_W - 74;
-		AMIDX = DISPLAY_W/2 - 43;
+		AMIDX = DISPLAY_W/2 - 46;
 		AVGOFFX = -2;
 	}
     else if ( !gflags.isPro ) {
@@ -426,7 +426,7 @@ void IpsDisplay::initDisplay() {
 
     if (!MAINgauge) {
         int16_t scale_geometry = (display_orientation.get() == DISPLAY_NINETY) ? 120 : (gflags.isPro ? 90 : 128 );
-        MAINgauge = new PolarGauge(AMIDX, AMIDY, scale_geometry, DISPLAY_H/2 - (gflags.isPro ? 20 : 36), 
+        MAINgauge = new PolarGauge(AMIDX, AMIDY, scale_geometry, DISPLAY_H/2 - ((gflags.isPro || display_orientation.get() == DISPLAY_NINETY) ? 20 : 36), 
                             gflags.isPro ? PolarGauge::XCVPRO : PolarGauge::CLUB);
     }
     MAINgauge->setUnit(VarioUnit->scale);
