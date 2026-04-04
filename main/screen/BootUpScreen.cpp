@@ -204,15 +204,15 @@ BootUpScreen::~BootUpScreen()
 // otherwise skip a part
 void BootUpScreen::finish(int part)
 {
-    if ( ! _branded ) {
-        MYUCG->setColor(1, COLOR_BLUE);
-        MYUCG->setColor(COLOR_WHITE);
-        MYUCG->setFont(ucg_font_fub11_hr, false);
-        MYUCG->setPrintPos(MYUCG->getDisplayWidth()/2 - 20, MYUCG->getDisplayHeight()/2 + 20);
-        MYUCG->print("club");
-        MYUCG->setColor(1, g_col_background, g_col_background, g_col_background);
-        _branded = true;
-    }
+    // if ( ! _branded ) {
+    //     MYUCG->setColor(1, COLOR_BLUE);
+    //     MYUCG->setColor(COLOR_WHITE);
+    //     MYUCG->setFont(ucg_font_fub11_hr, false);
+    //     MYUCG->setPrintPos(MYUCG->getDisplayWidth()/2 - 20, MYUCG->getDisplayHeight()/2 + 20);
+    //     MYUCG->print("club");
+    //     MYUCG->setColor(1, g_col_background, g_col_background, g_col_background);
+    //     _branded = true;
+    // }
     if ( gflags.schedule_reboot ) {
         SetupMenuDisplay bm("", show_boot_log);
         bm.display(part+1); // factory only case .. no display synch here
