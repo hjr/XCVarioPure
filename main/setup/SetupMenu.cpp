@@ -1176,11 +1176,13 @@ static void options_menu_create_screens(SetupMenu *top) { // dynamic!
         ncolor->addEntry("Red");
         top->addEntry(ncolor);
 
+#ifdef DEBUG_AND_TEST
         SetupMenuSelect* disva = new SetupMenuSelect("Color Variant", RST_NONE, nullptr, &display_variant);
         top->addEntry(disva);
         disva->setHelp("Display variant white on black (W/B) or black on white (B/W)");
         disva->addEntry("W/B");
         disva->addEntry("B/W");
+#endif
 	}
 
 	SetupMenu *tmp_menu = static_cast<SetupMenu*>(top->getEntry(0)); // vario
@@ -1328,22 +1330,15 @@ void system_menu_create_battery(SetupMenu *top) {
 
 
 void system_menu_create_hardware_type(SetupMenu *top) {
-	// UNIVERSAL, RAYSTAR_RFJ240L_40P, ST7789_2INCH_12P, ILI9341_TFT_18P
-	SetupMenuSelect *dtype = new SetupMenuSelect("HW Type", RST_NONE, nullptr, &display_type);
-	dtype->setHelp("Factory setup for corresponding display type used");
-	dtype->addEntry("UNIVERSAL");
-	dtype->addEntry("RAYSTAR");
-	dtype->addEntry("ST7789");
-	dtype->addEntry("ILI9341");
-	top->addEntry(dtype);
-
-	// Orientation   _display_orientation
+	// Display Orientation
 	SetupMenuSelect * diso = new SetupMenuSelect( "Orientation", RST_ON_EXIT, nullptr, &display_orientation );
 	top->addEntry( diso );
 	diso->setHelp( "Display Orientation.  NORMAL means Rotary on left, TOPDOWN means Rotary on right  (reboots). A change will reset the IMU reference.");
 	diso->addEntry( "NORMAL");
 	diso->addEntry( "TOPDOWN");
+#ifdef DEBUG_AND_TEST
 	diso->addEntry( "NINETY");
+#endif
 
 	SetupMenuSelect *dtest = new SetupMenuSelect("Display Test", RST_NONE, do_display_test, &display_test);
 	top->addEntry(dtest);
@@ -1559,12 +1554,12 @@ void system_menu_create(SetupMenu *sye) {
 	logg->addEntry("Both");
 	logg->addEntry("All Sensor Data");
 	sye->addEntry(logg);
-#endif
 
 	// SetupAction *devdump = new SetupAction("Device Setup Dump", deviceDumpAction, 0);
 	// sye->addEntry(devdump);
 	SetupMenuDisplay *info = new ShowFlightInfo("Flight Info");
 	sye->addEntry(info);
+#endif
 }
 
 void setup_create_root(SetupMenu *top) {

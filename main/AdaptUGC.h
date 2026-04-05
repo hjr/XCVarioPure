@@ -86,20 +86,10 @@ public:
 	void begin();
 	int16_t getDisplayWidth() const;
 	int16_t getDisplayHeight() const;
-	void invertDisplay( bool inv ) {invertDisp=inv;}          // solved in grafic layer
-	void setRedBlueSwap( bool swap ) {swapRB=swap;}       // no more needed, type of displays phased out
 	inline void undoClipRange() { eglib_undoClipRange(eglib);}
 	// color
-	inline void setColor( uint8_t idx, uint8_t r, uint8_t g, uint8_t b ) {
-		swapRB?
-			eglib_SetIndexColor(eglib, idx, invertDisp?~b:b, invertDisp?~g:g, invertDisp?~r:r):
-			eglib_SetIndexColor(eglib, idx, invertDisp?~r:r, invertDisp?~g:g, invertDisp?~b:b);
-	}
-	inline void setColor( uint8_t r, uint8_t g, uint8_t b ) {
-		swapRB?
-			eglib_SetIndexColor(eglib, 0, invertDisp?~b:b, invertDisp?~g:g, invertDisp?~r:r):
-			eglib_SetIndexColor(eglib, 0, invertDisp?~r:r, invertDisp?~g:g, invertDisp?~b:b);
-	}
+	inline void setColor( uint8_t idx, uint8_t r, uint8_t g, uint8_t b ) { eglib_SetIndexColor(eglib, idx, r, g, b); }
+	inline void setColor( uint8_t r, uint8_t g, uint8_t b ) { eglib_SetIndexColor(eglib, 0, r, g, b); }
 
 	// graphics
 	inline void drawLine(int16_t x0, int16_t y0, int16_t x1, int16_t y1)  { eglib_DrawLine(eglib, x0, y0, x1, y1); }
@@ -155,6 +145,4 @@ private:
 	int16_t eglib_print_xpos = 0, eglib_print_ypos = 0;
 	uint8_t eglib_print_dir = UCG_PRINT_DIR_LR;
 	eglib_t * eglib;
-	bool swapRB;
-	bool invertDisp;
 };
