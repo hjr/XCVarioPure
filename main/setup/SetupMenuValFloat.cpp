@@ -196,6 +196,10 @@ void SetupMenuValFloat::press()
 			MenuEntry::reBoot();
 		}
 	}
+	if ( bits._end_menu ) {
+		exit(2);
+		return;
+	}
 
 	exit();
 }

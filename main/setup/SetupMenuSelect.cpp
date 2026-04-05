@@ -107,7 +107,7 @@ void SetupMenuSelect::press()
 		}
 		_select_save = _select;
 	}
-	else if ( bits._end_menu ) {
+	if ( bits._end_menu ) {
 		exit(2);
 		return;
 	}

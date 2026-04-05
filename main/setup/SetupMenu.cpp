@@ -865,6 +865,7 @@ void wiper_menu_create(SetupMenu *top) {
 void bugs_item_create(SetupMenu *top) {
 	SetupMenuValFloat *bgs = new SetupMenuValFloat("Bugs", "%", nullptr, &bugs);
 	bgs->setHelp("Percent degradation of gliding performance due to bugs contamination");
+	bgs->setTerminateMenu();
 	top->addEntry(bgs);
 }
 
@@ -1569,10 +1570,12 @@ void setup_create_root(SetupMenu *top) {
 		mc->setHelp(
 				"Mac Cready value for optimum cruise speed or average climb rate, in same unit as the variometer");
 		mc->setPrecision(1);
+		mc->setTerminateMenu();
 		top->addEntry(mc);
 	} else {
 		SetupMenuValFloat *vol = new SetupMenuValFloat("Audio Volume", "%", nullptr, &audio_volume, RST_NONE, true);
 		vol->setHelp("Audio volume level for variometer tone on internal and external speaker");
+		vol->setTerminateMenu();
 		top->addEntry(vol);
 	}
 
@@ -1639,6 +1642,7 @@ SetupMenu* SetupMenu::createTopSetup() {
 SetupMenuValFloat* SetupMenu::createQNHMenu() {
 	SetupMenuValFloat *qnh = new SetupMenuValFloat("QNH", "", qnh_adj, &QNH, RST_NONE, false);
     qnh->setPrecision(2);
+	qnh->setTerminateMenu();
 	qnh->setHelp("QNH pressure value from ATC. On ground you may adjust to airfield altitude above MSL");
 	return qnh;
 }
