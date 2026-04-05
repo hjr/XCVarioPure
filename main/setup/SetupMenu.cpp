@@ -475,6 +475,7 @@ int factv_adj(SetupMenuValFloat *p) {
 	ESP_LOGI(FNAME,"factv_adj");
 	BatVoltage->setAdjust(factory_volt_adjust.get());
 	float bat = BatVoltage->get();
+	MYUCG->setFont(ucg_font_ncenR14_hr, true);
 	MYUCG->setPrintPos(1, 100);
 	MYUCG->setColor( COLOR_WHITE );
 	MYUCG->printf("%0.2f Volt", bat);
