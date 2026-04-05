@@ -52,8 +52,7 @@ static PressureSensor* factory(PressureSensor::PSens_Type type, SensorId id)
     switch (type) {
     case PressureSensor::SPL06_007:
     {
-        SPL06_007 *tmp = new SPL06_007(id);
-        ret = tmp;
+        ret = new SPL06_007(id);
         break;
     }
     case PressureSensor::BME280_SPI:

@@ -182,10 +182,12 @@ static void sensFeed(const NmeaPrtcl* prtcl) // called with full 10Hz rate from 
         delta += 1000;
     }
 
+    if ( !baroSensor || !teSensor || !asSensor ) { return; }
+
     sprintf(log + pos, "%d.%03d,%d,%.3f,%.3f,%.3f,%.2f", daymillis / 1000, daymillis % 1000, delta, 
             baroSensor->getHead()/100.f, teSensor->getHead()/100.f, asSensor->getHead(), Units::K_to_C(temp));
     pos = strlen(log);
-    if (accSensor) {
+    if (accSensor && gyroSensor) {
         vector_f acc = accSensor->getRef();
         vector_f gyro_deg = gyroSensor->getRef() * rad2deg(1.f);
         sprintf(log + pos, ",%.4f,%.4f,%.4f,%.4f,%.4f,%.4f", acc.x, acc.y, acc.z, gyro_deg.x, gyro_deg.y, gyro_deg.z);
@@ -699,11 +701,10 @@ void system_startup(void *args){
                 }
                 samples++;
                 sum += accelG;
-                ESP_LOGI(FNAME, "MPU %.2f", accelG[2]);
                 vTaskDelay(pdMS_TO_TICKS(10));
             }
             sum /= samples;
-            float accel = std::sqrtf(sum[0] * sum[0] + sum[1] * sum[1] + sum[2] * sum[2]);
+            float accel = sum.get_norm();
             char ahrs[10];
             sprintf(ahrs, "%.2f", accel);
             logged_tests += "IMU AHRS (" + std::string(ahrs) + "g): ";
@@ -711,6 +712,7 @@ void system_startup(void *args){
                 logged_tests += passed_text;
             } else {
                 logged_tests += failed_text;
+                ESP_LOGE(FNAME, "MPU g avg: %.2f", sum[2]);
                 selftestPassed = false;
             }
         }
@@ -758,14 +760,13 @@ void system_startup(void *args){
             MBOX->pushMessage(2, "AS Sensor: NOT FOUND");
             logged_tests += notfound_text;
             selftestPassed = false;
-            asSensor = nullptr;
         }
 
         // Configure pressure sensors
         ESP_LOGI(FNAME, "Absolute pressure sensors init, detect type of sensor type..");
         logged_tests += "Baro Sensor: ";
         baroSensor = PressureSensor::autoSetup(SensorId::STATIC_PRESSURE);
-        bool batest = true;
+        bool batest = false;
         celsius_t ba_t, te_t;
         pascal_t ba_p, te_p;
         if (baroSensor) {
@@ -773,32 +774,46 @@ void system_startup(void *args){
                 ESP_LOGE(FNAME, "HW Error: Self test Barometric Pressure Sensor failed!");
                 MBOX->pushMessage(2, "Baro Sensor: NOT FOUND");
                 selftestPassed = false;
-                batest = false;
-                logged_tests += notfound_text;
+                logged_tests += failed_text;
             } else {
                 printf("Baro Sensor test: T=%f P=%f\n", ba_t, ba_p);
                 logged_tests += passed_text;
+                batest = true;
             }
             SensorRegistry::registerSensor(baroSensor);
+        }
+        else {
+            ESP_LOGE(FNAME, "Error with barometric pressure sensor, no working sensor found!");
+            MBOX->pushMessage(2, "Baro Sensor: NOT FOUND");
+            logged_tests += notfound_text;
+            selftestPassed = false;
         }
 
         logged_tests += "TE Sensor: ";
         teSensor = PressureSensor::autoSetup(SensorId::TE_PRESSURE);
-        bool tetest = true;
+        bool tetest = false;
         if (teSensor) {
             if (!teSensor->selfTest(te_t, te_p)) {
                 ESP_LOGE(FNAME, "HW Error: Self test TE Pressure Sensor failed!");
                 MBOX->pushMessage(2, "TE Sensor: NOT FOUND");
                 selftestPassed = false;
-                tetest = false;
-                logged_tests += notfound_text;
+                logged_tests += failed_text;
             } else {
                 logged_tests += passed_text;
+                tetest = true;
             }
             printf("TE Sensor test: T=%f P=%f\n", te_t, te_p);
             SensorRegistry::registerSensor(teSensor);
         }
+        else {
+            ESP_LOGE(FNAME, "Error with TE pressure sensor, no working sensor found!");
+            MBOX->pushMessage(2, "TE Sensor: NOT FOUND");
+            logged_tests += notfound_text;
+            selftestPassed = false;
+        }
         if (tetest && batest) {
+            boot_screen->finish(2);
+
             ESP_LOGI(FNAME, "Both absolute pressure sensor TESTs SUCCEEDED, now test deltas");
             logged_tests += "TE/Baro Sens. T d. <4'C: ";
             if ((abs(ba_t - te_t) > 400.0) && !airborne.get()) {  // each sensor has deviations, and new PCB has more heat sources
@@ -824,7 +839,6 @@ void system_startup(void *args){
             } else {
                 logged_tests += passed_text;
             }
-            boot_screen->finish(2);
         } else {
             ESP_LOGI(FNAME, "Absolute pressure sensor TESTs failed");
         }
@@ -919,7 +933,7 @@ void system_startup(void *args){
         }
     }
 
-    if (Rotary->readBootupStatus()) {
+    if (Rotary->readBootupStatus() && baroSensor && teSensor && asSensor) {
         BootUpScreen::terminate();
         LeakTest::start(baroSensor, teSensor, asSensor);
     }
@@ -933,8 +947,8 @@ void system_startup(void *args){
         ESP_LOGI(FNAME, "Master Mode: QNH Autosetup, IAS=%3f (<50 km/h)", ias.get());
         // QNH autosetup
         meter_t airfield_elev = airfield_elevation.get();
-        ESP_LOGI(FNAME, "Airfield Elevation = %4.1f m (Hist Level = %d)", airfield_elev, baroSensor->getLevel());
-        if (airfield_elev > NO_ELEVATION && alt_select.get() == ALT_BARO_SENSOR) {
+        ESP_LOGI(FNAME, "Airfield Elevation = %4.1f m (Hist Level = %d)", airfield_elev, baroSensor ? baroSensor->getLevel() : 0);
+        if (airfield_elev > NO_ELEVATION && alt_select.get() == ALT_BARO_SENSOR && baroSensor) {
             pascal_t qnh_auto = Units::calcQNH(baroSensor->getAVG(300), airfield_elev);
             QNH.set(qnh_auto);
             ESP_LOGI(FNAME, "Auto QNH (direkt) = %4.2f hPa", qnh_auto);
@@ -994,10 +1008,11 @@ void system_startup(void *args){
         baroSensor->update(Clock::getMillis());
         teSensor->update(Clock::getMillis());
         asSensor->update(Clock::getMillis());
+
+        // TE vario "sensor" always needed, but last in line
+        bmpVario.setup();
+        SensorRegistry::registerSensor(&bmpVario);
     }
-    // TE vario "sensor" always needed, but last in line
-    bmpVario.setup();
-    SensorRegistry::registerSensor(&bmpVario);
 
     // apply a none default alt_select
     if ( alt_select.get() != ALT_BARO_SENSOR ) {
