@@ -1363,11 +1363,13 @@ void system_menu_create_hardware_rotary(SetupMenu *top) {
 	roinc->addEntry("2 indent", 2);
 
     // Rotary Default
+#ifdef DEBUG_AND_TEST
     SetupMenuSelect* rd = new SetupMenuSelect("Primary Use", RST_NONE, nullptr, &rot_default);
     top->addEntry(rd);
     rd->setHelp("Select value to be altered at rotary movement outside of setup menu (reboots)");
     rd->addEntry("Volume");
     rd->addEntry("MC Value");
+#endif
 
     SetupMenuSelect *sact = new SetupMenuSelect("Enter Setup by", RST_NONE, nullptr, &menu_long_press);
 	top->addEntry(sact);
