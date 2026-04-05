@@ -85,17 +85,17 @@ bool MpuImu::probe() {
 
 bool MpuImu::setup() {
     ESP_LOGI(FNAME, "MPU initialize");
-    myMPU.initialize();       // this will initialize the chip and set default configurations
-    myMPU.setSampleRate(50);  // in (Hz)
-    myMPU.setAccelFullScale(mpud::ACCEL_FS_8G);
-    myMPU.setGyroFullScale(mpud::GYRO_FS_250DPS);
-    myMPU.setDigitalLowPassFilter(mpud::DLPF_5HZ);  // smoother data
+    esp_err_t err = myMPU.initialize();       // this will initialize the chip and set default configurations
+    err |= myMPU.setSampleRate(50);  // in (Hz)
+    err |= myMPU.setAccelFullScale(mpud::ACCEL_FS_8G);
+    err |= myMPU.setGyroFullScale(mpud::GYRO_FS_250DPS);
+    err |= myMPU.setDigitalLowPassFilter(mpud::DLPF_5HZ);  // smoother data
     axes_i16_abi tmp = gyro_bias.get(); // will get refined on Rest condition while on the ground
-    myMPU.setGyroOffset(mpud::raw_axes_t(tmp.x, tmp.y, tmp.z));
+    err |= myMPU.setGyroOffset(mpud::raw_axes_t(tmp.x, tmp.y, tmp.z));
     ESP_LOGI(FNAME, "MPU current gyro bias: %d/%d/%d", tmp.x, tmp.y, tmp.z);
     tmp = accl_bias.get(); // only set this properly through the calibration procedure, otherwise acc bias goes awkwardly sideways
-    myMPU.setAccelOffset(mpud::raw_axes_t(tmp.x, tmp.y, tmp.z));
-    ESP_LOGI(FNAME, "MPU current accel bias:%d/%d/%d", tmp.x, tmp.y, tmp.z);
+    err |= myMPU.setAccelOffset(mpud::raw_axes_t(tmp.x, tmp.y, tmp.z));
+    ESP_LOGI(FNAME, "MPU current accel bias: %d/%d/%d", tmp.x, tmp.y, tmp.z);
 
     // Check on heat control availability
     if ( CAN && !CAN->hasSlopeSupport() ) {
@@ -110,7 +110,7 @@ bool MpuImu::setup() {
         _ref_rot = getDefaultImuReference();
     }
 
-    return true;
+    return err == ESP_OK;
 }
 
 ImuType MpuImu::getImuId() {
