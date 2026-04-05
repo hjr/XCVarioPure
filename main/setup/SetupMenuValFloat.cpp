@@ -67,7 +67,7 @@ static const char* unitFromQuantity(quantity_t q)
 
 
 SetupMenuValFloat::SetupMenuValFloat( const char* title, const char *unit, int (*action)( SetupMenuValFloat *p ), 
-	bool end_menu, SetupNG<float> *anvs, e_restart_mode_t restart, bool live_update) :
+		SetupNG<float> *anvs, e_restart_mode_t restart, bool live_update) :
 	MenuEntry(title),
 	_action(action),
 	_nvs(anvs)
@@ -91,7 +91,6 @@ SetupMenuValFloat::SetupMenuValFloat( const char* title, const char *unit, int (
 	}
 
 	bits._restart = restart;
-	bits._end_menu = end_menu;
 	bits._precision = 2;
 	bits._live_update = live_update;
 	if( _step >= 1 ) {
@@ -198,9 +197,5 @@ void SetupMenuValFloat::press()
 		}
 	}
 
-	if( bits._end_menu ) {
-		exit(-1);
-		return;
-	}
 	exit();
 }

@@ -36,27 +36,27 @@ int start_weight_adj(SetupMenuValFloat *p) {
 }
 
 static void glider_menu_create_polarpoints(SetupMenu *top) {
-	SetupMenuValFloat *wil = new SetupMenuValFloat("Ref Wingload", "kg/m2", nullptr, false, &polar_wingload);
+	SetupMenuValFloat *wil = new SetupMenuValFloat("Ref Wingload", "kg/m2", nullptr, &polar_wingload);
 	wil->setHelp(
 			"Wingloading that corresponds to the 3 value pairs for speed/sink of polar");
 	top->addEntry(wil);
-	SetupMenuValFloat *pov1 = new SetupMenuValFloat("Speed 1", "kmh", nullptr, false, &polar_speed1);
+	SetupMenuValFloat *pov1 = new SetupMenuValFloat("Speed 1", "kmh", nullptr, &polar_speed1);
 	pov1->setHelp("Speed 1, near minimum sink from polar e.g. 80 km/h");
 	top->addEntry(pov1);
-	SetupMenuValFloat *pos1 = new SetupMenuValFloat("Sink  1", "mps", nullptr, false, &polar_sink1);
+	SetupMenuValFloat *pos1 = new SetupMenuValFloat("Sink  1", "mps", nullptr, &polar_sink1);
 	top->addEntry(pos1);
-	SetupMenuValFloat *pov2 = new SetupMenuValFloat("Speed 2", "kmh", nullptr, false, &polar_speed2);
+	SetupMenuValFloat *pov2 = new SetupMenuValFloat("Speed 2", "kmh", nullptr, &polar_speed2);
 	pov2->setHelp("Speed 2 for a moderate cruise from polar e.g. 120 km/h");
 	top->addEntry(pov2);
-	SetupMenuValFloat *pos2 = new SetupMenuValFloat("Sink  2", "mps", nullptr, false, &polar_sink2);
+	SetupMenuValFloat *pos2 = new SetupMenuValFloat("Sink  2", "mps", nullptr, &polar_sink2);
 	top->addEntry(pos2);
-	SetupMenuValFloat *pov3 = new SetupMenuValFloat("Speed 3", "kmh", nullptr, false, &polar_speed3);
+	SetupMenuValFloat *pov3 = new SetupMenuValFloat("Speed 3", "kmh", nullptr, &polar_speed3);
 	pov3->setHelp("Speed 3 for a fast cruise from polar e.g. 170 km/h");
 	top->addEntry(pov3);
-	SetupMenuValFloat *pos3 = new SetupMenuValFloat("Sink  3", "mps", nullptr, false, &polar_sink3);
+	SetupMenuValFloat *pos3 = new SetupMenuValFloat("Sink  3", "mps", nullptr, &polar_sink3);
 	top->addEntry(pos3);
 
-	SetupMenuValFloat *staspe = new SetupMenuValFloat("Stall Speed", "", nullptr, false, &polar_stall_speed);
+	SetupMenuValFloat *staspe = new SetupMenuValFloat("Stall Speed", "", nullptr, &polar_stall_speed);
 	staspe->setHelp("Stall speed estimate for the glider at reference wing-load. Feel free to adjust");
 	top->addEntry(staspe);
 }
@@ -84,19 +84,19 @@ void glider_menu_create(SetupMenu *top) {
 		pa->setHelp("Adjust the polar at 3 points, in the commonly used metric system");
 		top->addEntry(pa);
 
-		SetupMenuValFloat *maxbal = new SetupMenuValFloat("Max Ballast", "liters", nullptr, false, &polar_max_ballast);
+		SetupMenuValFloat *maxbal = new SetupMenuValFloat("Max Ballast", "liters", nullptr, &polar_max_ballast);
 		top->addEntry(maxbal);
 
-		SetupMenuValFloat *wingarea = new SetupMenuValFloat("Wing Area", "m2", nullptr, false, &polar_wingarea);
+		SetupMenuValFloat *wingarea = new SetupMenuValFloat("Wing Area", "m2", nullptr, &polar_wingarea);
 		top->addEntry(wingarea);
 
-		SetupMenuValFloat *fixball = new SetupMenuValFloat("Empty Weight", "kg", start_weight_adj, false, &empty_weight, RST_NONE, true);
+		SetupMenuValFloat *fixball = new SetupMenuValFloat("Empty Weight", "kg", start_weight_adj, &empty_weight, RST_NONE, true);
 		fixball->setPrecision(0);
 		fixball->setHelp("Net rigged weight of the glider, according to the weight and balance plan");
 		fixball->setNeverInline();
 		top->addEntry(fixball);
 
-		SetupMenuValFloat *vmax = new SetupMenuValFloat("Maximum Speed", "", nullptr, false, &v_max);
+		SetupMenuValFloat *vmax = new SetupMenuValFloat("Maximum Speed", "", nullptr, &v_max);
 		vmax->setHelp("Configure maximum speed for corresponding aircraft type");
 		top->addEntry(vmax);
 
@@ -126,7 +126,7 @@ void glider_selection_create(SetupMenu *top) {
     SetupMenuSelect *space = new SetupMenuSelect("", RST_NONE);
     space->lock();
     top->addEntry(space);
-    SetupMenuSelect *glt = new SetupMenuSelect("Type", RST_NONE, polar_select, &glider_type, true, true);
+    SetupMenuSelect *glt = new SetupMenuSelect("Type", RST_NONE, polar_select, &glider_type, true);
     fill_glider_selection(glt);
     glt->setHelp("Select your type of glider from the list of pre-installed polars");
     top->addEntry(glt);

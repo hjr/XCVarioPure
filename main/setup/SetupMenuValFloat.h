@@ -14,8 +14,8 @@
 class SetupMenuValFloat:  public MenuEntry {
 public:
 	SetupMenuValFloat() : MenuEntry("") { _unit = ""; };
-	SetupMenuValFloat(  const char *title, const char *unit, int (*action)(SetupMenuValFloat *p), 
-		bool end_menu, SetupNG<float> *anvs, e_restart_mode_t restart=RST_NONE, bool life_update=false);
+	SetupMenuValFloat( const char *title, const char *unit, int (*action)(SetupMenuValFloat *p), 
+		SetupNG<float> *anvs, e_restart_mode_t restart=RST_NONE, bool life_update=false);
 	virtual ~SetupMenuValFloat() = default;
 	void enter() override;
 	void display(int mode=0) override;

@@ -203,7 +203,7 @@ static void flap_menu_add_level(SetupMenu *top) // dynamic!
         top->addEntry( flab );
 
         // the minimum speed
-        SetupMenuValFloat *minspeed = new SetupMenuValFloat("Minimum Speed", "", select_speed_action, false, new_level_speed);
+        SetupMenuValFloat *minspeed = new SetupMenuValFloat("Minimum Speed", "", select_speed_action, new_level_speed);
         minspeed->setHelp("Minimum speed for the flap level's speed band");
         minspeed->setPrecision(0);
         top->addEntry( minspeed );
@@ -265,7 +265,7 @@ static void one_flap_level(SetupMenu *top) // dynamic!
         top->addEntry( flab );
 
         // the minimum speed
-        SetupMenuValFloat *minspeed = new SetupMenuValFloat("Minimum Speed", "", level_speed_action, false, FLAP->getSpeedNVS(lid) );
+        SetupMenuValFloat *minspeed = new SetupMenuValFloat("Minimum Speed", "", level_speed_action, FLAP->getSpeedNVS(lid) );
         minspeed->setHelp("Minimum speed for the flap level's speed band");
         minspeed->setPrecision(0);
         top->addEntry( minspeed );
@@ -285,7 +285,7 @@ void flap_levels_menu_create(SetupMenu* top) // dynamic!
             new_level_speed = new SetupNG<kmh_t>("foo", 100.f, false, SYNC_NONE, VOLATILE, nullptr, quantity_t::QUANT_HSLEGACY, &polar_speed_limits);
         }
         top->setDynContent();
-        flgnd = new SetupMenuValFloat("Takeoff Flap",".", nullptr, false, &flap_takeoff  );
+        flgnd = new SetupMenuValFloat("Takeoff Flap",".", nullptr, &flap_takeoff  );
         flgnd->setHelp("Flap index of flap position to be set for takeoff");
         top->addEntry( flgnd );
         SetupMenu *addlev = new SetupMenu("Add Level", flap_menu_add_level);

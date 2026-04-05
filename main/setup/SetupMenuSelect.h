@@ -23,7 +23,7 @@ class SetupMenuSelect : public MenuEntry
 public:
 	SetupMenuSelect() = delete;
 	explicit SetupMenuSelect( const char* title, e_restart_mode_t restart=RST_NONE, int (*exit_action)(SetupMenuSelect *p) = nullptr,
-		SetupNG<int> *anvs=nullptr, bool ext_handler=false, bool end_menu=false );
+		SetupNG<int> *anvs=nullptr, bool ext_handler=false);
 	virtual ~SetupMenuSelect() = default;
 	void enter() override;
 	void display(int mode=0) override;
