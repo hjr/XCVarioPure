@@ -113,7 +113,7 @@ void S2FBar::draw(mps_t s2fd, bool cruise)
         // force redraw of all
         _prev_s2f_level = 0;
     }
-    if ( cruise == _prev_cruise_mode && level == _prev_s2f_level ) {
+    if ( cruise == _prev_cruise_mode && level == _prev_s2f_level && !_dirty ) {
         return;
     }
     if ( cruise != _prev_cruise_mode ) {
@@ -140,8 +140,7 @@ void S2FBar::draw(mps_t s2fd, bool cruise)
                     // ESP_LOGI(FNAME,"s2fbar draw %d,%d", i, (i*inc < 0)?0:inc);
                 }
             }
-            _dirty = true; // redraw number
-        }
+       }
 
         // Fill the gap with a block if the speed is close to the target, otherwise clear it
         drawBlock(level);
