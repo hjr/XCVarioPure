@@ -262,9 +262,13 @@ size_t AdaptUGC::printNumber(unsigned long n, uint8_t base)
 // use the clip are definition to define the area to be buffered
 void AdaptUGC::startBuffering( int16_t x, int16_t y, int16_t w, int16_t h )
 {
+    if (eglib->do_buffer) {
+        // That is an intended use case, just continue with the first hand defined area, do not start a new one
+        return;
+    }
     eglib_setClipRange(eglib, x, y, w, h );
     eglib->do_buffer = true;
-	ESP_LOGI(FNAME, "startBuffering() x:%d y:%d w:%d h:%d  clip x:%d y:%d w:%d h:%d", x, y, w, h, eglib->drawing.clip_xmin, eglib->drawing.clip_ymin, eglib->drawing.clip_xmax - eglib->drawing.clip_xmin, eglib->drawing.clip_ymax - eglib->drawing.clip_ymin );
+    ESP_LOGI(FNAME, "startBuffering() x:%d y:%d w:%d h:%d  clip x:%d y:%d w:%d h:%d", x, y, w, h, eglib->drawing.clip_xmin, eglib->drawing.clip_ymin, eglib->drawing.clip_xmax - eglib->drawing.clip_xmin, eglib->drawing.clip_ymax - eglib->drawing.clip_ymin );
 
     // prefill with the background color
     uint8_t *p = eglib->drawing.buffer;
