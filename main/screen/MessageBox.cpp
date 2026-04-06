@@ -21,7 +21,6 @@ extern AdaptUGC *MYUCG;
 MessageBox *MBOX; // the global representation
 
 const int CLOCK_DIVIDER = 8;
-constexpr const int16_t MSG_BOX_HEIGHT = 26;
 
 // A message is represented throught
 // - alert level (1,2,3,4)
@@ -37,9 +36,7 @@ void MessageBox::createMessageBox()
 
 MessageBox::MessageBox() :
     Clock_I(CLOCK_DIVIDER),
-    RotaryObserver(),
-    width(MYUCG->getDisplayWidth()),
-    height(MYUCG->getDisplayHeight())
+    RotaryObserver()
 {
 }
 
@@ -86,6 +83,8 @@ void MessageBox::popMessage()
 // returns true in case a message is now on the display
 bool MessageBox::nextMsg()
 {
+    const int16_t dheight = MYUCG->getDisplayHeight();
+    const int16_t dwidth = MYUCG->getDisplayWidth();
     // clear message area
     MYUCG->undoClipRange();
     removeMsg();
@@ -118,28 +117,28 @@ bool MessageBox::nextMsg()
     else if ( current->alert_level >= 3 ) {
         MYUCG->setColor(COLOR_RED);
     }
-    MYUCG->drawHLine(0, height - 26, width);
+    MYUCG->drawHLine(0, dheight - MSG_BOX_HEIGHT, dwidth);
     MYUCG->setFont(ucg_font_ncenR14_hr, true);
     _print_pos = 1;
     if  ( current->alert_level == 4 ) {
         // center text
-        int w = MYUCG->getStrWidth(current->text.c_str());
-        if ( w < width ) {
-            _print_pos = (width - w) / 2;
+        int16_t w = MYUCG->getStrWidth(current->text.c_str());
+        if ( w < dwidth ) {
+            _print_pos = (dwidth - w) / 2;
         }
     }
-    MYUCG->setPrintPos(_print_pos, height-2);
+    MYUCG->setPrintPos(_print_pos, dheight-2);
     MYUCG->setColor(COLOR_WHITE);
     MYUCG->setFontPosBottom();
 
     MYUCG->print(current->text.c_str());
 
     // Exclude the message area for the rest of the system
-    MYUCG->setClipRange(0, 0, width, height - MSG_BOX_HEIGHT);
+    MYUCG->setClipRange(0, 0, dwidth, dheight - MSG_BOX_HEIGHT);
 
     // set time counter
     _start_scroll = 0;
-    _nr_scroll = std::max(MYUCG->getStrWidth(current->text.c_str()) - width +2, 0);
+    _nr_scroll = std::max(MYUCG->getStrWidth(current->text.c_str()) - dwidth +2, 0);
     _msg_to = (current->_to > 0) ? current->_to :  current->alert_level * 10; // x 10 sec
     _msg_to *= (1000/(CLOCK_DIVIDER*Clock::TICK_ATOM)); // convert to ticks
 
@@ -149,7 +148,7 @@ bool MessageBox::nextMsg()
 void MessageBox::removeMsg()
 {
     MYUCG->setColor(COLOR_BLACK);
-    MYUCG->drawBox(0, height - MSG_BOX_HEIGHT, width, MSG_BOX_HEIGHT);
+    MYUCG->drawBox(0, MYUCG->getDisplayHeight() - MSG_BOX_HEIGHT, MYUCG->getDisplayWidth(), MSG_BOX_HEIGHT);
     MYUCG->setColor(COLOR_WHITE);
 }
 
@@ -158,6 +157,9 @@ void MessageBox::removeMsg()
 // returns true when the message box has finished
 bool MessageBox::draw()
 {
+    const int16_t dheight = MYUCG->getDisplayHeight();
+    const int16_t dwidth = MYUCG->getDisplayWidth();
+
     ESP_LOGI(FNAME, "draw message");
     if ( _msg_to <= 0 ) {
         if ( ! nextMsg() ) {
@@ -178,9 +180,9 @@ bool MessageBox::draw()
             MYUCG->setFont(ucg_font_ncenR14_hr, true);
             MYUCG->setColor(COLOR_WHITE);
             MYUCG->setFontPosBottom();
-            MYUCG->setPrintPos(_print_pos, height-2);
+            MYUCG->setPrintPos(_print_pos, dheight-2);
             MYUCG->print(current->text.c_str());
-            MYUCG->setClipRange(0, 0, width, height - MSG_BOX_HEIGHT);
+            MYUCG->setClipRange(0, 0, dwidth, dheight - MSG_BOX_HEIGHT);
         }
     }
     else {
@@ -195,9 +197,9 @@ bool MessageBox::draw()
             }
             MYUCG->setFont(ucg_font_ncenR14_hr, true);
             MYUCG->setFontPosBottom();
-            MYUCG->setPrintPos(_print_pos, height-2);
+            MYUCG->setPrintPos(_print_pos, dheight-2);
             MYUCG->print(current->text.c_str());
-            MYUCG->setClipRange(0, 0, width, height - MSG_BOX_HEIGHT);
+            MYUCG->setClipRange(0, 0, dwidth, dheight - MSG_BOX_HEIGHT);
             MYUCG->setColor(COLOR_WHITE);
         }
     }
