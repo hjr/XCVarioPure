@@ -1451,6 +1451,17 @@ size_t eglib_DrawText(eglib_t *eglib, coordinate_t x, coordinate_t y, const char
   return total_advance;
 }
 
+coordinate_t eglib_GetCharWidth(eglib_t *eglib, const char c) {
+  const struct glyph_t *glyph;
+  glyph = eglib_GetGlyph(eglib, c );
+  if(glyph == NULL){
+    return eglib->drawing.font->pixel_size;
+  }
+  else{
+    return glyph->advance;
+  }
+}
+
 coordinate_t eglib_GetTextWidth(eglib_t *eglib, const char *utf8_text) {
   // ESP_LOGI( "getWidth",">%s<",utf8_text );
   coordinate_t width;

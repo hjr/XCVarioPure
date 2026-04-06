@@ -999,6 +999,9 @@ size_t eglib_DrawText(eglib_t *eglib, coordinate_t x, coordinate_t y, const char
  */
 #define eglib_DrawTextCentered(eglib, x, y, utf8_text) eglib_DrawText(eglib, x - eglib_GetTextWidth(eglib, utf8_text) / 2, y, utf8_text)
 
+// retrieve one char width
+coordinate_t eglib_GetCharWidth(eglib_t *eglib, const char c);
+
 /**
  * Return the width in pixels of the given UTF-8 text.
  *

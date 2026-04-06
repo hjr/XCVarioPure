@@ -115,8 +115,9 @@ public:
 	inline size_t print(int i, int base=10) { return print(long(i), base); }
 	inline void setPrintPos(int16_t x, int16_t y) { eglib_print_xpos = x; eglib_print_ypos = y; };
 	inline void setPrintDir(uint8_t d) { eglib_print_dir = d; }
-	inline int16_t getStrWidth( const char * s ) { return ( eglib_GetTextWidth(eglib, s) ); };
-	inline int16_t IdxToTextWidth(const char *text, int16_t width_limit) { return ( eglib_IdxToTextWidth(eglib, text, width_limit) ); }
+	inline int16_t getCharWidth( const char c ) { return eglib_GetCharWidth(eglib, c); };
+	inline int16_t getStrWidth( const char *s ) { return eglib_GetTextWidth(eglib, s); };
+	inline int16_t IdxToTextWidth(const char *text, int16_t width_limit) { return eglib_IdxToTextWidth(eglib, text, width_limit); }
 
 	// Font related
 	void setFont(const uint8_t *f, bool filled=false );
