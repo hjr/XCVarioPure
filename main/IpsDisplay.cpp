@@ -428,7 +428,7 @@ void IpsDisplay::initDisplay() {
     MAINgauge->setColor(needle_color.get());
     if (vario_mc_gauge.get() ) {
         if (!S2FBARgauge) {
-            S2FBARgauge = new S2FBar(DISPLAY_W - 15, AMIDY - 64, 28, 8);
+            S2FBARgauge = new S2FBar(DISPLAY_W - 15, AMIDY - 61, 28, 8);
         }
     }
     else {
@@ -462,7 +462,7 @@ void IpsDisplay::initDisplay() {
     }
     if ( FLAP && flapbox_enable.get() ) {
         if (!FLAPSgauge) {
-            FLAPSgauge = new FlapsBox(FLAP, DISPLAY_W - 29, AMIDY + (gflags.isPro ? 0 : (display_orientation.get() == DISPLAY_NINETY) ? 0 : 22), true);
+            FLAPSgauge = new FlapsBox(FLAP, DISPLAY_W - 29, AMIDY + (gflags.isPro ? 0 : (display_orientation.get() == DISPLAY_NINETY) ? 0 : 17), true);
         }
     }
     else {
@@ -531,7 +531,7 @@ void IpsDisplay::initDisplay() {
             S2FBARgauge->setWidth(36);
         } else {
             if (FLAPSgauge) {
-                S2FBARgauge->setRef(DISPLAY_W - 15, AMIDY - 64);
+                S2FBARgauge->setRef(DISPLAY_W - 15, AMIDY - 61);
                 S2FBARgauge->setWidth(28);
             } else {
                 S2FBARgauge->setRef(DISPLAY_W - 17, AMIDY);

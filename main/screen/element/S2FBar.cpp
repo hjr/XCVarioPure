@@ -90,11 +90,11 @@ void S2FBar::drawCircle()
 {
     // draw circle
     MYUCG->setColor(COLOR_WGREY);
-    MYUCG->drawCircle(_ref_x, _ref_y, SYMBOL_SIZE, UCG_DRAW_ALL);
-    MYUCG->drawCircle(_ref_x, _ref_y, SYMBOL_SIZE - 1, UCG_DRAW_ALL);
-    int tm = _ref_x - SYMBOL_SIZE + 1;
+    MYUCG->drawCircle(_ref_x, _ref_y, SYMBOL_SIZE, UCG_DRAW_UPPER_RIGHT | UCG_DRAW_LOWER_RIGHT | UCG_DRAW_LOWER_LEFT);
+    MYUCG->drawCircle(_ref_x, _ref_y, SYMBOL_SIZE - 1, UCG_DRAW_UPPER_RIGHT | UCG_DRAW_LOWER_RIGHT | UCG_DRAW_LOWER_LEFT);
+    int tipx = _ref_x - SYMBOL_SIZE;
     constexpr const int16_t S2FTS = SYMBOL_SIZE/2;
-    MYUCG->drawTriangle(tm - S2FTS, _ref_y + 2, tm + S2FTS, _ref_y + 2, tm, _ref_y - S2FTS);
+    MYUCG->drawTriangle(tipx - S2FTS +2, _ref_y + S2FTS +1, tipx + S2FTS+2, _ref_y + S2FTS -2, tipx, _ref_y);
 
 }
 
