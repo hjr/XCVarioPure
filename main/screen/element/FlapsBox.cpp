@@ -123,6 +123,7 @@ void FlapsBox::drawLabels(FBoxStateHash cs)
     int16_t green_top =  _ref_y + cs.top_pix;
     if ( green_top < _ref_y + boxh ) { // the green part
         MYUCG->setColor(COLOR_DGREEN);
+        MYUCG->drawBox(boxx, green_top, boxw+1, _ref_y - green_top + cs.bottom_pix+1);
     }
 
     // foreground labels
