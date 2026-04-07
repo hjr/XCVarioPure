@@ -45,7 +45,7 @@ public:
     inline degree_t getCircleOmegaENUDeg() { return rad2deg(-circle_omega); }
     inline Quaternion getAHRSQuaternion() { return att_quat; }
     inline vector_f getAttVector() { return att_vector; }
-    float getGload() const { return getHead().z; }
+    inline float getGload() const { return getRef().z; }
     float getVerticalAcceleration();
     MpuImu& getMpu() const { return _my_mpu; }
     void resetBias() { _my_mpu._MPUdev.setAccelOffset(); }
@@ -64,6 +64,8 @@ private:
     Quaternion d_gyro = Quaternion();
     vector_f att_vector = {};
     vector_f euler_rad = {};
+    // g-load
+    LowPassFilterT<vector_f> _lpf_accel;
     // slip angle
     LowPassFilterT<float> _lpf_slip_angle;
     // calm counter

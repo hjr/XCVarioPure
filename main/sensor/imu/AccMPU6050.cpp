@@ -29,6 +29,7 @@ static vector_f acc_buffer[ (SENSOR_HISTORY_DURATION_MS / DUTY_CYCLE_MS) + 1 ];
 AccMPU6050::AccMPU6050(MpuImu &mmpu) : 
     SensorTP<vector_f>(acc_buffer, DUTY_CYCLE_MS),
     _my_mpu(mmpu),
+    _lpf_accel(LowPassFilterT<vector_f>::alphaFromTau(1.5, DUTY_CYCLE_MS / 1000.f)),
     _lpf_slip_angle(LowPassFilterT<float>::alphaFromTau(1.5, DUTY_CYCLE_MS / 1000.f))
 {
     _id = SensorId::ACC_INERTIAL | SensorFlags::SENSOR_LOCAL;
@@ -36,7 +37,8 @@ AccMPU6050::AccMPU6050(MpuImu &mmpu) :
     // push a single previous value
     pushAndPublish(vector_f(1,0,0), 0);
 
-    // Load 
+    // accelerometer filter init.
+    _lpf_accel.reset({0.f,0.f,1.f});
 }
 
 bool AccMPU6050::doRead(vector_f& val) {
@@ -72,7 +74,7 @@ float AccMPU6050::getVerticalAcceleration() {
     // lamda := (accel * att_vector) / norm(att_vector)^2 // att_vector is normalized
     // lamda * att_vector would be the projection point, but here is only the g multiple requested
 
-    return getHead().dot(att_vector);
+    return getRef().dot(att_vector);
 }
 
 static void update_fused_vector(vector_f& fused, float gyro_trust, vector_f& petal_force, const Quaternion& omega_step)
@@ -102,8 +104,8 @@ void AccMPU6050::postProcess() {
     constexpr const float dt = 0.1f; // seconds, a reasonable assumption
 
     float gravity_trust = 1;
-    const vector_f accel = getHead();
-    _processed = accel; // todo subtraced soft bias
+    const vector_f& accel = *getHeadPtr();
+    _processed = _lpf_accel.filter(accel); // todo subtraced soft bias
     const vector_f& gyro = gyroSensor->getRef();
     // ESP_LOGI( FNAME, " Accel: %.3f,%.3f,%.3f Gyro: %.3f,%.4f,%.4f dt: %.4f", accel.x, accel.y, accel.z, gyro.x, gyro.y, gyro.z, dt );
 
@@ -112,9 +114,7 @@ void AccMPU6050::postProcess() {
 
     rad_t roll = 0, pitch = 0;
     if (airborne.get()) {
-        float loadFactor = accel.get_norm();
-        float lf = loadFactor > 2.0 ? 2.0 : loadFactor;
-        loadFactor = lf < 0 ? 0 : lf;  // limit to 0..2g
+        float loadFactor = std::clamp(_processed.z, 0.f, 2.f);
         // rotation from navigation to body frame
         vector_f z_nav_in_body = att_quat.rotate(vector_f{0,0,1});
         circle_omega = gyro.dot(z_nav_in_body);
@@ -124,7 +124,7 @@ void AccMPU6050::postProcess() {
         if (ahrs_roll_check.get()) {
             // expected extra load c = sqrt(aa+bb) - 1, here a = 1/9.81 x atan, b=1
             float loadz_exp = std::sqrtf(tanw * tanw / (Units::g0 * Units::g0) + 1.f) - 1.f;
-            float loadz_check = (loadz_exp > 0.f) ? std::min(std::max((accel.z - .99f) / loadz_exp, 0.f), 1.f) : 0.f;
+            float loadz_check = (loadz_exp > 0.f) ? std::min(std::max((loadFactor - .99f) / loadz_exp, 0.f), 1.f) : 0.f;
             // ESP_LOGI( FNAME,"tanw: %f loadexp: %.2f loadf: %.2f c:%.2f", tanw, loadz_exp, loadFactor, loadz_check );
             // Scale according to real experienced load factor with x 0..1
             roll *= loadz_check;
