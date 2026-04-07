@@ -759,6 +759,7 @@ int unitChangeS(SetupMenuSelect* p) {
 void vario_menu_create_damping(SetupMenu *top) {
 	SetupMenuValFloat *vda = new SetupMenuValFloat("Damping", "sec", vario_setup, &vario_delay);
 	vda->setHelp("Response time, time constant of Vario low pass filter");
+	vda->setPrecision(1);
 	top->addEntry(vda);
 
 	SetupMenuValFloat *vdav = new SetupMenuValFloat("Averager", "sec", vario_setup, &vario_av_delay);
