@@ -96,7 +96,7 @@ void FlarmScreen::display(int mode)
     }
 
     // put the word TRAFFIC under the screen
-    MBOX->pushMessage(4, "! TRAFFIC !", 20); // 20 sec
+    MBOX->pushMessage(4, "! TRAFFIC !", flarm_alarm_time.get());
 
     // draw horizon
     MYUCG->setColor( COLOR_SKYBLUE );
