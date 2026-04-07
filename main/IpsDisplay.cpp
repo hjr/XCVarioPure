@@ -512,7 +512,7 @@ void IpsDisplay::initDisplay() {
 
     if (!WNDgauge) {
         // create it always, because also the center aid is using it
-        WNDgauge = new PolarGauge(AMIDX + AVGOFFX, AMIDY, 360, 52, PolarGauge::COMPASS);
+        WNDgauge = new PolarGauge(AMIDX + AVGOFFX, AMIDY, 360, 54, PolarGauge::COMPASS);
     }
     WNDgauge->enableWindIndicator(wind_enable.get() > WA_OFF, wind_enable.get() == WA_EXTERNAL);
     WNDgauge->setWindRef(wind_reference.get());
