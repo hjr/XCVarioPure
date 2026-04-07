@@ -112,13 +112,13 @@ void MultiGauge::drawUnit() const
         mode_str = "GndV";
         [[fallthrough]];
     case GAUGE_S2F:
-        if (!mode_str) mode_str = "S2F";
+        if (*mode_str=='\0') mode_str = "S2F";
         [[fallthrough]];
     case GAUGE_IAS_SPEED:
-        if (!mode_str) mode_str = "IAS";
+        if (*mode_str=='\0') mode_str = "IAS";
         [[fallthrough]];
     case GAUGE_TAS_SPEED:
-        if (!mode_str) mode_str = "TAS";
+        if (*mode_str=='\0') mode_str = "TAS";
         unit_str = SpeedUnit->getName();
         break;
     case GAUGE_NETTO:
@@ -133,7 +133,7 @@ void MultiGauge::drawUnit() const
         mode_str = "HDG";
         [[fallthrough]];
     case GAUGE_SLIP:
-        if (!mode_str) mode_str = "SLIP";
+        if (*mode_str=='\0') mode_str = "SLIP";
         unit_str = "deg";
         break;
     default:
