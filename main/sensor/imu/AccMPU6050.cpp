@@ -150,6 +150,8 @@ void AccMPU6050::postProcess() {
     update_fused_vector(att_vector, gravity_trust, petal, d_gyro.get_conjugate());
     // ESP_LOGI(FNAME,"attv: %.3f %.3f %.3f ProjAccel: %f", att_vector.x, att_vector.y, att_vector.z, accel.dot(att_vector));
     att_quat = Quaternion::fromAccelerometer(att_vector);
+    // vector_f img = att_quat.rotate(att_vector);
+    // ESP_LOGI(FNAME,"attv: %.3f,%.3f,%.3f - %.3f,%.3f,%.3f", att_vector.x, att_vector.y, att_vector.z, img.x, img.y, img.z);
     // ESP_LOGI(FNAME,"attq: %.3f %.3f %.3f %.3f", att_quat._x, att_quat._y, att_quat._z, att_quat._w );
     // ESP_LOGI(FNAME,"Circle Omega: %f", circle_omega );
     euler_rad = att_quat.toEulerRad() * -1.f;
@@ -161,8 +163,8 @@ void AccMPU6050::postProcess() {
     // }
 
     // treat gimbal lock, limit to 88 deg
-    constexpr const float limit = deg2rad(88.);
-    euler_rad.clamp(-limit, limit);
+    // constexpr const float limit = deg2rad(88.);
+    // euler_rad.clamp(-limit, limit);
 
     rad_t gyro_heading_step = circle_omega * dt; // gyro heading change in this step (NED)
     circle_footing = Vector::normalizePI2(circle_footing + gyro_heading_step); // integrate gyro heading change to get the current circle footing

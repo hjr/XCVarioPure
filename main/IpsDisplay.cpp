@@ -102,31 +102,53 @@ static union {
 ////////////////////////////
 // Geometry helpers
 
-Point Point::operator+(Point p) const {
-    return p += *this;
+Point Point::operator+(const Point &p) const {
+    Point tmp = p;
+    return tmp += *this;
 }
+// Point Point::operator-(const Point &p) const {
+//     Point tmp = *this;
+//     return tmp -= p;
+// }
+// Point Point::operator*(const Point &p) const {
+//     Point tmp = *this;
+//     return tmp *= p;
+// }
 // alpha [rad]
-Point Point::rotate(float alpha) const {
+Point Point::rotate(rad_t alpha) const {
     float cos_a = fast_cos_rad(alpha);
     float sin_a = fast_sin_rad(alpha);
     return Point( x * cos_a - y * sin_a, x * sin_a + y * cos_a );
 }
-
+// NED to NAV frame with Z axes up
+Point Point::centralProjection(const vector_f &obj, float focus) {
+    if (obj.x <= 0) {
+        return Point(-10000, -10000); // cannot project points behind the viewer
+    }
+    focus /= obj.x;
+    return Point(fast_iroundf(focus * obj.y), fast_iroundf(focus * -obj.z));
+}
 
 // Hesse horizon line parameters in the gliders Y/Z plane
 // quaternion q is attitude in NED frame, 
-// cx/cy is the center of the display
-Line::Line(Quaternion q, int16_t cx, int16_t cy) {
+// cx/cy is the center of the display frame in pixel coordinates
+// line result is directly in display coordinates with x to the right and y down,
+// and d is the signed distance of the line to the center of the display
+Line::Line(const Quaternion &q) { //, int16_t cx, int16_t cy) {
     // normal vector of the plane
-    vector_f up = q.rotate(vector_f(0, 0, 1));
-    _nx = -up.y;
-    _ny = -up.z;
-    _d = std::clamp(up.x, -0.7f, 0.7f) * 100; // projection scale to visible range
-    _d += _nx * cx + _ny * cy; // offset to the middle of the screen
-    // ESP_LOGI(FNAME, "normV %0.1f,%0.1f,%0.1f", _nx, _ny, _d);
+    vector_f up = q.rotate(vector_f(0, 0, -1)); // Earth-Up ENU im Body frame
+    _nx = up.y;
+    _ny = up.z;
+    _d = std::clamp(-up.x, -0.7f, 0.7f) * 100; // projection scale to visible range
+    _d += _nx * DISPLAY_W/2 + _ny * DISPLAY_H/2; // offset to the middle of the screen
+    float norm = sqrtf(_nx*_nx + _ny*_ny);
+    _nx /= norm;
+    _ny /= norm;
+    _d  /= norm;
+    ESP_LOGI(FNAME, "normV %0.1f,%0.1f,%0.1f", _nx, _ny, _d);
 }
 // evaluate line function at point p
-float Line::fct(Point p) {
+float Line::fct(Point p) const {
     return _nx * p.x + _ny * p.y - _d;
 }
 // compute intersection point of line with segment p1-p2
@@ -149,7 +171,15 @@ bool Line::similar(const Line &r) const
 {
     return (floatEqualFastAbs(_nx, r._nx, 1e-2f)) && (floatEqualFastAbs(_ny, r._ny, 1e-2f)) && (floatEqualFastAbs(_d, r._d, 2.f));
 }
-
+Point Line::mapToHorizon(Point obj) const
+{
+    Point ret(DISPLAY_W/2, DISPLAY_H/2);
+    float dist = _nx * ret.x + _ny * ret.y - _d; // Project screen reference
+    // mapped to horizon line coordinates (P = Horizon_Mid + u·t + v·n)
+    ret.x = ret.x - dist * _nx + obj.x * -_ny + obj.y * _nx;
+    ret.y = ret.y - dist * _ny + obj.x * _nx + obj.y * _ny;
+    return ret;
+}
 
 // Clip rectangle by line into above and below parts
 void IpsDisplay::clipRectByLine(Point *rect, Line &l, Point *above, int *na, Point *below, int *nb)
@@ -226,23 +256,25 @@ Point IpsDisplay::projectToDisplayPlane(const vector_f &obj, float focus)
         // avoid division by zero
         return Point( -10000, -10000 );
     }
-    float u = focus * (obj.y / obj.x);
-    float v = focus * (obj.z / obj.x);
-
-    return Point(DISPLAY_W/2 - u, DISPLAY_H/2 - v);
+    focus /= obj.x;
+    Point ret;
+    ret.x = DISPLAY_W/2 + focus * obj.y;
+    ret.y = DISPLAY_H/2 + focus * obj.z;
+    return ret;
 }
 // Centered screen clipping
-Point IpsDisplay::clipToScreenCenter(Point p)
+Point IpsDisplay::clipToScreenCenter(Point p, bool respect_mbox)
 {
     const int16_t cx = DISPLAY_W/2;
-    const int16_t cy = DISPLAY_H/2;
+    const int16_t display_h = (respect_mbox ? (DISPLAY_H - MBOX->getBoxHeight()) : DISPLAY_H);
+    const int16_t cy = display_h / 2;
 
     // direction vector from center to point
     int16_t dx = p.x - cx;
     int16_t dy = p.y - cy;
 
     // check p against boundaries
-    if (p.x >= 0 && p.x < DISPLAY_W && p.y >= 0 && p.y < DISPLAY_H) {
+    if (p.x >= 0 && p.x < DISPLAY_W && p.y >= 0 && p.y < display_h) {
         return p;
     }
 
@@ -260,7 +292,7 @@ Point IpsDisplay::clipToScreenCenter(Point p)
         float t = (float)(-cy) / dy;
         if (t < t_min) t_min = t;
     }
-    else if ( p.y >= DISPLAY_H ) {
+    else if ( p.y >= display_h ) {
         float t = (float)(cy) / dy;
         if (t < t_min) t_min = t;
     }
@@ -550,7 +582,7 @@ void IpsDisplay::initDisplay() {
         if (display_orientation.get() == DISPLAY_NINETY) {
             FLAPSgauge->setLength(120);
         } else {
-            FLAPSgauge->setLength(100);
+            FLAPSgauge->setLength(90);
         }
     }
 

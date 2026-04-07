@@ -178,7 +178,7 @@ vector_3d<T> vector_3d<T>::get_normalized() const
 template <typename T>
 void vector_3d<T>::clamp_inplace(float max_norm)
 {
-    float n = get_norm();   // norm() sollte float/double liefern
+    float n = get_norm();
 
     if (n <= max_norm || n < 1e-12f)
         return;

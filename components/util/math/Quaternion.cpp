@@ -293,7 +293,7 @@ Quaternion Quaternion::fromRotationMatrix(const vector_f &X, const vector_f &Y)
     return result;
 }
 
-// https://ahrs.readthedocs.io/en/latest/filters/aqua.html
+// https://ahrs.readthedocs.io/en/latest/filters/aqua.html  Quaternion from Accelerometer
 // accel_par in m/(sec*sec)
 Quaternion Quaternion::fromAccelerometer(const vector_f& accel_par)
 {
@@ -303,7 +303,7 @@ Quaternion Quaternion::fromAccelerometer(const vector_f& accel_par)
     // ESP_LOGI(TAG,"ax=%.3f ay=%.3f az=%.3f", an.x, an.y, an.z);
 
     // There is a singularity at an.z == -1
-    if ( an.z < -0.999999f ) {
+    if ( an.z < -1.0f ) {
         float half_cos = std::sqrtf(0.5f*(1.0f - an.z));
         float temp = .5f / half_cos;
         Quaternion orientation( -an.y*temp, half_cos, 0.0, an.x*temp );
