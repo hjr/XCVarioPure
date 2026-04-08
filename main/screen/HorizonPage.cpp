@@ -23,6 +23,8 @@
 #include <cstdio>
 #include <cstring>
 
+//#define HORIZON_TEST 1
+
 extern AdaptUGC *MYUCG;
 
 static int heading_old = -1;
@@ -98,5 +100,52 @@ void HorizonPage::draw( Quaternion q )
     }
 
     _DIRTY = false;
+
+#ifdef HORIZON_TEST
+    // axes for testing
+    vector_f north = {500,0,0};
+    vector_f east  = {500,20,0};
+    vector_f down  = {500,0,20};
+
+    Point pe = Point::centralProjection(east, 1000.f);
+    pe = l.mapToHorizon(pe);
+    Point pn = Point::centralProjection(north, 1000.f);
+    pn = l.mapToHorizon(pn);
+    Point pd = Point::centralProjection(down, 1000.f);
+    pd = l.mapToHorizon(pd);
+
+    // ESP_LOGI(FNAME, "North %d,%d", pn.x, pn.y);
+    // ESP_LOGI(FNAME, "East %d,%d", pe.x, pe.y);
+    // ESP_LOGI(FNAME, "Down %d,%d", pd.x, pd.y);
+
+    MYUCG->setPrintPos(pn.x, pn.y);
+    MYUCG->setColor(COLOR_RED);
+    MYUCG->print("N");
+    MYUCG->setPrintPos(pe.x, pe.y);
+    MYUCG->setColor(COLOR_GREEN);
+    MYUCG->print("E");
+    MYUCG->setPrintPos(pd.x, pd.y);
+    MYUCG->setColor(COLOR_BLUE);
+    MYUCG->print("D");
+
+    // target point test on horizon line
+    vector_f test_nav = {1000,0,0};
+    Point p = Point::centralProjection(test_nav, 1000.f);
+    p = l.mapToHorizon(p);
+    MYUCG->setColor(COLOR_MGREY);
+    MYUCG->drawDisc( p.x, p.y, 7, UCG_DRAW_ALL);
+
+    // above / below test
+    vector_f above = {1000,0,-50};
+    p = Point::centralProjection(above, 1000.f);
+    p = l.mapToHorizon(p);
+    MYUCG->setColor(COLOR_RED);
+    MYUCG->drawDisc( p.x, p.y, 7, UCG_DRAW_ALL);
+    vector_f below = {1000,0,50};
+    p = Point::centralProjection(below, 1000.f);
+    p = l.mapToHorizon(p);
+    MYUCG->setColor(COLOR_BLUE);
+    MYUCG->drawDisc( p.x, p.y, 7, UCG_DRAW_ALL);
+#endif
 }
 
