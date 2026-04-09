@@ -607,14 +607,25 @@ static void pg_line_init(pg_struct * pg, uint8_t pge_index)
   pg_word_t x2;
   pg_word_t y2;
 
-  idx = pge->curr_idx;  
+  idx = pge->curr_idx;
   y1 = pg->list[idx].y;
   x1 = pg->list[idx].x;
   idx = pge->next_idx_fn(pg, idx);
   y2 = pg->list[idx].y;
-  x2 = pg->list[idx].x; 
+  x2 = pg->list[idx].x;
   pge->curr_idx = idx;
   
+  if ( y2 == y1 ) return;
+  
+  if (y2 < y1)
+  {
+    pg_word_t tmp = x1;
+    x2 = x1;
+    x1 = tmp;
+    tmp = y1;
+    y2 = y1;
+    y1 = tmp;
+  }
   pge_Init(pge, x1, y1, x2, y2);
 }
 
@@ -623,12 +634,12 @@ static void pg_exec(pg_struct *pg, eglib_t *eglib)
   pg_word_t i = pg->total_scan_line_cnt;
 
   /* first line is skipped if the min y line is not flat */
-  pg_line_init(pg, PG_LEFT);		
+  pg_line_init(pg, PG_LEFT);
   pg_line_init(pg, PG_RIGHT);
   
   if ( pg->is_min_y_not_flat != 0 )
   {
-    pge_Next(&(pg->pge[PG_LEFT])); 
+    pge_Next(&(pg->pge[PG_LEFT]));
     pge_Next(&(pg->pge[PG_RIGHT]));
   }
 
