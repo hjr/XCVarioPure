@@ -13,7 +13,7 @@
 
 static eglib_t myeglib;
 
-const uint8_t ucg_font_9x15B_mf[] = { UCG_FONT_9x15B_MF };
+// const uint8_t ucg_font_9x15B_mf[] = { UCG_FONT_9x15B_MF };
 const uint8_t ucg_font_ncenR14_hr[] = { UCG_FONT_NCENR14_HR };
 const uint8_t ucg_font_fub11_tr[] = { UCG_FONT_FUB11_TR };
 const uint8_t ucg_font_fub11_hr[] = { UCG_FONT_FUB11_HR };
@@ -63,9 +63,9 @@ static esp32_hal_config_t esp32_ili9341_config = {
 void AdaptUGC::setFont(const uint8_t *f, bool filled ){    // adapter
 	eglib_setFilledMode( eglib, filled );
 	switch( f[0] ){
-	case UCG_FONT_9x15B_MF:
-		eglib_SetFont(eglib, &font_FreeFont_FreeMonoBold_15px);
-		break;
+	// case UCG_FONT_9x15B_MF:
+	// 	eglib_SetFont(eglib, &font_FreeFont_FreeMonoBold_15px);
+	// 	break;
 	case UCG_FONT_NCENR14_HR:
 		eglib_SetFont(eglib, &font_Adobe_NewCenturySchoolbookRoman_20px);
 		break;

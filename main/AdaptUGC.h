@@ -29,7 +29,7 @@ typedef enum _e_font_mode { UCG_FONT_MODE_TRANSPARENT, UCG_FONT_MODE_SOLID } e_f
 
 
 typedef enum _fonts_enum {
-	UCG_FONT_9x15B_MF,
+	// UCG_FONT_9x15B_MF,
 	UCG_FONT_NCENR14_HR,
 	UCG_FONT_FUB11_TR,
 	UCG_FONT_FUB11_HR,
@@ -55,7 +55,7 @@ typedef enum _fonts_enum {
 
 // to be activated as soon as ucg.h is replaced by AdaptUGC.h
 
-extern const uint8_t ucg_font_9x15B_mf[];
+// extern const uint8_t ucg_font_9x15B_mf[];
 extern const uint8_t ucg_font_ncenR14_hr[];
 extern const uint8_t ucg_font_fub11_tr[];
 extern const uint8_t ucg_font_fub11_hr[];
