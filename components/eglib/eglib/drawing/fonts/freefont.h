@@ -1402,7 +1402,7 @@ extern const struct glyph_unicode_block_t unicode_block_FreeFont_FreeMonoBold_14
  * and can be extended with :c:func:`eglib_AddUnicodeBlockToFont` to support
  * extra unicode blocks defined below.
  */
-extern const struct font_t font_FreeFont_FreeMonoBold_15px;
+// extern const struct font_t font_FreeFont_FreeMonoBold_15px;
 
 /**
  * Unicode blocks
@@ -1412,12 +1412,12 @@ extern const struct font_t font_FreeFont_FreeMonoBold_15px;
 /**
  * .. image:: freefont/FreeFont_FreeMonoBold_15px_BasicLatin.png
  */
-extern const struct glyph_unicode_block_t unicode_block_FreeFont_FreeMonoBold_15px_BasicLatin;
+// extern const struct glyph_unicode_block_t unicode_block_FreeFont_FreeMonoBold_15px_BasicLatin;
 
 /**
  * .. image:: freefont/FreeFont_FreeMonoBold_15px_Latin1Supplement.png
  */
-extern const struct glyph_unicode_block_t unicode_block_FreeFont_FreeMonoBold_15px_Latin1Supplement;
+// extern const struct glyph_unicode_block_t unicode_block_FreeFont_FreeMonoBold_15px_Latin1Supplement;
 
 /**
  * .. image:: freefont/FreeFont_FreeMonoBold_15px_LatinExtendedA.png

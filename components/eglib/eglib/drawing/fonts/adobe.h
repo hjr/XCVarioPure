@@ -694,7 +694,7 @@ extern const struct glyph_unicode_block_t unicode_block_Adobe_CourierBold_24px_L
  * and can be extended with :c:func:`eglib_AddUnicodeBlockToFont` to support
  * extra unicode blocks defined below.
  */
-extern const struct font_t font_Adobe_CourierBold_25px;
+// extern const struct font_t font_Adobe_CourierBold_25px;
 
 /**
  * Unicode blocks
@@ -704,7 +704,7 @@ extern const struct font_t font_Adobe_CourierBold_25px;
 /**
  * .. image:: adobe/Adobe_CourierBold_25px_BasicLatin.png
  */
-extern const struct glyph_unicode_block_t unicode_block_Adobe_CourierBold_25px_BasicLatin;
+// extern const struct glyph_unicode_block_t unicode_block_Adobe_CourierBold_25px_BasicLatin;
 
 /**
  * .. image:: adobe/Adobe_CourierBold_25px_Latin1Supplement.png
@@ -746,7 +746,7 @@ extern const struct glyph_unicode_block_t unicode_block_Adobe_CourierBold_34px_L
 /**
  * .. image:: adobe/Adobe_CourierBold_34px_LatinExtendedA.png
  */
-extern const struct glyph_unicode_block_t unicode_block_Adobe_CourierBold_34px_LatinExtendedA;
+// extern const struct glyph_unicode_block_t unicode_block_Adobe_CourierBold_34px_LatinExtendedA;
 
 /**
  * Courier Bold Oblique
@@ -763,7 +763,7 @@ extern const struct glyph_unicode_block_t unicode_block_Adobe_CourierBold_34px_L
  * and can be extended with :c:func:`eglib_AddUnicodeBlockToFont` to support
  * extra unicode blocks defined below.
  */
-extern const struct font_t font_Adobe_CourierBoldOblique_8px;
+// extern const struct font_t font_Adobe_CourierBoldOblique_8px;
 
 /**
  * Unicode blocks
@@ -773,7 +773,7 @@ extern const struct font_t font_Adobe_CourierBoldOblique_8px;
 /**
  * .. image:: adobe/Adobe_CourierBoldOblique_8px_BasicLatin.png
  */
-extern const struct glyph_unicode_block_t unicode_block_Adobe_CourierBoldOblique_8px_BasicLatin;
+// extern const struct glyph_unicode_block_t unicode_block_Adobe_CourierBoldOblique_8px_BasicLatin;
 
 /**
  * .. image:: adobe/Adobe_CourierBoldOblique_8px_Latin1Supplement.png
