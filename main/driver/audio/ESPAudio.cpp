@@ -774,7 +774,7 @@ void Audio::applySetup() {
 
     maxf = center_freq.get() * tone_var.get();
     minf = center_freq.get() / tone_var.get();
-    ESP_LOGI(FNAME,"min/max freq. %.1f/%.1f", minf, maxf);
+    ESP_LOGI(FNAME,"tonevar %.1f; min/max freq. %.1f/%.1f", tone_var.get(), minf, maxf);
     CRMOD.updateCache(); // force re- evaluation of cruise and audio mode
     updateAudioMode();
 }

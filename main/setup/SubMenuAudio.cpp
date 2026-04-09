@@ -94,6 +94,7 @@ static int applyAudioProfile(SetupMenuSelect *p)
         chopping_mode.set(ap.chopping);
         audio_harmonics.set(ap.harmonics);
         audio_factor.set(ap.exponent);
+        AUDIO->applySetup();
         p->getParent()->setDirty();
     }
     // custom profile - do nothing
