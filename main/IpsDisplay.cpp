@@ -145,7 +145,7 @@ Line::Line(const Quaternion &q) { //, int16_t cx, int16_t cy) {
     _nx /= norm;
     _ny /= norm;
     _d  /= norm;
-    ESP_LOGI(FNAME, "normV %0.1f,%0.1f,%0.1f", _nx, _ny, _d);
+    // ESP_LOGI(FNAME, "normV %0.1f,%0.1f,%0.1f", _nx, _ny, _d);
 }
 // evaluate line function at point p
 float Line::fct(Point p) const {
@@ -181,22 +181,23 @@ Point Line::mapToHorizon(Point obj) const
     return ret;
 }
 
-// Clip rectangle by line into above and below parts
-void IpsDisplay::clipRectByLine(Point *rect, Line &l, Point *above, int *na, Point *below, int *nb)
+// Clip a polygon by line into above and below parts
+void IpsDisplay::clipPolygonByLine(const Point *poly, int n, const Line &l, Point *above, int *na, Point *below, int *nb)
 {
     const int myEPS = 1;
     auto inside = [&](int f) { return f > myEPS; };
     auto onLine = [&](int f) { return abs(f) <= myEPS; };
 
-    if ( ! rect ) {
-        rect = screen_edge;
+    if ( ! poly ) {
+        poly = screen_edge;
+        n = 4;
     }
     *na = 0;
     *nb = 0;
 
-    for (int i=0; i<4; i++) {
-        Point P1 = rect[i];
-        Point P2 = rect[(i+1)&3];
+    for (int i=0; i<n; i++) {
+        Point P1 = poly[i];
+        Point P2 = poly[(i+1)%n];
         int f1 = l.fct(P1);
         int f2 = l.fct(P2);
         bool in1 = inside(f1);

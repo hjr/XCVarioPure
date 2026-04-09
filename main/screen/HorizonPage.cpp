@@ -13,6 +13,7 @@
 #include "math/Trigonometry.h"
 #include "math/Floats.h"
 
+#include "sensor/imu/AccMPU6050.h"
 #include "setup/SetupNG.h"
 #include "AdaptUGC.h"
 #include "Colors.h"
@@ -20,10 +21,9 @@
 
 
 #include <cstdint>
-#include <cstdio>
-#include <cstring>
 
-//#define HORIZON_TEST 1
+
+// #define HORIZON_TEST 1
 
 extern AdaptUGC *MYUCG;
 
@@ -72,25 +72,63 @@ void HorizonPage::draw( Quaternion q )
             MYUCG->drawHLine(left - 10, center_y + i, 10);
             MYUCG->drawHLine(left + 200, center_y + i, 10);
         }
+        previous_horizon_line = Line();
     }
-    // draw sky and earth
-    Line l( q, DISPLAY_W/2, DISPLAY_H/2 );
+    // draw sky and earth and panel
+    Line l(q);
     if ( ! l.similar(previous_horizon_line) || _DIRTY ) {
+        Point above[6], below[6], opta[6], optb[6];
+        int na, nb,
+            oa, ob;
+        Display->clipPolygonByLine(horizon_box, 4, l, above, &na, below, &nb);
+        // ESP_LOGI(FNAME, "nA/nB %d,%d", na, nb);
+        // int i = 0;
+        // for ( ; i < std::min(na,nb); i++ ) {
+        //     ESP_LOGI(FNAME, "A/B %d: %d,%d - %d,%d", i, above[i].x, above[i].y, below[i].x, below[i].y);
+        // }
+        // if ( i < na ) {
+        //     ESP_LOGI(FNAME, "A extra %d: %d,%d", i, above[i].x, above[i].y);
+        // }
+        // if ( i < nb ) {
+        //     ESP_LOGI(FNAME, "B extra %d: %d,%d", i, below[i].x, below[i].y);
+        // }
+        if ( previous_horizon_line.isDefined() ) {
+            // also clip the previous horizon line for a minimal transition
+            Display->clipPolygonByLine(above, na, previous_horizon_line, optb, &ob, opta, &oa);
+            MYUCG->setColor( COLOR_SKYBLUE );
+            Display->drawPolygon(opta, oa);
+            Display->clipPolygonByLine(below, nb, previous_horizon_line, optb, &ob, opta, &oa);
+            MYUCG->setColor( COLOR_EARTH );
+            Display->drawPolygon(optb, ob);
+        }
+        else {
+            ESP_LOGI(FNAME, "First draw full horizon");
+            MYUCG->setColor( COLOR_SKYBLUE );
+            Display->drawPolygon(above, na);
+            MYUCG->setColor( COLOR_EARTH );
+            Display->drawPolygon(below, nb);
+        }
+
+        MYUCG->setColor( COLOR_YELLOW );
+        MYUCG->drawDisc(DISPLAY_W/2, DISPLAY_H/2, 2, UCG_DRAW_ALL);
+        MYUCG->drawHLine(DISPLAY_W/2 + 15, DISPLAY_H/2, 30);
+        MYUCG->drawVLine(DISPLAY_W/2 + 15, DISPLAY_H/2, 5);
+        MYUCG->drawHLine(DISPLAY_W/2 - 15, DISPLAY_H/2, -30);
+        MYUCG->drawVLine(DISPLAY_W/2 - 15, DISPLAY_H/2, 5);
+        MYUCG->setColor(COLOR_WHITE);
+        MYUCG->setFont(ucg_font_fub20_hn, true);
+        char buf[20];
+        sprintf(buf, " %d° ", fast_iroundf(accSensor->getRollDeg()));
+        MYUCG->setPrintPos(DISPLAY_W/2 - MYUCG->getStrWidth(buf)/2, DISPLAY_H/2 - BOX_SIZE/2 - 10);
+        MYUCG->print(buf);
         previous_horizon_line = l;
-        Point above[6], below[6];
-        int na, nb;
-        Display->clipRectByLine(horizon_box, l, above, &na, below, &nb);
-        MYUCG->setColor( COLOR_SKYBLUE );
-        Display->drawPolygon(above, na);
-        MYUCG->setColor( COLOR_EARTH );
-        Display->drawPolygon(below, nb);
     }
 
     // heading
     if (mag_hdt.getValid()) {
         int heading = fast_iroundf(Units::rad_to_deg(mag_hdt.get()));
         MYUCG->setFont(ucg_font_fub20_hn, true);
-        MYUCG->setPrintPos(70, 310);
+        MYUCG->setPrintPos(DISPLAY_W/2 - 50, DISPLAY_H/2 + BOX_SIZE + 50);
         // ESP_LOGI(FNAME,"compass enable, heading: %d", heading );
         if (heading > 0 && heading != heading_old) {
             MYUCG->setColor(COLOR_WHITE);

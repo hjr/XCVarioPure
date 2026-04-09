@@ -66,7 +66,7 @@ void FlarmScreen::display(int mode)
     Line l( attq);
     Point above[6], below[6];
     int na, nb;
-    IpsDisplay::clipRectByLine(nullptr, l, above, &na, below, &nb);
+    IpsDisplay::clipPolygonByLine(nullptr, 0, l, above, &na, below, &nb);
 
     // ESP_LOGI(FNAME,"Target in B%.1f°, dH%dm, dV%dm", Units::rad_to_deg(Flarm::RelativeBearing), Flarm::HorizontalDistance, Flarm::RelativeVertical );
     // calc the vector to the target from distance and bearing in nav frame

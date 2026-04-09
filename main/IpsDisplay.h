@@ -56,13 +56,14 @@ struct Point {
 struct Line {
     Line() = default;
     Line(const Quaternion &q);
-    float _nx;
-    float _ny;
-    float _d;
+    float _nx = 0;
+    float _ny = 0;
+    float _d = 0;
     float fct(Point p) const; // the Hesse function evaluated at point p
     Point intersect(Point p1, Point p2) const;
     bool operator==(const Line &r) const;
     bool similar(const Line &r) const;
+    bool isDefined() const { return _nx != 0 || _ny != 0; }
     inline float getD() const { return _d; }
     Point mapToHorizon(Point p) const;
     float getDistance(Point p) const { return fct(p); }
@@ -95,7 +96,7 @@ public:
 	static inline AdaptUGC *getDisplay() { return ucg; };
 	static AdaptUGC *ucg;
 
-    static void clipRectByLine(Point *rect, Line &l, Point *above, int *na, Point *below, int *nb);
+    static void clipPolygonByLine(const Point *poly, int n, const Line &l, Point *above, int *na, Point *below, int *nb);
     static void drawPolygon(Point *pts, int n);
     static Point clipToScreenCenter(Point p, bool respect_mbox=false);
 
