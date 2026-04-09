@@ -396,16 +396,21 @@ void PolarGauge::drawOneLabel(float val, int16_t labl) const
         MYUCG->setFont(ucg_font_fub20_hn, false);
         x = CosCenteredDeg2(dice_rad(val), _radius - 16) - MYUCG->getStrWidth(s)/2;
         y = SinCenteredDeg2(dice_rad(val), _radius - 16);
-        if ( labl < 0 ) {
-            MYUCG->setColor(COLOR_LBBLUE);
-        }
-        else {
-            MYUCG->setColor(COLOR_LGREY);
-        }
+        MYUCG->setColor(COLOR_WGREY);
     }
     MYUCG->setPrintPos(x, y);
     MYUCG->print(s);
 }
+void PolarGauge::drawDirLabel(int16_t deg2, const char *labl) const
+{
+    MYUCG->setColor(COLOR_LGREY);
+    MYUCG->setFont(ucg_font_fub20_hn, false);
+    int16_t x = CosCenteredDeg2(deg2, _radius + 4) - MYUCG->getStrWidth(labl)/2;
+    int16_t y = SinCenteredDeg2(deg2, _radius + 4);
+    MYUCG->setPrintPos(x, y);
+    MYUCG->print(labl);
+}
+
 
 void PolarGauge::colorRange(float from, float to, int16_t color)
 {
@@ -480,6 +485,14 @@ void PolarGauge::drawScale(float from, float to)
             {
                 modulo = (_range > 10) ? 20 : (_range < 6) ? 5 : 10; // leave the details around zero
             }
+        }
+        if ( a == 3 ) {
+            int16_t tmp = dice_rad((*func)(static_cast<float>(0.f)));
+            drawDirLabel(tmp + 16, "+");
+        }
+        else if ( a == -3 ) {
+            int16_t tmp = dice_rad((*func)(static_cast<float>(0.f)));
+            drawDirLabel(tmp - 12, "-");
         }
 
         if (!(a % modulo))
