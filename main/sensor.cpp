@@ -505,6 +505,20 @@ void system_startup(void *args){
     // Design the club
     gflags.isPro = false;
 
+    // Set for now hidden but used setup variable to their default
+#ifndef DEBUG_AND_TEST
+    rot_default.set(rot_default.getDefault());
+    // menu_long_press.set(menu_long_press.getDefault());
+    imu_leverarm.set(0.f);
+    display_variant.set(DISPLAY_WHITE_ON_BLACK);
+    ahrs_raw_data.set(0);
+    logging.set(0);
+    ahrs_gyro_factor.set(ahrs_gyro_factor.getDefault());
+    ahrs_min_gyro_factor.set(ahrs_min_gyro_factor.getDefault());
+    ahrs_dynamic_factor.set(ahrs_dynamic_factor.getDefault());
+    ahrs_roll_check.set(0);
+    gyro_gating.set(gyro_gating.getDefault());
+#endif
     // a couple volatile setup variable are used as black board are not valid from the beginning
     // but the ctor does forcly set them valid with an init. value.
     // work around for those optional values that are not valid until properly set
