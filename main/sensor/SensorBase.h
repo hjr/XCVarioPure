@@ -29,7 +29,7 @@
 // - Capacity is computed to cover N seconds at the sensor's update rate.
 // 
 
-constexpr int SENSOR_HISTORY_DURATION_MS = 50000;  // milliseconds
+constexpr int MAX_SENSOR_HISTORY_DURATION_MS = 50000;  // milliseconds
 
 enum SensorId : uint8_t;
 
@@ -124,9 +124,9 @@ template <typename T>
 class SensorTP : public SensorBase {
 public:
     SensorTP() = delete;
-    SensorTP(void *buf, uint32_t ums) :
+    SensorTP(void *buf, size_t cap, uint32_t ums) :
         SensorBase(ums),
-        _history((T*)buf, HistoryCapacity(ums))
+        _history((T*)buf, cap)
     {
         if constexpr (std::is_same_v<T, float>) { // only for float types
             _invalid = 0.f;
@@ -363,8 +363,6 @@ public:
     }
 
 protected:
-    // Capacity = ceil(5000 / _update_interval_ms)
-    static constexpr size_t HistoryCapacity(uint32_t ums) { return (SENSOR_HISTORY_DURATION_MS + ums - 1) / ums; }
     // time window to sample count
     int getCount(int interval_ms) const {
         uint32_t cutoff_time = Clock::getMillis() - interval_ms;

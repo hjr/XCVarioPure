@@ -23,11 +23,13 @@
 
 AirspeedSensor *asSensor = nullptr;
 
+constexpr int SENSOR_HISTORY_DURATION_MS = 4000;  // 5 sec
 constexpr int DUTY_CYCLE_MS = 100; // 10Hz
-static float as_buffer[ (SENSOR_HISTORY_DURATION_MS / DUTY_CYCLE_MS) + 1 ]; // history buffer for airspeed sensor
+constexpr size_t HSIZE = SENSOR_HISTORY_DURATION_MS / DUTY_CYCLE_MS;
+static __attribute__((aligned(4))) float as_buffer[ HSIZE + 1 ]; // history buffer for airspeed sensor
 
 AirspeedSensor::AirspeedSensor() :
-    SensorTP<float>(as_buffer, DUTY_CYCLE_MS),
+    SensorTP<float>(as_buffer, HSIZE, DUTY_CYCLE_MS),
     _dynp_zoglpf(0.25f, Units::mps_to_pascal(Units::kmh_to_mps(25.0f)))
 {
     _id = SensorId::DIFFPRESSURE | SensorFlags::SENSOR_LOCAL;

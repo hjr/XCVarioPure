@@ -23,11 +23,13 @@
 
 AccMPU6050 *accSensor = nullptr;
 
+constexpr int SENSOR_HISTORY_DURATION_MS = 10000;  // 10 sec
 constexpr int DUTY_CYCLE_MS = 100; // 10Hz
-static vector_f acc_buffer[ (SENSOR_HISTORY_DURATION_MS / DUTY_CYCLE_MS) + 1 ];
+constexpr size_t HSIZE = SENSOR_HISTORY_DURATION_MS / DUTY_CYCLE_MS;
+static __attribute__((aligned(4))) vector_f acc_buffer[ HSIZE + 1 ];
 
 AccMPU6050::AccMPU6050(MpuImu &mmpu) : 
-    SensorTP<vector_f>(acc_buffer, DUTY_CYCLE_MS),
+    SensorTP<vector_f>(acc_buffer, HSIZE, DUTY_CYCLE_MS),
     _my_mpu(mmpu),
     _lpf_accel(LowPassFilterT<vector_f>::alphaFromTau(0.2, DUTY_CYCLE_MS / 1000.f)),
     _lpf_slip_angle(LowPassFilterT<float>::alphaFromTau(0.3, DUTY_CYCLE_MS / 1000.f))

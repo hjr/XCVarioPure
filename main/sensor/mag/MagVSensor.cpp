@@ -17,13 +17,14 @@
 #include "driver/gpio/ESPRotary.h"
 #include "logdefnone.h"
 
-
+constexpr int SENSOR_HISTORY_DURATION_MS = 10000;  // 10 sec
 constexpr int DUTY_CYCLE_MS = 100; // 10Hz
-static vector_f mag_buffer[ (SENSOR_HISTORY_DURATION_MS / DUTY_CYCLE_MS) + 1 ];
+constexpr size_t HSIZE = SENSOR_HISTORY_DURATION_MS / DUTY_CYCLE_MS;
+static __attribute__((aligned(4))) vector_f mag_buffer[ HSIZE + 1 ];
 
 MagVSensor* magSensor = nullptr;
 
-MagVSensor::MagVSensor() : SensorTP<vector_f>(mag_buffer, DUTY_CYCLE_MS),
+MagVSensor::MagVSensor() : SensorTP<vector_f>(mag_buffer, HSIZE, DUTY_CYCLE_MS),
     _lpf_heading(LowPassFilterT<float>::alphaFromTau(1.f, .5f))
 {
     _id = SensorId::MAGNETO;
