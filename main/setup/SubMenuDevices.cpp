@@ -156,13 +156,13 @@ static void options_menu_custom_id(SetupMenu *top)
 
 static void connected_devices_menu_create_wifi(SetupMenu *top)
 {
-    SetupMenuValFloat *wifip = new SetupMenuValFloat("WIFI Power", "%", update_wifi_power, false, &wifi_max_power);
+    SetupMenuValFloat *wifip = new SetupMenuValFloat("WIFI Power", "%", update_wifi_power, &wifi_max_power);
     wifip->setPrecision(0);
     wifip->setHelp("Maximum Wifi Power to be used 10..100% or 2..20dBm");
     top->addEntry(wifip);
 
     if ( xcv_role.get() == SECOND_ROLE ) {
-        SetupMenuValFloat *masterid = new SetupMenuValFloat("Master Id XCVario-", "", nullptr, false, &master_xcvario);
+        SetupMenuValFloat *masterid = new SetupMenuValFloat("Master Id XCVario-", "", nullptr, &master_xcvario);
         masterid->setHelp("Connect only to this master XCVario ID");
         masterid->lock();
         top->addEntry(masterid);
@@ -595,6 +595,9 @@ static void connected_devices_menu_device(SetupMenu *top) // dynamic!
         device_details += dev->_itf->getStringId();
         device_details += ": ";
         device_details += dev->_sensor->name();
+    }
+    else {
+        device_details.clear();
     }
     top->setHelp(device_details.c_str());
     top->setNeverInline();

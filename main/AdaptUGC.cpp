@@ -13,7 +13,7 @@
 
 static eglib_t myeglib;
 
-const uint8_t ucg_font_9x15B_mf[] = { UCG_FONT_9x15B_MF };
+// const uint8_t ucg_font_9x15B_mf[] = { UCG_FONT_9x15B_MF };
 const uint8_t ucg_font_ncenR14_hr[] = { UCG_FONT_NCENR14_HR };
 const uint8_t ucg_font_fub11_tr[] = { UCG_FONT_FUB11_TR };
 const uint8_t ucg_font_fub11_hr[] = { UCG_FONT_FUB11_HR };
@@ -63,9 +63,9 @@ static esp32_hal_config_t esp32_ili9341_config = {
 void AdaptUGC::setFont(const uint8_t *f, bool filled ){    // adapter
 	eglib_setFilledMode( eglib, filled );
 	switch( f[0] ){
-	case UCG_FONT_9x15B_MF:
-		eglib_SetFont(eglib, &font_FreeFont_FreeMonoBold_15px);
-		break;
+	// case UCG_FONT_9x15B_MF:
+	// 	eglib_SetFont(eglib, &font_FreeFont_FreeMonoBold_15px);
+	// 	break;
 	case UCG_FONT_NCENR14_HR:
 		eglib_SetFont(eglib, &font_Adobe_NewCenturySchoolbookRoman_20px);
 		break;
@@ -147,12 +147,7 @@ void  AdaptUGC::begin() {
 	esp32_ili9341_config.freq = rint( FREQ_UGC_SPI * 3 * ((100.0 + display_clock_adj.get())/100.0));
 	ESP_LOGI(FNAME, "eglib_Send() &eglib:%x  hal-driv:%x config:%x  clk:%.3f MHz\n", (unsigned int)eglib, (unsigned int)&esp32_ili9341, (unsigned int)&esp32_ili9341_config, (double)(esp32_ili9341_config.freq/1000000.0) );
 	eglib_Init( &myeglib, &esp32_ili9341, &esp32_ili9341_config, &ili9341, &ili9341_config );
-	if ( display_orientation.get() == DISPLAY_NINETY ) {
-		setClipRange( 0, 0, 320, 240 );
-	} else {
-		setClipRange( 0,0, 240, 320 );
-
-	}
+	setClipRange( 0, 0, ili9341_config.width, ili9341_config.height );
 }
 int16_t AdaptUGC::getDisplayWidth() const
 {
@@ -261,4 +256,38 @@ size_t AdaptUGC::printNumber(unsigned long n, uint8_t base)
     } while(n);
 
     return print(str);
+}
+
+// use the dedicated shared buffer of eglib for partial frame buffing
+// use the clip are definition to define the area to be buffered
+void AdaptUGC::startBuffering( int16_t x, int16_t y, int16_t w, int16_t h )
+{
+    if (eglib->do_buffer) {
+        // That is an intended use case, just continue with the first hand defined area, do not start a new one
+        return;
+    }
+    eglib_setClipRange(eglib, x, y, w, h );
+    eglib->do_buffer = true;
+    ESP_LOGI(FNAME, "startBuffering() x:%d y:%d w:%d h:%d  clip x:%d y:%d w:%d h:%d", x, y, w, h, eglib->drawing.clip_xmin, eglib->drawing.clip_ymin, eglib->drawing.clip_xmax - eglib->drawing.clip_xmin, eglib->drawing.clip_ymax - eglib->drawing.clip_ymin );
+
+    // prefill with the background color
+    uint8_t *p = eglib->drawing.buffer;
+    uint8_t *end = eglib->drawing.buffer + w * h * 3;
+
+    while (p < end) {
+        *p++ = eglib->drawing.color_index[1].r;
+        *p++ = eglib->drawing.color_index[1].g;
+        *p++ = eglib->drawing.color_index[1].b;
+    }
+}
+
+void AdaptUGC::finishBuffering()
+{
+    int16_t height = eglib->drawing.clip_ymax - eglib->drawing.clip_ymin;
+    int16_t width = eglib->drawing.clip_xmax - eglib->drawing.clip_xmin;
+    eglib->display.driver->send_buffer( eglib, eglib->drawing.buffer, eglib->drawing.clip_xmin, 
+      eglib->drawing.clip_ymin, width, height );
+    ESP_LOGI(FNAME, "finshBuffering() clip x:%d y:%d w:%d h:%d", eglib->drawing.clip_xmin, eglib->drawing.clip_ymin, width, height );
+    eglib->do_buffer = false;
+    eglib_undoClipRange(eglib);
 }

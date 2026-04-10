@@ -25,7 +25,8 @@
 VarioFilter bmpVario; // static instance of it
 
 constexpr int DUTY_CYCLE_MS = 100; // 10Hz
-static mps_t vario_buffer[ (SENSOR_HISTORY_DURATION_MS / DUTY_CYCLE_MS) + 1 ]; // history buffer for airspeed sensor
+constexpr size_t HSIZE = MAX_SENSOR_HISTORY_DURATION_MS / DUTY_CYCLE_MS;
+static mps_t __attribute__((aligned(4))) vario_buffer[ HSIZE + 1 ]; // history buffer for airspeed sensor
 
 // Data and dtructures for different filter variants
 static meter_t averageAlt = 0.f;
@@ -117,7 +118,7 @@ static VarioKF vkf;
 #endif
 
 VarioFilter::VarioFilter() :
-    SensorTP<float>(vario_buffer, DUTY_CYCLE_MS),
+    SensorTP<float>(vario_buffer, HSIZE, DUTY_CYCLE_MS),
     _tealt_lpf(0.25f)
 {
     _id = SensorId::VARIOMETER;

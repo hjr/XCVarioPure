@@ -25,6 +25,7 @@ union global_flags {
         uint16_t schedule_reboot : 1;
         uint16_t first_pro_run : 1;
         uint16_t inSimulationMode : 1;
+        uint16_t isPro : 1;
     };
     uint16_t raw;
 };
@@ -32,13 +33,13 @@ union global_flags {
 class CANbus;
 class SerialLine;
 class AnalogInput;
-class SetupRoot;
+class ScreenRoot;
 class WatchDog_C;
 
 extern global_flags gflags;
 extern CANbus *CAN;
 extern SerialLine *S1,*S2;
-extern SetupRoot *MenuRoot;
+extern ScreenRoot *MenuRoot;
 extern WatchDog_C *uiMonitor;
 extern AnalogInput *BatVoltage;
 

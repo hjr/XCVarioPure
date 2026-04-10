@@ -9,6 +9,7 @@
 #include "Temperature.h"
 
 #include "sensor/imu/ImuSensor.h"
+#include "Atmosphere.h"
 #include "Colors.h"
 #include "AdaptUGC.h"
 #include "logdefnone.h"

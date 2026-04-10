@@ -7,13 +7,14 @@
  ***********************************************************/
 #include "GpsVSensor.h"
 
-
+constexpr int SENSOR_HISTORY_DURATION_MS = 10000;  // 10 sec
 constexpr int DUTY_CYCLE_MS = 1000; // 1Hz Flarm update rate
-static vector_f gps_buffer[ (SENSOR_HISTORY_DURATION_MS / DUTY_CYCLE_MS) + 1 ];
+constexpr size_t HSIZE = SENSOR_HISTORY_DURATION_MS / DUTY_CYCLE_MS;
+static __attribute__((aligned(4))) vector_f gps_buffer[ HSIZE + 1 ];
 
 GpsVSensor* gpsSensor = nullptr;
 
-GpsVSensor::GpsVSensor() : SensorTP<vector_f>(gps_buffer, DUTY_CYCLE_MS)
+GpsVSensor::GpsVSensor() : SensorTP<vector_f>(gps_buffer, HSIZE, DUTY_CYCLE_MS)
 {
     _id = SensorId::POSITION;
     _latency_ms = 750;      // classical Flarm latency

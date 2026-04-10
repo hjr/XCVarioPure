@@ -12,12 +12,9 @@
 #include "sensor/VarioFilter.h"
 #include "sensor/gps/GpsVSensor.h"
 #include "sensor/mag/MagVSensor.h"
-#include "comm/BTspp.h"
-#include "comm/BTnus.h"
 #include "comm/OneWireBus.h"
 #include "setup/SetupNG.h"
 #include "setup/CruiseMode.h"
-#include "math/Floats.h"
 #include "driver/audio/ESPAudio.h"
 #include "driver/gpio/ESPRotary.h"
 #include "CenterAid.h"
@@ -30,16 +27,16 @@
 #include "driver/time/Clock.h"
 #include "protocol/MagSensBin.h"
 #include "protocol/NMEA.h"
-// #include "driver/time/WatchDog.h"
 #include "protocol/nmea/XCVSyncMsg.h"
 #include "protocol/CANPeerCaps.h"
-#include "screen/SetupRoot.h"
+#include "screen/ScreenRoot.h"
 #include "screen/BootUpScreen.h"
 #include "screen/MessageBox.h"
 #include "screen/DrawDisplay.h"
 #include "screen/UiEvents.h"
 #include "math/Trigonometry.h"
 #include "math/Units.h"
+#include "Atmosphere.h"
 
 // #include "math/Quaternion.h"
 // #include "math/Floats.h"
@@ -89,7 +86,7 @@ int MyGliderPolarIndex; // Todo make private in S2F?
 AnalogInput *BatVoltage = nullptr;
 
 AdaptUGC *MYUCG = 0;  // ( SPI_DC, CS_Display, RESET_Display );
-SetupRoot  *MenuRoot = nullptr;
+ScreenRoot  *MenuRoot = nullptr;
 WatchDog_C *uiMonitor = nullptr;
 
 // Magnetic sensor / compass
@@ -185,10 +182,12 @@ static void sensFeed(const NmeaPrtcl* prtcl) // called with full 10Hz rate from 
         delta += 1000;
     }
 
+    if ( !baroSensor || !teSensor || !asSensor ) { return; }
+
     sprintf(log + pos, "%d.%03d,%d,%.3f,%.3f,%.3f,%.2f", daymillis / 1000, daymillis % 1000, delta, 
             baroSensor->getHead()/100.f, teSensor->getHead()/100.f, asSensor->getHead(), Units::K_to_C(temp));
     pos = strlen(log);
-    if (accSensor) {
+    if (accSensor && gyroSensor) {
         vector_f acc = accSensor->getRef();
         vector_f gyro_deg = gyroSensor->getRef() * rad2deg(1.f);
         sprintf(log + pos, ",%.4f,%.4f,%.4f,%.4f,%.4f,%.4f", acc.x, acc.y, acc.z, gyro_deg.x, gyro_deg.y, gyro_deg.z);
@@ -503,11 +502,23 @@ void system_startup(void *args){
 
 	AverageVario::begin();
 
-    // a couple volatile setup variable are used as black board are not valid from the beginning
-    // but the ctor does forcly set them valid with an init. value.
-    // work around for those optional values that are not valid until properly set
-    mag_hdm.setInvalid();
-    mag_hdt.setInvalid();
+    // Design the club
+    gflags.isPro = false;
+
+    // Set for now hidden but used setup variable to their default
+#ifndef DEBUG_AND_TEST
+    rot_default.set(rot_default.getDefault());
+    // menu_long_press.set(menu_long_press.getDefault());
+    imu_leverarm.set(0.f);
+    display_variant.set(DISPLAY_WHITE_ON_BLACK);
+    ahrs_raw_data.set(0);
+    logging.set(0);
+    ahrs_gyro_factor.set(ahrs_gyro_factor.getDefault());
+    ahrs_min_gyro_factor.set(ahrs_min_gyro_factor.getDefault());
+    ahrs_dynamic_factor.set(ahrs_dynamic_factor.getDefault());
+    ahrs_roll_check.set(0);
+    gyro_gating.set(gyro_gating.getDefault());
+#endif
 
 	BatVoltage = new AnalogInput((22.0+1.2)/1200, ADC_CHANNEL_7); // created allways, but only used on master XCV
 	BatVoltage->begin(ADC_ATTEN_DB_0);  // for battery voltage
@@ -524,7 +535,7 @@ void system_startup(void *args){
 		.data6_io_num = -1,
 		.data7_io_num = -1,
 		.data_io_default_level = false,
-		.max_transfer_sz = 8192,
+		.max_transfer_sz = 16 * 1024,
 		.flags = 0,
 		.isr_cpu_id = ESP_INTR_CPU_AFFINITY_AUTO,
 		.intr_flags = ESP_INTR_FLAG_IRAM
@@ -535,7 +546,12 @@ void system_startup(void *args){
 	MYUCG->begin();
 	Display = new IpsDisplay( MYUCG );
 	Display->setupDisplay();
-	MenuRoot = new SetupRoot(Display); // the root setup menu, screens still disabled
+
+    // MBOX instance, used from everywher and depends on the display
+    BootUpScreen *boot_screen = BootUpScreen::create();
+    MessageBox::createMessageBox();
+
+    MenuRoot = new ScreenRoot(Display); // the root setup menu, screens still disabled
 
 	Version V;
 	std::string ver( " Ver.: " );
@@ -551,8 +567,6 @@ void system_startup(void *args){
     // Start UI task responsible to manage screens and display. Needed to habe the boot screen and message box working
     xTaskCreate(&UiEventLoop, "UIloop", 6144, Rotary, 4, NULL); // increase stack by 1K
 
-    BootUpScreen *boot_screen = BootUpScreen::create();
-    MessageBox::createMessageBox();
     if (gflags.schedule_reboot) {
         MBOX->pushMessage(3, "Detecting XCV hardware");
     }
@@ -696,11 +710,10 @@ void system_startup(void *args){
                 }
                 samples++;
                 sum += accelG;
-                ESP_LOGI(FNAME, "MPU %.2f", accelG[2]);
                 vTaskDelay(pdMS_TO_TICKS(10));
             }
             sum /= samples;
-            float accel = std::sqrtf(sum[0] * sum[0] + sum[1] * sum[1] + sum[2] * sum[2]);
+            float accel = sum.get_norm();
             char ahrs[10];
             sprintf(ahrs, "%.2f", accel);
             logged_tests += "IMU AHRS (" + std::string(ahrs) + "g): ";
@@ -708,6 +721,7 @@ void system_startup(void *args){
                 logged_tests += passed_text;
             } else {
                 logged_tests += failed_text;
+                ESP_LOGE(FNAME, "MPU g avg: %.2f", sum[2]);
                 selftestPassed = false;
             }
         }
@@ -755,14 +769,13 @@ void system_startup(void *args){
             MBOX->pushMessage(2, "AS Sensor: NOT FOUND");
             logged_tests += notfound_text;
             selftestPassed = false;
-            asSensor = nullptr;
         }
 
         // Configure pressure sensors
         ESP_LOGI(FNAME, "Absolute pressure sensors init, detect type of sensor type..");
         logged_tests += "Baro Sensor: ";
         baroSensor = PressureSensor::autoSetup(SensorId::STATIC_PRESSURE);
-        bool batest = true;
+        bool batest = false;
         celsius_t ba_t, te_t;
         pascal_t ba_p, te_p;
         if (baroSensor) {
@@ -770,32 +783,46 @@ void system_startup(void *args){
                 ESP_LOGE(FNAME, "HW Error: Self test Barometric Pressure Sensor failed!");
                 MBOX->pushMessage(2, "Baro Sensor: NOT FOUND");
                 selftestPassed = false;
-                batest = false;
-                logged_tests += notfound_text;
+                logged_tests += failed_text;
             } else {
                 printf("Baro Sensor test: T=%f P=%f\n", ba_t, ba_p);
                 logged_tests += passed_text;
+                batest = true;
             }
             SensorRegistry::registerSensor(baroSensor);
+        }
+        else {
+            ESP_LOGE(FNAME, "Error with barometric pressure sensor, no working sensor found!");
+            MBOX->pushMessage(2, "Baro Sensor: NOT FOUND");
+            logged_tests += notfound_text;
+            selftestPassed = false;
         }
 
         logged_tests += "TE Sensor: ";
         teSensor = PressureSensor::autoSetup(SensorId::TE_PRESSURE);
-        bool tetest = true;
+        bool tetest = false;
         if (teSensor) {
             if (!teSensor->selfTest(te_t, te_p)) {
                 ESP_LOGE(FNAME, "HW Error: Self test TE Pressure Sensor failed!");
                 MBOX->pushMessage(2, "TE Sensor: NOT FOUND");
                 selftestPassed = false;
-                tetest = false;
-                logged_tests += notfound_text;
+                logged_tests += failed_text;
             } else {
                 logged_tests += passed_text;
+                tetest = true;
             }
             printf("TE Sensor test: T=%f P=%f\n", te_t, te_p);
             SensorRegistry::registerSensor(teSensor);
         }
+        else {
+            ESP_LOGE(FNAME, "Error with TE pressure sensor, no working sensor found!");
+            MBOX->pushMessage(2, "TE Sensor: NOT FOUND");
+            logged_tests += notfound_text;
+            selftestPassed = false;
+        }
         if (tetest && batest) {
+            boot_screen->finish(2);
+
             ESP_LOGI(FNAME, "Both absolute pressure sensor TESTs SUCCEEDED, now test deltas");
             logged_tests += "TE/Baro Sens. T d. <4'C: ";
             if ((abs(ba_t - te_t) > 400.0) && !airborne.get()) {  // each sensor has deviations, and new PCB has more heat sources
@@ -821,7 +848,6 @@ void system_startup(void *args){
             } else {
                 logged_tests += passed_text;
             }
-            boot_screen->finish(2);
         } else {
             ESP_LOGI(FNAME, "Absolute pressure sensor TESTs failed");
         }
@@ -916,7 +942,7 @@ void system_startup(void *args){
         }
     }
 
-    if (Rotary->readBootupStatus()) {
+    if (Rotary->readBootupStatus() && baroSensor && teSensor && asSensor) {
         BootUpScreen::terminate();
         LeakTest::start(baroSensor, teSensor, asSensor);
     }
@@ -930,8 +956,8 @@ void system_startup(void *args){
         ESP_LOGI(FNAME, "Master Mode: QNH Autosetup, IAS=%3f (<50 km/h)", ias.get());
         // QNH autosetup
         meter_t airfield_elev = airfield_elevation.get();
-        ESP_LOGI(FNAME, "Airfield Elevation = %4.1f m (Hist Level = %d)", airfield_elev, baroSensor->getLevel());
-        if (airfield_elev > NO_ELEVATION && alt_select.get() == ALT_BARO_SENSOR) {
+        ESP_LOGI(FNAME, "Airfield Elevation = %4.1f m (Hist Level = %d)", airfield_elev, baroSensor ? baroSensor->getLevel() : 0);
+        if (airfield_elev > NO_ELEVATION && alt_select.get() == ALT_BARO_SENSOR && baroSensor) {
             pascal_t qnh_auto = Units::calcQNH(baroSensor->getAVG(300), airfield_elev);
             QNH.set(qnh_auto);
             ESP_LOGI(FNAME, "Auto QNH (direkt) = %4.2f hPa", qnh_auto);
@@ -991,10 +1017,11 @@ void system_startup(void *args){
         baroSensor->update(Clock::getMillis());
         teSensor->update(Clock::getMillis());
         asSensor->update(Clock::getMillis());
+
+        // TE vario "sensor" always needed, but last in line
+        bmpVario.setup();
+        SensorRegistry::registerSensor(&bmpVario);
     }
-    // TE vario "sensor" always needed, but last in line
-    bmpVario.setup();
-    SensorRegistry::registerSensor(&bmpVario);
 
     // apply a none default alt_select
     if ( alt_select.get() != ALT_BARO_SENSOR ) {
@@ -1007,7 +1034,7 @@ void system_startup(void *args){
     WindCalcTask::createWindResources();
 
     // Init the vario screens
-    SetupRoot::initScreens();
+    ScreenRoot::initScreens();
 
     if (flapbox_enable.get()) {
         FLAP = Flap::theFlap();  // check on FLAP pointer further on

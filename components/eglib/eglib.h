@@ -19,7 +19,7 @@ struct _eglib_struct {
 		// Set in between hal_begin and hal_end
 		bool comm_active : 1;
 		// Whether hal_t send() must send slave address for I2C
-		uint8_t i2c_send_slave_addr : 2;
+		// uint8_t i2c_send_slave_addr : 2;
 	} hal;
 
 	struct {
@@ -27,7 +27,7 @@ struct _eglib_struct {
 		void *config_ptr;
 		bool refreshing : 1;
 	} display;
-
+    bool do_buffer : 1; // whether to use the buffer for drawing, or write directly to display
 	drawing_t drawing;
 };
 

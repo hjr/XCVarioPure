@@ -9,6 +9,7 @@
 #pragma once
 
 #include "math/vector_3d_fwd.h"
+#include "math/Units.h"
 
 #include <MPU.h>
 #include <string>
@@ -29,30 +30,44 @@ class MultiGauge;
 class CruiseStatus;
 class FlapsBox;
 class Quaternion;
+class Connection;
 
 // fixme needs a home
 float getHeading();
 
 
 // Some geometry helper
+struct Point;
+using Vector2d = Point;
 struct Point {
     int16_t x, y;
-    Point operator+(Point p) const;
+    Point operator+(const Point &p) const;
     Point& operator+=(const Point &p) { x += p.x; y += p.y; return *this; }
-    Point rotate(float alpha) const;
+    // Point operator-(const Point &p) const;
+    // Point& operator-=(const Point &p) { x -= p.x; y -= p.y; return *this; }
+    // Point operator*(const Point &p) const;
+    // Point& operator*=(const Point &p) { x *= p.x; y *= p.y; return *this; }
+    Point rotate(rad_t alpha) const;
+    static Point centralProjection(const vector_f &p, float focus); // todo should go into vector class, but needs Point for return value
+    int dot(const Vector2d &v) const { return x * v.x + y * v.y; }
 };
 
 // Hesse form of a 2d straight line: Normal x Pxy + d = 0
 struct Line {
     Line() = default;
-    Line(Quaternion q, int16_t cx, int16_t cy);
-    float _nx;
-    float _ny;
-    float _d;
-    float fct(Point p);
+    Line(const Quaternion &q);
+    float _nx = 0;
+    float _ny = 0;
+    float _d = 0;
+    float fct(Point p) const; // the Hesse function evaluated at point p
     Point intersect(Point p1, Point p2) const;
     bool operator==(const Line &r) const;
     bool similar(const Line &r) const;
+    bool isDefined() const { return _nx != 0 || _ny != 0; }
+    inline float getD() const { return _d; }
+    Point mapToHorizon(Point p) const;
+    Point limitToScreen(Point p, bool respect_mbox) const;
+    float getDistance(Point p) const { return fct(p); }
 };
 
 //
@@ -82,10 +97,8 @@ public:
 	static inline AdaptUGC *getDisplay() { return ucg; };
 	static AdaptUGC *ucg;
 
-    static void clipRectByLine(Point *rect, Line &l, Point *above, int *na, Point *below, int *nb);
+    static void clipPolygonByLine(const Point *poly, int n, const Line &l, Point *above, int *na, Point *below, int *nb);
     static void drawPolygon(Point *pts, int n);
-    static Point projectToDisplayPlane(const vector_f &obj, float focus);
-    static Point clipToScreenCenter(Point p);
 
   private:
     static PolarGauge *MAINgauge;
@@ -98,6 +111,7 @@ public:
     static CruiseStatus *VCSTATgauge;
     static FlapsBox *FLAPSgauge;
     static Temperature* OATgauge;
+    static Connection* CONNgauge;
 
     static int tick;
 

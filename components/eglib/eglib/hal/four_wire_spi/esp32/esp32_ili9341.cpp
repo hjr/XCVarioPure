@@ -75,22 +75,22 @@ static void einit(eglib_t *eglib)
 }
 
 static void esleep_in(eglib_t *_eglib) {
-	ESP_LOGI("ILI9341","sleep in");
+	// ESP_LOGI("ILI9341","sleep in");
 	vTaskDelay( 120 / portTICK_PERIOD_MS);
 }
 
 static void esleep_out(eglib_t *_eglib) {
-	ESP_LOGI("ILI9341","sleep out");
+	// ESP_LOGI("ILI9341","sleep out");
 	vTaskDelay( 120 / portTICK_PERIOD_MS);
 }
 
 static void edelay_ns(eglib_t *_eglib, uint32_t ns) {
-	ESP_LOGI("ILI9341","delay %d ms", (int)ns/1000000 );
+	// ESP_LOGI("ILI9341","delay %d ms", (int)ns/1000000 );
 	vTaskDelay( (ns/1000000) / portTICK_PERIOD_MS);
 }
 
 static void eset_reset(eglib_t *_eglib, bool state) {
-	ESP_LOGI("ILI9341","reset IO:%d state=%d", config->gpio_rs, state );
+	// ESP_LOGI("ILI9341","reset IO:%d state=%d", config->gpio_rs, state );
 	gpio_set_level(config->gpio_rs, (unsigned int)state );
 }
 
@@ -147,10 +147,14 @@ static IRAM_ATTR void esend(eglib_t *_eglib, enum hal_dc_t dc, uint8_t *bytes, u
 	// ESP_LOG_BUFFER_HEXDUMP("ILI9341", bytes, length, ESP_LOG_INFO);
 	if (dc == HAL_DATA)
 	{
-		gpio_set_level(config->gpio_dc, 1);
 		// ESP_LOGI("ILI9341", "esend() DAT %d", length );
+		if ( length == 0 || !bytes ) {
+			// ESP_LOGW("ILI9341", "esend() DAT no data %d", (int)length );
+			return;
+		}
+		gpio_set_level(config->gpio_dc, 1);
 		// ta.user = (void *)1;
-		ta.flags =  0; // SPI_TRANS_MODE_OCT;
+		ta.flags =  SPI_TRANS_MODE_OCT;
 		ta.rx_buffer = nullptr;
 		ta.tx_buffer = bytes;
 		ta.length = length * 8;
@@ -159,12 +163,10 @@ static IRAM_ATTR void esend(eglib_t *_eglib, enum hal_dc_t dc, uint8_t *bytes, u
 	{
 		// ESP_LOGI("ILI9341", "esend() CMD 0x%x", *bytes );
 		// ta.user = (void *)0;
-		ta.flags = SPI_TRANS_USE_TXDATA; // | SPI_TRANS_MODE_OCT;
+		ta.flags = SPI_TRANS_USE_TXDATA | SPI_TRANS_MODE_OCT;
 		ta.rx_buffer = nullptr;
 		// ta.tx_data[0] = 0;
-		// if ( bytes ) {
 		ta.tx_data[0] = *bytes;
-		// }
 		ta.length = 8;
 		gpio_set_level(config->gpio_dc, 0);
 	}

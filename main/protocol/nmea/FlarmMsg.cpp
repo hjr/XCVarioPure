@@ -122,7 +122,7 @@ dl_action_t FlarmMsg::parsePFLAE(NmeaPlugin *plg)
 }
 
 
-// PFLAU,<RX>,<TX>,<GPS>,<Power>,<AlarmLevel>,<RelativeBearing>,<AlarmType>,<RelativeVertical>,<RelativeDistance>,<ID>
+// PFLAU,<RX>,<TX>,<GPS>,<Power>,<AlarmLevel>,<RelativeBearing>,<AlarmType>,<RelativeVertical>,<HorizontalDistance>,<ID>
 //  $PFLAU,3,1,2,1,2,-30,2,-32,755*FLARM is working properly and currently receives 3 other aircraft.
 //  The most dangerous of these aircraft is at 11 o’clock, position 32m below and 755m away. It is a level 2 alarm
 //
@@ -162,7 +162,7 @@ dl_action_t FlarmMsg::parsePFLAU(NmeaPlugin *plg)
     int tmp = atoi(s + word->at(5));
     Flarm::RelativeBearing = Units::deg_to_rad(tmp);
     Flarm::RelativeVertical = atoi(s + word->at(7));
-    Flarm::RelativeDistance = atoi(s + word->at(8));
+    Flarm::HorizontalDistance = atoi(s + word->at(8));
     Flarm::IcaoId = 0;
     if ( word->size() >= 10 ) {
         Flarm::IcaoId = atoi(s + word->at(9));

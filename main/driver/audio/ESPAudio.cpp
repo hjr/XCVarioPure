@@ -774,7 +774,7 @@ void Audio::applySetup() {
 
     maxf = center_freq.get() * tone_var.get();
     minf = center_freq.get() / tone_var.get();
-    ESP_LOGI(FNAME,"min/max freq. %.1f/%.1f", minf, maxf);
+    ESP_LOGI(FNAME,"tonevar %.1f; min/max freq. %.1f/%.1f", tone_var.get(), minf, maxf);
     CRMOD.updateCache(); // force re- evaluation of cruise and audio mode
     updateAudioMode();
 }
@@ -782,7 +782,7 @@ void Audio::applySetup() {
 void Audio::initVarioVoice()
 {
     if ( _dac_chan ) {
-        ESP_LOGI(FNAME, "load vario sound");
+        ESP_LOGI(FNAME, "load vario sound, deadband %.1f/%.1f", _deadband_p, _deadband_n);
         unmute();
         writeVolume(speaker_volume);
         // load the vario sound

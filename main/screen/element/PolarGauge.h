@@ -12,6 +12,8 @@
 #include "math/Trigonometry.h"
 #include "math/Units.h"
 
+#include <algorithm>
+
 class ArrowIndicator;
 class WindIndicator;
 class LargeFigure;
@@ -44,20 +46,20 @@ class PolarGauge : public ScreenElement
     friend class CenterAid;
 
 public:
-    using GaugeFlavor = enum { VARIO, GLOAD, COMPASS};
-    using WindReference = enum { WR_HEADING, WR_NORTH };
+    using GaugeFlavor = enum : uint8_t { CLUB, XCVPRO, GLOAD, COMPASS};
+    using WindReference = enum : uint8_t { WR_HEADING, WR_NORTH };
 
-    PolarGauge(int16_t refx, int16_t refy, int16_t scale_end, int16_t radius, int16_t flavor);
+    PolarGauge(int16_t refx, int16_t refy, int16_t scale_end, int16_t radius, GaugeFlavor flavor);
     ~PolarGauge();
     void enableWindIndicator(bool avg, bool live);
     void forceAllRedraw();
-    void setRange(float pos_range, float zero_at, bool log);
+    void setRange(float pos_range, float center_at, bool log);
     float getMRange() const { return _mrange; }
+    int16_t getDist05() const { return _dist05; }
     void setUnit(float uf) { _unit_fac = uf; }
     void setColor(int color_idx);
     void setFigOffset(int16_t ox, int16_t oy);
-    float clipValue(float a) const;
-    void setWindRef(int wref) { _wind_ref = wref; }
+    void setWindRef(int wref) { _wind_ref = static_cast<WindReference>(wref); }
 
     void draw(float a);
     void drawIndicator(float a);
@@ -67,7 +69,7 @@ public:
     void drawWind(int16_t wdir, mps_t wval, int16_t idir, mps_t ival);
     using BowColorIdx = enum { GREEN, BLUE, ORANGE, RED };
     void colorRange(float from, float to, int16_t color);
-    void drawScale(float at = -1000.);
+    void drawScale(float from = -1000., float to = -1000.);
     void drawScaleBottom();
     void drawRose(int16_t at = -1000) const;
     void clearGauge();
@@ -77,13 +79,15 @@ public:
     ArrowIndicator *_arrow = nullptr;
     WindIndicator *_wind_avg = nullptr;
     WindIndicator *_wind_live = nullptr;
-    int _wind_ref = WR_HEADING;
+    WindReference _wind_ref = WR_HEADING;
+    GaugeFlavor _flavor = CLUB;
     float _scale_max = 1.57f; // half scale extend in rad
     int16_t _radius = 50; // pixel
     float _range = 5.; // max positive value of the scale
     float _mrange = -5.; // resulting from range and zero_at, assuming an always symetric scale
+    int16_t _dist05;
     static constexpr const float IDX_SCALE = 360.f/My_PIf; // cut the scale range into discrete 0.5deg steps [rad]
-    float _unit_fac = 1.f; // scale  from SI units to the guage unit
+    float _unit_fac = 1.f; // scale  from SI units to the gauge units
     int16_t _old_idx = 360; // discretized previous index value
     int16_t _old_bow_idx = 0;
     int16_t _old_polar_sink = 0;
@@ -109,9 +113,11 @@ public:
     int16_t CosDeg2(int16_t val, int16_t len) const;
 
     // gauge helpers
+    inline float clipValue(float a) const { return std::clamp(a, _mrange, _range); };
     void drawDisc(float val, bool clean=false) const;
     void drawOneScaleLine(float a, int16_t l2, int16_t w, int16_t cidx) const;
     void drawBow(int16_t idx, int16_t &old, int16_t w, int16_t off, int16_t cidx = 0) const;
     void drawOneLabel(float val, int16_t labl) const;
+    void drawDirLabel(int16_t deg2, const char *labl) const;
     void drawTwoDots(int16_t a, int16_t size, int16_t cidx) const;
 };

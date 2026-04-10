@@ -8,6 +8,7 @@
 
 #include "McCready.h"
 
+#include "Atmosphere.h"
 #include "Colors.h"
 #include "AdaptUGC.h"
 

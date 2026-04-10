@@ -19,11 +19,11 @@ Last update: 2021-04-18
 
 #include "wind/StraightWind.h"
 #include "ShowStraightWind.h"
+#include "Atmosphere.h"
 #include "setup/SetupNG.h"
 #include "AdaptUGC.h"
-#include "math/Units.h"
 
-#include "logdef.h"
+#include "logdefnone.h"
 
 extern AdaptUGC *MYUCG;
 
@@ -43,7 +43,7 @@ void ShowStraightWind::display(int mode)
 	if( mode != 5 ) {
 		clear();
 	}
-	MYUCG->setFont( ucg_font_ncenR14_hr );
+	MYUCG->setFont( ucg_font_ncenR14_hr, true );
 	menuPrintLn(_title.c_str(), 0, 5);
 
 	char buffer[32];

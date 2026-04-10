@@ -171,6 +171,7 @@ class SetupNG : public SetupCommon {
         _value = _default;
         if (flags._volatile == PERSISTENT) {
             setDirty();
+            flags._valid = true;
         }
     }
 

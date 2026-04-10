@@ -8,7 +8,7 @@
 
 #include "ImuSensor.h"
 
-#include "Quaternion.h"
+#include "math/Quaternion.h"
 #include "math/Trigonometry.h"
 #include "math/Floats.h"
 #include "setup/SetupNG.h"
@@ -85,27 +85,17 @@ bool MpuImu::probe() {
 
 bool MpuImu::setup() {
     ESP_LOGI(FNAME, "MPU initialize");
-    myMPU.initialize();       // this will initialize the chip and set default configurations
-    myMPU.setSampleRate(50);  // in (Hz)
-    myMPU.setAccelFullScale(mpud::ACCEL_FS_8G);
-    myMPU.setGyroFullScale(mpud::GYRO_FS_250DPS);
-    myMPU.setDigitalLowPassFilter(mpud::DLPF_5HZ);  // smoother data
-    axes_i16_abi tmp = gyro_bias.get();
-    mpud::raw_axes_t gb(tmp.x, tmp.y, tmp.z);
-    tmp = accl_bias.get();
-    mpud::raw_axes_t ab(tmp.x, tmp.y, tmp.z);
-    if (gb.isZero() && ab.isZero()) {
-        ESP_LOGI(FNAME, "MPU computeOffsets");
-        myMPU.computeOffsets(&ab, &gb);  // returns Offsets in 16G scale
-        accl_bias.set(axes_i16_abi(ab.x, ab.y, ab.z));
-        gyro_bias.set(axes_i16_abi(gb.x, gb.y, gb.z));
-        myMPU.setGyroOffset(gb);
-        ESP_LOGI(FNAME, "MPU new offsets accl:%d/%d/%d gyro:%d/%d/%d ZERO:%d", ab.x, ab.y, ab.z, gb.x, gb.y, gb.z, gb.isZero());
-    } else {
-        myMPU.setAccelOffset(ab);
-        myMPU.setGyroOffset(gb);
-    }
-    ESP_LOGI(FNAME, "MPU current offsets accl:%d/%d/%d gyro:%d/%d/%d ZERO:%d", ab.x, ab.y, ab.z, gb.x, gb.y, gb.z, gb.isZero());
+    esp_err_t err = myMPU.initialize();       // this will initialize the chip and set default configurations
+    err |= myMPU.setSampleRate(50);  // in (Hz)
+    err |= myMPU.setAccelFullScale(mpud::ACCEL_FS_8G);
+    err |= myMPU.setGyroFullScale(mpud::GYRO_FS_250DPS);
+    err |= myMPU.setDigitalLowPassFilter(mpud::DLPF_5HZ);  // smoother data
+    axes_i16_abi tmp = gyro_bias.get(); // will get refined on Rest condition while on the ground
+    err |= myMPU.setGyroOffset(mpud::raw_axes_t(tmp.x, tmp.y, tmp.z));
+    ESP_LOGI(FNAME, "MPU current gyro bias: %d/%d/%d", tmp.x, tmp.y, tmp.z);
+    tmp = accl_bias.get(); // only set this properly through the calibration procedure, otherwise acc bias goes awkwardly sideways
+    err |= myMPU.setAccelOffset(mpud::raw_axes_t(tmp.x, tmp.y, tmp.z));
+    ESP_LOGI(FNAME, "MPU current accel bias: %d/%d/%d", tmp.x, tmp.y, tmp.z);
 
     // Check on heat control availability
     if ( CAN && !CAN->hasSlopeSupport() ) {
@@ -114,13 +104,13 @@ bool MpuImu::setup() {
 
     // Load reference calibration
     Quaternion basic_ref = imu_reference.get();
-    if (basic_ref == Quaternion()) {
-        // If unset, set to a rough default
-        basic_ref = getDefaultImuReference();
-    }
     _ref_rot = concatGaaAndImuReference(glider_ground_aa.get(), basic_ref);
+    if (basic_ref == Quaternion()) {
+        // If unset, set the default, but do not apply the GAA (!)
+        _ref_rot = getDefaultImuReference();
+    }
 
-    return true;
+    return err == ESP_OK;
 }
 
 ImuType MpuImu::getImuId() {
@@ -168,10 +158,17 @@ Quaternion MpuImu::getDefaultImuReference() {
 
 void MpuImu::resetImuReference(bool save_nvs) {
     Quaternion base = getDefaultImuReference();
-    applyImuReference(glider_ground_aa.get(), base);
+    applyImuReference(0.f, base); // do not add the GAA onto the default reference
     if (save_nvs) {
         imu_reference.set(Quaternion(), false); // nvs
     }
+}
+
+void MpuImu::zeroBiases() {
+    gyro_bias.set({});
+    accl_bias.set({});
+    myMPU.setGyroOffset({});
+    myMPU.setAccelOffset({});
 }
 
 // Concatenation of ground angle of attack and the basic reference calibration rotation
@@ -212,7 +209,7 @@ int MpuImu::getAccelSamplesAndCalib(vector_f gyro_integral, rad_t& wing_angle, r
     int16_t side = 0;
     ESP_LOGI(FNAME, "gyro integral: %f/%f/%f n:%f", gyro_integral.x, gyro_integral.y, gyro_integral.z, gyro_integral.get_norm());
     if ( progress == 3 ) {
-        side = 3;
+        progress = 4;
     }
     else if (gyro_integral.x > 0.) {
         bob = &bob_right_wing;
@@ -237,7 +234,7 @@ int MpuImu::getAccelSamplesAndCalib(vector_f gyro_integral, rad_t& wing_angle, r
 
     ESP_LOGI(FNAME, "wing down bob: %f/%f/%f", bob->x, bob->y, bob->z);
     progress |= side;  // accumulate progress
-    if (side == 3) {
+    if (progress == 4) {
         // Extract the current bias from wing down measurments
         std::vector<float> start{.0, .0, .0};
         std::vector<std::vector<float> > imu_simp{{0.05, 0, 0}, {0, -0.05, 0}, {0, 0, 0.05}, {0, 0, 0}};
@@ -310,11 +307,11 @@ int MpuImu::getAccelSamplesAndCalib(vector_f gyro_integral, rad_t& wing_angle, r
         imu_reference.set(basic_reference, false);
 
         // Save the accel bias
-        vector_f sens_bias = _ref_rot.get_conjugate().rotate(bias); // transform back to sensor frame
-        ESP_LOGI(FNAME, "sens_bias: %f,%f,%f", sens_bias.x, sens_bias.y, sens_bias.z);
-        mpud::raw_axes_t raw_bias(sens_bias.x * -2048., sens_bias.y * -2048., sens_bias.z * -2048.);
+        vector_f new_accl_bias = _ref_rot.get_conjugate().rotate(bias); // transform back to sensor frame
+        ESP_LOGI(FNAME, "accel bias: %f,%f,%f", new_accl_bias.x, new_accl_bias.y, new_accl_bias.z);
+        mpud::raw_axes_t raw_bias(new_accl_bias.x * -2048., new_accl_bias.y * -2048., new_accl_bias.z * -2048.);
         ESP_LOGI(FNAME, "raw  Bias: %d,%d,%d", raw_bias.x, raw_bias.y, raw_bias.z);
-        mpud::raw_axes_t currrent_bias = myMPU.getAccelOffset();
+        mpud::raw_axes_t currrent_bias = myMPU.getAccelOffset(); // should always set to 0 before the procedure
         ESP_LOGI(FNAME, "current Bias: %d,%d,%d", currrent_bias.x, currrent_bias.y, currrent_bias.z);
         currrent_bias -= raw_bias;
         ESP_LOGI(FNAME, "new Bias: %d,%d,%d", currrent_bias.x, currrent_bias.y, currrent_bias.z);

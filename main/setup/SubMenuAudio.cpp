@@ -15,10 +15,10 @@
 #include "setup/SetupMenu.h"
 #include "setup/SetupNG.h"
 #include "math/Floats.h"
-#include "math/Units.h"
+#include "Atmosphere.h"
 #include "logdef.h"
 
-#include <cinttypes>
+#include <cstdint>
 #include <string>
 #include <string_view>
 
@@ -94,6 +94,7 @@ static int applyAudioProfile(SetupMenuSelect *p)
         chopping_mode.set(ap.chopping);
         audio_harmonics.set(ap.harmonics);
         audio_factor.set(ap.exponent);
+        AUDIO->applySetup();
         p->getParent()->setDirty();
     }
     // custom profile - do nothing
@@ -156,11 +157,11 @@ void audio_menu_create_tonestyle(SetupMenu *top) { // dynamic!
         prfl->setSelect(selected_profile);
         top->addEntry(prfl);
 
-        SetupMenuValFloat *cf = new SetupMenuValFloat("CenterFreq", "Hz", audio_setup_f, false, &center_freq);
+        SetupMenuValFloat *cf = new SetupMenuValFloat("CenterFreq", "Hz", audio_setup_f, &center_freq);
         cf->setHelp("Center frequency for Audio at zero Vario or zero S2F delta");
         top->addEntry(cf);
 
-        SetupMenuValFloat *oc = new SetupMenuValFloat("Tone Variation", "fold", audio_setup_f, false, &tone_var);
+        SetupMenuValFloat *oc = new SetupMenuValFloat("Tone Variation", "fold", audio_setup_f, &tone_var);
         oc->setHelp("Maximum tone frequency variation");
         top->addEntry(oc);
 
@@ -185,7 +186,7 @@ void audio_menu_create_tonestyle(SetupMenu *top) { // dynamic!
         tharm->addEntry("Sparky", AUD_HARM_HIGH);
         top->addEntry(tharm);
 
-        SetupMenuValFloat *afac = new SetupMenuValFloat("Audio Response", "", audio_setup_f, false, &audio_factor);
+        SetupMenuValFloat *afac = new SetupMenuValFloat("Audio Response", "", audio_setup_f, &audio_factor);
         afac->setHelp("How the audio frequency responds to the climb rate: < 1 for logarithmic, and > 1 for exponential, response");
         top->addEntry(afac);
     }
@@ -207,16 +208,16 @@ void audio_menu_create_deadband(SetupMenu *top) {
     audio_range_sm->setHelp("Audio range: fixed, or variable according to current Vario display range setting");
     top->addEntry(audio_range_sm);
 
-	SetupMenuValFloat *dbminlv = new SetupMenuValFloat("Lower Vario", "", audio_setup_f, false, &deadband_neg);
+	SetupMenuValFloat *dbminlv = new SetupMenuValFloat("Lower Vario", "", audio_setup_f, &deadband_neg);
 	top->addEntry(dbminlv);
 
-	SetupMenuValFloat *dbmaxlv = new SetupMenuValFloat("Upper Vario", "", audio_setup_f, false, &deadband);
+	SetupMenuValFloat *dbmaxlv = new SetupMenuValFloat("Upper Vario", "", audio_setup_f, &deadband);
 	top->addEntry(dbmaxlv);
 
-	SetupMenuValFloat *dbmaxls2fn = new SetupMenuValFloat("Lower S2F", "", audio_setup_f, false, &s2f_deadband_neg);
+	SetupMenuValFloat *dbmaxls2fn = new SetupMenuValFloat("Lower S2F", "", audio_setup_f, &s2f_deadband_neg);
 	top->addEntry(dbmaxls2fn);
 
-	SetupMenuValFloat *dbmaxls2f = new SetupMenuValFloat("Upper S2F", "", audio_setup_f, false, &s2f_deadband);
+	SetupMenuValFloat *dbmaxls2f = new SetupMenuValFloat("Upper S2F", "", audio_setup_f, &s2f_deadband);
 	top->addEntry(dbmaxls2f);
 }
 
@@ -237,11 +238,11 @@ void audio_menu_create(SetupMenu *audio) {
         asida->addEntry(ENABLE_MODE[1].data(), 0); // inverted logic
         audio->addEntry(asida);
 
-        SetupMenuValFloat *dv = new SetupMenuValFloat("Default Volume", "%", show_vol_dflt, false, &default_volume, RST_NONE, true);
+        SetupMenuValFloat *dv = new SetupMenuValFloat("Default Volume", "%", show_vol_dflt, &default_volume, RST_NONE, true);
         dv->setHelp("Default volume for Audio when device is switched on");
         audio->addEntry(dv);
 
-        SetupMenuValFloat *flarmv = new SetupMenuValFloat("Alarm Vol. Raise", "%", nullptr, false, &alarm_volraise);
+        SetupMenuValFloat *flarmv = new SetupMenuValFloat("Alarm Vol. Raise", "%", nullptr, &alarm_volraise);
         flarmv->setHelp("Audio volume raise for alarms and warnings (min. up to 60%)");
         audio->addEntry(flarmv);
 

@@ -19,11 +19,13 @@
 
 GyroMPU6050 *gyroSensor = nullptr;
 
+constexpr int SENSOR_HISTORY_DURATION_MS = 10000;  // 10 sec
 constexpr int DUTY_CYCLE_MS = 100; // 10Hz
-static vector_f gyro_buffer[ (SENSOR_HISTORY_DURATION_MS / DUTY_CYCLE_MS) + 1 ];
+constexpr size_t HSIZE = SENSOR_HISTORY_DURATION_MS / DUTY_CYCLE_MS;
+static __attribute__((aligned(4))) vector_f gyro_buffer[ HSIZE + 1 ];
 
 GyroMPU6050::GyroMPU6050(MpuImu &mmpu) :
-    SensorTP<vector_f>(gyro_buffer, DUTY_CYCLE_MS),
+    SensorTP<vector_f>(gyro_buffer, HSIZE, DUTY_CYCLE_MS),
     _my_mpu(mmpu),
     _scale(Units::deg_to_rad(mpud::gyroResolution(mpud::GYRO_FS_250DPS))) // scale factor for raw gyro data to rad/s
 {

@@ -250,6 +250,7 @@ static void set_memory_data_access_control(eglib_t *eglib) {
 	}
 	eglib_SendCommandByte(eglib, ILI9341_MEMORY_DATA_ACCESS_CONTROL);
 	eglib_SendDataByte(eglib, memory_data_access_control);
+	// ESP_LOGI("ili9341", "memory_data_access_control: %02x", memory_data_access_control );
 }
 
 static void set_column_address(eglib_t *eglib, uint16_t x_start, uint16_t x_end) {
@@ -578,8 +579,8 @@ static void send_buffer(
 	// if((uint32_t)x * get_bits_per_pixel(eglib) % 8)
 	//	x -= 1;
 	eglib_CommBegin(eglib);
-    set_column_address(eglib, x, x + width -1);
-    set_row_address(eglib, y-height -1, y );
+    set_column_address(eglib, x, x + width - 1);
+    set_row_address(eglib, y, y + height - 1);
     eglib_SendCommandByte(eglib, ILI9341_MEMORY_WRITE);
     eglib_SendData( eglib, (uint8_t *)buffer_ptr, width*height*3 );
 	eglib_CommEnd(eglib);

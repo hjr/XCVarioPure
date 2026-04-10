@@ -135,7 +135,7 @@ void NmeaPrtcl::sendSeeYouF()
     msg->buffer += tmp;
     vector_f accel = {0,0,0};
     if ( accSensor ) {
-        accel = accSensor->getHead();
+        accel = accSensor->get();
     }
     std::sprintf(tmp, "%.1f,", accel.x); // Naviter expects "NED"
     msg->buffer += tmp;

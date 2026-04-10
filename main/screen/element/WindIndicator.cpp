@@ -12,6 +12,7 @@
 #include "PolarGauge.h"
 #include "Colors.h"
 #include "AdaptUGC.h"
+#include "setup/SetupNG.h"
 #include "logdefnone.h"
 
 #include <cstdio>
@@ -26,14 +27,14 @@ WindIndicator::WindIndicator(PolarGauge &g, bool live) :
     _gauge(g),
     _live(live)
 {
-    MYUCG->setFont(ucg_font_fub11_hr);
+    MYUCG->setFont(ucg_font_fub14_hr);
     _cheight = MYUCG->getFontAscent() - MYUCG->getFontDescent();
     _cwidth = MYUCG->getStrWidth("0");
     ESP_LOGI(FNAME, "asc %d %d", MYUCG->getFontAscent(), MYUCG->getFontDescent());
     ESP_LOGI(FNAME, "sw %d", _cwidth);
 
     if ( _live ) {
-        _color = { COLOR_ORANGE };
+        _color = { ndl_color[needle_color.get()].color[0], ndl_color[needle_color.get()].color[1], ndl_color[needle_color.get()].color[2] };
     }
     else {
         _color = { COLOR_LBBLUE };
@@ -103,9 +104,11 @@ void WindIndicator::drawWind(bool erase)
         if (_val > 399) value = -1;
         if (_val < 0) value = -1;
         sprintf(buf, "%d", value);
-        MYUCG->setFont(ucg_font_fub11_hr);
-        MYUCG->setPrintPos(_gauge._ref_x - x0 - x1 / 2 - xshift, _gauge._ref_y - y0 - y1 / 2 + _cheight / 2);
+        MYUCG->setFont(ucg_font_fub14_hr);
+        MYUCG->setFontPosCenter();
+        MYUCG->setPrintPos(_gauge._ref_x - x0 - x1 / 2 - xshift, _gauge._ref_y - y0 - y1 / 2);
         MYUCG->print(buf);
+        MYUCG->setFontPosBottom();
     }
 
     // a tip in direction the wind is blowing (180° other direction)

@@ -26,6 +26,11 @@ const int CLOCK_DIVIDER = 8;
 // - alert level (1,2,3,4)
 // - a text message
 // - a time-out in seconds (0 means default per alert level, a time-out >180 sec enforces a confirmation option)
+// - has a pseudo unique id to identify messages for confirmation (e.g. to confirm a landing, or a flarm alarm)
+ScreenMsg::ScreenMsg(int a, const char *str, int to) : alert_level(a), text(str), _time_out(to)
+{
+    _id = (rand() % 254) + 1; // generate a pseudo unique id != 0
+}
 
 void MessageBox::createMessageBox()
 {
@@ -36,9 +41,7 @@ void MessageBox::createMessageBox()
 
 MessageBox::MessageBox() :
     Clock_I(CLOCK_DIVIDER),
-    RotaryObserver(),
-    width(MYUCG->getDisplayWidth()),
-    height(MYUCG->getDisplayHeight())
+    RotaryObserver()
 {
 }
 
@@ -48,14 +51,15 @@ MessageBox::~MessageBox()
     _msg_list.clear();
 }
 
-void MessageBox::pushMessage(int alert_level, const char *str, int to, bool confirm)
+uint8_t MessageBox::pushMessage(int alert_level, const char *str, int to, bool confirm)
 {
     if (_msg_list.size() >= 10) {
         ESP_LOGW(FNAME, "Message list full, dropping message: %s", str);
-        return;
+        return 0;
     }
     
     std::unique_ptr<ScreenMsg> msg = std::make_unique<ScreenMsg>(alert_level, str, to);
+    uint8_t ret = msg->_id;
     {
         std::lock_guard<SemaphoreMutex> lock(_list_mutex);
         if ( alert_level >= 3 ) {
@@ -72,19 +76,40 @@ void MessageBox::pushMessage(int alert_level, const char *str, int to, bool conf
     if ( ! current ) {
         Clock::start(this);
     }
+    return ret;
 }
 
 // todo messages should have id's to make this work properly
-void MessageBox::popMessage()
+void MessageBox::popMessage(uint8_t id)
 {
-    if ( current ) {
-        _msg_to = 0; // trigger immediate display of next message
+    // only acts on the current message, if id matches or id is 0 (default)
+    if ( id != 0 ) {
+        if ( current && current->_id == id ) {
+            _msg_to = 0; // trigger immediate display of next message
+        }
+    }
+    else {
+        // pop current message
+        if ( current ) {
+            _msg_to = 0; // trigger immediate display of next message
+        }
+    }
+}
+
+void MessageBox::keepMessage(uint8_t id, int to)
+{
+    if ( current && current->_id == id ) {
+        int tmp_to = (to > 0) ? to :  current->alert_level * 10; // x 10 sec
+        tmp_to *= (1000/(CLOCK_DIVIDER*Clock::TICK_ATOM)); // convert to ticks
+        _msg_to = tmp_to; // reset time-out for current message
     }
 }
 
 // returns true in case a message is now on the display
 bool MessageBox::nextMsg()
 {
+    const int16_t dheight = MYUCG->getDisplayHeight();
+    const int16_t dwidth = MYUCG->getDisplayWidth();
     // clear message area
     MYUCG->undoClipRange();
     removeMsg();
@@ -117,29 +142,29 @@ bool MessageBox::nextMsg()
     else if ( current->alert_level >= 3 ) {
         MYUCG->setColor(COLOR_RED);
     }
-    MYUCG->drawHLine(0, height - 26, width);
-    MYUCG->setFont(ucg_font_ncenR14_hr);
+    MYUCG->drawHLine(0, dheight - MSG_BOX_HEIGHT, dwidth);
+    MYUCG->setFont(ucg_font_ncenR14_hr, true);
     _print_pos = 1;
     if  ( current->alert_level == 4 ) {
         // center text
-        int w = MYUCG->getStrWidth(current->text.c_str());
-        if ( w < width ) {
-            _print_pos = (width - w) / 2;
+        int16_t w = MYUCG->getStrWidth(current->text.c_str());
+        if ( w < dwidth ) {
+            _print_pos = (dwidth - w) / 2;
         }
     }
-    MYUCG->setPrintPos(_print_pos, height-2);
+    MYUCG->setPrintPos(_print_pos, dheight-2);
     MYUCG->setColor(COLOR_WHITE);
     MYUCG->setFontPosBottom();
 
     MYUCG->print(current->text.c_str());
 
     // Exclude the message area for the rest of the system
-    MYUCG->setClipRange(0, 0, width, height - 27);
+    MYUCG->setClipRange(0, 0, dwidth, dheight - MSG_BOX_HEIGHT);
 
     // set time counter
     _start_scroll = 0;
-    _nr_scroll = std::max(MYUCG->getStrWidth(current->text.c_str()) - width +2, 0);
-    _msg_to = (current->_to > 0) ? current->_to :  current->alert_level * 10; // x 10 sec
+    _nr_scroll = std::max(MYUCG->getStrWidth(current->text.c_str()) - dwidth +2, 0);
+    _msg_to = (current->_time_out > 0) ? current->_time_out :  current->alert_level * 10; // x 10 sec
     _msg_to *= (1000/(CLOCK_DIVIDER*Clock::TICK_ATOM)); // convert to ticks
 
     return true;
@@ -148,7 +173,7 @@ bool MessageBox::nextMsg()
 void MessageBox::removeMsg()
 {
     MYUCG->setColor(COLOR_BLACK);
-    MYUCG->drawBox(0, height - 26, width, 26);
+    MYUCG->drawBox(0, MYUCG->getDisplayHeight() - MSG_BOX_HEIGHT, MYUCG->getDisplayWidth(), MSG_BOX_HEIGHT);
     MYUCG->setColor(COLOR_WHITE);
 }
 
@@ -157,6 +182,9 @@ void MessageBox::removeMsg()
 // returns true when the message box has finished
 bool MessageBox::draw()
 {
+    const int16_t dheight = MYUCG->getDisplayHeight();
+    const int16_t dwidth = MYUCG->getDisplayWidth();
+
     ESP_LOGI(FNAME, "draw message");
     if ( _msg_to <= 0 ) {
         if ( ! nextMsg() ) {
@@ -174,12 +202,12 @@ bool MessageBox::draw()
             _nr_scroll--;
             _print_pos--;
             MYUCG->undoClipRange();
-            MYUCG->setFont(ucg_font_ncenR14_hr);
+            MYUCG->setFont(ucg_font_ncenR14_hr, true);
             MYUCG->setColor(COLOR_WHITE);
             MYUCG->setFontPosBottom();
-            MYUCG->setPrintPos(_print_pos, height-2);
+            MYUCG->setPrintPos(_print_pos, dheight-2);
             MYUCG->print(current->text.c_str());
-            MYUCG->setClipRange(0, 0, width, height - 27);
+            MYUCG->setClipRange(0, 0, dwidth, dheight - MSG_BOX_HEIGHT);
         }
     }
     else {
@@ -192,11 +220,11 @@ bool MessageBox::draw()
             else {
                 MYUCG->setColor(COLOR_WHITE);
             }
-            MYUCG->setFont(ucg_font_ncenR14_hr);
+            MYUCG->setFont(ucg_font_ncenR14_hr, true);
             MYUCG->setFontPosBottom();
-            MYUCG->setPrintPos(_print_pos, height-2);
+            MYUCG->setPrintPos(_print_pos, dheight-2);
             MYUCG->print(current->text.c_str());
-            MYUCG->setClipRange(0, 0, width, height - 27);
+            MYUCG->setClipRange(0, 0, dwidth, dheight - MSG_BOX_HEIGHT);
             MYUCG->setColor(COLOR_WHITE);
         }
     }

@@ -12,7 +12,8 @@
 #include "driver/gpio/ESPRotary.h"
 #include "comm/Mutex.h"
 
-#include <queue>
+#include <deque>
+#include <cstdint>
 #include <string>
 #include <memory>
 
@@ -35,9 +36,10 @@ struct ScreenMsg {
     static constexpr const int CONFIRM = 180; // seconds
     int alert_level;
     std::string text;
-    int _to;
-    ScreenMsg(int a, const char *str, int to = 0) : alert_level(a), text(str), _to(to) {}
-    bool wantsConfirmation() const { return _to >= CONFIRM; }
+    int _time_out;
+    uint8_t _id; // e.g. to identify messages for confirmation
+    ScreenMsg(int a, const char *str, int to = 0);
+    bool wantsConfirmation() const { return _time_out >= CONFIRM; }
 };
 
 
@@ -49,10 +51,14 @@ public:
     static void createMessageBox();
     ~MessageBox();
 
+    static constexpr const int16_t MSG_BOX_HEIGHT = 26;
+
     // API
-    void pushMessage(int alert_level, const char* msg, int to = 0, bool confirm = false);
-    void popMessage();
+    uint8_t pushMessage(int alert_level, const char* msg, int to = 0, bool confirm = false);
+    void popMessage(uint8_t id = 0);
+    void keepMessage(uint8_t id, int to = 0);
     bool draw();
+    int16_t getBoxHeight() const { return MSG_BOX_HEIGHT; }
     // bool isVisible() const { return current != nullptr; }
 
     // Clock tick callback
@@ -75,10 +81,8 @@ private:
     MessagePtr current = nullptr;
     std::deque<MessagePtr> _msg_list;
     mutable SemaphoreMutex _list_mutex;
-    const int width;
-    const int height;
-    int _print_pos = 0;
-    int _start_scroll = 0;
+    int16_t _print_pos = 0;
+    int _start_scroll = 0; // timings
     int _nr_scroll = 0;
     int _msg_to = 0;
 };

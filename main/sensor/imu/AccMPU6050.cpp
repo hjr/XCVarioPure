@@ -10,7 +10,7 @@
 
 #include "ImuSensor.h"
 #include "GyroMPU6050.h"
-#include "Units.h"
+#include "math/Units.h"
 #include "math/Trigonometry.h"
 #include "vector.h"
 #include "../SensorMgr.h"
@@ -23,20 +23,24 @@
 
 AccMPU6050 *accSensor = nullptr;
 
+constexpr int SENSOR_HISTORY_DURATION_MS = 10000;  // 10 sec
 constexpr int DUTY_CYCLE_MS = 100; // 10Hz
-static vector_f acc_buffer[ (SENSOR_HISTORY_DURATION_MS / DUTY_CYCLE_MS) + 1 ];
+constexpr size_t HSIZE = SENSOR_HISTORY_DURATION_MS / DUTY_CYCLE_MS;
+static __attribute__((aligned(4))) vector_f acc_buffer[ HSIZE + 1 ];
 
 AccMPU6050::AccMPU6050(MpuImu &mmpu) : 
-    SensorTP<vector_f>(acc_buffer, DUTY_CYCLE_MS),
+    SensorTP<vector_f>(acc_buffer, HSIZE, DUTY_CYCLE_MS),
     _my_mpu(mmpu),
-    _lpf_slip_angle(LowPassFilterT<float>::alphaFromTau(1.5, DUTY_CYCLE_MS / 1000.f))
+    _lpf_accel(LowPassFilterT<vector_f>::alphaFromTau(0.2, DUTY_CYCLE_MS / 1000.f)),
+    _lpf_slip_angle(LowPassFilterT<float>::alphaFromTau(0.3, DUTY_CYCLE_MS / 1000.f))
 {
     _id = SensorId::ACC_INERTIAL | SensorFlags::SENSOR_LOCAL;
 
     // push a single previous value
     pushAndPublish(vector_f(1,0,0), 0);
 
-    // Load 
+    // accelerometer filter init.
+    _lpf_accel.reset({0.f,0.f,1.f});
 }
 
 bool AccMPU6050::doRead(vector_f& val) {
@@ -72,7 +76,7 @@ float AccMPU6050::getVerticalAcceleration() {
     // lamda := (accel * att_vector) / norm(att_vector)^2 // att_vector is normalized
     // lamda * att_vector would be the projection point, but here is only the g multiple requested
 
-    return getHead().dot(att_vector);
+    return getRef().dot(att_vector);
 }
 
 static void update_fused_vector(vector_f& fused, float gyro_trust, vector_f& petal_force, const Quaternion& omega_step)
@@ -102,8 +106,8 @@ void AccMPU6050::postProcess() {
     constexpr const float dt = 0.1f; // seconds, a reasonable assumption
 
     float gravity_trust = 1;
-    const vector_f accel = getHead();
-    _processed = accel; // todo subtraced soft bias
+    const vector_f& accel = *getHeadPtr();
+    _processed = _lpf_accel.filter(accel); // todo subtraced soft bias
     const vector_f& gyro = gyroSensor->getRef();
     // ESP_LOGI( FNAME, " Accel: %.3f,%.3f,%.3f Gyro: %.3f,%.4f,%.4f dt: %.4f", accel.x, accel.y, accel.z, gyro.x, gyro.y, gyro.z, dt );
 
@@ -112,9 +116,7 @@ void AccMPU6050::postProcess() {
 
     rad_t roll = 0, pitch = 0;
     if (airborne.get()) {
-        float loadFactor = accel.get_norm();
-        float lf = loadFactor > 2.0 ? 2.0 : loadFactor;
-        loadFactor = lf < 0 ? 0 : lf;  // limit to 0..2g
+        float loadFactor = std::clamp(_processed.z, 0.f, 2.f);
         // rotation from navigation to body frame
         vector_f z_nav_in_body = att_quat.rotate(vector_f{0,0,1});
         circle_omega = gyro.dot(z_nav_in_body);
@@ -124,7 +126,7 @@ void AccMPU6050::postProcess() {
         if (ahrs_roll_check.get()) {
             // expected extra load c = sqrt(aa+bb) - 1, here a = 1/9.81 x atan, b=1
             float loadz_exp = std::sqrtf(tanw * tanw / (Units::g0 * Units::g0) + 1.f) - 1.f;
-            float loadz_check = (loadz_exp > 0.f) ? std::min(std::max((accel.z - .99f) / loadz_exp, 0.f), 1.f) : 0.f;
+            float loadz_check = (loadz_exp > 0.f) ? std::min(std::max((loadFactor - .99f) / loadz_exp, 0.f), 1.f) : 0.f;
             // ESP_LOGI( FNAME,"tanw: %f loadexp: %.2f loadf: %.2f c:%.2f", tanw, loadz_exp, loadFactor, loadz_check );
             // Scale according to real experienced load factor with x 0..1
             roll *= loadz_check;
@@ -150,6 +152,8 @@ void AccMPU6050::postProcess() {
     update_fused_vector(att_vector, gravity_trust, petal, d_gyro.get_conjugate());
     // ESP_LOGI(FNAME,"attv: %.3f %.3f %.3f ProjAccel: %f", att_vector.x, att_vector.y, att_vector.z, accel.dot(att_vector));
     att_quat = Quaternion::fromAccelerometer(att_vector);
+    // vector_f img = att_quat.rotate(att_vector);
+    // ESP_LOGI(FNAME,"attv: %.3f,%.3f,%.3f - %.3f,%.3f,%.3f", att_vector.x, att_vector.y, att_vector.z, img.x, img.y, img.z);
     // ESP_LOGI(FNAME,"attq: %.3f %.3f %.3f %.3f", att_quat._x, att_quat._y, att_quat._z, att_quat._w );
     // ESP_LOGI(FNAME,"Circle Omega: %f", circle_omega );
     euler_rad = att_quat.toEulerRad() * -1.f;
@@ -161,8 +165,8 @@ void AccMPU6050::postProcess() {
     // }
 
     // treat gimbal lock, limit to 88 deg
-    constexpr const float limit = deg2rad(88.);
-    euler_rad.clamp(-limit, limit);
+    // constexpr const float limit = deg2rad(88.);
+    // euler_rad.clamp(-limit, limit);
 
     rad_t gyro_heading_step = circle_omega * dt; // gyro heading change in this step (NED)
     circle_footing = Vector::normalizePI2(circle_footing + gyro_heading_step); // integrate gyro heading change to get the current circle footing

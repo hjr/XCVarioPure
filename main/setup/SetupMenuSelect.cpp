@@ -13,14 +13,13 @@
 const std::string_view ENABLE_MODE[5] = { "Disable", "Enable", "Dynamic", "Primary", "Client" };
 
 SetupMenuSelect::SetupMenuSelect( const char* title, e_restart_mode_t restart, int (*exit_action)(SetupMenuSelect *p),
-									SetupNG<int> *anvs, bool ext_handler, bool end_menu ) :
+									SetupNG<int> *anvs, bool ext_handler) :
 	MenuEntry(title),
 	_exit_action(exit_action),
 	_nvs(anvs)
 {
 	// ESP_LOGI(FNAME,"SetupMenuSelect( %s ) action: %x", title, (int)action );
 	bits._ext_handler = ext_handler;
-	bits._end_setup = end_menu;
 	bits._restart = restart;
 	_select = -1; // no selection, init. can only be done when the menu items are added completely
 		// initialization postponed to first enter(), or value() call
@@ -108,11 +107,7 @@ void SetupMenuSelect::press()
 		}
 		_select_save = _select;
 	}
-	if( bits._end_setup ){
-		exit(-1);
-		return;
-	}
-	else if ( bits._end_menu ) {
+	if ( bits._end_menu ) {
 		exit(2);
 		return;
 	}

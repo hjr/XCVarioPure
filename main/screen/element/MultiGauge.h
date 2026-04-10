@@ -17,9 +17,9 @@ class SetupNG;
 class MultiGauge : public ScreenElement
 {
 public:
-    using MultiDisplay = enum { GAUGE_NONE, GAUGE_IAS_SPEED, GAUGE_TAS_SPEED, GAUGE_GND_SPEED, GAUGE_S2F, GAUGE_NETTO, GAUGE_HEADING, GAUGE_SLIP };
+    using MultiDisplay = enum { GAUGE_NONE, GAUGE_IAS_SPEED, GAUGE_TAS_SPEED, GAUGE_GND_SPEED, GAUGE_S2F, GAUGE_NETTO, GAUGE_HEADING, GAUGE_OAT, GAUGE_SLIP, GAUGE_MC };
 
-    MultiGauge(int16_t cx, int16_t cy, MultiDisplay d);
+    MultiGauge(int16_t cx, int16_t cy, MultiDisplay d, bool large=true);
     ~MultiGauge() = default;
 
     // API
@@ -30,7 +30,8 @@ public:
     // attributes
 private:
     void update_nvs();
-    MultiDisplay _display = GAUGE_NONE;
+    MultiDisplay _display;
+    bool _large;
     SetupNG<float> *_nvsvar = nullptr;
     int val_prev = -1;
 };

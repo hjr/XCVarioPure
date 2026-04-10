@@ -22,7 +22,7 @@
  */
 #include "StraightWind.h"
 
-#include "Units.h"
+#include "math/Units.h"
 #include "protocol/ProtocolItf.h"
 #include "protocol/NMEA.h"
 #include "sensor/mag/Compass.h"
@@ -34,7 +34,7 @@
 #include "math/Trigonometry.h"
 #include "math/Floats.h"
 #include "comm/DeviceMgr.h"
-#include "vector_3d_fwd.h"
+#include "math/vector_3d_fwd.h"
 #include "wind/CircleWind.h"
 #include "logdef.h"
 

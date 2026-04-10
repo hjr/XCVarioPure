@@ -8,6 +8,7 @@
 
 #include "FlarmScreen.h"
 
+#include "MessageBox.h"
 #include "Colors.h"
 #include "UiEvents.h"
 #include "IpsDisplay.h"
@@ -62,33 +63,44 @@ void FlarmScreen::display(int mode)
     ESP_LOGI(FNAME, "flarm_screen mode %d", mode);
     // calc horizon line
     Quaternion attq = accSensor->getAHRSQuaternion();
-    Line l( attq, dwidth/2, dheight/2 );
+    Line l( attq);
     Point above[6], below[6];
     int na, nb;
-    IpsDisplay::clipRectByLine(nullptr, l, above, &na, below, &nb);
+    IpsDisplay::clipPolygonByLine(nullptr, 0, l, above, &na, below, &nb);
 
-    ESP_LOGI(FNAME,"Target in B%,1f°, dH%dm, dV%dm", Units::rad_to_deg(Flarm::RelativeBearing), Flarm::RelativeDistance, Flarm::RelativeVertical );
-    // calc from distance and bearing the vector to the target
-    Quaternion qtmp(-Flarm::RelativeBearing, vector_f(0.f, 0.f, 1.f));
-    vector_f bearingVec = qtmp.rotate(vector_f(Flarm::RelativeDistance, 0.f, Flarm::RelativeVertical));
-    ESP_LOGI(FNAME,"BearingVec %1.1f,%1.1f,%1.1f", bearingVec.x, bearingVec.y, bearingVec.z );
+    // ESP_LOGI(FNAME,"Target in B%.1f°, dH%dm, dV%dm", Units::rad_to_deg(Flarm::RelativeBearing), Flarm::HorizontalDistance, Flarm::RelativeVertical );
+    // calc the vector to the target from distance and bearing in nav frame
+    // todo add wind shear angle here
+    vector_f bearingVec = vector_f(Flarm::HorizontalDistance * fast_cos_rad(Flarm::RelativeBearing),
+                               Flarm::HorizontalDistance * fast_sin_rad(Flarm::RelativeBearing),
+                               -Flarm::RelativeVertical); // NED frame
+    // ESP_LOGI(FNAME,"BearingVec %1.1f,%1.1f,%1.1f", bearingVec.x, bearingVec.y, bearingVec.z );
 
     // determine side and altDiff for audio alarm
     constexpr const rad_t MID_FUNNEL_RAD = Units::deg_to_rad(30.f);
-    meter_t dist = (Flarm::RelativeDistance>0) ? Flarm::RelativeDistance : 0.1f;
+    meter_t dist = (Flarm::HorizontalDistance>0) ? Flarm::HorizontalDistance : 0.1f;
     int alt_bear = (std::abs(fast_atan((float)Flarm::RelativeVertical/dist)) < MID_FUNNEL_RAD) ? 1 : (Flarm::RelativeVertical > 0 ? 2 : 0);
     int side_bear = (std::abs(std::abs(Flarm::RelativeBearing)) < MID_FUNNEL_RAD) ? 1 : 2;
     if ( Flarm::RelativeBearing < 0 ) { side_bear = 0; }
         
-    // rotate according to own attitude
-    vector_f buddyVec = attq.rotate(bearingVec);
-    ESP_LOGI(FNAME,"BuddyVec %1.1f,%1.1f,%1.1f", buddyVec.x, buddyVec.y, buddyVec.z );
-    Point p = IpsDisplay::projectToDisplayPlane(buddyVec, 100.f);
-    ESP_LOGI(FNAME,"DisplPt %d,%d", p.x, p.y);
+    // project in NAV frame
+    Point p = Point::centralProjection(bearingVec, 1000.f);
+    ESP_LOGI(FNAME,"CentralProj %d,%d", p.x, p.y);
+    // map the target point according to the current horizon line on the display
+    p = l.mapToHorizon(p);
+    ESP_LOGI(FNAME,"DisplPt %d,%d vertHorizon %.1f", p.x, p.y, l.getDistance(p) );
     if ( p.x < -9000 || p.y < -9000 ) {
         // cannot project point
         ESP_LOGI(FNAME,"Cannot project point");
         return;
+    }
+
+    // put the word TRAFFIC under the screen
+    if ( mode == 0 ) {
+        _msgid = MBOX->pushMessage(4, "! TRAFFIC !", flarm_alarm_time.get());
+    }
+    else {
+        MBOX->keepMessage(_msgid);
     }
 
     // draw horizon
@@ -97,8 +109,8 @@ void FlarmScreen::display(int mode)
     MYUCG->setColor( COLOR_EARTH );
     IpsDisplay::drawPolygon(below, nb);
 
-    // clip to display area
-    p = IpsDisplay::clipToScreenCenter(p);
+    // limit target to display area
+    p = l.limitToScreen(p, true);
     ESP_LOGI(FNAME,"ClippPt %d,%d", p.x, p.y);
 
     // Put alarm level into color
@@ -113,14 +125,14 @@ void FlarmScreen::display(int mode)
     }
 
     // draw target as a  disc, depict the distance through the size
-    int16_t size = (300 - Flarm::RelativeDistance) / 5;
+    int16_t size = (300 - Flarm::HorizontalDistance) / 5;
     if ( size < 20 ) {
         size = 20;
     }
     MYUCG->drawDisc( p.x, p.y, size, UCG_DRAW_ALL);
     // Embedd a little glider symbol
     float roll = -accSensor->getRoll();
-    if ( buddyVec.x > 0.f ) {
+    if ( bearingVec.x > 0.f ) {
         MYUCG->setColor(COLOR_WHITE);
         MYUCG->drawDisc( p.x, p.y, size/3, UCG_DRAW_ALL);
         // draw little wings as tetragon rolled according to horizontal angle
@@ -175,6 +187,7 @@ void FlarmScreen::remove()
 {
     ESP_LOGI(FNAME,"FlarmScreen remove - called");
     // protect double/competing exit calls from watch dog and e.g. UI interaction
+    MBOX->popMessage(_msgid); // remove the message box if still there
     int expected = 0;
     if ( atomic_compare_exchange_strong(&_done, &expected, 1) ) {
         ESP_LOGI(FNAME,"FlarmScreen remove - done");

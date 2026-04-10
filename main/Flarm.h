@@ -28,7 +28,7 @@ private:
 	static int RX,TX,GPS,Power;
 	static int AlarmLevel;
 	static rad_t RelativeBearing;
-	static int RelativeVertical, RelativeDistance; // meter
+	static int RelativeVertical, HorizontalDistance; // meter
 	static mps_t gndSpeed;
 	static rad_t gndCourse;
 	static bool   myGPS_OK;

@@ -10,7 +10,7 @@
 
 #include "ImuSensor.h"
 #include "../SensorBase.h"
-#include "Units.h"
+#include "math/Units.h"
 #include "math/vector_3d_fwd.h"
 #include "math/Trigonometry.h"
 #include "math/Quaternion.h"
@@ -36,18 +36,20 @@ public:
     void resetRest();
 
     temp_status_t getTempStatus() const { return _my_mpu.getTempStatus(); }
-    inline float getRollDeg() { return rad2deg(euler_rad.Roll()); }
-    inline float getRoll() { return euler_rad.Roll(); }
-    inline float getPitchDeg() { return rad2deg(euler_rad.Pitch()); }
-    inline float getYawDeg() { return rad2deg(euler_rad.Yaw()); }
+    inline degree_t getRollDeg() { return rad2deg(euler_rad.Roll()); }
+    inline rad_t getRoll() { return euler_rad.Roll(); }
+    inline degree_t getPitchDeg() { return rad2deg(euler_rad.Pitch()); }
+    inline degree_t getYawDeg() { return rad2deg(euler_rad.Yaw()); }
     float getGyroFooting() const;
-    inline float getMagnHeadingDeg() { return rad2deg(filtered_mag_heading); }
-    inline float getCircleOmegaENUDeg() { return rad2deg(-circle_omega); }
+    inline degree_t getMagnHeadingDeg() { return rad2deg(filtered_mag_heading); }
+    inline degree_t getCircleOmegaENUDeg() { return rad2deg(-circle_omega); }
     inline Quaternion getAHRSQuaternion() { return att_quat; }
     inline vector_f getAttVector() { return att_vector; }
-    float getGload() const { return getHead().z; }
+    inline float getGload() const { return getRef().z; }
     float getVerticalAcceleration();
     MpuImu& getMpu() const { return _my_mpu; }
+    void resetBias() { _my_mpu._MPUdev.setAccelOffset(); }
+    void pushBias(const mpud::raw_axes_t& bias) { _my_mpu._MPUdev.setAccelOffset(bias); }
 
 private:
     MpuImu &_my_mpu;
@@ -58,10 +60,12 @@ private:
     vector_f petal = {0,0,0};
     rps_t circle_omega = 0.f;
     rad_t circle_footing = 0.f; // a relative heading (ENU) w/o north reference
-    Quaternion att_quat = Quaternion(); // a nav to body frame rotation
+    Quaternion att_quat = Quaternion(); // a nav to body frame rotation! both NED frames!!
     Quaternion d_gyro = Quaternion();
     vector_f att_vector = {};
     vector_f euler_rad = {};
+    // g-load
+    LowPassFilterT<vector_f> _lpf_accel;
     // slip angle
     LowPassFilterT<float> _lpf_slip_angle;
     // calm counter

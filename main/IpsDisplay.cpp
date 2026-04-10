@@ -18,6 +18,7 @@
 #include "screen/element/Altimeter.h"
 #include "screen/element/CruiseStatus.h"
 #include "screen/element/FlapsBox.h"
+#include "screen/element/Connection.h"
 #include "screen/MessageBox.h"
 
 #include "sensor/imu/AccMPU6050.h"
@@ -26,27 +27,24 @@
 #include "math/Floats.h"
 #include "math/Quaternion.h"
 #include "math/vector_3d_fwd.h"
-#include "comm/DeviceMgr.h"
 #include "math/Units.h"
+#include "Atmosphere.h"
 #include "Flap.h"
 #include "Flarm.h"
 #include "setup/CruiseMode.h"
 #include "wind/StraightWind.h"
 #include "wind/CircleWind.h"
-#include "comm/WifiApSta.h"
-#include "comm/BTspp.h"
-#include "comm/BTnus.h"
 #include "driver/time/AliveMonitor.h"
 #include "setup/SetupNG.h"
 #include "CenterAid.h"
 #include "AdaptUGC.h"
 #include "Colors.h"
+#include "sensor.h"
 #include "logdefnone.h"
 
 #include <cmath>
 #include <cstdint>
 #include <cstdio>
-#include <cstring>
 #include <algorithm>
 
 ////////////////////////////
@@ -70,22 +68,18 @@ MultiGauge*	IpsDisplay::TOPgauge = nullptr;
 CruiseStatus* IpsDisplay::VCSTATgauge = nullptr;
 FlapsBox*   IpsDisplay::FLAPSgauge = nullptr;
 Temperature* IpsDisplay::OATgauge = nullptr;
+Connection* IpsDisplay::CONNgauge = nullptr;
 
 int16_t DISPLAY_H;
 int16_t DISPLAY_W;
-
-#define BTSIZE  5
-#define BTW    15
-#define BTH    24
-
-#define FLOGO  24
 
 IpsDisplay *Display = nullptr;
 
 static int16_t AMIDY;
 static int16_t AMIDX;
 static int16_t AVGOFFX;
-static int16_t SPEEDYPOS;
+static int16_t UPPERYPOS;
+static int16_t LOWERYPOS;
 constexpr const float OPT_Y_IN = 0.262f;
 
 static int16_t INNER_RIGHT_ALIGN = 170;
@@ -97,10 +91,8 @@ Point IpsDisplay::screen_edge[4];
 
 static union {
     struct {
-        uint8_t wireless_alive     : 1;
         uint8_t bottom_dirty       : 1;
         uint8_t mode_dirty         : 1;
-        uint8_t flarm_connected    : 1;
         uint8_t flp_speed_msg_shown : 1;
     };
     uint8_t packed;
@@ -110,31 +102,57 @@ static union {
 ////////////////////////////
 // Geometry helpers
 
-Point Point::operator+(Point p) const {
-    return p += *this;
+Point Point::operator+(const Point &p) const {
+    Point tmp = p;
+    return tmp += *this;
 }
+// Point Point::operator-(const Point &p) const {
+//     Point tmp = *this;
+//     return tmp -= p;
+// }
+// Point Point::operator*(const Point &p) const {
+//     Point tmp = *this;
+//     return tmp *= p;
+// }
 // alpha [rad]
-Point Point::rotate(float alpha) const {
+Point Point::rotate(rad_t alpha) const {
     float cos_a = fast_cos_rad(alpha);
     float sin_a = fast_sin_rad(alpha);
     return Point( x * cos_a - y * sin_a, x * sin_a + y * cos_a );
 }
-
+// NED to NAV frame with Z axes up
+Point Point::centralProjection(const vector_f &obj, float focus) {
+    // camera model: pinhole camera at origin, looking along X axis, display plane at focus distance
+    focus *= fast_signf(obj.x); // mirror objects behind the plane
+    // project to display plane
+    if ( std::abs(obj.x) < 1e-4f ) {
+        // avoid division by zero
+        return Point( -10000, -10000 );
+    }
+    focus /= obj.x;
+    return Point(fast_iroundf(focus * obj.y), fast_iroundf(focus * -obj.z));
+}
 
 // Hesse horizon line parameters in the gliders Y/Z plane
 // quaternion q is attitude in NED frame, 
-// cx/cy is the center of the display
-Line::Line(Quaternion q, int16_t cx, int16_t cy) {
+// cx/cy is the center of the display frame in pixel coordinates
+// line result is directly in display coordinates with x to the right and y down,
+// and d is the signed distance of the line to the center of the display
+Line::Line(const Quaternion &q) { //, int16_t cx, int16_t cy) {
     // normal vector of the plane
-    vector_f up = q.rotate(vector_f(0, 0, 1));
-    _nx = -up.y;
-    _ny = -up.z;
-    _d = std::clamp(up.x, -0.7f, 0.7f) * 100; // projection scale to visible range
-    _d += _nx * cx + _ny * cy; // offset to the middle of the screen
+    vector_f up = q.rotate(vector_f(0, 0, -1)); // Earth-Up ENU im Body frame
+    _nx = up.y;
+    _ny = up.z;
+    _d = std::clamp(-up.x, -0.7f, 0.7f) * 100; // projection scale to visible range
+    _d += _nx * DISPLAY_W/2 + _ny * DISPLAY_H/2; // offset to the middle of the screen
+    float norm = sqrtf(_nx*_nx + _ny*_ny);
+    _nx /= norm;
+    _ny /= norm;
+    _d  /= norm;
     // ESP_LOGI(FNAME, "normV %0.1f,%0.1f,%0.1f", _nx, _ny, _d);
 }
 // evaluate line function at point p
-float Line::fct(Point p) {
+float Line::fct(Point p) const {
     return _nx * p.x + _ny * p.y - _d;
 }
 // compute intersection point of line with segment p1-p2
@@ -157,24 +175,76 @@ bool Line::similar(const Line &r) const
 {
     return (floatEqualFastAbs(_nx, r._nx, 1e-2f)) && (floatEqualFastAbs(_ny, r._ny, 1e-2f)) && (floatEqualFastAbs(_d, r._d, 2.f));
 }
+Point Line::mapToHorizon(Point obj) const
+{
+    Point ret(DISPLAY_W/2, DISPLAY_H/2);
+    float dist = _nx * ret.x + _ny * ret.y - _d; // Project screen reference
+    // mapped to horizon line coordinates (P = Horizon_Mid + u·t + v·n)
+    ret.x = ret.x - dist * _nx + obj.x * -_ny + obj.y * _nx;
+    ret.y = ret.y - dist * _ny + obj.x * _nx + obj.y * _ny;
+    return ret;
+}
+
+// limit target mapping to screen area, 
+// returns a point on the screen border if the target is outside
+Point Line::limitToScreen(Point p, bool respect_mbox) const
+{
+    // check p against boundaries
+    const int16_t display_h = (respect_mbox ? (DISPLAY_H - MBOX->getBoxHeight()) : DISPLAY_H);
+    if (p.x >= 0 && p.x < DISPLAY_W && p.y >= 0 && p.y < display_h) {
+        return p;
+    }
+
+    // project screen reference
+    float dist = _nx * DISPLAY_W/2 + _ny * DISPLAY_H/2 - _d;
+    const int16_t cx = std::clamp(DISPLAY_W/2 - fast_iroundf(dist * _nx), 0, DISPLAY_W-1);
+    const int16_t cy = std::clamp(display_h/2 - fast_iroundf(dist * _ny), 0, display_h-1);
+
+    // direction vector from center to point
+    int16_t dx = p.x - cx;
+    int16_t dy = p.y - cy;
 
 
-// Clip rectangle by line into above and below parts
-void IpsDisplay::clipRectByLine(Point *rect, Line &l, Point *above, int *na, Point *below, int *nb)
+    // find intersection with screen border and chop scale
+    float t_min = 1.f;
+    if ( p.x < 0 ) {
+        float t = (float)(-cx) / dx;
+        if (t < t_min) t_min = t;
+    }
+    else if ( p.x >= DISPLAY_W ) {
+        float t = (float)(DISPLAY_W-1 - cx) / dx;
+        if (t < t_min) t_min = t;
+    }
+    if ( p.y < 0 ) {
+        float t = (float)(-cy) / dy;
+        if (t < t_min) t_min = t;
+    }
+    else if ( p.y >= display_h ) {
+        float t = (float)(display_h-1 - cy) / dy;
+        if (t < t_min) t_min = t;
+    }
+
+    // Compute intersection
+    return Point(cx + t_min * dx, cy + t_min * dy);
+}
+
+// Clip a polygon by line into above and below parts
+void IpsDisplay::clipPolygonByLine(const Point *poly, int n, const Line &l, Point *above, int *na, Point *below, int *nb)
 {
     const int myEPS = 1;
     auto inside = [&](int f) { return f > myEPS; };
     auto onLine = [&](int f) { return abs(f) <= myEPS; };
 
-    if ( ! rect ) {
-        rect = screen_edge;
+    if ( ! poly ) {
+        poly = screen_edge;
+        n = 4;
     }
     *na = 0;
     *nb = 0;
 
-    for (int i=0; i<4; i++) {
-        Point P1 = rect[i];
-        Point P2 = rect[(i+1)&3];
+    for (int i=0; i<n; i++) {
+        Point P1 = poly[i];
+        Point P2 = poly[(i+1)%n];
         int f1 = l.fct(P1);
         int f2 = l.fct(P2);
         bool in1 = inside(f1);
@@ -224,75 +294,29 @@ void IpsDisplay::drawPolygon(Point *pts, int n)
         i += 2;
     }
 }
-// Project from glider reference into avionik display plane (Y-Z plane)
-Point IpsDisplay::projectToDisplayPlane(const vector_f &obj, float focus)
-{
-    // camera model: pinhole camera at origin, looking along X axis, display plane at focus distance
-    focus *= fast_signf(obj.x);
-    // project to display plane
-    if ( std::abs(obj.x) < 1e-4f ) {
-        // avoid division by zero
-        return Point( -10000, -10000 );
-    }
-    float u = focus * (obj.y / obj.x);
-    float v = focus * (obj.z / obj.x);
-
-    return Point(DISPLAY_W/2 - u, DISPLAY_H/2 - v);
-}
-// Centered screen clipping
-Point IpsDisplay::clipToScreenCenter(Point p)
-{
-    const int16_t cx = DISPLAY_W/2;
-    const int16_t cy = DISPLAY_H/2;
-
-    // direction vector from center to point
-    int16_t dx = p.x - cx;
-    int16_t dy = p.y - cy;
-
-    // check p against boundaries
-    if (p.x >= 0 && p.x < DISPLAY_W && p.y >= 0 && p.y < DISPLAY_H) {
-        return p;
-    }
-
-    // find intersection with screen border and chop scale
-    float t_min = 1.f;
-    if ( p.x < 0 ) {
-        float t = (float)(-cx) / dx;
-        if (t < t_min) t_min = t;
-    }
-    else if ( p.x >= DISPLAY_W ) {
-        float t = (float)(cx) / dx;
-        if (t < t_min) t_min = t;
-    }
-    if ( p.y < 0 ) {
-        float t = (float)(-cy) / dy;
-        if (t < t_min) t_min = t;
-    }
-    else if ( p.y >= DISPLAY_H ) {
-        float t = (float)(cy) / dy;
-        if (t < t_min) t_min = t;
-    }
-
-    // Compute intersection
-    return Point(cx + t_min * dx, cy + t_min * dy);
-}
 
 static void initRefs()
 {
-	AVGOFFX = -5-38;
-	SPEEDYPOS = OPT_Y_IN * DISPLAY_H + 19;
+	AVGOFFX = gflags.isPro ? -5-38 : -4;
+    UPPERYPOS = OPT_Y_IN * DISPLAY_H + 19;
+    LOWERYPOS = (1. - OPT_Y_IN) * DISPLAY_H + 19;
 	INNER_RIGHT_ALIGN = DISPLAY_W - 44;
-	LOAD_MPG_POS = DISPLAY_H*0.3;
-	LOAD_MIAS_POS = DISPLAY_H*0.7;
+	LOAD_MPG_POS = DISPLAY_H*0.33;
+	LOAD_MIAS_POS = DISPLAY_H*0.63;
 
 	// grab screen layout
-	AMIDX = (DISPLAY_W/2 + 30);
+	AMIDX = gflags.isPro ? (DISPLAY_W/2 + 30) : (DISPLAY_W/2 + 16);
 	AMIDY = (DISPLAY_H)/2;
 	if ( display_orientation.get() == DISPLAY_NINETY ) {
 		INNER_RIGHT_ALIGN = DISPLAY_W - 74;
-		AMIDX = DISPLAY_W/2 - 43;
+		AMIDX = DISPLAY_W/2 - 46;
 		AVGOFFX = -2;
 	}
+    else if ( !gflags.isPro ) {
+        INNER_RIGHT_ALIGN = 68;
+        UPPERYPOS = 32;
+        LOWERYPOS = DISPLAY_H - 1;
+    }
 }
 
 ////////////////////////////
@@ -325,6 +349,10 @@ IpsDisplay::~IpsDisplay() {
     // if (OATgauge) {
     //     delete OATgauge;
     //     OATgauge = nullptr;
+    // }
+    // if (CONNgauge) {
+    //     delete CONNgauge;
+    //     CONNgauge = nullptr;
     // }
     // if (S2FBARgauge) {
     //     delete S2FBARgauge;
@@ -377,12 +405,6 @@ void IpsDisplay::clear(){
 
 void IpsDisplay::setupDisplay() {
     ucg->begin();
-	// ESP_LOGI(FNAME,"IpsDisplay::bootDisplay()");
-	if( display_type.get() == ST7789_2INCH_12P )
-		ucg->setRedBlueTwist( true );
-	if( display_type.get() == ILI9341_TFT_18P )
-		ucg->invertDisplay( true );
-	// ESP_LOGI(FNAME,"clear boot");
     setGlobalColors();
 	ucg->setColor(1, COLOR_BLACK );
 	ucg->setColor(0, COLOR_WHITE );
@@ -422,43 +444,51 @@ void IpsDisplay::initDisplay() {
     // Create common elements
     initRefs();
 
-    if (!MAINgauge) { // shared with
-        int16_t scale_geometry = (display_orientation.get() == DISPLAY_NINETY) ? 120 : 90;
-        MAINgauge = new PolarGauge(AMIDX, AMIDY, scale_geometry, DISPLAY_H / 2 - 20, PolarGauge::VARIO);
+    if (!MAINgauge) {
+        int16_t scale_geometry = (display_orientation.get() == DISPLAY_NINETY) ? 120 : (gflags.isPro ? 90 : 128 );
+        MAINgauge = new PolarGauge(AMIDX, AMIDY, scale_geometry, DISPLAY_H/2 - ((gflags.isPro || display_orientation.get() == DISPLAY_NINETY) ? 20 : 36), 
+                            gflags.isPro ? PolarGauge::XCVPRO : PolarGauge::CLUB);
     }
     MAINgauge->setUnit(VarioUnit->scale);
     MAINgauge->setRange(scale_range.get(), 0.f, log_scale.get());
     MAINgauge->setColor(needle_color.get());
-    if (vario_mc_gauge.get()) {
-        if ( !MCgauge ) {
-            MCgauge = new McCready(40, DISPLAY_H + 2);
+    if (vario_mc_gauge.get() ) {
+        if (!S2FBARgauge) {
+            S2FBARgauge = new S2FBar(DISPLAY_W - 15, AMIDY - 61, 28, 8);
         }
-        if ( !S2FBARgauge) {
-            S2FBARgauge = new S2FBar(DISPLAY_W - 50, AMIDY, 28, 8);
-        }
-   }
+    }
     else {
-        if ( MCgauge ) {
-            delete MCgauge;
-            MCgauge = nullptr;
-        }
         if ( S2FBARgauge) {
             delete S2FBARgauge;
             S2FBARgauge = nullptr;
         }
     }
+    if (vario_mc_gauge.get() && gflags.isPro) {
+        if (!MCgauge) {
+            MCgauge = new McCready(40, DISPLAY_H + 2);
+        }
+    }
+    else {
+        if ( MCgauge ) {
+            delete MCgauge;
+            MCgauge = nullptr;
+        }
+    }
     if ( !OATgauge ) {
-        OATgauge = new Temperature(58, 32);
+        // OATgauge = new Temperature(58, 32);
+    }
+    if ( !CONNgauge ) {
+        // CONNgauge = new Connection(DISPLAY_W-25, 24, display_orientation.get() == DISPLAY_NINETY);
     }
     if (!BATgauge) {
-        BATgauge = new Battery(DISPLAY_W - 10, DISPLAY_H - 12, display_orientation.get() == DISPLAY_NINETY);
+        BATgauge = new Battery(DISPLAY_W - 10, DISPLAY_H - 12, display_orientation.get() == DISPLAY_NINETY || !gflags.isPro);
     }
     if ( !VCSTATgauge ) {
-        VCSTATgauge = new CruiseStatus(INNER_RIGHT_ALIGN - 6, 22);
+        // VCSTATgauge = new CruiseStatus(INNER_RIGHT_ALIGN - 6, 22);
     }
     if ( FLAP && flapbox_enable.get() ) {
         if (!FLAPSgauge) {
-            FLAPSgauge = new FlapsBox(FLAP, DISPLAY_W - 28, AMIDY, DISPLAY_H > DISPLAY_W);
+            FLAPSgauge = new FlapsBox(FLAP, DISPLAY_W - 29, AMIDY + (gflags.isPro ? 0 : (display_orientation.get() == DISPLAY_NINETY) ? 0 : 17), true);
         }
     }
     else {
@@ -475,8 +505,8 @@ void IpsDisplay::initDisplay() {
     MAINgauge->setFigOffset(AVGOFFX, 0);
 
     if (!WNDgauge) {
-        // create it always, because also the center aid is using it (keep it simple here)
-        WNDgauge = new PolarGauge(AMIDX + AVGOFFX, AMIDY, 360, 50, PolarGauge::COMPASS);
+        // create it always, because also the center aid is using it
+        WNDgauge = new PolarGauge(AMIDX + AVGOFFX, AMIDY, 360, 54, PolarGauge::COMPASS);
     }
     WNDgauge->enableWindIndicator(wind_enable.get() > WA_OFF, wind_enable.get() == WA_EXTERNAL);
     WNDgauge->setWindRef(wind_reference.get());
@@ -489,16 +519,20 @@ void IpsDisplay::initDisplay() {
         CenterAid::remove();
     }
 
-    VCSTATgauge->useSymbol(true);
+    if (VCSTATgauge) {
+        VCSTATgauge->useSymbol(true);
+    }
     if (MCgauge) {
         MCgauge->setLarge(display_orientation.get() != DISPLAY_NINETY);
     }
-    OATgauge->setLarge(display_orientation.get() != DISPLAY_NINETY);
+    if ( OATgauge ) {
+        OATgauge->setLarge(display_orientation.get() != DISPLAY_NINETY);
+    }
 
 
     if (vario_lower_gauge.get()) {
         if (!ALTgauge) {
-            ALTgauge = new Altimeter(INNER_RIGHT_ALIGN, (1. - OPT_Y_IN) * DISPLAY_H + 19);
+            ALTgauge = new Altimeter(INNER_RIGHT_ALIGN, LOWERYPOS, gflags.isPro || display_orientation.get() == DISPLAY_NINETY);
         }
     } else {
         if (ALTgauge) {
@@ -508,10 +542,9 @@ void IpsDisplay::initDisplay() {
     }
     if (vario_upper_gauge.get()) {
         if (!TOPgauge) {
-            TOPgauge = new MultiGauge(INNER_RIGHT_ALIGN, SPEEDYPOS, (MultiGauge::MultiDisplay)vario_upper_gauge.get());
-        } else {
-            TOPgauge->setDisplay((MultiGauge::MultiDisplay)(vario_upper_gauge.get()));
+            TOPgauge = new MultiGauge(INNER_RIGHT_ALIGN, UPPERYPOS, (MultiGauge::MultiDisplay)vario_upper_gauge.get(), gflags.isPro || display_orientation.get() == DISPLAY_NINETY);
         }
+        TOPgauge->setDisplay((MultiGauge::MultiDisplay)(vario_upper_gauge.get()));
     } else {
         if (TOPgauge) {
             delete TOPgauge;
@@ -524,11 +557,11 @@ void IpsDisplay::initDisplay() {
             S2FBARgauge->setWidth(36);
         } else {
             if (FLAPSgauge) {
-                S2FBARgauge->setRef(DISPLAY_W - 50, AMIDY - 20);
+                S2FBARgauge->setRef(DISPLAY_W - 15, AMIDY - 61);
                 S2FBARgauge->setWidth(28);
             } else {
-                S2FBARgauge->setRef(DISPLAY_W - 34, AMIDY - 20);
-                S2FBARgauge->setWidth(50);
+                S2FBARgauge->setRef(DISPLAY_W - 17, AMIDY);
+                S2FBARgauge->setWidth(28);
             }
         }
     }
@@ -543,25 +576,13 @@ void IpsDisplay::initDisplay() {
         if (display_orientation.get() == DISPLAY_NINETY) {
             FLAPSgauge->setLength(120);
         } else {
-            FLAPSgauge->setLength(100);
+            FLAPSgauge->setLength(90);
         }
     }
 
     // Unit's
-    ucg->setFont(ucg_font_fub11_hr);
-    ucg->setPrintPos(4, 60);
-    ucg->setColor(COLOR_HEADER);
-    ucg->print(VarioUnit->getName());
     if (TOPgauge) {
         TOPgauge->drawUnit();
-    }
-
-    if (FLAPSgauge) {
-        FLAPSgauge->forceRedraw();
-    }
-
-    if (theCenteraid) {
-        theCenteraid->forceRedraw();
     }
 
     redrawValues();
@@ -570,12 +591,18 @@ void IpsDisplay::initDisplay() {
 void IpsDisplay::redrawValues()
 {
     // ESP_LOGI(FNAME,"IpsDisplay::redrawValues()");
-    flags.wireless_alive = false;
     if (MCgauge) {
         MCgauge->forceRedraw();
     }
-    OATgauge->forceRedraw();
-    BATgauge->forceRedraw();
+    if ( OATgauge ) {
+        OATgauge->forceRedraw();
+    }
+    if ( CONNgauge ) {
+        CONNgauge->forceRedraw();
+    }
+    if ( BATgauge ) {
+        BATgauge->forceRedraw();
+    }
     if (ALTgauge) {
         ALTgauge->forceRedraw();
     }
@@ -590,110 +617,11 @@ void IpsDisplay::redrawValues()
     if ( FLAPSgauge ) {
         FLAPSgauge->forceRedraw();
     }
+
+    if (theCenteraid) {
+        theCenteraid->forceRedraw();
+    }
 }
-
-void IpsDisplay::drawBT() {
-	bool bta=true;
-	if( DEVMAN->isIntf(BT_SPP) && BLUEspp )
-		bta = BLUEspp->isConnected();
-	else if( DEVMAN->isIntf(BT_LE) && BLUEnus )
-		bta = BLUEnus->isConnected();
-	if( bta != flags.wireless_alive || flarm_alive.get() > ALIVE_NONE ) {
-		int16_t btx=DISPLAY_W-18;
-		int16_t bty=(BTH/2) + 6;
-		if( ! bta )
-			ucg->setColor( COLOR_MGREY );
-		else
-			ucg->setColor( COLOR_BLUE );  // blue
-
-		ucg->drawRBox( btx-BTW/2, bty-BTH/2, BTW, BTH, BTW/2-1);
-		// inner symbol
-		if( flarm_alive.get() == ALIVE_OK )
-			ucg->setColor( COLOR_GREEN );
-		else
-			ucg->setColor( COLOR_WHITE );
-		ucg->drawTriangle( btx, bty, btx+BTSIZE, bty-BTSIZE, btx, bty-2*BTSIZE );
-		ucg->drawTriangle( btx, bty, btx+BTSIZE, bty+BTSIZE, btx, bty+2*BTSIZE );
-		ucg->drawLine( btx, bty, btx-BTSIZE, bty-BTSIZE );
-		ucg->drawLine( btx, bty, btx-BTSIZE, bty+BTSIZE );
-
-		flags.wireless_alive = bta;
-		flags.flarm_connected = flarm_alive.get();
-	}
-	if( SetupCommon::isWired() ) {
-		drawCable(DISPLAY_W-20, BTH + 22);
-	}
-}
-
-void IpsDisplay::drawCable(int16_t x, int16_t y)
-{
-	const int16_t CANH = 8;
-	const int16_t CANW = 14;
-
-	int connectedXCV = xcv_alive.get();
-	int connectedMag = mags_alive.get();
-
-	(connectedXCV == ALIVE_OK)? ucg->setColor(COLOR_LBLUE) : ucg->setColor(COLOR_MGREY);
-	// lower horizontal line
-	if (connectedMag) {
-		ucg->setColor(COLOR_GREEN);
-	}
-	ucg->drawLine( x-CANW/2, y+CANH/2, x+3, y+CANH/2 );
-	ucg->drawLine( x-CANW/2, y+CANH/2-1, x+3, y+CANH/2-1 );
-	ucg->drawDisc( x-CANW/2, y+CANH/2, 2, UCG_DRAW_ALL);
-	(connectedMag == ALIVE_OK)? ucg->setColor(COLOR_LBLUE) : ucg->setColor(COLOR_MGREY);
-	// Z diagonal line
-	if (flarm_alive.get() == ALIVE_OK) { ucg->setColor(COLOR_GREEN); }
-	ucg->drawLine( x+2, y+CANH/2, x-4, y-CANH/2 );
-	ucg->drawLine( x+3, y+CANH/2-1, x-3, y-CANH/2-1 );
-	// upper horizontal line
-	(connectedXCV == ALIVE_OK)? ucg->setColor(COLOR_LBLUE) : ucg->setColor(COLOR_MGREY);
-	ucg->drawLine( x-3, y-CANH/2, x+CANW/2, y-CANH/2 );
-	ucg->drawLine( x-3, y-CANH/2-1, x+CANW/2, y-CANH/2-1 );
-	ucg->drawDisc( x+CANW/2, y-CANH/2, 2, UCG_DRAW_ALL);
-}
-
-void IpsDisplay::drawWifi( int x, int y ) {
-	if( !DEVMAN->isIntf(WIFI_APSTA) ) {
-		return;
-	}
-	bool wla = WIFI->isAlive();
-	if( wla != flags.wireless_alive || flarm_alive.get() > ALIVE_NONE ){
-		ESP_LOGI(FNAME,"IpsDisplay::drawWifi %d %d %d", x,y,wla);
-		if( ! wla ) {
-			ucg->setColor(COLOR_MGREY);
-		} else {
-			ucg->setColor( COLOR_BLUE );
-		}
-		ucg->drawCircle( x, y, 9, UCG_DRAW_UPPER_RIGHT);
-		ucg->drawCircle( x, y, 10, UCG_DRAW_UPPER_RIGHT);
-		ucg->drawCircle( x, y, 16, UCG_DRAW_UPPER_RIGHT);
-		ucg->drawCircle( x, y, 17, UCG_DRAW_UPPER_RIGHT);
-		if( flarm_alive.get() == ALIVE_OK ) {
-			ucg->setColor( COLOR_GREEN );
-		}
-		ucg->drawDisc( x, y, 3, UCG_DRAW_ALL );
-		flags.flarm_connected = flarm_alive.get();
-		flags.wireless_alive = wla;
-	}
-	if( SetupCommon::isWired() ) {
-		drawCable(DISPLAY_W-20, y+18);
-	}
-}
-
-void IpsDisplay::drawConnection( int16_t x, int16_t y )
-{
-	if ( DEVMAN->isIntf(BT_SPP) || DEVMAN->isIntf(BT_LE) ) {
-		drawBT();
-	}
-	else if( DEVMAN->isIntf(WIFI_APSTA) ) {
-		drawWifi(x, y);
-	}
-	else if( SetupCommon::isWired() ) {
-		drawCable(DISPLAY_W-18, y);
-	}
-}
-
 
 void IpsDisplay::setBottomDirty()
 {
@@ -782,7 +710,7 @@ void IpsDisplay::drawLoadDisplay( float loadFactor ){
 	// Min/Max values
 	if( old_gmax != gload_pos_max.get() || old_gmin != gload_neg_max.get() || !(tick%10) ) {
 		if( gload_pos_max.get() < gload_pos_limit.get() && gload_neg_max.get() > gload_neg_limit.get()) {
-			ucg->setColor( COLOR_WHITE );
+			ucg->setColor( COLOR_LGREY );
 		}
 		else {
 			ucg->setColor( COLOR_RED );
@@ -799,7 +727,7 @@ void IpsDisplay::drawLoadDisplay( float loadFactor ){
 	}
 	if( old_ias_max != airspeed_max.get() || !(tick%10)){
 		if( airspeed_max.get() < v_max.get() ) {
-			ucg->setColor( COLOR_WHITE );
+			ucg->setColor( COLOR_LGREY );
 		} else {
 			ucg->setColor( COLOR_RED );
 		}
@@ -838,7 +766,7 @@ void IpsDisplay::drawDisplay(){
 	if( !(screens_init & INIT_DISPLAY_RETRO) ){
 		initDisplay();
 		screens_init |= INIT_DISPLAY_RETRO;
-        return; // split the first draw into a couple calls
+        return; // split the first draw into two calls
 	}
 	tick++;
 
@@ -861,11 +789,11 @@ void IpsDisplay::drawDisplay(){
     }
 
     // S2F bar
-    if (!(tick % 11) && S2FBARgauge) {
+    if (!(tick % 11) && S2FBARgauge ) {
         // static float s=0; // check the bar code
         // s2fd = sin(s) * 42.;
         // s+=0.04;
-        S2FBARgauge->draw(Speed2Fly.getDelta(), s2f_ideal.get());
+        S2FBARgauge->draw(Speed2Fly.getDelta(), CRMOD.getCMode());
     }
 
     // MC val
@@ -874,10 +802,11 @@ void IpsDisplay::drawDisplay(){
     }
 
     // Bluetooth etc
-	if( !(tick%12) )
-	{
-		drawConnection(DISPLAY_W-25, FLOGO );
-	}
+    if (!(tick % 12)) {
+        if ( CONNgauge ) {
+            CONNgauge->draw();
+        }
+    }
 
     // Upper gauge
     if (vario_upper_gauge.get() && !(tick % 3)) {
@@ -923,18 +852,22 @@ void IpsDisplay::drawDisplay(){
 
     // Vario indicator
     MAINgauge->draw(te_ms);
-    if (CRMOD.isGross()) {
+    if (gflags.isPro && CRMOD.isGross()) {
         MAINgauge->drawPolarSink(polar_sink_ms);
     }
 
     // Battery
     if (!(tick % 15)) {
-        BATgauge->draw(battery_voltage.get());
+        if ( BATgauge ) {
+            BATgauge->draw(battery_voltage.get());
+        }
     }
 
     // Temperature Value
     if( !(tick%12) ) {
-        OATgauge->draw((accSensor) ? accSensor->getTempStatus() : temp_status_t::MPU_T_UNKNOWN);
+        if ( OATgauge ) {
+            OATgauge->draw((accSensor) ? accSensor->getTempStatus() : temp_status_t::MPU_T_UNKNOWN);
+        }
     }
 
     // WK-Indicator
@@ -949,7 +882,11 @@ void IpsDisplay::drawDisplay(){
 
     // Cruise mode or circling
     if( flags.mode_dirty ) {
-        VCSTATgauge->draw();
+        if (gflags.isPro) {
+            if (VCSTATgauge) {
+                VCSTATgauge->draw();
+            }
+        }
         WNDgauge->clearGauge();
         if (!vario_centeraid.get() || CRMOD.getCMode()) {
             WNDgauge->drawRose();
@@ -974,7 +911,12 @@ void IpsDisplay::drawDisplay(){
         {
             MCgauge->forceRedraw();
         }
-        BATgauge->forceRedraw();
+        if ( BATgauge ) {
+            BATgauge->forceRedraw();
+        }
+        if ( ALTgauge && ! gflags.isPro ) {
+            ALTgauge->forceRedraw();
+        }
     }
     // ESP_LOGI(FNAME,"IpsDisplay::drawDisplay  TE=%0.1f  x0:%d y0:%d x2:%d y2:%d", te, x0, y0, x2,y2 );
 }

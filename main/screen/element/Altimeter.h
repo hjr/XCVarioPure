@@ -20,17 +20,21 @@ enum class alt_unit_t : uint8_t;
 class Altimeter : public ScreenElement
 {
 public:
-    Altimeter(int16_t cx, int16_t cy);
+    Altimeter(int16_t cx, int16_t cy, bool big=true);
+
     // API
     using AltitudeDisplay = enum { MODE_QNH, MODE_QFE };
     using AltQuantisation = enum { ALT_QUANT_DISABLE, ALT_QUANT_2, ALT_QUANT_5, ALT_QUANT_10, ALT_QUANT_20 };
+    using AltAttr = enum : uint8_t { ATTR_SMALL = 1 };
 
+    // void setSmall() { _aattr |= 1; }
     void drawUnit();
     void draw(meter_t alt);
 
 private: // attributes
     LowPassFilterT<float> _alt_lpf{0.15f};
     int   _alt_prev = 0;
+    uint8_t _aattr = 0;
     bool  _isa_alt = false;
     alt_unit_t _unit;
     alt_unit_t _unit_drawn;

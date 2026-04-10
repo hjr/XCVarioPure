@@ -10,9 +10,9 @@
 
 #include "Colors.h"
 #include "math/Floats.h"
-#include "sensor/press_diff/AirspeedSensor.h"
 #include "setup/SetupNG.h"
 #include "math/Units.h"
+#include "Atmosphere.h"
 #include "AdaptUGC.h"
 #include "logdefnone.h"
 
@@ -22,9 +22,10 @@
 
 extern AdaptUGC *MYUCG;
 
-MultiGauge::MultiGauge(int16_t cx, int16_t cy, MultiDisplay d) :
+MultiGauge::MultiGauge(int16_t cx, int16_t cy, MultiDisplay d, bool l) :
     ScreenElement(cx, cy),
-    _display(d)
+    _display(d),
+    _large(l)
 {
     update_nvs();
 }
@@ -40,49 +41,69 @@ void MultiGauge::setDisplay(MultiDisplay d)
 void MultiGauge::draw()
 {
     float fval = 0;
+    float precision = 1.f; // only 1 and 10 are supported
     if ( ! _nvsvar->getValid() ) {
         _dirty = true;
     }
     else {
         switch (_display) {
         case GAUGE_IAS_SPEED:
+            [[fallthrough]];
         case GAUGE_TAS_SPEED:
+            [[fallthrough]];
         case GAUGE_GND_SPEED:
+            [[fallthrough]];
         case GAUGE_S2F:
             fval = SpeedUnit->apply(_nvsvar->get());
             break;
         case GAUGE_NETTO:
-            fval = VarioUnit->apply(_nvsvar->get()) * 10.f;
+            fval = VarioUnit->apply(_nvsvar->get());
+            if (fval < 10.f) { precision = 10.f; }
             break;
-        case GAUGE_HEADING:
+        case GAUGE_OAT:
+            fval = TempUnit->apply(_nvsvar->get());
+            if ( TempUnit == &Units::celsius ) { precision = 10.f; }
+            break;
         case GAUGE_SLIP:
+            precision = 10.f;
+            [[fallthrough]];
+        case GAUGE_HEADING:
             fval = Units::rad_to_deg(_nvsvar->get());
+            break;
+        case GAUGE_MC:
+            fval = VarioUnit->apply(_nvsvar->get());
+            if (fval < 10.f) { precision = 10.f; }
             break;
         default:
             fval = _nvsvar->get();
             break;
         }
     }
-    int val = fast_iroundf(fval);
+    int val = fast_iroundf(fval * precision);
 
     if (val_prev == val && ! _dirty) return;
     ESP_LOGI(FNAME, "draw val %d (old: %d)", val, val_prev);
 
-    MYUCG->setColor(COLOR_WHITE);
-    MYUCG->setFont(ucg_font_fub25_hn, true);
-
-    char s[32];
-    if ( ! _nvsvar->getValid() ) {
-        ESP_LOGI(FNAME, "nvs val not valid");
-        strcpy(s, "   ---");
-    }
-    else if (vario_upper_gauge.get() == GAUGE_SLIP || vario_upper_gauge.get() == GAUGE_NETTO ) {
-        sprintf(s, "  %.1f", fval);
+    if ( _large ) {
+        MYUCG->setColor(COLOR_WHITE);
+        MYUCG->setFont(ucg_font_fub25_hn, true);
     } else {
-        // here we have only positive values
-        if ( val >= 0 ) {
-            sprintf(s, "  %3d", val);
+        MYUCG->setColor(COLOR_WGREY);
+        MYUCG->setFont(ucg_font_fub20_hn, true);
+    }
+
+    char s[32] = {"   ---"};
+    if (_nvsvar->getValid()) {
+        if (precision > 1.f) {
+            sprintf(s, "  %.1f", val/precision);
+        } else {
+            // here we have only positive values
+            if ( val >= 0 ) {
+                sprintf(s, "  %3d", val);
+            }
         }
+    } else {
+        ESP_LOGI(FNAME, "nvs val not valid");
     }
 
     MYUCG->setPrintPos(_ref_x - MYUCG->getStrWidth(s), _ref_y);
@@ -97,40 +118,53 @@ void MultiGauge::drawUnit() const
     MYUCG->setFont(ucg_font_fub11_hr);
     MYUCG->setColor( COLOR_HEADER );
     const char *unit_str = "";
-    const char *mode_str = nullptr;
+    const char *mode_str = "";
     switch (_display) {
     case GAUGE_GND_SPEED:
         mode_str = "GndV";
         [[fallthrough]];
     case GAUGE_S2F:
-        if (!mode_str) mode_str = "S2F";
+        if (*mode_str=='\0') mode_str = "S2F";
         [[fallthrough]];
     case GAUGE_IAS_SPEED:
-        if (!mode_str) mode_str = "IAS";
+        if (*mode_str=='\0') mode_str = "IAS";
         [[fallthrough]];
     case GAUGE_TAS_SPEED:
-        if (!mode_str) mode_str = "TAS";
+        if (*mode_str=='\0') mode_str = "TAS";
         unit_str = SpeedUnit->getName();
         break;
     case GAUGE_NETTO:
         mode_str = "NET";
         unit_str = VarioUnit->getName();
         break;
+    case GAUGE_OAT:
+        mode_str = "OAT";
+        unit_str = TempUnit->getName();
+        break;
     case GAUGE_HEADING:
         mode_str = "HDG";
         [[fallthrough]];
     case GAUGE_SLIP:
-        if (!mode_str) mode_str = "SLIP";
+        if (*mode_str=='\0') mode_str = "SLIP";
         unit_str = "deg";
         break;
+    case GAUGE_MC:
+        unit_str = "MC";
+        break;
     default:
-        mode_str = "";
         break;
     }
-    MYUCG->setPrintPos(_ref_x+5,_ref_y-3);
-    MYUCG->print(unit_str);
-    MYUCG->setPrintPos(_ref_x+5,_ref_y-17);
-    MYUCG->print(mode_str);
+    if ( _large ) {
+        MYUCG->setPrintPos(_ref_x+5,_ref_y-3);
+        MYUCG->print(unit_str);
+        MYUCG->setPrintPos(_ref_x+5,_ref_y-17);
+        MYUCG->print(mode_str);
+    } else {
+        MYUCG->setPrintPos(_ref_x+3,_ref_y-12);
+        MYUCG->print(unit_str);
+        MYUCG->setPrintPos(4, _ref_y + 18);
+        MYUCG->print(mode_str);
+    }
 }
 
 void MultiGauge::update_nvs()
@@ -154,8 +188,14 @@ void MultiGauge::update_nvs()
     case MultiGauge::GAUGE_HEADING:
         _nvsvar = &mag_hdt;
         break;
+    case MultiGauge::GAUGE_OAT:
+        _nvsvar = &OAT;
+        break;
     case MultiGauge::GAUGE_SLIP:
         _nvsvar = &slip_angle;
+        break;
+    case MultiGauge::GAUGE_MC:
+        _nvsvar = &MC;
         break;
     // case GAUGE_TRACK:
     // 	_nvsvar = &;

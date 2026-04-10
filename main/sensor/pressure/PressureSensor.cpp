@@ -23,11 +23,13 @@
 PressureSensor *baroSensor = nullptr;
 PressureSensor *teSensor = nullptr;
 
+constexpr int SENSOR_HISTORY_DURATION_MS = 10000;  // 10 seconds for pressure sensors
 constexpr int DUTY_CYCLE_MS = 100; // 100ms cycle time for pressure sensors
-static pascal_t pstat_buffer[ (SENSOR_HISTORY_DURATION_MS / DUTY_CYCLE_MS) + 1 ];
-static pascal_t te_buffer[ (SENSOR_HISTORY_DURATION_MS / DUTY_CYCLE_MS) + 1 ];
+constexpr size_t HSIZE = SENSOR_HISTORY_DURATION_MS / DUTY_CYCLE_MS;
+static __attribute__((aligned(4))) pascal_t pstat_buffer[ HSIZE + 1 ];
+static __attribute__((aligned(4))) pascal_t te_buffer[ HSIZE + 1 ];
 
-PressureSensor::PressureSensor(SensorId id) : SensorTP<pascal_t>((id == SensorId::STATIC_PRESSURE) ? pstat_buffer : te_buffer, DUTY_CYCLE_MS)
+PressureSensor::PressureSensor(SensorId id) : SensorTP<pascal_t>((id == SensorId::STATIC_PRESSURE) ? pstat_buffer : te_buffer, HSIZE, DUTY_CYCLE_MS)
 {
     _id = id | SensorFlags::SENSOR_LOCAL;
     if (id == SensorId::STATIC_PRESSURE) {
@@ -52,8 +54,7 @@ static PressureSensor* factory(PressureSensor::PSens_Type type, SensorId id)
     switch (type) {
     case PressureSensor::SPL06_007:
     {
-        SPL06_007 *tmp = new SPL06_007(id);
-        ret = tmp;
+        ret = new SPL06_007(id);
         break;
     }
     case PressureSensor::BME280_SPI:

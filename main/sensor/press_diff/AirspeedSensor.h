@@ -9,7 +9,7 @@
 #pragma once
 
 #include "../SensorBase.h"
-#include "Units.h"
+#include "math/Units.h"
 
 class AirspeedSensor : public SensorTP<float> {
 public:
@@ -43,6 +43,7 @@ private:
     bool _isResting = false;
     uint16_t _counter = 0; // these counter may roll over, that is fine
     uint16_t _batch_counter = 0;
+    uint8_t _ab_counter = 0;
 };
 
 extern AirspeedSensor *asSensor;

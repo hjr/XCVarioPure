@@ -13,6 +13,7 @@
 #include "ms4525do.h"
 #include "../SensorMgr.h"
 #include "../Filters.h"
+#include "../imu/GyroMPU6050.h"
 #include "setup/SetupNG.h"
 #include "S2F.h"
 #include "math/Floats.h"
@@ -22,11 +23,13 @@
 
 AirspeedSensor *asSensor = nullptr;
 
+constexpr int SENSOR_HISTORY_DURATION_MS = 4000;  // 5 sec
 constexpr int DUTY_CYCLE_MS = 100; // 10Hz
-static float as_buffer[ (SENSOR_HISTORY_DURATION_MS / DUTY_CYCLE_MS) + 1 ]; // history buffer for airspeed sensor
+constexpr size_t HSIZE = SENSOR_HISTORY_DURATION_MS / DUTY_CYCLE_MS;
+static __attribute__((aligned(4))) float as_buffer[ HSIZE + 1 ]; // history buffer for airspeed sensor
 
 AirspeedSensor::AirspeedSensor() :
-    SensorTP<float>(as_buffer, DUTY_CYCLE_MS),
+    SensorTP<float>(as_buffer, HSIZE, DUTY_CYCLE_MS),
     _dynp_zoglpf(0.25f, Units::mps_to_pascal(Units::kmh_to_mps(25.0f)))
 {
     _id = SensorId::DIFFPRESSURE | SensorFlags::SENSOR_LOCAL;
@@ -154,9 +157,9 @@ void AirspeedSensor::postProcess()
     // ESP_LOGI(FNAME, "dynp: %f, integ: %f < %f", getHead(), getIntegral(1000), DYNP_THRESHOLD);
     bool rest_old = _isResting;
     if (std::fabsf(getHead()) < DYNP_THRESHOLD && std::fabsf(getIntegral(1000)) < DYNP_THRESHOLD) {
-         // min. 3 sec below threshold, consider as rest
+         // min. 5 sec below threshold, consider as rest
         _restTimer += getDutyCycle();
-        if ( _restTimer > 3000) {
+        if ( _restTimer > 5000) {
             _isResting = true;
         }
     } else {
@@ -169,13 +172,23 @@ void AirspeedSensor::postProcess()
     }
 
     // airborne status update
-    if ( !(_counter % 5) ) {
+    if ( !(_counter % 10) ) {
         if (!airborne.get() && (ias.get() > Speed2Fly.getStallSpeed())) {
-            airborne.set(true);
-            ESP_LOGI(FNAME, "Airborne detected by airspeed sensor");
-        } else if (airborne.get() && _isResting) {
-            airborne.set(false);
-            ESP_LOGI(FNAME, "Landed detected by airspeed sensor");
+            // todo set airborn time, but dont save to nvs
+            _ab_counter++;
+            if ( _ab_counter > 10 ) { // needs to be above stall for 10 seconds
+                _ab_counter = 0;
+                airborne.set(true);
+                // todo save airborne time
+                ESP_LOGI(FNAME, "Airborne detected by airspeed sensor");
+            }
+        } else if (airborne.get() && _isResting && gyroSensor->getRef().y < Units::deg_to_rad(3.f)) {
+            _ab_counter++;
+            if ( _ab_counter > 10 ) { // needs to be resting for 10 seconds
+                _ab_counter = 0;
+                airborne.set(false);
+                ESP_LOGI(FNAME, "Landed detected by airspeed sensor");
+            }
         }
     }
     _counter++; // increment counter for auto offset correction, starts with 0 after setup
