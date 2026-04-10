@@ -932,7 +932,9 @@ void options_menu_create_units(SetupMenu *top) {
 	SetupMenuSelect *teu = new SetupMenuSelect("Temperature", RST_NONE, unitChangeS, &temperature_unit);
 	teu->addEntry("Celsius");
 	teu->addEntry("Fahrenheit");
+#ifdef DEBUG_AND_TEST
 	teu->addEntry("Kelvin");
+#endif
 	top->addEntry(teu);
 	SetupMenuSelect *qnhi = new SetupMenuSelect("QNH", RST_NONE, unitChangeS, &qnh_unit);
 	qnhi->addEntry("Hectopascal");
