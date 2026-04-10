@@ -52,6 +52,7 @@ bool SetupCommon::init()
 	if( flags._volatile != PERSISTENT ){
 		// ESP_LOGI(FNAME,"NVS volatile set default");
 		setDefault();
+		setInvalid(); // volatile black board items need a proper init, so mark them as invalid until set
 		return true;
 	}
 	size_t required_size;
@@ -80,6 +81,7 @@ bool SetupCommon::init()
 				setDirty();
 			}
 			else {
+				flags._valid = true;
 				ESP_LOGD(FNAME,"NVS key %s(%c) exists len: %d, expected: %d - %s", _key.data(), typeName(), required_size, getSize(), getValueAsStr().c_str());
 			}
 		}

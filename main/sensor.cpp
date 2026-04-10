@@ -519,11 +519,6 @@ void system_startup(void *args){
     ahrs_roll_check.set(0);
     gyro_gating.set(gyro_gating.getDefault());
 #endif
-    // a couple volatile setup variable are used as black board are not valid from the beginning
-    // but the ctor does forcly set them valid with an init. value.
-    // work around for those optional values that are not valid until properly set
-    mag_hdm.setInvalid();
-    mag_hdt.setInvalid();
 
 	BatVoltage = new AnalogInput((22.0+1.2)/1200, ADC_CHANNEL_7); // created allways, but only used on master XCV
 	BatVoltage->begin(ADC_ATTEN_DB_0);  // for battery voltage
