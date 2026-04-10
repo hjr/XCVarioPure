@@ -66,6 +66,7 @@ struct Line {
     bool isDefined() const { return _nx != 0 || _ny != 0; }
     inline float getD() const { return _d; }
     Point mapToHorizon(Point p) const;
+    Point limitToScreen(Point p, bool respect_mbox) const;
     float getDistance(Point p) const { return fct(p); }
 };
 
@@ -98,7 +99,6 @@ public:
 
     static void clipPolygonByLine(const Point *poly, int n, const Line &l, Point *above, int *na, Point *below, int *nb);
     static void drawPolygon(Point *pts, int n);
-    static Point clipToScreenCenter(Point p, bool respect_mbox=false);
 
   private:
     static PolarGauge *MAINgauge;

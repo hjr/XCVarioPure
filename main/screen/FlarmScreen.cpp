@@ -104,9 +104,9 @@ void FlarmScreen::display(int mode)
     MYUCG->setColor( COLOR_EARTH );
     IpsDisplay::drawPolygon(below, nb);
 
-    // clip to display area
-    p = IpsDisplay::clipToScreenCenter(p, true);
-    // ESP_LOGI(FNAME,"ClippPt %d,%d", p.x, p.y);
+    // limit target to display area
+    p = l.limitToScreen(p, true);
+    ESP_LOGI(FNAME,"ClippPt %d,%d", p.x, p.y);
 
     // Put alarm level into color
     if ( Flarm::AlarmLevel <= 1 ) {

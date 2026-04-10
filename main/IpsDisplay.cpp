@@ -122,8 +122,12 @@ Point Point::rotate(rad_t alpha) const {
 }
 // NED to NAV frame with Z axes up
 Point Point::centralProjection(const vector_f &obj, float focus) {
-    if (obj.x <= 0) {
-        return Point(-10000, -10000); // cannot project points behind the viewer
+    // camera model: pinhole camera at origin, looking along X axis, display plane at focus distance
+    focus *= fast_signf(obj.x); // mirror objects behind the plane
+    // project to display plane
+    if ( std::abs(obj.x) < 1e-4f ) {
+        // avoid division by zero
+        return Point( -10000, -10000 );
     }
     focus /= obj.x;
     return Point(fast_iroundf(focus * obj.y), fast_iroundf(focus * -obj.z));
@@ -179,6 +183,49 @@ Point Line::mapToHorizon(Point obj) const
     ret.x = ret.x - dist * _nx + obj.x * -_ny + obj.y * _nx;
     ret.y = ret.y - dist * _ny + obj.x * _nx + obj.y * _ny;
     return ret;
+}
+
+// limit target mapping to screen area, 
+// returns a point on the screen border if the target is outside
+Point Line::limitToScreen(Point p, bool respect_mbox) const
+{
+    // check p against boundaries
+    const int16_t display_h = (respect_mbox ? (DISPLAY_H - MBOX->getBoxHeight()) : DISPLAY_H);
+    if (p.x >= 0 && p.x < DISPLAY_W && p.y >= 0 && p.y < display_h) {
+        return p;
+    }
+
+    // project screen reference
+    float dist = _nx * DISPLAY_W/2 + _ny * DISPLAY_H/2 - _d;
+    const int16_t cx = std::clamp(DISPLAY_W/2 - fast_iroundf(dist * _nx), 0, DISPLAY_W-1);
+    const int16_t cy = std::clamp(display_h/2 - fast_iroundf(dist * _ny), 0, display_h-1);
+
+    // direction vector from center to point
+    int16_t dx = p.x - cx;
+    int16_t dy = p.y - cy;
+
+
+    // find intersection with screen border and chop scale
+    float t_min = 1.f;
+    if ( p.x < 0 ) {
+        float t = (float)(-cx) / dx;
+        if (t < t_min) t_min = t;
+    }
+    else if ( p.x >= DISPLAY_W ) {
+        float t = (float)(DISPLAY_W-1 - cx) / dx;
+        if (t < t_min) t_min = t;
+    }
+    if ( p.y < 0 ) {
+        float t = (float)(-cy) / dy;
+        if (t < t_min) t_min = t;
+    }
+    else if ( p.y >= display_h ) {
+        float t = (float)(display_h-1 - cy) / dy;
+        if (t < t_min) t_min = t;
+    }
+
+    // Compute intersection
+    return Point(cx + t_min * dx, cy + t_min * dy);
 }
 
 // Clip a polygon by line into above and below parts
@@ -246,45 +293,6 @@ void IpsDisplay::drawPolygon(Point *pts, int n)
         ucg->drawTriangle(pts[i].x, pts[i].y,pts[i+1].x, pts[i+1].y,pts[i+2].x, pts[i+2].y);
         i += 2;
     }
-}
-
-// Centered screen clipping
-Point IpsDisplay::clipToScreenCenter(Point p, bool respect_mbox)
-{
-    const int16_t cx = DISPLAY_W/2;
-    const int16_t display_h = (respect_mbox ? (DISPLAY_H - MBOX->getBoxHeight()) : DISPLAY_H);
-    const int16_t cy = display_h / 2;
-
-    // direction vector from center to point
-    int16_t dx = p.x - cx;
-    int16_t dy = p.y - cy;
-
-    // check p against boundaries
-    if (p.x >= 0 && p.x < DISPLAY_W && p.y >= 0 && p.y < display_h) {
-        return p;
-    }
-
-    // find intersection with screen border and chop scale
-    float t_min = 1.f;
-    if ( p.x < 0 ) {
-        float t = (float)(-cx) / dx;
-        if (t < t_min) t_min = t;
-    }
-    else if ( p.x >= DISPLAY_W ) {
-        float t = (float)(cx) / dx;
-        if (t < t_min) t_min = t;
-    }
-    if ( p.y < 0 ) {
-        float t = (float)(-cy) / dy;
-        if (t < t_min) t_min = t;
-    }
-    else if ( p.y >= display_h ) {
-        float t = (float)(cy) / dy;
-        if (t < t_min) t_min = t;
-    }
-
-    // Compute intersection
-    return Point(cx + t_min * dx, cy + t_min * dy);
 }
 
 static void initRefs()
