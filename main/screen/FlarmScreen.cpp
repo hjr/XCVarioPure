@@ -96,7 +96,12 @@ void FlarmScreen::display(int mode)
     }
 
     // put the word TRAFFIC under the screen
-    MBOX->pushMessage(4, "! TRAFFIC !", flarm_alarm_time.get());
+    if ( mode == 0 ) {
+        _msgid = MBOX->pushMessage(4, "! TRAFFIC !", flarm_alarm_time.get());
+    }
+    else {
+        MBOX->keepMessage(_msgid);
+    }
 
     // draw horizon
     MYUCG->setColor( COLOR_SKYBLUE );
@@ -182,7 +187,7 @@ void FlarmScreen::remove()
 {
     ESP_LOGI(FNAME,"FlarmScreen remove - called");
     // protect double/competing exit calls from watch dog and e.g. UI interaction
-    MBOX->popMessage();
+    MBOX->popMessage(_msgid); // remove the message box if still there
     int expected = 0;
     if ( atomic_compare_exchange_strong(&_done, &expected, 1) ) {
         ESP_LOGI(FNAME,"FlarmScreen remove - done");

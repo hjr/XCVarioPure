@@ -29,8 +29,8 @@ static vector_f acc_buffer[ (SENSOR_HISTORY_DURATION_MS / DUTY_CYCLE_MS) + 1 ];
 AccMPU6050::AccMPU6050(MpuImu &mmpu) : 
     SensorTP<vector_f>(acc_buffer, DUTY_CYCLE_MS),
     _my_mpu(mmpu),
-    _lpf_accel(LowPassFilterT<vector_f>::alphaFromTau(1.5, DUTY_CYCLE_MS / 1000.f)),
-    _lpf_slip_angle(LowPassFilterT<float>::alphaFromTau(1.5, DUTY_CYCLE_MS / 1000.f))
+    _lpf_accel(LowPassFilterT<vector_f>::alphaFromTau(0.2, DUTY_CYCLE_MS / 1000.f)),
+    _lpf_slip_angle(LowPassFilterT<float>::alphaFromTau(0.3, DUTY_CYCLE_MS / 1000.f))
 {
     _id = SensorId::ACC_INERTIAL | SensorFlags::SENSOR_LOCAL;
 

@@ -43,6 +43,7 @@ private:
     WatchDog_C _time_out;
     uint16_t _prev_alarm = 0;
     std::atomic<int> _done = 0; // int because of atomic operations
+    int8_t _msgid;
 };
 
 

@@ -26,6 +26,11 @@ const int CLOCK_DIVIDER = 8;
 // - alert level (1,2,3,4)
 // - a text message
 // - a time-out in seconds (0 means default per alert level, a time-out >180 sec enforces a confirmation option)
+// - has a pseudo unique id to identify messages for confirmation (e.g. to confirm a landing, or a flarm alarm)
+ScreenMsg::ScreenMsg(int a, const char *str, int to) : alert_level(a), text(str), _time_out(to)
+{
+    _id = (rand() % 254) + 1; // generate a pseudo unique id != 0
+}
 
 void MessageBox::createMessageBox()
 {
@@ -46,14 +51,15 @@ MessageBox::~MessageBox()
     _msg_list.clear();
 }
 
-void MessageBox::pushMessage(int alert_level, const char *str, int to, bool confirm)
+uint8_t MessageBox::pushMessage(int alert_level, const char *str, int to, bool confirm)
 {
     if (_msg_list.size() >= 10) {
         ESP_LOGW(FNAME, "Message list full, dropping message: %s", str);
-        return;
+        return 0;
     }
     
     std::unique_ptr<ScreenMsg> msg = std::make_unique<ScreenMsg>(alert_level, str, to);
+    uint8_t ret = msg->_id;
     {
         std::lock_guard<SemaphoreMutex> lock(_list_mutex);
         if ( alert_level >= 3 ) {
@@ -70,13 +76,32 @@ void MessageBox::pushMessage(int alert_level, const char *str, int to, bool conf
     if ( ! current ) {
         Clock::start(this);
     }
+    return ret;
 }
 
 // todo messages should have id's to make this work properly
-void MessageBox::popMessage()
+void MessageBox::popMessage(uint8_t id)
 {
-    if ( current ) {
-        _msg_to = 0; // trigger immediate display of next message
+    // only acts on the current message, if id matches or id is 0 (default)
+    if ( id != 0 ) {
+        if ( current && current->_id == id ) {
+            _msg_to = 0; // trigger immediate display of next message
+        }
+    }
+    else {
+        // pop current message
+        if ( current ) {
+            _msg_to = 0; // trigger immediate display of next message
+        }
+    }
+}
+
+void MessageBox::keepMessage(uint8_t id, int to)
+{
+    if ( current && current->_id == id ) {
+        int tmp_to = (to > 0) ? to :  current->alert_level * 10; // x 10 sec
+        tmp_to *= (1000/(CLOCK_DIVIDER*Clock::TICK_ATOM)); // convert to ticks
+        _msg_to = tmp_to; // reset time-out for current message
     }
 }
 
@@ -139,7 +164,7 @@ bool MessageBox::nextMsg()
     // set time counter
     _start_scroll = 0;
     _nr_scroll = std::max(MYUCG->getStrWidth(current->text.c_str()) - dwidth +2, 0);
-    _msg_to = (current->_to > 0) ? current->_to :  current->alert_level * 10; // x 10 sec
+    _msg_to = (current->_time_out > 0) ? current->_time_out :  current->alert_level * 10; // x 10 sec
     _msg_to *= (1000/(CLOCK_DIVIDER*Clock::TICK_ATOM)); // convert to ticks
 
     return true;
