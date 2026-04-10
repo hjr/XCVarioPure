@@ -782,7 +782,7 @@ void Audio::applySetup() {
 void Audio::initVarioVoice()
 {
     if ( _dac_chan ) {
-        ESP_LOGI(FNAME, "load vario sound");
+        ESP_LOGI(FNAME, "load vario sound, deadband %.1f/%.1f", _deadband_p, _deadband_n);
         unmute();
         writeVolume(speaker_volume);
         // load the vario sound
