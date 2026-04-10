@@ -142,33 +142,33 @@ struct unit_t {
 
 // ---------------------------------------------------------------------------
 // length
-constexpr unit_t meter      { 1.0f, 0.0f, "m" };
-constexpr unit_t kilometer  { 0.001f, 0.0f, "km" };
-constexpr unit_t mile       { 0.000621371f, 0.0f, "mi" };
-constexpr unit_t naut_mile  { 0.000539957f, 0.0f, "nm" };
+extern const unit_t meter;
+extern const unit_t kilometer;
+extern const unit_t mile;
+extern const unit_t naut_mile;
 // vertical length
-constexpr unit_t foot       { ft_per_m, 0.0f, "ft" };
-constexpr unit_t flightlevel { ft_per_m / 100.0f, 0.0f, "FL" }; // in hundreds of feet
+extern const unit_t foot;
+extern const unit_t flightlevel;
 
 // speed
-constexpr unit_t mps        { 1.0f, 0.0f, "m/s" };
-constexpr unit_t kmh        { kmh_per_mps, 0.0f, "kmh" };
-constexpr unit_t mph        { 2.2369363f, 0.0f, "mph" };
-constexpr unit_t kts        { knots_per_mps, 0.0f, "kt" };
+extern const unit_t mps;
+extern const unit_t kmh;
+extern const unit_t mph;
+extern const unit_t kts;
 // vertical speed
-constexpr unit_t hfpm       {hfpm_per_mps, 0.0f, "ftm"}; // 100 feet per minute
+extern const unit_t hfpm; // 100 feet per minute
 
 // pressure
-constexpr unit_t pascal     { 1.0f, 0.0f, "Pa" };
-constexpr unit_t hpa        { 0.01f, 0.0f, "hPa" };
-constexpr unit_t inhg       { 0.000295299830714f, 0.0f, "inHg" };
+extern const unit_t pascal;
+extern const unit_t hpa;
+extern const unit_t inhg;
 
 // temperature
-constexpr unit_t kelvin     { 1.0f, 0.0f, "'K" };
-constexpr unit_t celsius    { 1.0f, -C2K, "'C" };
-constexpr unit_t fahrenheit { 9.0f / 5.0f, -459.67f, "'F" };
+extern const unit_t kelvin;
+extern const unit_t celsius;
+extern const unit_t fahrenheit;
 
-constexpr unit_t none       { 1.0f, 0.0f, "%" };
+extern const unit_t none;
 
 constexpr inline float convert(float value, const Units::unit_t& from, const Units::unit_t& to) {
     return to.apply(value / from.scale - from.offset);

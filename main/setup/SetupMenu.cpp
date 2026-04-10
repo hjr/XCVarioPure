@@ -920,13 +920,13 @@ void options_menu_create_units(SetupMenu *top) {
 	alu->addEntry("FL (FL)");
 	top->addEntry(alu);
 	SetupMenuSelect *iau = new SetupMenuSelect("Airspeed", RST_NONE, unitChangeS, &ias_unit);
-	iau->addEntry("Kilom./hour (Km/h)");
+	iau->addEntry("Kilom./hour (km/h)");
 	iau->addEntry("Miles/hour (mph)");
 	iau->addEntry("Knots (kt)");
 	top->addEntry(iau);
 	SetupMenuSelect *vau = new SetupMenuSelect("Vario", RST_NONE, update_range_entry_s, &vario_unit);
 	vau->addEntry("Meters/sec (m/s)");
-	vau->addEntry("Feet/min x 100 (fpm)");
+	vau->addEntry("100Feet/min (hfpm)");
 	vau->addEntry("Knots (kt)");
 	top->addEntry(vau);
 	SetupMenuSelect *teu = new SetupMenuSelect("Temperature", RST_NONE, unitChangeS, &temperature_unit);
@@ -1071,6 +1071,7 @@ static void screens_menu_create_vario(SetupMenu *top) {
     tgauge->addEntry("TAS Speed", MultiGauge::GAUGE_TAS_SPEED);
     tgauge->addEntry("GND Speed", MultiGauge::GAUGE_GND_SPEED);
     tgauge->addEntry("Speed2Fly", MultiGauge::GAUGE_S2F);
+    tgauge->addEntry("McCready", MultiGauge::GAUGE_MC);
     tgauge->addEntry("Net. Vario", MultiGauge::GAUGE_NETTO);
     tgauge->addEntry("OATemp.", MultiGauge::GAUGE_OAT);
     tgauge->addEntry("Heading", MultiGauge::GAUGE_HEADING);

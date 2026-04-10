@@ -41,33 +41,45 @@ void MultiGauge::setDisplay(MultiDisplay d)
 void MultiGauge::draw()
 {
     float fval = 0;
+    float precision = 1.f; // only 1 and 10 are supported
     if ( ! _nvsvar->getValid() ) {
         _dirty = true;
     }
     else {
         switch (_display) {
         case GAUGE_IAS_SPEED:
+            [[fallthrough]];
         case GAUGE_TAS_SPEED:
+            [[fallthrough]];
         case GAUGE_GND_SPEED:
+            [[fallthrough]];
         case GAUGE_S2F:
             fval = SpeedUnit->apply(_nvsvar->get());
             break;
         case GAUGE_NETTO:
             fval = VarioUnit->apply(_nvsvar->get());
+            if (fval < 10.f) { precision = 10.f; }
             break;
         case GAUGE_OAT:
             fval = TempUnit->apply(_nvsvar->get());
+            if ( TempUnit == &Units::celsius ) { precision = 10.f; }
             break;
-        case GAUGE_HEADING:
         case GAUGE_SLIP:
+            precision = 10.f;
+            [[fallthrough]];
+        case GAUGE_HEADING:
             fval = Units::rad_to_deg(_nvsvar->get());
+            break;
+        case GAUGE_MC:
+            fval = VarioUnit->apply(_nvsvar->get());
+            if (fval < 10.f) { precision = 10.f; }
             break;
         default:
             fval = _nvsvar->get();
             break;
         }
     }
-    int val = fast_iroundf(fval);
+    int val = fast_iroundf(fval * precision);
 
     if (val_prev == val && ! _dirty) return;
     ESP_LOGI(FNAME, "draw val %d (old: %d)", val, val_prev);
@@ -82,8 +94,8 @@ void MultiGauge::draw()
 
     char s[32] = {"   ---"};
     if (_nvsvar->getValid()) {
-        if (vario_upper_gauge.get() == GAUGE_SLIP || vario_upper_gauge.get() == GAUGE_NETTO ) {
-            sprintf(s, "  %.1f", fval);
+        if (precision > 1.f) {
+            sprintf(s, "  %.1f", val/precision);
         } else {
             // here we have only positive values
             if ( val >= 0 ) {
@@ -136,6 +148,9 @@ void MultiGauge::drawUnit() const
         if (*mode_str=='\0') mode_str = "SLIP";
         unit_str = "deg";
         break;
+    case GAUGE_MC:
+        unit_str = "MC";
+        break;
     default:
         break;
     }
@@ -178,6 +193,9 @@ void MultiGauge::update_nvs()
         break;
     case MultiGauge::GAUGE_SLIP:
         _nvsvar = &slip_angle;
+        break;
+    case MultiGauge::GAUGE_MC:
+        _nvsvar = &MC;
         break;
     // case GAUGE_TRACK:
     // 	_nvsvar = &;
