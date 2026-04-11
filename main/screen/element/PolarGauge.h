@@ -9,6 +9,7 @@
 #pragma once
 
 #include "ScreenElement.h"
+#include "wind/Wind.h"
 #include "math/Trigonometry.h"
 #include "math/Units.h"
 
@@ -24,17 +25,17 @@ class CenterAid;
 class GaugeFunc
 {
 public:
-    GaugeFunc(float scale, float zero) : _scale_k(scale), _zero_at(zero) {}
+    GaugeFunc(float scale, float zero) : _scale_k(scale), _mid_at(zero) {}
     virtual ~GaugeFunc() = default;
     // calculate a gauge indicator position in rad (-_scale_max .. _scale_max) for an gauge indicated value
     virtual float operator()(float a) const { return 0.; }
     // inverse to operator. Get the value for an indicator position in radian
     virtual float invers(float rad) const { return 0.; }
-    float getZero() const { return _zero_at; }
+    float getZero() const { return _mid_at; }
 
 protected:
     float _scale_k; // scale factor
-    float _zero_at; // value at the middle of the scale
+    float _mid_at; // value at the middle of the scale
 };
 
 // a polar gauge
@@ -66,7 +67,7 @@ public:
     void drawPolarSink(mps_t a);
     void drawAVG();
     void drawFigure(float a);
-    void drawWind(int16_t wdir, mps_t wval, int16_t idir, mps_t ival);
+    void drawWind(WindData s, WindData i);
     using BowColorIdx = enum { GREEN, BLUE, ORANGE, RED };
     void colorRange(float from, float to, int16_t color);
     void drawScale(float from = -1000., float to = -1000.);

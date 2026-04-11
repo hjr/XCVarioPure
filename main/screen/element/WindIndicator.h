@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include "wind/Wind.h"
 #include "AdaptUGC.h"
 
 #include <cstdint>
@@ -25,14 +26,13 @@ public:
     // API
     // void setWind(int16_t wdir, int16_t wval) { _dir = wdir; _val = wval; }
     void setColor(ucg_color_t c) { _color = c; }
-    bool changed(int16_t wdir, int16_t wval);
-    bool draw(int16_t wdir, int16_t wval);
+    bool changed(WindData w);
+    bool draw(WindData w);
     void drawWind(bool erase=false);
 
   private: // attributes
     const PolarGauge &_gauge;  // ref to gauge the indicator belonges to
-    int16_t _dir = 0; // 0.5 deg
-    int16_t _val = -1;
+    WindData _wind; // current wind data
     bool _live = false;
     ucg_color_t _color;
     static int16_t _cheight;

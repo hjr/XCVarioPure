@@ -9,11 +9,12 @@
 #include "Battery.h"
 
 #include "Colors.h"
-#include "math/Units.h"
 #include "AdaptUGC.h"
 #include "setup/SetupNG.h"
 
 #include "logdefnone.h"
+
+#include <algorithm>
 
 
 extern AdaptUGC *MYUCG;
@@ -60,10 +61,8 @@ void Battery::draw(float volt)
 
     int chargep = (int)((chargef - bat_low_volt.get())*100)/( bat_full_volt.get() - bat_low_volt.get());
     ESP_LOGI(FNAME,"Charge: %d , Volt: %.1f V, Delta %.1f V", chargep, chargef, (bat_full_volt.get() - bat_low_volt.get()) );
-    if(chargep < 0)
-        chargep = 0;
-    if( chargep > 100 )
-        chargep = 100;
+
+    chargep = std::clamp(chargep, 0, 100);
     if ( battery_display.get() != BAT_VOLTAGE_BIG ){
         MYUCG->setColor( COLOR_HEADER );
         MYUCG->drawBox( _ref_x-40,_ref_y-2, 36, 12  );  // Bat body square
@@ -72,34 +71,46 @@ void Battery::draw(float volt)
         float v_yellow = bat_yellow_volt.get();
         if (v_yellow < v_red)
             v_yellow = v_red;
-        if (volt >= v_yellow)
+        if (volt >= v_yellow) {
             MYUCG->setColor( COLOR_GREEN );  // green = moderate to full 
-        else if (volt >= v_red)
+        } else if (volt >= v_red) {
             MYUCG->setColor( COLOR_YELLOW ); // yellow = critical to moderate
-        else
+        } else {
             MYUCG->setColor( COLOR_RED );    // red = empty to critical
+        }
         int chgpos=(chargep*32)/100;
-        if(chgpos <= 4)
+        if(chgpos <= 4) {
             chgpos = 4;
+        }
         MYUCG->drawBox( _ref_x-40+2, _ref_y, chgpos, 8  );  // Bat charge state
         MYUCG->setColor( DARK_GREY );
         MYUCG->drawBox( _ref_x-40+2+chgpos, _ref_y, 32-chgpos, 8 );  // Empty bat bar
         MYUCG->setFont(ucg_font_fub11_hr, true);
     }
     MYUCG->setColor(COLOR_WGREY);
-    int16_t tpos_y = (_side_text || battery_display.get() == BAT_VOLTAGE_BIG) ? _ref_y + 12 : _ref_y - 6;
-    int16_t tpos_x = (_side_text && battery_display.get() != BAT_VOLTAGE_BIG) ? _ref_x - 58 : _ref_x - 10;
-    char s[32];
+    bool right_align = _side_text && battery_display.get() != BAT_VOLTAGE_BIG;
+    int16_t tpos_x = right_align ? _ref_x - 58 : _ref_x - 40; // side by side and right alignment
+    int16_t tpos_y = (_side_text || battery_display.get() == BAT_VOLTAGE_BIG) ? _ref_y + 12 : _ref_y - 6; // sbs or on top of symbol
+    char *s, buf[32];
+    s = buf;
     if( battery_display.get() == BAT_PERCENTAGE ) {
         sprintf(s, " %3d", chargep);
-        MYUCG->setPrintPos(tpos_x - MYUCG->getStrWidth(s), tpos_y);
+        if ( right_align ) {
+            tpos_x -= MYUCG->getStrWidth(s);
+        } else {
+            s++; // skip leading space for left alignment
+        }
+        MYUCG->setPrintPos(tpos_x, tpos_y);
     }
     else {
         if ( battery_display.get() == BAT_VOLTAGE_BIG ) {
             MYUCG->setFont(ucg_font_fub14_hr, true);
         }
         sprintf(s, " %2.1f", chargef);
-        MYUCG->setPrintPos(tpos_x - MYUCG->getStrWidth(s), tpos_y);
+        if ( ! right_align ) {
+            s++; // skip leading space for left alignment
+        }
+        MYUCG->setPrintPos(tpos_x - (right_align ? MYUCG->getStrWidth(s) : 0), tpos_y);
     }
     MYUCG->print(s);
     MYUCG->setColor( COLOR_HEADER );
@@ -108,5 +119,8 @@ void Battery::draw(float volt)
     }
     else {
         MYUCG->print("V");
+    }
+    if ( ! right_align ) {
+        MYUCG->print(" ");
     }
 }

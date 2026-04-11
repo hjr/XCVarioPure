@@ -43,16 +43,16 @@ WindIndicator::WindIndicator(PolarGauge &g, bool live) :
 
 // Check if changed
 // -> clear, and take over new values (but not draw)
-bool WindIndicator::changed(int16_t wdir, int16_t wval)
+bool WindIndicator::changed(WindData w)
 {
-    if (wdir != _dir || wval != _val) {
+    if (w != _wind) {
         drawWind(true);
-        _gauge.drawRose(_dir);
-        _val = wval;
-        if ( wval < 0 ) {
+        _gauge.drawRose(_wind.getDeg());
+        _wind = w;
+        ESP_LOGI(FNAME, "Wind (%d,%.2f)", _wind.getDeg(), _wind.getVal());
+        if ( !_wind.isValid() ) {
             return false;
         }
-        _dir = wdir;
         return true;
     }
     return false;
@@ -60,17 +60,16 @@ bool WindIndicator::changed(int16_t wdir, int16_t wval)
 
 // direction [°], northwind as 0°; strength [any]
 // wval < 0 just removes the
-bool WindIndicator::draw(int16_t wdir, int16_t wval)
+bool WindIndicator::draw(WindData w)
 {
-    // ESP_LOGI(FNAME, "Wind (%d,%d)", wdir, wval);
-    if (wdir != _dir || wval != _val) {
+    ESP_LOGI(FNAME, "Wind (%d,%.2f)", w.getDeg(), w.getVal());
+    if (w != _wind) {
         drawWind(true);
-        _gauge.drawRose(_dir);
-        _val = wval;
-        if ( wval < 0 ) {
+        _gauge.drawRose(_wind.getDeg());
+        _wind = w;
+        if ( !_wind.isValid() ) {
             return false;
         }
-        _dir = wdir;
         drawWind(false);
         return true;
     }
@@ -80,9 +79,9 @@ bool WindIndicator::draw(int16_t wdir, int16_t wval)
 // 0° reference on top of the compass rose
 void WindIndicator::drawWind(bool erase)
 {
-    // if ( ! erase ) ESP_LOGI(FNAME, "wind deg:%d, a:%d ", _dir, _val);
-    float si = -fast_sin_idx(_dir*2);
-    float co = fast_cos_idx(_dir*2);
+    if ( ! erase ) ESP_LOGI(FNAME, "wind deg:%d, v:%.1f ", _wind.getDeg(), _wind.getVal());
+    float si = -fast_sin_idx(_wind.getDeg2());
+    float co = fast_cos_idx(_wind.getDeg2());
 
     int16_t x0 = si * (_gauge._radius-2);
     int16_t y0 = co * (_gauge._radius-2);
@@ -94,16 +93,18 @@ void WindIndicator::drawWind(bool erase)
         MYUCG->setColor(_color.color[0], _color.color[1], _color.color[2]);
     }
     // a number at where the wind is coming from
-    int16_t sw = _cwidth * count_digits(_val);
+    int16_t value = _wind.getVal() * _gauge._unit_fac;
+    int16_t sw = _cwidth * count_digits(value);
     int16_t xshift = sw / 2;
     if (erase) {
         MYUCG->drawBox(_gauge._ref_x - x0 - x1 / 2 - xshift, _gauge._ref_y - y0 - y1 / 2 - _cheight / 2, sw, _cheight);
     } else {
-        char buf[6];
-        int16_t value = _val;
-        if (_val > 399) value = -1;
-        if (_val < 0) value = -1;
-        sprintf(buf, "%d", value);
+        char buf[8];
+        if (_wind.isValid()) {
+            sprintf(buf, "%d", value);
+        } else {
+            sprintf(buf, "oo");
+        }
         MYUCG->setFont(ucg_font_fub14_hr);
         MYUCG->setFontPosCenter();
         MYUCG->setPrintPos(_gauge._ref_x - x0 - x1 / 2 - xshift, _gauge._ref_y - y0 - y1 / 2);
