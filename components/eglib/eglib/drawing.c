@@ -1266,8 +1266,6 @@ struct font_t {
 };
 */
 
-#define MAX 400
-
 void eglib_DrawGlyph(eglib_t *eglib, coordinate_t x, coordinate_t y, const struct glyph_t *glyph) {
 	if(glyph == NULL)
 		return;

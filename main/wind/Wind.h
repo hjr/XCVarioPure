@@ -1,0 +1,43 @@
+/***********************************************************
+ ***   THIS DOCUMENT CONTAINS PROPRIETARY INFORMATION.   ***
+ ***    IT IS THE EXCLUSIVE CONFIDENTIAL PROPERTY OF     ***
+ ***     Rohs Engineering Design AND ITS AFFILIATES.     ***
+ ***                                                     ***
+ ***       Copyright (C) Rohs Engineering Design         ***
+ ***********************************************************/
+
+#pragma once
+
+#include "math/Units.h"
+#include "math/Floats.h"
+
+#include <cstdint>
+
+// A compact 32 bit representation of wind direction and strength used internally
+// - direction in deg/2 is a fix point with one bit mantissa, i.e. 0..719°
+// - value in m/s is the wind speed with two bit mantissa
+union WindData
+{
+    struct {
+        uint16_t dir; // 0..719° in [0,5°], northwind as 0, e.g. south wind as 360
+        uint16_t val; // any unit, e.g. m/s or km/h; 8 bit alias 230km/h might be enough range
+        // 8 bit might by used as flegs here, e.g. for live/tas or other flags, but currently unused
+    } __attribute__((packed));
+    uint32_t raw = 0xffff;
+
+    // ctors
+    constexpr WindData() = default;
+    constexpr WindData(uint32_t d) : raw(d) {}
+    constexpr WindData(int16_t wdir, int16_t wval) : dir(wdir), val(wval) {}
+    constexpr WindData(rad_t wdir, mps_t wval) : dir(fast_iroundf(Units::rad_to_deg(wdir) * 2) % 720), val(fast_iroundf(wval * 4)) {}
+    // getters
+    constexpr int getDeg2() const { return dir; }
+    constexpr int getDeg() const { return dir/2; }
+    constexpr mps_t getVal() const { return (float)val / 4.0f; }
+    constexpr bool isValid() const { return raw != 0xffff; }
+    // setters
+    constexpr void inclHeading(int16_t d) { dir = (dir - d * 2) % 720; }
+    // compare
+    constexpr bool operator==(WindData other) const { return raw == other.raw; }
+    constexpr bool operator!=(WindData other) const { return raw != other.raw; }
+};

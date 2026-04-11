@@ -37,15 +37,15 @@ class LinGaugeFunc : public GaugeFunc
 {
 public:
     LinGaugeFunc(float scale, float zero) : GaugeFunc(scale, zero) {}
-    float operator()(float a) const override { return (a - _zero_at) * _scale_k; }
-    float invers(float rad) const override { return (rad / _scale_k) + _zero_at; }
+    float operator()(float a) const override { return (a - _mid_at) * _scale_k; }
+    float invers(float rad) const override { return (rad / _scale_k) + _mid_at; }
 };
 class LogGaugeFunc : public GaugeFunc
 {
 public:
     LogGaugeFunc(float scale, float zero) : GaugeFunc(scale, zero) {}
-    float operator()(float a) const override { return fast_log2f(std::abs((a-_zero_at)) + 1.f) * _scale_k * (std::signbit((a-_zero_at)) ? -1. : 1.); }
-    float invers(float rad) const override { return ((pow(2., std::abs(rad)) - 1.f) / _scale_k * (std::signbit(rad) ? -1.f : 1.f)) + _zero_at; }
+    float operator()(float a) const override { return fast_log2f(std::abs((a-_mid_at)) + 1.f) * _scale_k * (std::signbit((a-_mid_at)) ? -1. : 1.); }
+    float invers(float rad) const override { return ((pow(2., std::abs(rad)) - 1.f) / _scale_k * (std::signbit(rad) ? -1.f : 1.f)) + _mid_at; }
 };
 // class RoseGaugeFunc : public GaugeFunc
 // {
@@ -245,28 +245,26 @@ void PolarGauge::drawFigure(float a)
     }
 }
 
-void PolarGauge::drawWind(int16_t wdir, mps_t wval_par, int16_t idir, mps_t ival_par)
+void PolarGauge::drawWind(WindData s, WindData i)
 {
     int16_t heading = 0;
 
     if ( _wind_ref == WR_HEADING ) {
         heading = fast_iroundf(getHeading());
+        s.inclHeading(heading);
+        i.inclHeading(heading);
     }
 
-    int16_t wval = wval_par * _unit_fac;
-    wdir -= heading;
     // ESP_LOGI(FNAME,"PW  d:%d - %d", wdir%360, wval);
     if ( _wind_avg ) {
-        if (_wind_avg->changed(wdir, wval) || _dirty) {
+        if (_wind_avg->changed(s) || _dirty) {
             _wind_avg->drawWind();
         }
     }
 
-    int16_t ival = ival_par * _unit_fac;
-    idir -= heading;
     if ( _wind_live ) {
-        if (_dirty || _wind_live->changed(idir, ival)
-            || (angleDiffDeg(idir, wdir) % 180) < 20) {
+        if (_wind_live->changed(i) || _dirty
+            || (angleDiffDeg(i.getDeg(), s.getDeg()) % 180) < 20) {
             _wind_live->drawWind();
         }
     }
@@ -470,11 +468,11 @@ void PolarGauge::drawScale(float from, float to)
     MYUCG->setFont(ucg_font_fub14_hn);
     ESP_LOGI(FNAME, "scale from %d to %d", start, stop);
     bool draw_label = false;
-    int zeroat = 10 * func->getZero();
+    int middleat = 10 * func->getZero();
     for (int16_t a = start; a >= stop; a--)
     {
 
-        if (a == zeroat + 10 || a == zeroat - 10)
+        if (a == middleat + 10 || a == middleat - 10)
         {
             draw_label = true;
             if (a > 0)
@@ -486,13 +484,13 @@ void PolarGauge::drawScale(float from, float to)
                 modulo = (_range > 10) ? 20 : (_range < 6) ? 5 : 10; // leave the details around zero
             }
         }
-        if ( a == 3 ) {
+        if ( a == 4 ) {
             int16_t tmp = dice_rad((*func)(static_cast<float>(0.f)));
-            drawDirLabel(tmp + 16, "+");
+            drawDirLabel(tmp + 20, "+");
         }
-        else if ( a == -3 ) {
+        else if ( a == -4 ) {
             int16_t tmp = dice_rad((*func)(static_cast<float>(0.f)));
-            drawDirLabel(tmp - 12, "-");
+            drawDirLabel(tmp - 16, "-");
         }
 
         if (!(a % modulo))
@@ -512,12 +510,12 @@ void PolarGauge::drawScale(float from, float to)
             if (!(a % 10))
             {
                 // every integer big line
-                if (modulo < 11 || a == l_start || a == l_stop || a == mid_lpos_upper || a == mid_lpos_lower || a == zeroat)
+                if (modulo < 11 || a == l_start || a == l_stop || a == mid_lpos_upper || a == mid_lpos_lower || a == middleat)
                 {
                     width = w3;
                     end = _radius + 15 + (_flavor == CLUB ? 7 : 0);
                 }
-                draw_label = a != zeroat && (draw_label || _range < 5. || a == mid_lpos_upper || a == mid_lpos_lower || a == l_start || a == l_stop);
+                draw_label = a != middleat && (draw_label || _range < 5. || a == mid_lpos_upper || a == mid_lpos_lower || a == l_start || a == l_stop);
             }
             ESP_LOGI(FNAME, "lines a:%d end:%d label: %d  width: %d", a, end, draw_label, width );
 

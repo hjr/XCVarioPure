@@ -48,7 +48,7 @@ void LargeFigure::draw(float val) {
         int16_t tmp = MYUCG->getStrWidth(s+1)/2;
         int16_t signwidth = MYUCG->getCharWidth(s[0]);
         MYUCG->setPrintPos(_ref_x - tmp + 2-signwidth, _ref_y + 2);
-        MYUCG->startBuffering(_ref_x - tmp + 2-10, _ref_y + 2 - 54/2, 2*tmp + 16, 54);
+        MYUCG->startBuffering(_ref_x - tmp + 3-10, _ref_y + 2 - 36/2, 2*tmp + 6, 35);
         MYUCG->print(s);
         _value = ival;
         MYUCG->finishBuffering();
