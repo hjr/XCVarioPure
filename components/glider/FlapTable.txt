@@ -1,79 +1,79 @@
-{1030,90,105,130,155,175,"+2","+1","0","-1","-2","S"}, // Arcus FB=45.16 | A: FHB table for FB | clean 
-{1032,94,110,142,180,"5","4","3","2","1",""}, // ASG 29/18 FB=42.9 | A: FHB diagram for any FB | clean
-{1033,104,121,156,198,"5","4","3","2","1",""}, // ASG 29/15 FB=47.7 | A: FHB diagram for any FB | clean
+{1030,175,155,130,105,90,"-2","-1","0","+1","+2","S"}, // Arcus FB=45.16 | A: FHB table for FB | clean 
+{1032,180,142,110,94,"1","2","3","4","5",""}, // ASG 29/18 FB=42.9 | A: FHB diagram for any FB | clean
+{1033,198,156,121,104,"1","2","3","4","5",""}, // ASG 29/15 FB=47.7 | A: FHB diagram for any FB | clean
 
-{1078,82,92,133,178,"5","4","3","2","1",""}, // ASH 25M FB=41.5 (~676 kg) | A: interpolated from flight manual | clean
-{1080,84,94,136,182,"5","4","3","2","1",""}, // ASH 25M FB=43.0 (~701 kg) | A: interpolated from flight manual | clean
-{1881,90,105,130,160,0,"L","4","3","2","1",""}, // ASH 26 FB=33.4 | from IDFL flap polar (361 kg) | clean
-{1090,92,115,145,185,"5","4","3","2","1",""}, // ASH 31Mi/18 FB=42.3 | A/B: modern data approximated | minor deviation | clean generated
-{1100,88,110,140,180,"5","4","3","2","1",""}, // ASH 31Mi/21 FB=38.8 | A/B | minor deviation | clean generated
+{1078,178,133,92,82,"1","2","3","4","5",""}, // ASH 25M FB=41.5 (~676 kg) | A: interpolated from flight manual | clean
+{1080,182,136,94,84,"1","2","3","4","5",""}, // ASH 25M FB=43.0 (~701 kg) | A: interpolated from flight manual | clean
+{1881,160,130,105,90,0,"1","2","3","4","L",""}, // ASH 26 FB=33.4 | from IDFL flap polar (361 kg) | clean
+{1090,185,145,115,92,"1","2","3","4","5",""}, // ASH 31Mi/18 FB=42.3 | A/B: modern data approximated | minor deviation | generated
+{1100,180,140,110,88,"1","2","3","4","5",""}, // ASH 31Mi/21 FB=38.8 | A/B | minor deviation | generated
 
-{1120,80,96,120,150,0,"+2","+1","0","-1","-2",""}, // ASW 17 FB=32.0 | C: polar extrapolated | no flight manual table | clean generated
-{1140,79,101,123,149,167,"4","3","2","1","",""}, // ASW 20 FB=33.6 | A: FHB (33 kg/m²) scaled | clean
-{1150,81,104,127,153,172,"4","3","2","1","",""}, // ASW 20A FB=35.9 | A: FHB scaled (sqrt) | clean
-{1160,78,100,122,148,166,"4","3","2","1","",""}, // ASW 20C FB=33.25 | A: near baseline | clean
-{1170,77,99,121,146,163,"4","3","2","1","",""}  // ASW 20L FB=32.3 | A: FHB scaled (sqrt) | clean
+{1120,150,120,96,80,0,"-2","-1","0","+1","+2",""}, // ASW 17 FB=32.0 | C: polar extrapolated | no flight manual table | generated
+{1140,167,149,123,101,79,"1","2","3","4",""}, // ASW 20 FB=33.6 | A: FHB (33 kg/m²) scaled | clean
+{1150,172,153,127,104,81,"1","2","3","4",""}, // ASW 20A FB=35.9 | A: FHB scaled (sqrt) | clean
+{1160,166,148,122,100,78,"1","2","3","4",""}, // ASW 20C FB=33.25 | A: near baseline | clean
+{1170,163,146,121,99,77,"1","2","3","4",""}  // ASW 20L FB=32.3 | A: FHB scaled (sqrt) | clean
 
-{1180,78,95,120,150,0,"+2","+1","0","-1","-2",""}, // ASW 22 FB=32.8 | C: limited data | problem: no flap range | clean generated
-{1190,85,102,125,160,0,"+2","+1","0","-1","-2",""}, // ASW 22M FB=40.2 | C | same as above | clean generated
-{1215,78,86,114,143,193,"5","4","3b","3a","2","1"}, // ASW27 FB=40.55 | FHB exact @425 kg | clean
+{1180,150,120,95,78,0,"-2","-1","0","+1","+2",""}, // ASW 22 FB=32.8 | C: limited data | problem: no flap range | generated
+{1190,160,125,102,85,0,"-2","-1","0","+1","+2",""}, // ASW 22M FB=40.2 | C | same as above | generated
+{1215,193,143,114,86,78,"1","2","3a","3b","4","5"}, // ASW27 FB=40.55 | FHB exact @425 kg | clean
 
-{1340,78,95,121,152,0,"+8","+5","0","-5","-10","-14"}, // DG600 FB=33.3 | B: scaled from DG800 | problem: no table | clean generated
-{1360,79,89,98,133,157,"+8","+5","0","-5","-10",""}, // DG800B/15 FB=38.76 | FHB table scaled from FB 40 | clean
-{1370,74,83,92,125,148,"+8","+5","0","-5","-10",""}, // DG800S/15 FB=34.93 | FHB table taken from FB 34 | clean
-{1380,78,88,97,132,156,"+8","+5","0","-5","-10","-14"}, // DG800B/18 FB=35.39 | FHB table scaled from FB 33.9 |clean 
-{1390,69,78,86,117,138,"+8","+5","0","-5","-10","-14"}, // DG800S/18 FB=29.97 | FHB table scaled from FB 33.9 | clean
+{1340,152,121,95,78,0,"-10","-5","0","+5","+8",""}, // DG600 FB=33.3 | B: scaled from DG800 | problem: no table | generated
+{1360,157,133,98,89,79,"-10","-5","0","+5","+8",""}, // DG800B/15 FB=38.76 | FHB table scaled from FB 40 | clean
+{1370,148,125,92,83,74,"-10","-5","0","+5","+8",""}, // DG800S/15 FB=34.93 | FHB table taken from FB 34 | clean
+{1380,156,132,97,88,78,"-14","-10","-5","0","+5","+8"}, // DG800B/18 FB=35.39 | FHB table scaled from FB 33.9 |clean 
+{1390,138,117,86,78,69,"-14","-10","-5","0","+5","+8"}, // DG800S/18 FB=29.97 | FHB table scaled from FB 33.9 | clean
 
-{1410,80,93,106,142,0,"+8","+5","0","-5","-10","-14"}, // DG1000 FB=28.0 | B: partial data | problem: incomplete | clean generated
+{1410,142,106,93,80,0,"-10","-5","0","+5","+8",""}, // DG1000 FB=28.0 | B: partial data | problem: incomplete | generated
 
-{1700,78,93,117,147,0,"+2","+1","0","-1","-2",""}, // Kestrel 17 FB=31.7 | C: polar extrapolated | problem: no flap table | clean generated
-{1710,80,96,121,152,0,"+2","+1","0","-1","-2",""}, // Kestrel 19 FB=33.4 | C: same as above | uncertainty | clean generated
-{1720,82,99,125,157,0,"+2","+1","0","-1","-2",""}, // Kestrel 22 FB=35.8 | C: same as above | uncertainty | clean generated
+{1700,147,117,93,78,0,"-2","-1","0","+1","+2",""}, // Kestrel 17 FB=31.7 | C: polar extrapolated | problem: no flap table | generated
+{1710,152,121,96,80,0,"-2","-1","0","+1","+2",""}, // Kestrel 19 FB=33.4 | C: same as above | uncertainty | generated
+{1720,157,125,99,82,0,"-2","-1","0","+1","+2",""}, // Kestrel 22 FB=35.8 | C: same as above | uncertainty | generated
 
-{1750,78,95,121,152,0,"+2","+1","0","-1","-2",""}, // LAK-12 FB=29.4 | C: polar | problem: no manufacturer data | clean generated
+{1750,152,121,95,78,0,"-2","-1","0","+1","+2",""}, // LAK-12 FB=29.4 | C: polar | problem: no manufacturer data | generated
 
-{1760,90,112,142,0,0,"+2","+1","0","-1","",""}, // LAK-17a (15m) FB=31.45 | FHB recommendation (from 18m @33), scaled | clean
-{1780,90,112,142,0,0,"+2","+1","0","-1","",""}, // LAK-17a (15m) FB=31.45 | FHB recommendation (from 18m @33), scaled | clean
-{1790,88,110,138,0,0,"+2","+1","0","-1","",""}, // LAK-17a (18m) FB=30.1 | FHB recommendation (from 18m @33), scaled | clean
-{1800,97,121,153,0,0,"+2","+1","0","-1","",""}, // LAK-17a (18m) FB=36.73 | FHB recommendation (from 18m @33), scaled | clean
-{1960,102,128,161,0,0,"+2","+1","0","-1","",""}, // LAK-17B FES FB=40.8 | FHB recommendation (from 18m @33), scaled | clean
+{1760,142,112,90,0,0,"-1","0","+1","+2",""}, // LAK-17a (15m) FB=31.45 | clean
+{1780,142,112,90,0,0,"-1","0","+1","+2",""}, // LAK-17a (15m) FB=31.45 | clean
+{1790,138,110,88,0,0,"-1","0","+1","+2",""}, // LAK-17a (18m) FB=30.1 | clean
+{1800,153,121,97,0,0,"-1","0","+1","+2",""}, // LAK-17a (18m) FB=36.73 | clean
+{1960,161,128,102,0,0,"-1","0","+1","+2",""}, // LAK-17B FES FB=40.8 | clean
 
-{1820,80,95,115,140,165,"17","8","3","-2","-6","-8"}, // LS3a FB=32.6 | reference (IDAF polar) | clean
-{1840,83,99,120,146,172,"17","8","3","-2","-6","-8"}, // LS3 15m FB=35.5 | scaled from 32.6 | clean
-{1850,80,96,116,141,166,"17","8","3","-2","-6","-8"}, // LS3 17m FB=33.0 | scaled from 32.6 | clean 
-{1851,86,102,124,150,177,"17","8","3","-2","-6","-8"}, // LS3 WL FB=37.7 | scaled from 32.6 | clean
+{1820,165,140,115,95,80,"-8","-6","-2","3","8","17"}, // LS3a FB=32.6 | clean
+{1840,172,146,120,99,83,"-8","-6","-2","3","8","17"}, // LS3 15m FB=35.5 | clean
+{1850,166,141,116,96,80,"-8","-6","-2","3","8","17"}, // LS3 17m FB=33.0 | clean 
+{1851,177,150,124,102,86,"-8","-6","-2","3","8","17"}, // LS3 WL FB=37.7 | clean
 
-{1870,90,105,130,160,0,"L","4","3","2","1",""}, // LS6 FB=33.4 | from flap polar (361 kg) | clean 
-{1880,79,92,113,143,0,"L","4","3","2","1",""}, // LS6 18m FB=32.1 | scaled from 32.7 polar env. | clean generated
-{1881,90,106,131,162,0,"L","4","3","2","1",""}, // LS 6 neo FB=34.38 | scaled from 33.4 | clean
+{1870,160,130,105,90,0,"1","2","3","4","L",""}, // LS6 FB=33.4 | clean 
+{1880,143,113,92,79,0,"1","2","3","4","L",""}, // LS6 18m FB=32.1 | generated
+{1881,162,131,106,90,0,"1","2","3","4","L",""}, // LS 6 neo FB=34.38 | clean
 
-{1910,105,125,155,195,0,"+2","+1","0","-1","-2",""}, // LS9 FB=45.0 | B | uncertainty | clean generated
+{1910,195,155,125,105,0,"-2","-1","0","+1","+2",""}, // LS9 FB=45.0 | generated
 
-{1950,82,122,167,0,0,"+2","+1","0","-1","",""}, // Mini Nimbus FB=34.2 | FHB table, scaled | clean
+{1950,167,122,82,0,0,"-1","0","+1","+2",""}, // Mini Nimbus FB=34.2 | clean
 
-{1980,85,105,130,160,0,"+2","+1","0","-1","-2",""}, // Mosquito FB=36.2 | B: Glasflügel data | uncertainty | clean generated
-{1990,83,103,128,158,0,"+2","+1","0","-1","-2",""}, // Mosquito B FB=34.0 | B: same as above | uncertainty | clean generated
+{1980,160,130,105,85,0,"-2","-1","0","+1","+2",""}, // Mosquito FB=36.2 | generated
+{1990,158,128,103,83,0,"-2","-1","0","+1","+2",""}, // Mosquito B FB=34.0 | generated
 
-{2000,80,90,130,160,0"+2","+1","0","-1","-2",""}, // Nimbus 2 FB=30.0 | FHB table @FB 32 | clean
-{2010,78,87,121,138,0"+2","+1","0","-1","-2",""}, // Nimbus 3 FB=29.5 | FHB table from 3DM, scaled  | clean 
-{2020,99,110,155,177,0,"+2","+1","0","-1","-2",""}, // Nimbus 3DM FB=48.17 | FHB table @39.5, scaled | clean 
-{2040,81,91,118,167,0,"+2","+1","0","-1","-2",""}, // Nimbus 4 FB=33.42 | FHB table 4DM @40.8, scaled | clean 
+{2000,160,130,90,80,70,"-2","-1","0","+1","+2",""}, // Nimbus 2 FB=30.0 | clean
+{2010,138,121,87,78,69,"-2","-1","0","+1","+2",""}, // Nimbus 3 FB=29.5 | clean 
+{2020,177,155,110,99,88,"-2","-1","0","+1","+2",""}, // Nimbus 3DM FB=48.17 | clean 
+{2040,167,118,91,81,77,"-2","-1","0","+1","+2",""}, // Nimbus 4 FB=33.42 | clean 
 
-{2080,95,120,150,190,0,"+2","+1","0","-1","-2",""}, // Pik20 FB=35.4 | B | uncertainty | clean generated
-{2090,105,130,165,210,0,"+2","+1","0","-1","-2",""}, // Pik 20E FB=43.7 | B: same as above | uncertainty | clean generated
-{2100,90,110,135,170,0,"+2","+1","0","-1","-2",""}, // Pik 20D FB=32.5 | B: same as above | uncertainty | clean generated
+{2080,190,150,120,95,0,"-2","-1","0","+1","+2",""}, // Pik20 FB=35.4 | generated
+{2090,210,165,130,105,0,"-2","-1","0","+1","+2",""}, // Pik 20E FB=43.7 | generated
+{2100,170,135,110,90,0,"-2","-1","0","+1","+2",""}, // Pik 20D FB=32.5 | generated
 
-{2140,80,99,126,157,0,"+2","+1","0","-1","-2",""}, // SB-10 FB=36.7 | C: polar | problem: no data | clean generated
-{2150,85,104,132,164,0,"+2","+1","0","-1","-2",""}, // SB-11 FB=36.9 | C: same as above | uncertainty | clean generated
-{2160,80,98,124,154,0,"+2","+1","0","-1","-2",""}, // SB-12 FB=33.2 | C: same as above | uncertainty | clean generated
+{2140,157,126,99,80,0,"-2","-1","0","+1","+2",""}, // SB-10 FB=36.7 | generated
+{2150,164,132,104,85,0,"-2","-1","0","+1","+2",""}, // SB-11 FB=36.9 | generated
+{2160,154,124,98,80,0,"-2","-1","0","+1","+2",""}, // SB-12 FB=33.2 | generated
 
-{2260,95,116,142,176,0,"+2","+1","0","-1","-2",""}, // Taurus FB=37.37 | C: motor glider | problem: no flap logic | clean generated
-{2265,85,103,130,162,0,"+2","+1","0","-1","-2",""}, // T65 FB=30.29 | C: limited data | uncertainty | clean generated
+{2260,176,142,116,95,0,"-2","-1","0","+1","+2",""}, // Taurus FB=37.37 | generated
+{2265,162,130,103,85,0,"-2","-1","0","+1","+2",""}, // T65 FB=30.29 | generated
 
-{2270,85,101,126,157,0,"+2","+1","0","-1","-2",""}, // Ventus FB=35.0 | B: partial data | uncertainty | clean generated
-{2280,80,100,125,160,0,"+2","+1","0","-1","-2",""}, // Ventus AB FB=32.5 | B: same as above | clean generated
-{2290,78,92,127,145,0,"+2","+1","0","-1","-2",""}, // Ventus B FB≈35 | derived from Ventus C (adjusted) | clean generated
-{2300,80,94,132,150,0,"+2","+1","0","-1","-2",""}, // Ventus C FB≈33.0 | scaled from 430 kg FHB table | clean
+{2270,157,126,101,85,0,"-2","-1","0","+1","+2",""}, // Ventus FB=35.0 | generated
+{2280,160,125,100,80,0,"-2","-1","0","+1","+2",""}, // Ventus AB FB=32.5 | generated
+{2290,145,127,92,78,0,"-2","-1","0","+1","+2",""}, // Ventus B FB≈35 | generated
+{2300,150,132,94,80,0,"-2","-1","0","+1","+2",""}, // Ventus C FB≈33.0 | clean
 
-{2320,60,75,90,115,0,"+2","+1","0","-1","-2",""}, // 1comet FG FB=20.0 | C: ultralight | problem: outside normal range | clean generated
-{2330,60,75,90,120,0,"+2","+1","0","-1","-2",""}  // 1comet RG FB=20.0 | C: same as above | uncertainty | clean generated
+{2320,115,90,75,60,0,"-2","-1","0","+1","+2",""}, // 1comet FG FB=20.0 | generated
+{2330,120,90,75,60,0,"-2","-1","0","+1","+2",""}  // 1comet RG FB=20.0 | generated
