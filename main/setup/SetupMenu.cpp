@@ -1085,7 +1085,7 @@ static void screens_menu_create_vario(SetupMenu *top) {
     bgauge->mkEnable("Altimeter");
     top->addEntry(bgauge);
 
-    SetupMenuSelect* mc = new SetupMenuSelect("MC & S2F", RST_NONE, nullptr, &vario_mc_gauge);
+    SetupMenuSelect* mc = new SetupMenuSelect("Speed2Fly", RST_NONE, nullptr, &vario_mc_gauge);
     mc->setHelp("Show the McCready setting and the recommended speed to fly");
     mc->mkEnable();
     top->addEntry(mc);
@@ -1151,10 +1151,6 @@ void screens_menu_create_gload(SetupMenu *top) {
 
 	SetupMenu *extreme = new SetupMenu("Extreme Recordings", screens_menu_create_extreme_records);
 	top->addEntry(extreme);
-
-	// SetupMenuValFloat *gloadalvo = new SetupMenuValFloat("Alarm Volume", "%", nullptr, &gload_alarm_volume);
-	// gloadalvo->setHelp("Maximum volume of G-Load alarm audio warning");
-	// top->addEntry(gloadalvo);
 }
 
 void screens_menu_create_horizon(SetupMenu *top) {
