@@ -65,7 +65,7 @@ public:
     void draw(float a);
     void drawIndicator(float a);
     void drawPolarSink(mps_t a);
-    void drawAVG();
+    void drawAvgClimb();
     void drawFigure(float a);
     void drawWind(WindData s, WindData i);
     using BowColorIdx = enum { GREEN, BLUE, ORANGE, RED };

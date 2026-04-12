@@ -206,7 +206,7 @@ void PolarGauge::drawPolarSink(mps_t a)
     drawBow(val, _old_polar_sink, 5, 1, BLUE);
 }
 
-void PolarGauge::drawAVG(){
+void PolarGauge::drawAvgClimb(){
     // average climb in [m/sec]
     float avclimb = VarioUnit->apply(average_climb.get());
     float delta = avclimb - _old_avc;

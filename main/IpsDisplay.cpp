@@ -34,6 +34,7 @@
 #include "setup/CruiseMode.h"
 #include "wind/StraightWind.h"
 #include "wind/CircleWind.h"
+#include "wind/Wind.h"
 #include "driver/time/AliveMonitor.h"
 #include "setup/SetupNG.h"
 #include "CenterAid.h"
@@ -934,7 +935,7 @@ void IpsDisplay::drawDisplay(){
         // static float s = 0; // check the diamond
         // average_climb.set(sin(s) * 2.);
         // s += 0.1;
-        MAINgauge->drawAVG();
+        MAINgauge->drawAvgClimb();
     }
 
     if (flags.bottom_dirty) {
