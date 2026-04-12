@@ -182,8 +182,8 @@ Point Line::intersect(Point p1, Point p2) const {
     float den = _nx * dx + _ny * dy;
     float t = std::clamp(num / den, 0.f, 1.f); // prevents extrusion due to rounding
     Point ret;
-    ret.x = fast_iroundf(dx * t) + p1.x;
-    ret.y = fast_iroundf(dy * t) + p1.y;
+    ret.x = fast_iroundf(dx * t + p1.x);
+    ret.y = fast_iroundf(dy * t + p1.y);
     return ret;
 }
 bool Line::operator==(const Line &r) const
@@ -250,9 +250,9 @@ Point Line::limitToScreen(Point p, bool respect_mbox) const
 // Clip a polygon by line into above and below parts
 void IpsDisplay::clipPolygonByLine(const Point *poly, int n, const Line &l, Point *above, int *na, Point *below, int *nb)
 {
-    const int myEPS = 1;
-    auto inside = [&](int f) { return f > myEPS; };
-    auto onLine = [&](int f) { return abs(f) <= myEPS; };
+    const float myEPS = 0.25f;
+    auto inside = [&](float f) { return f > myEPS; };
+    auto onLine = [&](float f) { return abs(f) <= myEPS; };
 
     if ( ! poly ) {
         poly = screen_edge;
@@ -264,8 +264,8 @@ void IpsDisplay::clipPolygonByLine(const Point *poly, int n, const Line &l, Poin
     for (int i=0; i<n; i++) {
         Point P1 = poly[i];
         Point P2 = poly[(i+1)%n];
-        int f1 = l.fct(P1);
-        int f2 = l.fct(P2);
+        float f1 = l.fct(P1);
+        float f2 = l.fct(P2);
         bool in1 = inside(f1);
         bool in2 = inside(f2);
 
