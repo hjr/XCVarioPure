@@ -27,11 +27,11 @@ static void wind_calc_task(void *arg)
 {
     QueueHandle_t queue = (QueueHandle_t)arg;
     CalkTaskJob job(0);
+    TickType_t timeout = pdMS_TO_TICKS(1100);
 
     while (true)
     {
         // sleep until the queue gives us something to do, or we have to do a retry
-        TickType_t timeout = pdMS_TO_TICKS(1100);
         bool new_job = xQueueReceive(queue, &job, timeout) == pdTRUE;
 
         if ( new_job ) {
@@ -65,9 +65,12 @@ static void wind_calc_task(void *arg)
             // time-out, no valid gps fix any more
             if ( circleWind ) {
                 circleWind->setGpsStatus(false);
-                circleWind->tick();
+                if ( circleWind->isValid() ) {
+                    ESP_LOGI(FNAME, "GPS timeout, invalidate synoptic Wind");
+                    synoptic_wind.setInvalid();
+                };
             }
-            if ( straightWind ) { straightWind->tick(); }
+            // if ( straightWind ) { straightWind->tick(); }
         }
     }
     vQueueDelete(queue);

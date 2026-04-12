@@ -9,6 +9,7 @@
  */
 #pragma once
 
+#include "Wind.h"
 #include "vector.h"
 #include "math/Units.h"
 
@@ -31,16 +32,6 @@ public:
 	// triggered periodically, maybe once per second.
 	// Returns true, if a new wind was calculated.
 	bool calculateWind();
-
-	// Return the last calculated wind. If return result is true, the wind data
-	// are valid otherwise false.
-	static bool getWind(int16_t *direction, mps_t *speed);
-
-	void setWind( float direction, mps_t speed ){
-		windDir = direction;
-		windSpeed = speed;
-		_age = 0;
-	}
 
 	void calculateWind( float tc, mps_t gs, float th, float deviation );
 	static void calculateSpeedAndAngle( float angle1, mps_t speed1, float angle2, mps_t speed2, mps_t& speed, float& angle );

@@ -14,6 +14,7 @@
  **
  ***********************************************************************/
 
+#include "Wind.h"
 #include "CircleWind.h"
 #include "math/Units.h"
 #include "wind/StraightWind.h"
@@ -61,8 +62,6 @@
 constexpr const rad_t MINTURNINGDIFF = Units::deg_to_rad(4);
 
 CircleWind *circleWind = nullptr;
-
-int16_t CircleWind::_age = 9000;
 
 CircleWind::CircleWind() :
     _lp_headdiff(0.3)
@@ -182,21 +181,6 @@ const char* CircleWind::getFlightModeStr() const {
         return "undefined";
 }
 
-bool CircleWind::getWind(int16_t* dir, mps_t* speed) {
-    *dir = fast_iroundf(Units::rad_to_deg(cwind_dir.get()));
-    *speed = cwind_speed.get();
-    if (_age < 7200) {
-        return true;
-    } else {
-        return false;
-    }
-}
-
-void CircleWind::resetAge() {
-    // ESP_LOGI(FNAME,"resetAge");
-    _age = 0;
-}
-
 void CircleWind::calcWind() {
     // the angle difference between the minimum and maximum speed vectors should be 180 degree, so we add 180 degree to the max vector
     rad_t aDiff = Vector::angleDiff(minVector.getAngleRad() + My_PIf, maxVector.getAngleRad());
@@ -210,7 +194,7 @@ void CircleWind::calcWind() {
     if (delta > (Units::deg_to_rad(max_circle_wind_diff.get()))) {
         ESP_LOGI(FNAME, "true course jitter bad %3.1f > %3.1f: Drop Sample ", Units::rad_to_deg(delta), max_circle_wind_diff.get());
         status = "Too Low Qual";
-        return;  // Measurement jitter too low
+        return;  // Measurement jitter, drop sample
     }
 
     // take both directions for min and max vector into account
@@ -250,8 +234,8 @@ void CircleWind::newWind( rad_t angle, mps_t speed ){
 
 	ESP_LOGI(FNAME,"### NEW AVG CircleWind: %.1f°/%.1fKmh", Units::rad_to_deg(direction), Units::mps_to_kmh(windspeed));
 
-	cwind_dir.set(direction);
-    cwind_speed.set(windspeed, true, false);
+    WindData wd(direction, windspeed);
+    synoptic_wind.set(wd.data(), true, false);
 
     rad_t deltaDir = abs( Vector::angleDiff( lastWindDir, angle ) );
 	mps_t deltaSpeed = abs( lastWindSpeed - speed );
@@ -266,12 +250,6 @@ void CircleWind::newWind( rad_t angle, mps_t speed ){
 		status = "Delta too big";
 	}
 }
-
-void CircleWind::tick(){
-	_age++;
-	// ESP_LOGI(FNAME,"age: %d CWD: %.1f CWS %.1f", _age, cwind_dir.get(), cwind_speed.get() );
-}
-
 
 void CircleWind::restartCycle( bool clean ){
 	// ESP_LOGI(FNAME,"restartCycle( clean=%d)", clean  );

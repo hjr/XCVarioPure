@@ -213,16 +213,10 @@ extern SetupNG<float>  		bugs;
 
 extern SetupNG<int>  		cruise_mode;
 extern SetupNG<kelvin_t>    OAT;   // outside temperature
-extern SetupNG<rad_t>  		swind_dir;   // straight wind direction
-extern SetupNG<mps_t>  		swind_speed;
+extern SetupNG<int>  		synoptic_wind; // int alias WindData
 extern SetupNG<float>  		swind_sideslip_lim;
-extern SetupNG<rad_t>  		cwind_dir;   // cirling wind direction
-extern SetupNG<mps_t>  		cwind_speed;
-extern SetupNG<int>  		extwind_sptc_dir; // synoptic and
-extern SetupNG<mps_t>  		extwind_sptc_speed;
-extern SetupNG<int>  		extwind_inst_dir; // instant external wind
-extern SetupNG<mps_t>  		extwind_inst_speed;
-extern SetupNG<int>  		extwind_status;
+extern SetupNG<int>  		ext_syn_wind; // synoptic and
+extern SetupNG<int>  		ext_inst_wind; // instant external wind
 extern SetupNG<rad_t>  		mag_hdm;
 extern SetupNG<rad_t>  	mag_hdt;
 extern SetupNG<float>  		average_climb;
@@ -404,7 +398,6 @@ extern SetupNG<float>		gload_neg_limit;
 extern SetupNG<float>		gload_pos_max;
 extern SetupNG<float>		gload_neg_max;
 extern SetupNG<float>		airspeed_max;
-// extern SetupNG<float>		gload_alarm_volume; fixme no use
 extern SetupNG<int>		    display_variant;
 // extern SetupNG<int>       	compass_dev_auto;
 extern SetupNG<degree_t>  	max_circle_wind_diff;

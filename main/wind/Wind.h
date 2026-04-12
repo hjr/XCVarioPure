@@ -20,7 +20,7 @@ union WindData
 {
     struct {
         uint16_t dir; // 0..719° in [0,5°], northwind as 0, e.g. south wind as 360
-        uint16_t val; // any unit, e.g. m/s or km/h; 8 bit alias 230km/h might be enough range
+        uint16_t val; // internally 2bit fix point [m/s]; could be any unit, e.g. m/s or km/h; 8 bit alias 230km/h might be enough range
         // 8 bit might by used as flegs here, e.g. for live/tas or other flags, but currently unused
     } __attribute__((packed));
     uint32_t raw = 0xffff;
@@ -32,10 +32,14 @@ union WindData
     constexpr WindData(rad_t wdir, mps_t wval) : dir(fast_iroundf(Units::rad_to_deg(wdir) * 2) % 720), val(fast_iroundf(wval * 4)) {}
     // getters
     constexpr int getDeg2() const { return dir; }
+    constexpr int getVDeg2() const { return dir + 360; } // get wind vector direction -> +180° shift
     constexpr int getDeg() const { return dir/2; }
-    constexpr mps_t getVal() const { return (float)val / 4.0f; }
+    constexpr mps_t getVal() const { return static_cast<float>(val) / 4.0f; }
     constexpr bool isValid() const { return raw != 0xffff; }
+    constexpr int data() const { return raw; }
     // setters
+    constexpr void setDeg2(int16_t d) { dir = d % 720; }
+    constexpr void setKmh(kmh_t v) { val = fast_iroundf(v * Units::kmh_to_mps(4)); }
     constexpr void inclHeading(int16_t d) { dir = (dir - d * 2) % 720; }
     // compare
     constexpr bool operator==(WindData other) const { return raw == other.raw; }
