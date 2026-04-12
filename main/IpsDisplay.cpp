@@ -524,7 +524,7 @@ void IpsDisplay::initDisplay() {
     }
     if ( FLAP && flapbox_enable.get() ) {
         if (!FLAPSgauge) {
-            FLAPSgauge = new FlapsBox(FLAP, DISPLAY_W - 29, AMIDY + (gflags.isPro ? 0 : (display_orientation.get() == DISPLAY_NINETY) ? 0 : 17), true);
+            FLAPSgauge = new FlapsBox(FLAP, DISPLAY_W - 29, AMIDY + ((display_orientation.get() == DISPLAY_NINETY) ? 0 : S2FBARgauge ? 17 : 0), true);
         }
     }
     else {
@@ -613,6 +613,7 @@ void IpsDisplay::initDisplay() {
             FLAPSgauge->setLength(120);
         } else {
             FLAPSgauge->setLength(90);
+            FLAPSgauge->setRef(DISPLAY_W - 29, AMIDY + (S2FBARgauge ? 17 : 0));
         }
     }
 
