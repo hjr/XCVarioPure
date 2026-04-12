@@ -23,7 +23,7 @@
 #include <cmath>
 #include <algorithm>
 
-float getHeading(); // fixme
+rad_t getHeading(); // fixme
 
 extern AdaptUGC *MYUCG;
 static constexpr const ucg_color_t bow_color[4] = {{COLOR_DGREEN}, {COLOR_BLUE}, {COLOR_ORANGE}, {COLOR_RED}};
@@ -257,10 +257,9 @@ void PolarGauge::drawFigure(float a)
 
 void PolarGauge::drawWind(WindData s, WindData i)
 {
-    int16_t heading = 0;
-
     if ( _wind_ref == WR_HEADING ) {
-        heading = fast_iroundf(getHeading());
+        rad_t heading = getHeading();
+        ESP_LOGI(FNAME, "heading %.1f", Units::rad_to_deg(heading));
         s.inclHeading(heading);
         i.inclHeading(heading);
     }
@@ -285,7 +284,6 @@ void PolarGauge::drawDisc(float a, bool clean) const
 {
     if ( clean ) {
         MYUCG->setColor(COLOR_BLACK);
-        // siz += 1;
     }
     int16_t val = dice_up(clipValue(a));
     ESP_LOGI( FNAME,"draw disc val %.2f diced: %d", a, val );

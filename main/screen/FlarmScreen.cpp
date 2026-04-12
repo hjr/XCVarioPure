@@ -16,6 +16,7 @@
 #include "driver/audio/ESPAudio.h"
 #include "sensor/imu/AccMPU6050.h"
 #include "Flarm.h"
+#include "vector.h"
 #include "math/Trigonometry.h"
 #include "math/Quaternion.h"
 #include "AdaptUGC.h"
@@ -69,19 +70,21 @@ void FlarmScreen::display(int mode)
     IpsDisplay::clipPolygonByLine(nullptr, 0, l, above, &na, below, &nb);
 
     // ESP_LOGI(FNAME,"Target in B%.1f°, dH%dm, dV%dm", Units::rad_to_deg(Flarm::RelativeBearing), Flarm::HorizontalDistance, Flarm::RelativeVertical );
-    // calc the vector to the target from distance and bearing in nav frame
-    // todo add wind shear angle here
-    vector_f bearingVec = vector_f(Flarm::HorizontalDistance * fast_cos_rad(Flarm::RelativeBearing),
-                               Flarm::HorizontalDistance * fast_sin_rad(Flarm::RelativeBearing),
+    // calc the vector to the target from distance and bearing in ground nav frame
+    // add the wind correction angle
+    rad_t wca = getWCA();
+    rad_t rel_target_bearing = Vector::normalizePI(Flarm::RelativeBearing + wca);
+    vector_f bearingVec = vector_f(Flarm::HorizontalDistance * fast_cos_rad(rel_target_bearing),
+                               Flarm::HorizontalDistance * fast_sin_rad(rel_target_bearing),
                                -Flarm::RelativeVertical); // NED frame
-    // ESP_LOGI(FNAME,"BearingVec %1.1f,%1.1f,%1.1f", bearingVec.x, bearingVec.y, bearingVec.z );
+    ESP_LOGI(FNAME,"BearingVec %1.1f,%1.1f,%1.1f", bearingVec.x, bearingVec.y, bearingVec.z );
 
     // determine side and altDiff for audio alarm
     constexpr const rad_t MID_FUNNEL_RAD = Units::deg_to_rad(30.f);
     meter_t dist = (Flarm::HorizontalDistance>0) ? Flarm::HorizontalDistance : 0.1f;
     int alt_bear = (std::abs(fast_atan((float)Flarm::RelativeVertical/dist)) < MID_FUNNEL_RAD) ? 1 : (Flarm::RelativeVertical > 0 ? 2 : 0);
-    int side_bear = (std::abs(std::abs(Flarm::RelativeBearing)) < MID_FUNNEL_RAD) ? 1 : 2;
-    if ( Flarm::RelativeBearing < 0 ) { side_bear = 0; }
+    int side_bear = (std::abs(std::abs(rel_target_bearing)) < MID_FUNNEL_RAD) ? 1 : 2;
+    if ( rel_target_bearing < 0 ) { side_bear = 0; }
         
     // project in NAV frame
     Point p = Point::centralProjection(bearingVec, 1000.f);

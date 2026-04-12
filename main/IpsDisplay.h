@@ -33,8 +33,8 @@ class Quaternion;
 class Connection;
 
 // fixme needs a home
-float getHeading();
-
+rad_t getHeading();
+rad_t getWCA();
 
 // Some geometry helper
 struct Point;

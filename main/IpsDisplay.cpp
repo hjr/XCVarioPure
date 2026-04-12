@@ -787,15 +787,48 @@ void IpsDisplay::drawLoadDisplay( float loadFactor ){
 	}
 }
 
+static rad_t computeHeading(rad_t track, mps_t groundspeed, mps_t tas, int16_t wind_vdir, mps_t windspeed)
+{
+    // wind vector
+    float wx = windspeed * fast_cos_idx(wind_vdir);
+    float wy = windspeed * fast_sin_idx(wind_vdir);
 
-float getHeading() { // fixme move to compass
-	float heading = 0;
-	heading = mag_hdt.get();
-	if( (heading < 0) && Flarm::gpsStatus() ) {
-		// fall back to GPS course
-		heading = Flarm::getGndCourse();
-	}
-	return heading;
+    // ground vector
+    float gx = groundspeed * fast_cos_rad(track);
+    float gy = groundspeed * fast_sin_rad(track);
+    
+
+    // air vector = ground - wind
+    mps_t ax = gx * tas - wx;
+    mps_t ay = gy * tas - wy;
+
+    return atan2f(ay, ax);
+}
+
+rad_t getHeading() { // fixme move to compass or GNSS/INS
+    // if ( mag_hdt.getValid() ) {
+    //     // use mag compass heading if valid
+    //     return mag_hdt.get();
+    // }
+    if( Flarm::gpsStatus() && tas.getValid() && synoptic_wind.getValid() ) {
+       // fall back to GPS course
+        WindData wd = static_cast<WindData>(synoptic_wind.get());
+        return computeHeading(Flarm::getGndCourse(), Flarm::getGndSpeed(), tas.get(), wd.getVDeg2(), wd.getVal());
+    }
+    else if ( Flarm::gpsStatus() ) {
+        // fall back to GPS course without wind correction
+        return Flarm::getGndCourse();
+    }
+    return 0.;
+}
+
+rad_t getWCA() {
+    if( Flarm::gpsStatus() && tas.getValid() && synoptic_wind.getValid() ) {
+        WindData wd = static_cast<WindData>(synoptic_wind.get());
+        rad_t hdg = computeHeading(Flarm::getGndCourse(), Flarm::getGndSpeed(), tas.get(), wd.getVDeg2(), wd.getVal());
+        return Vector::angleDiff(hdg, Flarm::getGndCourse());
+    }
+    return 0.;
 }
 
 // max. 10 Hz update rate for the display
