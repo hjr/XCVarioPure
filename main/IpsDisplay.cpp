@@ -537,12 +537,12 @@ void IpsDisplay::initDisplay() {
 
     MAINgauge->drawScale();
     MAINgauge->forceAllRedraw();
-    MAINgauge->setFigOffset(AVGOFFX, 0);
 
     if (!WNDgauge) {
         // create it always, because also the center aid is using it
-        WNDgauge = new PolarGauge(AMIDX + AVGOFFX, AMIDY, 360, 54, PolarGauge::COMPASS);
+        WNDgauge = new PolarGauge(AMIDX + AVGOFFX, AMIDY, 360, 58, PolarGauge::COMPASS);
     }
+    WNDgauge->setFigOffset(0, 0);
     WNDgauge->enableWindIndicator(wind_enable.get() > WA_OFF, wind_enable.get() == WA_EXTERNAL);
     WNDgauge->setWindRef(wind_reference.get());
     WNDgauge->setColor(needle_color.get());
@@ -820,7 +820,7 @@ void IpsDisplay::drawDisplay(){
 
     // average Climb
     if (!(tick % 2)) {
-        MAINgauge->drawFigure(te_avg_ms);
+        WNDgauge->drawFigure(te_avg_ms);
     }
 
     // S2F bar
