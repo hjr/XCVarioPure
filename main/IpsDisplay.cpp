@@ -858,31 +858,29 @@ void IpsDisplay::drawDisplay(){
     if (!(tick % 5)) {
         if (theCenteraid && !CRMOD.getCMode()) {
             theCenteraid->drawCenterAid();
-        } else if (wind_enable.get() > WA_OFF) {
-            // static int16_t wdir=-1, idir=-1;
-            // static int16_t wval=0, ival=0;
-            // the wind simulator to check the wind indicator
-            // float d = (rand()%180) / M_PI_2;
-            // idir += abs(sin(d)) + 2;
-            // ival = int((wval+d))%120;
+        }
+        if (wind_enable.get() > WA_OFF) {
+            // static int idir=0;
+            // static int ival=5;
+            // // the wind simulator to check the wind indicator
+            // idir = (idir + (rand()%5))%360;
+            // idir++;
+            // ival = (ival+(rand()%5))%360;
 
-            int16_t wdir = -1, inst_dir = -1;
-            mps_t wval = 0, inst_val = 0;
+            // WindData swind(Units::deg_to_rad(idir), (mps_t)(fast_sin_idx(idir*1.5)+1)/2*30.f/3.6f);
+            // WindData cwind(Units::deg_to_rad(ival), (mps_t)ival/3.6);
+
+            WindData swind, iwind;
             if (wind_enable.get() & WA_BOTH) {
-                if (straightWind && !straightWind->getWind(&wdir, &wval)) {
-                    wdir = -1;
-                }
-
-                if (circleWind && !circleWind->getWind(&wdir, &wval)) {
-                    wdir = -1;
+                if (synoptic_wind.getValid()) {
+                    swind = static_cast<WindData>(synoptic_wind.get());
                 }
             } else {
-                inst_dir = extwind_inst_dir.get();
-                inst_val = extwind_inst_speed.get();
-                wdir = extwind_sptc_dir.get();
-                wval = extwind_sptc_speed.get();
+                iwind.raw = ext_inst_wind.get();
+                swind.raw = ext_syn_wind.get();
             }
-            WNDgauge->drawWind(wdir, wval, inst_dir, inst_val);
+            // ESP_LOGI(FNAME, "draw wind swind: %d@%.1f cwind: %d@%.1f", swind.getDeg(), swind.getVal(), cwind.getDeg(), cwind.getVal());
+            WNDgauge->drawWind(swind, iwind);
         }
     }
 
@@ -923,9 +921,15 @@ void IpsDisplay::drawDisplay(){
                 VCSTATgauge->draw();
             }
         }
-        WNDgauge->clearGauge();
-        if (!vario_centeraid.get() || CRMOD.getCMode()) {
-            WNDgauge->drawRose();
+
+        if (vario_centeraid.get()) {
+            if (CRMOD.getCMode()) {
+                WNDgauge->clearGauge();
+                WNDgauge->drawRose();
+            }
+            else {
+                WNDgauge->clearGauge();
+            }
         }
         flags.mode_dirty = false;
     }
