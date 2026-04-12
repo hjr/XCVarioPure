@@ -16,6 +16,7 @@ class LargeFigure : public ScreenElement
 {
 public:
     LargeFigure(int16_t x, int16_t y);
+    bool changed(float v);
     void draw() override;
     void draw(float a) override;
     

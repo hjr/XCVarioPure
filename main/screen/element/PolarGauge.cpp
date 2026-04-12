@@ -239,19 +239,17 @@ void PolarGauge::drawAvgClimb(){
 
 void PolarGauge::drawFigure(float a)
 {
-    if ( _figure ) {
+    if ( _figure && _figure->changed(a) ) {
         const BoundingBox& prev = _figure->getBoundingBox();
-        if ( _wind_avg || _wind_live ) {
-            MYUCG->startBuffering(prev[0].x, prev[0].y, prev[1].x, prev[1].y);
-            _figure->forceRedraw();
-        }
+        MYUCG->startBuffering(prev[0].x, prev[0].y, prev[1].x, prev[1].y);
+        
         if (_wind_avg) {
             _wind_avg->redrawBG();
         }
         if (_wind_live) {
             _wind_live->redrawBG();
         }
-        a *= _unit_fac;
+        a *= VarioUnit->scale; // fixme that is a bit hacky
         _figure->draw(a);
         MYUCG->finishBuffering();
     }

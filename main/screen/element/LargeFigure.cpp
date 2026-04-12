@@ -30,6 +30,15 @@ LargeFigure::LargeFigure(int16_t x, int16_t y) :
     _bbox[1] = Point( 2*tmp + 7, 36);
 }
 
+bool LargeFigure::changed(float v)
+{
+    int16_t ival = fast_iroundf(v * 10); // integer value in steps of 10th
+    if (_value != ival || _dirty) {
+        return true;
+    }
+    return false;
+}
+
 void LargeFigure::draw() {
     char s[32];
     MYUCG->setFont(ucg_font_fub35_hn);
