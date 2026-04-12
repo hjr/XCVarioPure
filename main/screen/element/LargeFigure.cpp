@@ -11,6 +11,7 @@
 #include "Colors.h"
 #include "AdaptUGC.h"
 #include "math/Floats.h"
+#include "logdef.h"
 
 #include <cmath>
 #include <cstdio>
@@ -24,35 +25,47 @@ extern AdaptUGC *MYUCG;
 LargeFigure::LargeFigure(int16_t x, int16_t y) :
     ScreenElement(x, y)
 {
-    MYUCG->setFont(ucg_font_fub35_hn, false);
+    constexpr int16_t tmp = 33;
+    _bbox[0] = Point(_ref.x - tmp + 3-10, _ref.y + 2 - 36/2);
+    _bbox[1] = Point( 2*tmp + 7, 36);
 }
+
+void LargeFigure::draw() {
+    char s[32];
+    MYUCG->setFont(ucg_font_fub35_hn);
+    MYUCG->setFontPosCenter();
+    MYUCG->setColor(COLOR_WHITE);
+    if ( std::abs(_value) < 100 ) {
+        sprintf(s, "% 2.1f", float(_value) / 10.0f);
+    }
+    else if ( std::abs(_value) < 1000 ) {
+        sprintf(s, "% d", _value / 10);
+    }
+    else {
+        sprintf(s, " oo");
+    }
+    int16_t tmp = MYUCG->getStrWidth(s+1)/2;
+    int16_t signwidth = MYUCG->getCharWidth(s[0]);
+    MYUCG->setPrintPos(_ref.x - tmp + 2-signwidth, _ref.y + 2);
+    MYUCG->startBuffering(_ref.x - tmp + 3-10, _ref.y + 2 - 36/2, 2*tmp + 7, 36);
+    MYUCG->print(s);
+    MYUCG->finishBuffering();
+
+    // MYUCG->drawFrame(_ref.x - tmp + 3-10, _ref.y + 2 - 36/2, 2*tmp + 7, 36);
+    // MYUCG->drawFrame(_ref.x - tmp + 3-signwidth, _ref.y + 2 - fh/2, 
+    //     2 * tmp + signwidth, fh);
+    MYUCG->setFontPosBottom();
+    // ESP_LOGI(FNAME, "draw large figure w%d, a%d,d%d", tmp, MYUCG->getFontAscent(), MYUCG->getFontDescent());
+}
+
 
 void LargeFigure::draw(float val) {
     int16_t ival = fast_iroundf(val * 10); // integer value in steps of 10th
 
-    // only print if there is a change in rounded numeric string
+    // only print if there is a change
     if (_value != ival || _dirty) {
-        char s[32];
-        MYUCG->setFont(ucg_font_fub35_hn);
-        MYUCG->setFontPosCenter();
-        MYUCG->setColor(COLOR_WHITE);
-        if ( std::abs(ival) < 100 ) {
-            sprintf(s, "% 2.1f", float(ival) / 10.0f);
-        }
-        else if ( std::abs(ival) < 1000 ) {
-            sprintf(s, "% d", ival / 10);
-        }
-        else {
-            sprintf(s, "oo");
-        }
-        int16_t tmp = MYUCG->getStrWidth(s+1)/2;
-        int16_t signwidth = MYUCG->getCharWidth(s[0]);
-        MYUCG->setPrintPos(_ref_x - tmp + 2-signwidth, _ref_y + 2);
-        MYUCG->startBuffering(_ref_x - tmp + 3-10, _ref_y + 2 - 36/2, 2*tmp + 6, 35);
-        MYUCG->print(s);
         _value = ival;
-        MYUCG->finishBuffering();
-        MYUCG->setFontPosBottom();
+        draw();
     }
     _dirty = false;
 }

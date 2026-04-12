@@ -69,8 +69,8 @@ void CenterAid::drawThermal(int tn, int idir, bool draw_red) {
             ddir = (idir + CA_NUM_DIRS / 4) % CA_NUM_DIRS;  // move reference to the right
         }
     }
-    int16_t cx = _gauge._ref_x + fast_sin_rad(ddir * CA_STEP) * _gauge._radius;
-    int16_t cy = _gauge._ref_y - fast_cos_rad(ddir * CA_STEP) * _gauge._radius;
+    int16_t cx = _gauge._ref.x + fast_sin_rad(ddir * CA_STEP) * _gauge._radius;
+    int16_t cy = _gauge._ref.y - fast_cos_rad(ddir * CA_STEP) * _gauge._radius;
 
     if (idir != 0) {
         int td = drawn_thermals[ddir];
@@ -114,8 +114,8 @@ void CenterAid::drawGlider() {
             ddir = (CA_NUM_DIRS / 4) % CA_NUM_DIRS;
         }
     }
-    int16_t cx = _gauge._ref_x + fast_sin_rad(ddir * CA_STEP) * _gauge._radius;
-    int16_t cy = _gauge._ref_y - fast_cos_rad(ddir * CA_STEP) * _gauge._radius; // Todo add/move to IpsDisplay mapping functions
+    int16_t cx = _gauge._ref.x + fast_sin_rad(ddir * CA_STEP) * _gauge._radius;
+    int16_t cy = _gauge._ref.y - fast_cos_rad(ddir * CA_STEP) * _gauge._radius; // Todo add/move to IpsDisplay mapping functions
     MYUCG->setColor(COLOR_BLACK);
     int16_t *trptr = (int16_t*)triangle[2];
     if (_glider_on_top) {
@@ -127,7 +127,7 @@ void CenterAid::drawGlider() {
         }
     } else {
         MYUCG->drawBox(cx-W, cy-B, 2*W, 2*B);
-        MYUCG->drawBox(2*_gauge._ref_x-cx-W, cy-B, 2*W, 2*B);
+        MYUCG->drawBox(2*_gauge._ref.x-cx-W, cy-B, 2*W, 2*B);
     }
     if ( flightmode == circling_t::circlingR || flightmode == circling_t::circlingL ) {
         MYUCG->setColor(COLOR_LBBLUE);

@@ -29,6 +29,7 @@ public:
 
     // void setSmall() { _aattr |= 1; }
     void drawUnit();
+    using ScreenElement::draw;
     void draw(meter_t alt);
 
 private: // attributes

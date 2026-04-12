@@ -50,9 +50,9 @@ void Temperature::draw(temp_status_t mputemp)
                 strcpy(s, "     --- ");
                 MYUCG->setColor(COLOR_WGREY);
             }
-            ESP_LOGI(FNAME,"drawTemperature: %d,%d %s", _ref_x, _ref_y, s);
+            ESP_LOGI(FNAME,"drawTemperature: %d,%d %s", _ref.x, _ref.y, s);
             int16_t fl = MYUCG->getStrWidth(s);
-            MYUCG->setPrintPos(_ref_x + _x_offset - fl, _ref_y - (_large ? 0 : 7));
+            MYUCG->setPrintPos(_ref.x + _x_offset - fl, _ref.y - (_large ? 0 : 7));
             MYUCG->print(s);
         }
         // the number overlapps the little ° symbol, so alway repaint
@@ -75,7 +75,7 @@ void Temperature::draw(temp_status_t mputemp)
                 MYUCG->setColor(COLOR_HEADER);
         }
         MYUCG->setFont(ucg_font_fub11_hr, false);
-        MYUCG->setPrintPos(_ref_x + _x_offset - 3, _ref_y - 9);
+        MYUCG->setPrintPos(_ref.x + _x_offset - 3, _ref.y - 9);
         MYUCG->print(TempUnit->getName());
         _dirty = false;
     }

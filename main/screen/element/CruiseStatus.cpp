@@ -28,21 +28,21 @@ void CruiseStatus::draw() {
     if ( _use_symbol ) {
         // clear the symbol area
         MYUCG->setColor(COLOR_BLACK);
-        MYUCG->drawBox(_ref_x - (SYMBOL_SIZE+3), _ref_y - (SYMBOL_SIZE+3), 2*SYMBOL_SIZE+6, 2*SYMBOL_SIZE+6);
+        MYUCG->drawBox(_ref.x - (SYMBOL_SIZE+3), _ref.y - (SYMBOL_SIZE+3), 2*SYMBOL_SIZE+6, 2*SYMBOL_SIZE+6);
 
         MYUCG->setColor(COLOR_WGREY);
         if (CRMOD.getCMode()) {
             // draw litte arrow
-            MYUCG->drawTetragon(_ref_x - SYMBOL_SIZE, _ref_y - 5, _ref_x - SYMBOL_SIZE-1, _ref_y - 1,
-                                _ref_x + SYMBOL_SIZE-4, _ref_y + 5, _ref_x + SYMBOL_SIZE-4, _ref_y + 1);
-            MYUCG->drawTriangle(_ref_x, _ref_y + 7, _ref_x + 3, _ref_y - 4, _ref_x + SYMBOL_SIZE+2, _ref_y + 4);
+            MYUCG->drawTetragon(_ref.x - SYMBOL_SIZE, _ref.y - 5, _ref.x - SYMBOL_SIZE-1, _ref.y - 1,
+                                _ref.x + SYMBOL_SIZE-4, _ref.y + 5, _ref.x + SYMBOL_SIZE-4, _ref.y + 1);
+            MYUCG->drawTriangle(_ref.x, _ref.y + 7, _ref.x + 3, _ref.y - 4, _ref.x + SYMBOL_SIZE+2, _ref.y + 4);
         } else {
             // draw circle
-            MYUCG->drawCircle(_ref_x, _ref_y, SYMBOL_SIZE, UCG_DRAW_ALL);
-            MYUCG->drawCircle(_ref_x, _ref_y, SYMBOL_SIZE - 1, UCG_DRAW_ALL);
-            int tm = _ref_x - SYMBOL_SIZE + 1;
+            MYUCG->drawCircle(_ref.x, _ref.y, SYMBOL_SIZE, UCG_DRAW_ALL);
+            MYUCG->drawCircle(_ref.x, _ref.y, SYMBOL_SIZE - 1, UCG_DRAW_ALL);
+            int tm = _ref.x - SYMBOL_SIZE + 1;
             constexpr const int16_t S2FTS = SYMBOL_SIZE/2;
-            MYUCG->drawTriangle(tm - S2FTS, _ref_y + 2, tm + S2FTS, _ref_y + 2, tm, _ref_y - S2FTS);
+            MYUCG->drawTriangle(tm - S2FTS, _ref.y + 2, tm + S2FTS, _ref.y + 2, tm, _ref.y - S2FTS);
         }
 
         text_offset = 3*SYMBOL_SIZE;
@@ -59,8 +59,8 @@ void CruiseStatus::draw() {
         s = "snet";
     }
     ESP_LOGI(FNAME, "print netto stat %d - %s", CRMOD.isNetto(), s);
-    ESP_LOGI(FNAME, "print x/y %d/%d", _ref_x + SYMBOL_SIZE + 3 - MYUCG->getStrWidth(s), _ref_y + text_offset);
+    ESP_LOGI(FNAME, "print x/y %d/%d", _ref.x + SYMBOL_SIZE + 3 - MYUCG->getStrWidth(s), _ref.y + text_offset);
     MYUCG->setFont(ucg_font_fub11_hr, true);
-    MYUCG->setPrintPos(_ref_x + SYMBOL_SIZE+3 - MYUCG->getStrWidth(s), _ref_y+text_offset);
+    MYUCG->setPrintPos(_ref.x + SYMBOL_SIZE+3 - MYUCG->getStrWidth(s), _ref.y+text_offset);
     MYUCG->print(s);
 }

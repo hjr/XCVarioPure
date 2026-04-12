@@ -62,6 +62,7 @@ public:
     void setFigOffset(int16_t ox, int16_t oy);
     void setWindRef(int wref) { _wind_ref = static_cast<WindReference>(wref); }
 
+    using ScreenElement::draw;
     void draw(float a);
     void drawIndicator(float a);
     void drawPolarSink(mps_t a);
