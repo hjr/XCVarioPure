@@ -1421,13 +1421,14 @@ void system_menu_create_hardware_ahrs_parameter(SetupMenu *top) {
 #endif
 
 void system_menu_create_hardware_imu(SetupMenu *top) {
+#ifdef DEBUG_AND_TEST
     SetupMenuSelect* imu_calib_collect = new SetupMenuSelect("Axis Calibration", RST_NONE, imu_calib);
     imu_calib_collect->setHelp("Calibrate IMU to glider reference. Run the procedure by selecting Start.");
     imu_calib_collect->addEntry("Cancel");
     imu_calib_collect->addEntry("Start");
     imu_calib_collect->addEntry("Reset");
     top->addEntry(imu_calib_collect);
-
+#endif
     if (!airborne.get()) {
         SetupMenuSelect* bias_zero = new SetupMenuSelect("Bias Zero", RST_NONE, imu_calib);
         bias_zero->setHelp("Set IMU bias back to zero. Use only as a last measure.");
@@ -1435,14 +1436,14 @@ void system_menu_create_hardware_imu(SetupMenu *top) {
         bias_zero->addEntry("Zero", 3);
         top->addEntry(bias_zero);
     }
-
+#ifdef DEBUG_AND_TEST
     SetupMenuValFloat* ahrs_ground_aa = new SetupMenuValFloat("Ground Angle of Attack", "°", imu_gaa, &glider_ground_aa);
     ahrs_ground_aa->setHelp(
         "Angle of attack with tail skid on the ground to adjust the AHRS horizon level. Change this any time"
         "level.");
     ahrs_ground_aa->setPrecision(0);
     top->addEntry(ahrs_ground_aa);
-
+#endif
 	SetupMenuValFloat* tcontrol = new SetupMenuValFloat("Temp Control", "°C", nullptr, &mpu_temperature);
     tcontrol->setPrecision(0);
     tcontrol->setHelp("Target temperature of AHRS sensor temp-controler, if supported in hardware (model > 2023)");
@@ -1494,7 +1495,7 @@ void system_menu_create_hardware(SetupMenu *top) {
 		gear->addEntry("External");  // A $g,w<n>*CS command from an external device
 
         if (accSensor) {
-            SetupMenu* ahrs = new SetupMenu("IMU Reference", system_menu_create_hardware_imu);
+            SetupMenu* ahrs = new SetupMenu("IMU & AHRS", system_menu_create_hardware_imu);
             top->addEntry(ahrs);
         }
 
