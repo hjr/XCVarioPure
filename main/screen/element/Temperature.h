@@ -23,6 +23,7 @@ public:
     Temperature(int16_t cx, int16_t cy) : ScreenElement(cx, cy) {}
     // API
     void setLarge(bool l) { _large = l; _x_offset = l ? 10 : 0; }
+    using ScreenElement::draw;
     void draw(temp_status_t mputemp);
 
     // attributes

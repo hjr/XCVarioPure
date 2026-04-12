@@ -144,20 +144,20 @@ bool ArrowIndicator::drawOver(int16_t val,float a)
     float si = fast_sin_idx(val);
     float co = fast_cos_idx(val);
     ArrowPoints n {
-        (int16_t)(_gauge._ref_x - fast_iroundf(co * _root - si * _half_width)),
-        (int16_t)(_gauge._ref_y - fast_iroundf(si * _root + co * _half_width)),
-        (int16_t)(_gauge._ref_x - fast_iroundf(co * _root + si * _half_width)),
-        (int16_t)(_gauge._ref_y - fast_iroundf(si * _root - co * _half_width)),
-        (int16_t)(_gauge._ref_x - fast_iroundf(co * _tip + si * _half_width)),
-        (int16_t)(_gauge._ref_y - fast_iroundf(si * _tip - co * _half_width)),
-        (int16_t)(_gauge._ref_x - fast_iroundf(co * _tip - si * _half_width)),
-        (int16_t)(_gauge._ref_y - fast_iroundf(si * _tip + co * _half_width)),
-        (int16_t)(_gauge._ref_x - fast_iroundf(co * (_tip - _arrowhead) + si * _half_width)),
-        (int16_t)(_gauge._ref_y - fast_iroundf(si * (_tip - _arrowhead) - co * _half_width)),
-        (int16_t)(_gauge._ref_x - fast_iroundf(co * (_tip - _arrowhead) - si * _half_width)),
-        (int16_t)(_gauge._ref_y - fast_iroundf(si * (_tip - _arrowhead) + co * _half_width)),
-        (int16_t)(_gauge._ref_x - fast_iroundf(co * _tip)),
-        (int16_t)(_gauge._ref_y - fast_iroundf(si * _tip)),
+        (int16_t)(_gauge._ref.x - fast_iroundf(co * _root - si * _half_width)),
+        (int16_t)(_gauge._ref.y - fast_iroundf(si * _root + co * _half_width)),
+        (int16_t)(_gauge._ref.x - fast_iroundf(co * _root + si * _half_width)),
+        (int16_t)(_gauge._ref.y - fast_iroundf(si * _root - co * _half_width)),
+        (int16_t)(_gauge._ref.x - fast_iroundf(co * _tip + si * _half_width)),
+        (int16_t)(_gauge._ref.y - fast_iroundf(si * _tip - co * _half_width)),
+        (int16_t)(_gauge._ref.x - fast_iroundf(co * _tip - si * _half_width)),
+        (int16_t)(_gauge._ref.y - fast_iroundf(si * _tip + co * _half_width)),
+        (int16_t)(_gauge._ref.x - fast_iroundf(co * (_tip - _arrowhead) + si * _half_width)),
+        (int16_t)(_gauge._ref.y - fast_iroundf(si * (_tip - _arrowhead) - co * _half_width)),
+        (int16_t)(_gauge._ref.x - fast_iroundf(co * (_tip - _arrowhead) - si * _half_width)),
+        (int16_t)(_gauge._ref.y - fast_iroundf(si * (_tip - _arrowhead) + co * _half_width)),
+        (int16_t)(_gauge._ref.x - fast_iroundf(co * _tip)),
+        (int16_t)(_gauge._ref.y - fast_iroundf(si * _tip)),
     };
     ESP_LOGI(FNAME,"drawTetragon  x0:%d y0:%d x1:%d y1:%d x2:%d y2:%d x3:%d y3:%d", n.x_0, n.y_0, n.x_1, n.y_1, n.x_2, n.y_2, n.x_3, n.y_3 );
     // MYUCG->setColor(COLOR_BLACK);

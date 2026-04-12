@@ -283,6 +283,9 @@ void AdaptUGC::startBuffering( int16_t x, int16_t y, int16_t w, int16_t h )
 
 void AdaptUGC::finishBuffering()
 {
+    if ( !eglib->do_buffer ) {
+        return;
+    }
     int16_t height = eglib->drawing.clip_ymax - eglib->drawing.clip_ymin;
     int16_t width = eglib->drawing.clip_xmax - eglib->drawing.clip_xmin;
     eglib->display.driver->send_buffer( eglib, eglib->drawing.buffer, eglib->drawing.clip_xmin, 

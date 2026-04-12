@@ -28,8 +28,8 @@ constexpr int16_t BTW    = 15;
 constexpr int16_t BTH    = 24;
 
 void Connection::drawBT() {
-    int16_t btx = _ref_x + 7;
-    int16_t bty = _ref_y - 24 + (BTH / 2) + 6;
+    int16_t btx = _ref.x + 7;
+    int16_t bty = _ref.y - 24 + (BTH / 2) + 6;
     ESP_LOGI(FNAME, "Connection::drawBT %d %d", btx, bty);
     if (_hash.bt_alive != ALIVE_OK)
         MYUCG->setColor(COLOR_MGREY);
@@ -55,22 +55,22 @@ void Connection::drawWifi() {
     } else {
         MYUCG->setColor(COLOR_BLUE);
     }
-    MYUCG->drawCircle(_ref_x, _ref_y, 9,  UCG_DRAW_UPPER_RIGHT);
-    MYUCG->drawCircle(_ref_x, _ref_y, 10, UCG_DRAW_UPPER_RIGHT);
-    MYUCG->drawCircle(_ref_x, _ref_y, 16, UCG_DRAW_UPPER_RIGHT);
-    MYUCG->drawCircle(_ref_x, _ref_y, 17, UCG_DRAW_UPPER_RIGHT);
+    MYUCG->drawCircle(_ref.x, _ref.y, 9,  UCG_DRAW_UPPER_RIGHT);
+    MYUCG->drawCircle(_ref.x, _ref.y, 10, UCG_DRAW_UPPER_RIGHT);
+    MYUCG->drawCircle(_ref.x, _ref.y, 16, UCG_DRAW_UPPER_RIGHT);
+    MYUCG->drawCircle(_ref.x, _ref.y, 17, UCG_DRAW_UPPER_RIGHT);
     if (_hash.flarm_alive == ALIVE_OK) { // fixme really
         MYUCG->setColor(COLOR_GREEN);
     }
-    MYUCG->drawDisc(_ref_x, _ref_y, 3, UCG_DRAW_ALL);
+    MYUCG->drawDisc(_ref.x, _ref.y, 3, UCG_DRAW_ALL);
 }
 
 void Connection::drawCable() {
     constexpr int16_t CANH = 8;
     constexpr int16_t CANW = 14;
 
-    int16_t myx = (_side_by_side) ? _ref_x - 24 : _ref_x + 5;
-    int16_t myy = (_side_by_side) ? _ref_y - CANH / 2 : _ref_y + 22;
+    int16_t myx = (_side_by_side) ? _ref.x - 24 : _ref.x + 5;
+    int16_t myy = (_side_by_side) ? _ref.y - CANH / 2 : _ref.y + 22;
     ESP_LOGI(FNAME, "Connection::drawCable %d %d", _hash.xcv_alive, xcv_alive.get());
 
     (_hash.xcv_alive == ALIVE_OK) ? MYUCG->setColor(COLOR_LBLUE) : MYUCG->setColor(COLOR_MGREY);

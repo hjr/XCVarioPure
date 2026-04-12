@@ -89,8 +89,8 @@ void FlapsBox::setLength(int16_t length)
 void FlapsBox::drawLabels(FBoxStateHash cs)
 {
     ESP_LOGI(FNAME, "draw wkf=%.1f, %d/%d", cs.wkidx10/10.f, cs.top_pix, cs.bottom_pix);
-    int16_t boxx = _ref_x+2;
-    int16_t boxy = _ref_y - BOX_LENGTH / 2 + 2;
+    int16_t boxx = _ref.x+2;
+    int16_t boxy = _ref.y - BOX_LENGTH / 2 + 2;
     int16_t boxw = BOX_WIDTH - 4;
     int16_t boxh = BOX_LENGTH - 4;
 
@@ -120,10 +120,10 @@ void FlapsBox::drawLabels(FBoxStateHash cs)
     // background speed band
     MYUCG->setColor(1, COLOR_MGREY);
     MYUCG->startBuffering(boxx, boxy, boxw+1, boxh+1);
-    int16_t green_top =  _ref_y + cs.top_pix;
-    if ( green_top < _ref_y + boxh ) { // the green part
+    int16_t green_top =  _ref.y + cs.top_pix;
+    if ( green_top < _ref.y + boxh ) { // the green part
         MYUCG->setColor(COLOR_DGREEN);
-        MYUCG->drawBox(boxx, green_top, boxw+1, _ref_y - green_top + cs.bottom_pix+1);
+        MYUCG->drawBox(boxx, green_top, boxw+1, _ref.y - green_top + cs.bottom_pix+1);
     }
 
     // foreground labels
@@ -136,7 +136,7 @@ void FlapsBox::drawLabels(FBoxStateHash cs)
         int16_t pixoff = -(cs.getWk() - wk) * LABEL_SPACING; // 20 pixels per flap step
         // ESP_LOGI(FNAME, "wk %d, pixoff %d", wk, pixoff);
         int16_t lwidth = MYUCG->getStrWidth(label);
-        MYUCG->setPrintPos(_ref_x + (BOX_WIDTH - lwidth)/2 + 1, _ref_y + pixoff + _LFH/2);
+        MYUCG->setPrintPos(_ref.x + (BOX_WIDTH - lwidth)/2 + 1, _ref.y + pixoff + _LFH/2);
         MYUCG->setColor(COLOR_WHITE); // highlight the recommendation, or current position
         MYUCG->print(label);
     }
@@ -152,9 +152,9 @@ void FlapsBox::draw(mps_t ias)
 {
     if ( _dirty ) {
         MYUCG->setColor(COLOR_HEADER);
-        MYUCG->drawRFrame(_ref_x, _ref_y-BOX_LENGTH/2-BOX_CORNER, BOX_WIDTH, BOX_LENGTH + 2*BOX_CORNER, BOX_CORNER);
+        MYUCG->drawRFrame(_ref.x, _ref.y-BOX_LENGTH/2-BOX_CORNER, BOX_WIDTH, BOX_LENGTH + 2*BOX_CORNER, BOX_CORNER);
         MYUCG->setColor(ndl_color[needle_color.get()].color[0], ndl_color[needle_color.get()].color[1], ndl_color[needle_color.get()].color[2]);
-        MYUCG->drawDisc(_ref_x, _ref_y, 3, EGLIB_DRAW_UPPER_LEFT|EGLIB_DRAW_LOWER_LEFT);
+        MYUCG->drawDisc(_ref.x, _ref.y, 3, EGLIB_DRAW_UPPER_LEFT|EGLIB_DRAW_LOWER_LEFT);
     }
 
     float curr_fp;

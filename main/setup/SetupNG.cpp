@@ -307,16 +307,6 @@ void change_cruise() {
     AUDIO->updateAudioMode();
 }
 
-void resetSWindAge() {
-	if( swind_speed.get() < 0.2f ) { // do not reset age at initial sync
-		StraightWind::resetAge();
-	}
-}
-void resetCWindAge() {
-	if( cwind_speed.get() < 0.2f ) {
-		CircleWind::resetAge();
-	}
-}
 static void calc_altis() {
 	altitude.set( Units::calcAltitude(QNH.get(), statp.get()) );
 	altitude_isa.set( Units::calcAltitudeISA(statp.get()) );
@@ -437,16 +427,10 @@ SetupNG<float>  		bugs( "BUGS", 0.0, true, SYNC_BIDIR, VOLATILE, change_bugs, qu
 
 SetupNG<int>  			cruise_mode( "CRUISE", 0, false, SYNC_BIDIR, VOLATILE, change_cruise ); // use the CruiseMode wrapper to access and modify
 SetupNG<kelvin_t>  		OAT( "OAT", NAN, false, SYNC_BIDIR, VOLATILE );   // outside air temperature, sensor on any side
-SetupNG<rad_t>  		swind_dir( "SWDD", 0.0, false, SYNC_FROM_MASTER, VOLATILE, resetSWindAge );
-SetupNG<mps_t>  		swind_speed( "SWDS", 0.0, false, SYNC_FROM_MASTER, VOLATILE, resetSWindAge );
+SetupNG<int>  			synoptic_wind( "SYNWND", 0.0, false, SYNC_FROM_MASTER, VOLATILE );
 SetupNG<float>  		swind_sideslip_lim( "SWSL", 2.0, false, SYNC_FROM_MASTER, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(0, 45.0, 0.1));
-SetupNG<rad_t>  		cwind_dir( "CWDD", 0.0, false, SYNC_FROM_MASTER, VOLATILE, resetCWindAge );
-SetupNG<mps_t>  		cwind_speed( "CWDS", 0.0, false, SYNC_FROM_MASTER, VOLATILE, resetCWindAge );
-SetupNG<int>  			extwind_sptc_dir( "EWDD", 0.0, false, SYNC_BIDIR, VOLATILE ); // synoptic and
-SetupNG<mps_t>  		extwind_sptc_speed( "EWDS", 0.0, false, SYNC_BIDIR, VOLATILE );
-SetupNG<int>  			extwind_inst_dir( "EIWDD", 0.0, false, SYNC_BIDIR, VOLATILE ); // instant external wind
-SetupNG<mps_t> 			extwind_inst_speed( "EIWDS", 0.0, false, SYNC_BIDIR, VOLATILE );
-SetupNG<int>  			extwind_status( "EWST", -1, false, SYNC_BIDIR, VOLATILE );
+SetupNG<int>  			ext_syn_wind( "EXSYNWND", 0.0, false, SYNC_BIDIR, VOLATILE ); // synoptic and
+SetupNG<int>  			ext_inst_wind( "EXINSWND", 0.0, false, SYNC_BIDIR, VOLATILE ); // instant external wind
 SetupNG<rad_t>  		mag_hdm( "HDM", -1.0, false, SYNC_FROM_MASTER, VOLATILE );
 SetupNG<rad_t>  		mag_hdt( "HDT", -1.0, false, SYNC_FROM_MASTER, VOLATILE );
 SetupNG<float>  		average_climb( "AVCL", 0.0, false, SYNC_NONE, VOLATILE );
@@ -629,7 +613,6 @@ SetupNG<float>			gload_neg_limit("GLOADNL", -3, true, SYNC_NONE, PERSISTENT, nul
 SetupNG<float>			gload_pos_max("GLOADPM", 1);
 SetupNG<float>			gload_neg_max("GLOADNM", 0);
 SetupNG<float>			airspeed_max("ASMAX", 0 );
-// SetupNG<float>		    gload_alarm_volume("GLOADAVOL", 100, true, SYNC_NONE, PERSISTENT, nullptr, QUANT_NONE, &percentage_limits);
 SetupNG<int>        	display_variant("DISPLAY_VARIANT", 0 );
 // SetupNG<int>        	compass_dev_auto("COMPASS_DEV", 0 );
 SetupNG<degree_t>    	max_circle_wind_diff("CI_WINDDM", 60.0, true, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(0, 90.0, 1.0));

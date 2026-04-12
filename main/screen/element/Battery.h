@@ -19,6 +19,7 @@ public:
     using BatteryDisplay = enum { BAT_PERCENTAGE, BAT_VOLTAGE, BAT_VOLTAGE_BIG };
     void setThresholds();
     void blank();
+    using ScreenElement::draw;
     void draw(float mc);
 
     // attributes

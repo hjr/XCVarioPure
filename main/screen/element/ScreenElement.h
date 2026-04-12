@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include "IpsDisplay.h"
 #include "AdaptUGC.h"
 
 #include <cstdint>
@@ -18,13 +19,23 @@ class ScreenElement
 {
 public:
     ScreenElement() = delete;
-    ScreenElement(int16_t refx, int16_t refy) : _ref_x(refx), _ref_y(refy) {}
-    ~ScreenElement() = default;
-    void setRef(int16_t x, int16_t y) { _ref_x=x; _ref_y=y; }
+    constexpr ScreenElement(int16_t refx, int16_t refy) : _ref(refx, refy) {}
+    virtual ~ScreenElement() = default;
+    void setRef(int16_t x, int16_t y) { _ref.x=x; _ref.y=y; }
+    const BoundingBox& getBoundingBox() const { return _bbox; }
     void forceRedraw() { _dirty = true; }
+    // virtual void update(const UiEvent&) {}
+    virtual void draw() {};
+    virtual void draw(float a) { } // default implementation ignores the value
+    virtual void drawBG() {};
+    virtual void clearBG() {};
+    // virtual void drawStatic() { draw(); }
+    // virtual void clearStatic() { clearBG(); }
+    // virtual void drawProgressive(float a) { draw(a); }
+    // virtual void clearProgressive(float a) { clearBG(); }
 
 public:
-    int16_t _ref_x;
-    int16_t _ref_y;
+    Point _ref;
     bool _dirty = true;
+    BoundingBox _bbox;
 };

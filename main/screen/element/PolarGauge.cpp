@@ -80,7 +80,7 @@ PolarGauge::PolarGauge(int16_t refx, int16_t refy, int16_t scale_end, int16_t ra
 
         _unit_fac = 1.;
         _range = 360.;
-        _mrange = -360.;
+        _mrange = 0.;
         // func = new RoseGaugeFunc();
     }
 }
@@ -159,10 +159,10 @@ void PolarGauge::setColor(int color_idx)
 void PolarGauge::setFigOffset(int16_t ox, int16_t oy)
 {
     if ( ! _figure ) {
-        _figure = new LargeFigure(_ref_x+ox, _ref_y+oy);
+        _figure = new LargeFigure(_ref.x+ox, _ref.y+oy);
     }
     else {
-        _figure->setPos(_ref_x+ox, _ref_y+oy);
+        _figure->setRef(_ref.x+ox, _ref.y+oy);
     }
 }
 
@@ -206,7 +206,7 @@ void PolarGauge::drawPolarSink(mps_t a)
     drawBow(val, _old_polar_sink, 5, 1, BLUE);
 }
 
-void PolarGauge::drawAVG(){
+void PolarGauge::drawAvgClimb(){
     // average climb in [m/sec]
     float avclimb = VarioUnit->apply(average_climb.get());
     float delta = avclimb - _old_avc;
@@ -240,8 +240,20 @@ void PolarGauge::drawAVG(){
 void PolarGauge::drawFigure(float a)
 {
     if ( _figure ) {
+        const BoundingBox& prev = _figure->getBoundingBox();
+        if ( _wind_avg || _wind_live ) {
+            MYUCG->startBuffering(prev[0].x, prev[0].y, prev[1].x, prev[1].y);
+            _figure->forceRedraw();
+        }
+        if (_wind_avg) {
+            _wind_avg->redrawBG();
+        }
+        if (_wind_live) {
+            _wind_live->redrawBG();
+        }
         a *= _unit_fac;
         _figure->draw(a);
+        MYUCG->finishBuffering();
     }
 }
 
@@ -263,8 +275,7 @@ void PolarGauge::drawWind(WindData s, WindData i)
     }
 
     if ( _wind_live ) {
-        if (_wind_live->changed(i) || _dirty
-            || (angleDiffDeg(i.getDeg(), s.getDeg()) % 180) < 20) {
+        if (_wind_live->changed(i) || _dirty) {
             _wind_live->drawWind();
         }
     }
@@ -297,14 +308,14 @@ void PolarGauge::drawOneScaleLine(float a, int16_t l2, int16_t w, int16_t cidx) 
     int16_t l1 = _radius;
     int16_t w0 = w / 2;
     int16_t w1 = w - w0; // total width := w1 + w0
-    int16_t xn_0 = _ref_x - fast_iroundf(co * l1 - si * w0);
-    int16_t yn_0 = _ref_y - fast_iroundf(si * l1 + co * w0);
-    int16_t xn_1 = _ref_x - fast_iroundf(co * l1 + si * w1);
-    int16_t yn_1 = _ref_y - fast_iroundf(si * l1 - co * w1);
-    int16_t xn_2 = _ref_x - fast_iroundf(co * l2 + si * w1);
-    int16_t yn_2 = _ref_y - fast_iroundf(si * l2 - co * w1);
-    int16_t xn_3 = _ref_x - fast_iroundf(co * l2 - si * w0);
-    int16_t yn_3 = _ref_y - fast_iroundf(si * l2 + co * w0);
+    int16_t xn_0 = _ref.x - fast_iroundf(co * l1 - si * w0);
+    int16_t yn_0 = _ref.y - fast_iroundf(si * l1 + co * w0);
+    int16_t xn_1 = _ref.x - fast_iroundf(co * l1 + si * w1);
+    int16_t yn_1 = _ref.y - fast_iroundf(si * l1 - co * w1);
+    int16_t xn_2 = _ref.x - fast_iroundf(co * l2 + si * w1);
+    int16_t yn_2 = _ref.y - fast_iroundf(si * l2 - co * w1);
+    int16_t xn_3 = _ref.x - fast_iroundf(co * l2 - si * w0);
+    int16_t yn_3 = _ref.y - fast_iroundf(si * l2 + co * w0);
     // ESP_LOGI(FNAME,"drawTetragon  x0:%d y0:%d x1:%d y1:%d x2:%d y2:%d x3:%d y3:%d", xn_0, yn_0, xn_1, yn_1, xn_2, yn_2, xn_3, yn_3 );
     cidx = std::clamp(cidx, (int16_t)0, (int16_t)2);  
     MYUCG->setColor(lne_color[cidx].color[0], lne_color[cidx].color[1], lne_color[cidx].color[2]);
@@ -418,7 +429,7 @@ void PolarGauge::colorRange(float from, float to, int16_t color)
 
 // draw a scale from _range down to _mrange
 // with radius _radius
-// to _ref_xy center [pixel]
+// to _ref center [pixel]
 // and zero label offset according to (_mrange + _range) / 2
 // optional: (when from < -1000)
 // refresh small area from [scale], to [scale] ( from > to .. always)
@@ -554,53 +565,45 @@ void PolarGauge::drawScaleBottom()
 }
 
 // a [deg]; 0° ref on top
-void PolarGauge::drawTwoDots(int16_t a, int16_t size, int16_t cidx) const
+void PolarGauge::drawOneDot(int16_t a, int16_t size, int16_t cidx) const
 {
-    float si = -fast_sin_idx(a*2);
-    float co = fast_cos_idx(a*2);
-    int16_t l1 = _radius + 2;
-    int16_t bx = fast_iroundf(si * l1);
-    int16_t by = fast_iroundf(co * l1);
+    int16_t bx = fast_iroundf(fast_sin_idx(a*2) * _radius);
+    int16_t by = fast_iroundf(fast_cos_idx(a*2) * _radius);
     MYUCG->setColor(lne_color[cidx].color[0], lne_color[cidx].color[1], lne_color[cidx].color[2]);
-    if ( (a%360) != 0 ) { // skip the "north" position
-        MYUCG->drawDisc(_ref_x-bx,_ref_y-by, size, UCG_DRAW_ALL );
-    }
-    if ( ((a+180)%360) != 0 ) { // skip the "north" position (vis-a-vis)
-        MYUCG->drawDisc(_ref_x+bx,_ref_y+by, size, UCG_DRAW_ALL ); // 180° mirrored
-    }
+    MYUCG->drawDisc(_ref.x + bx,_ref.y - by, size, UCG_DRAW_ALL );
 }
 
 void PolarGauge::drawRose(int16_t at) const
 {
-    int16_t start = _range/2 - 10;
+    int16_t start = _range - 10.f;
     int16_t stop = 0;
     if (at != -1000)
     {
         // partial scale repainting
-        start = at + 15;
+        start = at + 15; // 30° range
         stop = at - 15;
+        start = (start/10)*10; // iterate on 10° raster
+        // stop = (stop/10)*10;
     }
-    start = (start/10)*10;
-    stop = (stop/10)*10;
     for (int16_t a = start; a >= stop; a-=10)
     {
         // ESP_LOGI(FNAME, "dot a:%d", a%360);
-        if (!(a % 30)) {
-            drawTwoDots( a, 2, 1);
-        }
-        if (!(a%180) ) {
+        if ( a == 0 ) {
             MYUCG->setColor(COLOR_LBBLUE);
+            // Draw a blue triangle for heading-up, or N for north-up
             if ( _wind_ref == WR_NORTH) {
-                // Draw a blue dot for heading-up, or N for north-up
                 MYUCG->setFont(ucg_font_fub11_hr);
-                char s[] = "N";
-                int16_t w2 = MYUCG->getStrWidth(s)/2;
-                MYUCG->setPrintPos(_ref_x-w2+1, _ref_y-_radius+9);
-                MYUCG->print(s);
+                char c = 'N';
+                int16_t w2 = MYUCG->getCharWidth(c)/2;
+                MYUCG->setPrintPos(_ref.x-w2+1, _ref.y-_radius+9);
+                MYUCG->print(c);
             }
             else {
-                MYUCG->drawTriangle(_ref_x,_ref_y-_radius-6, _ref_x-4, _ref_y-_radius+2, _ref_x+4, _ref_y-_radius+2);
+                MYUCG->drawTriangle(_ref.x,_ref.y-_radius-6, _ref.x-4, _ref.y-_radius+2, _ref.x+4, _ref.y-_radius+2);
             }
+        }
+        else if (!(a % 30)) {
+            drawOneDot( a, 2, 1);
         }
     }
 }
@@ -623,12 +626,12 @@ void PolarGauge::clearGauge()
 
 // get sin/cos position from gauge index in radian with gauge centered mapping
 int16_t PolarGauge::SinCentered(float val, int16_t len) const {
-    return _ref_y - static_cast<int16_t>(fast_iroundf(fast_sin_rad(val) * len));
+    return _ref.y - static_cast<int16_t>(fast_iroundf(fast_sin_rad(val) * len));
 }
-int16_t PolarGauge::CosCentered(float val, int16_t len) const { return _ref_x - static_cast<int16_t>(fast_iroundf(fast_cos_rad(val) * len)); }
+int16_t PolarGauge::CosCentered(float val, int16_t len) const { return _ref.x - static_cast<int16_t>(fast_iroundf(fast_cos_rad(val) * len)); }
 // based on discrete integral values with 0.5deg resolution
-int16_t PolarGauge::SinCenteredDeg2(int16_t val, int16_t len) const { return _ref_y - fast_iroundf(fast_sin_idx(val) * len); }
-int16_t PolarGauge::CosCenteredDeg2(int16_t val, int16_t len) const { return _ref_x - fast_iroundf(fast_cos_idx(val) * len); }
+int16_t PolarGauge::SinCenteredDeg2(int16_t val, int16_t len) const { return _ref.y - fast_iroundf(fast_sin_idx(val) * len); }
+int16_t PolarGauge::CosCenteredDeg2(int16_t val, int16_t len) const { return _ref.x - fast_iroundf(fast_cos_idx(val) * len); }
 int16_t PolarGauge::Sin(float val, int16_t len) const { return static_cast<int16_t>(fast_iroundf(fast_sin_rad(val) * len)); }
 int16_t PolarGauge::Cos(float val, int16_t len) const { return static_cast<int16_t>(fast_iroundf(fast_cos_rad(val) * len)); }
 int16_t PolarGauge::SinDeg2(int16_t val, int16_t len) const { return fast_iroundf(fast_sin_idx(val) * len); }

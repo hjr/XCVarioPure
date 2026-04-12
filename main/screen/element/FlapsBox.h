@@ -54,6 +54,7 @@ public:
     FlapsBox(Flap* flap, int16_t cx, int16_t cy, bool vertical=true);
     // API
     void setLength(int16_t length);
+    using ScreenElement::draw;
     void draw(mps_t ias);
 
 private:

@@ -62,10 +62,11 @@ public:
     void setFigOffset(int16_t ox, int16_t oy);
     void setWindRef(int wref) { _wind_ref = static_cast<WindReference>(wref); }
 
+    using ScreenElement::draw;
     void draw(float a);
     void drawIndicator(float a);
     void drawPolarSink(mps_t a);
-    void drawAVG();
+    void drawAvgClimb();
     void drawFigure(float a);
     void drawWind(WindData s, WindData i);
     using BowColorIdx = enum { GREEN, BLUE, ORANGE, RED };
@@ -120,5 +121,5 @@ public:
     void drawBow(int16_t idx, int16_t &old, int16_t w, int16_t off, int16_t cidx = 0) const;
     void drawOneLabel(float val, int16_t labl) const;
     void drawDirLabel(int16_t deg2, const char *labl) const;
-    void drawTwoDots(int16_t a, int16_t size, int16_t cidx) const;
+    void drawOneDot(int16_t a, int16_t size, int16_t cidx) const;
 };

@@ -447,5 +447,4 @@ void NmeaPrtcl::sendXCV(const char *str) const
 // int cs = calcNMEACheckSum(&str[1]);
 // int i = strlen(str);
 // sprintf( &str[i], "*%02X\r\n", cs );
-// // Router::sendXCV(str); fixme
 // }

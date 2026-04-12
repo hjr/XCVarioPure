@@ -29,7 +29,7 @@ class Connection : public ScreenElement
 public:
     Connection(int16_t cx, int16_t cy, bool sbs=false) : ScreenElement(cx, cy), _side_by_side(sbs) {}
     // API
-    void draw();
+    void draw() override;
 
     // attributes
 private:

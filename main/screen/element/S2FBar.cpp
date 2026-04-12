@@ -83,18 +83,18 @@ void S2FBar::drawBlock(int16_t level)
     else {
         MYUCG->setColor(COLOR_BLACK);
     }
-    MYUCG->drawRBox(_ref_x - _width_half + 6, _ref_y - _gap_half + 1, 2 * _width_half - 12, 2 * _gap_half - 3, 2);
+    MYUCG->drawRBox(_ref.x - _width_half + 6, _ref.y - _gap_half + 1, 2 * _width_half - 12, 2 * _gap_half - 3, 2);
 }
 
 void S2FBar::drawCircle()
 {
     // draw circle
     MYUCG->setColor(COLOR_WGREY);
-    MYUCG->drawCircle(_ref_x, _ref_y, SYMBOL_SIZE, UCG_DRAW_UPPER_RIGHT | UCG_DRAW_LOWER_RIGHT | UCG_DRAW_LOWER_LEFT);
-    MYUCG->drawCircle(_ref_x, _ref_y, SYMBOL_SIZE - 1, UCG_DRAW_UPPER_RIGHT | UCG_DRAW_LOWER_RIGHT | UCG_DRAW_LOWER_LEFT);
-    int tipx = _ref_x - SYMBOL_SIZE;
+    MYUCG->drawCircle(_ref.x, _ref.y, SYMBOL_SIZE, UCG_DRAW_UPPER_RIGHT | UCG_DRAW_LOWER_RIGHT | UCG_DRAW_LOWER_LEFT);
+    MYUCG->drawCircle(_ref.x, _ref.y, SYMBOL_SIZE - 1, UCG_DRAW_UPPER_RIGHT | UCG_DRAW_LOWER_RIGHT | UCG_DRAW_LOWER_LEFT);
+    int tipx = _ref.x - SYMBOL_SIZE;
     constexpr const int16_t S2FTS = SYMBOL_SIZE/2;
-    MYUCG->drawTriangle(tipx - S2FTS +2, _ref_y + S2FTS +1, tipx + S2FTS+2, _ref_y + S2FTS -2, tipx, _ref_y);
+    MYUCG->drawTriangle(tipx - S2FTS +2, _ref.y + S2FTS +1, tipx + S2FTS+2, _ref.y + S2FTS -2, tipx, _ref.y);
 
 }
 
@@ -119,9 +119,9 @@ void S2FBar::draw(mps_t s2fd, bool cruise)
     if ( cruise != _prev_cruise_mode ) {
         // clear bounding box
         MYUCG->setColor(COLOR_BLACK);
-        MYUCG->drawBox(_ref_x - _width_half - 2, _ref_y - _gap_half - 4 * _step, 2 * _width_half + 4, 2 * _gap_half + 8 * _step);
+        MYUCG->drawBox(_ref.x - _width_half - 2, _ref.y - _gap_half - 4 * _step, 2 * _width_half + 4, 2 * _gap_half + 8 * _step);
         // MYUCG->setColor(COLOR_WHITE);
-        // MYUCG->drawFrame(_ref_x - _width_half - 2, _ref_y - _gap_half - 4 * _step, 2 * _width_half + 4, 2 * _gap_half + 8 * _step);
+        // MYUCG->drawFrame(_ref.x - _width_half - 2, _ref.y - _gap_half - 4 * _step, 2 * _width_half + 4, 2 * _gap_half + 8 * _step);
         _prev_s2f_level = 0;
     }
 
@@ -136,7 +136,7 @@ void S2FBar::draw(mps_t s2fd, bool cruise)
             {
                 if (i != 0)
                 {
-                    drawArrow(_ref_x, _ref_y + (i > 0 ? 1 : -1) * _gap_half, i, i * inc < 0);
+                    drawArrow(_ref.x, _ref.y + (i > 0 ? 1 : -1) * _gap_half, i, i * inc < 0);
                     // ESP_LOGI(FNAME,"s2fbar draw %d,%d", i, (i*inc < 0)?0:inc);
                 }
             }

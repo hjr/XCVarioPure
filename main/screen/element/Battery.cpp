@@ -36,10 +36,10 @@ void Battery::blank()
 {
     if( battery_display.get() != BAT_VOLTAGE_BIG ){
         MYUCG->setColor( COLOR_BLACK );
-        MYUCG->drawBox( _ref_x-40, _ref_y-2, 40, 12  );
+        MYUCG->drawBox( _ref.x-40, _ref.y-2, 40, 12  );
     } else {
         MYUCG->setColor( COLOR_BLACK );
-        MYUCG->drawBox( _ref_x-55, _ref_y-12, 65, 22  );
+        MYUCG->drawBox( _ref.x-55, _ref.y-12, 65, 22  );
     }
     _dirty = true;
 }
@@ -65,8 +65,8 @@ void Battery::draw(float volt)
     chargep = std::clamp(chargep, 0, 100);
     if ( battery_display.get() != BAT_VOLTAGE_BIG ){
         MYUCG->setColor( COLOR_HEADER );
-        MYUCG->drawBox( _ref_x-40,_ref_y-2, 36, 12  );  // Bat body square
-        MYUCG->drawBox( _ref_x-4, _ref_y+1, 3, 6  );      // Bat pluspole pimple
+        MYUCG->drawBox( _ref.x-40,_ref.y-2, 36, 12  );  // Bat body square
+        MYUCG->drawBox( _ref.x-4, _ref.y+1, 3, 6  );      // Bat pluspole pimple
         float v_red    = bat_red_volt.get();
         float v_yellow = bat_yellow_volt.get();
         if (v_yellow < v_red)
@@ -82,15 +82,15 @@ void Battery::draw(float volt)
         if(chgpos <= 4) {
             chgpos = 4;
         }
-        MYUCG->drawBox( _ref_x-40+2, _ref_y, chgpos, 8  );  // Bat charge state
+        MYUCG->drawBox( _ref.x-40+2, _ref.y, chgpos, 8  );  // Bat charge state
         MYUCG->setColor( DARK_GREY );
-        MYUCG->drawBox( _ref_x-40+2+chgpos, _ref_y, 32-chgpos, 8 );  // Empty bat bar
+        MYUCG->drawBox( _ref.x-40+2+chgpos, _ref.y, 32-chgpos, 8 );  // Empty bat bar
         MYUCG->setFont(ucg_font_fub11_hr, true);
     }
     MYUCG->setColor(COLOR_WGREY);
     bool right_align = _side_text && battery_display.get() != BAT_VOLTAGE_BIG;
-    int16_t tpos_x = right_align ? _ref_x - 58 : _ref_x - 40; // side by side and right alignment
-    int16_t tpos_y = (_side_text || battery_display.get() == BAT_VOLTAGE_BIG) ? _ref_y + 12 : _ref_y - 6; // sbs or on top of symbol
+    int16_t tpos_x = right_align ? _ref.x - 58 : _ref.x - 40; // side by side and right alignment
+    int16_t tpos_y = (_side_text || battery_display.get() == BAT_VOLTAGE_BIG) ? _ref.y + 12 : _ref.y - 6; // sbs or on top of symbol
     char *s, buf[32];
     s = buf;
     if( battery_display.get() == BAT_PERCENTAGE ) {

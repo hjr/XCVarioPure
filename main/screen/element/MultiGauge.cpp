@@ -106,7 +106,7 @@ void MultiGauge::draw()
         ESP_LOGI(FNAME, "nvs val not valid");
     }
 
-    MYUCG->setPrintPos(_ref_x - MYUCG->getStrWidth(s), _ref_y);
+    MYUCG->setPrintPos(_ref.x - MYUCG->getStrWidth(s), _ref.y);
     MYUCG->print(s);
 
     val_prev = val;
@@ -155,14 +155,14 @@ void MultiGauge::drawUnit() const
         break;
     }
     if ( _large ) {
-        MYUCG->setPrintPos(_ref_x+5,_ref_y-3);
+        MYUCG->setPrintPos(_ref.x+5,_ref.y-3);
         MYUCG->print(unit_str);
-        MYUCG->setPrintPos(_ref_x+5,_ref_y-17);
+        MYUCG->setPrintPos(_ref.x+5,_ref.y-17);
         MYUCG->print(mode_str);
     } else {
-        MYUCG->setPrintPos(_ref_x+3,_ref_y-12);
+        MYUCG->setPrintPos(_ref.x+3,_ref.y-12);
         MYUCG->print(unit_str);
-        MYUCG->setPrintPos(4, _ref_y + 18);
+        MYUCG->setPrintPos(4, _ref.y + 18);
         MYUCG->print(mode_str);
     }
 }

@@ -44,15 +44,15 @@ void Altimeter::drawUnit()
     char s[16];
     MYUCG->setFont(ucg_font_fub11_hr, false);
     MYUCG->setColor( COLOR_HEADER );
-    MYUCG->setPrintPos(_ref_x + ((_aattr&ATTR_SMALL) ? 3 : 5), _ref_y+ ((_aattr&ATTR_SMALL) ? 0 : 3+16));
+    MYUCG->setPrintPos(_ref.x + ((_aattr&ATTR_SMALL) ? 3 : 5), _ref.y+ ((_aattr&ATTR_SMALL) ? 0 : 3+16));
     sprintf(s, "%s  ", AU[(int)_unit_drawn]->getName());
     MYUCG->print(s); // e.g. 'm', 'ft' ..
 
     // QNH, QFE
     if ( ! (_aattr & ATTR_SMALL) ) {
-        MYUCG->setPrintPos(_ref_x+5, _ref_y+3);
+        MYUCG->setPrintPos(_ref.x+5, _ref.y+3);
     } else {
-        MYUCG->setPrintPos(4, _ref_y - _char_height - 2);
+        MYUCG->setPrintPos(4, _ref.y - _char_height - 2);
     }
     const char *dmode = "";
     if (_isa_alt) {
@@ -80,7 +80,7 @@ void Altimeter::drawUnit()
         sprintf(s, "%.2f ", qnh);
     else
         sprintf(s, "%d ", fast_iroundf_positive(qnh));
-    MYUCG->setPrintPos(_ref_x+5, _ref_y+3-16);
+    MYUCG->setPrintPos(_ref.x+5, _ref.y+3-16);
     MYUCG->setColor(COLOR_WGREY);
     MYUCG->print(s);
 }
@@ -165,7 +165,7 @@ void Altimeter::draw(meter_t alt_input)
         _last_quant = used_quant;
         MYUCG->setColor(COLOR_BLACK);
         if ( !(_aattr & ATTR_SMALL) ) {
-            MYUCG->drawBox(_ref_x - 2 * _char_width, _ref_y - _char_height * 1.5, 2 * _char_width, _char_height * 2);
+            MYUCG->drawBox(_ref.x - 2 * _char_width, _ref.y - _char_height * 1.5, 2 * _char_width, _char_height * 2);
         }
     }
     if ( _aattr & ATTR_SMALL ) {
@@ -180,7 +180,7 @@ void Altimeter::draw(meter_t alt_input)
     {
         // Plain plot of altitude for m and ft
         sprintf(s, "  %d", alt);
-        MYUCG->setPrintPos(_ref_x - MYUCG->getStrWidth(s), _ref_y);
+        MYUCG->setPrintPos(_ref.x - MYUCG->getStrWidth(s), _ref.y);
         MYUCG->print(s);
     }
     else
@@ -191,8 +191,8 @@ void Altimeter::draw(meter_t alt_input)
         int nr_rolling_digits = (used_quant > 9) ? 2 : 1; // maximum two rolling last digits
 
         if ( _aattr & ATTR_SMALL ) {
-            // MYUCG->drawFrame(_ref_x - 4*_char_width -1, _ref_y - _char_height*1.1 -1, 4*_char_width +1, _char_height*1.1 +1); // checker box
-            MYUCG->setClipRange(_ref_x - 4*_char_width, _ref_y - _char_height*1.1, 4*_char_width, _char_height*1.1);
+            // MYUCG->drawFrame(_ref.x - 4*_char_width -1, _ref.y - _char_height*1.1 -1, 4*_char_width +1, _char_height*1.1 +1); // checker box
+            MYUCG->setClipRange(_ref.x - 4*_char_width, _ref.y - _char_height*1.1, 4*_char_width, _char_height*1.1);
         }
 
         // Quantized altitude, strip and save sign
@@ -212,19 +212,19 @@ void Altimeter::draw(meter_t alt_input)
             int lastdigit = alt % mod;
             int16_t m = sign * ((1.f - fraction) * _char_height - _char_height / 2); // to pixel offest
             // ESP_LOGI(FNAME,"Last %f/%d: %f m%d .%d", altitude, alt, fraction, m, lastdigit);
-            int16_t xp = _ref_x - nr_rolling_digits * _char_width;
-            // MYUCG->drawFrame(xp-1, _ref_y - _char_height* 1.35 -1, _char_width*nr_rolling_digits, _char_height*1.8 +1); // checker box
-            if (!(_aattr&ATTR_SMALL)) MYUCG->setClipRange(xp, _ref_y - _char_height * 1.35, _char_width * nr_rolling_digits - 1, _char_height * 1.8); // space to get 2 digits displayed uncut
-            MYUCG->setPrintPos(xp, _ref_y - m - _char_height);
+            int16_t xp = _ref.x - nr_rolling_digits * _char_width;
+            // MYUCG->drawFrame(xp-1, _ref.y - _char_height* 1.35 -1, _char_width*nr_rolling_digits, _char_height*1.8 +1); // checker box
+            if (!(_aattr&ATTR_SMALL)) MYUCG->setClipRange(xp, _ref.y - _char_height * 1.35, _char_width * nr_rolling_digits - 1, _char_height * 1.8); // space to get 2 digits displayed uncut
+            MYUCG->setPrintPos(xp, _ref.y - m - _char_height);
             char tmp[32];
             sprintf(tmp, "%0*u", nr_rolling_digits, abs((lastdigit + (sign * used_quant)) % mod));
             // ESP_LOGI(FNAME,"tmp0 %s ld: %d", tmp, (lastdigit+(sign*used_quant))%mod );
             MYUCG->print(tmp); // one above
-            MYUCG->setPrintPos(xp, _ref_y - m);
+            MYUCG->setPrintPos(xp, _ref.y - m);
             sprintf(tmp, "%0*u", nr_rolling_digits, lastdigit);
             // ESP_LOGI(FNAME,"tmp1 %s ld: %d", tmp, lastdigit );
             MYUCG->print(tmp);
-            MYUCG->setPrintPos(xp, _ref_y - m + _char_height);
+            MYUCG->setPrintPos(xp, _ref.y - m + _char_height);
             // ESP_LOGI(FNAME,"Last %f/%d: %f m%d .%d ldc:%d mod:%d", altitude, alt, fraction, m, lastdigit, ((lastdigit+mod-(sign*used_quant))%mod), mod );
             sprintf(tmp, "%0*u", nr_rolling_digits, abs((lastdigit + mod - (sign * used_quant)) % mod));
             // ESP_LOGI(FNAME,"tmp2 %s ld: %d rd:%d s:%d aq:%d las:%d ", tmp, (lastdigit-(sign*used_quant))%mod, nr_rolling_digits, sign, used_quant, lastdigit );
@@ -247,17 +247,17 @@ void Altimeter::draw(meter_t alt_input)
                 s[len - 1] = '\0';
                 len--; // chop another digits
 
-                // MYUCG->drawFrame(xp-1, _ref_y - _char_height-1, _char_width+1, _char_height+1);
-                if (!(_aattr&ATTR_SMALL)) MYUCG->setClipRange(xp, _ref_y - _char_height, _char_width - 1, _char_height - 1);
-                MYUCG->setPrintPos(xp, _ref_y + m - _char_height);
+                // MYUCG->drawFrame(xp-1, _ref.y - _char_height-1, _char_width+1, _char_height+1);
+                if (!(_aattr&ATTR_SMALL)) MYUCG->setClipRange(xp, _ref.y - _char_height, _char_width - 1, _char_height - 1);
+                MYUCG->setPrintPos(xp, _ref.y + m - _char_height);
                 MYUCG->print(lead_digit); // one above
-                MYUCG->setPrintPos(xp, _ref_y + m);
+                MYUCG->setPrintPos(xp, _ref.y + m);
                 MYUCG->print((lead_digit + 9) % 10);
                 if (!(_aattr&ATTR_SMALL)) MYUCG->undoClipRange();
                 ESP_LOGI(FNAME,"ld4: %d, len %d", (lead_digit+9)%10, len );
             }
         }
-        MYUCG->setPrintPos(_ref_x - MYUCG->getStrWidth(s) - nr_rolling_digits * _char_width, _ref_y);
+        MYUCG->setPrintPos(_ref.x - MYUCG->getStrWidth(s) - nr_rolling_digits * _char_width, _ref.y);
         if (strcmp(altpart_prev_s, s) != 0 || _dirty)
         {
             MYUCG->print(s);

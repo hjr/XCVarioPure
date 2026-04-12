@@ -25,6 +25,7 @@ public:
     // API
     void setWidth(int16_t width) { _width_half=width/2; stepFromWidth(width); }
     void setGap(int16_t gap) { _gap_half=gap/2; }
+    using ScreenElement::draw;
     void draw(mps_t s2fd, bool cruise);
 
 private:

@@ -24,9 +24,9 @@
 #pragma once
 
 #include "sensor/Filters.h"
-
+#include "driver/time/Clock.h"
 #include "vector.h"
-#include <cmath>
+
 #include <list>
 
 enum class circling_t : uint8_t {
@@ -64,15 +64,13 @@ public:
 
   void newWind(rad_t angle, mps_t speed);
 
-  static bool getWind(int16_t *dir, mps_t *speed);
-
   float getNumCircles() const { return circleCount + (circleArc / 360.0); }
   int getSatCnt() const { return satCnt; }
   bool getGpsStatus() const { return gpsStatus; }
   degree_t getAngleDeg() { return result.getAngleDeg(); }
   mps_t getSpeed() { return result.getSpeed(); }
-  int getAge() const { return _age; }
-  static void resetAge();
+  bool isValid() const { return Clock::getMillis() - _last_update_time < 10 * 60 * 1000; } // valid for 10 minutes after last update
+  int getAge() const { return (Clock::getMillis() - _last_update_time) / 1000; }
   const char *getStatus() const { return status; }
   const char *getFlightModeStr() const;
 
@@ -92,7 +90,7 @@ private:
   Vector result;
   mps_t minVecTas, maxVecTas;
   circling_t flightMode = circling_t::undefined;
-  static int16_t _age;
+  uint32_t _last_update_time = 0;
   const char *status;
   LowPassFilterT<float> _lp_headdiff; // we filter the heading a bit to get a more stable circle detection
   std::list<Vector> windVectors;

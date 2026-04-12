@@ -83,15 +83,6 @@ void StraightWind::tick(){
 	_tick++;
 }
 
-bool StraightWind::getWind(int16_t *direction, mps_t *speed)
-{
-	*direction = fast_iroundf(Units::rad_to_deg(swind_dir.get()));
-	*speed = swind_speed.get();
-	if( _age < 7200 )
-		return true;
-	else
-		return false;
-}
 
 /**
  * Measurement cycle for wind calculation in straight flight. Should be
@@ -231,8 +222,8 @@ void StraightWind::calculateSpeedAndAngle( float angle1, mps_t speed1, float ang
 	// ESP_LOGI(FNAME,"calcAngleSpeed( A1/S1=%3.1f°/%3.1f km/h  A2/S2=%3.1f°/%3.1f km/h): A/S: %3.2f°/%3.2f km/h", angle1, speed1, angle2, speed2, angle, speed  );
 }
 
-float StraightWind::getAngle() { return swind_dir.get(); };
-float StraightWind::getSpeed() { return swind_speed.get(); };
+float StraightWind::getAngle() { return 0; /*swind_dir.get();*/ }; // fixme
+float StraightWind::getSpeed() { return 0; /*swind_speed.get();*/ };
 
 void StraightWind::calculateWind( float tc, mps_t gs, float th, float deviation  ){
 
@@ -336,12 +327,12 @@ void StraightWind::calculateWind( float tc, mps_t gs, float th, float deviation 
 
 	// ESP_LOGI(FNAME,"New AVG WindDirection: %3.1f deg,  Strength: %3.1f km/h JI:%2.1f", windDir, windSpeed, jitter );
 	_age = 0;
-	if( (int)windDir != (int)swind_dir.get()  ){
-		swind_dir.set( windDir );
-	}
-	if( (int)windSpeed != (int)swind_speed.get() ){
-		swind_speed.set( windSpeed );
-	}
+	// if( (int)windDir != (int)swind_dir.get()  ){ fixme
+	// 	swind_dir.set( windDir );
+	// }
+	// if( (int)windSpeed != (int)swind_speed.get() ){
+	// 	swind_speed.set( windSpeed );
+	// }
 }
 
 

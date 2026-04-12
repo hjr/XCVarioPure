@@ -34,6 +34,7 @@
 #include "setup/CruiseMode.h"
 #include "wind/StraightWind.h"
 #include "wind/CircleWind.h"
+#include "wind/Wind.h"
 #include "driver/time/AliveMonitor.h"
 #include "setup/SetupNG.h"
 #include "CenterAid.h"
@@ -106,10 +107,10 @@ Point Point::operator+(const Point &p) const {
     Point tmp = p;
     return tmp += *this;
 }
-// Point Point::operator-(const Point &p) const {
-//     Point tmp = *this;
-//     return tmp -= p;
-// }
+Point Point::operator-(const Point &p) const {
+    Point tmp = *this;
+    return tmp -= p;
+}
 // Point Point::operator*(const Point &p) const {
 //     Point tmp = *this;
 //     return tmp *= p;
@@ -119,6 +120,24 @@ Point Point::rotate(rad_t alpha) const {
     float cos_a = fast_cos_rad(alpha);
     float sin_a = fast_sin_rad(alpha);
     return Point( x * cos_a - y * sin_a, x * sin_a + y * cos_a );
+}
+void Point::scaleNshift(const Point *pts, int n, Point shift, float scale, Point *ret)
+{
+    for ( int i = 0; i < n; i++ ) {
+        ret[i].x = fast_iroundf(pts[i].x * scale) + shift.x;
+        ret[i].y = fast_iroundf(pts[i].y * scale) + shift.y;
+    }
+}
+void Point::rotate(const Point *pts, int n, int16_t ad2, Point *ret)
+{
+    float cos_a = fast_cos_idx(ad2);
+    float sin_a = fast_sin_idx(ad2);
+    for ( int i = 0; i < n; i++ ) {
+        int16_t x = pts[i].x;
+        int16_t y = pts[i].y;
+        ret[i].x = fast_iroundf(x * cos_a - y * sin_a);
+        ret[i].y = fast_iroundf(x * sin_a + y * cos_a);
+    }
 }
 // NED to NAV frame with Z axes up
 Point Point::centralProjection(const vector_f &obj, float focus) {
@@ -292,6 +311,23 @@ void IpsDisplay::drawPolygon(Point *pts, int n)
         // n == 3
         ucg->drawTriangle(pts[i].x, pts[i].y,pts[i+1].x, pts[i+1].y,pts[i+2].x, pts[i+2].y);
         i += 2;
+    }
+}
+void IpsDisplay::drawPolyFrame(Point *pts, int n)
+{
+    if (n < 3) return; // nothing to draw
+    for( int i = 0; i < n; i++ ) {
+        int j = (i+1) % n;
+        ucg->drawLine(pts[i].x, pts[i].y, pts[j].x, pts[j].y);
+    }
+}
+void IpsDisplay::superBBox(const Point *pts, int n, BoundingBox &bbox)
+{
+    for( int i = 0; i < n; i++ ) {
+        if (pts[i].x < bbox[0].x) bbox[0].x = pts[i].x;
+        if (pts[i].x > bbox[1].x) bbox[1].x = pts[i].x;
+        if (pts[i].y < bbox[0].y) bbox[0].y = pts[i].y;
+        if (pts[i].y > bbox[1].y) bbox[1].y = pts[i].y;
     }
 }
 
@@ -502,12 +538,12 @@ void IpsDisplay::initDisplay() {
 
     MAINgauge->drawScale();
     MAINgauge->forceAllRedraw();
-    MAINgauge->setFigOffset(AVGOFFX, 0);
 
     if (!WNDgauge) {
         // create it always, because also the center aid is using it
-        WNDgauge = new PolarGauge(AMIDX + AVGOFFX, AMIDY, 360, 54, PolarGauge::COMPASS);
+        WNDgauge = new PolarGauge(AMIDX + AVGOFFX, AMIDY, 360, 58, PolarGauge::COMPASS);
     }
+    WNDgauge->setFigOffset(0, 0);
     WNDgauge->enableWindIndicator(wind_enable.get() > WA_OFF, wind_enable.get() == WA_EXTERNAL);
     WNDgauge->setWindRef(wind_reference.get());
     WNDgauge->setColor(needle_color.get());
@@ -785,7 +821,7 @@ void IpsDisplay::drawDisplay(){
 
     // average Climb
     if (!(tick % 2)) {
-        MAINgauge->drawFigure(te_avg_ms);
+        WNDgauge->drawFigure(te_avg_ms);
     }
 
     // S2F bar
@@ -822,31 +858,29 @@ void IpsDisplay::drawDisplay(){
     if (!(tick % 5)) {
         if (theCenteraid && !CRMOD.getCMode()) {
             theCenteraid->drawCenterAid();
-        } else if (wind_enable.get() > WA_OFF) {
-            // static int16_t wdir=-1, idir=-1;
-            // static int16_t wval=0, ival=0;
-            // the wind simulator to check the wind indicator
-            // float d = (rand()%180) / M_PI_2;
-            // idir += abs(sin(d)) + 2;
-            // ival = int((wval+d))%120;
+        }
+        if (wind_enable.get() > WA_OFF) {
+            // static int idir=0;
+            // static int ival=5;
+            // // the wind simulator to check the wind indicator
+            // idir = (idir + (rand()%5))%360;
+            // idir++;
+            // ival = (ival+(rand()%5))%360;
 
-            int16_t wdir = -1, inst_dir = -1;
-            mps_t wval = 0, inst_val = 0;
+            // WindData swind(Units::deg_to_rad(idir), (mps_t)(fast_sin_idx(idir*1.5)+1)/2*30.f/3.6f);
+            // WindData cwind(Units::deg_to_rad(ival), (mps_t)ival/3.6);
+
+            WindData swind, iwind;
             if (wind_enable.get() & WA_BOTH) {
-                if (straightWind && !straightWind->getWind(&wdir, &wval)) {
-                    wdir = -1;
-                }
-
-                if (circleWind && !circleWind->getWind(&wdir, &wval)) {
-                    wdir = -1;
+                if (synoptic_wind.getValid()) {
+                    swind = static_cast<WindData>(synoptic_wind.get());
                 }
             } else {
-                inst_dir = extwind_inst_dir.get();
-                inst_val = extwind_inst_speed.get();
-                wdir = extwind_sptc_dir.get();
-                wval = extwind_sptc_speed.get();
+                iwind.raw = ext_inst_wind.get();
+                swind.raw = ext_syn_wind.get();
             }
-            WNDgauge->drawWind(wdir, wval, inst_dir, inst_val);
+            // ESP_LOGI(FNAME, "draw wind swind: %d@%.1f cwind: %d@%.1f", swind.getDeg(), swind.getVal(), cwind.getDeg(), cwind.getVal());
+            WNDgauge->drawWind(swind, iwind);
         }
     }
 
@@ -887,9 +921,15 @@ void IpsDisplay::drawDisplay(){
                 VCSTATgauge->draw();
             }
         }
-        WNDgauge->clearGauge();
-        if (!vario_centeraid.get() || CRMOD.getCMode()) {
-            WNDgauge->drawRose();
+
+        if (vario_centeraid.get()) {
+            if (CRMOD.getCMode()) {
+                WNDgauge->clearGauge();
+                WNDgauge->drawRose();
+            }
+            else {
+                WNDgauge->clearGauge();
+            }
         }
         flags.mode_dirty = false;
     }
@@ -899,7 +939,7 @@ void IpsDisplay::drawDisplay(){
         // static float s = 0; // check the diamond
         // average_climb.set(sin(s) * 2.);
         // s += 0.1;
-        MAINgauge->drawAVG();
+        MAINgauge->drawAvgClimb();
     }
 
     if (flags.bottom_dirty) {
