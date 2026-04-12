@@ -106,10 +106,10 @@ Point Point::operator+(const Point &p) const {
     Point tmp = p;
     return tmp += *this;
 }
-// Point Point::operator-(const Point &p) const {
-//     Point tmp = *this;
-//     return tmp -= p;
-// }
+Point Point::operator-(const Point &p) const {
+    Point tmp = *this;
+    return tmp -= p;
+}
 // Point Point::operator*(const Point &p) const {
 //     Point tmp = *this;
 //     return tmp *= p;
@@ -119,6 +119,24 @@ Point Point::rotate(rad_t alpha) const {
     float cos_a = fast_cos_rad(alpha);
     float sin_a = fast_sin_rad(alpha);
     return Point( x * cos_a - y * sin_a, x * sin_a + y * cos_a );
+}
+void Point::scaleNshift(const Point *pts, int n, Point shift, float scale, Point *ret)
+{
+    for ( int i = 0; i < n; i++ ) {
+        ret[i].x = fast_iroundf(pts[i].x * scale) + shift.x;
+        ret[i].y = fast_iroundf(pts[i].y * scale) + shift.y;
+    }
+}
+void Point::rotate(const Point *pts, int n, int16_t ad2, Point *ret)
+{
+    float cos_a = fast_cos_idx(ad2);
+    float sin_a = fast_sin_idx(ad2);
+    for ( int i = 0; i < n; i++ ) {
+        int16_t x = pts[i].x;
+        int16_t y = pts[i].y;
+        ret[i].x = fast_iroundf(x * cos_a - y * sin_a);
+        ret[i].y = fast_iroundf(x * sin_a + y * cos_a);
+    }
 }
 // NED to NAV frame with Z axes up
 Point Point::centralProjection(const vector_f &obj, float focus) {
@@ -292,6 +310,23 @@ void IpsDisplay::drawPolygon(Point *pts, int n)
         // n == 3
         ucg->drawTriangle(pts[i].x, pts[i].y,pts[i+1].x, pts[i+1].y,pts[i+2].x, pts[i+2].y);
         i += 2;
+    }
+}
+void IpsDisplay::drawPolyFrame(Point *pts, int n)
+{
+    if (n < 3) return; // nothing to draw
+    for( int i = 0; i < n; i++ ) {
+        int j = (i+1) % n;
+        ucg->drawLine(pts[i].x, pts[i].y, pts[j].x, pts[j].y);
+    }
+}
+void IpsDisplay::superBBox(const Point *pts, int n, BoundingBox &bbox)
+{
+    for( int i = 0; i < n; i++ ) {
+        if (pts[i].x < bbox[0].x) bbox[0].x = pts[i].x;
+        if (pts[i].x > bbox[1].x) bbox[1].x = pts[i].x;
+        if (pts[i].y < bbox[0].y) bbox[0].y = pts[i].y;
+        if (pts[i].y > bbox[1].y) bbox[1].y = pts[i].y;
     }
 }
 

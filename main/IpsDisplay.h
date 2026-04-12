@@ -39,15 +39,20 @@ float getHeading();
 // Some geometry helper
 struct Point;
 using Vector2d = Point;
+using BoundingBox = Point[2];
 struct Point {
-    int16_t x, y;
+    Point() = default;
+    constexpr Point(int16_t x, int16_t y) : x(x), y(y) {}
+    int16_t x=0, y=0;
     Point operator+(const Point &p) const;
     Point& operator+=(const Point &p) { x += p.x; y += p.y; return *this; }
-    // Point operator-(const Point &p) const;
-    // Point& operator-=(const Point &p) { x -= p.x; y -= p.y; return *this; }
+    Point operator-(const Point &p) const;
+    Point& operator-=(const Point &p) { x -= p.x; y -= p.y; return *this; }
     // Point operator*(const Point &p) const;
     // Point& operator*=(const Point &p) { x *= p.x; y *= p.y; return *this; }
     Point rotate(rad_t alpha) const;
+    static void scaleNshift(const Point *pts, int n, Point shift, float scale, Point *ret);
+    static void rotate(const Point *pts, int n, int16_t ad2, Point *ret);
     static Point centralProjection(const vector_f &p, float focus); // todo should go into vector class, but needs Point for return value
     int dot(const Vector2d &v) const { return x * v.x + y * v.y; }
 };
@@ -84,6 +89,11 @@ public:
 	static void writeText( int line, std::string &text );
 	static void drawDisplay();
 
+    static void clipPolygonByLine(const Point *poly, int n, const Line &l, Point *above, int *na, Point *below, int *nb);
+    static void drawPolygon(Point *pts, int n);
+    static void drawPolyFrame(Point *pts, int n);
+    static void superBBox(const Point *pts, int n, BoundingBox &bbox);
+
 	static void drawLoadDisplay( float loadFactor );
 	static void drawLoadDisplayTexts();
 	static void initDisplay();
@@ -96,9 +106,6 @@ public:
 
 	static inline AdaptUGC *getDisplay() { return ucg; };
 	static AdaptUGC *ucg;
-
-    static void clipPolygonByLine(const Point *poly, int n, const Line &l, Point *above, int *na, Point *below, int *nb);
-    static void drawPolygon(Point *pts, int n);
 
   private:
     static PolarGauge *MAINgauge;
