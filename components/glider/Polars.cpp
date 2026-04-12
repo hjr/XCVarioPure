@@ -33,10 +33,21 @@ struct compressed_polar {
 	uint8_t  flags;                 // bit 0 = 0x01 -> has flaps
 };
 
+struct flap_table {
+	uint16_t index;
+	uint8_t  speeds[7];	     // km/h 0..255
+	std::string_view labels[7];  // points to zero terminated string e.g. "+1"
+};
 
-constexpr const compressed_polar polars_default_arr[] = {
+const flap_table flap_default_arr[] = {
+#include "FlapTable.txt"
+};
+
+
+const compressed_polar polars_default_arr[] = {
 #include <PackedPolarTable.inc>
 };
+
 
 
 t_polar::t_polar(const compressed_polar *cp)
@@ -57,6 +68,10 @@ t_polar::t_polar(const compressed_polar *cp)
 
 const t_polar Polars::getPolar(int idx) {
     return t_polar(&polars_default_arr[idx]);
+}
+
+const t_flap Polars::getFlap(int idx) {
+    return t_flap(&flap_default_arr[idx]);
 }
 
 int Polars::numPolars() {
