@@ -1,4 +1,5 @@
 #include "Anemoi.h"
+#include "wind/Wind.h"
 #include "setup/SetupNG.h"
 #include "logdefnone.h"
 
@@ -117,25 +118,34 @@ void Anemoi::parseStatus()
     ID:
         0x77(w): Page not active; 0x57(W): Page active
     B0-B7:
-        B0Wind direction (live), MSB
-        B1Wind direction (live), LSB
-        B2Wind magnitude (live)
+        B0Wind direction (live), MSB // index 2 byte
+        B1Wind direction (live), LSB // unsigned 0..359 degree aeronotical convention
+        B2Wind magnitude (live)     // km/h
         B3Wind direction (avg), MSB
         B4Wind direction (avg), LSB
         B5Wind magnitude (avg)
         B6Heading, MSB
-        B7Heading, LSB
+        B7Heading, LSB // unsigned 0..359 degree
         B8 Live wind uncertainty indicator (0 = Very high certainty … 255 = Very low certainty)
 
     e.g.: $W ... 0x0a .
  */
 void Anemoi::parseWind()
 {
-    extwind_inst_dir.set(static_cast<float>((_sm._frame[2]<<8) | _sm._frame[3]));
-    extwind_inst_speed.set(static_cast<float>(_sm._frame[4]));
-    extwind_sptc_dir.set(static_cast<float>((_sm._frame[5]<<8) | _sm._frame[6]));
-    extwind_sptc_speed.set(static_cast<float>(_sm._frame[7]));
-    ESP_LOGI(FNAME,"WDir %.1f, Wval %.1f", extwind_inst_dir.get(), extwind_inst_speed.get());
+    WindData live_wind;
+    live_wind.setDeg2((uint16_t)((_sm._frame[2]<<8) | _sm._frame[3]) * 2);
+    live_wind.setKmh(static_cast<float>(_sm._frame[4]));
+    ext_inst_wind.set(live_wind.data());
+    WindData avg_wind;
+    avg_wind.setDeg2((uint16_t)((_sm._frame[5]<<8) | _sm._frame[6]) * 2);
+    avg_wind.setKmh(static_cast<float>(_sm._frame[7]));
+    ext_syn_wind.set(avg_wind.data());
+    ESP_LOGI(FNAME,"Anemoi wind live: %d°@%.1f km/h, avg: %d°@%.1f km/h", live_wind.getDeg(), live_wind.getVal(), avg_wind.getDeg(), avg_wind.getVal());
+    // check on uncertainty indicator and set wind to invalid if above threshold
+    if ( _sm._frame[8] > 150 ) {
+        ext_inst_wind.setInvalid();
+        ext_syn_wind.setInvalid();
+    }
 }
 
 
