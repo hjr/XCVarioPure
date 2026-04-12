@@ -8,6 +8,7 @@
 #pragma once
 
 struct compressed_polar;
+struct flap_table;
 
 struct t_polar {
 	t_polar(const compressed_polar*);
@@ -25,9 +26,16 @@ struct t_polar {
 	int      flags;
 };
 
+struct t_flap {
+	t_flap(const flap_table*);
+	int        index;
+	float      speeds[7];  // km/h 0.0 .. 255.0
+	const char labels[7];  // points to zero terminated string e.g. "+1"
+};
 
 namespace Polars {
 	const t_polar getPolar(int idx);
+	const t_flap  getFlap(int idx);
 	int numPolars();
 	const char *getPolarName(int i);
 	int getPolarIndex(int i);
