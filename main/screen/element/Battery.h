@@ -16,7 +16,7 @@ class Battery : public ScreenElement
 public:
     Battery(int16_t cx, int16_t cy, bool sbs=false);
     // API
-    using BatteryDisplay = enum { BAT_PERCENTAGE, BAT_VOLTAGE, BAT_VOLTAGE_BIG };
+    using BatteryDisplay = enum { BAT_NONE, BAT_PERCENTAGE, BAT_VOLTAGE, BAT_VOLTAGE_BIG };
     void setThresholds();
     void blank();
     using ScreenElement::draw;

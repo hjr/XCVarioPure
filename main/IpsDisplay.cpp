@@ -516,8 +516,16 @@ void IpsDisplay::initDisplay() {
     if ( !CONNgauge ) {
         // CONNgauge = new Connection(DISPLAY_W-25, 24, display_orientation.get() == DISPLAY_NINETY);
     }
-    if (!BATgauge) {
-        BATgauge = new Battery(DISPLAY_W - 10, DISPLAY_H - 12, display_orientation.get() == DISPLAY_NINETY);
+    if (battery_display.get() ) {
+        if (!BATgauge) {
+            BATgauge = new Battery(DISPLAY_W - 10, DISPLAY_H - 12, display_orientation.get() == DISPLAY_NINETY);
+        }
+    }
+    else {
+        if ( BATgauge ) {
+            delete BATgauge;
+            BATgauge = nullptr;
+        }
     }
     if ( !VCSTATgauge ) {
         // VCSTATgauge = new CruiseStatus(INNER_RIGHT_ALIGN - 6, 22);

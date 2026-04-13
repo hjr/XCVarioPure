@@ -1111,6 +1111,7 @@ static void screens_menu_create_vario(SetupMenu *top) {
 
     SetupMenuSelect *batv = new SetupMenuSelect("Battery Display", RST_NONE, nullptr, &battery_display);
     batv->setHelp("Display battery charge state either in Percentage e.g. 75% or Voltage e.g. 12.5V");
+    batv->addEntry("Disable");
     batv->addEntry("Percentage");
     batv->addEntry("Voltage");
     batv->addEntry("Voltage Big");
