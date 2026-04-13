@@ -859,7 +859,7 @@ void IpsDisplay::drawDisplay(){
     }
 
     // S2F bar
-    if (!(tick % 11) && S2FBARgauge ) {
+    if ( (!(tick % 11) || flags.mode_dirty) && S2FBARgauge ) {
         // static float s=0; // check the bar code
         // s2fd = sin(s) * 42.;
         // s+=0.04;
