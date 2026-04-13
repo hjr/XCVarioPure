@@ -13,6 +13,7 @@
 #include "Colors.h"
 #include "math/Floats.h"
 #include "logdefnone.h"
+#include "IpsDisplay.h" //bbox
 
 #include <cmath>
 
@@ -160,38 +161,23 @@ bool ArrowIndicator::drawOver(int16_t val,float a)
         (int16_t)(_gauge._ref.y - fast_iroundf(si * _tip)),
     };
     ESP_LOGI(FNAME,"drawTetragon  x0:%d y0:%d x1:%d y1:%d x2:%d y2:%d x3:%d y3:%d", n.x_0, n.y_0, n.x_1, n.y_1, n.x_2, n.y_2, n.x_3, n.y_3 );
-    // MYUCG->setColor(COLOR_BLACK);
-    // MYUCG->drawTetragon(prev.x_0, prev.y_0, prev.x_1, prev.y_1, prev.x_2, prev.y_2, prev.x_3, prev.y_3);
-    int16_t minx = prev.x_0;
-    int16_t maxx = prev.x_0;
-    for (int i = 1; i < 6; i++) {
-        int16_t *x = (int16_t *)&prev + i*2;
-        if (*x < minx) {
-            minx = *x;
-        } else if (*x > maxx) {
-            maxx = *x;
-        }
-    }
-    int16_t miny = prev.y_0;
-    int16_t maxy = prev.y_0;
-    for (int i = 1; i < 6; i++) {
-        int16_t *y = (int16_t *)&prev + i*2 + 1;
-        if (*y < miny) {
-            miny = *y;
-        } else if (*y > maxy) {
-            maxy = *y;
-        }
-    }
-    minx--; miny--; maxx++; maxy++;
-    if ( (maxx-minx) * (maxy-miny) > (10000/3 ) ) {
+    BoundingBox box = {{prev.x_0, prev.y_0}, {prev.x_0, prev.y_0}};
+    IpsDisplay::superBBox((Point*)(&prev.x_1), 6, box);
+    // IpsDisplay::superBBox((Point*)(&n.x_0), 7, box);
+    // Enlarge box by one pixel in eacht direction
+    box[0].x -= 1;
+    box[0].y -= 1;
+    box[1].x += 1;
+    box[1].y += 1; // fixme: we should not need this, something is wrong
+    if ( (box[0].x - box[1].x +1) * (box[1].y - box[0].y +1) > (EGLIB_FRAMEBUFFER_SIZE/3 ) ) {
         // too much for the 10k frame buffer, guess prev unset
         prev = n;
         return false;
     }
-    ESP_LOGI(FNAME,"draw over  minx:%d maxx:%d miny:%d maxy:%d", minx, maxx, miny, maxy );
+    // ESP_LOGI(FNAME,"draw over  minx:%d maxx:%d miny:%d maxy:%d", box[0].x, box[1].x, box[0].y, box[1].y );
     // MYUCG->drawFrame(minx-1, miny-1, maxx - minx + 2, maxy - miny + 2);
-    MYUCG->startBuffering(minx, miny, maxx - minx, maxy - miny);
-    float diag = (float)(std::min(maxx - minx, maxy - miny)) / (_gauge.getDist05()); // rough estimate
+    MYUCG->startBuffering(box[0].x, box[0].y, box[1].x - box[0].x +1, box[1].y - box[0].y +1);
+    float diag = (float)(std::min(box[1].x - box[0].x +1, box[1].y - box[0].y +1)) / (_gauge.getDist05() + .1f); // rough estimate
     ESP_LOGI(FNAME,"draw over diag: %.2f dist05: %d", diag, _gauge.getDist05() );
     _gauge.drawScale(_last_a + diag, _last_a - diag); // redraw scale at last position to clean up artifacts
     MYUCG->setColor(color.color[0], color.color[1], color.color[2]);

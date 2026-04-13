@@ -7,6 +7,8 @@ extern "C" {
 #include "eglib/types.h"
 #include "eglib/drawing.h"
 
+#define EGLIB_FRAMEBUFFER_SIZE 14000
+
 /**
  * These functions initialize :c:type:`eglib_t` and control sleep status of
  * the hardware.

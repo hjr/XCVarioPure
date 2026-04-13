@@ -150,13 +150,12 @@ void WindIndicator::drawWind(bool erase)
         for (int i = 0; i < 5; i++) {
             _arrow[i] += _gauge._ref;
         }
-        IpsDisplay::superBBox(_arrow, 5, _abox); // increase bbox by arrow geometry
-        if ( ((_abox[1].x - _abox[0].x +1) * (_abox[1].y - _abox[0].y+1) * 3) > 13900 ) {
-            ESP_LOGI(FNAME, "bbox too big, skip draw");
-            return;
-        }
     }
     // MYUCG->drawFrame(_abox[0].x, _abox[0].y, _abox[1].x - _abox[0].x +1, _abox[1].y - _abox[0].y +1);
+    if ( (_abox[1].x - _abox[0].x +1) * (_abox[1].y - _abox[0].y +1) > (EGLIB_FRAMEBUFFER_SIZE/3) ) {
+        ESP_LOGI(FNAME, "bbox too big, skip draw");
+        return;
+    }
     MYUCG->startBuffering(_abox[0].x, _abox[0].y, _abox[1].x - _abox[0].x +1, _abox[1].y - _abox[0].y +1);
     if ( ! erase ) {
         MYUCG->setColor(COLOR_MGREY);

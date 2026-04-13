@@ -6,7 +6,7 @@
 //  - glyph rendering (max. ever needed is 27 * 48 * 3)
 //  - partial frame buffering (gauge indicator needs max. 56 x 56 x 3, (length+width/2)^2 x 3)
 // 
-static uint8_t eglib_buffer[14000]; // 14kb
+static uint8_t eglib_buffer[EGLIB_FRAMEBUFFER_SIZE]; // 14kb
 
 void eglib_Init(eglib_t *eglib, const hal_t *hal_driver, void *hal_driver_config_ptr, const display_t *display_driver, void *display_config_ptr)
 {
