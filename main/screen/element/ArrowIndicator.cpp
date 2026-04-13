@@ -175,9 +175,9 @@ bool ArrowIndicator::drawOver(int16_t val,float a)
         return false;
     }
     // ESP_LOGI(FNAME,"draw over  minx:%d maxx:%d miny:%d maxy:%d", box[0].x, box[1].x, box[0].y, box[1].y );
-    // MYUCG->drawFrame(minx-1, miny-1, maxx - minx + 2, maxy - miny + 2);
+    // MYUCG->drawFrame(box[0].x-1, box[0].y-1, box[1].x - box[0].x + 2, box[1].y - box[0].y + 2);
     MYUCG->startBuffering(box[0].x, box[0].y, box[1].x - box[0].x +1, box[1].y - box[0].y +1);
-    float diag = (float)(std::min(box[1].x - box[0].x +1, box[1].y - box[0].y +1)) / (_gauge.getDist05() + .1f); // rough estimate
+    float diag = (float)(std::min(box[1].x - box[0].x +1, box[1].y - box[0].y +1)) / (_gauge.getDist05()); // rough estimate
     ESP_LOGI(FNAME,"draw over diag: %.2f dist05: %d", diag, _gauge.getDist05() );
     _gauge.drawScale(_last_a + diag, _last_a - diag); // redraw scale at last position to clean up artifacts
     MYUCG->setColor(color.color[0], color.color[1], color.color[2]);

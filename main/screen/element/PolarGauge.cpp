@@ -446,7 +446,7 @@ void PolarGauge::drawScale(float from, float to)
     mid_lpos_upper = (mid_lpos_upper / modulo) * modulo; // round down to the next modulo hit
     int16_t mid_lpos_lower = fast_iroundf(func->invers(0.5 * (*func)(_mrange))) * 10;
     mid_lpos_lower = (mid_lpos_lower / modulo) * modulo;
-    ESP_LOGI(FNAME, "range %f/%f lines go m%d %d %d", _range, _mrange, modulo, _dist05, mid_lpos_upper);
+    // ESP_LOGI(FNAME, "range %f/%f lines go m%d %d %d", _range, _mrange, modulo, _dist05, mid_lpos_upper);
 
     // increment in 1/10 scale steps
     int16_t start = fast_iroundf(_range)*10, stop = fast_iroundf(_mrange)*10;
@@ -454,10 +454,14 @@ void PolarGauge::drawScale(float from, float to)
     if (from > -1000.)
     {
         // partial scale repainting
-        start = (int)(clipValue(from) * 10) + 2; // alias .2
-        stop = (int)(clipValue(to) * 10) - 2;
+        start = (int)(clipValue(from) * 10) + 1; // alias .1
+        stop = (int)(clipValue(to) * 10) - 1;
         if (std::abs(start) <= 10) {
             modulo = (_dist05 > 24) ? 1 : (_dist05 > 16) ? 2 : (_dist05 > 8) ? 5 : 10;
+        }
+        ESP_LOGI(FNAME, "scale from %d to %d", start, stop);
+        if ( _avg_climb > .0 ) {
+            special_mark = _avg_climb * 10.f;
         }
     }
     else {
@@ -473,7 +477,7 @@ void PolarGauge::drawScale(float from, float to)
 
     MYUCG->setFontPosCenter();
     MYUCG->setFont(ucg_font_fub14_hn);
-    ESP_LOGI(FNAME, "scale from %d to %d", start, stop);
+    // ESP_LOGI(FNAME, "scale from %d to %d", start, stop);
     bool draw_label = false;
     int middleat = 10 * func->getZero();
     for (int16_t a = start; a >= stop; a--)
@@ -524,7 +528,7 @@ void PolarGauge::drawScale(float from, float to)
                 }
                 draw_label = a != middleat && (draw_label || _range < 5. || a == mid_lpos_upper || a == mid_lpos_lower || a == l_start || a == l_stop);
             }
-            ESP_LOGI(FNAME, "lines a:%d end:%d label: %d  width: %d", a, end, draw_label, width );
+            // ESP_LOGI(FNAME, "lines a:%d end:%d label: %d  width: %d", a, end, draw_label, width );
 
             if (width) {
                 drawOneScaleLine(val, end, width, width-1);
