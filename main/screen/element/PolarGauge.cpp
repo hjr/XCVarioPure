@@ -128,7 +128,7 @@ void PolarGauge::forceAllRedraw()
     }
     _old_bow_idx = 0; // redraw bows
     _old_polar_sink = 0;
-    _old_avc = -1.f;
+    _avg_climb = -1.f;
 }
 
 void PolarGauge::setRange(float pos_range, float center_at, bool log)
@@ -206,34 +206,39 @@ void PolarGauge::drawPolarSink(mps_t a)
     drawBow(val, _old_polar_sink, 5, 1, BLUE);
 }
 
-void PolarGauge::drawAvgClimb(){
+void PolarGauge::drawAvgClimb() {
     // average climb in [m/sec]
     float avclimb = VarioUnit->apply(average_climb.get());
-    float delta = avclimb - _old_avc;
+    float delta = avclimb - _avg_climb;
 
-    ESP_LOGI(FNAME, "drawAVG: av=%.2f delta=%.2f", avclimb, delta);
-    if ( std::fabs(delta) < 0.05 || avclimb < 0.05) {
+    // ESP_LOGI(FNAME, "drawAVG: av=%.2f delta=%.2f", avclimb, delta);
+    if ( std::fabs(delta) < 0.08 || avclimb < 0.25) {
         return; // that is just noise
     }
-    if (_old_avc > .0) {
-        drawDisc(_old_avc, true);
-        ESP_LOGI(FNAME, "clean scale at: %f", _old_avc);
-        drawScale(_old_avc, _old_avc);
+    if (_avg_climb > .0) {
+        drawDisc(_avg_climb, true);
+        ESP_LOGI(FNAME, "clean scale at: %f", _avg_climb);
+        drawScale(_avg_climb, _avg_climb);
     }
     if (delta > (mean_climb_major_change.get()) / core_climb_history.get()) {
         MYUCG->setColor(COLOR_GREEN);
+        _avg_climb_color = {COLOR_GREEN};
     } else if (delta < -(mean_climb_major_change.get()) / core_climb_history.get()) {
         MYUCG->setColor(COLOR_RED);
+        _avg_climb_color = {COLOR_RED};
     } else if (delta > (mean_climb_major_change.get() / 2.0) / core_climb_history.get()) {
         MYUCG->setColor(COLOR_GREEN);
+        _avg_climb_color = {COLOR_GREEN};
     } else if (delta < -(mean_climb_major_change.get() / 2.0) / core_climb_history.get()) {
         MYUCG->setColor(COLOR_RED);
+        _avg_climb_color = {COLOR_RED};
     } else {
         MYUCG->setColor(COLOR_WHITE);
+        _avg_climb_color = {COLOR_WHITE};
     }
 
     drawDisc(avclimb);
-    _old_avc = avclimb;
+    _avg_climb = avclimb;
     MYUCG->setColor(COLOR_WHITE);
 }
 
@@ -440,6 +445,7 @@ void PolarGauge::drawScale(float from, float to)
     }
     // line density on outer scale area
     int16_t modulo = (_range > 10) ? 20 : (_range < 6) ? 5 : 10; // typically start in "no details" area
+    int16_t special_mark = -1000;
 
     // for larger ranges put at least on extra label in the middle of each half scale
     int16_t mid_lpos_upper = fast_iroundf(func->invers(0.5 * (*func)(_range))) * 10;
@@ -459,7 +465,7 @@ void PolarGauge::drawScale(float from, float to)
         if (std::abs(start) <= 10) {
             modulo = (_dist05 > 24) ? 1 : (_dist05 > 16) ? 2 : (_dist05 > 8) ? 5 : 10;
         }
-        ESP_LOGI(FNAME, "scale from %d to %d", start, stop);
+        // ESP_LOGI(FNAME, "scale from %d to %d", start, stop);
         if ( _avg_climb > .0 ) {
             special_mark = _avg_climb * 10.f;
         }
@@ -477,7 +483,6 @@ void PolarGauge::drawScale(float from, float to)
 
     MYUCG->setFontPosCenter();
     MYUCG->setFont(ucg_font_fub14_hn);
-    // ESP_LOGI(FNAME, "scale from %d to %d", start, stop);
     bool draw_label = false;
     int middleat = 10 * func->getZero();
     for (int16_t a = start; a >= stop; a--)
@@ -538,6 +543,11 @@ void PolarGauge::drawScale(float from, float to)
                 }
             }
             draw_label = false;
+        }
+        if ( a == special_mark ) {
+            MYUCG->setColor(_avg_climb_color.color[0], _avg_climb_color.color[1], _avg_climb_color.color[2]);
+            ESP_LOGI(FNAME, "special mark at a:%d", a);
+            drawDisc(_avg_climb);
         }
     }
     if (_flavor == XCVPRO) {

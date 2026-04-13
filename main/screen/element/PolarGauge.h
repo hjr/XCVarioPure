@@ -93,7 +93,8 @@ public:
     int16_t _old_idx = 360; // discretized previous index value
     int16_t _old_bow_idx = 0;
     int16_t _old_polar_sink = 0;
-    float _old_avc = -1.f;
+    float _avg_climb = -1.f;
+    ucg_color_t _avg_climb_color;
 
     // gauge value as average or figures
     LargeFigure *_figure = nullptr;
