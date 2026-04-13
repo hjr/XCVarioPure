@@ -277,6 +277,34 @@ static void buffer_scan_line(eglib_t *eglib, coordinate_t x, coordinate_t y, coo
       *buffer++ = color.b;
     }
 }
+// precondition: DISPLAY_LINE_DIRECTION_DOWN
+static void buffer_scan_column(eglib_t *eglib, coordinate_t x, coordinate_t y, coordinate_t len) {
+    if((x >= eglib->drawing.clip_xmax) || (x < eglib->drawing.clip_xmin))
+      return;
+    if( (y + len) > eglib->drawing.clip_ymax )
+      len = eglib->drawing.clip_ymax - y;
+    if (y < eglib->drawing.clip_ymin) {
+      len -= eglib->drawing.clip_ymin - y;
+      y = eglib->drawing.clip_ymin;
+    }
+    
+    if(len < 1)
+      return;
+
+    color_t color = eglib->drawing.color_index[0];
+
+    // calc offest in buffer
+    int span = (eglib->drawing.clip_xmax - eglib->drawing.clip_xmin) * 3; // number of bytes per row
+    uint8_t *buffer = eglib->drawing.buffer 
+                + ((y - eglib->drawing.clip_ymin) * span) // rows
+                + ((x - eglib->drawing.clip_xmin) * 3); // columns
+    for(coordinate_t i=0 ; i < len ; i++) {
+      *buffer = color.r;
+      *buffer = color.g;
+      *buffer = color.b;
+      buffer += span;
+    }
+}
 
 // keep in sync with draw_generic_line()
 static coordinate_t get_line_pixel_count(
@@ -405,6 +433,29 @@ void eglib_DrawHLine(eglib_t *eglib, coordinate_t x, coordinate_t y, coordinate_
     buffer_scan_line(eglib, x, y, len);
   } else {
     eglib->display.driver->draw_line(eglib, x, y, DISPLAY_LINE_DIRECTION_RIGHT, len, get_color_index_0);
+  }
+}
+
+void eglib_DrawVLine(eglib_t *eglib, coordinate_t x, coordinate_t y, coordinate_t len) {
+  if (len < 0) {
+    y += len;
+    len = -len;
+  }
+
+  if((x >= eglib->drawing.clip_xmax) || (x < eglib->drawing.clip_xmin))
+    return;
+  if (y < eglib->drawing.clip_ymin) {
+    len -= eglib->drawing.clip_ymin - y;
+    y = eglib->drawing.clip_ymin;
+  }
+  if( y + len > eglib->drawing.clip_ymax )
+    len = eglib->drawing.clip_ymax - y;
+
+  // ESP_LOGI( "dvl", "x:%d y:%d, len:%d", x, y, len );
+  if (eglib->do_buffer) {
+    buffer_scan_column(eglib, x, y, len);
+  } else {
+    eglib->display.driver->draw_line(eglib, x, y, DISPLAY_LINE_DIRECTION_DOWN, len, get_color_index_0);
   }
 }
 
@@ -1162,7 +1213,7 @@ void eglib_DrawDisc(eglib_t *eglib, int16_t x0, int16_t y0, int16_t rad, uint8_t
     ddF_x += 2;
     f += ddF_x;
 
-    eglib_draw_disc_section(eglib, x, y, x0, y0, option);    
+    eglib_draw_disc_section(eglib, x, y, x0, y0, option);
   }
 }
 

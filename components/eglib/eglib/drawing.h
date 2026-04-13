@@ -186,7 +186,7 @@ void eglib_DrawHLine(eglib_t *eglib, coordinate_t x, coordinate_t y, coordinate_
  *
  * :See also: :c:func:`eglib_SetIndexColor`.
  */
-#define eglib_DrawVLine(eglib, x, y, len) eglib_DrawLine(eglib, x, y, x, y + len);
+void eglib_DrawVLine(eglib_t *eglib, coordinate_t x, coordinate_t y, coordinate_t len);
 
 /**
  * Draw line from coordinates (`x1`, `y1`) to (`x2`, `y2`).
