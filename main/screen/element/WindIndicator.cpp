@@ -88,6 +88,10 @@ bool WindIndicator::draw(WindData w)
 // 0° reference on top of the compass rose
 void WindIndicator::drawWind(bool erase)
 {
+    if ( ! _wind.isValid() ) {
+        return;
+    }
+
     ESP_LOGI(FNAME, "wind deg:%d, v:%.1f ", _wind.getDeg(), _wind.getVal());
     if ( ! _live ) {
         float si = -fast_sin_idx(_wind.getDeg2());
@@ -121,9 +125,6 @@ void WindIndicator::drawWind(bool erase)
             MYUCG->print(buf);
             MYUCG->setFontPosBottom();
         }
-        if (erase) {
-            return;
-        }
     }
 
     // Calc the bounding box of the arrow
@@ -135,27 +136,34 @@ void WindIndicator::drawWind(bool erase)
     else {
         _abox[0] = Point(_gauge._ref.x, _gauge._ref.y);
         _abox[1] = Point(_gauge._ref.x, _gauge._ref.y);
+        if ( erase ) {
+            return; // only a previously painted arrow can be removed
+         }
     }
-    // an arrow tip in direction the wind is blowing (180° other direction)
-    constexpr float vref = Units::kmh_to_mps(25.f); // scale the arrow size with the wind speed
-    float scale = sqrtf((std::clamp(_wind.getVal(), Units::kmh_to_mps(10.f), vref-1.f) - .4f) / vref);
-    Point::scaleNshift(_indgeom, 5, Point(0, -(_gauge._radius-12)), scale, _arrow);
-    Point::rotate(_arrow, 5, _wind.getDeg2(), _arrow);
-    // shift to gauge center
-    for (int i = 0; i < 5; i++) {
-        _arrow[i] += _gauge._ref;
+    if ( ! erase ) {
+        // an arrow tip in direction the wind is blowing (180° other direction)
+        constexpr float vref = Units::kmh_to_mps(25.f); // scale the arrow size with the wind speed
+        float scale = sqrtf((std::clamp(_wind.getVal(), Units::kmh_to_mps(10.f), vref-1.f) - .4f) / vref);
+        Point::scaleNshift(_indgeom, 5, Point(0, -(_gauge._radius-14)), scale, _arrow);
+        Point::rotate(_arrow, 5, _wind.getDeg2(), _arrow);
+        // shift to gauge center
+        for (int i = 0; i < 5; i++) {
+            _arrow[i] += _gauge._ref;
+        }
+        IpsDisplay::superBBox(_arrow, 5, _abox); // increase bbox by arrow geometry
+        if ( ((_abox[1].x - _abox[0].x +1) * (_abox[1].y - _abox[0].y+1) * 3) > 13900 ) {
+            ESP_LOGI(FNAME, "bbox too big, skip draw");
+            return;
+        }
     }
-    IpsDisplay::superBBox(_arrow, 5, _abox); // increase bbox by arrow geometry
-    if ( ((_abox[1].x - _abox[0].x) * (_abox[1].y - _abox[0].y) * 3) > 13900 ) {
-        ESP_LOGI(FNAME, "bbox too big, skip draw");
-        return;
+    // MYUCG->drawFrame(_abox[0].x, _abox[0].y, _abox[1].x - _abox[0].x +1, _abox[1].y - _abox[0].y +1);
+    MYUCG->startBuffering(_abox[0].x, _abox[0].y, _abox[1].x - _abox[0].x +1, _abox[1].y - _abox[0].y +1);
+    if ( ! erase ) {
+        MYUCG->setColor(COLOR_MGREY);
+        IpsDisplay::drawPolygon(_arrow, 5);
+        // MYUCG->setColor(_color.color[0], _color.color[1], _color.color[2]);
+        // IpsDisplay::drawPolyFrame(_arrow, 5);
     }
-    // MYUCG->drawFrame(_abox[0].x, _abox[0].y, _abox[1].x - _abox[0].x, _abox[1].y - _abox[0].y);
-    MYUCG->startBuffering(_abox[0].x, _abox[0].y, _abox[1].x - _abox[0].x, _abox[1].y - _abox[0].y);
-    MYUCG->setColor(COLOR_MGREY);
-    IpsDisplay::drawPolygon(_arrow, 5);
-    MYUCG->setColor(_color.color[0], _color.color[1], _color.color[2]);
-    IpsDisplay::drawPolyFrame(_arrow, 5);
     if ( _gauge._figure ) {
         _gauge._figure->draw();
     }
@@ -166,6 +174,6 @@ void WindIndicator::redrawBG()
 {
     MYUCG->setColor(COLOR_MGREY);
     IpsDisplay::drawPolygon(_arrow, 5);
-    MYUCG->setColor(_color.color[0], _color.color[1], _color.color[2]);
-    IpsDisplay::drawPolyFrame(_arrow, 5);
+    // MYUCG->setColor(_color.color[0], _color.color[1], _color.color[2]);
+    // IpsDisplay::drawPolyFrame(_arrow, 5);
 }
