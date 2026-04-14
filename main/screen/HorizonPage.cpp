@@ -94,10 +94,13 @@ void HorizonPage::draw( Quaternion q )
         // }
         if ( previous_horizon_line.isDefined() ) {
             // also clip the previous horizon line for a minimal transition
-            Display->clipPolygonByLine(above, na, previous_horizon_line, optb, &ob, opta, &oa);
+            Line shifted = previous_horizon_line;
+            shifted._d += 1.0f;   // 1 Pixel down 
+            Display->clipPolygonByLine(above, na, shifted, optb, &ob, opta, &oa);
             MYUCG->setColor( COLOR_SKYBLUE );
             Display->drawPolygon(opta, oa);
-            Display->clipPolygonByLine(below, nb, previous_horizon_line, optb, &ob, opta, &oa);
+            shifted._d -= 2.0f;   // 1-2 = -1 so 1 Pixel up 
+            Display->clipPolygonByLine(below, nb, shifted, optb, &ob, opta, &oa);
             MYUCG->setColor( COLOR_EARTH );
             Display->drawPolygon(optb, ob);
         }
