@@ -8,7 +8,6 @@
 
 #include "HorizonPage.h"
 
-
 #include "math/Units.h"
 #include "math/Trigonometry.h"
 #include "math/Floats.h"
@@ -19,9 +18,7 @@
 #include "Colors.h"
 #include "logdef.h"
 
-
 #include <cstdint>
-
 
 // #define HORIZON_TEST 1
 
@@ -45,6 +42,7 @@ HorizonPage::HorizonPage()
     int16_t left = (DISPLAY_W-BOX_SIZE) / 2;
     int16_t top = (DISPLAY_H-BOX_SIZE) / 2;
     // ( 20, 60, 200, 200 );
+
     horizon_box[0] = {left, (int16_t)(top+BOX_SIZE)};
     horizon_box[1] = {(int16_t)(left+BOX_SIZE), (int16_t)(top+BOX_SIZE)};
     horizon_box[2] = {(int16_t)(left+BOX_SIZE), top};
@@ -56,31 +54,18 @@ void HorizonPage::draw( Quaternion q )
 {
     if ( _DIRTY ) {
         Display->clear();
-
-        int16_t left = (DISPLAY_W-BOX_SIZE) / 2;
-        int16_t top = (DISPLAY_H-BOX_SIZE) / 2;
-        // int16_t center_x = left + BOX_SIZE / 2;
-        int16_t center_y = top + BOX_SIZE / 2;
-        MYUCG->setColor( COLOR_WHITE );
-        MYUCG->drawTriangle(left - 19, center_y - 10, left, center_y, left - 19, center_y + 10); // Triangles l/r
-        MYUCG->drawTriangle(left + 200 + 20, center_y - 10, left + 200, center_y, left + 200 + 20, center_y + 10);
-        for (int i = -80; i <= 80; i += 20) { // 10° scale
-            MYUCG->drawHLine(left - 19, center_y + i, 20);
-            MYUCG->drawHLine(left + 200, center_y + i, 20);
-        }
-        for (int i = -70; i <= 70; i += 20) { // 5° scale
-            MYUCG->drawHLine(left - 10, center_y + i, 10);
-            MYUCG->drawHLine(left + 200, center_y + i, 10);
-        }
+        // --- REMOVED: side triangles + side scales ---
         previous_horizon_line = Line();
     }
+
     // draw sky and earth and panel
     Line l(q);
     if ( ! l.similar(previous_horizon_line) || _DIRTY ) {
         Point above[6], below[6], opta[6], optb[6];
-        int na, nb,
-            oa, ob;
+        int na, nb, oa, ob;
+
         Display->clipPolygonByLine(horizon_box, 4, l, above, &na, below, &nb);
+
         // ESP_LOGI(FNAME, "nA/nB %d,%d", na, nb);
         // int i = 0;
         // for ( ; i < std::min(na,nb); i++ ) {
@@ -92,14 +77,18 @@ void HorizonPage::draw( Quaternion q )
         // if ( i < nb ) {
         //     ESP_LOGI(FNAME, "B extra %d: %d,%d", i, below[i].x, below[i].y);
         // }
+
         if ( previous_horizon_line.isDefined() ) {
             // also clip the previous horizon line for a minimal transition
             Line shifted = previous_horizon_line;
             shifted._d += 1.0f;   // 1 Pixel down 
+
             Display->clipPolygonByLine(above, na, shifted, optb, &ob, opta, &oa);
             MYUCG->setColor( COLOR_SKYBLUE );
             Display->drawPolygon(opta, oa);
+
             shifted._d -= 2.0f;   // 1-2 = -1 so 1 Pixel up 
+
             Display->clipPolygonByLine(below, nb, shifted, optb, &ob, opta, &oa);
             MYUCG->setColor( COLOR_EARTH );
             Display->drawPolygon(optb, ob);
@@ -112,18 +101,94 @@ void HorizonPage::draw( Quaternion q )
             Display->drawPolygon(below, nb);
         }
 
+        // --- Aircraft symbol ---
         MYUCG->setColor( COLOR_YELLOW );
         MYUCG->drawDisc(DISPLAY_W/2, DISPLAY_H/2, 2, UCG_DRAW_ALL);
         MYUCG->drawHLine(DISPLAY_W/2 + 15, DISPLAY_H/2, 30);
         MYUCG->drawVLine(DISPLAY_W/2 + 15, DISPLAY_H/2, 5);
         MYUCG->drawHLine(DISPLAY_W/2 - 15, DISPLAY_H/2, -30);
         MYUCG->drawVLine(DISPLAY_W/2 - 15, DISPLAY_H/2, 5);
+
+        // --- NEW: fixed centered pitch scale WITH NUMBERS ---
+        int cx = DISPLAY_W / 2;
+        int cy = DISPLAY_H / 2;
+
+        int full_len = 30;
+        int short_len = (int)(full_len * 0.3f);
+        float px_per_5deg = 12.0f;
+
+        // text config
+        MYUCG->setColor(COLOR_YELLOW);
+        MYUCG->setFont(ucg_font_fub11_hr, false );   // small, readable
+        int gap = 8;                        // space between line and number
+
+        for (int deg = -35; deg <= 35; deg += 5) {
+
+            if (deg == 0) continue;
+
+            int y = cy - (int)((deg / 5.0f) * px_per_5deg);
+            bool isLong = (deg % 10 == 0);
+            int len = isLong ? full_len : short_len;
+
+            // draw tick
+            MYUCG->drawHLine(cx - len/2, y, len);
+
+            // numbers only for 10/20/30
+            if (isLong) {
+                int absDeg = abs(deg);
+                if (absDeg == 20) {
+                    char buf[4];
+                    sprintf(buf, "%d", absDeg);
+
+                    int str_w = MYUCG->getStrWidth(buf);
+
+                    int ascent  = MYUCG->getFontAscent();
+                    int descent = MYUCG->getFontDescent();
+                    // center text vertically on the tick line
+                    int text_y = y + (ascent - descent) / 2;
+
+                    // LEFT number
+                    int tx = cx - len/2 - gap - str_w;
+                    int center_x = tx + str_w / 2;
+                    int center_y = text_y - (ascent - descent) / 2;
+                    float side = l.fct(Point(center_x, center_y));
+
+                    // choose background color
+                    if(side > 0)
+                        MYUCG->setColor(1, COLOR_SKYBLUE); // bg color sky
+                    else
+                        MYUCG->setColor(1, COLOR_EARTH);   // bg color earth
+
+                    MYUCG->setPrintPos(cx - len/2 - gap - str_w, text_y);
+                    MYUCG->print(buf);
+
+                    // RIGHT number
+                    tx = cx + len/2 + gap;
+                    center_x = tx + str_w / 2;
+                    center_y = text_y - (ascent - descent) / 2;
+                    side = l.fct(Point(center_x, center_y));
+
+                    // choose background color
+                    if(side > 0)
+                        MYUCG->setColor(1, COLOR_SKYBLUE); // bg color sky
+                    else
+                        MYUCG->setColor(1, COLOR_EARTH);   // bg color earth
+
+                    MYUCG->setPrintPos(cx + len/2 + gap, text_y);
+                    MYUCG->print(buf);
+                }
+            }
+        }
+
+        // --- Roll text ---
         MYUCG->setColor(COLOR_WHITE);
+        MYUCG->setColor(1, COLOR_BLACK); // bg color
         MYUCG->setFont(ucg_font_fub20_hn, true);
         char buf[20];
         sprintf(buf, " %d° ", fast_iroundf(accSensor->getRollDeg()));
         MYUCG->setPrintPos(DISPLAY_W/2 - MYUCG->getStrWidth(buf)/2, DISPLAY_H/2 - BOX_SIZE/2 - 10);
         MYUCG->print(buf);
+
         previous_horizon_line = l;
     }
 
@@ -133,6 +198,7 @@ void HorizonPage::draw( Quaternion q )
         MYUCG->setFont(ucg_font_fub20_hn, true);
         MYUCG->setPrintPos(DISPLAY_W/2 - 50, DISPLAY_H/2 + BOX_SIZE + 50);
         // ESP_LOGI(FNAME,"compass enable, heading: %d", heading );
+
         if (heading > 0 && heading != heading_old) {
             MYUCG->setColor(COLOR_WHITE);
             MYUCG->printf("   %d°   ", heading);
@@ -182,6 +248,7 @@ void HorizonPage::draw( Quaternion q )
     p = l.mapToHorizon(p);
     MYUCG->setColor(COLOR_RED);
     MYUCG->drawDisc( p.x, p.y, 7, UCG_DRAW_ALL);
+
     vector_f below = {1000,0,50};
     p = Point::centralProjection(below, 1000.f);
     p = l.mapToHorizon(p);
@@ -189,4 +256,3 @@ void HorizonPage::draw( Quaternion q )
     MYUCG->drawDisc( p.x, p.y, 7, UCG_DRAW_ALL);
 #endif
 }
-
