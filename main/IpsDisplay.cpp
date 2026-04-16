@@ -342,7 +342,7 @@ static void initRefs()
 
 	// grab screen layout
 	AMIDX = gflags.isPro ? (DISPLAY_W/2 + 30) : (DISPLAY_W/2 + 16);
-	AMIDY = (DISPLAY_H)/2;
+	AMIDY = (DISPLAY_H)/2 - (gflags.isPro ? 0 : 8);
 	if ( display_orientation.get() == DISPLAY_NINETY ) {
 		INNER_RIGHT_ALIGN = DISPLAY_W - 74;
 		AMIDX = DISPLAY_W/2 - 46;
