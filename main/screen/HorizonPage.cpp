@@ -17,6 +17,7 @@
 #include "AdaptUGC.h"
 #include "Colors.h"
 #include "logdef.h"
+#include "Flarm.h"
 
 #include <cstdint>
 
@@ -180,19 +181,19 @@ void HorizonPage::draw( Quaternion q )
             }
         }
 
-        // --- Roll text ---
+        // --- bank label ---
         MYUCG->setColor(1, COLOR_BLACK); // bg color
         MYUCG->setFont(ucg_font_fub14_hn, true);
         MYUCG->setColor(COLOR_HEADER_LIGHT);
-
-        char buf[20];
-        int roll = fast_iroundf(accSensor->getRollDeg());
-        snprintf(buf, sizeof(buf), " %d° ", roll);  // quicker as sprintf
-        int strWidth = MYUCG->getStrWidth(buf);
         int baseY = DISPLAY_H / 2 - BOX_SIZE / 2 - 10;
         MYUCG->setPrintPos((DISPLAY_W-BOX_SIZE)/2, baseY-4);
         MYUCG->print("BANK");
+        char buf[20];
+        // --- bank value
+        int roll = fast_iroundf(accSensor->getRollDeg());
         MYUCG->setFont(ucg_font_fub20_hn, true);
+        snprintf(buf, sizeof(buf), "  %d°  ", roll);  // quicker as sprintf
+        int strWidth = MYUCG->getStrWidth(buf);
         MYUCG->setColor(COLOR_WHITE);
         MYUCG->setPrintPos(DISPLAY_W / 2 - strWidth / 2, baseY);
         MYUCG->print(buf);
@@ -200,27 +201,46 @@ void HorizonPage::draw( Quaternion q )
         previous_horizon_line = l;
     }
 
-    // --- Magnetic Heading (HDG) ---   tbd: Potentially we can also display GPS ground track (TRK)here
-    if ( mag_hdt.getValid() ) {
-        int heading = fast_iroundf(Units::rad_to_deg(mag_hdt.get()));
-        if (heading >= 0 && heading != heading_old) {
+    // --- Magnetic Heading (HDG) / Track (TRK) ---
+    static bool was_valid = false;
+    bool valid = (mag_hdt.getValid() || Flarm::gpsStatus());
+    if (valid) {
+        int heading;
+        bool isMag = mag_hdt.getValid();
+        if (isMag) {
+            heading = fast_iroundf(Units::rad_to_deg(mag_hdt.get()));
+        } else {
+            heading = fast_iroundf(Units::rad_to_deg(Flarm::getGndCourse()));
+        }
+        if (heading >= 0 && (heading != heading_old || !was_valid)) {
             int baseY = DISPLAY_H / 2 + BOX_SIZE / 2 + 25;
-            MYUCG->setColor(1, COLOR_BLACK); // bg
+            MYUCG->setColor(1, COLOR_BLACK);
+            // hdg/trk label
             MYUCG->setFont(ucg_font_fub14_hn, true);
             MYUCG->setColor(COLOR_HEADER_LIGHT);
-            MYUCG->setPrintPos((DISPLAY_W - BOX_SIZE) / 2, baseY+3);
-            MYUCG->print("HDG");   // label
-
+            MYUCG->setPrintPos((DISPLAY_W - BOX_SIZE) / 2, baseY + 3);
+            MYUCG->print(isMag ? "HDG" : "TRK");
+            // hdg/trk value
             MYUCG->setFont(ucg_font_fub20_hn, true);
             MYUCG->setColor(COLOR_WHITE);
             char buf[20];
-            snprintf(buf, sizeof(buf), " %d° ", heading);
+            snprintf(buf, sizeof(buf), "  %d°  ", heading);
             int strWidth = MYUCG->getStrWidth(buf);
-            MYUCG->setPrintPos(20+(DISPLAY_W/2) - strWidth/2, baseY+7);
-            MYUCG->print(buf);  // value
+            MYUCG->setPrintPos((DISPLAY_W / 2) - strWidth / 2, baseY + 7);
+            MYUCG->print(buf);
             heading_old = heading;
         }
+
+    } else {
+        // clear display when signal lost ---
+        if (was_valid) {
+            int baseY = DISPLAY_H / 2 + BOX_SIZE / 2;
+            MYUCG->setColor(COLOR_BLACK);
+            MYUCG->drawBox((DISPLAY_W - BOX_SIZE) / 2, baseY, BOX_SIZE, 40);
+            heading_old = -1;   // force redraw when signal returns
+        }
     }
+    was_valid = valid;
 
     _DIRTY = false;
 
