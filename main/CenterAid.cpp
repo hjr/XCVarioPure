@@ -119,15 +119,15 @@ void CenterAid::drawGlider() {
     MYUCG->setColor(COLOR_BLACK);
     int16_t *trptr = (int16_t*)triangle[2];
     if (_glider_on_top) {
-        MYUCG->drawBox(cx-B, cy-W, 2*B, 2*W);
+        MYUCG->drawBox(cx-B, cy-W, 2*B+1, 2*W+1);
         if ( flightmode == circling_t::circlingR )
             trptr = (int16_t*)triangle[0];
         else if (flightmode == circling_t::circlingL) {
             trptr = (int16_t*)triangle[1];
         }
     } else {
-        MYUCG->drawBox(cx-W, cy-B, 2*W, 2*B);
-        MYUCG->drawBox(2*_gauge._ref.x-cx-W, cy-B, 2*W, 2*B);
+        MYUCG->drawBox(cx-W, cy-B, 2*W+1, 2*B+1);
+        MYUCG->drawBox(2*_gauge._ref.x-cx-W, cy-B, 2*W+1, 2*B+1);
     }
     if ( flightmode == circling_t::circlingR || flightmode == circling_t::circlingL ) {
         MYUCG->setColor(COLOR_LBBLUE);
