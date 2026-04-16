@@ -181,27 +181,43 @@ void HorizonPage::draw( Quaternion q )
         }
 
         // --- Roll text ---
-        MYUCG->setColor(COLOR_WHITE);
         MYUCG->setColor(1, COLOR_BLACK); // bg color
-        MYUCG->setFont(ucg_font_fub20_hn, true);
+        MYUCG->setFont(ucg_font_fub14_hn, true);
+        MYUCG->setColor(COLOR_HEADER_LIGHT);
+
         char buf[20];
-        sprintf(buf, " %d° ", fast_iroundf(accSensor->getRollDeg()));
-        MYUCG->setPrintPos(DISPLAY_W/2 - MYUCG->getStrWidth(buf)/2, DISPLAY_H/2 - BOX_SIZE/2 - 10);
+        int roll = fast_iroundf(accSensor->getRollDeg());
+        snprintf(buf, sizeof(buf), " %d° ", roll);  // quicker as sprintf
+        int strWidth = MYUCG->getStrWidth(buf);
+        int baseY = DISPLAY_H / 2 - BOX_SIZE / 2 - 10;
+        MYUCG->setPrintPos((DISPLAY_W-BOX_SIZE)/2, baseY-4);
+        MYUCG->print("BANK");
+        MYUCG->setFont(ucg_font_fub20_hn, true);
+        MYUCG->setColor(COLOR_WHITE);
+        MYUCG->setPrintPos(DISPLAY_W / 2 - strWidth / 2, baseY);
         MYUCG->print(buf);
 
         previous_horizon_line = l;
     }
 
-    // heading
-    if (mag_hdt.getValid()) {
+    // --- Magnetic Heading (HDG) ---   tbd: Potentially we can also display GPS ground track (TRK)here
+    if ( mag_hdt.getValid() ) {
         int heading = fast_iroundf(Units::rad_to_deg(mag_hdt.get()));
-        MYUCG->setFont(ucg_font_fub20_hn, true);
-        MYUCG->setPrintPos(DISPLAY_W/2 - 50, DISPLAY_H/2 + BOX_SIZE + 50);
-        // ESP_LOGI(FNAME,"compass enable, heading: %d", heading );
+        if (heading >= 0 && heading != heading_old) {
+            int baseY = DISPLAY_H / 2 + BOX_SIZE / 2 + 25;
+            MYUCG->setColor(1, COLOR_BLACK); // bg
+            MYUCG->setFont(ucg_font_fub14_hn, true);
+            MYUCG->setColor(COLOR_HEADER_LIGHT);
+            MYUCG->setPrintPos((DISPLAY_W - BOX_SIZE) / 2, baseY+3);
+            MYUCG->print("HDG");   // label
 
-        if (heading > 0 && heading != heading_old) {
+            MYUCG->setFont(ucg_font_fub20_hn, true);
             MYUCG->setColor(COLOR_WHITE);
-            MYUCG->printf("   %d°   ", heading);
+            char buf[20];
+            snprintf(buf, sizeof(buf), " %d° ", heading);
+            int strWidth = MYUCG->getStrWidth(buf);
+            MYUCG->setPrintPos(20+(DISPLAY_W/2) - strWidth/2, baseY+7);
+            MYUCG->print(buf);  // value
             heading_old = heading;
         }
     }
