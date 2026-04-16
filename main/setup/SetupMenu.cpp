@@ -1174,7 +1174,7 @@ static void options_menu_create_screens(SetupMenu *top) { // dynamic!
 		top->addEntry(horizon);
 
         SetupMenuSelect* ncolor = new SetupMenuSelect("Needle Color", RST_NONE, nullptr, &needle_color);
-        ncolor->addEntry("White");
+        ncolor->addEntry("Cream");
         ncolor->addEntry("Orange");
         ncolor->addEntry("Red");
         top->addEntry(ncolor);

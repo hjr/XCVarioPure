@@ -10,5 +10,5 @@
 
 #include "Colors.h"
 
-const ucg_color_t ndl_color[3] = {{COLOR_WHITE}, {COLOR_ORANGE}, {COLOR_RED}};
+const ucg_color_t ndl_color[3] = {{COLOR_CREME}, {COLOR_ORANGE}, {COLOR_RED}};
 
