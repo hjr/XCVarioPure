@@ -143,6 +143,11 @@ void FlapsBox::drawLabels(FBoxStateHash cs)
     MYUCG->finishBuffering();
     MYUCG->setColor(1, g_col_background, g_col_background, g_col_background);
 
+    int cidx = needle_color.get();
+    MYUCG->setColor(ndl_color[cidx].color[0], ndl_color[cidx].color[1], ndl_color[cidx].color[2]);
+    MYUCG->drawHLine(boxx, _ref.y - 1, boxw);
+    MYUCG->drawHLine(boxx, _ref.y, boxw);
+
     _state = cs;
 }
 
@@ -151,10 +156,11 @@ void FlapsBox::drawLabels(FBoxStateHash cs)
 void FlapsBox::draw(mps_t ias)
 {
     if ( _dirty ) {
-        MYUCG->setColor(COLOR_HEADER);
-        MYUCG->drawRFrame(_ref.x, _ref.y-BOX_LENGTH/2-BOX_CORNER, BOX_WIDTH, BOX_LENGTH + 2*BOX_CORNER, BOX_CORNER);
-        MYUCG->setColor(ndl_color[needle_color.get()].color[0], ndl_color[needle_color.get()].color[1], ndl_color[needle_color.get()].color[2]);
-        MYUCG->drawDisc(_ref.x, _ref.y, 3, EGLIB_DRAW_UPPER_LEFT|EGLIB_DRAW_LOWER_LEFT);
+        // MYUCG->setColor(COLOR_HEADER);
+        // MYUCG->drawRFrame(_ref.x, _ref.y-BOX_LENGTH/2-BOX_CORNER, BOX_WIDTH, BOX_LENGTH + 2*BOX_CORNER, BOX_CORNER);
+        int cidx = needle_color.get();
+        MYUCG->setColor(ndl_color[cidx].color[0], ndl_color[cidx].color[1], ndl_color[cidx].color[2]);
+        MYUCG->drawDisc(_ref.x - 3, _ref.y, 5, EGLIB_DRAW_ALL);
     }
 
     float curr_fp;
