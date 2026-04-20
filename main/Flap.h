@@ -124,7 +124,6 @@ private:
     bool _legacy_imported = false;
     static const FlapLevel dummy;
     int rawFiltered = 0;
-    mutable float g_force = 1.;
 };
 
 extern Flap* FLAP;

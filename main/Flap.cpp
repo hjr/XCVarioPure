@@ -201,8 +201,7 @@ void Flap::progress(int count) {
 
 float Flap::getOptimum(mps_t spd) const {
     // Correct for current g load
-    float gcurr = accSensor ? accSensor->getGload() : 1.f;
-    g_force += (gcurr - g_force) * 0.5;
+    float g_force = accSensor ? accSensor->getGload() : 1.f;
     if (g_force < 0.3) {
         g_force = 0.3; // Ignore meaningless values below 0.3g
     }
