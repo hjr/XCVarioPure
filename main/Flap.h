@@ -46,6 +46,7 @@
 class AnalogInput;
 template <typename T>
 class SetupNG;
+struct flap_table;
 
 struct FlapLevel
 {
@@ -83,6 +84,7 @@ public:
     static SetupNG<mps_t> *getSpeedNVS(int idx);
     static SetupNG<int> *getLblNVS(int idx);
     static SetupNG<int> *getSensNVS(int idx);
+    void setFromFlapTable(const flap_table &fte);
     const FlapLevel *getFL(int idx) const { return (idx < flevel.size()) ? &flevel[idx] : &dummy; }
     void setSensCal(int idx, int val);
     void setLabel(int idx, const char *lab);
@@ -92,6 +94,7 @@ public:
     void reLoadLevels();
     void addLevel(FlapLevel &lev);
     void removeLevel(int idx);
+    void clearAllLevels() { flevel.clear(); prepLevels(); }
 
     // periodic feed
     void progress(int count);

@@ -1,6 +1,7 @@
 
 #include "Flap.h"
 
+#include "glider/Polars.h"
 #include "driver/gpio/AnalogInput.h"
 #include "setup/SetupNG.h"
 #include "sensor/imu/AccMPU6050.h"
@@ -8,7 +9,6 @@
 #include "sensor.h"
 #include "logdefnone.h"
 
-#include <string_view>
 #include <array>
 #include <algorithm>
 
@@ -84,6 +84,18 @@ SetupNG<int> *Flap::getLblNVS(int idx)
 SetupNG<int>   *Flap::getSensNVS(int idx)
 {
     return FL_STORE[idx].sensval;
+}
+
+void Flap::setFromFlapTable(const flap_table& fte) {
+    for (int i = 0; i < MAX_NR_POS; i++) {
+        getSpeedNVS(i)->set(static_cast<kmh_t>(fte.speeds[i]), true, false);
+        int tmp;
+        std::strncpy((char *)&tmp, fte.labels[i].data(), 4);
+        getLblNVS(i)->set(tmp, true, false);
+        ESP_LOGI(FNAME, "set flap level %d: speed %d, label %s", i, fte.speeds[i], fte.labels[i].data());
+    }
+    initFromNVS();
+    prepLevels();
 }
 
 void Flap::setSensCal(int idx, int val) {

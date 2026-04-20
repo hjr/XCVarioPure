@@ -74,19 +74,19 @@ void S2F::setPolar()
 {
 	ESP_LOGI(FNAME,"S2F::setPolar()");
 	t_polar p = Polars::getPolar(MyGliderPolarIndex);
-	polar_speed1.set( p.speed1 );
-	polar_speed2.set( p.speed2 );
-	polar_speed3.set( p.speed3 );
-	polar_sink1.set( p.sink1 );
-	polar_sink2.set( p.sink2 );
-	polar_sink3.set( p.sink3 );
-	polar_wingload.set( p.wingload );
+	polar_speed1.set( p.speed1, true, false);
+	polar_speed2.set( p.speed2, true, false);
+	polar_speed3.set( p.speed3, true, false);
+	polar_sink1.set( p.sink1, true, false);
+	polar_sink2.set( p.sink2, true, false);
+	polar_sink3.set( p.sink3, true, false);
+	polar_wingload.set( p.wingload, true, false );
 	// set default min speed as estimated stall_speed * 1.05 )
 	// Vstall := sqrt( (2 * W/S * g) / ( rho * Clmax ) ) [m/s]
 	_stall_speed = std::sqrtf( ( 2.f * polar_wingload.get() * Units::g0) / (Units::rho0 * 1.4f ) ) * 1.05f;
-	polar_stall_speed.set(Units::mps_to_kmh(_stall_speed));
+	polar_stall_speed.set(Units::mps_to_kmh(_stall_speed), true, false);
 	ESP_LOGI(FNAME,"Estimated stall speed: %.1f km/h", polar_stall_speed.get());
-	polar_max_ballast.set( p.max_ballast );
+	polar_max_ballast.set( p.max_ballast, true, false );
 	polar_wingarea.set( p.wingarea, true, false );
 	empty_weight.set( (p.wingload * p.wingarea) - 80.0, true, false ); // Calculate default for emtpy mass
 	ProtocolItf *prtcl = DEVMAN->getProtocol(NAVI_DEV, XCVARIO_P);
@@ -95,6 +95,19 @@ void S2F::setPolar()
 	}
 	ESP_LOGI(FNAME,"Reference weight:%.1f, new empty_weight: %.1f", (p.wingload * p.wingarea), empty_weight.get() );
 	changePolar();
+	// check on flaps
+	if ( p.hasFlaps() ) {
+		int flap_idx	= Polars::findMyFlapLevels(p.index);
+		if ( flap_idx >= 0 ) {
+			ESP_LOGI(FNAME,"This glider has flaps, setting default flap table");
+			Flap::theFlap()->setFromFlapTable( Polars::getFlapLevels(flap_idx) );
+		}
+		else {
+			ESP_LOGI(FNAME,"No flap definitions found for this glider, clearing flap table");
+			Flap::theFlap()->clearAllLevels();
+		}
+
+	}
 }
 
 // compare the used polar two the original one from polar store
@@ -227,7 +240,7 @@ void S2F::recalculatePolar()
 	a1 = a1 * ((bugs.get() + 100.0) / 100.0);
 	a2 = a2 * ((bugs.get() + 100.0) / 100.0);
     _valid = calcValidPolar();
-	ESP_LOGI(FNAME, "bugs:%d balo:%.1f%% a0=%f a1=%f  a2=%f s(80)=%f, s(160)=%f", (int)bugs.get(), myballast, a0, a1, a2, sink(80), sink(160));
+	ESP_LOGI(FNAME, "bugs:%d balo:%.1f%% a0=%f a1=%f  a2=%f s(80)=%f, s(160)=%f", (int)bugs.get(), myballast, a0, a1, a2, getSink(80), getSink(160));
 }
 
 void S2F::calculateOverweight()

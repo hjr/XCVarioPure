@@ -33,12 +33,6 @@ struct compressed_polar {
 	uint8_t  flags;                 // bit 0 = 0x01 -> has flaps
 };
 
-struct flap_table {
-	uint16_t index;
-	uint8_t  speeds[7];	     // km/h 0..255
-	std::string_view labels[7];  // points to zero terminated string e.g. "+1"
-};
-
 const flap_table flap_default_arr[] = {
 #include "FlapTable.txt"
 };
@@ -68,10 +62,6 @@ t_polar::t_polar(const compressed_polar *cp)
 
 const t_polar Polars::getPolar(int idx) {
     return t_polar(&polars_default_arr[idx]);
-}
-
-const t_flap Polars::getFlap(int idx) {
-    return t_flap(&flap_default_arr[idx]);
 }
 
 int Polars::numPolars() {
@@ -111,3 +101,25 @@ bool Polars::hasFlaps(int i){
     return polars_default_arr[i].flags & 0x01;
 }
 
+// flap table
+const flap_table& Polars::getFlapLevels(int idx) {
+    return flap_default_arr[idx];
+}
+
+int Polars::numFlaps() {
+	return(  sizeof(flap_default_arr) / sizeof(flap_table) );
+}
+
+// returns -1 if none were found, otherwise the index in the flap table
+int Polars::findMyFlapLevels(int glider_index) {
+	ESP_LOGI( FNAME,"findMyFlaps configured glider index: %d", glider_index);
+	int ret = -1;
+	for( int p=0; p<numFlaps(); p++ ){
+		if( flap_default_arr[p].index == glider_index ){
+			ESP_LOGI( FNAME,"Found Flap index %d at position %d", glider_index, p );
+			ret = p;
+			break;
+		}
+	}
+    return ret;
+}
