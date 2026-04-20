@@ -115,30 +115,25 @@ void Flap::prepLevels()
 
         // some precalculations for the flap levels
         _sens_order = flevel[0].sensval > flevel.back().sensval;
-        FlapLevel* prev = nullptr;
+        FlapLevel vne(v_max.get(), 0, 0);
+        vne.prep_speed = Units::kmh_to_mps(vne.nvs_speed);
+        vne.sensval = flevel[0].sensval;
+        FlapLevel *prev = &vne;
         int sdelta = 0;
         float vdelta = 0.0f;
         for (FlapLevel &fl : flevel) { // iterate 0, 1, ..
-            if (prev) {
-                sdelta = fl.sensval - prev->sensval;
-                if (sdelta == 0) {
-                    sdelta = _sens_order ? -1 : 1; // avoid zero deltas
-                }
-                prev->sens_delta = sdelta;
-                vdelta = fl.prep_speed - prev->prep_speed;
-                if (vdelta > -1.f ) {
-                    vdelta = -1.f;
-                }
-                prev->speed_delta = vdelta;
-                ESP_LOGI( FNAME, "sens delta %d, vdelta %.1f", sdelta, vdelta);
+            sdelta = fl.sensval - prev->sensval;
+            if (sdelta == 0) {
+                sdelta = _sens_order ? -1 : 1; // avoid zero deltas
             }
-            prev = &fl;
-        }
-        // also define on last entry to e.g. extrapolate
-        if (prev) {
-            prev->sens_delta = sdelta;
-            prev->speed_delta = vdelta;
+            fl.sens_delta = sdelta;
+            vdelta = fl.prep_speed - prev->prep_speed;
+            if (vdelta > -1.f ) {
+                vdelta = -1.f;
+            }
+            fl.speed_delta = vdelta;
             ESP_LOGI( FNAME, "sens delta %d, vdelta %.1f", sdelta, vdelta);
+            prev = &fl;
         }
     }
 }
@@ -201,7 +196,7 @@ void Flap::progress(int count) {
 }
 
 /////////////////////////////////////////////////
-// the core API functions for wk recommendations
+// the core API functions for flap recommendations
 /////////////////////////////////////////////////
 
 float Flap::getOptimum(mps_t spd) const {
@@ -214,7 +209,7 @@ float Flap::getOptimum(mps_t spd) const {
     mps_t g_speed = spd / sqrtf(g_force); // reduce current speed, instead of increase switch points
     // ESP_LOGI(FNAME, "g force: %.1f, g corrected speed: %3.1f", g_force, g_speed);
 
-    int wki = 0; // find the wk index one index above the current speed
+    int wki = 0; // find the min speed flap index
     for (auto &l : flevel) {
         if (g_speed > l.prep_speed) {
             break;
@@ -227,25 +222,20 @@ float Flap::getOptimum(mps_t spd) const {
         }
         wki = flevel.size() - 1;
     }
-    else if (wki > 0) {
-        wki--; // to get the speed index above
-    }
 
     // correct above GENERAL_V_MIN, but not below (too far extrapolated)
-    float wkf = wki + (g_speed - flevel[wki].prep_speed) / flevel[wki].speed_delta;
+    float wkf = wki + 0.5 + (g_speed - flevel[wki].prep_speed) / flevel[wki].speed_delta;
     if (g_speed < GENERAL_V_MIN) {
         wkf = flap_takeoff.get();
-    } else if (wkf < 0.) {
-        wkf = -0.1; // stop indicator a little beyond
-    } else if (wkf > flevel.size() - 1) {
-        wkf = flevel.size() - 1;
+    } else {
+        wkf = std::clamp(wkf, -0.1f, (float)(flevel.size() - 1));
     }
-    ESP_LOGI(FNAME, "opt: g-ias:%.1fmps wki:%d wkf:%.1f", g_speed, wki, wkf);
+    ESP_LOGI(FNAME, "opt: g-ias:%.1fmps wki:%d wkf:%.1f (p%.1fd%.1f)", g_speed, wki, wkf, flevel[wki].prep_speed, flevel[wki].speed_delta);
     return wkf;
 }
 
-static int getWkIndex(float wkf) {
-     return std::max(0, fast_iroundf(wkf));
+int Flap::getWkIndex(float wkf) const {
+    return std::clamp((int)(wkf + 0.5), 0, (int)flevel.size()-1);
 }
 
 // get speed band for given flap position wk
@@ -257,25 +247,23 @@ mps_t Flap::getSpeedBand(float wkf, mps_t &maxv) const
 
     // pick min/max speeds for given flap position index
     int wki = getWkIndex(wkf);
-    if ( wki < flevel.size() ) {
-        minv = flevel[wki].prep_speed;
-        if( wki == 0 ) {
-            maxv = v_max.get();
-        }
-        else {
-            maxv = flevel[wki-1].prep_speed;
-        }
-        ESP_LOGI(FNAME,"wkf:%.1f minv:%.1f maxv:%.1f", wkf, minv, maxv);
-
+    minv = flevel[wki].prep_speed;
+    if( wki == 0 ) {
+        maxv = v_max.get(); // upper speed end
+    }
+    else {
+        maxv = flevel[wki-1].prep_speed;
         // push speed band according to fractional flap position
         // assuming linear interpolation between flap positions
         // map band so that at a full flap position
         // the speed band is centered between the two flap speeds (no shift)
-        mps_t shift = (wkf - wki) * flevel[wki].speed_delta;
+        mps_t shift = (wki - wkf) * flevel[wki].speed_delta;
         minv += shift;
         maxv += shift;
         ESP_LOGI(FNAME,"shift:%.1f center speed:%.1fmps", shift, (minv + maxv)/2);
     }
+    ESP_LOGI(FNAME,"wkf:%.1f minv:%.1f maxv:%.1f", wkf, minv, maxv);
+
     return minv;
 }
 
@@ -283,7 +271,10 @@ mps_t Flap::getSpeed(float wkf) const
 {
     int wki = getWkIndex(wkf);
     if ( wki < flevel.size() ) {
-       return flevel[wki].prep_speed + (wkf - wki) * flevel[wki].speed_delta;
+        // speed from prep_speed@(wki+0.5) up to prep_speed+speed_delta@(wki-0.5)
+        float ret = flevel[wki].prep_speed + (wki - wkf - 0.5f) * flevel[wki].speed_delta;
+        ESP_LOGI(FNAME, "getspeed: %.1f (f%.1fi%d)", ret, wkf, wki);
+        return ret;
     }
     return 0.f;
 }
@@ -458,19 +449,16 @@ float Flap::sensorToLeverPosition( int val ) const
             if (_sens_order) {
                 // sensor readings going down with increasing flap index
                 if (val > flevel[i].sensval) {
-                    wk = i-1;
+                    wk = i;
                     break;
                 }
             }
             else {
                 if (val < flevel[i].sensval) {
-                    wk = i-1;
+                    wk = i;
                     break;
                 }
             }
-        }
-        if (wk < 0) {
-            wk = 0;
         }
         float wkf = wk + (float)(val - flevel[wk].sensval) / flevel[wk].sens_delta;
         // ESP_LOGI(FNAME,"getLeverPos(%d): wk: %d, cal %d, delta %d, frac: %1.2f ", val, wk, flevel[wk].sensval, flevel[wk].sens_delta, (float)(val - flevel[wk].sensval) / flevel[wk].sens_delta);

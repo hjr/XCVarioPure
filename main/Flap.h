@@ -25,6 +25,7 @@
 //   ^- sens_delta := L1calsens - L0calsens ... etc.
 //   |--           Sensor Value     ...       --|      -> steady increase/decrease of sensor reading
 // Level 0 | Level 1 |  ...  | Level n-2 | Level n-1 | -> recommended speed band
+//         ^fl0.5..  ^fl1.5 maps to speed band prep_speed(L2) <= v < prep_speed(L1
 //
 // Flap levels need to be prepared for the actual wingload on initialization and after changes. The resulting
 // prepared speeds are used for all calculations. -> prep_speed
@@ -57,7 +58,7 @@ struct FlapLevel
     };
     int sensval;
     int sens_delta;
-    FlapLevel(kmh_t s, int label_int, int sv) : nvs_speed(s), prep_speed(0.), speed_delta(0.), label_int(label_int), sensval(sv), sens_delta(0) {}
+    constexpr FlapLevel(kmh_t s, int label_int, int sv) : nvs_speed(s), prep_speed(0.), speed_delta(0.), label_int(label_int), sensval(sv), sens_delta(0) {}
     // FlapLevel(float s, const char *lc, int sv) : nvs_speed(s), prep_speed(0.), speed_delta(0.), sensval(sv), sens_delta(0) {
     //     std::strncpy(label, lc, 4);
     //     label[3] = '\0';
@@ -114,6 +115,7 @@ private:
     bool initFromNVS();
     void saveToNVS();
     float sensorToLeverPosition(int sensorreading) const;
+    int getWkIndex(float wkf) const;
     // attributes
     static Flap *_instance;
     AnalogInput *sensorAdc = nullptr;

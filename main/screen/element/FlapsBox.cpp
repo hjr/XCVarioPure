@@ -161,7 +161,7 @@ void FlapsBox::draw(mps_t ias)
     bool have_sens = Flap::sensAvailable();
     if ( have_sens ) {
         curr_fp = _flap->getFlapPosition();
-        // rasterize to .0, and .5 for better readability
+        // rasterize to .0, and .5
         float fp_base = fast_floorf(curr_fp);
         if ( curr_fp - fp_base < 0.25f ) {
             curr_fp = fp_base;
@@ -171,7 +171,7 @@ void FlapsBox::draw(mps_t ias)
             curr_fp = fp_base + 1.f;
         }
     } else {
-        curr_fp = (int)std::ceilf(_flap->getOptimum(ias));
+        curr_fp = fast_iroundf(_flap->getOptimum(ias));
     }
     // damp speed of indicator to make it good readable
     curr_fp = _fp_filter.filter(curr_fp);
@@ -180,7 +180,7 @@ void FlapsBox::draw(mps_t ias)
     minv = _flap->getSpeedBand(curr_fp, maxv);
     if ( airborne.get() == false ) {
         // on ground, set the ias virtually into the green band for the correct start position
-        ias = _flap->getSpeed(flap_takeoff.get() - 0.55); // pretend start speed
+        ias = _flap->getSpeed(flap_takeoff.get()); // pretend start speed
         ESP_LOGI(FNAME, "on ground, set ias to %.1f for flap position %.1f", ias, curr_fp);
     }
     minv -= ias;
