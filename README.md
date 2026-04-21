@@ -4,7 +4,7 @@ An ESP32-based, lean variometer system with an open data interface supporting Op
 
 ![Vario](https://github.com/hjr/XCVarioPro/blob/master/XcvPro.png)
 
-The project is rooted in the open-source and open-hardware flight computer community and is based on the ESP32 SoC, supporting modern digital sensors such as BMP280, SPL06-007, DS1820B, TE4525, ABPMRR, MP5004DP, CAN, AHRS MPU6050, and the QMC5883L magnetometer.
+The project is rooted in the open-source and open-hardware flight computer community and is based on the ESP32 SoC, supporting modern digital sensors such as BMP280, SPL06-007, DS1820B, TE4525, ABPMRR, MP5004DP, AHRS MPU6050, and the QMC5883L magnetometer.
 
 The variometer features a sunlight-readable 2.4-inch IPS LCD display with a brightness of 1000 nits and a low power consumption of less than 1.2 W, corresponding to approximately 100 mA at an operating voltage of 12.5 V. The device measures 64 (H) × 64 (W) × 35 (D) mm, fitting a standard 57 mm (2″) instrument gauge, and weighs approximately 170 grams.
 
