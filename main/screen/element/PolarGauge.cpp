@@ -72,7 +72,7 @@ PolarGauge::PolarGauge(int16_t refx, int16_t refy, int16_t scale_end, int16_t ra
         }
         else {
             int16_t arrow_len = display_orientation.get() == DISPLAY_NINETY ? 40 : 50;
-            _arrow = new ArrowIndicator(*this, _radius+8, arrow_len, 5, 7);
+            _arrow = new ArrowIndicator(*this, _radius+8, arrow_len, 6, 8);
         }
     }
     else {

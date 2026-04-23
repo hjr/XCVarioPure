@@ -185,11 +185,28 @@ bool ArrowIndicator::drawOver(int16_t val,float a)
     if ( _arrowhead > 0 ) {
         MYUCG->drawTriangle(n.x_4, n.y_4, n.x_5, n.y_5, n.x_6, n.y_6);
     }
+    // draw a black frame around the needle
+    MYUCG->setColor(COLOR_BLACK);
+    MYUCG->drawLine(n.x_0, n.y_0, n.x_1, n.y_1);
+    MYUCG->drawLine(n.x_1, n.y_1, n.x_4, n.y_4);
+    MYUCG->drawLine(n.x_4, n.y_4, n.x_6, n.y_6);
+    MYUCG->drawLine(n.x_6, n.y_6, n.x_5, n.y_5);
+    MYUCG->drawLine(n.x_5, n.y_5, n.x_0, n.y_0);
     MYUCG->finishBuffering();
+
+    MYUCG->setColor(color.color[0], color.color[1], color.color[2]);
     MYUCG->drawTetragon(n.x_0, n.y_0, n.x_1, n.y_1, n.x_4, n.y_4, n.x_5, n.y_5);
     if ( _arrowhead > 0 ) {
         MYUCG->drawTriangle(n.x_4, n.y_4, n.x_5, n.y_5, n.x_6, n.y_6);
     }
+    // draw a black frame around the needle
+    MYUCG->setColor(COLOR_BLACK);
+    MYUCG->drawLine(n.x_0, n.y_0, n.x_1, n.y_1);
+    MYUCG->drawLine(n.x_1, n.y_1, n.x_4, n.y_4);
+    MYUCG->drawLine(n.x_4, n.y_4, n.x_6, n.y_6);
+    MYUCG->drawLine(n.x_6, n.y_6, n.x_5, n.y_5);
+    MYUCG->drawLine(n.x_5, n.y_5, n.x_0, n.y_0);
+
     prev = n;
     _needle_pos = val;
     _last_a = a;
