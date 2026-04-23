@@ -980,11 +980,11 @@ void IpsDisplay::drawDisplay(){
         if (vario_centeraid.get()) {
             if (CRMOD.getCMode()) {
                 WNDgauge->clearGauge();
-                WNDgauge->drawRose();
+                // WNDgauge->drawRose();
             }
-            else {
-                WNDgauge->clearGauge();
-            }
+            // else {
+            //     WNDgauge->clearGauge();
+            // }
         }
         flags.mode_dirty = false;
     }

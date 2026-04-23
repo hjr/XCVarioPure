@@ -40,7 +40,6 @@ private:
 	bool _dirty = false; // force redraw of the center aid
 
 	int8_t thermals[CA_NUM_DIRS] = {0};  // every 15°: +/-127 in steps of 0.1 m/s
-	int8_t drawn_thermals[CA_NUM_DIRS] = {0};
 	rad_t cur_heading = 0.f;
 	rad_t gps_heading = 0.f;
 	rad_t gyro_last = 0.f;

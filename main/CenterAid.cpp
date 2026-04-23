@@ -73,21 +73,16 @@ void CenterAid::drawThermal(int tn, int idir, bool draw_red) {
     int16_t cy = _gauge._ref.y - fast_cos_rad(ddir * CA_STEP) * _gauge._radius;
 
     if (idir != 0) {
-        int td = drawn_thermals[ddir];
-        if (td && (tn < td)) {
-            MYUCG->setColor(COLOR_BLACK);
-            // ESP_LOGI(FNAME,"erase TH, dir:%d, TE:%d", idir, td );
-            MYUCG->drawDisc(cx, cy, td / DRAW_SCALE, UCG_DRAW_ALL);  // 120 / 20 = 6
-        }
+        MYUCG->startBuffering(cx-6, cy-6, 12, 12);
         if (tn > 0) {
-            // ESP_LOGI(FNAME,"draw TH, dir:%d, TE:%d", idir, td );
+            // ESP_LOGI(FNAME,"draw TH, dir:%d, TE:%d", idir, tn );
             if (draw_red)  // for max climb
                 MYUCG->setColor(COLOR_RED);
             else
                 MYUCG->setColor(COLOR_GREEN);
             MYUCG->drawDisc(cx, cy, tn / DRAW_SCALE, UCG_DRAW_ALL);
         }
-        drawn_thermals[ddir] = tn;
+        MYUCG->finishBuffering();
     }
 }
 
