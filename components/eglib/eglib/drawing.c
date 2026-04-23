@@ -298,10 +298,11 @@ static void buffer_scan_column(eglib_t *eglib, coordinate_t x, coordinate_t y, c
     uint8_t *buffer = eglib->drawing.buffer 
                 + ((y - eglib->drawing.clip_ymin) * span) // rows
                 + ((x - eglib->drawing.clip_xmin) * 3); // columns
+    span -= 3; // so reduce the span by one pixel
     for(coordinate_t i=0 ; i < len ; i++) {
-      *buffer = color.r;
-      *buffer = color.g;
-      *buffer = color.b;
+      *buffer++ = color.r;
+      *buffer++ = color.g;
+      *buffer++ = color.b;
       buffer += span;
     }
 }
