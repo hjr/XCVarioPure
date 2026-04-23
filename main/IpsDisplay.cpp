@@ -342,7 +342,7 @@ static void initRefs()
 
 	// grab screen layout
 	AMIDX = gflags.isPro ? (DISPLAY_W/2 + 30) : (DISPLAY_W/2 + 16);
-	AMIDY = (DISPLAY_H)/2 - (gflags.isPro ? 0 : 4);
+	AMIDY = (DISPLAY_H)/2 - (gflags.isPro ? 0 : 2);
 	if ( display_orientation.get() == DISPLAY_NINETY ) {
 		INNER_RIGHT_ALIGN = DISPLAY_W - 74;
 		AMIDX = DISPLAY_W/2 - 46;
@@ -483,7 +483,7 @@ void IpsDisplay::initDisplay() {
     if (!MAINgauge) {
         int16_t scale_geometry = (display_orientation.get() == DISPLAY_NINETY) ? 120 : (gflags.isPro ? 90 : 128 );
         MAINgauge = new PolarGauge(AMIDX, AMIDY, scale_geometry, 
-                        DISPLAY_H/2 - ((gflags.isPro || display_orientation.get() == DISPLAY_NINETY) ? 20 : 38), 
+                        DISPLAY_H/2 - ((display_orientation.get() == DISPLAY_NINETY) ? 20 : 35), 
                         gflags.isPro ? PolarGauge::XCVPRO : PolarGauge::CLUB);
     }
     MAINgauge->setUnit(VarioUnit->scale);
@@ -586,7 +586,7 @@ void IpsDisplay::initDisplay() {
     }
     if (vario_lower_gauge.get() == MultiGauge::GAUGE_WIND) {
         if (!WNDicon) {
-            WNDicon = new WindIcon(1, LOWERYPOS, 16);
+            WNDicon = new WindIcon(1, LOWERYPOS, 18);
         }
     } else {
         if (WNDicon) {
