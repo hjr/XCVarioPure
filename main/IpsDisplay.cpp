@@ -914,26 +914,26 @@ void IpsDisplay::drawDisplay(){
             theCenteraid->drawCenterAid();
         }
         if (wind_enable.get() > WA_OFF && WNDicon) {
-            static int idir=0;
-            static int ival=5;
-            // the wind simulator to check the wind indicator
-            idir = (idir + (rand()%5))%360; //  a"-" triggers the disc bug"
-            // idir++;
-            // ival = (ival+(rand()%5))%360;
+            // static int idir=0;
+            // static int ival=5;
+            // // the wind simulator to check the wind indicator
+            // idir = (idir + (rand()%5))%360; //  a"-" triggers the disc bug"
+            // // idir++;
+            // // ival = (ival+(rand()%5))%360;
 
-            WindData swind(Units::deg_to_rad(idir), (mps_t)(fast_sin_idx(idir*1.5)+1)/2*30.f/3.6f);
-            // WindData iwind(Units::deg_to_rad(ival), (mps_t)ival/3.6);
+            // WindData swind(Units::deg_to_rad(idir), (mps_t)(fast_sin_idx(idir*1.5)+1)/2*60.f/3.6f - 1);
+            // // WindData iwind(Units::deg_to_rad(ival), (mps_t)ival/3.6);
 
-            // WindData swind, iwind;
-            // if (wind_enable.get() & WA_BOTH) {
-            //     if (synoptic_wind.getValid()) {
-            //         swind = static_cast<WindData>(synoptic_wind.get());
-            //     }
-            // } else {
-            //     iwind.raw = ext_inst_wind.get();
-            //     swind.raw = ext_syn_wind.get();
-            // }
-            // ESP_LOGI(FNAME, "draw wind swind: %d@%.1f cwind: %d@%.1f", swind.getDeg(), swind.getVal(), iwind.getDeg(), iwind.getVal());
+            WindData swind, iwind;
+            if (wind_enable.get() & WA_BOTH) {
+                if (synoptic_wind.getValid()) {
+                    swind = static_cast<WindData>(synoptic_wind.get());
+                }
+            } else {
+                iwind.raw = ext_inst_wind.get();
+                swind.raw = ext_syn_wind.get();
+            }
+            ESP_LOGI(FNAME, "draw wind swind: %d@%.1f cwind: %d@%.1f", swind.getDeg(), swind.getVal(), iwind.getDeg(), iwind.getVal());
             // WNDgauge->drawWind(swind, iwind);
             WNDicon->draw(swind);
         }

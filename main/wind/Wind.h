@@ -22,8 +22,8 @@ union WindData
 {
     struct {
         uint16_t dir; // 0..719° in [0,5°], northwind as 0, e.g. south wind as 360
-        uint16_t val; // internally 3bit fix point [m/s]; could be any unit, e.g. m/s or km/h; 8 bit alias 230km/h might be enough range
-        // 8 bit might by used as flegs here, e.g. for live/tas or other flags, but currently unused
+        int16_t val; // internally 3bit fix point [m/s]; could be any unit, e.g. m/s or km/h; 8 bit alias 230km/h might be enough range
+        // 8 bit might by used as flags here, e.g. for live/tas or other flags, but currently unused
     } __attribute__((packed));
     uint32_t raw = 0xffff;
 
