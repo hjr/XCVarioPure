@@ -585,7 +585,7 @@ SetupNG<float> 			wind_as_calibration("WIND_AS_CAL", 1.0 );
 SetupNG<float> 			wind_filter_lowpass("SWINDAVER", 60, true, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(5, 120, 1));
 SetupNG<float> 			wind_straight_course_tolerance("WINDSTOL", 7.5, true, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(2.0, 30.0, 0.1));
 SetupNG<float> 			wind_straight_speed_tolerance("WINDSSTOL", 15, true, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(1.0, 30.0, 1));
-SetupNG<int> 			wind_reference( "WIND_REF", PolarGauge::WR_HEADING );
+SetupNG<int> 			wind_reference( "WIND_REF", static_cast<int>(WindReference::WR_HEADING) );
 SetupNG<float> 			wind_max_deviation("WIND_MDEV", 30.0, true, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(0.0, 180.0, 1.0));
 SetupNG<int> 			s2f_blockspeed( "S2G_BLOCKSPEED", 0, true, SYNC_BIDIR );  // considering netto vario and g load for S2F or not
 SetupNG<int> 			needle_color("NEEDLE_COLOR", VN_COLOR_ORANGE );
@@ -626,7 +626,7 @@ SetupNG<int> 			screen_gmeter("SCR_GMET", SCREEN_OFF, false);
 SetupNG<int> 			screen_horizon("SCR_HORIZ", SCREEN_OFF);
 SetupNG<int> 			vario_centeraid("SCR_CA", 0, false);
 SetupNG<int> 			vario_upper_gauge("SCR_GT", MultiGauge::GAUGE_IAS_SPEED, false);
-SetupNG<int> 			vario_lower_gauge("SCR_GB", 1, false);
+SetupNG<int> 			vario_lower_gauge("SCR_GB", MultiGauge::GAUGE_WIND, false);
 SetupNG<int> 			vario_mc_gauge("SCR_GMC", 1, false);
 // SetupNG<bitfield_compass>  calibration_bits("CALBIT", { 0,0,0,0,0,0 } );
 SetupNG<int> 			gear_warning("GEARWA", 0 );

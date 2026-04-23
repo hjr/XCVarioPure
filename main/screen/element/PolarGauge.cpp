@@ -262,7 +262,7 @@ void PolarGauge::drawFigure(float a)
 
 void PolarGauge::drawWind(WindData s, WindData i)
 {
-    if ( _wind_ref == WR_HEADING ) {
+    if ( wind_reference.get() == static_cast<int>(WindReference::WR_HEADING) ) {
         rad_t heading = getHeading();
         ESP_LOGI(FNAME, "heading %.1f", Units::rad_to_deg(heading));
         s.inclHeading(heading);
@@ -601,7 +601,7 @@ void PolarGauge::drawRose(int16_t at) const
         if ( a == 0 ) {
             MYUCG->setColor(COLOR_LBBLUE);
             // Draw a blue triangle for heading-up, or N for north-up
-            if ( _wind_ref == WR_NORTH) {
+            if ( wind_reference.get() == static_cast<int>(WindReference::WR_NORTH)) {
                 MYUCG->setFont(ucg_font_fub11_hr);
                 char c = 'N';
                 int16_t w2 = MYUCG->getCharWidth(c)/2;

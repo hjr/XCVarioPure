@@ -48,7 +48,6 @@ class PolarGauge : public ScreenElement
 
 public:
     using GaugeFlavor = enum : uint8_t { CLUB, XCVPRO, GLOAD, COMPASS};
-    using WindReference = enum : uint8_t { WR_HEADING, WR_NORTH };
 
     PolarGauge(int16_t refx, int16_t refy, int16_t scale_end, int16_t radius, GaugeFlavor flavor);
     ~PolarGauge();
@@ -60,7 +59,6 @@ public:
     void setUnit(float uf) { _unit_fac = uf; }
     void setColor(int color_idx);
     void setFigOffset(int16_t ox, int16_t oy);
-    void setWindRef(int wref) { _wind_ref = static_cast<WindReference>(wref); }
 
     using ScreenElement::draw;
     void draw(float a);
@@ -81,7 +79,6 @@ public:
     ArrowIndicator *_arrow = nullptr;
     WindIndicator *_wind_avg = nullptr;
     WindIndicator *_wind_live = nullptr;
-    WindReference _wind_ref = WR_HEADING;
     GaugeFlavor _flavor = CLUB;
     float _scale_max = 1.57f; // half scale extend in rad
     int16_t _radius = 50; // pixel

@@ -1082,7 +1082,9 @@ static void screens_menu_create_vario(SetupMenu *top) {
 
     SetupMenuSelect *bgauge = new SetupMenuSelect("Lower Gauge", RST_NONE, nullptr, &vario_lower_gauge);
     bgauge->setHelp("Choose the content for this gauge");
-    bgauge->mkEnable("Altimeter");
+    bgauge->addEntry("Disable", MultiGauge::GAUGE_NONE);
+    bgauge->addEntry("Altimeter", MultiGauge::GAUGE_ALTIMETER);
+    bgauge->addEntry("Wind", MultiGauge::GAUGE_WIND);
     top->addEntry(bgauge);
 
     SetupMenuSelect* mc = new SetupMenuSelect("Speed2Fly", RST_NONE, nullptr, &vario_mc_gauge);

@@ -13,6 +13,8 @@
 
 #include <cstdint>
 
+enum class WindReference : uint8_t { WR_HEADING, WR_NORTH };
+
 // A compact 32 bit representation of wind direction and strength used internally
 // - direction in deg/2 is a fix point with one bit mantissa, i.e. 0..719°
 // - value in m/s is the wind speed with three bit mantissa

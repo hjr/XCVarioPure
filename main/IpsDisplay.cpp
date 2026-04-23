@@ -11,6 +11,7 @@
 #include "screen/element/MultiGauge.h"
 #include "screen/element/PolarGauge.h"
 #include "screen/element/WindIndicator.h"
+#include "screen/element/WindIcon.h"
 #include "screen/element/McCready.h"
 #include "screen/element/Temperature.h"
 #include "screen/element/S2FBar.h"
@@ -32,8 +33,6 @@
 #include "Flap.h"
 #include "Flarm.h"
 #include "setup/CruiseMode.h"
-#include "wind/StraightWind.h"
-#include "wind/CircleWind.h"
 #include "wind/Wind.h"
 #include "driver/time/AliveMonitor.h"
 #include "setup/SetupNG.h"
@@ -61,6 +60,7 @@ int   IpsDisplay::tick = 0;
 // Average Vario data
 PolarGauge* IpsDisplay::MAINgauge = nullptr;
 PolarGauge* IpsDisplay::WNDgauge = nullptr;
+WindIcon*  IpsDisplay::WNDicon = nullptr;
 McCready*   IpsDisplay::MCgauge = nullptr;
 S2FBar*     IpsDisplay::S2FBARgauge = nullptr;
 Battery*    IpsDisplay::BATgauge = nullptr;
@@ -342,7 +342,7 @@ static void initRefs()
 
 	// grab screen layout
 	AMIDX = gflags.isPro ? (DISPLAY_W/2 + 30) : (DISPLAY_W/2 + 16);
-	AMIDY = (DISPLAY_H)/2 - (gflags.isPro ? 0 : 8);
+	AMIDY = (DISPLAY_H)/2 - (gflags.isPro ? 0 : 4);
 	if ( display_orientation.get() == DISPLAY_NINETY ) {
 		INNER_RIGHT_ALIGN = DISPLAY_W - 74;
 		AMIDX = DISPLAY_W/2 - 46;
@@ -482,8 +482,9 @@ void IpsDisplay::initDisplay() {
 
     if (!MAINgauge) {
         int16_t scale_geometry = (display_orientation.get() == DISPLAY_NINETY) ? 120 : (gflags.isPro ? 90 : 128 );
-        MAINgauge = new PolarGauge(AMIDX, AMIDY, scale_geometry, DISPLAY_H/2 - ((gflags.isPro || display_orientation.get() == DISPLAY_NINETY) ? 20 : 36), 
-                            gflags.isPro ? PolarGauge::XCVPRO : PolarGauge::CLUB);
+        MAINgauge = new PolarGauge(AMIDX, AMIDY, scale_geometry, 
+                        DISPLAY_H/2 - ((gflags.isPro || display_orientation.get() == DISPLAY_NINETY) ? 20 : 38), 
+                        gflags.isPro ? PolarGauge::XCVPRO : PolarGauge::CLUB);
     }
     MAINgauge->setUnit(VarioUnit->scale);
     MAINgauge->setRange(scale_range.get(), 0.f, log_scale.get());
@@ -552,8 +553,7 @@ void IpsDisplay::initDisplay() {
         WNDgauge = new PolarGauge(AMIDX + AVGOFFX, AMIDY, 360, 58, PolarGauge::COMPASS);
     }
     WNDgauge->setFigOffset(0, 0);
-    WNDgauge->enableWindIndicator(wind_enable.get() > WA_OFF, wind_enable.get() == WA_EXTERNAL);
-    WNDgauge->setWindRef(wind_reference.get());
+    // WNDgauge->enableWindIndicator(wind_enable.get() > WA_OFF, wind_enable.get() == WA_EXTERNAL);
     WNDgauge->setColor(needle_color.get());
     WNDgauge->setUnit(SpeedUnit->scale);
 
@@ -574,7 +574,7 @@ void IpsDisplay::initDisplay() {
     }
 
 
-    if (vario_lower_gauge.get()) {
+    if (vario_lower_gauge.get() == MultiGauge::GAUGE_ALTIMETER) {
         if (!ALTgauge) {
             ALTgauge = new Altimeter(INNER_RIGHT_ALIGN, LOWERYPOS, gflags.isPro || display_orientation.get() == DISPLAY_NINETY);
         }
@@ -582,6 +582,16 @@ void IpsDisplay::initDisplay() {
         if (ALTgauge) {
             delete ALTgauge;
             ALTgauge = nullptr;
+        }
+    }
+    if (vario_lower_gauge.get() == MultiGauge::GAUGE_WIND) {
+        if (!WNDicon) {
+            WNDicon = new WindIcon(1, LOWERYPOS, 16);
+        }
+    } else {
+        if (WNDicon) {
+            delete WNDicon;
+            WNDicon = nullptr;
         }
     }
     if (vario_upper_gauge.get()) {
@@ -662,9 +672,11 @@ void IpsDisplay::redrawValues()
     if ( FLAPSgauge ) {
         FLAPSgauge->forceRedraw();
     }
-
     if (theCenteraid) {
         theCenteraid->forceRedraw();
+    }
+    if (WNDicon) {
+        WNDicon->forceRedraw();
     }
 }
 
@@ -901,28 +913,29 @@ void IpsDisplay::drawDisplay(){
         if (theCenteraid && !CRMOD.getCMode()) {
             theCenteraid->drawCenterAid();
         }
-        if (wind_enable.get() > WA_OFF) {
-            // static int idir=0;
-            // static int ival=5;
-            // // the wind simulator to check the wind indicator
-            // idir = (idir + (rand()%5))%360; //  a"-" triggers the disc bug"
-            // // idir++;
+        if (wind_enable.get() > WA_OFF && WNDicon) {
+            static int idir=0;
+            static int ival=5;
+            // the wind simulator to check the wind indicator
+            idir = (idir + (rand()%5))%360; //  a"-" triggers the disc bug"
+            // idir++;
             // ival = (ival+(rand()%5))%360;
 
-            // WindData swind(Units::deg_to_rad(idir), (mps_t)(fast_sin_idx(idir*1.5)+1)/2*30.f/3.6f);
+            WindData swind(Units::deg_to_rad(idir), (mps_t)(fast_sin_idx(idir*1.5)+1)/2*30.f/3.6f);
             // WindData iwind(Units::deg_to_rad(ival), (mps_t)ival/3.6);
 
-            WindData swind, iwind;
-            if (wind_enable.get() & WA_BOTH) {
-                if (synoptic_wind.getValid()) {
-                    swind = static_cast<WindData>(synoptic_wind.get());
-                }
-            } else {
-                iwind.raw = ext_inst_wind.get();
-                swind.raw = ext_syn_wind.get();
-            }
+            // WindData swind, iwind;
+            // if (wind_enable.get() & WA_BOTH) {
+            //     if (synoptic_wind.getValid()) {
+            //         swind = static_cast<WindData>(synoptic_wind.get());
+            //     }
+            // } else {
+            //     iwind.raw = ext_inst_wind.get();
+            //     swind.raw = ext_syn_wind.get();
+            // }
             // ESP_LOGI(FNAME, "draw wind swind: %d@%.1f cwind: %d@%.1f", swind.getDeg(), swind.getVal(), iwind.getDeg(), iwind.getVal());
-            WNDgauge->drawWind(swind, iwind);
+            // WNDgauge->drawWind(swind, iwind);
+            WNDicon->draw(swind);
         }
     }
 
@@ -998,6 +1011,9 @@ void IpsDisplay::drawDisplay(){
         }
         if ( ALTgauge && ! gflags.isPro ) {
             ALTgauge->forceRedraw();
+        }
+        if ( WNDicon ) {
+            WNDicon->forceRedraw();
         }
     }
     // ESP_LOGI(FNAME,"IpsDisplay::drawDisplay  TE=%0.1f  x0:%d y0:%d x2:%d y2:%d", te, x0, y0, x2,y2 );

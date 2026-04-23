@@ -21,6 +21,7 @@ extern int screens_init;
 class AdaptUGC;
 class PolarGauge;
 class WindIndicator;
+class WindIcon;
 class McCready;
 class S2FBar;
 class Battery;
@@ -110,6 +111,7 @@ public:
   private:
     static PolarGauge *MAINgauge;
     static PolarGauge *WNDgauge;
+    static WindIcon *WNDicon;
     static McCready *MCgauge;
     static S2FBar *S2FBARgauge;
     static Battery *BATgauge;
