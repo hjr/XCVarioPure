@@ -1,20 +1,20 @@
 
 #include "SubMenuCompassWind.h"
 
-#include "comm/Devices.h"
+// #include "comm/Devices.h"
 #include "setup/SetupMenu.h"
 #include "setup/SetupMenuSelect.h"
 #include "setup/SetupMenuValFloat.h"
-#include "sensor/mag/MagVSensor.h"
+// #include "sensor/mag/MagVSensor.h"
 
 #include "ShowCirclingWind.h"
 #include "ShowStraightWind.h"
-#include "comm/DeviceMgr.h"
+// #include "comm/DeviceMgr.h"
 #include "setup/SetupNG.h"
 #include "wind/WindCalcTask.h"
-#include "math/vector_3d.h"
+// #include "math/vector_3d.h"
 #include "AdaptUGC.h"
-#include "Colors.h"
+// #include "Colors.h"
 #include "logdefnone.h"
 
 #include <cstdlib>
@@ -360,23 +360,29 @@ void options_menu_create_compasswind_circlingwind(SetupMenu *top) {
 	top->addEntry(scw);
 }
 
-#ifdef DEBUG_AND_TEST
 void options_menu_create_wind(SetupMenu *top) {
 	// Wind speed observation window
 	SetupMenuSelect *windcal = new SetupMenuSelect("Wind Calculation", RST_NONE, windResourcesAction, &wind_enable);
 	windcal->addEntry("Disable", WA_OFF);
-	windcal->addEntry("Straight", WA_STRAIGHT);
+	// windcal->addEntry("Straight", WA_STRAIGHT);
 	windcal->addEntry("Circling", WA_CIRCLING);
 	windcal->addEntry("Both", WA_BOTH);
 	windcal->addEntry("External", WA_EXTERNAL);
 	windcal->setHelp("Enable Wind calculation for straight flight (needs compass), circling, both or external source");
 	top->addEntry(windcal);
 
+    SetupMenuSelect *wref = new SetupMenuSelect("Wind Ref.", RST_NONE, nullptr, &wind_reference);
+    wref->setHelp("Display wind relative to glider is default, choose north-up, if prefered");
+    wref->addEntry("Heading-Up");
+    wref->addEntry("North-Up");
+    top->addEntry(wref);
+
+#ifdef DEBUG_AND_TEST
 	SetupMenu *strWindM = new SetupMenu("Straight Wind", options_menu_create_compasswind_straightwind);
 	top->addEntry(strWindM);
 	strWindM->setHelp("Straight flight wind calculation needs compass module active");
 
 	SetupMenu *cirWindM = new SetupMenu("Circling Wind", options_menu_create_compasswind_circlingwind);
 	top->addEntry(cirWindM);
-}
 #endif
+}

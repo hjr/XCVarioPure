@@ -1105,12 +1105,6 @@ static void screens_menu_create_vario(SetupMenu *top) {
     wke->setHelp("An indicator to assist optimum flap setting depending on speed, G-load and ballast");
     top->addEntry(wke);
 
-    SetupMenuSelect *wref = new SetupMenuSelect("Wind Ref.", RST_NONE, nullptr, &wind_reference);
-    wref->setHelp("Display wind relative to glider is default, choose north-up, if prefered");
-    wref->addEntry("Heading-Up");
-    wref->addEntry("North-Up");
-    top->addEntry(wref);
-
     SetupMenuSelect *batv = new SetupMenuSelect("Battery Display", RST_NONE, nullptr, &battery_display);
     batv->setHelp("Display battery charge state either in Percentage e.g. 75% or Voltage e.g. 12.5V");
     batv->addEntry("Disable");
@@ -1250,21 +1244,10 @@ void options_menu_create(SetupMenu *opt) { // dynamic!
 		opt->addEntry(flarm);
 		flarm->setHelp("Option to display FLARM Warnings depending on FLARM alarm level");
 
-#ifdef DEBUG_AND_TEST
 		SetupMenu *compassWindMenu = new SetupMenu("Wind", options_menu_create_wind);
 		opt->addEntry(compassWindMenu);
 		compassWindMenu->setHelp("Setup Compass and Wind");
-#else
-		// Wind speed observation window
-		SetupMenuSelect *windcal = new SetupMenuSelect("Wind Calculation", RST_NONE, windResourcesAction, &wind_enable);
-		windcal->addEntry("Disable", WA_OFF);
-		windcal->addEntry("Straight", WA_STRAIGHT);
-		windcal->addEntry("Circling", WA_CIRCLING);
-		windcal->addEntry("Both", WA_BOTH);
-		windcal->addEntry("External", WA_EXTERNAL);
-		windcal->setHelp("Enable Wind calculation for straight flight (needs compass), circling, both or external source");
-		opt->addEntry(windcal);
-#endif
+
 		SetupMenu *screens = new SetupMenu("Screens & Gauges", options_menu_create_screens);
 		opt->addEntry(screens);
 	}
