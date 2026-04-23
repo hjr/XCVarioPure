@@ -215,31 +215,33 @@ void PolarGauge::drawAvgClimb() {
     if ( std::fabs(delta) < 0.08 || avclimb < 0.25) {
         return; // that is just noise
     }
-    if (_avg_climb > .0) {
-        drawDisc(_avg_climb, true);
-        ESP_LOGI(FNAME, "clean scale at: %f", _avg_climb);
-        drawScale(_avg_climb, _avg_climb);
-    }
-    if (delta > (mean_climb_major_change.get()) / core_climb_history.get()) {
-        MYUCG->setColor(COLOR_GREEN);
-        _avg_climb_color = {COLOR_GREEN};
-    } else if (delta < -(mean_climb_major_change.get()) / core_climb_history.get()) {
-        MYUCG->setColor(COLOR_RED);
-        _avg_climb_color = {COLOR_RED};
-    } else if (delta > (mean_climb_major_change.get() / 2.0) / core_climb_history.get()) {
-        MYUCG->setColor(COLOR_GREEN);
-        _avg_climb_color = {COLOR_GREEN};
-    } else if (delta < -(mean_climb_major_change.get() / 2.0) / core_climb_history.get()) {
-        MYUCG->setColor(COLOR_RED);
-        _avg_climb_color = {COLOR_RED};
-    } else {
-        MYUCG->setColor(COLOR_WHITE);
-        _avg_climb_color = {COLOR_WHITE};
+    float from = avclimb;
+    float downto = _avg_climb;
+    if ( delta < 0.f ) {
+        from = _avg_climb;
+        downto = avclimb;
     }
 
-    drawDisc(avclimb);
+    if (_avg_climb > .0f) {
+        MYUCG->setColor(COLOR_BLACK);
+        drawDisc(_avg_climb);
+    } else {
+        // never set
+        downto = from;
+    }
+
+    float T = mean_climb_major_change.get() / (core_climb_history.get() * 2);
+    if (delta > T) {
+        _avg_climb_color = {COLOR_GREEN};
+    } else if (delta < -T) {
+        _avg_climb_color = {COLOR_RED};
+    } else {
+        _avg_climb_color = {COLOR_FIGURE};
+    }
+
+    ESP_LOGI(FNAME, "draw scale from: %f to: %f", from, downto);
     _avg_climb = avclimb;
-    MYUCG->setColor(COLOR_WHITE);
+    drawScale(from, downto);
 }
 
 void PolarGauge::drawFigure(float a)
@@ -285,11 +287,8 @@ void PolarGauge::drawWind(WindData s, WindData i)
 
 // a : in [scale units]
 // set color before calling
-void PolarGauge::drawDisc(float a, bool clean) const
+void PolarGauge::drawDisc(float a) const
 {
-    if ( clean ) {
-        MYUCG->setColor(COLOR_BLACK);
-    }
     int16_t val = dice_up(clipValue(a));
     ESP_LOGI( FNAME,"draw disc val %.2f diced: %d", a, val );
     int16_t pos = _radius + 15;

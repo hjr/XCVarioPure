@@ -114,7 +114,7 @@ public:
 
     // gauge helpers
     inline float clipValue(float a) const { return std::clamp(a, _mrange, _range); };
-    void drawDisc(float val, bool clean=false) const;
+    void drawDisc(float val) const;
     void drawOneScaleLine(float a, int16_t l2, int16_t w, int16_t cidx) const;
     void drawBow(int16_t idx, int16_t &old, int16_t w, int16_t off, int16_t cidx = 0) const;
     void drawOneLabel(float val, int16_t labl) const;
