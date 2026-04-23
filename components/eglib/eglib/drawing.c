@@ -627,7 +627,7 @@ static void pg_hline(pg_struct *pg, eglib_t *eglib)
   
   if ( y < 0 )
     return;
-  if ( y >= eglib_GetHeight(eglib) )
+  if ( y >= eglib->drawing.clip_ymax )
     return;
   if ( x2 < x1 ) {
     tmp = x2;
@@ -643,9 +643,9 @@ static void pg_hline(pg_struct *pg, eglib_t *eglib)
   if ( x2 >= eglib->drawing.clip_xmax )
     x2 = eglib->drawing.clip_xmax;
   if ( eglib->do_buffer ) {
-    buffer_scan_line(eglib, x1, y, x2 - x1 + 1);
+    buffer_scan_line(eglib, x1, y, x2 - x1);
   } else {
-    eglib_DrawHLine(eglib, x1, y, x2 - x1 + 1);
+    eglib_DrawHLine(eglib, x1, y, x2 - x1);
   }
 }
 
