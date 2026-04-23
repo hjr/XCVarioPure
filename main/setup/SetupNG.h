@@ -218,8 +218,8 @@ extern SetupNG<float>  		swind_sideslip_lim;
 extern SetupNG<int>  		ext_syn_wind; // synoptic and
 extern SetupNG<int>  		ext_inst_wind; // instant external wind
 extern SetupNG<rad_t>  		mag_hdm;
-extern SetupNG<rad_t>  	mag_hdt;
-extern SetupNG<float>  		average_climb;
+extern SetupNG<rad_t>  		mag_hdt;
+extern SetupNG<mps_t>  		average_climb;
 extern SetupNG<float>  		flap_pos;
 extern SetupNG<pascal_t>  	statp;
 extern SetupNG<pascal_t>  	dynp;
@@ -276,10 +276,10 @@ extern SetupNG<float>  		bat_low_volt;
 extern SetupNG<float>  		bat_red_volt;
 extern SetupNG<float>  		bat_yellow_volt;
 extern SetupNG<float>  		bat_full_volt;
-extern SetupNG<float>  		core_climb_period;
-extern SetupNG<float>  		core_climb_min;
-extern SetupNG<float>  		core_climb_history;
-extern SetupNG<float>  		mean_climb_major_change;
+extern SetupNG<second_t>  		core_climb_period;
+extern SetupNG<mps_t>  		core_climb_min;
+extern SetupNG<minute_t>  		core_climb_history;
+extern SetupNG<mps_t>  		mean_climb_major_change;
 extern SetupNG<meter_t>  	airfield_elevation;
 extern SetupNG<float>  		s2f_deadband;
 extern SetupNG<float>  		s2f_deadband_neg;

@@ -90,7 +90,8 @@ public:
     int16_t _old_idx = 360; // discretized previous index value
     int16_t _old_bow_idx = 0;
     int16_t _old_polar_sink = 0;
-    float _avg_climb = -1.f;
+    mps_t _prev_climb = -1.f;
+    float _avg_climb = -1.f; // in vertical speed units
     ucg_color_t _avg_climb_color;
 
     // gauge value as average or figures

@@ -208,18 +208,18 @@ void PolarGauge::drawPolarSink(mps_t a)
 
 void PolarGauge::drawAvgClimb() {
     // average climb in [m/sec]
-    float avclimb = VarioUnit->apply(average_climb.get());
-    float delta = avclimb - _avg_climb;
+    mps_t avclimb = average_climb.get();
+    mps_t delta = avclimb - _prev_climb;
 
     // ESP_LOGI(FNAME, "drawAVG: av=%.2f delta=%.2f", avclimb, delta);
     if ( std::fabs(delta) < 0.08 || avclimb < 0.25) {
         return; // that is just noise
     }
-    float from = avclimb;
+    float from = VarioUnit->apply(avclimb);
     float downto = _avg_climb;
     if ( delta < 0.f ) {
+        downto = from;
         from = _avg_climb;
-        downto = avclimb;
     }
 
     if (_avg_climb > .0f) {
@@ -240,7 +240,7 @@ void PolarGauge::drawAvgClimb() {
     }
 
     ESP_LOGI(FNAME, "draw scale from: %f to: %f", from, downto);
-    _avg_climb = avclimb;
+    _avg_climb = VarioUnit->apply(avclimb);
     drawScale(from, downto);
 }
 

@@ -22,6 +22,7 @@ using rad_t      = float;
 using rps_t      = float;
 using degree_t   = float;
 using second_t   = float;
+using minute_t   = float;
 using hertz_t    = float;
 using newton_t   = float;
 using joule_t    = float;

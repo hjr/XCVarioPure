@@ -14,10 +14,6 @@ int AverageVario::avindex100MSec;
 int AverageVario::avindexSec;
 int AverageVario::samples;
 
-mps_t AverageVario::readAvgClimb() {
-	return average_climb.get();
-}
-
 void AverageVario::begin(){
 	samples = 0;
 	averageClimb = 0.0;
