@@ -89,10 +89,10 @@ void FlapsBox::setLength(int16_t length)
 void FlapsBox::drawLabels(FBoxStateHash cs)
 {
     ESP_LOGI(FNAME, "draw wkf=%.1f, %d/%d", cs.wkidx10/10.f, cs.top_pix, cs.bottom_pix);
-    int16_t boxx = _ref.x+2;
-    int16_t boxy = _ref.y - BOX_LENGTH / 2 + 2;
-    int16_t boxw = BOX_WIDTH - 4;
-    int16_t boxh = BOX_LENGTH - 4;
+    int16_t boxx = _ref.x;
+    int16_t boxy = _ref.y - BOX_LENGTH / 2;
+    int16_t boxw = BOX_WIDTH;
+    int16_t boxh = BOX_LENGTH;
 
     // colored speed range (background)
     // draw excess corners in green
@@ -140,13 +140,11 @@ void FlapsBox::drawLabels(FBoxStateHash cs)
         MYUCG->setColor(COLOR_WHITE); // highlight the recommendation, or current position
         MYUCG->print(label);
     }
+    MYUCG->setColor(COLOR_WHITE);
+    MYUCG->drawHLine(boxx, _ref.y - 14, boxw);
+    MYUCG->drawHLine(boxx, _ref.y + 14, boxw);
     MYUCG->finishBuffering();
     MYUCG->setColor(1, g_col_background, g_col_background, g_col_background);
-
-    int cidx = needle_color.get();
-    MYUCG->setColor(ndl_color[cidx].color[0], ndl_color[cidx].color[1], ndl_color[cidx].color[2]);
-    MYUCG->drawHLine(boxx, _ref.y - 1, boxw);
-    MYUCG->drawHLine(boxx, _ref.y, boxw);
 
     _state = cs;
 }
@@ -156,11 +154,10 @@ void FlapsBox::drawLabels(FBoxStateHash cs)
 void FlapsBox::draw(mps_t ias)
 {
     if ( _dirty ) {
-        // MYUCG->setColor(COLOR_HEADER);
-        // MYUCG->drawRFrame(_ref.x, _ref.y-BOX_LENGTH/2-BOX_CORNER, BOX_WIDTH, BOX_LENGTH + 2*BOX_CORNER, BOX_CORNER);
-        int cidx = needle_color.get();
-        MYUCG->setColor(ndl_color[cidx].color[0], ndl_color[cidx].color[1], ndl_color[cidx].color[2]);
-        MYUCG->drawDisc(_ref.x - 3, _ref.y, 5, EGLIB_DRAW_ALL);
+        MYUCG->setColor(COLOR_WHITE);
+        MYUCG->setClipRange(_ref.x - 5, _ref.y - 14, 6, 29);
+        MYUCG->drawRFrame(_ref.x - 5, _ref.y - 14, 10, 28, 4);
+        MYUCG->undoClipRange();
     }
 
     float curr_fp;
