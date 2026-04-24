@@ -76,10 +76,11 @@ void CenterAid::drawThermal(int tn, int idir, bool draw_red) {
         MYUCG->startBuffering(cx-6, cy-6, 12, 12);
         if (tn > 0) {
             // ESP_LOGI(FNAME,"draw TH, dir:%d, TE:%d", idir, tn );
-            if (draw_red)  // for max climb
-                MYUCG->setColor(COLOR_RED);
-            else
-                MYUCG->setColor(COLOR_GREEN);
+            // if (draw_red)  // for max climb
+            //     MYUCG->setColor(COLOR_RED);
+            // else
+            //     MYUCG->setColor(COLOR_GREEN);
+            MYUCG->setColor(COLOR_PURPLE);
             MYUCG->drawDisc(cx, cy, tn / DRAW_SCALE, UCG_DRAW_ALL);
         }
         MYUCG->finishBuffering();

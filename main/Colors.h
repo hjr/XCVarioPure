@@ -38,6 +38,7 @@ extern uint8_t g_col_header_light_b;
 #define COLOR_EARTH   119, 176, 232
 #define COLOR_CREME   20, 0, 87     // ebffa8
 #define COLOR_FIGURE  255, 190, 70 // 0, 65, 185
+#define COLOR_PURPLE  73, 211, 1
 // #define COLOR_FIGURE  232, 151, 3   // 2c75fd
 //#define COLOR_LB      138, 91, 1    // 75a4fe
 
