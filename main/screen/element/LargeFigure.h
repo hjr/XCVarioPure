@@ -19,7 +19,7 @@ public:
     bool changed(float v);
     void draw() override;
     void draw(float a) override;
-    
+    void drawStatic();
 
 private:
     int16_t _value = 0;

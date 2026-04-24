@@ -10,7 +10,9 @@
 
 #include "Colors.h"
 #include "AdaptUGC.h"
+#include "Atmosphere.h"
 #include "math/Floats.h"
+#include "setup/CruiseMode.h"
 #include "logdef.h"
 
 #include <cmath>
@@ -67,6 +69,25 @@ void LargeFigure::draw() {
     // ESP_LOGI(FNAME, "draw large figure w%d, a%d,d%d", tmp, MYUCG->getFontAscent(), MYUCG->getFontDescent());
 }
 
+void LargeFigure::drawStatic() {
+    MYUCG->setFont(ucg_font_fub11_hr, true);
+    MYUCG->setColor(COLOR_HEADER);
+    const char *mode = "average";
+    if ( CRMOD.getVMode() == CruiseMode::MODE_REL_NETTO) {
+        mode = " s-netto ";
+    }
+    else if ( CRMOD.getVMode() == CruiseMode::MODE_NORMAL_NETTO) {
+        mode = "  netto  ";
+    }
+    int16_t str_width = MYUCG->getStrWidth(mode);
+    MYUCG->setPrintPos(_ref.x - str_width / 2, _bbox[0].y - 3);
+    MYUCG->print(mode);
+
+    str_width = MYUCG->getStrWidth(VarioUnit->getName());
+    MYUCG->setPrintPos(_ref.x - str_width / 2, _bbox[0].y + _bbox[1].y + MYUCG->getFontLineSpace());
+    MYUCG->setColor(COLOR_HEADER);
+    MYUCG->print(VarioUnit->getName());
+}
 
 void LargeFigure::draw(float val) {
     int16_t ival = fast_iroundf(val * 10); // integer value in steps of 10th
@@ -75,6 +96,9 @@ void LargeFigure::draw(float val) {
     if (_value != ival || _dirty) {
         _value = ival;
         draw();
+        if ( _dirty ) {
+            drawStatic();
+        }
     }
     _dirty = false;
 }

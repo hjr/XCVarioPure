@@ -73,6 +73,7 @@ public:
     void drawScaleBottom();
     void drawRose(int16_t at = -1000) const;
     void clearGauge();
+    void forceRedrawMode();
 
   private:
     // indicator and attributes

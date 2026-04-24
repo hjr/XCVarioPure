@@ -250,13 +250,13 @@ void PolarGauge::drawFigure(float a)
         const BoundingBox& prev = _figure->getBoundingBox();
         MYUCG->startBuffering(prev[0].x, prev[0].y, prev[1].x, prev[1].y);
         
-        if (_wind_avg) {
-            _wind_avg->redrawBG();
-        }
-        if (_wind_live) {
-            _wind_live->redrawBG();
-        }
-        a *= VarioUnit->scale; // fixme that is a bit hacky
+        // if (_wind_avg) {
+        //     _wind_avg->redrawBG();
+        // }
+        // if (_wind_live) {
+        //     _wind_live->redrawBG();
+        // }
+        a *= _unit_fac;
         _figure->draw(a);
         MYUCG->finishBuffering();
     }
@@ -469,16 +469,16 @@ void PolarGauge::drawScale(float from, float to)
             special_mark = _avg_climb * 10.f;
         }
     }
-    else {
-        // put scale unit on to of the last scale
-        int16_t ival = dice_up(_range);
-        int16_t x0 = CosCenteredDeg2(ival, _radius+30) - MYUCG->getStrWidth(VarioUnit->getName());
-        int16_t y0 = SinCenteredDeg2(ival, _radius+30);
-        MYUCG->setFont(ucg_font_fub11_hr);
-        MYUCG->setPrintPos(x0, y0);
-        MYUCG->setColor(COLOR_HEADER);
-        MYUCG->print(VarioUnit->getName());
-    }
+    // else {
+    //     // put scale unit on to of the last scale
+    //     int16_t ival = dice_up(_range);
+    //     int16_t x0 = CosCenteredDeg2(ival, _radius+30) - MYUCG->getStrWidth(VarioUnit->getName());
+    //     int16_t y0 = SinCenteredDeg2(ival, _radius+30);
+    //     MYUCG->setFont(ucg_font_fub11_hr);
+    //     MYUCG->setPrintPos(x0, y0);
+    //     MYUCG->setColor(COLOR_HEADER);
+    //     MYUCG->print(VarioUnit->getName());
+    // }
 
     MYUCG->setFontPosCenter();
     MYUCG->setFont(ucg_font_fub14_hn);
@@ -627,6 +627,13 @@ void PolarGauge::clearGauge()
     }
     if (_wind_avg) {
         _wind_avg->drawWind(true);
+    }
+}
+
+void PolarGauge::forceRedrawMode()
+{
+    if ( _figure ) {
+        _figure->forceRedraw();
     }
 }
 
