@@ -1077,7 +1077,9 @@ static void screens_menu_create_vario(SetupMenu *top) {
     tgauge->addEntry("Net. Vario", MultiGauge::GAUGE_NETTO);
     tgauge->addEntry("OATemp.", MultiGauge::GAUGE_OAT);
     tgauge->addEntry("Heading", MultiGauge::GAUGE_HEADING);
+#ifdef DEBUG_AND_TEST
     tgauge->addEntry("Slip Angle", MultiGauge::GAUGE_SLIP);
+#endif
     top->addEntry(tgauge);
 
     SetupMenuSelect *bgauge = new SetupMenuSelect("Lower Gauge", RST_NONE, nullptr, &vario_lower_gauge);
