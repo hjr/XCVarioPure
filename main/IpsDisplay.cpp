@@ -333,7 +333,7 @@ void IpsDisplay::superBBox(const Point *pts, int n, BoundingBox &bbox)
 
 static void initRefs()
 {
-	AVGOFFX = gflags.isPro ? -5-38 : -4;
+	AVGOFFX = gflags.isPro ? -5-38 : -8;
     UPPERYPOS = OPT_Y_IN * DISPLAY_H + 19;
     LOWERYPOS = (1. - OPT_Y_IN) * DISPLAY_H + 19;
 	INNER_RIGHT_ALIGN = DISPLAY_W - 44;
@@ -341,7 +341,7 @@ static void initRefs()
 	LOAD_MIAS_POS = DISPLAY_H*0.63;
 
 	// grab screen layout
-	AMIDX = gflags.isPro ? (DISPLAY_W/2 + 30) : (DISPLAY_W/2 + 16);
+	AMIDX = gflags.isPro ? (DISPLAY_W/2 + 30) : (DISPLAY_W/2 + 20);
 	AMIDY = (DISPLAY_H)/2 - (gflags.isPro ? 0 : 2);
 	if ( display_orientation.get() == DISPLAY_NINETY ) {
 		INNER_RIGHT_ALIGN = DISPLAY_W - 74;
@@ -349,7 +349,7 @@ static void initRefs()
 		AVGOFFX = -2;
 	}
     else if ( !gflags.isPro ) {
-        INNER_RIGHT_ALIGN = 68;
+        INNER_RIGHT_ALIGN = 78;
         UPPERYPOS = 32;
         LOWERYPOS = DISPLAY_H - 1;
     }
@@ -586,7 +586,7 @@ void IpsDisplay::initDisplay() {
     }
     if (vario_lower_gauge.get() == MultiGauge::GAUGE_WIND) {
         if (!WNDicon) {
-            WNDicon = new WindIcon(1, LOWERYPOS, 18);
+            WNDicon = new WindIcon(INNER_RIGHT_ALIGN, LOWERYPOS, 18);
         }
     } else {
         if (WNDicon) {

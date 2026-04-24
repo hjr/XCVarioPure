@@ -59,7 +59,7 @@ bool WindIcon::draw(WindData w)
         if (wstrength >= 0) {
             sprintf(s, "%3d", wstrength);
         }
-        MYUCG->setPrintPos(_ref.x + 2 * _radius + _str_width - MYUCG->getStrWidth(s), _ref.y);
+        MYUCG->setPrintPos(_ref.x - MYUCG->getStrWidth(s), _ref.y);
         MYUCG->print(s);
         if ( _dirty ) {
             drawUnit();
@@ -73,13 +73,13 @@ bool WindIcon::draw(WindData w)
 // 0° reference on top of the icon
 void WindIcon::drawIcon() const
 {
-    Point center = Point(_ref.x + _radius, _ref.y - _radius);
+    Point center = Point(_ref.x - _radius - _str_width - 2, _ref.y - _radius);
     MYUCG->setColor(COLOR_FIGURE);
     if ( ! _wind.isValid() || _wind.getVal() <= 0 ) {
         MYUCG->drawDisc(center.x, center.y, _radius, UCG_DRAW_ALL);
         return;
     }
-    MYUCG->startBuffering(_ref.x, _ref.y - 2*_radius, 2*_radius +1, 2*_radius +1);
+    MYUCG->startBuffering(center.x - _radius, center.y - _radius, 2*_radius +1, 2*_radius +1);
     MYUCG->drawDisc(center.x, center.y, _radius, UCG_DRAW_ALL);
 
     // an arrow tip in direction the wind is blowing (180° other direction)
@@ -89,7 +89,7 @@ void WindIcon::drawIcon() const
     for (int i = 0; i < 4; i++) {
         tmp[i] += center;
     }
-    MYUCG->setColor(ndl_color[needle_color.get()].color[0], ndl_color[needle_color.get()].color[1], ndl_color[needle_color.get()].color[2]);
+    MYUCG->setColor(COLOR_WHITE);
     MYUCG->drawTriangle(tmp[0].x, tmp[0].y, tmp[1].x, tmp[1].y, tmp[2].x, tmp[2].y);
     MYUCG->drawTriangle(tmp[0].x, tmp[0].y, tmp[3].x, tmp[3].y, tmp[1].x, tmp[1].y);
     MYUCG->finishBuffering();
@@ -101,7 +101,7 @@ void WindIcon::drawUnit() const
     MYUCG->setColor( COLOR_HEADER );
     MYUCG->print(SpeedUnit->getName());
     if ( wind_reference.get() == static_cast<int>(WindReference::WR_NORTH)) {
-        MYUCG->setPrintPos(_ref.x + _radius - 3, _ref.y - 2 * _radius - 2);
+        MYUCG->setPrintPos(_ref.x + _radius - _str_width -3 -2, _ref.y - 2 * _radius - 2);
         MYUCG->print("N");
     }
 }
