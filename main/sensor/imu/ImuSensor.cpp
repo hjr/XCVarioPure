@@ -164,10 +164,13 @@ void MpuImu::resetImuReference(bool save_nvs) {
     }
 }
 
-void MpuImu::zeroBiases() {
+void MpuImu::zeroGyroBias() {
     gyro_bias.set({});
-    accl_bias.set({});
     myMPU.setGyroOffset({});
+}
+
+void MpuImu::zeroAccBias() {
+    accl_bias.set({});
     myMPU.setAccelOffset({});
 }
 
@@ -323,6 +326,35 @@ int MpuImu::getAccelSamplesAndCalib(vector_f gyro_integral, rad_t& wing_angle, r
     return progress;
 }
 
+
+class ACC_Bias {
+   public:
+    void set(vector_f *samples, int nr) { smpls = samples; _nr = nr; }
+    float operator()(const std::vector<float> x) const {
+        const vector_f tmp(x[0], x[1], x[2]);
+        float rms = 0.;
+        for (int i = 0; i < _nr; i++) {
+            rms += powf((smpls[i] - tmp).get_norm() - 1.f, 2.f);
+        }
+        return rms;
+    }
+
+   private:
+    vector_f *smpls;
+    int _nr;
+};
+
+vector_f MpuImu::extractAccBias(vector_f *samples, int nr) {
+    // Extract the current bias from samples
+    std::vector<float> start{.0, .0, .0};
+    std::vector<std::vector<float> > acc_simp{{0.05, 0, 0}, {0, -0.05, 0}, {0, 0, 0.05}, {0, 0, 0}};
+    ACC_Bias bias_min;
+    bias_min.set(samples, nr);
+    std::vector<float> x = MATH::Simplex(bias_min, start, 1e-6f, acc_simp);
+    vector_f bias(x[0], x[1], x[2]);
+    ESP_LOGI(FNAME, "ACC bias: %f,%f,%f", x[0], x[1], x[2]);
+    return bias;
+}
 
 //
 // PI control to regulate temperature

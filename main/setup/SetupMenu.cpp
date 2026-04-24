@@ -420,6 +420,100 @@ static void doImuCalibration(SetupMenuSelect* p) {
         ;
 }
 
+
+static void factoryAccCalibration(SetupMenuSelect* p) {
+    MYUCG->setFont(ucg_font_ncenR14_hr, true);
+    p->clear();
+    p->menuPrintLn("Factory Acc. Calibration", 2, 18);
+    constexpr int16_t next_step = 4;
+    int16_t nlidx = next_step;
+    p->menuPrintLn("Choose 6 unique orientations.", nlidx++);
+    nlidx++;
+    p->menuPrintLn("Start with button.", nlidx);
+    while (!Rotary->readSwitch(200)) ;
+    p->menuClearLn(nlidx);
+    p->menuPrintLn("Wait for the Chimes, ", nlidx++);
+    p->menuPrintLn("to go on.", nlidx++);
+    p->menuPrintLn("Abort with button.", nlidx++);
+    nlidx++;
+
+    // load the default reference to the IMU
+    Quaternion backup = accSensor->getMpu().getRefRot();
+    accSensor->getMpu().applyImuReference(0, Quaternion());
+    // reset lever arm
+    accSensor->getMpu().setLeverArm(0.f);
+    // need to reset the acc bias, because this is the only way we can really measure it
+    accSensor->resetBias();
+
+    int pos = 0;
+    bool abort = false;
+    vector_f samples[6];
+    while (pos < 6 && !abort)
+    {
+        // wait until calm
+        do {
+            abort = Rotary->readSwitch(500);
+            // ESP_LOGI(FNAME, "Rest gcalm %d acalm %d", gyroSensor->isResting(), accSensor->isResting());
+        } while ((!accSensor->isResting() || !gyroSensor->isResting()) && !abort);
+
+        char buf[64];
+        snprintf(buf, sizeof(buf), "Position %d/6", pos+1);
+        p->menuPrintLn(buf, nlidx);
+
+        // wait 2 more seconds
+        for (int i=0; i<4 && !abort; i++) {
+            abort = Rotary->readSwitch(500);
+        }
+        if ( ! abort ) {
+            // read the acc average
+            samples[pos] = accSensor->getAVG(2000);
+            pos++;
+            AUDIO->startSound(AUDIO_TADDA | PRIO_SND_MASK, false, 100);
+        }
+        gyroSensor->resetRest();
+        accSensor->resetRest();
+    }
+
+    // set lever arm again
+    accSensor->getMpu().setLeverArm(imu_leverarm.get());
+
+    // rough quality check on samples
+    // the sum should be close to zero, otherwise the device was not really moved around all axes
+    vector_f sum;
+    for ( int i=0; i < 6; i++ ) {
+        sum += samples[i];
+    }
+
+    if (pos < 6 || sum.get_norm() > 0.5f || abort) {
+        p->clear();
+        p->menuPrintLn("... aborted ...", 2);
+        nlidx = 4;
+        if ( ! abort && sum.get_norm() > 0.5f ) {
+            p->menuPrintLn("Too simillar samples", nlidx++);
+        }
+        accSensor->getMpu().setRefRot(backup);
+        axes_i16_abi tmp = accl_bias.get(); 
+        accSensor->pushBias(mpud::raw_axes_t(tmp.x, tmp.y, tmp.z));
+        p->menuPrintLn("press button to return", 8, 1);
+        while (!Rotary->readSwitch(100)) ;
+        return;
+    }
+
+    vector_f bias = accSensor->getMpu().extractAccBias(samples, 6);
+
+    ESP_LOGI(FNAME, "accel bias: %f,%f,%f", bias.x, bias.y, bias.z);
+    mpud::raw_axes_t raw_bias(bias.x * 2048., bias.y * 2048., bias.z * 2048.);
+    ESP_LOGI(FNAME, "raw  bias: %d,%d,%d", raw_bias.x, raw_bias.y, raw_bias.z);
+    accl_bias.set(axes_i16_abi(raw_bias.x, raw_bias.y, raw_bias.z), false);
+    // Reprogam MPU bias
+    accSensor->pushBias(raw_bias);
+
+    p->clear();
+    p->menuPrintLn("Success !", 2, 20);
+    p->menuPrintLn("press button to return", 10, 1);
+    while (!Rotary->readSwitch(100)) ;
+}
+
 static int imu_calib(SetupMenuSelect* p) {
     ESP_LOGI(FNAME, "Collect AHRS data (%d)", p->getValue());
     int sel = p->getValue();
@@ -427,14 +521,6 @@ static int imu_calib(SetupMenuSelect* p) {
         case 0:
             break;  // cancel
         case 1:
-            if (airborne.get()) {
-                // cannot do this in flight
-                p->clear();
-                p->menuPrintLn("Cannot start calibration", 2);
-                p->menuPrintLn("while airborne!", 3);
-                vTaskDelay(pdMS_TO_TICKS(1500));
-                break;
-            }
             // do the calibration procedure
             doImuCalibration(p);
             break;
@@ -443,8 +529,16 @@ static int imu_calib(SetupMenuSelect* p) {
             accSensor->getMpu().resetImuReference();
             break;
         case 3:
-            // set bias to zero
-            accSensor->getMpu().zeroBiases();
+            // factory acc calib
+            factoryAccCalibration(p);
+            break;
+        case 4:
+            // set Gyro bias to zero
+            accSensor->getMpu().zeroGyroBias();
+            break;
+        case 5:
+            // set Acc bias to zero
+            accSensor->getMpu().zeroAccBias();
             break;
         default:
             break;
@@ -1410,18 +1504,22 @@ void system_menu_create_hardware_ahrs_parameter(SetupMenu *top) {
 
 void system_menu_create_hardware_imu(SetupMenu *top) {
 #ifdef DEBUG_AND_TEST
-    SetupMenuSelect* imu_calib_collect = new SetupMenuSelect("Axis Calibration", RST_NONE, imu_calib);
+    SetupMenuSelect* imu_calib_collect = new SetupMenuSelect("Axis Calib.", RST_NONE, imu_calib);
     imu_calib_collect->setHelp("Calibrate IMU to glider reference. Run the procedure by selecting Start.");
-    imu_calib_collect->addEntry("Cancel");
-    imu_calib_collect->addEntry("Start");
-    imu_calib_collect->addEntry("Reset");
+    imu_calib_collect->addEntry("Cancel", 0);
+    if (!airborne.get()) {
+        imu_calib_collect->addEntry("Start", 1);
+    }
+    imu_calib_collect->addEntry("Reset", 2);
     top->addEntry(imu_calib_collect);
 #endif
     if (!airborne.get()) {
-        SetupMenuSelect* bias_zero = new SetupMenuSelect("Bias Zero", RST_NONE, imu_calib);
-        bias_zero->setHelp("Set IMU bias back to zero. Use only as a last measure.");
+        SetupMenuSelect* bias_zero = new SetupMenuSelect("IMU Biases", RST_NONE, imu_calib);
+        bias_zero->setHelp("Calibrate, or reset accelerometer bias. The latter only as a last measure.");
         bias_zero->addEntry("Cancel");
-        bias_zero->addEntry("Zero", 3);
+        bias_zero->addEntry("Acc. Bias Calib.", 3);
+        bias_zero->addEntry("Gyro Reset", 4);
+        bias_zero->addEntry("Acc. Reset", 5);
         top->addEntry(bias_zero);
     }
 #ifdef DEBUG_AND_TEST
