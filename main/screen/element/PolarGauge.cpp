@@ -501,14 +501,14 @@ void PolarGauge::drawScale(float from, float to)
                 modulo = (_range > 10) ? 20 : (_range < 6) ? 5 : 10; // leave the details around zero
             }
         }
-        if ( a == 4 ) {
-            int16_t tmp = dice_rad((*func)(static_cast<float>(0.f)));
-            drawDirLabel(tmp + 20, "+");
-        }
-        else if ( a == -4 ) {
-            int16_t tmp = dice_rad((*func)(static_cast<float>(0.f)));
-            drawDirLabel(tmp - 16, "-");
-        }
+        // if ( a == 4 ) {
+        //     int16_t tmp = dice_rad((*func)(static_cast<float>(0.f)));
+        //     drawDirLabel(tmp + 20, "+");
+        // }
+        // else if ( a == -4 ) {
+        //     int16_t tmp = dice_rad((*func)(static_cast<float>(0.f)));
+        //     drawDirLabel(tmp - 16, "-");
+        // }
 
         if (!(a % modulo))
         {
