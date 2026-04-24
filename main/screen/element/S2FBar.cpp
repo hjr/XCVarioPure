@@ -46,7 +46,7 @@ void S2FBar::drawArrow(int16_t x, int16_t y, int16_t level, bool del)
         if (del) {
             MYUCG->setColor(COLOR_WGREY);
         } else {
-            MYUCG->setColor(ndl_color[needle_color.get()].color[0], ndl_color[needle_color.get()].color[1], ndl_color[needle_color.get()].color[2]);
+            MYUCG->setColor(COLOR_WHITE);
         }
     }
     else if (del) {
