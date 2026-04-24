@@ -36,7 +36,7 @@ extern uint8_t g_col_header_light_b;
 #define COLOR_LBBLUE  85, 80, 0
 #define COLOR_BROWN   205, 240, 250  // Chocolate Brown
 #define COLOR_EARTH   119, 176, 232
-#define COLOR_CREME   20, 0, 87     // ebffa8
+#define COLOR_POINTER 255-222, 0, 255-44
 #define COLOR_FIGURE  255, 190, 70 // 0, 65, 185
 #define COLOR_PURPLE  73, 211, 1
 // #define COLOR_FIGURE  232, 151, 3   // 2c75fd

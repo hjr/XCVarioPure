@@ -518,6 +518,7 @@ void system_startup(void *args){
     ahrs_dynamic_factor.set(ahrs_dynamic_factor.getDefault());
     ahrs_roll_check.set(0);
     gyro_gating.set(gyro_gating.getDefault());
+    needle_color.set(needle_color.getDefault());
 #endif
 
 	BatVoltage = new AnalogInput((22.0+1.2)/1200, ADC_CHANNEL_7); // created allways, but only used on master XCV
