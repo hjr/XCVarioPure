@@ -127,6 +127,8 @@ public:
 	inline void setFontPosTop() { eglib_setFontOrigin( eglib, FONT_TOP ); }
 	inline int16_t getFontAscent() { return eglib->drawing.font->ascent; }
 	inline int16_t getFontDescent() { return eglib->drawing.font->descent; }
+	inline int16_t getFontHeight() { return eglib->drawing.font->ascent + eglib->drawing.font->descent; }
+	inline int16_t getFontLineSpace() { return eglib->drawing.font->line_space; }
 
 
 	// scrolling, clipping, clear
