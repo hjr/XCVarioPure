@@ -210,6 +210,7 @@ void PolarGauge::drawAvgClimb() {
     // average climb in [m/sec]
     mps_t avclimb = average_climb.get();
     mps_t delta = avclimb - _prev_climb;
+    _prev_climb = avclimb;
 
     // ESP_LOGI(FNAME, "drawAVG: av=%.2f delta=%.2f", avclimb, delta);
     if ( std::fabs(delta) < 0.08 || avclimb < 0.25) {
@@ -223,6 +224,7 @@ void PolarGauge::drawAvgClimb() {
     }
 
     if (_avg_climb > .0f) {
+        // old value was valid, draw the disc
         MYUCG->setColor(COLOR_BLACK);
         drawDisc(_avg_climb);
     } else {
@@ -445,6 +447,9 @@ void PolarGauge::drawScale(float from, float to)
     // line density on outer scale area
     int16_t modulo = (_range > 10) ? 20 : (_range < 6) ? 5 : 10; // typically start in "no details" area
     int16_t special_mark = -1000;
+    if ( _avg_climb > .0 ) {
+        special_mark = _avg_climb * 10.f;
+    }
 
     // for larger ranges put at least on extra label in the middle of each half scale
     int16_t mid_lpos_upper = fast_iroundf(func->invers(0.5 * (*func)(_range))) * 10;
@@ -465,9 +470,6 @@ void PolarGauge::drawScale(float from, float to)
             modulo = (_dist05 > 24) ? 1 : (_dist05 > 16) ? 2 : (_dist05 > 8) ? 5 : 10;
         }
         // ESP_LOGI(FNAME, "scale from %d to %d", start, stop);
-        if ( _avg_climb > .0 ) {
-            special_mark = _avg_climb * 10.f;
-        }
     }
     // else {
     //     // put scale unit on to of the last scale
@@ -543,12 +545,13 @@ void PolarGauge::drawScale(float from, float to)
             }
             draw_label = false;
         }
-        if ( a == special_mark ) {
-            MYUCG->setColor(_avg_climb_color.color[0], _avg_climb_color.color[1], _avg_climb_color.color[2]);
-            ESP_LOGI(FNAME, "special mark at a:%d", a);
-            drawDisc(_avg_climb);
-        }
     }
+    if ( special_mark <= start && special_mark >= stop ) {
+        MYUCG->setColor(_avg_climb_color.color[0], _avg_climb_color.color[1], _avg_climb_color.color[2]);
+        ESP_LOGI(FNAME, "special mark at a:%d", special_mark);
+        drawDisc(_avg_climb);
+    }
+
     if (_flavor == XCVPRO) {
         int16_t prev = dice_up(start/10.) +12; // overdraw a bit
         int16_t to = dice_up(stop/10.) -12;
@@ -576,6 +579,7 @@ void PolarGauge::drawScaleBottom()
 // a [deg]; 0° ref on top
 void PolarGauge::drawOneDot(int16_t a, int16_t size, int16_t cidx) const
 {
+    // ESP_LOGI(FNAME, "dot a:%ddeg", a);
     int16_t bx = fast_iroundf(fast_sin_idx(a*2) * _radius);
     int16_t by = fast_iroundf(fast_cos_idx(a*2) * _radius);
     MYUCG->setColor(lne_color[cidx].color[0], lne_color[cidx].color[1], lne_color[cidx].color[2]);
@@ -588,15 +592,18 @@ void PolarGauge::drawRose(int16_t at) const
     int16_t stop = 0;
     if (at != -1000)
     {
+        ESP_LOGI(FNAME, "draw rose at %d", at);
         // partial scale repainting
         start = at + 15; // 30° range
         stop = at - 15;
         start = (start/10)*10; // iterate on 10° raster
         // stop = (stop/10)*10;
     }
+    else {
+        ESP_LOGI(FNAME, "draw full rose");
+    }
     for (int16_t a = start; a >= stop; a-=10)
     {
-        // ESP_LOGI(FNAME, "dot a:%d", a%360);
         if ( a == 0 ) {
             MYUCG->setColor(COLOR_LBBLUE);
             // Draw a blue triangle for heading-up, or N for north-up
@@ -612,6 +619,7 @@ void PolarGauge::drawRose(int16_t at) const
             }
         }
         else if (!(a % 30)) {
+            // ESP_LOGI(FNAME, "dot a:%d", a);
             drawOneDot( a, 2, 1);
         }
     }
