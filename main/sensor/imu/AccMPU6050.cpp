@@ -116,7 +116,7 @@ void AccMPU6050::postProcess() {
 
     rad_t roll = 0, pitch = 0;
     if (airborne.get()) {
-        float loadFactor = std::clamp(_processed.z, 0.f, 2.f);
+        float loadFactor = std::clamp(_processed.get_norm(), 0.f, 2.f);
         // rotation from navigation to body frame
         vector_f z_nav_in_body = att_quat.rotate(vector_f{0,0,1});
         circle_omega = gyro.dot(z_nav_in_body);
