@@ -192,10 +192,10 @@ void HorizonPage::draw( Quaternion q )
         // --- bank value
         int roll = fast_iroundf(accSensor->getRollDeg());
         MYUCG->setFont(ucg_font_fub20_hn, true);
-        snprintf(buf, sizeof(buf), "  %d°  ", roll);  // quicker as sprintf
+        snprintf(buf, sizeof(buf), " % 4d°", roll);
         int strWidth = MYUCG->getStrWidth(buf);
         MYUCG->setColor(COLOR_WHITE);
-        MYUCG->setPrintPos(DISPLAY_W / 2 - strWidth / 2, baseY);
+        MYUCG->setPrintPos(DISPLAY_W / 2 - strWidth / 2 +5, baseY);
         MYUCG->print(buf);
 
         previous_horizon_line = l;
@@ -224,9 +224,9 @@ void HorizonPage::draw( Quaternion q )
             MYUCG->setFont(ucg_font_fub20_hn, true);
             MYUCG->setColor(COLOR_WHITE);
             char buf[20];
-            snprintf(buf, sizeof(buf), "  %d°  ", heading);
+            snprintf(buf, sizeof(buf), " % 4d°", heading);
             int strWidth = MYUCG->getStrWidth(buf);
-            MYUCG->setPrintPos((DISPLAY_W / 2) - strWidth / 2, baseY + 7);
+            MYUCG->setPrintPos((DISPLAY_W / 2) - strWidth / 2 +5, baseY + 7);
             MYUCG->print(buf);
             heading_old = heading;
         }
