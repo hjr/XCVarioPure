@@ -211,6 +211,11 @@ void Flap::progress(int count) {
 // the core API functions for flap recommendations
 /////////////////////////////////////////////////
 
+//
+// all of them have to cope with an optional empty or missing flap level definition !
+//
+
+// get optimum flap position for given speed
 float Flap::getOptimum(mps_t spd) const {
     // Correct for current g load
     float g_force = accSensor ? accSensor->getGload() : 1.f;
@@ -246,6 +251,7 @@ float Flap::getOptimum(mps_t spd) const {
 }
 
 int Flap::getWkIndex(float wkf) const {
+    if ( flevel.size() == 0 ) { return -1; }
     return std::clamp((int)(wkf + 0.5), 0, (int)flevel.size()-1);
 }
 
@@ -258,6 +264,10 @@ mps_t Flap::getSpeedBand(float wkf, mps_t &maxv) const
 
     // pick min/max speeds for given flap position index
     int wki = getWkIndex(wkf);
+    if ( wki < 0 ) {
+        return 0.;
+    }
+
     minv = flevel[wki].prep_speed;
     if( wki == 0 ) {
         maxv = v_max.get(); // upper speed end
@@ -281,13 +291,14 @@ mps_t Flap::getSpeedBand(float wkf, mps_t &maxv) const
 mps_t Flap::getSpeed(float wkf) const
 {
     int wki = getWkIndex(wkf);
-    if ( wki < flevel.size() ) {
-        // speed from prep_speed@(wki+0.5) up to prep_speed+speed_delta@(wki-0.5)
-        float ret = flevel[wki].prep_speed + (wki - wkf - 0.5f) * flevel[wki].speed_delta;
-        ESP_LOGI(FNAME, "getspeed: %.1f (f%.1fi%d)", ret, wkf, wki);
-        return ret;
+    if ( wki < 0 ) {
+        return 0.f;
     }
-    return 0.f;
+
+    // speed from prep_speed@(wki+0.5) up to prep_speed+speed_delta@(wki-0.5)
+    float ret = flevel[wki].prep_speed + (wki - wkf - 0.5f) * flevel[wki].speed_delta;
+    ESP_LOGI(FNAME, "getspeed: %.1f (f%.1fi%d)", ret, wkf, wki);
+    return ret;
 }
 
 float Flap::getFlapPosition() const
