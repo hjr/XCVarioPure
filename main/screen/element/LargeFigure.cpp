@@ -80,11 +80,11 @@ void LargeFigure::drawStatic() {
         mode = "  netto  ";
     }
     int16_t str_width = MYUCG->getStrWidth(mode);
-    MYUCG->setPrintPos(_ref.x - str_width / 2, _bbox[0].y - 3);
+    MYUCG->setPrintPos(_ref.x - str_width / 2, _bbox[0].y -6);
     MYUCG->print(mode);
 
     str_width = MYUCG->getStrWidth(VarioUnit->getName());
-    MYUCG->setPrintPos(_ref.x - str_width / 2, _bbox[0].y + _bbox[1].y + MYUCG->getFontLineSpace());
+    MYUCG->setPrintPos(_ref.x - str_width / 2, _bbox[0].y + _bbox[1].y + MYUCG->getFontLineSpace() +3);
     MYUCG->setColor(COLOR_HEADER);
     MYUCG->print(VarioUnit->getName());
 }
