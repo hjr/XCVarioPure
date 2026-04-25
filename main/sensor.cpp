@@ -46,7 +46,6 @@
 #include "AverageVario.h"
 
 #include "I2Cbus.hpp"
-#include "LeakTest.h"
 #include "Flap.h"
 #include "wind/WindCalcTask.h"
 #include "comm/SerialLine.h"
@@ -941,11 +940,6 @@ void system_startup(void *args){
         if (!airborne.get()) {
             AUDIO->startSound(AUDIO_CHECK_SOUND);
         }
-    }
-
-    if (Rotary->readBootupStatus() && baroSensor && teSensor && asSensor) {
-        BootUpScreen::terminate();
-        LeakTest::start(baroSensor, teSensor, asSensor);
     }
 
     // Set QNH from setup Airfiled elevation, when ! Second && ! airborn

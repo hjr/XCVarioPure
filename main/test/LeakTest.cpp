@@ -2,8 +2,7 @@
 
 #include "sensor/press_diff/AirspeedSensor.h"
 #include "sensor/pressure/PressureSensor.h"
-#include "IpsDisplay.h"
-#include "driver/gpio/ESPRotary.h"
+#include "AdaptUGC.h"
 #include "math/Units.h"
 #include "logdefnone.h"
 
@@ -11,13 +10,23 @@
 
 #define LOOPS 150
 
+extern AdaptUGC *MYUCG;
 
-void LeakTest::start(PressureSensor* bmpBA, PressureSensor* bmpTE, AirspeedSensor* asSensor) {
+//
+// This test checks for leaks in the pressure system by monitoring the stability of the 
+// static and total pressure readings over time.
+// It collects readings every 5 seconds for up to 2 minutes and compares them against 
+// the initial baseline.
+// If the readings deviate beyond defined thresholds, it indicates a potential leak.
+//
+
+void LeakTest::display(int mode) {
 	ESP_LOGI(FNAME, "Starting Leak test");
 
 	// Display initialization
-	Display->clear();
-	Display->writeText(1, "** Leak Test **");
+	clear();
+	MYUCG->setFont(ucg_font_ncenR14_hr, true);
+    menuPrintLn(_title.c_str(), 0);
 
 	// Constants for thresholds
 	constexpr float ST_THRESHOLD   = 0.1f;   // %
@@ -45,8 +54,12 @@ void LeakTest::start(PressureSensor* bmpBA, PressureSensor* bmpTE, AirspeedSenso
 				}
 			}
 			float tmp;
-			if ( bmpBA->doRead(tmp) ) ba += Units::pa_to_hpa(tmp);
-			if ( bmpTE->doRead(tmp) ) te += Units::pa_to_hpa(tmp);
+			if ( baroSensor->doRead(tmp) ) {
+				ba += Units::pa_to_hpa(tmp);
+			}
+			if ( teSensor->doRead(tmp) ) {
+				te += Units::pa_to_hpa(tmp);
+			}
 			vTaskDelay(pdMS_TO_TICKS(33));
 		}
 
@@ -65,11 +78,11 @@ void LeakTest::start(PressureSensor* bmpBA, PressureSensor* bmpTE, AirspeedSenso
 		// Display sensor values
 		char buf[40];
 		snprintf(buf, sizeof(buf), "ST P: %3.2f hPa", ba);
-		Display->writeText(2, buf);
+		menuPrintLn(buf, 2);
 		snprintf(buf, sizeof(buf), "TE P: %3.2f hPa", te);
-		Display->writeText(3, buf);
+		menuPrintLn(buf, 3);
 		snprintf(buf, sizeof(buf), "PI P: %3.2f Pa", speed);
-		Display->writeText(4, buf);
+		menuPrintLn(buf, 4);
 
 		if (i >= 1) {
 			float bad = 100.0f * (ba - sba) / sba;
@@ -78,15 +91,15 @@ void LeakTest::start(PressureSensor* bmpBA, PressureSensor* bmpTE, AirspeedSenso
 					(100.0f * (speed - sspeed) / sspeed) : 0.0f;
 
 			snprintf(buf, sizeof(buf), "ST delta: %2.3f %%", bad);
-			Display->writeText(5, buf);
+			menuPrintLn(buf, 5);
 			ESP_LOGI(FNAME, "%s", buf);
 
 			snprintf(buf, sizeof(buf), "TE delta: %2.3f %%", ted);
-			Display->writeText(6, buf);
+			menuPrintLn(buf, 6);
 			ESP_LOGI(FNAME, "%s", buf);
 
 			snprintf(buf, sizeof(buf), "PI delta: %2.2f %%", speedd);
-			Display->writeText(7, buf);
+			menuPrintLn(buf, 7);
 			ESP_LOGI(FNAME, "%s", buf);
 
 			// Stopping condition
@@ -99,29 +112,16 @@ void LeakTest::start(PressureSensor* bmpBA, PressureSensor* bmpTE, AirspeedSenso
 		}
 
 		snprintf(buf, sizeof(buf), "Seconds: %d", (i * 5) + 5);
-		Display->writeText(8, buf);
+		menuPrintLn(buf, 8);
 	}
 
 	// Final result
 	if (failed) {
-		Display->writeText(9, "Test FAILED");
+		menuPrintLn("Test FAILED", 9);
 		ESP_LOGI(FNAME, "FAILED");
 	} else {
-		Display->writeText(9, "Test PASSED");
+		menuPrintLn("Test PASSED", 9);
 		ESP_LOGI(FNAME, "PASSED");
 	}
-
-	// Wait for rotary press
-	int switchState = Rotary->readBootupStatus();
-	while (!switchState) {
-		vTaskDelay(pdMS_TO_TICKS(100));
-		switchState = Rotary->readBootupStatus();
-		ESP_LOGI(FNAME, "Read Rotary: %d", switchState);
-	}
-
-	ESP_LOGI(FNAME, "Read Rotary: %d", switchState);
-
-	// Clear display
-	Display->clear();
 }
 

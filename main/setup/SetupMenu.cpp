@@ -42,6 +42,7 @@
 #include "sensor/press_diff/AirspeedSensor.h"
 #include "AdaptUGC.h"
 #include "sensor.h"
+#include "test/LeakTest.h"
 #include "logdefnone.h"
 
 #include "comm/DeviceMgr.h"
@@ -112,13 +113,18 @@ static int caid_reference(SetupMenuSelect* p) {
     return 0;
 }
 
-static int clear_nvs_action(SetupMenuSelect* p) {
-    if (p->getSelect() == 2) {
+static int factory_nvs_action(SetupMenuSelect* p) {
+    if (p->getSelect() == 1) {
+        factory_flag.set(factory_flag.get() | 1);
+    }
+    else if (p->getSelect() == 2) {
         ESP_LOGI(FNAME, "Clearing NVS...");
         ESP_ERROR_CHECK(nvs_flash_erase());
         nvs_flash_init();
-
         p->reBoot();
+    }
+    else if (p->getSelect() == 3) {
+        factory_flag.set(factory_flag.get() & ~2);
     }
     return 0;
 }
@@ -847,6 +853,15 @@ int unitChangeS(SetupMenuSelect* p) {
     Units::setAll();
     return 0;
 }
+
+static int exitFactoryMenu(SetupMenuSelect* p){
+    if (p->getSelect() == 1) {
+        factory_flag.set(factory_flag.get() | 2);
+        p->setTerminateMenu();
+    }
+    return 0;
+}
+
 void vario_menu_create_damping(SetupMenu *top) {
 	SetupMenuValFloat *vda = new SetupMenuValFloat("Damping", "sec", vario_setup, &vario_delay);
 	vda->setHelp("Response time, time constant of Vario low pass filter");
@@ -1378,12 +1393,13 @@ void system_menu_create_software(SetupMenu *top) {
         top->addEntry(dis);
     }
 
-    SetupMenuSelect* fa = new SetupMenuSelect("Factory Reset", RST_IMMEDIATE, clear_nvs_action, &factory_reset);
+    SetupMenuSelect* fa = new SetupMenuSelect("Factory Reset", RST_IMMEDIATE, factory_nvs_action);
     fa->setHelp("Reset all settings to factory defaults (metric system, 5 m/s vario range, etc.)");
     fa->addEntry("Cancel");
     fa->addEntry("ResetAll");
 #ifdef DEBUG_AND_TEST
     fa->addEntry("ClearNVS");
+    fa->addEntry("Enter Factory Menu");
 #endif
     top->addEntry(fa);
 }
@@ -1501,29 +1517,19 @@ void system_menu_create_hardware_ahrs_parameter(SetupMenu *top) {
 
 void system_menu_create_hardware_imu(SetupMenu *top) {
 #ifdef DEBUG_AND_TEST
-    SetupMenuSelect* imu_calib_collect = new SetupMenuSelect("Axis Calib.", RST_NONE, imu_calib);
+    SetupMenuSelect* imu_calib_collect = new SetupMenuSelect("IMU Reference", RST_NONE, imu_calib);
     imu_calib_collect->setHelp("Calibrate IMU to glider reference. Run the procedure by selecting Start.");
     imu_calib_collect->addEntry("Cancel", 0);
     if (!airborne.get()) {
-        imu_calib_collect->addEntry("Start", 1);
+        imu_calib_collect->addEntry("Start Calib.", 1);
     }
     imu_calib_collect->addEntry("Reset", 2);
     top->addEntry(imu_calib_collect);
 #endif
-    if (!airborne.get()) {
-        SetupMenuSelect* bias_zero = new SetupMenuSelect("IMU Biases", RST_NONE, imu_calib);
-        bias_zero->setHelp("Calibrate, or reset accelerometer bias. The latter only as a last measure.");
-        bias_zero->addEntry("Cancel");
-        bias_zero->addEntry("Acc. Bias Calib.", 3);
-        bias_zero->addEntry("Gyro Reset", 4);
-        bias_zero->addEntry("Acc. Reset", 5);
-        top->addEntry(bias_zero);
-    }
 #ifdef DEBUG_AND_TEST
     SetupMenuValFloat* ahrs_ground_aa = new SetupMenuValFloat("Ground Angle of Attack", "°", imu_gaa, &glider_ground_aa);
     ahrs_ground_aa->setHelp(
-        "Angle of attack with tail skid on the ground to adjust the AHRS horizon level. Change this any time"
-        "level.");
+        "Angle of attack with tail skid on the ground to adjust the AHRS horizon level. Change this any time");
     ahrs_ground_aa->setPrecision(0);
     top->addEntry(ahrs_ground_aa);
 #endif
@@ -1717,6 +1723,13 @@ void setup_create_root(SetupMenu *top) {
 	}
 }
 
+// void setup_create_factory(SetupMenu *top) {
+//     ESP_LOGI(FNAME,"setup_create_factory()");
+//     SetupMenu *soft = new SetupMenu("Software", system_menu_create_software);
+//     top->addEntry(soft);
+
+// }
+
 SetupMenu* SetupMenu::createTopSetup() {
 	const char *top_menu_name = "Setup";
 	if (glider_type.get() != 1000 || ! S2F::isPolarEqualTo(0)) {
@@ -1724,6 +1737,30 @@ SetupMenu* SetupMenu::createTopSetup() {
 	}
 	SetupMenu *setup = new  SetupMenu(top_menu_name, setup_create_root);
 	return setup;
+}
+
+
+SetupMenu* SetupMenu::createFactorySetup() {
+    SetupMenu *setup = new SetupMenu("Factory Setup", nullptr);
+
+    SetupMenu *soft = new SetupMenu("Software", system_menu_create_software);
+    setup->addEntry(soft);
+
+    SetupMenuSelect* bias_zero = new SetupMenuSelect("IMU Biases", RST_NONE, imu_calib);
+    bias_zero->addEntry("Cancel");
+    bias_zero->addEntry("Acc. Bias Calib.", 3);
+    bias_zero->addEntry("Gyro Reset", 4);
+    bias_zero->addEntry("Acc. Reset", 5);
+    setup->addEntry(bias_zero);
+
+    SetupMenuDisplay *leak = new LeakTest("Leak Test");
+    setup->addEntry(leak);
+
+    SetupMenuSelect* fa = new SetupMenuSelect("Exit Factory Menu", RST_NONE, exitFactoryMenu);
+    fa->addEntry("Cancel");
+    fa->addEntry("Exit");
+    setup->addEntry(fa);
+    return setup;
 }
 
 SetupMenuValFloat* SetupMenu::createQNHMenu() {

@@ -59,6 +59,7 @@ public:
 	static int switch_alt_source(SetupMenuSelect* p);
 
 	static SetupMenu* createTopSetup();
+	static SetupMenu* createFactorySetup();
 	static SetupMenuValFloat *createQNHMenu();
 	static SetupMenuValFloat *createBallastMenu();
 	static SetupMenuValFloat *createVoltmeterAdjustMenu();

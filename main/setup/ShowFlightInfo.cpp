@@ -11,7 +11,6 @@
 #include "SensorMgr.h"
 #include "comm/DeviceMgr.h"
 #include "driver/time/Clock.h"
-#include "setup/SetupNG.h"
 #include "AdaptUGC.h"
 #include "logdef.h"
 

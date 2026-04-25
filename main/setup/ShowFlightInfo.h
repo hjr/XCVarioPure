@@ -10,7 +10,7 @@
 
 #include "setup/SetupMenuDisplay.h"
 
-class ShowFlightInfo: public SetupMenuDisplay
+class ShowFlightInfo : public SetupMenuDisplay
 {
 public:
 

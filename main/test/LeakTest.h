@@ -1,15 +1,15 @@
 
 #pragma once
 
+#include "setup/SetupMenuDisplay.h"
+
 class PressureSensor;
 class AirspeedSensor;
 
-class LeakTest{
+class LeakTest : public SetupMenuDisplay {
+  public:
+    LeakTest(const char* title) : SetupMenuDisplay(title, nullptr) {}
+    virtual ~LeakTest() = default;
 
-public:
-	static void start( PressureSensor* bmpBA, PressureSensor* bmpTE, AirspeedSensor *as );
-
+    void display(int mode = 0) override;
 };
-
-
-

@@ -85,11 +85,17 @@ void ScreenRoot::begin(MenuEntry *setup)
     if ( setup ) {
         addEntry(setup);
     } else {
-        addEntry(SetupMenu::createTopSetup());
-        if ( airborne.get() ) {
-            // exit setup after timeout w/o user activity
-            _ui_mon_wd.start(16000); // 16 seconds
-            uiMonitor = &_ui_mon_wd;
+        if ( ! (factory_flag.get() & 2) ) {
+            // show factory menu
+            addEntry(SetupMenu::createFactorySetup());
+        }
+        else {
+            addEntry(SetupMenu::createTopSetup());
+            if ( airborne.get() ) {
+                // exit setup after timeout w/o user activity
+                _ui_mon_wd.start(16000); // 16 seconds
+                uiMonitor = &_ui_mon_wd;
+            }
         }
     }
 

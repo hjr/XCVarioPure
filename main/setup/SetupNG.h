@@ -263,7 +263,7 @@ extern SetupNG<float>  		deadband;
 extern SetupNG<float>  		deadband_neg;
 
 extern SetupNG<float>  		wifi_max_power;
-extern SetupNG<int>  		factory_reset;
+extern SetupNG<int>  		factory_flag;
 extern SetupNG<int>  		alt_select;
 extern SetupNG<int>  		fl_auto_transition;
 extern SetupNG<int>  		alt_display_mode;
