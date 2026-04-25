@@ -13,6 +13,7 @@ add_subdirectory("protocol")
 add_subdirectory("screen")
 add_subdirectory("sensor")
 add_subdirectory("setup")
+add_subdirectory("test")
 add_subdirectory("wind")
 add_subdirectory("wmm")
 
