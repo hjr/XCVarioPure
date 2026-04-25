@@ -528,7 +528,7 @@ SetupNG<int>  			serial2_pin_swap( "SER2_PINS", 0 );
 SetupNG<int>  			serial2_ttl_signals( "SER2_TTL", RS232_NORMAL );
 SetupNG<int>  			serial2_tx_enable( "SER2_TX_ENA", 1 );
 SetupNG<int>  			software_update( "SOFTWARE_UPDATE", 0 );
-SetupNG<int>  			battery_display( "BAT_DISPLAY", Battery::BAT_NONE );
+SetupNG<int>  			battery_display( "BAT_DISPLAY", Battery::BAT_NONE, true );
 SetupNG<int>		    log_level( "LOG_LEVEL", 3 );
 SetupNG<float>		    te_comp_adjust ( "TECOMP_ADJ", 0, true, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(-100, 100, 0.1));
 SetupNG<int>		    te_comp_enable( "TECOMP_ENA", VarioFilter::TE_TEK_PROBE );
@@ -587,7 +587,7 @@ SetupNG<float> 			wind_straight_course_tolerance("WINDSTOL", 7.5, true, SYNC_NON
 SetupNG<float> 			wind_straight_speed_tolerance("WINDSSTOL", 15, true, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(1.0, 30.0, 1));
 SetupNG<int> 			wind_reference( "WIND_REF", static_cast<int>(WindReference::WR_HEADING) );
 SetupNG<float> 			wind_max_deviation("WIND_MDEV", 30.0, true, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(0.0, 180.0, 1.0));
-SetupNG<int> 			s2f_blockspeed( "S2G_BLOCKSPEED", 0, true, SYNC_BIDIR );  // considering netto vario and g load for S2F or not
+SetupNG<int> 			s2f_blockspeed( "S2G_BLOCKSPEED", 0, false, SYNC_BIDIR );  // considering netto vario and g load for S2F or not
 SetupNG<int> 			needle_color("NEEDLE_COLOR", VN_COLOR_ORANGE );
 SetupNG<int> 			wk_label_0( "WK_LBL_0", 0, false, SYNC_BIDIR, PERSISTENT, flap_update_act );
 SetupNG<int> 			wk_label_1( "WK_LBL_1", 0, false, SYNC_BIDIR, PERSISTENT, flap_update_act );
@@ -624,9 +624,9 @@ SetupNG<float> 			master_xcvario( "MSXCV", 0, false, SYNC_NONE, PERSISTENT, null
 SetupNG<int> 			menu_long_press("MENU_LONG", 0 );
 SetupNG<int> 			screen_gmeter("SCR_GMET", SCREEN_OFF, false);
 SetupNG<int> 			screen_horizon("SCR_HORIZ", SCREEN_OFF);
-SetupNG<int> 			vario_centeraid("SCR_CA", 0, false);
-SetupNG<int> 			vario_upper_gauge("SCR_GT", MultiGauge::GAUGE_IAS_SPEED, false);
-SetupNG<int> 			vario_lower_gauge("SCR_GB", MultiGauge::GAUGE_WIND, false);
+SetupNG<int> 			vario_centeraid("SCR_CA", 1, false); // 0: off, 1: top-ref, 2: side-ref
+SetupNG<int> 			vario_upper_gauge("SCR_GT", MultiGauge::GAUGE_NONE, false);
+SetupNG<int> 			vario_lower_gauge("SCR_GB", MultiGauge::GAUGE_NONE, false);
 SetupNG<int> 			vario_mc_gauge("SCR_GMC", 1, false);
 // SetupNG<bitfield_compass>  calibration_bits("CALBIT", { 0,0,0,0,0,0 } );
 SetupNG<int> 			gear_warning("GEARWA", 0 );
