@@ -489,7 +489,7 @@ static void factoryAccCalibration(SetupMenuSelect* p) {
     }
     ESP_LOGI(FNAME, "Sample sum: %f,%f,%f, norm: %f", sum.x, sum.y, sum.z, sum.get_norm());
 
-    if (pos < 6 || sum.get_norm() > 0.5f || abort) {
+    if (pos < 6 || sum.get_norm() > 0.8f || abort) {
         p->clear();
         p->menuPrintLn("... aborted ...", 2);
         nlidx = 4;
