@@ -460,10 +460,7 @@ static void factoryAccCalibration(SetupMenuSelect* p) {
         snprintf(buf, sizeof(buf), "Position %d/6", pos+1);
         p->menuPrintLn(buf, nlidx);
 
-        // wait 2 more seconds
-        for (int i=0; i<4 && !abort; i++) {
-            abort = Rotary->readSwitch(500);
-        }
+        // rest condition ensures 2 seconds calm history
         if ( ! abort ) {
             // read the acc average
             samples[pos] = accSensor->getAVG(2000);
