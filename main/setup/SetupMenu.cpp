@@ -43,7 +43,7 @@
 #include "AdaptUGC.h"
 #include "sensor.h"
 #include "test/LeakTest.h"
-#include "logdefnone.h"
+#include "logdef.h"
 
 #include "comm/DeviceMgr.h"
 #include "math/Trigonometry.h"
@@ -485,13 +485,15 @@ static void factoryAccCalibration(SetupMenuSelect* p) {
     vector_f sum;
     for ( int i=0; i < 6; i++ ) {
         sum += samples[i];
+        ESP_LOGI(FNAME, "Sample %d: %f,%f,%f", i, samples[i].x, samples[i].y, samples[i].z);
     }
+    ESP_LOGI(FNAME, "Sample sum: %f,%f,%f, norm: %f", sum.x, sum.y, sum.z, sum.get_norm());
 
     if (pos < 6 || sum.get_norm() > 0.5f || abort) {
         p->clear();
         p->menuPrintLn("... aborted ...", 2);
         nlidx = 4;
-        if ( ! abort && sum.get_norm() > 0.5f ) {
+        if ( ! abort && pos == 6 ) {
             p->menuPrintLn("Too simillar samples", nlidx++);
         }
         accSensor->getMpu().setRefRot(backup);
