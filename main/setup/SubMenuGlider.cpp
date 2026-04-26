@@ -129,13 +129,14 @@ void glider_selection_create(SetupMenu *top) {
     SetupMenuSelect *glt = new SetupMenuSelect("Type", RST_NONE, polar_select, &glider_type, true);
     fill_glider_selection(glt);
     glt->setHelp("Select your type of glider from the list of pre-installed polars");
+    glt->setTerminateMenu();
     top->addEntry(glt);
     top->setHighlight(1);
     int event = ButtonEvent(ButtonEvent::SHORT_PRESS).raw;
     xQueueSend(uiEventQueue, &event, 0); // virtually press the button to straight enter the selection
 }
 SetupMenu *createGliderSelectMenu() {
-    SetupMenu *glt_menu = new SetupMenu("Set the glider type",glider_selection_create);
+    SetupMenu *glt_menu = new SetupMenu("Set the glider type", glider_selection_create);
     return glt_menu;
 }
 
