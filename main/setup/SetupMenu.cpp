@@ -294,6 +294,27 @@ static int imu_gaa(SetupMenuValFloat *f) {
     return 0;
 }
 
+// 1: left wing down, -1: right wing down, 0: leveled
+static void drawGliderPic(int16_t lev) {
+    int X = DISPLAY_W / 2;
+    int Y = DISPLAY_H / 2;
+    MYUCG->setColor(COLOR_BLACK);
+    MYUCG->drawBox(X-70, Y-20, 140, 40);
+    MYUCG->setColor(COLOR_WHITE);
+    MYUCG->drawDisc(X, Y+4, 6, UCG_DRAW_ALL);
+    MYUCG->drawLine(X-50, Y+7*lev, X+50, Y-7*lev); // wing
+    MYUCG->drawLine(X, Y, X-1*lev, Y-10);
+    MYUCG->drawLine(X-9-1*lev, Y-10+1*lev, X+9+1*lev, Y-10-1*lev); // tail wing
+    if ( lev != 0 ) {
+        // some dots depicting the motion
+        MYUCG->setColor(COLOR_RED);
+        MYUCG->drawDisc(X+61*lev, Y-15, 2, UCG_DRAW_ALL);
+        MYUCG->drawDisc(X+64*lev, Y-7, 2, UCG_DRAW_ALL);
+        MYUCG->drawDisc(X+63*lev, Y+1, 2, UCG_DRAW_ALL);
+        MYUCG->drawTriangle(X+62*lev, Y+12, X+62*lev+5, Y+7, X+62*lev-5, Y+7);
+    }
+}
+
 static void doImuCalibration(SetupMenuSelect* p) {
     MYUCG->setFont(ucg_font_ncenR14_hr, true);
     p->clear();
@@ -311,10 +332,8 @@ static void doImuCalibration(SetupMenuSelect* p) {
     accSensor->getMpu().applyImuReference(0, MpuImu::getDefaultImuReference());
     // reset lever arm
     accSensor->getMpu().setLeverArm(0.f);
-    // need to reset the acc bias, because this is the only way we can really measure it
-    accSensor->resetBias();
 
-    // double check that the gyro is calibrated, otherwise the result would be useless
+    // double check that the gyro bias is set ok, otherwise the result would be useless
     vector_f gyro;
     float gnorm;
     bool abort = false;
@@ -326,6 +345,10 @@ static void doImuCalibration(SetupMenuSelect* p) {
     } while ((gnorm > GyroMPU6050::GYRO_THRESHOLD || !gyroSensor->isResting()) && !abort);
 
     ESP_LOGI(FNAME, "gyro reading: (%f/%f/%f): %f < %f", gyro.x, gyro.y, gyro.z, gnorm, GyroMPU6050::GYRO_THRESHOLD);
+
+    p->clear();
+    p->menuPrintLn("IMU Glider Reference", 2, 18);
+    nlidx = next_step;
 
     float angle;
     float ground_angle;
@@ -345,28 +368,33 @@ static void doImuCalibration(SetupMenuSelect* p) {
 
             if (i == 0) {
                 // first wing down
-                nlidx = next_step;
-                p->menuPrintLn("Move first wing tip    ", nlidx++);
-                p->menuPrintLn(" down to the ground.", nlidx++);
+                p->menuPrintLn("Move first wing down    ", next_step);
+                // draw a picture of the expected movement to support the user
+                drawGliderPic(1);
             }
             else if (i == 1) {
                 // second wing down
-                nlidx = next_step;
+                p->menuClearLn(next_step);
                 MYUCG->setColor(COLOR_RED);
-                p->menuPrintLn("Move next wing tip    ", next_step);
+                p->menuPrintLn("Move other wing down    ", next_step);
+                drawGliderPic(-1);
             }
             else if (i == 2) {
                 // wings level
+                p->menuClearLn(next_step);
                 MYUCG->setColor(COLOR_RED);
                 p->menuPrintLn("Hold wings level      ", next_step);
+                drawGliderPic(0);
             }
             MYUCG->setColor(COLOR_WHITE);
             nlidx = next_step + 4;
+            p->menuClearLn(nlidx);
             p->menuPrintLn("Start with button press.", nlidx);
             p->menuClearLn(nlidx+1);
             while (!Rotary->readSwitch(700)) ;
-            p->menuPrintLn("Wait for the Chimes or press,", nlidx++);
-            p->menuPrintLn("when motion finished.", nlidx++);
+            p->menuClearLn(nlidx);
+            p->menuPrintLn("Wait for the Chimes,", nlidx++);
+            p->menuPrintLn("after movement finished.", nlidx++);
 
             // wait for the first wing movement
             start_time = Clock::getMillis(); // save the time when the movement starts, to calculate the gyro integral later
@@ -459,7 +487,7 @@ static void factoryAccCalibration(SetupMenuSelect* p) {
         // wait until calm
         do {
             abort = Rotary->readSwitch(500);
-            // ESP_LOGI(FNAME, "Rest gcalm %d acalm %d", gyroSensor->isResting(), accSensor->isResting());
+            ESP_LOGI(FNAME, "Rest gcalm %d acalm %d", gyroSensor->isResting(), accSensor->isResting());
         } while ((!accSensor->isResting() || !gyroSensor->isResting()) && !abort);
 
         char buf[64];

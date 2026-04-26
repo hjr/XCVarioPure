@@ -180,26 +180,6 @@ Quaternion MpuImu::concatGaaAndImuReference(const degree_t gAA, const Quaternion
     return rot.normalize();
 }
 
-// IMU reference calibration
-class IMU_Ref {
-   public:
-    void setBr(vector_f& p) { Br = p; }
-    void setBl(vector_f& p) { Bl = p; }
-    void setBh(vector_f& p) { Bh = p; }
-    float operator()(const std::vector<float> x) const {
-        const vector_f tmp(x[0], x[1], x[2]);
-        float Nr = (Br - tmp).get_norm();  // |Mr-B|
-        float Nl = (Bl - tmp).get_norm();
-        float Nh = (Bh - tmp).get_norm();
-
-        // ESP_LOGI(FNAME, "iter: %f,%f,%f", x[0],x[1],x[2]);
-        return pow(Nr - 1, 2) + pow(Nl - 1, 2) + pow(Nh - 1, 2) + (tmp).get_norm2() + pow(Nl - Nr, 2) / 10.;
-    }
-
-   private:
-    vector_f Br, Bl, Bh;
-};
-
 // Callback for the two/three vector samples needed for the reference calibration
 // Returns progress in case of success
 // 0 := not yet started
@@ -238,25 +218,10 @@ int MpuImu::getAccelSamplesAndCalib(vector_f gyro_integral, rad_t& wing_angle, r
     ESP_LOGI(FNAME, "wing down bob: %f/%f/%f", bob->x, bob->y, bob->z);
     progress |= side;  // accumulate progress
     if (progress == 4) {
-        // Extract the current bias from wing down measurments
-        std::vector<float> start{.0, .0, .0};
-        std::vector<std::vector<float> > imu_simp{{0.05, 0, 0}, {0, -0.05, 0}, {0, 0, 0.05}, {0, 0, 0}};
-        IMU_Ref bias_min;
-        bias_min.setBr(bob_right_wing);
-        bias_min.setBl(bob_left_wing);
-        bias_min.setBh(bob_level);
-        std::vector<float> x = MATH::Simplex(bias_min, start, 1e-6f, imu_simp);
-        vector_f bias(x[0], x[1], x[2]);
-        ESP_LOGI(FNAME, "Bias: %f,%f,%f", x[0], x[1], x[2]);
-
         // Calculate the rotation to the glieder reference from the two measurments
-        // Corrected wing down bob vectores
-        vector_f pureBr = bob_right_wing - bias;
-        vector_f pureBl = bob_left_wing - bias;
-        vector_f pureBlev = bob_level - bias;
-        ESP_LOGI(FNAME, "pureBr:\t%f\t%f\t%f \tL%.2f", pureBr.x, pureBr.y, pureBr.z, pureBr.get_norm());
-        ESP_LOGI(FNAME, "pureBl:\t%f\t%f\t%f \tL%.2f", pureBl.x, pureBl.y, pureBl.z, pureBl.get_norm());
-        ESP_LOGI(FNAME, "pureBlev:\t%f\t%f\t%f \tL%.2f", pureBlev.x, pureBlev.y, pureBlev.z, pureBlev.get_norm());
+        ESP_LOGI(FNAME, "pureBr:\t%f\t%f\t%f \tL%.2f", bob_right_wing.x, bob_right_wing.y, bob_right_wing.z, bob_right_wing.get_norm());
+        ESP_LOGI(FNAME, "pureBl:\t%f\t%f\t%f \tL%.2f", bob_left_wing.x, bob_left_wing.y, bob_left_wing.z, bob_left_wing.get_norm());
+        ESP_LOGI(FNAME, "pureBlev:\t%f\t%f\t%f \tL%.2f", bob_level.x, bob_level.y, bob_level.z, bob_level.get_norm());
 
         // Check on wing angle is at least 4 degree
         wing_angle = Quaternion::AlignVectors(vector_f(bob_right_wing.x, bob_right_wing.y, bob_right_wing.z),
@@ -271,15 +236,15 @@ int MpuImu::getAccelSamplesAndCalib(vector_f gyro_integral, rad_t& wing_angle, r
 
         // A vector from skid touch points towards the main wheel touch point
         // The X in glider reference (points towards the nose)
-        vector_f X = pureBr.cross(pureBl);  // Br x Bl
+        vector_f X = bob_right_wing.cross(bob_left_wing);  // Br x Bl
         X.normalize();
         ESP_LOGI(FNAME, "X: %f,%f,%f", X.x, X.y, X.z);
         // The Z in glider reference
         // The bob in glider ref, skid stil on the ground (points up)
-        vector_f Z_plane_normal = pureBl.cross(pureBr) + pureBl.cross(pureBlev) + pureBlev.cross(pureBr); // Bl x Br + Bl x Blev + Blev x Br
+        vector_f Z_plane_normal = bob_left_wing.cross(bob_right_wing) + bob_left_wing.cross(bob_level) + bob_level.cross(bob_right_wing); // Bl x Br + Bl x Blev + Blev x Br
         Z_plane_normal.normalize();
         // project pureBlev into plane
-        vector_f Z(pureBlev - Z_plane_normal * pureBlev.dot(Z_plane_normal)); // Blev - (Blev dot plane normal) * plane normal
+        vector_f Z(bob_level - Z_plane_normal * bob_level.dot(Z_plane_normal)); // Blev - (Blev dot plane normal) * plane normal
         // vector_f Z(pureBr + pureBl + 2 * pureBlev); // weighted average
         Z.normalize();
         // The Y in glider reference
@@ -308,20 +273,6 @@ int MpuImu::getAccelSamplesAndCalib(vector_f gyro_integral, rad_t& wing_angle, r
 
         // Save the basic part to nvs storage
         imu_reference.set(basic_reference, false);
-
-        // Save the accel bias
-        vector_f new_accl_bias = _ref_rot.get_conjugate().rotate(bias); // transform back to sensor frame
-        ESP_LOGI(FNAME, "accel bias: %f,%f,%f", new_accl_bias.x, new_accl_bias.y, new_accl_bias.z);
-        mpud::raw_axes_t raw_bias(new_accl_bias.x * -2048., new_accl_bias.y * -2048., new_accl_bias.z * -2048.);
-        ESP_LOGI(FNAME, "raw  Bias: %d,%d,%d", raw_bias.x, raw_bias.y, raw_bias.z);
-        mpud::raw_axes_t currrent_bias = myMPU.getAccelOffset(); // should always set to 0 before the procedure
-        ESP_LOGI(FNAME, "current Bias: %d,%d,%d", currrent_bias.x, currrent_bias.y, currrent_bias.z);
-        currrent_bias -= raw_bias;
-        ESP_LOGI(FNAME, "new Bias: %d,%d,%d", currrent_bias.x, currrent_bias.y, currrent_bias.z);
-        accl_bias.set(axes_i16_abi(currrent_bias.x, currrent_bias.y, currrent_bias.z), false);
-        // Reprogam MPU bias
-        myMPU.setAccelOffset(currrent_bias);
-
     }
     return progress;
 }
