@@ -11,7 +11,6 @@
 #include "math/vector_3d_fwd.h"
 #include "math/Units.h"
 
-#include <MPU.h>
 #include <string>
 #include <cstdint>
 

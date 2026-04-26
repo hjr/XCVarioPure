@@ -11,8 +11,8 @@
 #include "../SensorBase.h"
 #include "math/Quaternion.h"
 #include "math/Units.h"
+#include "MPU.hpp"
 
-#include <MPU.hpp>
 #include <mpu/types.hpp>
 
 #include <cstdint>
