@@ -59,7 +59,7 @@ bool SetupCommon::init()
 	bool ret = NVS.getBlob(_key.data(), nullptr, &required_size);
 	if ( !ret ){
 		ESP_LOGE(FNAME, "%s: NVS nvs_get_blob error", _key.data() );
-		setDefault();  // try to init
+		setDefault(); // set to default
 		setDirty();
 	}
 	else {
@@ -67,7 +67,7 @@ bool SetupCommon::init()
 		if( required_size > getSize() ) {
 			ESP_LOGE(FNAME,"NVS error: size too big: %d > %d", required_size , getSize() );
 			erase();
-			setDefault();  // try to init
+			setDefault();
 			ret = false;
 		}
 		else {
@@ -77,7 +77,7 @@ bool SetupCommon::init()
 			if ( !ret || !inLimits() ){
 				ESP_LOGE(FNAME, "NVS nvs_get_blob error");
 				erase();
-				setDefault();  // try to init
+				setDefault();
 				setDirty();
 			}
 			else {
@@ -109,9 +109,7 @@ bool SetupCommon::write()
 {
 	// ESP_LOGI(FNAME,"NVS write(): ");
 	ESP_LOGI(FNAME,"NVS set blob(key:%s, val: %s, len:%d )", _key.data(), getValueAsStr().c_str(), getSize() );
-	portDISABLE_INTERRUPTS();
 	bool ret = NVS.setBlob( _key.data(), getPtr(), getSize() );
-	portENABLE_INTERRUPTS();
 	if( !ret )
 		return false;
 	return true;
