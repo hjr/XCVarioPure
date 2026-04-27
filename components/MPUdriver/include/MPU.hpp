@@ -122,7 +122,7 @@ class MPU
     //! \name Offset / Bias
     //! \{
     esp_err_t setGyroOffset(raw_axes_t bias);
-    esp_err_t setAccelOffset(raw_axes_t bias = raw_axes_t());
+    esp_err_t setAccelOffset(raw_axes_t bias);
     raw_axes_t getGyroOffset();
     raw_axes_t getAccelOffset();
     //! \}
@@ -252,13 +252,13 @@ class MPU
     esp_err_t gyroSelfTest(raw_axes_t& regularBias, raw_axes_t& selfTestBias, uint8_t* result);
     esp_err_t getBiases(accel_fs_t accelFS, gyro_fs_t gyroFS, raw_axes_t* accelBias, raw_axes_t* gyroBias,
                         bool selftest);
+    raw_axes_t readAccelOffsetRegister();
 
     mpu_bus_t* bus;         /*!< Communication bus pointer, I2C / SPI */
     mpu_addr_handle_t addr; /*!< I2C address / SPI device handle */
     uint8_t buffer[16];     /*!< Commom buffer for temporary data */
     esp_err_t err;          /*!< Holds last error code */
-
-    raw_axes_t accel_factory_trim;
+    raw_axes_t accel_factory_offset;
 };
 
 }  // namespace mpud

@@ -85,9 +85,9 @@ esp_err_t MPU::initialize()
 #endif
 #endif
 
-	// save accelerometer factory trim values
-	accel_factory_trim = getAccelOffset();
-	MPU_LOGI("Factory trim: %d/%d/%d", accel_factory_trim.x, accel_factory_trim.y, accel_factory_trim.z);
+	// save accelerometer factory offset values
+	accel_factory_offset = readAccelOffsetRegister();
+	MPU_LOGI("Factory offset: %d/%d/%d", accel_factory_offset.x, accel_factory_offset.y, accel_factory_offset.z);
 
 	// set sample rate to 100Hz
 	if (MPU_ERR_CHECK(setSampleRate(100))) return err;
@@ -831,19 +831,21 @@ raw_axes_t MPU::getGyroOffset()
 /**
  * @brief Push biases to the accel offset registers.
  *
- * This function expects biases relative to the sensor output with factory trim,
- * these biases will be added to the factory-supplied trim values.
+ * This function expects biases relative to the sensor output with factory offset,
+ * these biases will be added to the factory-supplied offset values.
  *
  * Note: Bias inputs are LSB in +-16G format.
  * */
 esp_err_t MPU::setAccelOffset(raw_axes_t bias)
 {
 	raw_axes_t facBias;
-	// apply saved values of factory trim
+	// apply saved values of factory offset
 	// note: preserve bit 0 of factory value (for temperature compensation)
-	facBias.x = accel_factory_trim.x + (bias.x & ~1);
-	facBias.y = accel_factory_trim.y + (bias.y & ~1);
-	facBias.z = accel_factory_trim.z + (bias.z & ~1);
+	facBias.x = (bias.x<<1) + accel_factory_offset.x;
+	facBias.y = (bias.y<<1) + accel_factory_offset.y;
+	facBias.z = (bias.z<<1) + accel_factory_offset.z;
+
+	MPU_LOGI(" setAccelOffset %d %d %d", bias.x, bias.y, bias.z);
 
 #if defined CONFIG_MPU6050
 	buffer[0] = (uint8_t)(facBias.x >> 8);
@@ -867,14 +869,8 @@ esp_err_t MPU::setAccelOffset(raw_axes_t bias)
 	return err;
 }
 
-/**
- * @brief Return biases from accel offset registers.
- * This returns the biases with OTP values from factory trim subtracted,
- * so returned values will be the same as the ones set with setAccelOffset().
- *
- * Note: Bias output are LSB in +-16G format.
- * */
-raw_axes_t MPU::getAccelOffset()
+
+raw_axes_t MPU::readAccelOffsetRegister()
 {
 	raw_axes_t bias;
 
@@ -891,7 +887,23 @@ raw_axes_t MPU::getAccelOffset()
 	bias.z                        = (buffer[6] << 8) | buffer[7];
 #endif
 
-	bias -= accel_factory_trim;
+	return bias;
+}
+
+/**
+ * @brief Return biases from accel offset registers.
+ * This returns the biases with OTP values from factory offset subtracted,
+ * so returned values will be the same as the ones set with setAccelOffset().
+ * */
+raw_axes_t MPU::getAccelOffset()
+{
+	raw_axes_t bias = readAccelOffsetRegister();
+	bias -= accel_factory_offset;
+
+	bias.x = (bias.x >> 1);
+	bias.y = (bias.y >> 1);
+	bias.z = (bias.z >> 1);
+	// MPU_LOGI(" getAccelOffset %d %d %d", bias.x, bias.y, bias.z);
 	return bias;
 }
 
@@ -899,23 +911,12 @@ raw_axes_t MPU::getAccelOffset()
 /**
  * @brief Read accelerometer raw data.
  * */
-
-/*
-       Axes
-       ----
- real      sensor
-accelX = -accelG[2];
-accelY = accelG[1];
-accelZ = accelG[0];
-
- */
 esp_err_t MPU::acceleration(raw_axes_t* accel)
 {
 	if (MPU_ERR_CHECK(readBytes(regs::ACCEL_XOUT_H, 6, buffer))) return err;
 	accel->x = buffer[0] << 8 | buffer[1];
 	accel->y = buffer[2] << 8 | buffer[3];
 	accel->z = buffer[4] << 8 | buffer[5];
-	// MPU_LOGI("accel:\t%d\t%d\t%d", accel->x, accel->y, accel->z);
 	return err;
 }
 
