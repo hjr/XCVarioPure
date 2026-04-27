@@ -873,6 +873,22 @@ int unitChangeS(SetupMenuSelect* p) {
 
 static int exitFactoryMenu(SetupMenuSelect* p){
     if (p->getSelect() == 1) {
+// #ifndef DEBUG_AND_TEST
+        // check if factory tasks are done
+        axes_i16_abi accbias = accl_bias.get();
+        if ( factory_volt_adjust.get() == 0.f ) {
+            // not done, show warning
+            p->menuPrintLn("Battery voltage adjust not done.", 10, 5);
+            p->setSelect(0);
+            return 0;
+        }
+        if ( accbias == axes_i16_abi() ) {
+            // not done, show warning
+            p->menuPrintLn("Acceleromenter bias not done.", 10, 5);
+            p->setSelect(0);
+            return 0;
+        }
+// #endif
         factory_flag.set(factory_flag.get() | 2);
         p->setTerminateMenu();
     }
@@ -1542,6 +1558,12 @@ void system_menu_create_hardware_imu(SetupMenu *top) {
     }
     imu_calib_collect->addEntry("Reset", 2);
     top->addEntry(imu_calib_collect);
+
+    SetupMenuSelect* gyro_reset = new SetupMenuSelect("Gyro Zero", RST_NONE, imu_calib);
+    gyro_reset->setHelp("Reset gyro bias to zero");
+    gyro_reset->addEntry("Cancel", 0);
+    gyro_reset->addEntry("Gyro Reset", 4);
+    top->addEntry(gyro_reset);
 #endif
 #ifdef DEBUG_AND_TEST
     SetupMenuValFloat* ahrs_ground_aa = new SetupMenuValFloat("Ground Angle of Attack", "°", imu_gaa, &glider_ground_aa);
@@ -1762,6 +1784,9 @@ SetupMenu* SetupMenu::createFactorySetup() {
 
     SetupMenu *soft = new SetupMenu("Software", system_menu_create_software);
     setup->addEntry(soft);
+
+    SetupMenuValFloat *met_adj = SetupMenu::createVoltmeterAdjustMenu();
+    setup->addEntry(met_adj);
 
     SetupMenuSelect* bias_zero = new SetupMenuSelect("IMU Biases", RST_NONE, imu_calib);
     bias_zero->addEntry("Cancel");
