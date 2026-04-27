@@ -310,6 +310,12 @@ vector_f MpuImu::extractAccBias(vector_f *samples, int nr) {
     return bias;
 }
 
+void MpuImu::restoreAccelOffset() const {
+    axes_i16_abi tmp = accl_bias.get(); 
+    accSensor->getMpu().setAccelOffset(mpud::raw_axes_t(tmp.x, tmp.y, tmp.z));
+}
+
+
 //
 // PI control to regulate temperature
 //

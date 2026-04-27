@@ -405,7 +405,7 @@ static void doImuCalibration(SetupMenuSelect* p) {
             button = false;
             while ( (!gyroSensor->isResting() || !accSensor->isResting()) && !button) {
                 // make a noise if the movement is detected, to support the user in the procedure
-                AUDIO->startSound(AUDIO_KNOCK | PRIO_SND_MASK, false, 100);
+                if (i < 2) AUDIO->startSound(AUDIO_KNOCK | PRIO_SND_MASK, false, 100);
                 ESP_LOGI(FNAME, "Wait for standstill, gcalm %d acalm %d", gyroSensor->isResting(), accSensor->isResting());
                 button = Rotary->readSwitch(700);
             }
@@ -435,8 +435,6 @@ static void doImuCalibration(SetupMenuSelect* p) {
             p->menuPrintLn("too small an angle.", nlidx++);
         }
         accSensor->getMpu().setRefRot(backup);
-        axes_i16_abi tmp = accl_bias.get(); 
-        accSensor->pushBias(mpud::raw_axes_t(tmp.x, tmp.y, tmp.z));
         p->menuPrintLn("press button to return", 8, 1);
         while (!Rotary->readSwitch(100))
             ;
@@ -471,9 +469,6 @@ static void factoryAccCalibration(SetupMenuSelect* p) {
     p->menuPrintLn("Abort with button.", nlidx++);
     nlidx++;
 
-    // load the default reference to the IMU
-    Quaternion backup = accSensor->getMpu().getRefRot();
-    accSensor->getMpu().applyImuReference(0, Quaternion());
     // reset lever arm
     accSensor->getMpu().setLeverArm(0.f);
     // need to reset the acc bias, because this is the only way we can really measure it
@@ -499,14 +494,11 @@ static void factoryAccCalibration(SetupMenuSelect* p) {
             // read the acc average
             samples[pos] = accSensor->getAVG(2000);
             pos++;
-            AUDIO->startSound(AUDIO_TADDA | PRIO_SND_MASK, false, 100);
+            if (pos < 5) { AUDIO->startSound(AUDIO_TADDA | PRIO_SND_MASK, false, 100); }
         }
         gyroSensor->resetRest();
         accSensor->resetRest();
     }
-
-    // set lever arm again
-    accSensor->getMpu().setLeverArm(imu_leverarm.get());
 
     // rough quality check on samples
     // the sum should be close to zero, otherwise the device was not really moved around all axes
@@ -524,26 +516,21 @@ static void factoryAccCalibration(SetupMenuSelect* p) {
         if ( ! abort && pos == 6 ) {
             p->menuPrintLn("Too simillar samples", nlidx++);
         }
-        accSensor->getMpu().setRefRot(backup);
-        axes_i16_abi tmp = accl_bias.get(); 
-        accSensor->pushBias(mpud::raw_axes_t(tmp.x, tmp.y, tmp.z));
-        p->menuPrintLn("press button to return", 8, 1);
-        while (!Rotary->readSwitch(100)) ;
-        return;
+        accSensor->getMpu().restoreAccelOffset();
+    }
+    else {
+        // calculate bias from samples and push to sensor
+        vector_f bias = accSensor->getMpu().extractAccBias(samples, 6);
+        accSensor->pushBias(bias);
+        AUDIO->startSound(AUDIO_TADDA | PRIO_SND_MASK, false, 100);
+        p->clear();
+        p->menuPrintLn("Success !", 2, 20);
     }
 
-    vector_f bias = accSensor->getMpu().extractAccBias(samples, 6);
+    // restore IMU setup
+    accSensor->getMpu().setLeverArm(imu_leverarm.get());
 
-    ESP_LOGI(FNAME, "accel bias: %f,%f,%f", bias.x, bias.y, bias.z);
-    mpud::raw_axes_t raw_bias(bias.x * 2048., bias.y * 2048., bias.z * 2048.);
-    ESP_LOGI(FNAME, "raw  bias: %d,%d,%d", raw_bias.x, raw_bias.y, raw_bias.z);
-    accl_bias.set(axes_i16_abi(raw_bias.x, raw_bias.y, raw_bias.z), false);
-    // Reprogam MPU bias
-    accSensor->pushBias(raw_bias);
-
-    p->clear();
-    p->menuPrintLn("Success !", 2, 20);
-    p->menuPrintLn("press button to return", 10, 1);
+    p->menuPrintLn("press button to return", 8, 1);
     while (!Rotary->readSwitch(100)) ;
 }
 

@@ -50,6 +50,7 @@ public:
     inline float getLeverArm() const { return _leverarm; }
     void setRefRot(const Quaternion& ref) { _ref_rot = ref; }
     inline Quaternion getRefRot() const { return _ref_rot; }
+    void restoreAccelOffset() const; // restore accel offset from NVS
 
     friend class AccMPU6050;
     friend class GyroMPU6050;
