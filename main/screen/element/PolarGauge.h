@@ -9,6 +9,7 @@
 #pragma once
 
 #include "ScreenElement.h"
+#include "LargeFigure.h"
 #include "wind/Wind.h"
 #include "math/Trigonometry.h"
 #include "math/Units.h"
@@ -17,7 +18,6 @@
 
 class ArrowIndicator;
 class WindIndicator;
-class LargeFigure;
 class CenterAid;
 
 
@@ -59,6 +59,7 @@ public:
     void setUnit(float uf) { _unit_fac = uf; }
     void setColor(int color_idx);
     void setFigOffset(int16_t ox, int16_t oy);
+    void setFigExtras(bool show) { if ( _figure ) _figure->showExtras(show); }
 
     using ScreenElement::draw;
     void draw(float a);

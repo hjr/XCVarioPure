@@ -487,6 +487,7 @@ void IpsDisplay::initDisplay() {
                         gflags.isPro ? PolarGauge::XCVPRO : PolarGauge::CLUB);
     }
     MAINgauge->setFigOffset(AVGOFFX, 0);
+    MAINgauge->setFigExtras(true);
     MAINgauge->setUnit(VarioUnit->scale);
     MAINgauge->setRange(scale_range.get(), 0.f, log_scale.get());
     MAINgauge->setColor(needle_color.get());
@@ -729,7 +730,8 @@ void IpsDisplay::initLoadDisplay(){
 		int16_t scale_geometry = ( display_orientation.get() == DISPLAY_NINETY ) ? 120 : 90;
 		MAINgauge = new PolarGauge(AMIDX, AMIDY, scale_geometry, DISPLAY_H/2-20, PolarGauge::GLOAD);
 	}
-	MAINgauge->setFigOffset(0, 0);
+	MAINgauge->setFigOffset(AVGOFFX, 0);
+    MAINgauge->setFigExtras(false);
 	MAINgauge->setUnit(1.);
 	MAINgauge->setRange(max_gscale, 1.f, false);
 	MAINgauge->setColor(needle_color.get());

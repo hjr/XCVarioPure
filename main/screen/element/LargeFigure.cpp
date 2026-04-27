@@ -96,7 +96,7 @@ void LargeFigure::draw(float val) {
     if (_value != ival || _dirty) {
         _value = ival;
         draw();
-        if ( _dirty ) {
+        if ( _dirty && _show_extras) {
             drawStatic();
         }
     }
