@@ -159,7 +159,7 @@ Point Point::centralProjection(const vector_f &obj, float focus) {
 // and d is the signed distance of the line to the center of the display
 Line::Line(const Quaternion &q) { //, int16_t cx, int16_t cy) {
     // normal vector of the plane
-    vector_f up = q.rotate(vector_f(0, 0, -1)); // Earth-Up ENU im Body frame
+    vector_f up = q.rotate(vector_f(0, 0, -1)); // Earth-Up ENU in Body frame
     _nx = up.y;
     _ny = up.z;
     _d = std::clamp(-up.x, -0.7f, 0.7f) * 100; // projection scale to visible range

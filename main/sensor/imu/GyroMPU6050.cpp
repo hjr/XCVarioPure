@@ -79,10 +79,10 @@ void GyroMPU6050::postProcess() {
     bool rest = detectRest() && accSensor->isResting();
 
     // feed the bias filter
-    _bias_estimator.update(gyro, rest);
+    _bias_estimator.update(gyro, (_isResting > 0) && accSensor->isResting());
     vector_f bias = _bias_estimator.getBias();
     if ( rest != rest_old) {
-        ESP_LOGI(FNAME, "rest state changed: %c -> %c", rest_old ? 'R' : 'M', rest ? 'R' : 'M');
+        ESP_LOGI(FNAME, "rest state changed: %c -> %c (%c)", rest_old ? 'R' : 'M', rest ? 'R' : 'M', (_isResting > 0) ? 'u' : '_');
         rest_old = rest;
     }
     if ( rest ) {
@@ -102,27 +102,34 @@ void GyroMPU6050::postProcess() {
 void GyroMPU6050::resetRest() {
     _bias_estimator.reset();
     _restTimer = 0;
-    _isResting = false;
+    _isResting = 0;
 }
 
 // rest - detection
 bool GyroMPU6050::detectRest() {
     // gyro variance
     vector_f gyrVar = getVariance(1000);
+    // ESP_LOGI(FNAME, "rest detection: gyrVar=(%f, %f, %f) processed=(%f, %f, %f)", gyrVar.x, gyrVar.y, gyrVar.z, _processed.x, _processed.y, _processed.z);
     
-    // ESP_LOGI(FNAME, "rest detection: gyrVar=(%f, %f, %f) accDev=%f accNormLP=%f, dt=%f", gyrVar.x, gyrVar.y, gyrVar.z, accDev, accNormLP, dt);
-    
-    if (gyrVar.get_norm2() < GYRO_THRESHOLD2 && _processed.get_norm2() < GYRO_THRESHOLD * 2.f) {
+    bool cond1 = gyrVar.get_norm2() < GYRO_THRESHOLD2;
+    if ( cond1 && _processed.get_norm2() < GYRO_THRESHOLD * 2.f) {
          // min. 1.5–3 sec below threshold → consider as rest
         _restTimer += getDutyCycle();
         if ( _restTimer > 3000) {
-            _isResting = true;
+            _isResting = 2;
         }
-    } else {
-        _restTimer = 0;
-        _isResting = false;
+    } 
+    else if ( cond1 ) {
+        _restTimer += getDutyCycle();
+        if ( _restTimer > 6000) {
+            _isResting = 1; // resting, bias update enforced to break condition2
+        }
     }
-    return _isResting;
+    else {
+        _restTimer = 0;
+        _isResting = 0;
+    }
+    return _isResting > 1;
 }
 
 void GyroMPU6050::pushBias(vector_f& bias) {

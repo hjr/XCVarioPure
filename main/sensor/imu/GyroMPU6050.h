@@ -29,7 +29,7 @@ public:
     bool setup() override { return false; } // setup is done in MpuImu;
     bool doRead(vector_f& val) override;
     void postProcess() override;
-    bool isResting() const override { return _isResting; }
+    bool isResting() const override { return _isResting > 1; }
     void resetRest();
     inline float getAxD() const { return _gyro_lpf_dwydt.get(); }
     bool detectRest();
@@ -45,7 +45,7 @@ private:
     BiasEstimatorEKF _bias_estimator;
     uint8_t _bias_update = 0;
     int _restTimer = 0; // milliseconds since last movement
-    bool _isResting = false;
+    uint8_t _isResting = 0; // goes in three stages: 0 = moving, 1 = long half rest (bias update enforced), 2 = rest 
 
 };
 
