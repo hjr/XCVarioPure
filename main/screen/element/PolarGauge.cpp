@@ -71,8 +71,8 @@ PolarGauge::PolarGauge(int16_t refx, int16_t refy, int16_t scale_end, int16_t ra
             _arrow = new ArrowIndicator(*this, _radius-4, 22, 10);
         }
         else {
-            int16_t arrow_len = display_orientation.get() == DISPLAY_NINETY ? 40 : 50;
-            _arrow = new ArrowIndicator(*this, _radius+8, arrow_len, 6, 8);
+            int16_t arrow_len = display_orientation.get() == DISPLAY_NINETY ? 40 : 57;
+            _arrow = new ArrowIndicator(*this, _radius+10, arrow_len, 6, 8);
         }
     }
     else {
@@ -403,11 +403,11 @@ void PolarGauge::drawOneLabel(float val, int16_t labl) const
         MYUCG->setColor(COLOR_LBBLUE);
     }
     else {
-        std::sprintf(s, "%d", std::abs(labl));
+        std::sprintf(s, "%d", labl);
         MYUCG->setFont(ucg_font_fub20_hn, false);
         x = CosCenteredDeg2(dice_rad(val), _radius - 16) - MYUCG->getStrWidth(s)/2;
         y = SinCenteredDeg2(dice_rad(val), _radius - 16);
-        MYUCG->setColor(COLOR_FIGURE);
+        MYUCG->setColor(COLOR_HEADER);
     }
     MYUCG->setPrintPos(x, y);
     MYUCG->print(s);

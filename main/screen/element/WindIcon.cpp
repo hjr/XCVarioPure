@@ -74,7 +74,7 @@ bool WindIcon::draw(WindData w)
 void WindIcon::drawIcon() const
 {
     Point center = Point(_ref.x - _radius - _str_width - 2, _ref.y - _radius);
-    MYUCG->setColor(COLOR_FIGURE);
+    MYUCG->setColor(COLOR_MARINE);
     if ( ! _wind.isValid() || _wind.getVal() <= 0 ) {
         MYUCG->drawDisc(center.x, center.y, _radius, UCG_DRAW_ALL);
         return;
