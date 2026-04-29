@@ -14,6 +14,7 @@
 //#include <esp_timer.h>
 
 #include <cmath>
+#include <algorithm>
 
 #define TAG "Quaternion"
 
@@ -187,14 +188,18 @@ vector_f Quaternion::toEulerRad() const
     result.x = atan2f(2.f*(_w*_x + _y*_z),1.f - 2.f*(_x*_x + _y*_y));
 
     // pitch
-    result.y = (-(My_PIf)/2.f + 2.f* atan2f(std::sqrtf(1.f+ 2.f*(_w*_y - _x*_z)), std::sqrtf(1- 2*(_w*_y - _x*_z))));
+    // result.y = (-(My_PIf)/2.f + 2.f* atan2f(std::sqrtf(1.f+ 2.f*(_w*_y - _x*_z)), std::sqrtf(1- 2*(_w*_y - _x*_z))));
+    float s = 2.f * (_w*_y - _x*_z);
+    s = std::clamp(s, -1.f, 1.f);
+    result.y = asinf(s);
     // or asin(2*(a*c - d*b));
 
     // yaw
-    if (_z==0)
-        result.z = 0.0f;
-    else
-        result.z = atan2f(2.f*(_w*_z + _x*_y),1.f - 2.f*(_y*_y + _z*_z));
+    result.z = atan2f(2.f*(_w*_z + _x*_y), 1.f - 2.f*(_y*_y + _z*_z));
+    // if (_z==0)
+    //     result.z = 0.0f;
+    // else
+    //     result.z = atan2f(2.f*(_w*_z + _x*_y),1.f - 2.f*(_y*_y + _z*_z));
     return result;
 
 
