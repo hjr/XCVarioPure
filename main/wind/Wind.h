@@ -10,6 +10,7 @@
 
 #include "math/Units.h"
 #include "math/Floats.h"
+#include "vector.h"
 
 #include <cstdint>
 
@@ -31,7 +32,7 @@ union WindData
     constexpr WindData() = default;
     constexpr WindData(uint32_t d) : raw(d) {}
     constexpr WindData(int16_t wdir, int16_t wval) : dir(wdir), val(wval) {}
-    constexpr WindData(rad_t wdir, mps_t wval) : dir(fast_iroundf(Units::rad_to_deg(wdir) * 2) % 720), val(fast_iroundf(wval * 8)) {}
+    constexpr WindData(rad_t wdir, mps_t wval) : dir((fast_iroundf(Units::rad_to_deg(Vector::normalizePI2(wdir))) * 2) % 720), val(fast_iroundf(wval * 8)) {}
     // getters
     constexpr int getDeg2() const { return dir; }
     constexpr int getVDeg2() const { return dir + 360; } // get wind vector direction -> +180° shift

@@ -40,29 +40,34 @@ WindIcon::WindIcon(int16_t cx, int16_t cy, int16_t radius) :
 // wval < 0 just removes the
 bool WindIcon::draw(WindData w)
 {
-    if (w != _wind || _dirty) {
+    bool headref = wind_reference.get() == static_cast<int>(WindReference::WR_HEADING);
+    bool changed = w != _wind;
+
+    if (changed || _dirty || headref) {
         int wstrength = fast_iroundf(SpeedUnit->apply(w.getVal()));
         ESP_LOGI(FNAME, "Wind (%d,%d)", w.getDeg(), wstrength);
 
-        if ( wind_reference.get() == static_cast<int>(WindReference::WR_HEADING) ) {
+        _wind = w;
+        if ( headref ) {
             rad_t heading = getHeading();
             ESP_LOGI(FNAME, "heading %.1f", Units::rad_to_deg(heading));
             w.inclHeading(heading);
+            if (changed ) drawDirection(_wind.getDeg());
         }
 
-        _wind = w;
-        drawIcon();
-        // put the wind strength behind
-        MYUCG->setColor(COLOR_WGREY);
-        MYUCG->setFont(ucg_font_fub20_hn, true);
-        char s[16] = {"---"};
-        if (wstrength >= 0) {
-            sprintf(s, "%3d", wstrength);
-        }
-        MYUCG->setPrintPos(_ref.x - MYUCG->getStrWidth(s), _ref.y);
-        MYUCG->print(s);
-        if ( _dirty ) {
-            drawUnit();
+        drawIcon(w.getDeg2());
+
+        if (changed || _dirty) {
+            // put the wind strength behind
+            MYUCG->setColor(COLOR_WGREY);
+            MYUCG->setFont(ucg_font_fub20_hn, true);
+            char s[16] = {"---"};
+            if (wstrength >= 0) {
+                sprintf(s, "%3d", wstrength);
+            }
+            MYUCG->setPrintPos(_ref.x - MYUCG->getStrWidth(s), _ref.y);
+            MYUCG->print(s);
+            if (_dirty) drawUnit();
         }
         _dirty = false;
         return true;
@@ -71,7 +76,7 @@ bool WindIcon::draw(WindData w)
 }
 
 // 0° reference on top of the icon
-void WindIcon::drawIcon() const
+void WindIcon::drawIcon(int16_t deg2) const
 {
     Point center = Point(_ref.x - _radius - _str_width - 2, _ref.y - _radius);
     MYUCG->setColor(COLOR_MARINE);
@@ -84,7 +89,7 @@ void WindIcon::drawIcon() const
 
     // an arrow tip in direction the wind is blowing (180° other direction)
     Point tmp[4];
-    Point::rotate(_arrow, 4, _wind.getDeg2(), tmp);
+    Point::rotate(_arrow, 4, deg2, tmp);
     // shift to gauge center
     for (int i = 0; i < 4; i++) {
         tmp[i] += center;
@@ -101,7 +106,19 @@ void WindIcon::drawUnit() const
     MYUCG->setColor( COLOR_HEADER );
     MYUCG->print(SpeedUnit->getName());
     if ( wind_reference.get() == static_cast<int>(WindReference::WR_NORTH)) {
-        MYUCG->setPrintPos(_ref.x + _radius - _str_width -3 -2, _ref.y - 2 * _radius - 2);
+        MYUCG->setPrintPos(_ref.x - _str_width - _radius - MYUCG->getCharWidth('N')/2, _ref.y - 2 * _radius - 2);
         MYUCG->print("N");
     }
+}
+
+void WindIcon::drawDirection(int16_t deg) const
+{
+    MYUCG->setFont(ucg_font_fub11_hr, true);
+    MYUCG->setColor(COLOR_WGREY);
+    char s[16] = {"---"};
+    if ( _wind.isValid() ) {
+       sprintf(s, " %3d' ", deg);
+    }
+    MYUCG->setPrintPos(_ref.x - _radius - _str_width - MYUCG->getStrWidth(s)/2, _ref.y - 2 * _radius - 2);
+    MYUCG->print(s);
 }
