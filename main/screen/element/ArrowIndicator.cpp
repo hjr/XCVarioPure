@@ -141,6 +141,7 @@ bool ArrowIndicator::drawOver(int16_t val,float a)
     if (val == _needle_pos && !_gauge._dirty) {
         return false; // nothing painted
     }
+    
     ESP_LOGI(FNAME,"draw over val %d", val);
     float si = fast_sin_idx(val);
     float co = fast_cos_idx(val);
@@ -160,19 +161,36 @@ bool ArrowIndicator::drawOver(int16_t val,float a)
         (int16_t)(_gauge._ref.x - fast_iroundf(co * _tip)),
         (int16_t)(_gauge._ref.y - fast_iroundf(si * _tip)),
     };
+    if (_gauge._dirty) {
+        // the moment when the old position is probably invalid, just draw the new position
+        _last_a = a;
+        prev = n;
+    }
     ESP_LOGI(FNAME,"drawTetragon  x0:%d y0:%d x1:%d y1:%d x2:%d y2:%d x3:%d y3:%d", n.x_0, n.y_0, n.x_1, n.y_1, n.x_2, n.y_2, n.x_3, n.y_3 );
-    BoundingBox box = {{prev.x_0, prev.y_0}, {prev.x_0, prev.y_0}};
-    IpsDisplay::superBBox((Point*)(&prev.x_1), 6, box);
-    // IpsDisplay::superBBox((Point*)(&n.x_0), 7, box);
-    // Enlarge box by one pixel in eacht direction
+    BoundingBox pbox = {{prev.x_0, prev.y_0}, {prev.x_0, prev.y_0}};
+    IpsDisplay::superBBox((Point*)(&prev.x_1), 6, pbox);
+    BoundingBox box = {pbox[0], pbox[1]};
+    IpsDisplay::superBBox((Point*)(&n.x_0), 7, box);
+    // Enlarge box by one pixel in each direction
     box[0].x -= 1;
     box[0].y -= 1;
     box[1].x += 1;
-    box[1].y += 1; // fixme: we should not need this, something is wrong
-    if ( (box[0].x - box[1].x +1) * (box[1].y - box[0].y +1) > (EGLIB_FRAMEBUFFER_SIZE/3 ) ) {
-        // too much for the 10k frame buffer, guess prev unset
-        prev = n;
-        return false;
+    box[1].y += 1;
+    // try first if the combined box fits into the frame buffer
+    ESP_LOGI(FNAME, "draw over frame size %dbyte", (box[1].x - box[0].x +1) * (box[1].y - box[0].y +1) * 3 );
+    bool extra_draw = false;
+    if ( ((box[1].x - box[0].x +1) * (box[1].y - box[0].y +1)) > (EGLIB_FRAMEBUFFER_SIZE/3) ) {
+        extra_draw = true;
+        box[0].x = pbox[0].x - 1;
+        box[0].y = pbox[0].y - 1;
+        box[1].x = pbox[1].x + 1;
+        box[1].y = pbox[1].y + 1;
+        ESP_LOGI(FNAME, "draw over frame size %dbyte", (box[1].x - box[0].x +1) * (box[1].y - box[0].y +1) * 3 );
+        if ( ((box[1].x - box[0].x +1) * (box[1].y - box[0].y +1)) > (EGLIB_FRAMEBUFFER_SIZE/3) ) {
+            // too much for the 14k frame buffer, guess prev unset
+            prev = n;
+            return false;
+        }
     }
     // ESP_LOGI(FNAME,"draw over  minx:%d maxx:%d miny:%d maxy:%d", box[0].x, box[1].x, box[0].y, box[1].y );
     // MYUCG->drawFrame(box[0].x-1, box[0].y-1, box[1].x - box[0].x + 2, box[1].y - box[0].y + 2);
@@ -194,18 +212,21 @@ bool ArrowIndicator::drawOver(int16_t val,float a)
     MYUCG->drawLine(n.x_5, n.y_5, n.x_0, n.y_0);
     MYUCG->finishBuffering();
 
-    MYUCG->setColor(color.color[0], color.color[1], color.color[2]);
-    MYUCG->drawTetragon(n.x_0, n.y_0, n.x_1, n.y_1, n.x_4, n.y_4, n.x_5, n.y_5);
-    if ( _arrowhead > 0 ) {
-        MYUCG->drawTriangle(n.x_4, n.y_4, n.x_5, n.y_5, n.x_6, n.y_6);
+    if ( extra_draw ) {
+        // redraw arrow at new position again to have the parts that did not fit into the frame buffer
+        MYUCG->setColor(color.color[0], color.color[1], color.color[2]);
+        MYUCG->drawTetragon(n.x_0, n.y_0, n.x_1, n.y_1, n.x_4, n.y_4, n.x_5, n.y_5);
+        if ( _arrowhead > 0 ) {
+            MYUCG->drawTriangle(n.x_4, n.y_4, n.x_5, n.y_5, n.x_6, n.y_6);
+        }
+        // draw a black frame around the needle
+        MYUCG->setColor(COLOR_BLACK);
+        MYUCG->drawLine(n.x_0, n.y_0, n.x_1, n.y_1);
+        MYUCG->drawLine(n.x_1, n.y_1, n.x_4, n.y_4);
+        MYUCG->drawLine(n.x_4, n.y_4, n.x_6, n.y_6);
+        MYUCG->drawLine(n.x_6, n.y_6, n.x_5, n.y_5);
+        MYUCG->drawLine(n.x_5, n.y_5, n.x_0, n.y_0);
     }
-    // draw a black frame around the needle
-    MYUCG->setColor(COLOR_BLACK);
-    MYUCG->drawLine(n.x_0, n.y_0, n.x_1, n.y_1);
-    MYUCG->drawLine(n.x_1, n.y_1, n.x_4, n.y_4);
-    MYUCG->drawLine(n.x_4, n.y_4, n.x_6, n.y_6);
-    MYUCG->drawLine(n.x_6, n.y_6, n.x_5, n.y_5);
-    MYUCG->drawLine(n.x_5, n.y_5, n.x_0, n.y_0);
 
     prev = n;
     _needle_pos = val;

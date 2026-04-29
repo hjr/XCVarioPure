@@ -195,6 +195,7 @@ void PolarGauge::drawIndicator(float a)
     else {
         _arrow->drawOver(dice_up(clipValue(a)), a);
     }
+    _dirty = false;
 }
 
 // sink speed in [m/s]
