@@ -34,8 +34,8 @@
 {1340,152,121,95,78,60,0,0,"-10","-5","0","+5","+8","",""}, // DG600 FB=33.3 | B: scaled from DG800 | problem: no table | generated
 {1360,157,133,98,89,68,0,0,"-10","-5","0","+5","+8","",""}, // DG800B/15 FB=38.76 | FHB table scaled from FB 40 | clean
 {1370,148,125,92,83,65,0,0,"-10","-5","0","+5","+8","",""}, // DG800S/15 FB=34.93 | FHB table taken from FB 34 | clean
-{1380,156,132,97,88,59,0,0,"-14","-10","-5","0","+5","+8",""}, // DG800B/18 FB=35.39 | FHB table scaled from FB 33.9 |clean
-{1390,138,117,86,78,54,0,0,"-14","-10","-5","0","+5","+8",""}, // DG800S/18 FB=29.97 | FHB table scaled from FB 33.9 | clean
+{1380,156,132,97,88,78,59,0,"-14","-10","-5","0","+5","+8",""}, // DG800B/18 FB=35.39 | FHB table scaled from FB 33.9 |clean
+{1390,138,117,86,78,70,54,0,"-14","-10","-5","0","+5","+8",""}, // DG800S/18 FB=29.97 | FHB table scaled from FB 33.9 | clean
 {1700,147,117,93,78,56,0,0,"-2","-1","0","+1","+2","",""}, // Kestrel 17 FB=31.7 | C: polar extrapolated | problem: no flap table | generated
 {1710,152,121,96,80,56,0,0,"-2","-1","0","+1","+2","",""}, // Kestrel 19 FB=33.4 | C: same as above | uncertainty | generated
 {1720,157,125,99,82,56,0,0,"-2","-1","0","+1","+2","",""}, // Kestrel 22 FB=35.8 | C: same as above | uncertainty | generated
