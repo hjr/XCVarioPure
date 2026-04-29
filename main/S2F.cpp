@@ -101,6 +101,9 @@ void S2F::setPolar()
 		if ( flap_idx >= 0 ) {
 			ESP_LOGI(FNAME,"This glider has flaps, setting default flap table");
 			Flap::theFlap()->setFromFlapTable( Polars::getFlapLevels(flap_idx) );
+			// some heuristic to avoid init the takeoff index to 0
+			int nrl = Flap::theFlap()->getNrPositions();
+			flap_takeoff.set((nrl<5) ? 4: nrl-2, true, false);
 		}
 		else {
 			ESP_LOGI(FNAME,"No flap definitions found for this glider, clearing flap table");
