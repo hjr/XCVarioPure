@@ -185,7 +185,9 @@ vector_f Quaternion::toEulerRad() const
     vector_f result;
 
     // roll
-    result.x = atan2f(2.f*(_w*_x + _y*_z),1.f - 2.f*(_x*_x + _y*_y));
+    result.x = -atan2f(2.f*(_w*_x + _y*_z),1.f - 2.f*(_x*_x + _y*_y));
+    if (result.x > 0) { result.x -= My_PIf; }
+    else { result.x += My_PIf; }
 
     // pitch
     // result.y = (-(My_PIf)/2.f + 2.f* atan2f(std::sqrtf(1.f+ 2.f*(_w*_y - _x*_z)), std::sqrtf(1- 2*(_w*_y - _x*_z))));
@@ -201,23 +203,6 @@ vector_f Quaternion::toEulerRad() const
     // else
     //     result.z = atan2f(2.f*(_w*_z + _x*_y),1.f - 2.f*(_y*_y + _z*_z));
     return result;
-
-
-    // vector_f result;
-    // double q0 = _w;
-    // double q1 = b;
-    // double q2 = c;
-    // double q3 = d;
-    // result.a = atan2(2*(q0*q1 + q2*q3),1 - 2*(q1*q1 + q2*q2));
-    // // float xx = asin(2*(q0*q2 - q3*q1))*180/My_PIf;
-    // result.y = (-My_PIf/2. + 2* atan2(sqrt(1+ 2*(q0*q2 - q1*q3)), sqrt(1- 2*(q0*q2 - q1*q3))));
-    // //result.pitch = asin(2*(q0*q2 - q3*q1))*180/My_PIf;
-    // // ESP_LOGI( TAG,"EulerPitch sin:%.4f atan2:%.4f", xx, result.pitch);
-    // if (d==0)
-    //     result.z = 0.0;
-    // else
-    //     result.z = atan2(2*(q0*q3 + q1*q2),1 - 2*(q2*q2 + q3*q3));
-    // return result;
 }
 
 // Creat a rotation through two vectors, aligning the first to the second

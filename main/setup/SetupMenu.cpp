@@ -880,6 +880,7 @@ static int exitFactoryMenu(SetupMenuSelect* p){
             // not done, show warning
             p->menuPrintLn("Bat. volt. adjust not done.", 10, 5);
             p->setSelect(0);
+        }
         else if ( accbias == axes_i16_abi() ) {
             // not done, show warning
             p->menuPrintLn("Accel. bias not done.", 10, 5);
@@ -1532,12 +1533,6 @@ void system_menu_create_hardware_ahrs_parameter(SetupMenu *top) {
 	ahrsdgf->setHelp(
 			"Gyro dynamics factor, higher value trusts gyro more when load factor is different from one");
 	top->addEntry(ahrsdgf);
-
-	SetupMenuSelect *ahrsrollcheck = new SetupMenuSelect("Gyro Roll Check", RST_NONE, nullptr, &ahrs_roll_check);
-	ahrsrollcheck->setHelp("Switch to test the gyro roll check code.");
-	ahrsrollcheck->addEntry("Disable");
-	ahrsrollcheck->addEntry("Enable");
-	top->addEntry(ahrsrollcheck);
 
 	SetupMenuValFloat *gyrog = new SetupMenuValFloat("Gyro Gating", "°", nullptr, &gyro_gating);
 	gyrog->setHelp("Minimum accepted gyro rate in degree per second");

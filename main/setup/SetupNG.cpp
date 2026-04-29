@@ -541,7 +541,6 @@ SetupNG<int>		    ahrs_autozero("AHRSAZ", 0 );
 SetupNG<float>		    ahrs_gyro_factor("AHRSMGYF", 100, true, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, &percentage_limits);
 SetupNG<float>		    ahrs_min_gyro_factor("AHRSLGYF", 20, true, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, &percentage_limits);
 SetupNG<float>		    ahrs_dynamic_factor("AHRSGDYN", 5, true, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(0.5, 10, 0.1));
-SetupNG<int>		    ahrs_roll_check("AHRSRCHECK", 0 );
 SetupNG<float>       	gyro_gating("GYRO_GAT", 1.0, true, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(0, 10, 0.1));
 SetupNG<int>		    s2f_switch_type("S2FHWSW", S2F_HW_SWITCH );
 SetupNG<int>		    hardwareRevision("HWREV", HW_UNKNOWN, false);

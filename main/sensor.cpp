@@ -513,7 +513,6 @@ void system_startup(void *args){
     ahrs_gyro_factor.set(ahrs_gyro_factor.getDefault());
     ahrs_min_gyro_factor.set(ahrs_min_gyro_factor.getDefault());
     ahrs_dynamic_factor.set(ahrs_dynamic_factor.getDefault());
-    ahrs_roll_check.set(0);
     gyro_gating.set(gyro_gating.getDefault());
     needle_color.set(needle_color.getDefault());
 #endif

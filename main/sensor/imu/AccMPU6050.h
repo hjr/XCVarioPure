@@ -72,6 +72,7 @@ private:
     // calm counter
     int _restTimer = 0; // milliseconds since last movement
     bool _isResting = false;
+    // vector_f _soft_bias; todo later
 };
 
 extern AccMPU6050 *accSensor;

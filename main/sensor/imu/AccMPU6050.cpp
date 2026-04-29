@@ -60,7 +60,7 @@ bool AccMPU6050::doRead(vector_f& val) {
             ESP_LOGE(FNAME, "accelaration change > 5 g in 0.1 sec");
             // return false;
         }
-        val = _my_mpu.rotate(tmp_ned);
+        val = _my_mpu.rotate(tmp_ned); // todo later - _soft_bias; // into glider reference system, and compensate for soft bias
         val.z -= gyroSensor->getAxD() * _my_mpu.getLeverArm(); // compensate the accelerometer mounting position in front of CG
         // ESP_LOGI(FNAME, "val X:%f Y:%f Z:%f", val.x, val.y, val.z);
         return true;
@@ -137,60 +137,43 @@ void AccMPU6050::postProcess() {
 
     // create a gyro base rotation delta
     d_gyro = Quaternion::fromGyro(gyro, dt);
-
     rad_t roll = 0, pitch = 0;
     if (airborne.get()) {
         float loadFactor = std::clamp(_processed.get_norm(), 0.f, 2.f);
-        // rotation from navigation to body frame
-        vector_f z_nav_in_body = att_quat.rotate(vector_f{0,0,1});
-        circle_omega = gyro.dot(z_nav_in_body);
+        // rotation around the nav Z axis
+        circle_omega = -gyro.dot(att_vector);
+        // ESP_LOGI(FNAME,"attv: %.3f,%.3f,%.3f - %.3f,%.3f,%.3f - omega %f", att_vector.x, att_vector.y, att_vector.z, z_nav_in_body.x, z_nav_in_body.y, z_nav_in_body.z, circle_omega);
+        // ESP_LOGI(FNAME,"attv: %.3f,%.3f,%.3f - omega %f", att_vector.x, att_vector.y, att_vector.z, circle_omega);
         // tan(roll):= petal force/G = m w v / m g
         float tanw = circle_omega * tas.get() / Units::g0;
         roll = atan(tanw);
-        if (ahrs_roll_check.get()) {
-            // expected extra load c = sqrt(aa+bb) - 1, here a = 1/9.81 x atan, b=1
-            float loadz_exp = std::sqrtf(tanw * tanw / (Units::g0 * Units::g0) + 1.f) - 1.f;
-            float loadz_check = (loadz_exp > 0.f) ? std::min(std::max((loadFactor - .99f) / loadz_exp, 0.f), 1.f) : 0.f;
-            // ESP_LOGI( FNAME,"tanw: %f loadexp: %.2f loadf: %.2f c:%.2f", tanw, loadz_exp, loadFactor, loadz_check );
-            // Scale according to real experienced load factor with x 0..1
-            roll *= loadz_check;
-        }
         // get pitch from accelerometer
-        pitch = atan2f(accel.x, accel.z); // neglecting accel.y, because of minor influence on pitch and more noise
-
-        // Centripetal forces to keep angle of bank while circling
-        petal.x = -sin(pitch);             // Nose up (positive Y turn) results in negative X force
-        petal.y = sin(roll) * cos(pitch);  // Right wing down (or positive X roll) results in positive Y force
-        petal.z = cos(roll) * cos(pitch);  // Any roll or pitch creates a smaller positive Z, gravity Z is positive
-        // trust in gyro at load factors unequal 1 g
-        gravity_trust =
-            (ahrs_min_gyro_factor.get() + (ahrs_gyro_factor.get() * (pow(10, abs(loadFactor - 1) * ahrs_dynamic_factor.get()) - 1)));
-        // ESP_LOGI(FNAME, "Omega roll: %f Pitch: %f W_yz: %f Gyro Trust: %f", rad2deg(roll), rad2deg(pitch), circle_omega, gravity_trust);
+        pitch = atan2f(accel.x, -accel.z); // neglecting accel.y, because of minor influence on pitch and more noise
+        // Virtual sum of forces (centrifugaland gravity), serving similar to the accel on the ground 
+        // for this complementary filter
+        petal.x = sin(pitch);              // Nose up (positive Y turn) results in positive X force
+        petal.y = -sin(roll) * cos(pitch); // Right wing down (or positive X roll) results in negative Y force
+        petal.z = -cos(roll) * cos(pitch); // Any roll or pitch creates a smaller negative Z, gravity Z is negative
+        // trust in gyro at load factors unequal 1 g, trust notches down to "min" at +/-1g
+        gravity_trust = (ahrs_min_gyro_factor.get() + 
+            (ahrs_gyro_factor.get() * (pow(10, abs(loadFactor - 1) * ahrs_dynamic_factor.get()) - 1) ));
+        ESP_LOGI(FNAME, "Petal: %f/%f/%f Gyro Trust: %f", petal.x, petal.y, petal.z, gravity_trust);
     } else {
         // For still stand centripetal forces are taken from the accelerometer
-        petal = accel * -1.f;
+        petal = accel;
         circle_omega = 0.f;
     }
     // ESP_LOGI( FNAME, " ax1:%f ay1:%f az1:%f Gx:%f Gy:%f GZ:%f dT:%f", petal.x, petal.y, petal.z, gyro.x, gyro.y, gyro.z, dt );
-    // vector_f att_prev = att_vector;
-    update_fused_vector(att_vector, gravity_trust, petal, d_gyro);
+    update_fused_vector(att_vector, gravity_trust, petal, d_gyro.get_conjugate());
     // ESP_LOGI(FNAME,"attv: %.3f %.3f %.3f ProjAccel: %f", att_vector.x, att_vector.y, att_vector.z, accel.dot(att_vector));
     att_quat = Quaternion::fromAccelerometer(att_vector);
     // vector_f img = att_quat.rotate(vector_f{0,0,1});
     // ESP_LOGI(FNAME,"attv: %.3f,%.3f,%.3f - %.3f,%.3f,%.3f", att_vector.x, att_vector.y, att_vector.z, img.x, img.y, img.z);
     // ESP_LOGI(FNAME,"attq: %.3f %.3f %.3f %.3f", att_quat._x, att_quat._y, att_quat._z, att_quat._w );
     // ESP_LOGI(FNAME,"Circle Omega: %f", circle_omega );
-    euler_rad = att_quat.toEulerRad() * -1.f; // AHRS gives a nav to body rotation, but we want body to nav, so invert the angles by multiplying with -1
-    // debug
-    // float attvd = (att_vector - att_prev).get_norm2();
-    // if (attvd > 0.5) {
-    //    [[maybe_unused]] vector_f euler = euler_rad * rad2deg(1.f);
-    //    ESP_LOGI(FNAME, "Euler R:%.1f P:%.1f OR:%.1f IMUP:%.1f", euler.Roll(), euler.Pitch(), rad2deg(roll), rad2deg(pitch));
-    // }
-
-    // treat gimbal lock, limit to 88 deg
-    // constexpr const float limit = deg2rad(88.);
-    // euler_rad.clamp(-limit, limit);
+    euler_rad = att_quat.toEulerRad(); // AHRS gives a nav to body rotation, but we want body to nav, so invert the angles by multiplying with -1
+    // vector_f euler = euler_rad * rad2deg(1.f);
+    // ESP_LOGI(FNAME, "Euler R:%.1f P:%.1f OR:%.1f IMUP:%.1f", euler.Roll(), euler.Pitch(), rad2deg(roll), rad2deg(pitch));
 
     rad_t gyro_heading_step = circle_omega * dt; // gyro heading change in this step (NED)
     circle_footing = Vector::normalizePI2(circle_footing + gyro_heading_step); // integrate gyro heading change to get the current circle footing
