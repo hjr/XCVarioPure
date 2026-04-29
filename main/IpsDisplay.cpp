@@ -963,6 +963,12 @@ void IpsDisplay::drawDisplay(){
 
     // WK-Indicator
     if (FLAPSgauge && !(tick % 3)) {
+        // static float ias_sim = Units::kmh_to_mps(50); // check the flap code
+        // static float ias_inc = 1;
+        // if ( ias_sim > Units::kmh_to_mps(200) ) ias_inc = -.25;
+        // if ( ias_sim < Units::kmh_to_mps(50) ) ias_inc = .25;
+        // ias_sim += ias_inc;
+        // ias.set(ias_sim);
         FLAPSgauge->draw(ias.get());
         // Check on flap speeds defined
         if ( FLAP->getNrPositions() == 0 && ! flags.flp_speed_msg_shown) {

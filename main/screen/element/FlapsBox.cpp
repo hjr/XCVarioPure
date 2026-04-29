@@ -70,7 +70,7 @@ bool FBoxStateHash::operator!=(const FBoxStateHash &other) const noexcept
 FlapsBox::FlapsBox(Flap* flap, int16_t cx, int16_t cy, bool vertical) :
     ScreenElement(cx, cy),
     _flap(flap),
-    _fp_filter(0.25f),
+    _fp_filter(0.15f),
     _last_event(0,0),
     _vertical(vertical)
 {
@@ -181,6 +181,9 @@ void FlapsBox::draw(mps_t ias)
 
     mps_t minv, maxv;
     minv = _flap->getSpeedBand(curr_fp, maxv);
+    // enlarge the speed band just for a nicer overlapping visualization
+    minv -= Units::kmh_to_mps(7.f);
+    maxv += Units::kmh_to_mps(7.f);
     if ( airborne.get() == false ) {
         // on ground, set the ias virtually into the green band for the correct start position
         ias = _flap->getSpeed(flap_takeoff.get()); // pretend start speed
