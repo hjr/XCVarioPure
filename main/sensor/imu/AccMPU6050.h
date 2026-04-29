@@ -49,7 +49,8 @@ public:
     float getVerticalAcceleration();
     MpuImu& getMpu() const { return _my_mpu; }
     void resetBias() { _my_mpu.setAccelOffset({}); }
-    void pushBias(const mpud::raw_axes_t& bias) { _my_mpu._MPUdev.setAccelOffset(bias); }
+    void pushBias(const vector_f& bias);
+
 
 private:
     MpuImu &_my_mpu;

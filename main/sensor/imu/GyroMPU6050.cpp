@@ -27,7 +27,7 @@ static __attribute__((aligned(4))) vector_f gyro_buffer[ HSIZE + 1 ];
 GyroMPU6050::GyroMPU6050(MpuImu &mmpu) :
     SensorTP<vector_f>(gyro_buffer, HSIZE, DUTY_CYCLE_MS),
     _my_mpu(mmpu),
-    _scale(Units::deg_to_rad(mpud::gyroResolution(mpud::GYRO_FS_250DPS))) // scale factor for raw gyro data to rad/s
+    _scale(Units::deg_to_rad(mpud::math::gyroResolution(MpuImu::GYRO_SCALE))) // scale factor for raw gyro data to rad/s
 {
     _id = SensorId::GYRO_INERTIAL | SensorFlags::SENSOR_LOCAL;
     // push a single previous value
@@ -92,7 +92,7 @@ void GyroMPU6050::postProcess() {
             && bias.get_norm() > GyroMPU6050::GYRO_THRESHOLD // only push if bias is > threshold
             && _bias_update < 3 
             && !gflags.inSimulationMode ) { // only push if we have a stable bias and are airborne
-            pushGyroBias(bias);
+            pushBias(bias);
             resetRest(); // to avoid multiple pushes in a row, only update bias once per rest phase
             _bias_update++;
         }
@@ -125,17 +125,16 @@ bool GyroMPU6050::detectRest() {
     return _isResting;
 }
 
-void GyroMPU6050::pushGyroBias(vector_f& bias) {
+void GyroMPU6050::pushBias(vector_f& bias) {
     // rotate back into sensor frame
     // ESP_LOGI(FNAME, "-> bias: %f/%f/%f", bias.x, bias.y, bias.z);
     vector_f bias_sensor = _my_mpu._ref_rot.get_conjugate().rotate(bias);
     ESP_LOGI(FNAME, "backrot: %f/%f/%f", bias_sensor.x, bias_sensor.y, bias_sensor.z);
 
     // to raw units and scale to 1000 dps
-    mpud::raw_axes_t measured;
-    measured.x = bias_sensor.x / _scale / 4.f;
-    measured.y = bias_sensor.y / _scale / 4.f;
-    measured.z = bias_sensor.z / _scale / 4.f;
+    bias_sensor = bias_sensor / _scale;
+    bias_sensor = bias_sensor * static_cast<float>(mpud::gyroSensitivity(mpud::GYRO_FS_1000DPS)) / static_cast<float>(mpud::gyroSensitivity(MpuImu::GYRO_SCALE));
+    mpud::raw_axes_t measured(bias_sensor.x, bias_sensor.y, bias_sensor.z);
     ESP_LOGI(FNAME, "measured: %d/%d/%d", measured.x, measured.y, measured.z);
 
     // subtract the new bias from the current bias to get the new offset

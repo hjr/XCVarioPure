@@ -33,7 +33,7 @@ public:
     void resetRest();
     inline float getAxD() const { return _gyro_lpf_dwydt.get(); }
     bool detectRest();
-    void pushGyroBias(vector_f& bias);
+    void pushBias(vector_f& bias);
     inline const vector_f& getBias() const { return _bias_estimator.getBias(); }
 
 private:

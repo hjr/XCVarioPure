@@ -85,15 +85,17 @@ bool MpuImu::probe() {
 
 bool MpuImu::setup() {
     ESP_LOGI(FNAME, "MPU initialize");
-    esp_err_t err = myMPU.initialize();       // this will initialize the chip and set default configurations
-    err |= myMPU.setSampleRate(50);  // in (Hz)
-    err |= myMPU.setAccelFullScale(mpud::ACCEL_FS_8G);
-    err |= myMPU.setGyroFullScale(mpud::GYRO_FS_250DPS);
-    err |= myMPU.setDigitalLowPassFilter(mpud::DLPF_5HZ);  // smoother data
+    esp_err_t err = myMPU.reset();
+    err |= myMPU.resetFIFO();
+    err |= myMPU.initialize();       // this will initialize the chip and set default configurations
+    // err |= myMPU.setSampleRate(50);  // in (Hz)
+    // err |= myMPU.setAccelFullScale(MpuImu::ACCEL_SCALE);
+    // err |= myMPU.setGyroFullScale(MpuImu::GYRO_SCALE);
+    // err |= myMPU.setDigitalLowPassFilter(mpud::DLPF_5HZ);  // smoother data
     axes_i16_abi tmp = gyro_bias.get(); // will get refined on Rest condition while on the ground
     err |= myMPU.setGyroOffset(mpud::raw_axes_t(tmp.x, tmp.y, tmp.z));
     ESP_LOGI(FNAME, "MPU current gyro bias: %d/%d/%d", tmp.x, tmp.y, tmp.z);
-    tmp = accl_bias.get(); // only set this properly through the calibration procedure, otherwise acc bias goes awkwardly sideways
+    tmp = accl_bias.get();
     err |= myMPU.setAccelOffset(mpud::raw_axes_t(tmp.x, tmp.y, tmp.z));
     ESP_LOGI(FNAME, "MPU current accel bias: %d/%d/%d", tmp.x, tmp.y, tmp.z);
 
@@ -170,6 +172,7 @@ void MpuImu::zeroGyroBias() {
 }
 
 void MpuImu::zeroAccBias() {
+    // never get this into the hands of a user. This is only for development and factory setup purposes.
     accl_bias.set({});
     myMPU.setAccelOffset({});
 }

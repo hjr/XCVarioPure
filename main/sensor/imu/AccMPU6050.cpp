@@ -79,6 +79,30 @@ float AccMPU6050::getVerticalAcceleration() {
     return getRef().dot(att_vector);
 }
 
+// compensate for this bias
+void AccMPU6050::pushBias(const vector_f& bias) {
+    // rotate back into sensor frame
+    vector_f bias_sensor = _my_mpu._ref_rot.get_conjugate().rotate(bias);
+    ESP_LOGI(FNAME, "backrot: %f/%f/%f", bias_sensor.x, bias_sensor.y, bias_sensor.z);
+
+    ESP_LOGI(FNAME, "Mpu scale: %d", mpud::math::accelSensitivity(MpuImu::ACCEL_SCALE));
+    ESP_LOGI(FNAME, "Mpu scale: %f", static_cast<float>(mpud::accelSensitivity(mpud::ACCEL_FS_16G)) / static_cast<float>(mpud::accelSensitivity(MpuImu::ACCEL_SCALE)));
+    float scale = static_cast<float>(mpud::math::accelSensitivity(MpuImu::ACCEL_SCALE)); // to raw units, and inverted
+    // compensate for different scale of bias and current setting, because bias is always in +-16G format
+    scale *= static_cast<float>(mpud::accelSensitivity(mpud::ACCEL_FS_16G)) / static_cast<float>(mpud::accelSensitivity(MpuImu::ACCEL_SCALE));
+    bias_sensor *= -scale; // and inverted
+    mpud::raw_axes_t raw_bias(bias_sensor.x, bias_sensor.y, bias_sensor.z);
+    ESP_LOGI(FNAME, "raw  bias: %d,%d,%d", raw_bias.x, raw_bias.y, raw_bias.z);
+    // Reprogam MPU bias (acc bias never incremental)
+    _my_mpu._MPUdev.setAccelOffset(raw_bias);
+    // save to nvs
+    accl_bias.set(axes_i16_abi(raw_bias.x, raw_bias.y, raw_bias.z), false);
+}
+
+/////////////////////////////////////////
+// Post Processing and AHRS fusion code
+/////////////////////////////////////////
+
 static void update_fused_vector(vector_f& fused, float gyro_trust, vector_f& petal_force, const Quaternion& omega_step)
 {
     // move the previos fused attitude by the new omega step

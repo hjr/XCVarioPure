@@ -72,8 +72,8 @@ esp_err_t MPU::initialize()
 #endif
 
 	// set Full Scale range
-	if (MPU_ERR_CHECK(setGyroFullScale(GYRO_FS_500DPS))) return err;
-	if (MPU_ERR_CHECK(setAccelFullScale(ACCEL_FS_4G))) return err;
+	if (MPU_ERR_CHECK(setGyroFullScale(GYRO_FS_250DPS))) return err;
+	if (MPU_ERR_CHECK(setAccelFullScale(ACCEL_FS_8G))) return err;
 	// set Digital Low Pass Filter to get smoother data
 	if (MPU_ERR_CHECK(setDigitalLowPassFilter(DLPF_5HZ))) return err;
 
@@ -90,7 +90,7 @@ esp_err_t MPU::initialize()
 	MPU_LOGI("Factory offset: %d/%d/%d", accel_factory_offset.x, accel_factory_offset.y, accel_factory_offset.z);
 
 	// set sample rate to 100Hz
-	if (MPU_ERR_CHECK(setSampleRate(100))) return err;
+	if (MPU_ERR_CHECK(setSampleRate(50))) return err;
 	MPU_LOGI("Initialization complete");
 	return err;
 }
