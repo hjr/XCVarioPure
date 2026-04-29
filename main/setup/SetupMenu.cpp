@@ -43,7 +43,7 @@
 #include "AdaptUGC.h"
 #include "sensor.h"
 #include "test/LeakTest.h"
-#include "logdef.h"
+#include "logdefnone.h"
 
 #include "comm/DeviceMgr.h"
 #include "math/Trigonometry.h"
@@ -338,7 +338,7 @@ static void doImuCalibration(SetupMenuSelect* p) {
     float gnorm;
     bool abort = false;
     do {
-        abort = Rotary->readSwitch(500);
+        abort = Rotary->readSwitch(500); // fixme -> interferes with MBOX and malfunct totaly when MBOX activ
         gyro = gyroSensor->getAVG(1000) - gyroSensor->getBias();
         gnorm = gyro.get_norm();
         ESP_LOGI(FNAME, "gyro norm: %f, gcalm %d acalm %d", gnorm, gyroSensor->isResting(), accSensor->isResting());
@@ -387,7 +387,7 @@ static void doImuCalibration(SetupMenuSelect* p) {
                 drawGliderPic(0);
             }
             MYUCG->setColor(COLOR_WHITE);
-            nlidx = next_step + 4;
+            nlidx = next_step + 3;
             p->menuClearLn(nlidx);
             p->menuPrintLn("Start with button press.", nlidx);
             p->menuClearLn(nlidx+1);
@@ -493,8 +493,8 @@ static void factoryAccCalibration(SetupMenuSelect* p) {
         if ( ! abort ) {
             // read the acc average
             samples[pos] = accSensor->getAVG(2000);
-            pos++;
             if (pos < 5) { AUDIO->startSound(AUDIO_TADDA | PRIO_SND_MASK, false, 100); }
+            pos++;
         }
         gyroSensor->resetRest();
         accSensor->resetRest();
