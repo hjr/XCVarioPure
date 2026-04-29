@@ -45,7 +45,7 @@ public:
     inline degree_t getCircleOmegaENUDeg() { return rad2deg(-circle_omega); }
     inline Quaternion getAHRSQuaternion() { return att_quat; }
     inline vector_f getAttVector() { return att_vector; }
-    inline float getGload() const { return getRef().z; }
+    inline float getGload() const { return -getRef().z; }
     float getVerticalAcceleration();
     MpuImu& getMpu() const { return _my_mpu; }
     void resetBias() { _my_mpu.setAccelOffset({}); }

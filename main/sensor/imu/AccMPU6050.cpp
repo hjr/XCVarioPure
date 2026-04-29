@@ -50,9 +50,9 @@ bool AccMPU6050::doRead(vector_f& val) {
     // fetch raw data from the registers
     if (_my_mpu.acceleration(&imuRaw) == ESP_OK) {
         // raw data to gravity
-        vector_f tmp_ned = vector_f::make_vector(imuRaw.x, imuRaw.y, imuRaw.z, -mpud::math::accelResolution(mpud::ACCEL_FS_8G));
-        // ESP_LOGI(FNAME, "accel X:%d Y:%d Z:%d", imuRaw.x, imuRaw.y, imuRaw.z);
-        // ESP_LOGI(FNAME, "tmpvec X:%f Y:%f Z:%f", tmp_ned.x, tmp_ned.y, tmp_ned.z);
+        vector_f tmp_ned = vector_f::make_vector(imuRaw.x, imuRaw.y, imuRaw.z, mpud::accelResolution(MpuImu::ACCEL_SCALE));
+        // ESP_LOGI(FNAME, "accraw\tX:%d Y:%d Z:%d", imuRaw.x, imuRaw.y, imuRaw.z);
+        // ESP_LOGI(FNAME, "tmpvec\tX:%f Y:%f Z:%f", tmp_ned.x, tmp_ned.y, tmp_ned.z);
 
         // Check on irrational changes
         if ((tmp_ned - *getHeadPtr()).get_norm2() > 25.f) {
@@ -156,7 +156,7 @@ void AccMPU6050::postProcess() {
             roll *= loadz_check;
         }
         // get pitch from accelerometer
-        pitch = atan2f(-accel.x, accel.z); // neglecting accel.y, because of minor influence on pitch and more noise
+        pitch = atan2f(accel.x, accel.z); // neglecting accel.y, because of minor influence on pitch and more noise
 
         // Centripetal forces to keep angle of bank while circling
         petal.x = -sin(pitch);             // Nose up (positive Y turn) results in negative X force
@@ -168,24 +168,24 @@ void AccMPU6050::postProcess() {
         // ESP_LOGI(FNAME, "Omega roll: %f Pitch: %f W_yz: %f Gyro Trust: %f", rad2deg(roll), rad2deg(pitch), circle_omega, gravity_trust);
     } else {
         // For still stand centripetal forces are taken from the accelerometer
-        petal = accel;
+        petal = accel * -1.f;
         circle_omega = 0.f;
     }
     // ESP_LOGI( FNAME, " ax1:%f ay1:%f az1:%f Gx:%f Gy:%f GZ:%f dT:%f", petal.x, petal.y, petal.z, gyro.x, gyro.y, gyro.z, dt );
     // vector_f att_prev = att_vector;
-    update_fused_vector(att_vector, gravity_trust, petal, d_gyro.get_conjugate());
+    update_fused_vector(att_vector, gravity_trust, petal, d_gyro);
     // ESP_LOGI(FNAME,"attv: %.3f %.3f %.3f ProjAccel: %f", att_vector.x, att_vector.y, att_vector.z, accel.dot(att_vector));
     att_quat = Quaternion::fromAccelerometer(att_vector);
-    // vector_f img = att_quat.rotate(att_vector);
+    // vector_f img = att_quat.rotate(vector_f{0,0,1});
     // ESP_LOGI(FNAME,"attv: %.3f,%.3f,%.3f - %.3f,%.3f,%.3f", att_vector.x, att_vector.y, att_vector.z, img.x, img.y, img.z);
     // ESP_LOGI(FNAME,"attq: %.3f %.3f %.3f %.3f", att_quat._x, att_quat._y, att_quat._z, att_quat._w );
     // ESP_LOGI(FNAME,"Circle Omega: %f", circle_omega );
-    euler_rad = att_quat.toEulerRad() * -1.f;
+    euler_rad = att_quat.toEulerRad() * -1.f; // AHRS gives a nav to body rotation, but we want body to nav, so invert the angles by multiplying with -1
     // debug
     // float attvd = (att_vector - att_prev).get_norm2();
     // if (attvd > 0.5) {
-    //     [[maybe_unused]] vector_f euler = euler_rad * rad2deg(1.f);
-    //     ESP_LOGI(FNAME, "Euler R:%.1f P:%.1f OR:%.1f IMUP:%.1f", euler.Roll(), euler.Pitch(), rad2deg(roll), rad2deg(pitch));
+    //    [[maybe_unused]] vector_f euler = euler_rad * rad2deg(1.f);
+    //    ESP_LOGI(FNAME, "Euler R:%.1f P:%.1f OR:%.1f IMUP:%.1f", euler.Roll(), euler.Pitch(), rad2deg(roll), rad2deg(pitch));
     // }
 
     // treat gimbal lock, limit to 88 deg

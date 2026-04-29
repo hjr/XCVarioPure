@@ -148,12 +148,12 @@ Quaternion MpuImu::getDefaultImuReference() {
     // roughly to an upright, top down, or ninety degree installation.
     // IMU on PCB raw: X up, Y left, Z backwards
     // IMU on PCB to "NED" reference: X forward, Y right, Z down
-    Quaternion accelDefaultRef = Quaternion(deg2rad(90.0f), vector_f(0, 1, 0)).conjugate(); // towards "NED"
+    Quaternion accelDefaultRef = Quaternion(deg2rad(-90.0f), vector_f(0, 1, 0)); // towards "NED"
 
     if (display_orientation.get() == DISPLAY_NORMAL) {
         accelDefaultRef = Quaternion(deg2rad(180.0f), vector_f(1, 0, 0)) * accelDefaultRef;
     } else if (display_orientation.get() == DISPLAY_NINETY) {
-        accelDefaultRef = Quaternion(deg2rad(-90.0f), vector_f(1, 0, 0)).conjugate() * accelDefaultRef;
+        accelDefaultRef = Quaternion(deg2rad(90.0f), vector_f(1, 0, 0)) * accelDefaultRef;
     }
     return accelDefaultRef;
 }
@@ -222,9 +222,9 @@ int MpuImu::getAccelSamplesAndCalib(vector_f gyro_integral, rad_t& wing_angle, r
     progress |= side;  // accumulate progress
     if (progress == 4) {
         // Calculate the rotation to the glieder reference from the two measurments
-        ESP_LOGI(FNAME, "pureBr:\t%f\t%f\t%f \tL%.2f", bob_right_wing.x, bob_right_wing.y, bob_right_wing.z, bob_right_wing.get_norm());
-        ESP_LOGI(FNAME, "pureBl:\t%f\t%f\t%f \tL%.2f", bob_left_wing.x, bob_left_wing.y, bob_left_wing.z, bob_left_wing.get_norm());
-        ESP_LOGI(FNAME, "pureBlev:\t%f\t%f\t%f \tL%.2f", bob_level.x, bob_level.y, bob_level.z, bob_level.get_norm());
+        ESP_LOGI(FNAME, "BobR:\t%f\t%f\t%f \tL%.2f", bob_right_wing.x, bob_right_wing.y, bob_right_wing.z, bob_right_wing.get_norm());
+        ESP_LOGI(FNAME, "BobL:\t%f\t%f\t%f \tL%.2f", bob_left_wing.x, bob_left_wing.y, bob_left_wing.z, bob_left_wing.get_norm());
+        ESP_LOGI(FNAME, "level:\t%f\t%f\t%f \tL%.2f", bob_level.x, bob_level.y, bob_level.z, bob_level.get_norm());
 
         // Check on wing angle is at least 4 degree
         wing_angle = Quaternion::AlignVectors(vector_f(bob_right_wing.x, bob_right_wing.y, bob_right_wing.z),
@@ -242,15 +242,14 @@ int MpuImu::getAccelSamplesAndCalib(vector_f gyro_integral, rad_t& wing_angle, r
         vector_f X = bob_right_wing.cross(bob_left_wing);  // Br x Bl
         X.normalize();
         ESP_LOGI(FNAME, "X: %f,%f,%f", X.x, X.y, X.z);
-        // The Z in glider reference
+        // The Z in NED glider reference (points down)
         // The bob in glider ref, skid stil on the ground (points up)
         vector_f Z_plane_normal = bob_left_wing.cross(bob_right_wing) + bob_left_wing.cross(bob_level) + bob_level.cross(bob_right_wing); // Bl x Br + Bl x Blev + Blev x Br
         Z_plane_normal.normalize();
-        // project pureBlev into plane
+        // project bob_level into plane
         vector_f Z(bob_level - Z_plane_normal * bob_level.dot(Z_plane_normal)); // Blev - (Blev dot plane normal) * plane normal
-        // vector_f Z(pureBr + pureBl + 2 * pureBlev); // weighted average
-        Z.normalize();
-        // The Y in glider reference
+        Z = Z.normalize() * -1.f; // towards ground
+        // The Y in glider reference points towards the right wing
         vector_f Y = Z.cross(X);
         Y.normalize();
         ESP_LOGI(FNAME, "Y: %f,%f,%f", Y.x, Y.y, Y.z);
