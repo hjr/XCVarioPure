@@ -8,7 +8,9 @@
 #include <esp_log.h>
 #include <string.h>
 
-
+static void buffer_one_pixel(eglib_t *eglib, coordinate_t x, coordinate_t y, color_t color);
+static void buffer_scan_line(eglib_t *eglib, coordinate_t x, coordinate_t y, coordinate_t len);
+static void buffer_scan_column(eglib_t *eglib, coordinate_t x, coordinate_t y, coordinate_t len);
 static int myfast_iroundf(float a) {
     return (int)((a >= 0.0f) ? (a + 0.5f) : (a - 0.5f));
 }
@@ -103,15 +105,18 @@ bool eglib_inClipArea(eglib_t * eglib, coordinate_t x, coordinate_t y ){
 		y < eglib->drawing.clip_ymax ){
 		return true;
 	}
-	else{
-		return false;
-	}
+	return false;
 }
 
 void eglib_DrawPixelColor(eglib_t *eglib, coordinate_t x, coordinate_t y, color_t color) {
-    if( !eglib_inClipArea( eglib, x,y ) )
-    		return;
+  if( !eglib_inClipArea( eglib, x,y ) )
+    return;
+  if ( eglib->do_buffer ) {
+    buffer_one_pixel(eglib, x, y, color);
+  }
+  else {
     eglib->display.driver->draw_pixel_color(eglib, x, y, color);
+  }
 }
 
 void eglib_DrawPixel(eglib_t *eglib, coordinate_t x, coordinate_t y) {
@@ -188,71 +193,71 @@ static void draw_fast_90_line(
     coordinate_t length;
 
     if(x1==x2) {         // vertical
-      // length = abs(y1-y2);
-      if(y2 > y1)
-        direction = DISPLAY_LINE_DIRECTION_DOWN;
-      else
-        direction = DISPLAY_LINE_DIRECTION_UP;
+      if(y2 < y1) {
+        coordinate_t tmp = y1;
+        y1 = y2;
+        y2 = tmp;
+      }
+      direction = DISPLAY_LINE_DIRECTION_DOWN;
     }
     else if(y1==y2) {  // horizontal
-      length = abs(x1-x2);
-      if(x2 > x1)
-        direction = DISPLAY_LINE_DIRECTION_RIGHT;
-      else
-        direction = DISPLAY_LINE_DIRECTION_LEFT;
+      if(x2 < x1) {
+        coordinate_t tmp = x1;
+        x1 = x2;
+        x2 = tmp;
+      }
+      direction = DISPLAY_LINE_DIRECTION_RIGHT;
     }else
     	return;
 
-    switch(direction) {
-    case DISPLAY_LINE_DIRECTION_RIGHT:
-    	if((y1 >= eglib->drawing.clip_ymax) || (y1 < eglib->drawing.clip_ymin))
-    		return;
-    	if( x2 >= eglib->drawing.clip_xmax )
-    		x2 = eglib->drawing.clip_xmax - 1;
-    	if (x1 < eglib->drawing.clip_xmin)
-    		x1 = eglib->drawing.clip_xmin;
-    	length = x2-x1+1;
-    	break;
-
-    case DISPLAY_LINE_DIRECTION_LEFT:
-    	if((y1 >= eglib->drawing.clip_ymax) || (y1 < eglib->drawing.clip_ymin))
-    		return;
-    	if (x1 >= eglib->drawing.clip_xmax)
-    		x1 = eglib->drawing.clip_xmax - 1;
-    	if (x2 < eglib->drawing.clip_xmin)
-    		x2 = eglib->drawing.clip_xmin;
-    	length = x1-x2+1;
-  		break;
-
-  	case DISPLAY_LINE_DIRECTION_DOWN:
-  		if((x1 >= eglib->drawing.clip_xmax) || (x1 < eglib->drawing.clip_xmin))
-  			return;
-  		if(y2 >= eglib->drawing.clip_ymax)
-  			y2 = eglib->drawing.clip_ymax - 1;
-  		if(y1 < eglib->drawing.clip_ymin )
-  			y1 = eglib->drawing.clip_ymin;
-  		length = y2-y1+1;
-  		break;
-
-  	case DISPLAY_LINE_DIRECTION_UP:
-  		if((x1 >= eglib->drawing.clip_xmax) || (x1 < eglib->drawing.clip_xmin))
-  			return;
-  		if(y1 >= eglib->drawing.clip_ymax)
-  			y1 = eglib->drawing.clip_ymax - 1;
-  		if(y2 < eglib->drawing.clip_ymin )
-  			y2 = eglib->drawing.clip_ymin;
-  		length = y1-y2+1;
-  		break;
-  	}
-    if(length < 1)
-      return;
+    if (direction == DISPLAY_LINE_DIRECTION_RIGHT) {
+        if ((y1 >= eglib->drawing.clip_ymax) || (y1 < eglib->drawing.clip_ymin))
+            return;
+        if (x2 >= eglib->drawing.clip_xmax)
+            x2 = eglib->drawing.clip_xmax - 1;
+        if (x1 < eglib->drawing.clip_xmin)
+            x1 = eglib->drawing.clip_xmin;
+        length = x2 - x1 + 1;
+    }
+    else if (direction == DISPLAY_LINE_DIRECTION_DOWN) {
+        if ((x1 >= eglib->drawing.clip_xmax) || (x1 < eglib->drawing.clip_xmin))
+            return;
+        if (y2 >= eglib->drawing.clip_ymax)
+            y2 = eglib->drawing.clip_ymax - 1;
+        if (y1 < eglib->drawing.clip_ymin)
+            y1 = eglib->drawing.clip_ymin;
+        length = y2 - y1 + 1;
+    }
+    if (length < 1)
+        return;
 
     // ESP_LOGI( "dl1", "x:%d y:%d, len:%d", x1, y1, length );
-    eglib->display.driver->draw_line(eglib, x1, y1, direction, length, get_next_color );
+    if (eglib->do_buffer) {
+      if(direction == DISPLAY_LINE_DIRECTION_RIGHT)
+        buffer_scan_line(eglib, x1, y1, length);
+      else
+        buffer_scan_column(eglib, x1, y1, length);
+    }
+    else {
+      eglib->display.driver->draw_line(eglib, x1, y1, direction, length, get_next_color );
+    }
+}
+
+void buffer_one_pixel(eglib_t *eglib, coordinate_t x, coordinate_t y, color_t color) {
+    if( !eglib_inClipArea( eglib, x,y ) )
+        return;
+
+    // calc offest in buffer
+    uint8_t *buffer = eglib->drawing.buffer 
+                + ((y - eglib->drawing.clip_ymin) * (eglib->drawing.clip_xmax - eglib->drawing.clip_xmin) * 3) // rows
+                + ((x - eglib->drawing.clip_xmin) * 3); // columns
+    *buffer++ = color.r;
+    *buffer++ = color.g;
+    *buffer++ = color.b;
 }
 
 // precondition: DISPLAY_LINE_DIRECTION_RIGHT (pg filling algorithm relies on this)
-static void buffer_scan_line(eglib_t *eglib, coordinate_t x, coordinate_t y, coordinate_t len) {
+void buffer_scan_line(eglib_t *eglib, coordinate_t x, coordinate_t y, coordinate_t len) {
     if((y >= eglib->drawing.clip_ymax) || (y < eglib->drawing.clip_ymin))
       return;
     if( (x + len) > eglib->drawing.clip_xmax )
@@ -278,7 +283,7 @@ static void buffer_scan_line(eglib_t *eglib, coordinate_t x, coordinate_t y, coo
     }
 }
 // precondition: DISPLAY_LINE_DIRECTION_DOWN
-static void buffer_scan_column(eglib_t *eglib, coordinate_t x, coordinate_t y, coordinate_t len) {
+void buffer_scan_column(eglib_t *eglib, coordinate_t x, coordinate_t y, coordinate_t len) {
     if((x >= eglib->drawing.clip_xmax) || (x < eglib->drawing.clip_xmin))
       return;
     if( (y + len) > eglib->drawing.clip_ymax )
