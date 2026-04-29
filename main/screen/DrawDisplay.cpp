@@ -123,8 +123,6 @@ void UiEventLoop(void *arg)
                     MenuRoot->begin(SetupMenu::createQNHMenu());
                 } else if (detail == ScreenEvent::BALLAST_CONFIRM) {
                     MenuRoot->begin(SetupMenu::createBallastMenu());
-                } else if (detail == ScreenEvent::VOLT_ADJUST) {
-                    MenuRoot->begin(SetupMenu::createVoltmeterAdjustMenu());
                 } else if (detail == ScreenEvent::POLAR_CONFIG) {
                     MenuRoot->begin(createGliderSelectMenu());
                 }

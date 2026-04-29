@@ -76,8 +76,6 @@
 #include <cstring>
 
 
-#define NEED_VOLTAGE_ADJUST (abs(factory_volt_adjust.get() - 0.00815) < 0.00001)
-
 SemaphoreHandle_t spiMutex=NULL;
 
 int MyGliderPolarIndex; // Todo make private in S2F?
@@ -961,13 +959,6 @@ void system_startup(void *args){
 
         // Some more checks on vario configuration
         int screenEvent;
-        if (NEED_VOLTAGE_ADJUST) {
-            // factory use case
-            ESP_LOGI(FNAME, "Do Factory Voltmeter adj");
-            screenEvent = ScreenEvent(ScreenEvent::VOLT_ADJUST).raw;
-            xQueueSend(uiEventQueue, &screenEvent, 0);
-        }
-
         // airfield use case
         // Glider polar set?
         ESP_LOGI(FNAME, "Check glider polar configuration %d, unchanged %d", glider_type.get(), S2F::isPolarEqualTo(MyGliderPolarIndex));

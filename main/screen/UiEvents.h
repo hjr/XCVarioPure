@@ -54,7 +54,6 @@ struct ScreenEvent
         MAIN_SCREEN,
         FLARM_ALARM,
         FLARM_ALARM_TIMEOUT,
-        VOLT_ADJUST,
         POLAR_CONFIG,
         QNH_ADJUST,
         BALLAST_CONFIRM };

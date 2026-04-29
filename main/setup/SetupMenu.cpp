@@ -873,24 +873,28 @@ int unitChangeS(SetupMenuSelect* p) {
 
 static int exitFactoryMenu(SetupMenuSelect* p){
     if (p->getSelect() == 1) {
-// #ifndef DEBUG_AND_TEST
+#ifndef DEBUG_AND_TEST
         // check if factory tasks are done
         axes_i16_abi accbias = accl_bias.get();
         if ( factory_volt_adjust.get() == 0.f ) {
             // not done, show warning
-            p->menuPrintLn("Battery voltage adjust not done.", 10, 5);
+            p->menuPrintLn("Bat. volt. adjust not done.", 10, 5);
             p->setSelect(0);
-            return 0;
-        }
-        if ( accbias == axes_i16_abi() ) {
+        else if ( accbias == axes_i16_abi() ) {
             // not done, show warning
-            p->menuPrintLn("Acceleromenter bias not done.", 10, 5);
+            p->menuPrintLn("Accel. bias not done.", 10, 5);
             p->setSelect(0);
             return 0;
         }
-// #endif
-        factory_flag.set(factory_flag.get() | 2);
-        p->setTerminateMenu();
+        if ( p->getSelect() == 0 ) {
+            while (!Rotary->readSwitch(100)) ;
+        }
+        else
+#endif
+        {
+            factory_flag.set(factory_flag.get() | 2);
+            p->setTerminateMenu();
+        }
     }
     return 0;
 }

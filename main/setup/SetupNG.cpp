@@ -477,7 +477,7 @@ SetupNG<float>  		deadband( "DEADBAND", 0.3, true, SYNC_BIDIR, PERSISTENT, nullp
 SetupNG<float>  		deadband_neg("DEADBAND_NEG" , -0.3, true, SYNC_BIDIR, PERSISTENT, nullptr, quantity_t::QUANT_VSPEED, LIMITS(-5.0, .0, 0.1));
 
 SetupNG<float>  		wifi_max_power( "WIFI_MP" , 50, true, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(10.0, 100.0, 5.0));
-SetupNG<int>  			factory_flag( "FACTORY_RES" , 2, false ); // bit 0: factory reset flag, bit 1: normal/factory menu flag
+SetupNG<int>  			factory_flag( "FACTORY_RES" , 0, false ); // bit 0: factory reset flag, bit 1: normal/factory menu flag
 SetupNG<int>  			alt_select( "ALT_SELECT" , ALT_BARO_SENSOR );
 SetupNG<int>  			fl_auto_transition( "FL_AUTO" , 0 );
 SetupNG<int>  			alt_display_mode( "ALT_DISP_MODE" , Altimeter::MODE_QNH );
