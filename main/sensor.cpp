@@ -1035,9 +1035,11 @@ void system_startup(void *args){
     AUDIO->initVarioVoice();
 
     // a final check if the IMU got calibrated
+#ifdef DEBUG_AND_TEST
     if ( accSensor && (imu_reference.get() == Quaternion()) ) {
         MBOX->pushMessage(2, "Pls. calibrate AHRS for best variometer performance");
     }
+#endif
 }
 
 // #include <xtensa/core-macros.h>  // for XTHAL_GET_CCOUNT
