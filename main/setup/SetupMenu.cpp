@@ -617,6 +617,12 @@ static int startFlarmSimulation(SetupMenuSelect *p) {
 	return 0;
 }
 
+static int student_mode_action(SetupMenuSelect* p) {
+    if (p->getSelect() == 1) {
+        p->setTerminateSetup();
+    }
+    return 0;
+}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 // SetupMenu
@@ -1361,13 +1367,11 @@ static void options_menu_create_screens(SetupMenu *top) { // dynamic!
 void options_menu_create(SetupMenu *opt) { // dynamic!
 	if ( opt->getNrChilds() == 0 ) {
 		opt->setDynContent();
-		if (student_mode.get() == 0) {
-			SetupMenuSelect *stumo = new SetupMenuSelect("Student Mode", RST_NONE, nullptr, &student_mode);
-			opt->addEntry(stumo);
-			stumo->setHelp(
-					"Student mode, disables all sophisticated setup to just basic pre-flight related items like MC, ballast or bugs");
-			stumo->mkEnable();
-		}
+		SetupMenuSelect *stumo = new SetupMenuSelect("Student Mode", RST_NONE, student_mode_action, &student_mode);
+		opt->addEntry(stumo);
+		stumo->setHelp(
+				"Student mode, disables all sophisticated setup to just basic pre-flight related items like MC, ballast or bugs");
+		stumo->mkEnable();
 		
 		// Vario
 		SetupMenu *va = new SetupMenu("Vario and Speed 2 Fly", vario_menu_create);
@@ -1749,6 +1753,7 @@ void setup_create_root(SetupMenu *top) {
 		passw->setPrecision(0);
 		passw->setHelp(
 				"To exit from student mode enter expert password and restart device after expert password has been set correctly");
+		passw->setTerminateMenu();
 		top->addEntry(passw);
 	} else {
 		// Options Setup
