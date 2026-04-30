@@ -16,9 +16,10 @@
 struct bitfield {
     e_restart_mode_t _restart :2;
     bool _end_menu            :1; // just terminate the containing menu (two levels up)
+    bool _end_setup           :1; // terminate the whole setup (exit to main screen)
     bool _locked              :1; // cannot enter
     bool _is_inline           :1; // inline menu
-	bool _never_inline        :1; // never inline menu
+    bool _never_inline        :1; // never inline menu
     bool _live_update         :1; // update value on rotation
     uint8_t _precision        :4;
 };
