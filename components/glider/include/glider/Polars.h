@@ -50,10 +50,10 @@ namespace Polars {
 	int numPolars();
 	const char *getPolarName(int i);
 	int getPolarIndex(int i);
-	int findMyGlider(int glider_index);
+	int findMyGlider(int glider_unique_index);
 	const char *getGliderType(int i);
 	bool hasFlaps(int);
 	const flap_table& getFlapLevels(int idx);
 	int numFlaps();
-	int findMyFlapLevels(int glider_index);
+	int findMyFlapLevels(int glider_unique_index);
 };

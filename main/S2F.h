@@ -22,7 +22,7 @@ public:
 	void changeBallast();
 	void changeMc();
 	void changeDamping();
-	void setPolar();
+	void setPolar(int gldr_idx);
 	static bool isPolarEqualTo(int idx);
 	mps_t calculate(mps_t net_vario, bool circling=false ); // call after sensor reads 10 Hz
 	mps_t getDelta() const { return _s2f_delta; }
@@ -32,6 +32,7 @@ public:
 	mps_t getCirclingSink(mps_t v);
 	float getCw( mps_t v );
 	static float getLoadFactor();
+    int getMyGliderIdx() const { return _glider_index; }
 	void test(void);
 
 private:
@@ -42,6 +43,7 @@ private:
 	float getVn( float v );
 	bool calcValidPolar();
 
+    int _glider_index = 0;
 	float myballast = 1.f;
 	static float bal_percent;
 	float a0=0, a1=0, a2=0;

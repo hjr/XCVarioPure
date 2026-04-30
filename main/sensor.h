@@ -49,8 +49,6 @@ extern AnalogInput *AnalogInWk;
 
 extern meter_t alt_external;
 
-extern int MyGliderPolarIndex;
-
 extern SemaphoreHandle_t spiMutex;
 
 extern vector_f gravity_vector;

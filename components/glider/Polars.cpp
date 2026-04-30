@@ -30,7 +30,7 @@ struct compressed_polar {
 	int16_t  sink3;			// 1/100x m/s
 	uint8_t  max_ballast;	// 2x kg
 	uint16_t wingarea;		// 1/100x mxm
-	uint8_t  flags;                 // bit 0 = 0x01 -> has flaps
+	uint8_t  flags;         // bit 0 = 0x01 -> has flaps
 };
 
 const flap_table flap_default_arr[] = {
@@ -41,7 +41,6 @@ const flap_table flap_default_arr[] = {
 const compressed_polar polars_default_arr[] = {
 #include <PackedPolarTable.inc>
 };
-
 
 
 t_polar::t_polar(const compressed_polar *cp)
@@ -78,13 +77,13 @@ int Polars::getPolarIndex(int i)
     return polars_default_arr[i].index;
 }
 
-int Polars::findMyGlider(int glider_index)
+int Polars::findMyGlider(int glider_unique_index)
 {
-	ESP_LOGI( FNAME,"Polars::begin() configured glider index: %d", glider_index);
+	ESP_LOGI( FNAME,"Polars::begin() configured glider unique index: %d", glider_unique_index);
     int ret = 0;
 	for( int p=0; p<numPolars(); p++ ){
-		if( polars_default_arr[p].index == glider_index ){
-			ESP_LOGI( FNAME,"Found Glider index %d at position %d", glider_index, p );
+		if( polars_default_arr[p].index == glider_unique_index ){
+			ESP_LOGI( FNAME,"Found Glider unique index %d at position %d", glider_unique_index, p );
             ret = p;
 			break;
 		}
@@ -111,12 +110,12 @@ int Polars::numFlaps() {
 }
 
 // returns -1 if none were found, otherwise the index in the flap table
-int Polars::findMyFlapLevels(int glider_index) {
-	ESP_LOGI( FNAME,"findMyFlaps configured glider index: %d", glider_index);
+int Polars::findMyFlapLevels(int glider_unique_index) {
+	ESP_LOGI( FNAME,"findMyFlaps configured glider unique index: %d", glider_unique_index);
 	int ret = -1;
 	for( int p=0; p<numFlaps(); p++ ){
-		if( flap_default_arr[p].index == glider_index ){
-			ESP_LOGI( FNAME,"Found Flap index %d at position %d", glider_index, p );
+		if( flap_default_arr[p].index == glider_unique_index ){
+			ESP_LOGI( FNAME,"Found Flap unique index %d at position %d", glider_unique_index, p );
 			ret = p;
 			break;
 		}

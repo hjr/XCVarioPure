@@ -10,8 +10,8 @@
 #include "screen/UiEvents.h"
 #include "screen/DrawDisplay.h"
 #include "Flap.h"
+#include "S2F.h"
 #include "AdaptUGC.h"
-#include "sensor.h"
 #include "logdefnone.h"
 
 extern AdaptUGC *MYUCG;
@@ -68,7 +68,7 @@ static void fill_glider_selection(SetupMenuSelect *glt)
         ESP_LOGI(FNAME, "P: %s - %d", Polars::getPolarName(x), Polars::getPolarIndex(x));
         glt->addEntry(Polars::getPolarName(x), Polars::getPolarIndex(x));
     }
-    glt->setSelect(MyGliderPolarIndex);
+    glt->setSelect(Speed2Fly.getMyGliderIdx());
     ESP_LOGI(FNAME, "Number of Polars installed: %d", Polars::numPolars());
 }
 void glider_menu_create(SetupMenu *top) {
@@ -100,14 +100,13 @@ void glider_menu_create(SetupMenu *top) {
 		vmax->setHelp("Configure maximum speed for corresponding aircraft type");
 		top->addEntry(vmax);
 
-		ESP_LOGI(FNAME,"glider-index %d", Polars::getGliderEnumPos());
 		SetupMenu *flaps = new SetupMenu("Flap Levels", flap_levels_menu_create);
 		flaps->setHelp("Transition speed for flap settings at ref. wingload");
 		top->addEntry( flaps );
 	}
 
 	SetupMenu *tmp_menu = static_cast<SetupMenu*>(top->getEntry(6)); // flap levels
-	if( Polars::hasFlaps(MyGliderPolarIndex) ) {
+	if( Polars::hasFlaps(Speed2Fly.getMyGliderIdx()) ) {
 		// last chance to create the FLAP object
 		if( ! FLAP ) {
 			FLAP = Flap::theFlap();
@@ -126,7 +125,7 @@ void glider_selection_create(SetupMenu *top) {
     SetupMenuSelect *space = new SetupMenuSelect("", RST_NONE);
     space->lock();
     top->addEntry(space);
-    SetupMenuSelect *glt = new SetupMenuSelect("Type", RST_NONE, polar_select, &glider_type, true);
+    SetupMenuSelect *glt = new SetupMenuSelect("Type", RST_NONE, polar_select, &glider_type);
     fill_glider_selection(glt);
     glt->setHelp("Select your type of glider from the list of pre-installed polars");
     glt->setTerminateMenu();

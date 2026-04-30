@@ -70,10 +70,15 @@ void S2F::changeDamping() {
     _lpf_delta.setTau(s2f_delay.get(), 0.1f); // 10 Hz update
 }
 
-void S2F::setPolar()
+void S2F::setPolar(int gldr_idx)
 {
 	ESP_LOGI(FNAME,"S2F::setPolar()");
-	t_polar p = Polars::getPolar(MyGliderPolarIndex);
+	if ( gldr_idx < 0 || gldr_idx >= Polars::numPolars() ) {
+		ESP_LOGE(FNAME,"Invalid glider index %d, max is %d", gldr_idx, Polars::numPolars()-1);
+		gldr_idx = 0; // fall back to default .. a mode to just go
+	}
+	_glider_index = gldr_idx;
+	t_polar p = Polars::getPolar(gldr_idx);
 	polar_speed1.set( p.speed1, true, false);
 	polar_speed2.set( p.speed2, true, false);
 	polar_speed3.set( p.speed3, true, false);

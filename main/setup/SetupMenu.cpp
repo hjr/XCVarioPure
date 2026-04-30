@@ -1652,7 +1652,7 @@ void system_menu_create(SetupMenu *sye) {
 
 	// Glider Setup
 	SetupMenu *po = new SetupMenu("Glider Type", glider_menu_create);
-	po->setBuzzword(Polars::getGliderType(MyGliderPolarIndex));
+	po->setBuzzword(Polars::getGliderType(Speed2Fly.getMyGliderIdx()));
 	po->setHelp("Polar, weight and all attributes of the glider");
 	sye->addEntry(po);
 
@@ -1761,17 +1761,10 @@ void setup_create_root(SetupMenu *top) {
 	}
 }
 
-// void setup_create_factory(SetupMenu *top) {
-//     ESP_LOGI(FNAME,"setup_create_factory()");
-//     SetupMenu *soft = new SetupMenu("Software", system_menu_create_software);
-//     top->addEntry(soft);
-
-// }
-
-SetupMenu* SetupMenu::createTopSetup() {
+	SetupMenu* SetupMenu::createTopSetup() {
 	const char *top_menu_name = "Setup";
 	if (glider_type.get() != 1000 || ! S2F::isPolarEqualTo(0)) {
-		top_menu_name =	Polars::getPolarName(MyGliderPolarIndex);
+		top_menu_name =	Polars::getPolarName(Speed2Fly.getMyGliderIdx());
 	}
 	SetupMenu *setup = new  SetupMenu(top_menu_name, setup_create_root);
 	return setup;

@@ -285,8 +285,8 @@ void change_bal_water(){
 }
 
 void polar_update(){
-	MyGliderPolarIndex = Polars::findMyGlider(glider_type.get());
-	Speed2Fly.setPolar();
+    ESP_LOGI(FNAME,"polar_update called");
+	Speed2Fly.setPolar(Polars::findMyGlider(glider_type.get()));
 }
 
 static void change_polar() {

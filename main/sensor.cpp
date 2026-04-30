@@ -78,8 +78,6 @@
 
 SemaphoreHandle_t spiMutex=NULL;
 
-int MyGliderPolarIndex; // Todo make private in S2F?
-
 AnalogInput *BatVoltage = nullptr;
 
 AdaptUGC *MYUCG = 0;  // ( SPI_DC, CS_Display, RESET_Display );
@@ -495,7 +493,7 @@ void system_startup(void *args){
 			(chip_info.features & CHIP_FEATURE_EMB_FLASH) ? "embedded" : "external");
 	ESP_LOGI(FNAME, "QNH.get() %.1f hPa", QNH.get() );
 	// register_coredump();
-	MyGliderPolarIndex = Polars::findMyGlider(glider_type.get());
+	Speed2Fly.setPolar(Polars::findMyGlider(glider_type.get()));
 
 	AverageVario::begin();
 
@@ -587,10 +585,10 @@ void system_startup(void *args){
 
     // Show configured glider polar
     bool glider_polar_configured = glider_type.get() != glider_type.getDefault() 
-            || ! S2F::isPolarEqualTo(MyGliderPolarIndex);
+            || ! S2F::isPolarEqualTo(Speed2Fly.getMyGliderIdx());
     if (glider_polar_configured) {
         ver.assign("  >> ");
-        ver += Polars::getPolarName(MyGliderPolarIndex);
+        ver += Polars::getPolarName(Speed2Fly.getMyGliderIdx());
         MBOX->pushMessage(1, ver.c_str());
     }
 
@@ -960,7 +958,7 @@ void system_startup(void *args){
         int screenEvent;
         // airfield use case
         // Glider polar set?
-        ESP_LOGI(FNAME, "Check glider polar configuration %d, unchanged %d", glider_type.get(), S2F::isPolarEqualTo(MyGliderPolarIndex));
+        ESP_LOGI(FNAME, "Check glider polar configuration %d, unchanged %d", glider_type.get(), S2F::isPolarEqualTo(Speed2Fly.getMyGliderIdx()));
         if (!glider_polar_configured) {
             screenEvent = ScreenEvent(ScreenEvent::POLAR_CONFIG).raw;
             xQueueSend(uiEventQueue, &screenEvent, 0);
