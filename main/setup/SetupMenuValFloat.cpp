@@ -161,7 +161,7 @@ void SetupMenuValFloat::rot(int count) {
 
     displayVal();
     
-    if (_action != 0) {
+    if (_action != 0 && bits._live_update) {
         (*_action)(this);
     }
 }
@@ -175,10 +175,6 @@ void SetupMenuValFloat::press()
 {
 	ESP_LOGI(FNAME,"SetupMenuValFloat value: %f", _value );
 	ESP_LOGI(FNAME,"Check if _value: %f != _value_safe: %f", _value, _value_safe );
-
-	// if ( _exit_action ) {
-	// 	_exit_action( this );
-	// }
 
 	if( _value != _value_safe ){
 		_nvs->set( _value );
