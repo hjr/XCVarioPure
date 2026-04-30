@@ -33,13 +33,12 @@ union global_flags {
 class CANbus;
 class SerialLine;
 class AnalogInput;
-class ScreenRoot;
 class WatchDog_C;
 
 extern global_flags gflags;
 extern CANbus *CAN;
 extern SerialLine *S1,*S2;
-extern ScreenRoot *MenuRoot;
+
 extern WatchDog_C *uiMonitor;
 extern AnalogInput *BatVoltage;
 

@@ -48,3 +48,5 @@ private:
     int active_screen = SCREEN_VARIO;
     WatchDog_C  _ui_mon_wd;
 };
+
+extern ScreenRoot *MenuRoot;

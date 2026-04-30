@@ -22,6 +22,9 @@
 #include "sensor.h"
 #include "logdefnone.h"
 
+// the global screen root
+ScreenRoot *MenuRoot = nullptr;
+
 // bit field of all configured screens
 // set to zero for boot-up
 static uint32_t all_screens;

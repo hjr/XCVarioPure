@@ -81,7 +81,6 @@ SemaphoreHandle_t spiMutex=NULL;
 AnalogInput *BatVoltage = nullptr;
 
 AdaptUGC *MYUCG = 0;  // ( SPI_DC, CS_Display, RESET_Display );
-ScreenRoot  *MenuRoot = nullptr;
 WatchDog_C *uiMonitor = nullptr;
 
 // Magnetic sensor / compass
