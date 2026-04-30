@@ -1,7 +1,7 @@
 idf_component_register(SRC_DIRS "."
                        INCLUDE_DIRS "."
                        EMBED_TXTFILES ${project_dir}/server_certs/ca_cert.pem
-                       REQUIRES soc driver nvs_flash esp_adc esp_driver_dac esp_wifi esp_system esp_http_server esp_https_ota bt I2Cbus MPUdriver ESP32-coredump eglib qrcodegen simplex glider onewire_bus util)
+                       REQUIRES soc driver nvs_flash esp_adc esp_driver_dac esp_wifi wpa_supplicant esp_system esp_http_server esp_https_ota bt I2Cbus MPUdriver ESP32-coredump eglib qrcodegen simplex glider onewire_bus util)
 
 
 # global compiler settings
