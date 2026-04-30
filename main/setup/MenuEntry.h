@@ -1,5 +1,5 @@
 /*
- * SetupEntry.h
+ * MenuEntry.h
  *
  *  Created on: Feb 4, 2018
  *      Author: iltis
@@ -15,7 +15,6 @@
 
 struct bitfield {
     e_restart_mode_t _restart :2;
-    bool _ext_handler         :1; // ??
     bool _end_menu            :1; // just terminate the containing menu (two levels up)
     bool _locked              :1; // cannot enter
     bool _is_inline           :1; // inline menu

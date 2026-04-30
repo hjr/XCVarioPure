@@ -10,7 +10,7 @@
 #include "setup/MenuEntry.h"
 #include "setup/SetupNG.h"
 
-#include <string_view>
+// #include <string_view>
 #include <vector>
 #include <utility>
 
@@ -23,7 +23,7 @@ class SetupMenuSelect : public MenuEntry
 public:
 	SetupMenuSelect() = delete;
 	explicit SetupMenuSelect( const char* title, e_restart_mode_t restart=RST_NONE, int (*exit_action)(SetupMenuSelect *p) = nullptr,
-		SetupNG<int> *anvs=nullptr, bool ext_handler=false);
+		SetupNG<int> *anvs=nullptr);
 	virtual ~SetupMenuSelect() = default;
 	void enter() override;
 	void display(int mode=0) override;
@@ -38,7 +38,7 @@ public:
 	bool existsEntry(const char* ent);
     void addEntry(const char* ent, int val);
     void addEntry(const char* ent);
-	void addEntryList( const std::string_view ent[] );
+	// void addEntryList( const std::string_view ent[] );
 	void delEntry( const char * ent );
 	void delAllEntries();
 	void mkEnable(const char *what=nullptr);

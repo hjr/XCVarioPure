@@ -13,13 +13,12 @@
 const std::string_view ENABLE_MODE[5] = { "Disable", "Enable", "Dynamic", "Primary", "Client" };
 
 SetupMenuSelect::SetupMenuSelect( const char* title, e_restart_mode_t restart, int (*exit_action)(SetupMenuSelect *p),
-									SetupNG<int> *anvs, bool ext_handler) :
+									SetupNG<int> *anvs) :
 	MenuEntry(title),
 	_exit_action(exit_action),
 	_nvs(anvs)
 {
 	// ESP_LOGI(FNAME,"SetupMenuSelect( %s ) action: %x", title, (int)action );
-	bits._ext_handler = ext_handler;
 	bits._restart = restart;
 	_select = -1; // no selection, init. can only be done when the menu items are added completely
 		// initialization postponed to first enter(), or value() call
@@ -36,21 +35,17 @@ void SetupMenuSelect::enter()
 
 	_select_save = _select;
 	_select = (_select > _values.size()-1) ? _values.size()-1 : _select;
-	_show_inline = _values.size() > 9 || (canInline() && ! bits._ext_handler);
+	_show_inline = _values.size() > 9 || canInline();
 	MenuEntry::enter();
 }
 
 void SetupMenuSelect::display(int mode)
 {
-    ESP_LOGI(FNAME,"display title:%s action: %x", _title.c_str(), (int)(_exit_action));
+    ESP_LOGI(FNAME,"display title:%s action: %p", _title.c_str(), _exit_action);
 	if ( _show_inline ) {
 		indentHighlight(_parent->getHighlight());
 	}
-	else if( bits._ext_handler ){  // handling is done only in action method
-		ESP_LOGI(FNAME,"ext handler");
-	}
-	else
-	{
+	else {
 		ESP_LOGI(FNAME,"Title: %s ", _title.c_str() );
 		menuPrintLn("  <", 0);
 		menuPrintLn(_title.c_str(), 0, 30);
@@ -85,7 +80,7 @@ void SetupMenuSelect::rot(int count)
 
 void SetupMenuSelect::press()
 {
-	ESP_LOGI(FNAME,"press() ext handler: %d _select: %d", bits._ext_handler, _select );
+	ESP_LOGI(FNAME,"press() _select: %d", _select );
 
 	if( _nvs ) {
 		_nvs->set(_values[_select].second);
@@ -150,18 +145,18 @@ void SetupMenuSelect::addEntry(const char* ent)
 	_values.push_back(ITEM_t(ent, _values.size()));
 }
 
-void SetupMenuSelect::addEntryList( const std::string_view ent[] )
-{
-	for( int i=0; *ent[i].data() != '\0'; i++ ) {
-		_values.push_back(ITEM_t(ent[i].data(), _values.size()));
-#ifdef DEBUG_MAX_ENTRIES
-		if( num_max < _values.size() ){
-			ESP_LOGI(FNAME,"addEntryList:%s  num:%d", (char *)ent[i], _values.size() );
-			num_max = _values.size();
-		}
-#endif
-	}
-}
+// void SetupMenuSelect::addEntryList( const std::string_view ent[] )
+// {
+// 	for( int i=0; *ent[i].data() != '\0'; i++ ) {
+// 		_values.push_back(ITEM_t(ent[i].data(), _values.size()));
+// #ifdef DEBUG_MAX_ENTRIES
+// 		if( num_max < _values.size() ){
+// 			ESP_LOGI(FNAME,"addEntryList:%s  num:%d", (char *)ent[i], _values.size() );
+// 			num_max = _values.size();
+// 		}
+// #endif
+// 	}
+// }
 
 void SetupMenuSelect::delEntry( const char* ent )
 {
