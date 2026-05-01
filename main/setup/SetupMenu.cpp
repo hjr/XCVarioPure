@@ -1419,15 +1419,16 @@ void system_menu_create_software(SetupMenu *top) {
     top->addEntry(ahrsid);
 
     Version V;
-    SetupMenuSelect* ver = new SetupMenuSelect("Software Vers.", RST_NONE, nullptr);
+    SetupMenuSelect* ver = new SetupMenuSelect("Version", RST_NONE, nullptr);
     ver->addEntry(V.version());
     ver->lock();
     top->addEntry(ver);
 
-    SetupMenuSelect* upd = new SetupMenuSelect("Software Update", RST_IMMEDIATE, nullptr, &software_update);
-    upd->setHelp("Software Update over the air (OTA). Starts Wifi AP 'ESP32 OTA' - connect and open http://192.168.4.1 in browser");
+    SetupMenuSelect* upd = new SetupMenuSelect("Update", RST_IMMEDIATE, nullptr, &software_update);
+    upd->setHelp("Update using the internet connection of your smart phone, or upload a binary using the ESP32 webserver.");
     upd->addEntry("Cancel");
-    upd->addEntry("Start");
+    upd->addEntry("Easy Connect");
+    upd->addEntry("Webserver");
     top->addEntry(upd);
 
     if (logged_tests.size() > 0) {

@@ -8,16 +8,17 @@
  *
  */
 
- #include "OTA.h"
+#include "OTA.h"
 
+#include "Webserver.h"
+#include "screen/ScreenRoot.h"
 #include "IpsDisplay.h"
 #include "AdaptUGC.h"
-#include "setup/SetupNG.h"
+#include "driver/time/Clock.h"
 #include "comm/WifiApSta.h"
-#include "setup/SetupNG.h"
-#include "Webserver.h"
+#include "logdef.h"
+
 #include "qrcodegen.h"
-#include "logdefnone.h"
 
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
@@ -25,21 +26,65 @@
 #include <esp_ota_ops.h>
 
 
-const char* ssid = "ESP32 OTA";
-const char* pwd = "xcvario-21";
 
-// OTA
+
+// the menu to select classic upload or the easy connect method
+// static int ota_select(SetupMenuSelect *p) {
+//     if (p->getSelect() == 0) {
+//         MenuRoot->begin(new OTAdpp(""));
+//     }
+//     else {
+//         MenuRoot->begin(new OTAap(""));
+//     }
+//     return 0;
+// }
+// void ota_selection_create(SetupMenu* top) {
+//     SetupMenuSelect *space = new SetupMenuSelect("", RST_NONE);
+//     space->lock();
+//     top->addEntry(space);
+//     SetupMenuSelect *ota = new SetupMenuSelect("Firmware Update", RST_NONE, ota_select);
+//     ota->addEntry("OTA with Easy Connect");
+//     ota->addEntry("I provide a binary");
+//     ota->setHelp("OTA using the internet connection of your smart phone, "
+//         "or upload a binary using the ESP32 webserver.");
+//     ota->setSelect(0);
+//     ota->setTerminateSetup();
+//     ota->setNeverInline();
+//     top->addEntry(ota);
+//     top->setHighlight(1);
+//     int event = ButtonEvent(ButtonEvent::SHORT_PRESS).raw;
+//     xQueueSend(uiEventQueue, &event, 0); // virtually press the button to straight enter the selection
+// }
+
+// SetupMenu *createOtaMenu() {
+//     SetupMenu *ota_menu = new SetupMenu("", ota_selection_create);
+//     return ota_menu;
+// }
+
+
+OTA::OTA(bool dpp) :
+    SetupMenuDisplay(""),
+    Clock_I(100),
+    _do_dpp(dpp)
+{
+    scheduleReboot();
+}
+
+OTA::~OTA()
+{
+    Webserver.stop();
+    Clock::stop(this);
+}
+
+// OTA with legacy access point
 void OTA::display(int some){
 	ESP_LOGI(FNAME,"Now start Wifi OTA");
 	WifiApSta *wifi = WifiApSta::createWifiApSta();
 	wifi->ConfigureIntf(80);
 
-	// Break the cycle of booting into OTA mode early
-	software_update.commit();
-
 	Display->clear();
 	int line=1;
-	Display->writeText(line++,"SOFTWARE DOWNLOAD");
+	Display->writeText(line++,"Firmware Upload");
 	Display->writeText(line++,"Use Wifi: ESP32 OTA");
 	Display->writeText(line++,"Password: xcvario-21");
 	Display->writeText(line++,"Open: http://192.168.4.1");
@@ -53,7 +98,7 @@ void OTA::display(int some){
 	uint8_t *tempBuffer = (uint8_t *)malloc(qrcodegen_BUFFER_LEN_FOR_VERSION(4));
 	uint8_t *qrcodeBuffer = (uint8_t *)malloc(qrcodegen_BUFFER_LEN_FOR_VERSION(4));
 
-	snprintf(textBuffer, textBufferSize, "WIFI:S:%s;T:WPA;P:%s;;", ssid, pwd);
+	snprintf(textBuffer, textBufferSize, "WIFI:S:%s;T:WPA;P:%s;;", OTA_SSID, AP_PASSPHARSE);
 	bool qrSuccess = qrcodegen_encodeText(textBuffer, tempBuffer, qrcodeBuffer, errCorLvl, 4, 4, qrcodegen_Mask_AUTO, true);
 
 	size_t qrCodeMaxWidth = 114;
@@ -123,30 +168,36 @@ void OTA::display(int some){
 	free(tempBuffer);
 
 	Webserver.start();
+    Clock::start(this);
+}
 
-	line = 9;
-	for( tick=0; tick<900; tick++ ) {
-		char txt[40];
-		sprintf(txt,"Timeout in %d sec  ", 900-tick );
-		Display->writeText(line+2,txt);
-		std::string pro( "Progress: ");
-		pro += std::to_string( Webserver.getOtaProgress() ) + " %";
-		Display->writeText(line+3, pro.c_str());
-		vTaskDelay(1000/portTICK_PERIOD_MS);
-		if( Webserver.getOtaStatus() == otaStatus::DONE ){
-			ESP_LOGI(FNAME,"Flash status, Now restart");
-			Display->writeText(line+3,"Download SUCCESS !");
-			vTaskDelay(3000/portTICK_PERIOD_MS);
-			break;
-		}
-		if( _abort ) {
-			ESP_LOGI(FNAME,"pressed");
-			Display->writeText(line+3,"Abort OTA, restarting ...");
-			vTaskDelay(1500/portTICK_PERIOD_MS);
-			break;
-		}
-	}
-	Webserver.stop();
-	ESP_LOGI(FNAME,"Now restart");
-	esp_restart();
+void OTA::press() {
+    Clock::stop(this);
+    exit();
+}
+
+// exceptional use of the ticker for display output
+bool OTA::tick() {
+    int16_t line = 9;
+    char txt[40];
+    sprintf(txt,"Timeout in %d sec  ", _count-- );
+    Display->writeText(line+2,txt);
+    std::string pro("Progress: ");
+    pro += std::to_string( Webserver.getOtaProgress() ) + " %";
+    Display->writeText(line+3, pro.c_str());
+
+    bool update_end = _count < 0;
+    if( Webserver.getOtaStatus() == otaStatus::DONE ){
+        ESP_LOGI(FNAME,"Flash status, Now restart");
+        Display->writeText(line+3,"Download SUCCESS !");
+        vTaskDelay(3000/portTICK_PERIOD_MS);
+        update_end = true;
+    }
+
+    if ( update_end ) {
+        ESP_LOGI(FNAME,"Now restart");
+        exit(-1);
+        return true;
+    }
+    return false;
 }

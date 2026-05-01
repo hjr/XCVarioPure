@@ -567,19 +567,26 @@ void system_startup(void *args){
 
     // Check if we shall enter OTA update mode
     if (software_update.get() || Rotary->readBootupStatus()) {
-        software_update.set(0); // only one shot, then boot normal
 
-        if (hardwareRevision.get() >= XCVARIO_22) {
-            // Give CAN MagSens a chance for an update
-            CANbus::createCAN();
-            CAN->begin();
-            DEVMAN->addDevice(CANREGISTRAR_DEV, REGISTRATION_P, CAN_REG_PORT, CAN_REG_PORT, CAN_BUS);
-            DEVMAN->addDevice(MAGSENS_DEV, MAGSENSBIN_P, MagSensBin::LEGACY_MAGSTREAM_ID, 0, CAN_BUS); // fixme
+        int choice = software_update.get();
+        if ( choice ) {
+            software_update.set(0); // only one shot, then boot normal
+            software_update.commit(); // be prepare for a power cut and not loop back in here
         }
+
+        // todo later .. update the magsens over CAN
+        // if (hardwareRevision.get() >= XCVARIO_22) {
+        //     // Give CAN MagSens a chance for an update
+        //     CANbus::createCAN();
+        //     CAN->begin();
+        //     DEVMAN->addDevice(CANREGISTRAR_DEV, REGISTRATION_P, CAN_REG_PORT, CAN_REG_PORT, CAN_BUS);
+        //     DEVMAN->addDevice(MAGSENS_DEV, MAGSENSBIN_P, MagSensBin::LEGACY_MAGSTREAM_ID, 0, CAN_BUS); // fixme
+        // }
+
         BootUpScreen::terminate(); // screen now belongs to OTA
         Rotary->begin(); // Start rotary to allow aborting by user input.
-        MenuRoot->begin(new OTA());
-        return; // never coming here
+        MenuRoot->begin(new OTA(choice==1));
+        return; // do not continue with normal boot, OTA menu will take over;
     }
 
     // Show configured glider polar

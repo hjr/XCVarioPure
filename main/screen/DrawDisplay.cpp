@@ -18,6 +18,7 @@
 #include "HorizonPage.h"
 
 #include "setup/SetupMenuValFloat.h"
+#include "setup/SetupMenuSelect.h"
 #include "setup/SetupMenuDisplay.h"
 #include "setup/SetupMenu.h"
 #include "setup/SubMenuGlider.h"

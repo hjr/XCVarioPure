@@ -7,17 +7,20 @@
 #pragma once
 
 #include "setup/SetupMenuDisplay.h"
+#include "driver/time/ClockIntf.h"
 
-class OTA: public SetupMenuDisplay
+
+class OTA final : public SetupMenuDisplay, public Clock_I 
 {
-public:
-	OTA() : SetupMenuDisplay("") {}
-	~OTA() = default;
-	void display( int ) override;
-	void press() override { _abort = true; }
-	void longPress() override {}
+  public:
+    OTA(bool do_dpp);
+    ~OTA();
+    void display(int) override;
+    void press() override;
+    bool tick() override;
 
-private:
-	int tick = 0;
-	bool _abort = false;
+  private:
+  int _count = 900;
+  bool _do_dpp;
 };
+

@@ -1,12 +1,14 @@
+#pragma once
+
 #include <esp_http_server.h>
 
 
-    enum class otaStatus : int8_t
-    {
-        ERROR = -1,
-        IDLE = 0,
-        DONE = 1,
-    };
+enum class otaStatus : int8_t
+{
+    ERROR = -1,
+    IDLE = 0,
+    DONE = 1,
+};
 
 
 class cWebserver

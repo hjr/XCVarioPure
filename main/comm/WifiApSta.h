@@ -9,6 +9,9 @@
 #include <list>
 
 extern bool netif_initialized;
+extern const char* AP_PASSPHARSE;
+extern const char* SSID_PREFIX;
+extern const char* OTA_SSID;
 
 class WifiApSta;
 

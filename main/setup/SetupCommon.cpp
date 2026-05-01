@@ -12,6 +12,7 @@
 #include "sensor.h"
 #include "comm/DeviceMgr.h"
 #include "comm/CanBus.h"
+#include "comm/WifiApSta.h"
 #include "protocol/nmea/XCVSyncMsg.h"
 #include "logdefnone.h"
 
@@ -339,7 +340,7 @@ char* SetupCommon::getDefaultID() {
 
 const char * SetupCommon::getFixedID() {
 	if( hardwareRevision.get() >= XCVARIO_21 ){
-		return "XCVario-";
+		return SSID_PREFIX;
 	}
 	else{
 		return "iVario-";

@@ -24,9 +24,11 @@ WifiApSta *WIFI = nullptr;
 #define MAX_CLIENTS   4
 
 // The XCV access point password
-constexpr const char* PASSPHARSE = "xcvario-21";
-
-
+const char* AP_PASSPHARSE = "xcvario-21";
+// The XCV access point SSID prefix
+const char* SSID_PREFIX = "XCVario-";
+// The XCV software update access point SSID
+const char* OTA_SSID = "ESP32 OTA";
 
 int sock_server_t::create_ap_socket()
 {
@@ -423,7 +425,8 @@ bool WifiApSta::scanMaster(int master_xcv_num)
 	memset(ap_info, 0, sizeof(ap_info));
 
 	// search for this AP
-	char mxcv[14]="XCVario-";
+	char mxcv[14];
+    strcpy(mxcv, SSID_PREFIX);
 	if( master_xcv_num != 0 ) {
 		sprintf( mxcv+strlen(mxcv),"%d", master_xcv_num );
 	}
@@ -580,7 +583,7 @@ static esp_netif_t *wifi_consfig_sta(const char* staid)
 	wifi_sta_config.sta.channel = 6; // a hint
 	wifi_sta_config.sta.threshold.authmode = WIFI_AUTH_WPA_WPA2_PSK;
 	strcpy( (char *)wifi_sta_config.sta.ssid, staid );
-	strcpy((char *)wifi_sta_config.sta.password, PASSPHARSE);
+	strcpy((char *)wifi_sta_config.sta.password, AP_PASSPHARSE);
 
 	ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_sta_config));
 	return esp_netif_sta;
@@ -595,7 +598,7 @@ static esp_netif_t *wifi_config_softap(uint8_t maxcon, const char* ssid)
 	memset(&wifi_ap_config, 0, sizeof(wifi_ap_config));
 	strcpy( (char *)wifi_ap_config.ap.ssid, ssid );
 	wifi_ap_config.ap.ssid_len = strlen( (char *)wifi_ap_config.ap.ssid );
-	strcpy( (char *)wifi_ap_config.ap.password, PASSPHARSE );
+	strcpy( (char *)wifi_ap_config.ap.password, AP_PASSPHARSE );
 	wifi_ap_config.ap.channel = 6;
 	wifi_ap_config.ap.max_connection = maxcon;
 	wifi_ap_config.ap.authmode = WIFI_AUTH_WPA_WPA2_PSK;
@@ -655,8 +658,8 @@ void WifiApSta::client_connect()
 	wifi_config_t cfg;
 	memset(&cfg, 0, sizeof(cfg));
 	cfg.sta.channel = 6; // a hint
-	sprintf( (char *)cfg.sta.ssid, "XCVario-%d", (int) master_xcvario.get() );
-	strcpy((char *)cfg.sta.password, PASSPHARSE);
+	sprintf( (char *)cfg.sta.ssid, "%s%d", SSID_PREFIX, (int)master_xcvario.get() );
+	strcpy((char *)cfg.sta.password, AP_PASSPHARSE);
 
 	ESP_ERROR_CHECK(esp_wifi_disconnect());
 	ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &cfg));
