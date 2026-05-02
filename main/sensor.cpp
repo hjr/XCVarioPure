@@ -104,8 +104,6 @@ uint8_t gyro_flash_savings=0;
 // boot with flasg "inSetup":=true and release the screen for other purpouse by setting it false.
 global_flags gflags = {};
 
-int   ccp = 60;
-
 const constexpr char passed_text[] = "PASSED\n";
 const constexpr char failed_text[] = "FAILED\n";
 const constexpr char notfound_text[] = "NOT FOUND\n";
@@ -313,10 +311,9 @@ void readSensors(void *pvParameters)
         }
 
         // low rate update of long term climb average
-		if( !(count % ccp) ) {
-			ESP_LOGI(FNAME,"count %d ccp %d", count, ccp );
-			AverageVario::recalcAvgClimb();
-		}
+        if ( ! (count % (((int)core_climb_period.get()) * 10)) ) {
+            AverageVario::recalcAvgClimb();
+        }
 
         // flap sensor update -> fixme create a external device gpio and a sensor to register
         if (FLAP && FLAP->haveAdcSensor()) { FLAP->progress(count); }
@@ -392,13 +389,14 @@ void readSensors(void *pvParameters)
             ui_update_done = false;
             xQueueSend(uiEventQueue, &screenEvent, 0);
         }
-	// NVS lazy commit
-        if ( !(count % 50) ) {  // all 5 seconds
-            SetupCommon::commitDirty(); // very important, flash NVS settings permanently
+
+        // NVS lazy commit
+        if ( !(count % 50) ) { // all 5 seconds
+            SetupCommon::commitDirty(); // flash NVS settings permanently
         }
 
 #ifdef DEBUG_AND_TEST
-        if ((count % 300) == 0) {
+        if ( !(count % 300) ) {
             ESP_LOGI(FNAME, "Free Heap: %d bytes", heap_caps_get_free_size(MALLOC_CAP_8BIT));
             if (uxTaskGetStackHighWaterMark(NULL) < 512)
             {
@@ -520,7 +518,6 @@ void system_startup(void *args){
 	BatVoltage = new AnalogInput((22.0+1.2)/1200, ADC_CHANNEL_7); // created allways, but only used on master XCV
 	BatVoltage->begin(ADC_ATTEN_DB_0);  // for battery voltage
 	BatVoltage->setAdjust(factory_volt_adjust.get());
-	ccp = (int)(core_climb_period.get()*10);
 	spi_bus_config_t buscfg = {
 		.mosi_io_num = SPI_MOSI,
 		.miso_io_num = SPI_MISO,
