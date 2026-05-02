@@ -26,14 +26,17 @@ void ShowFlightInfo::display(int mode) {
     MYUCG->setFont(ucg_font_ncenR14_hr);
     menuPrintLn(_title.c_str(), 0);
 
-    time_t t = Clock::getMillisUTC() / 1000;
+    time_t t;
+    time(&t);
     struct tm utc;
     gmtime_r(&t, &utc);
 
     char buffer[200];
     int i = 1;
 
-    sprintf(buffer, "Date: %d-%d-%d %02d:%02d:%02d", utc.tm_year + 1900, utc.tm_mon + 1, utc.tm_mday, utc.tm_hour, utc.tm_min, utc.tm_sec);
+    sprintf(buffer, "Date: %d-%d-%d", utc.tm_year + 1900, utc.tm_mon + 1, utc.tm_mday);
+    menuPrintLn(buffer, i++);
+    sprintf(buffer, "UTC: %02d:%02d:%02d", utc.tm_hour, utc.tm_min, utc.tm_sec);
     menuPrintLn(buffer, i++);
 
     menuPrintLn("Press button to exit", i + 1, 5);

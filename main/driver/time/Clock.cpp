@@ -120,13 +120,13 @@ int Clock::getUpdateAgeMs() {
     return  msec_counter - _last_updated_ms;
 }
 
+// Time synch from GPS
 void Clock::setTimeUTC(int64_t gps_utc_ms) {
     _offset_ms = gps_utc_ms - (esp_timer_get_time() / 1000); // esp time in usec
     _last_updated_ms = msec_counter;
     _valid = true;
     ESP_LOGI(FNAME, "Clock set UTC: offset %lld ms", _offset_ms);
 }
-
 void Clock::updateTimeUTC(int64_t gps_utc_ms) {
     int64_t est_now = _offset_ms + msec_counter;
     int64_t error   = gps_utc_ms - est_now;
