@@ -1006,11 +1006,11 @@ void system_startup(void *args){
         baroSensor->update(Clock::getMillis());
         teSensor->update(Clock::getMillis());
         asSensor->update(Clock::getMillis());
-
-        // TE vario "sensor" always needed, but last in line
-        bmpVario.setup();
-        SensorRegistry::registerSensor(&bmpVario);
     }
+    
+    // TE vario "sensor" always needed, but last in line
+    bmpVario.setup();
+    SensorRegistry::registerSensor(&bmpVario);
 
     // apply a none default alt_select
     if ( alt_select.get() != ALT_BARO_SENSOR ) {
