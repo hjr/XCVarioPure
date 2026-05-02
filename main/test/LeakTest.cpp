@@ -2,6 +2,7 @@
 
 #include "sensor/press_diff/AirspeedSensor.h"
 #include "sensor/pressure/PressureSensor.h"
+#include "screen/DrawDisplay.h"
 #include "AdaptUGC.h"
 #include "math/Units.h"
 #include "sensor.h"
@@ -125,5 +126,8 @@ void LeakTest::display(int mode) {
 		ESP_LOGI(FNAME, "PASSED");
 		gflags.leak_test_passed = 1;
 	}
+
+	// flush event queue to avoid false button press detection after test
+	xQueueReset(uiEventQueue);
 }
 
