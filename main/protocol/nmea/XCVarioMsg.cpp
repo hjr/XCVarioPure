@@ -126,7 +126,7 @@ void NmeaPrtcl::sendStdXCVario()
     msg->buffer += str;
 
     // optional IMU additions
-    if (accSensor && gflags.ahrsKeyValid)
+    if (accSensor)
     {
         vector_f acc = accSensor->getHead();
         std::sprintf(str, ",%3.1f", accSensor->getRollDeg());

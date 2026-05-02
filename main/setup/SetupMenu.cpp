@@ -273,20 +273,6 @@ int SetupMenu::switch_alt_source(SetupMenuSelect* p) {
     return 0;
 }
 
-// static int add_key(SetupMenuChar *p) {
-//     ESP_LOGI(FNAME, "add_key( %s ) ", p->value());
-//     if (p->value()[0] == '@') {
-//         // hidden short-cut to delete the license key
-//         ahrs_licence.set("");
-//         p->reset();
-//     } else {
-//         ahrs_licence.set(p->value());
-//     }
-//     Cipher crypt;
-//     gflags.ahrsKeyValid = crypt.checkKeyAHRS();
-//     return 0;
-// }
-
 static int imu_gaa(SetupMenuValFloat *f) {
     if (accSensor && !(imu_reference.get() == Quaternion())) {
         accSensor->getMpu().applyImuReference(f->get(), imu_reference.get());
@@ -1306,12 +1292,6 @@ void screens_menu_create_gload(SetupMenu *top) {
 	top->addEntry(extreme);
 }
 
-void screens_menu_create_horizon(SetupMenu *top) {
-	SetupMenuSelect *horizon = new SetupMenuSelect("Horizon", RST_NONE, set_parent_parent_dirty, &screen_horizon);
-	horizon->mkEnable();
-	top->addEntry(horizon);
-}
-
 static void options_menu_create_screens(SetupMenu *top) { // dynamic!
 	if ( top->getNrChilds() == 0 ) {
 		top->setDynContent();
@@ -1320,10 +1300,18 @@ static void options_menu_create_screens(SetupMenu *top) { // dynamic!
 		top->addEntry(vario);
 
 		SetupMenu *gload = new SetupMenu("G-Meter", screens_menu_create_gload);
+        if ( !accSensor ) {
+            gload->lock();
+            gload->setBuzzword("n/a");
+        }
 		top->addEntry(gload);
 
-		SetupMenu *horizon = new SetupMenu("Horizon", screens_menu_create_horizon);
-		top->addEntry(horizon);
+        SetupMenuSelect *horizon = new SetupMenuSelect("Horizon", RST_NONE, set_parent_dirty, &screen_horizon);
+        horizon->mkEnable();
+        if ( !accSensor ) {
+            horizon->lock();
+        }
+        top->addEntry(horizon);
 
         SetupMenuSelect* ncolor = new SetupMenuSelect("Needle Color", RST_NONE, nullptr, &needle_color);
         ncolor->addEntry("Orange");
@@ -1352,20 +1340,6 @@ static void options_menu_create_screens(SetupMenu *top) { // dynamic!
 
 	tmp_menu = static_cast<SetupMenu*>(top->getEntry(1)); // gload
 	tmp_menu->setBuzzword(ENABLE_MODE[screen_gmeter.get()].data());
-
-	tmp_menu = static_cast<SetupMenu*>(top->getEntry(2)); // horizon
-	if ( screen_gmeter.get() == SCREEN_PRIMARY ) {
-		tmp_menu->setBuzzword(ENABLE_MODE[0].data());
-		tmp_menu->lock();
-	}
-	else if ( ! gflags.ahrsKeyValid ) {
-		tmp_menu->setBuzzword("no license");
-		tmp_menu->lock();
-	}
-	else {
-		tmp_menu->setBuzzword(ENABLE_MODE[screen_horizon.get()].data());
-		tmp_menu->unlock();
-	}
 }
 
 void options_menu_create(SetupMenu *opt) { // dynamic!

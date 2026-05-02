@@ -69,7 +69,7 @@ void ScreenRoot::initScreens()
         all_screens |= SCREEN_GMETER;
     }
     // horizon only if AHRS license is valid
-    if ( screen_horizon.get() && gflags.ahrsKeyValid ) {
+    if (screen_horizon.get()) {
         all_screens |= SCREEN_HORIZON;
     }
     all_screens |= SCREEN_VARIO; // always

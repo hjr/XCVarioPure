@@ -691,11 +691,6 @@ void system_startup(void *args){
         MBOX->pushMessage(1, wireless_id.c_str());
     }
 
-    {
-        Cipher crypt;
-        gflags.ahrsKeyValid = true; // crypt.checkKeyAHRS();
-        ESP_LOGI(FNAME, "AHRS key valid=%d", gflags.ahrsKeyValid);
-    }
     boot_screen->finish(0);
 
     if (accSensor) {
