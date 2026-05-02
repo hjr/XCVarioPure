@@ -1521,7 +1521,6 @@ void system_menu_create_hardware_rotary(SetupMenu *top) {
 	sact->addEntry("Long Press");
 }
 
-#ifdef DEBUG_AND_TEST
 void system_menu_create_hardware_ahrs_parameter(SetupMenu *top) {
     SetupMenuValFloat* lever_arm = new SetupMenuValFloat("CG Lever Arm", "m", nullptr, &imu_leverarm, RST_NONE, false);
     lever_arm->setHelp(
@@ -1554,7 +1553,6 @@ void system_menu_create_hardware_ahrs_parameter(SetupMenu *top) {
 	ahrsdef->addEntry("Cancel");
 	ahrsdef->addEntry("Set Defaults");
 }
-#endif
 
 void system_menu_create_hardware_imu(SetupMenu *top) {
 #ifdef DEBUG_AND_TEST
@@ -1640,7 +1638,7 @@ void system_menu_create_hardware(SetupMenu *top) {
         top->addEntry(bat);
     }
     SetupMenu* wkm = static_cast<SetupMenu*>(top->getEntry(2));  // Flap Sensor
-    if (FLAP) {
+    if (Speed2Fly.hasFlaps()) {
         wkm->unlock();
         if (flap_sensor.get()) {
             wkm->setBuzzword(ENABLE_MODE[1].data());  // enabled
@@ -1771,7 +1769,7 @@ void setup_create_root(SetupMenu *top) {
 	}
 }
 
-	SetupMenu* SetupMenu::createTopSetup() {
+SetupMenu* SetupMenu::createTopSetup() {
 	const char *top_menu_name = "Setup";
 	if (glider_type.get() != 1000 || ! S2F::isPolarEqualTo(0)) {
 		top_menu_name =	Polars::getPolarName(Speed2Fly.getMyGliderIdx());

@@ -118,6 +118,11 @@ void S2F::setPolar(int gldr_idx)
 	}
 }
 
+bool S2F::hasFlaps() const {
+	t_polar p = Polars::getPolar(_glider_index);
+	return p.hasFlaps();
+}
+
 // compare the used polar two the original one from polar store
 bool S2F::isPolarEqualTo(int idx)
 {
