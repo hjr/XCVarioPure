@@ -152,18 +152,41 @@ Point Point::centralProjection(const vector_f &obj, float focus) {
     return Point(fast_iroundf(focus * obj.y), fast_iroundf(focus * -obj.z));
 }
 
+// Implementation of the bounding box based on the 2d point
+void BoundingBox::add(Point p) {
+    if (p.x < pmin.x) pmin.x = p.x;
+    if (p.y < pmin.y) pmin.y = p.y;
+    if (p.x > pmax.x) pmax.x = p.x;
+    if (p.y > pmax.y) pmax.y = p.y;
+}
+void BoundingBox::add(const Point *pts, int n) {
+    for (int i=0; i<n; i++) {
+        add(pts[i]);
+    }
+}
+void BoundingBox::enlarge(int16_t val) {
+    pmin -= val;
+    pmax += val;
+}
+bool BoundingBox::isIn(Point p) const {
+    return p.x >= pmin.x && p.x <= pmax.x && p.y >= pmin.y && p.y <= pmax.y;
+}
+
+
 // Hesse horizon line parameters in the gliders Y/Z plane
-// quaternion q is attitude in NED frame, 
-// cx/cy is the center of the display frame in pixel coordinates
-// line result is directly in display coordinates with x to the right and y down,
+// quaternion q is attitude in NED frame,
+// bool respect_mbox limits the line to the area above the message box if true
+// Setup line through the center of the display frame in pixel coordinates
+// The line result is directly in display coordinates with x to the right and y down,
 // and d is the signed distance of the line to the center of the display
-Line::Line(const Quaternion &q) { //, int16_t cx, int16_t cy) {
-    // normal vector of the plane
+Line::Line(const Quaternion &q, bool respect_mbox) { //, int16_t cx, int16_t cy) {
+    const int16_t display_h = (respect_mbox ? (DISPLAY_H - MBOX->getBoxHeight()) : DISPLAY_H);
+            // normal vector of the plane
     vector_f up = q.rotate(vector_f(0, 0, 1)); // Earth-Up into body frame
     _nx = up.y;
     _ny = up.z;
     _d = std::clamp(-up.x, -0.7f, 0.7f) * 100; // projection scale to visible range
-    _d += _nx * DISPLAY_W/2 + _ny * DISPLAY_H/2; // offset to the middle of the screen
+    _d += _nx * DISPLAY_W/2 + _ny * display_h/2; // offset to the middle of the screen
     float norm = sqrtf(_nx*_nx + _ny*_ny);
     _nx /= norm;
     _ny /= norm;
@@ -209,13 +232,15 @@ Point Line::mapToHorizon(Point obj) const
 Point Line::limitToScreen(Point p, bool respect_mbox) const
 {
     // check p against boundaries
+    // pull in some extra pixles from the screen border
+    constexpr int16_t BORDER = 7;
     const int16_t display_h = (respect_mbox ? (DISPLAY_H - MBOX->getBoxHeight()) : DISPLAY_H);
-    if (p.x >= 0 && p.x < DISPLAY_W && p.y >= 0 && p.y < display_h) {
+    if (p.x >= BORDER && p.x < DISPLAY_W-BORDER && p.y >= BORDER && p.y < display_h-BORDER) {
         return p;
     }
 
     // project screen reference
-    float dist = _nx * DISPLAY_W/2 + _ny * DISPLAY_H/2 - _d;
+    float dist = _nx * DISPLAY_W/2 + _ny * display_h/2 - _d;
     const int16_t cx = std::clamp(DISPLAY_W/2 - fast_iroundf(dist * _nx), 0, DISPLAY_W-1);
     const int16_t cy = std::clamp(display_h/2 - fast_iroundf(dist * _ny), 0, display_h-1);
 
@@ -226,20 +251,20 @@ Point Line::limitToScreen(Point p, bool respect_mbox) const
 
     // find intersection with screen border and chop scale
     float t_min = 1.f;
-    if ( p.x < 0 ) {
-        float t = (float)(-cx) / dx;
+    if ( p.x < BORDER ) {
+        float t = (float)(BORDER-cx) / dx;
         if (t < t_min) t_min = t;
     }
-    else if ( p.x >= DISPLAY_W ) {
-        float t = (float)(DISPLAY_W-1 - cx) / dx;
+    else if ( p.x >= (DISPLAY_W-BORDER) ) {
+        float t = (float)(DISPLAY_W-BORDER-1 - cx) / dx;
         if (t < t_min) t_min = t;
     }
-    if ( p.y < 0 ) {
-        float t = (float)(-cy) / dy;
+    else if ( p.y < BORDER ) {
+        float t = (float)(BORDER-cy) / dy;
         if (t < t_min) t_min = t;
     }
-    else if ( p.y >= display_h ) {
-        float t = (float)(display_h-1 - cy) / dy;
+    else if ( p.y >= (display_h-BORDER) ) {
+        float t = (float)(display_h-BORDER-1 - cy) / dy;
         if (t < t_min) t_min = t;
     }
 
@@ -319,15 +344,6 @@ void IpsDisplay::drawPolyFrame(Point *pts, int n)
     for( int i = 0; i < n; i++ ) {
         int j = (i+1) % n;
         ucg->drawLine(pts[i].x, pts[i].y, pts[j].x, pts[j].y);
-    }
-}
-void IpsDisplay::superBBox(const Point *pts, int n, BoundingBox &bbox)
-{
-    for( int i = 0; i < n; i++ ) {
-        if (pts[i].x < bbox[0].x) bbox[0].x = pts[i].x;
-        if (pts[i].x > bbox[1].x) bbox[1].x = pts[i].x;
-        if (pts[i].y < bbox[0].y) bbox[0].y = pts[i].y;
-        if (pts[i].y > bbox[1].y) bbox[1].y = pts[i].y;
     }
 }
 

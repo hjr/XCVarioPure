@@ -251,7 +251,7 @@ void PolarGauge::drawFigure(float a)
 {
     if ( _figure && _figure->changed(a) ) {
         const BoundingBox& prev = _figure->getBoundingBox();
-        MYUCG->startBuffering(prev[0].x, prev[0].y, prev[1].x, prev[1].y);
+        MYUCG->startBuffering(prev.pmin.x, prev.pmin.y, prev.pmax.x, prev.pmax.y);
         
         // if (_wind_avg) {
         //     _wind_avg->redrawBG();

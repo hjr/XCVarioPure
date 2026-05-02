@@ -129,13 +129,11 @@ void WindIndicator::drawWind(bool erase)
 
     // Calc the bounding box of the arrow
     if ( _wind.isValid()) {
-        _abox[0] = _arrow[0];
-        _abox[1] = _arrow[0];
-        IpsDisplay::superBBox(&_arrow[1], 4, _abox);
+        _abox.initialize(_arrow[0]);
+        _abox.add(&_arrow[1], 4);
     }
     else {
-        _abox[0] = Point(_gauge._ref.x, _gauge._ref.y);
-        _abox[1] = Point(_gauge._ref.x, _gauge._ref.y);
+        _abox.initialize(_gauge._ref);
         if ( erase ) {
             return; // only a previously painted arrow can be removed
          }
@@ -151,12 +149,12 @@ void WindIndicator::drawWind(bool erase)
             _arrow[i] += _gauge._ref;
         }
     }
-    // MYUCG->drawFrame(_abox[0].x, _abox[0].y, _abox[1].x - _abox[0].x +1, _abox[1].y - _abox[0].y +1);
-    if ( (_abox[1].x - _abox[0].x +1) * (_abox[1].y - _abox[0].y +1) > (EGLIB_FRAMEBUFFER_SIZE/3) ) {
+    // MYUCG->drawFrame(_abox.pmin.x, _abox.pmin.y, _abox.pmax.x - _abox.pmin.x +1, _abox.pmax.y - _abox.pmin.y +1);
+    if ( (_abox.pmax.x - _abox.pmin.x +1) * (_abox.pmax.y - _abox.pmin.y +1) > (EGLIB_FRAMEBUFFER_SIZE/3) ) {
         ESP_LOGI(FNAME, "bbox too big, skip draw");
         return;
     }
-    MYUCG->startBuffering(_abox[0].x, _abox[0].y, _abox[1].x - _abox[0].x +1, _abox[1].y - _abox[0].y +1);
+    MYUCG->startBuffering(_abox.pmin.x, _abox.pmin.y, _abox.pmax.x - _abox.pmin.x +1, _abox.pmax.y - _abox.pmin.y +1);
     if ( ! erase ) {
         MYUCG->setColor(COLOR_MGREY);
         IpsDisplay::drawPolygon(_arrow, 5);

@@ -39,15 +39,17 @@ rad_t getWCA();
 // Some geometry helper
 struct Point;
 using Vector2d = Point;
-using BoundingBox = Point[2];
+
 struct Point {
     Point() = default;
     constexpr Point(int16_t x, int16_t y) : x(x), y(y) {}
     int16_t x=0, y=0;
     Point operator+(const Point &p) const;
     Point& operator+=(const Point &p) { x += p.x; y += p.y; return *this; }
+    Point& operator+=(int16_t val) { x += val; y += val; return *this; }
     Point operator-(const Point &p) const;
     Point& operator-=(const Point &p) { x -= p.x; y -= p.y; return *this; }
+    Point& operator-=(int16_t val) { x -= val; y -= val; return *this; }
     // Point operator*(const Point &p) const;
     // Point& operator*=(const Point &p) { x *= p.x; y *= p.y; return *this; }
     Point rotate(rad_t alpha) const;
@@ -57,10 +59,22 @@ struct Point {
     int dot(const Vector2d &v) const { return x * v.x + y * v.y; }
 };
 
+struct BoundingBox {
+    Point pmin;
+    Point pmax;
+    constexpr BoundingBox() : pmin(Point(INT16_MAX, INT16_MAX)), pmax(Point(INT16_MIN, INT16_MIN)) {}
+    constexpr BoundingBox(Point p1, Point P2) : pmin(p1), pmax(P2) {}
+    constexpr void initialize(Point p) { pmin = pmax = p; }
+    void add(Point p);
+    void add(const Point *pts, int n);
+    void enlarge(int16_t val);
+    bool isIn(Point p) const;
+};
+
 // Hesse form of a 2d straight line: Normal x Pxy + d = 0
 struct Line {
     Line() = default;
-    Line(const Quaternion &q);
+    Line(const Quaternion &q, bool respect_mbox = false);
     float _nx = 0;
     float _ny = 0;
     float _d = 0;
@@ -92,7 +106,6 @@ public:
     static void clipPolygonByLine(const Point *poly, int n, const Line &l, Point *above, int *na, Point *below, int *nb);
     static void drawPolygon(Point *pts, int n);
     static void drawPolyFrame(Point *pts, int n);
-    static void superBBox(const Point *pts, int n, BoundingBox &bbox);
 
 	static void drawLoadDisplay( float loadFactor );
 	static void drawLoadDisplayTexts();

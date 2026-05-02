@@ -64,7 +64,7 @@ void FlarmScreen::display(int mode)
     ESP_LOGI(FNAME, "flarm_screen mode %d", mode);
     // calc horizon line
     Quaternion attq = accSensor->getAHRSQuaternion();
-    Line l( attq);
+    Line l( attq, true);
     Point above[6], below[6];
     int na, nb;
     IpsDisplay::clipPolygonByLine(nullptr, 0, l, above, &na, below, &nb);

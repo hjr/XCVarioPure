@@ -28,8 +28,8 @@ LargeFigure::LargeFigure(int16_t x, int16_t y) :
     ScreenElement(x, y)
 {
     constexpr int16_t tmp = 33;
-    _bbox[0] = Point(_ref.x - tmp + 3-10, _ref.y + 2 - 36/2);
-    _bbox[1] = Point( 2*tmp + 7, 36);
+    _bbox.pmin = Point(_ref.x - tmp + 3-10, _ref.y + 2 - 36/2);
+    _bbox.pmax = Point( 2*tmp + 7, 36);
 }
 
 bool LargeFigure::changed(float v)
@@ -80,11 +80,11 @@ void LargeFigure::drawStatic() {
         mode = "  netto  ";
     }
     int16_t str_width = MYUCG->getStrWidth(mode);
-    MYUCG->setPrintPos(_ref.x - str_width / 2, _bbox[0].y -6);
+    MYUCG->setPrintPos(_ref.x - str_width / 2, _bbox.pmin.y -6);
     MYUCG->print(mode);
 
     str_width = MYUCG->getStrWidth(VarioUnit->getName());
-    MYUCG->setPrintPos(_ref.x - str_width / 2, _bbox[0].y + _bbox[1].y + MYUCG->getFontLineSpace() +3);
+    MYUCG->setPrintPos(_ref.x - str_width / 2, _bbox.pmin.y + _bbox.pmax.y + MYUCG->getFontLineSpace() +3);
     MYUCG->setColor(COLOR_HEADER);
     MYUCG->print(VarioUnit->getName());
 }
