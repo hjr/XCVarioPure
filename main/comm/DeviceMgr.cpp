@@ -982,11 +982,15 @@ Device::~Device()
             // _link->removeId(_id); not needed
         }
     }
-    if ( _sensor && !SensorRegistry::isRegistered(_sensor->getId()) ) {
-        ESP_LOGI(FNAME, "Delete sensor for device %d.", _id);
-        delete _sensor;
-        // _sensor = nullptr;
-    }
+    // Todo: Currently not the authentic place to manage the sensors.
+    // They grant once created and registered to some static buffer memory and are referenced through a set of exquisit global pointers. 
+    // So they are not really owned by the device, but more by the bus (OneWire) or the manager (Flarm). So do not delete them here, 
+    // but let them be, until the bus or manager decides to clean up. That is just how it is currently implemented.
+    // if ( _sensor && !SensorRegistry::isRegistered(_sensor->getId()) ) {
+    //     ESP_LOGI(FNAME, "Delete sensor for device %d.", _id);
+    //     delete _sensor;
+    //     // _sensor = nullptr;
+    // }
 }
 
 ProtocolItf *Device::getProtocol(ProtocolType p) const

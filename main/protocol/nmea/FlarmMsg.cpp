@@ -222,7 +222,7 @@ dl_action_t FlarmMsg::parsePFLAX(NmeaPlugin *plg)
                 DEVMAN->removeDevice(TEMPSENS_DEV);
                 DEVMAN->addDevice(TEMPSENS_DEV, NO_ONE, 0, 0, NO_PHY);
                 DEVMAN->removeDevice(MAGLEG_DEV); // drop input from a sensor
-                SensorBase *mag = MagVSensor::createMagVSensor(); // add a mag sensor without registering it, so it is not part of the sensor loop
+                SensorBase *mag = MagVSensor::createMagVSensor(); // add a mag sensor so that it is not part of the sensor doread loop
                 SensorRegistry::registerSensor(mag);
                 // disable real sensors
                 SensorRegistry::enterSimMode();
