@@ -313,8 +313,8 @@ bool SetupCommon::initSetup()
 
 	if( factory_flag.get() & 1 ) {
 		ret = factoryReset();
-		commitDirty();
 	}
+	commitDirty();
 	giveConfigChanges( 0, true );
 	return ret;
 };
