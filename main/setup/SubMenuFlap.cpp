@@ -36,7 +36,7 @@ static std::string flap_level_buzz[Flap::MAX_NR_POS];
 static int select_flap_sens_pin(SetupMenuSelect *p)
 {
     ESP_LOGI(FNAME, "select_flap_sens_pin");
-    FLAP->configureADC();
+    Flap::theFlap()->configureADC();
     if (p->getSelect() == FLAP_SENSOR_ENABLE)
     {
         p->clear();

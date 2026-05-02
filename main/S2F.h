@@ -23,6 +23,7 @@ public:
 	void changeMc();
 	void changeDamping();
 	void setPolar(int gldr_idx);
+	bool hasFlaps() const;
 	static bool isPolarEqualTo(int idx);
 	mps_t calculate(mps_t net_vario, bool circling=false ); // call after sensor reads 10 Hz
 	mps_t getDelta() const { return _s2f_delta; }
