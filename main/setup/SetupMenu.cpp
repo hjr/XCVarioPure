@@ -891,7 +891,6 @@ static int exitFactoryMenu(SetupMenuSelect* p){
             // not done, show warning
             p->menuPrintLn("Accel. bias not done.", 10, 5);
             p->setSelect(0);
-            return 0;
         }
         if ( p->getSelect() == 0 ) {
             while (!Rotary->readSwitch(100)) ;
