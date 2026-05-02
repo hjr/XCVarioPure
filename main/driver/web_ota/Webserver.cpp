@@ -2,7 +2,8 @@
 #include "Webserver.h"
 #include "sdkconfig.h"
 #include "coredump_to_server.h"
-#include "setup/SetupCommon.h"
+#include "setup/SetupNG.h"
+#include "setup/MenuEntry.h"
 #include "comm/DeviceMgr.h"
 #include "protocol/NMEA.h"
 #include "logdef.h"
@@ -415,7 +416,6 @@ esp_err_t GET_backup_handler(httpd_req_t *req)
 	ESP_LOGI(FNAME, "Backup Requested");
 
 	httpd_resp_set_type(req, "text/html");
-    // SetupCommon::giveConfigChanges(req);
     send_config(req);
 	return ESP_OK;
 }
@@ -456,9 +456,7 @@ esp_err_t DELETE_reset_handler(httpd_req_t *req)
 	httpd_resp_set_type(req, "text/html");
 	httpd_resp_send(req, "Okay", 5 );
 	SetupCommon::prepareFactoryReset();
-
-	vTaskDelay(3000 / portTICK_PERIOD_MS);
-	esp_restart();
+	MenuEntry::reBoot(3);
 
 	return ESP_OK;
 }

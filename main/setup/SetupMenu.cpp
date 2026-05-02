@@ -115,7 +115,7 @@ static int caid_reference(SetupMenuSelect* p) {
 
 static int factory_nvs_action(SetupMenuSelect* p) {
     if (p->getSelect() == 1) {
-        factory_flag.set(factory_flag.get() | 1);
+        factory_reset.set(factory_reset.get() | 1);
     }
     else if (p->getSelect() == 2) {
         ESP_LOGI(FNAME, "Clearing NVS...");
@@ -124,7 +124,7 @@ static int factory_nvs_action(SetupMenuSelect* p) {
         p->reBoot();
     }
     else if (p->getSelect() == 3) {
-        factory_flag.set(factory_flag.get() & ~2);
+        factory_menu.set(0);
     }
     return 0;
 }
@@ -898,7 +898,7 @@ static int exitFactoryMenu(SetupMenuSelect* p){
         else
 #endif
         {
-            factory_flag.set(factory_flag.get() | 2);
+            factory_menu.set(1); // dont show it any more
             p->setTerminateMenu();
         }
     }

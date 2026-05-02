@@ -88,7 +88,7 @@ void ScreenRoot::begin(MenuEntry *setup)
     if ( setup ) {
         addEntry(setup);
     } else {
-        if ( ! (factory_flag.get() & 2) ) {
+        if (factory_menu.get() == 0) {
             // show factory menu
             addEntry(SetupMenu::createFactorySetup());
         }

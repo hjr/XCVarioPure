@@ -266,8 +266,8 @@ void SetupCommon::commitDirty(){
 }
 
 void SetupCommon::prepareFactoryReset(){
-	factory_flag.set(factory_flag.get() | 1);
-	factory_flag.commit();
+	factory_reset.set(1);
+	factory_reset.commit();
 }
 
 bool SetupCommon::factoryReset(){
@@ -311,7 +311,7 @@ bool SetupCommon::initSetup()
 		}
 	}
 
-	if( factory_flag.get() & 1 ) {
+	if(factory_reset.get()) {
 		ret = factoryReset();
 	}
 	commitDirty();
