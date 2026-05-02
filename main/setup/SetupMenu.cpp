@@ -1052,8 +1052,7 @@ void vario_menu_create(SetupMenu *vae) {
 	vae->addEntry(vdamp);
 
 	SetupMenu *meanclimb = new SetupMenu("Mean Climb", vario_menu_create_meanclimb);
-	meanclimb->setHelp(
-			"Options for calculation of Mean Climb (MC recommendation) displayed by green/red rhombus");
+	meanclimb->setHelp("Options for calculation of Mean Climb (MC recommendation) displayed by green/red dot");
 	vae->addEntry(meanclimb);
 
 	SetupMenu *s2fs = new SetupMenu("S2F Settings", vario_menu_create_s2f);
