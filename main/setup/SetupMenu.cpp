@@ -884,14 +884,20 @@ static int exitFactoryMenu(SetupMenuSelect* p){
         axes_i16_abi accbias = accl_bias.get();
         if ( factory_volt_adjust.get() == 0.f ) {
             // not done, show warning
-            p->menuPrintLn("Bat. volt. adjust not done.", 10, 5);
+            p->menuPrintLn("Bat. volt. adjust not done.", 9, 5);
             p->setSelect(0);
         }
         else if ( accbias == axes_i16_abi() ) {
             // not done, show warning
-            p->menuPrintLn("Accel. bias not done.", 10, 5);
+            p->menuPrintLn("Accel. bias not done.", 9, 5);
             p->setSelect(0);
         }
+        else if (!gflags.leak_test_passed) {
+            // not done, show warning
+            p->menuPrintLn("Leak test not passed.", 9, 5);
+            p->setSelect(0);
+        }
+        p->menuPrintLn("Pls. confirm", 10, 5);
         if ( p->getSelect() == 0 ) {
             while (!Rotary->readSwitch(100)) ;
         }

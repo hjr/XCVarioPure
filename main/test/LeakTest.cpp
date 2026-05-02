@@ -4,6 +4,7 @@
 #include "sensor/pressure/PressureSensor.h"
 #include "AdaptUGC.h"
 #include "math/Units.h"
+#include "sensor.h"
 #include "logdefnone.h"
 
 #include <cmath>
@@ -122,6 +123,7 @@ void LeakTest::display(int mode) {
 	} else {
 		menuPrintLn("Test PASSED", 9);
 		ESP_LOGI(FNAME, "PASSED");
+		gflags.leak_test_passed = 1;
 	}
 }
 
