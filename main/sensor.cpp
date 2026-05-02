@@ -566,7 +566,11 @@ void system_startup(void *args){
     }
 
     // Check if we shall enter OTA update mode
-    if (software_update.get() || Rotary->readBootupStatus()) {
+    if (software_update.get() 
+#ifdef DEBUG_AND_TEST
+        || Rotary->readBootupStatus()
+#endif
+    ) {
 
         int choice = software_update.get();
         if ( choice ) {

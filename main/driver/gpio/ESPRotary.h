@@ -57,8 +57,10 @@ public:
 	void sendLongPress() const;
 	void sendEscape() const;
 	// gpio's
-	bool readSwitch(int delay = 2) const; // safe to call in rotary callback
+	bool readSwitch(int delay = 2) const; // never safe to call, drops all UI events except the expected button press
+#ifdef DEBUG_AND_TEST
 	bool readBootupStatus() const { return gpio_get_level(_sw) == 0; }
+#endif
 	gpio_num_t getSw() const { return _sw; };
 	gpio_num_t getClk() const { return clk; };
 	gpio_num_t getDt() const { return dt; };
