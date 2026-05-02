@@ -101,7 +101,7 @@ private:
     static uint8_t _restart; // restart bit field. 0x80 = scheduled, 0x01 = because of BT change, 0x02 = because of WIFI change
 
 protected:
-	SetupMenu  *_parent = nullptr;
+	SetupMenu  *_parent = nullptr; // nullptr for first level menu
 	std::string _title;
 	bitfield bits = {};
 	static int16_t cur_indent;
@@ -110,6 +110,6 @@ protected:
    private:
     const char* helptext = nullptr;
     uint8_t _help_line_start[MAX_HELP_LINES];
-    static MenuEntry* current;
-    static SetupMenu* current_menu;
+    static MenuEntry* current; // the currently selected menu entry, may be a menu or a leaf, but always a child of the current_menu
+    static SetupMenu* current_menu; // a parent is always of class menu, but not necessarily the current menu
 };

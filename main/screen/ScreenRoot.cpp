@@ -115,12 +115,12 @@ void ScreenRoot::pushTop(MenuEntry *menu)
     ESP_LOGI(FNAME,"Push Menu on top %s", menu->getTitle());
     gflags.inSetup = true;
 
-    MenuEntry *sel = getSelected();
-    if ( sel->isLeaf() ) {
+    MenuEntry *sel = getSelected(); // may return a nullptr
+    if ( sel && sel->isLeaf() ) {
         ESP_LOGW(FNAME,"Cannot push menu on leaf");
         sel->exit();
     }
-    SetupMenu *parent = static_cast<SetupMenu*>(getSelected());
+    SetupMenu *parent = current_menu ? current_menu : this;
     menu->regParent(parent);
     ESP_LOGW(FNAME,"Push flarm screen hooked");
     menu->enter();
@@ -136,6 +136,10 @@ void ScreenRoot::exit(int levels)
     free_connected_devices_menu();
     free_audio_menu();
     free_flap_menu();
+
+    // current menu status
+    current = nullptr; // no current item any more
+    // current_menu = this; // root is current menu again, set implicitely from the child exit() calls
 
     if (_restart) {
         reBoot();
