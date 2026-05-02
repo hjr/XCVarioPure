@@ -958,7 +958,6 @@ void system_startup(void *args){
             QNH.set(qnh_auto);
             ESP_LOGI(FNAME, "Auto QNH (direkt) = %4.2f hPa", qnh_auto);
         }
-        Display->clear();
 
         // Some more checks on vario configuration
         int screenEvent;
@@ -996,7 +995,6 @@ void system_startup(void *args){
         }
 
         BootUpScreen::terminate();
-        Display->clear();
     }
 
     // Finally setup the vario filter. It needs a first valid altimeter reading to not "freak-out"

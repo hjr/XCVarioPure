@@ -141,7 +141,7 @@ void decode_rle_bits(const uint8_t* rle_data, int rle_size, uint8_t* out_bits, i
 }
 
 
-constexpr const int MAX_PIXELS_PER_FRAME = 12;
+constexpr const int16_t MAX_PIXELS_PER_FRAME = 12;
 
 BootUpScreen::BootUpScreen() :
     Clock_I(1)
@@ -188,13 +188,15 @@ void BootUpScreen::terminate()
         BootUpScreen *tmp = inst;
         inst = nullptr;
         delete tmp;
+        MYUCG->setColor(COLOR_BLACK);
+        MYUCG->clearScreen();
     }
 }
 
 BootUpScreen::~BootUpScreen()
 {
     Clock::stop(this);
-    vTaskDelay(pdMS_TO_TICKS(10)); // give animate context time to get fingers off the bitmap
+    vTaskDelay(pdMS_TO_TICKS(20)); // give animate context time to get fingers off the bitmap
     if (logo_bitmap) {
         free(logo_bitmap);
     }
@@ -202,7 +204,7 @@ BootUpScreen::~BootUpScreen()
 
 // call 0, 1, 2, ..  (DIVIDER-1) for the parts that got positivly finished
 // otherwise skip a part
-void BootUpScreen::finish(int part)
+void BootUpScreen::finish(int16_t part)
 {
     // if ( ! _branded ) {
     //     MYUCG->setColor(1, COLOR_BLUE);
@@ -248,7 +250,7 @@ void BootUpScreen::animate()
             }
         }
     } else {
-        for (int16_t y = yline; y > std::max(yline_to, yline-MAX_PIXELS_PER_FRAME/2); y--) {
+        for (int16_t y = yline; y > std::max(yline_to, (int16_t)(yline-MAX_PIXELS_PER_FRAME/2)); y--) {
             for (int16_t xi = 0; xi < LOGO_WIDTH; xi+=8) {
                 int byte = logo_bitmap[y*LOGO_WIDTH/8 + xi/8];
                 if ( byte == 0 ) { continue; }
