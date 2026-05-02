@@ -392,10 +392,13 @@ void readSensors(void *pvParameters)
             ui_update_done = false;
             xQueueSend(uiEventQueue, &screenEvent, 0);
         }
+	// NVS lazy commit
+        if ( !(count % 50) ) {  // all 5 seconds
+            SetupCommon::commitDirty(); // very important, flash NVS settings permanently
+        }
 
 #ifdef DEBUG_AND_TEST
         if ((count % 300) == 0) {
-            SetupCommon::commitDirty(); // very important, flash NVS settings permanently
             ESP_LOGI(FNAME, "Free Heap: %d bytes", heap_caps_get_free_size(MALLOC_CAP_8BIT));
             if (uxTaskGetStackHighWaterMark(NULL) < 512)
             {
