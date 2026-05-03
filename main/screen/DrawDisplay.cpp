@@ -126,6 +126,8 @@ void UiEventLoop(void *arg)
                     MenuRoot->begin(SetupMenu::createBallastMenu());
                 } else if (detail == ScreenEvent::POLAR_CONFIG) {
                     MenuRoot->begin(createGliderSelectMenu());
+                } else if (detail == ScreenEvent::FACTORY_CONFIG) {
+                    MenuRoot->begin(SetupMenu::createFactorySetup());
                 }
             }
             else if (event.isModeEvent()) {
