@@ -15,11 +15,11 @@
 
 
 
-class RotaryObserver
+class RotaryReceiver
 {
 public:
-	RotaryObserver() {};
-	virtual ~RotaryObserver() {};
+	RotaryReceiver() {};
+	virtual ~RotaryReceiver() {};
 	virtual void rot(int count) = 0;
 	virtual void press() = 0;
 	virtual void longPress() = 0;

@@ -41,7 +41,7 @@ void MessageBox::createMessageBox()
 
 MessageBox::MessageBox() :
     Clock_I(CLOCK_DIVIDER),
-    RotaryObserver()
+    RotaryReceiver()
 {
 }
 
