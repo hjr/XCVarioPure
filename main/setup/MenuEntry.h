@@ -60,10 +60,12 @@ public:
 	virtual bool isLeaf() const { return true; }
 	virtual const char* value() const = 0; // content as string
 
-	inline void lock() { bits._locked = true; }
-	inline void unlock() { bits._locked = false; }
-	inline bool isLocked() const { return bits._locked; }
-	inline void setNeverInline() { bits._never_inline = true; }
+	void lock() { bits._locked = true; }
+	void unlock() { bits._locked = false; }
+	bool isLocked() const { return bits._locked; }
+	void setNeverInline() { bits._never_inline = true; }
+	void setTerminateMenu() { bits._end_menu = true; }
+	void setTerminateSetup() { bits._end_setup = true; }
 
 	// helper
 	const char* getTitle() const { return _title.c_str(); }

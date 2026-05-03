@@ -26,7 +26,7 @@ class Quaternion;
 
 // abi robust int16 vector, to avoid issues with padding and alignment of the original types
 struct axes_i16_abi {
-    int16_t x, y, z;
+    int16_t x=0, y=0, z=0;
     constexpr axes_i16_abi() = default;
     constexpr axes_i16_abi(int16_t a, int16_t b, int16_t c) : x(a), y(b), z(c) {}
     constexpr bool operator==(const axes_i16_abi& right) const { return x == right.x && y == right.y && z == right.z; }
