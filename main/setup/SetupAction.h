@@ -10,25 +10,23 @@
 
 #include "setup/MenuEntry.h"
 
+// The action menu never attaches and has no ability to be entered, 
+// but executes the action immediately and passes this pointer to properly exit it.
 
+class SetupAction final : public MenuEntry {
+   public:
+    explicit SetupAction(const char* title, int (*action)(SetupAction*), int code);
+    virtual ~SetupAction() = default;
+    void enter() override;
+    void display(int mode = 0) override {};
+    const char* value() const override { return ""; };
+    int getCode() const { return _code; }
+    // Rotoary API
+    void rot(int count) override {};
+    void press() override {};
+    void longPress() override {}
 
-class SetupAction final : public MenuEntry
-{
-public:
-	explicit SetupAction(const char *title, int (*action)(SetupAction *), int code, bool _end_menu=false);
-	virtual ~SetupAction() = default;
-	void enter() override;
-	void display(int mode=0) override;
-	const char* value() const override { return ""; };
-	int getCode() const { return _code; }
-	// Rotoary API
-	void rot(int count) override {};
-	void press() override;
-	void longPress() override;
-
-private:
-	int (*_action)( SetupAction *p );
-	int _code;
-	bool _end_menu;
-	int  _extra_ups = 0;
+   private:
+    int (*_action)(SetupAction* p);
+    int _code;
 };

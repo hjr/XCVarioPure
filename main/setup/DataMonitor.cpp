@@ -154,7 +154,7 @@ void DataMonitor::longPress()
 	vTaskDelay(pdMS_TO_TICKS(100)); // streaming and controlling tasks are different ones ..
 	MYUCG->scrollLines( 0 ); // then reset scroll lines
 	DM = nullptr;
-	exit();
+	exit(); // pop back to the activating action parent menu
 	delete this;
 }
 

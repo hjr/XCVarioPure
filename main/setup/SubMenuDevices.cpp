@@ -14,7 +14,7 @@
 #include "setup/SetupMenuChar.h"
 #include "setup/SetupMenuValFloat.h"
 #include "setup/SubMenuCompassWind.h"
-#include "SetupAction.h"
+#include "setup/SetupAction.h"
 #include "comm/DeviceMgr.h"
 #include "comm/CanBus.h"
 #include "comm/SerialLine.h"
@@ -517,7 +517,7 @@ static int start_dm_action(SetupAction* p)
 {
     DataMonitor *dm = new DataMonitor();
     dm->start(p, (ItfTarget)p->getCode());
-    return 0;
+    return 1;
 }
 static void connected_devices_menu_device(SetupMenu *top) // dynamic!
 {

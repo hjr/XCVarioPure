@@ -502,7 +502,6 @@ SetupNG<float>  		s2f_delay( "S2F_DELAY", 5.0, true, SYNC_BIDIR, PERSISTENT, nul
 SetupNG<float>  		factory_volt_adjust("FACT_VOLT_ADJ", 0.00815, false, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(-25.0, 25.0, 0.01));
 
 SetupNG<int>  			display_type( "DISPLAY_TYPE",  UNIVERSAL );
-SetupNG<int>  			display_test( "DISPLAY_TEST", 0, false, SYNC_NONE, VOLATILE ); // dummy variable to trigger display test patterns
 SetupNG<int>  			display_orientation("DISPLAY_ORIENT" , DISPLAY_NORMAL, true, SYNC_NONE, PERSISTENT, chg_display_orientation );
 SetupNG<int>  			flapbox_enable( "FLAP_ENABLE", 0, true, SYNC_NONE, PERSISTENT, flap_act);
 SetupNG<kmh_t>  		wk_speed_0( "WK_SPD_0", 0, false, SYNC_BIDIR, PERSISTENT, flap_update_act, quantity_t::QUANT_HSLEGACY, &polar_speed_limits);
