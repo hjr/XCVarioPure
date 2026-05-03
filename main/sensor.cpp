@@ -548,7 +548,7 @@ void system_startup(void *args){
     MenuRoot = new ScreenRoot(Display); // the root setup menu, screens still disabled
 
 	Version V;
-	std::string ver( " Ver.: " );
+	std::string ver( " Rev: " );
 	ver += V.version();
 	char hw[24];
 	sprintf( hw,", XCV-%d", hardwareRevision.get()+18);  // plus 18, e.g. 2 = XCVario-20
