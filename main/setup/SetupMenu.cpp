@@ -1431,10 +1431,10 @@ void system_menu_create_software(SetupMenu *top) {
     fa->addEntry("Cancel");
     fa->addEntry("ResetAll");
 #ifdef DEBUG_AND_TEST
-    fa->addEntry("ClearNVS", 3);
+    fa->addEntry("ClearNVS", 2);
 #endif
     if (gflags.expert) {
-        fa->addEntry("Enter Factory Menu", 4);
+        fa->addEntry("Enter Factory Menu", 3);
     }
     top->addEntry(fa);
 
