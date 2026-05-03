@@ -29,6 +29,7 @@
 #include "Flap.h"
 #include "setup/SetupMenuSelect.h"
 #include "setup/SetupMenuValFloat.h"
+#include "setup/SetupMenuChar.h"
 #include "setup/SetupMenuDisplay.h"
 #include "setup/SetupAction.h"
 #include "setup/SetupNG.h"
@@ -126,6 +127,18 @@ static int factory_nvs_action(SetupMenuSelect* p) {
     else if (p->getSelect() == 3) {
         factory_menu.set(0);
     }
+    return 0;
+}
+
+static int expert_menu_action(SetupMenuChar *p) {
+    ESP_LOGI(FNAME,"Code %s", p->value());
+    const char *code = p->value();
+    if ( strcmp(code, "0007") == 0 ) {
+        gflags.expert = 1;
+        p->reset(); // hide the once entered code
+        p->setHelp("Expert menus are unlocked now");
+    }
+    p->showhelp();
     return 0;
 }
 
@@ -585,7 +598,7 @@ static int water_adj(SetupMenuValFloat* p) {
     return 0;
 }
 
-int wiper_button(SetupAction *p) {
+static int wiper_button(SetupAction *p) {
 	NmeaPrtcl *jumbo = static_cast<NmeaPrtcl*>(DEVMAN->getProtocol(DeviceId::JUMBO_DEV, ProtocolType::JUMBOCMD_P));
 
 	ESP_LOGI(FNAME, "wipe %d", p->getCode());
@@ -1214,9 +1227,9 @@ static void screens_menu_create_vario(SetupMenu *top) {
     tgauge->addEntry("Net. Vario", MultiGauge::GAUGE_NETTO);
     tgauge->addEntry("OATemp.", MultiGauge::GAUGE_OAT);
     tgauge->addEntry("Heading", MultiGauge::GAUGE_HEADING);
-#ifdef DEBUG_AND_TEST
-    tgauge->addEntry("Slip Angle", MultiGauge::GAUGE_SLIP);
-#endif
+    if (gflags.expert) {
+        tgauge->addEntry("Slip Angle", MultiGauge::GAUGE_SLIP);
+    }
     top->addEntry(tgauge);
 
     SetupMenuSelect *bgauge = new SetupMenuSelect("Lower Gauge", RST_NONE, nullptr, &vario_lower_gauge);
@@ -1416,10 +1429,17 @@ void system_menu_create_software(SetupMenu *top) {
     fa->addEntry("Cancel");
     fa->addEntry("ResetAll");
 #ifdef DEBUG_AND_TEST
-    fa->addEntry("ClearNVS");
-    fa->addEntry("Enter Factory Menu");
+    fa->addEntry("ClearNVS", 3);
 #endif
+    if (gflags.expert) {
+        fa->addEntry("Enter Factory Menu", 4);
+    }
     top->addEntry(fa);
+
+    small_buf[0] = '\0';    
+    SetupMenuChar* exp = new SetupMenuChar("Expert Menu",  "0A", 4, RST_NONE, expert_menu_action, small_buf);
+    exp->setHelp("Enter code to unlock expert menu settings");
+    top->addEntry(exp);
 }
 
 void system_menu_create_battery(SetupMenu *top) {
@@ -1451,9 +1471,9 @@ void system_menu_create_hardware_type(SetupMenu *top) {
 	diso->setHelp( "Display Orientation.  NORMAL means Rotary on left, TOPDOWN means Rotary on right  (reboots). A change will reset the IMU reference.");
 	diso->addEntry( "NORMAL");
 	diso->addEntry( "TOPDOWN");
-#ifdef DEBUG_AND_TEST
-	diso->addEntry( "NINETY");
-#endif
+    if ( gflags.expert ) {
+        diso->addEntry( "NINETY");
+    }
 
 	SetupAction *dtest = new SetupAction("Display Test", do_display_test, 0);
 	dtest->setHelp("Start display test screens, press rotary to cancel");
@@ -1523,29 +1543,28 @@ void system_menu_create_hardware_ahrs_parameter(SetupMenu *top) {
 }
 
 void system_menu_create_hardware_imu(SetupMenu *top) {
-#ifdef DEBUG_AND_TEST
-    SetupMenuSelect* imu_calib_collect = new SetupMenuSelect("IMU Reference", RST_NONE, imu_calib);
-    imu_calib_collect->setHelp("Calibrate IMU to glider reference. Run the procedure by selecting Start.");
-    imu_calib_collect->addEntry("Cancel", 0);
-    if (!airborne.get()) {
-        imu_calib_collect->addEntry("Start Calib.", 1);
-    }
-    imu_calib_collect->addEntry("Reset", 2);
-    top->addEntry(imu_calib_collect);
+    if (gflags.expert) {
+        SetupMenuSelect* imu_calib_collect = new SetupMenuSelect("IMU Reference", RST_NONE, imu_calib);
+        imu_calib_collect->setHelp("Calibrate IMU to glider reference. Run the procedure by selecting Start.");
+        imu_calib_collect->addEntry("Cancel", 0);
+        if (!airborne.get()) {
+            imu_calib_collect->addEntry("Start Calib.", 1);
+        }
+        imu_calib_collect->addEntry("Reset", 2);
+        top->addEntry(imu_calib_collect);
 
-    SetupMenuSelect* gyro_reset = new SetupMenuSelect("Gyro Zero", RST_NONE, imu_calib);
-    gyro_reset->setHelp("Reset gyro bias to zero");
-    gyro_reset->addEntry("Cancel", 0);
-    gyro_reset->addEntry("Gyro Reset", 4);
-    top->addEntry(gyro_reset);
-#endif
-#ifdef DEBUG_AND_TEST
-    SetupMenuValFloat* ahrs_ground_aa = new SetupMenuValFloat("Ground Angle of Attack", "°", imu_gaa, &glider_ground_aa, RST_NONE, false);
-    ahrs_ground_aa->setHelp(
-        "Angle of attack with tail skid on the ground to adjust the AHRS horizon level. Change this any time");
-    ahrs_ground_aa->setPrecision(0);
-    top->addEntry(ahrs_ground_aa);
-#endif
+        SetupMenuSelect* gyro_reset = new SetupMenuSelect("Gyro Zero", RST_NONE, imu_calib);
+        gyro_reset->setHelp("Reset gyro bias to zero");
+        gyro_reset->addEntry("Cancel", 0);
+        gyro_reset->addEntry("Gyro Reset", 4);
+        top->addEntry(gyro_reset);
+
+        SetupMenuValFloat* ahrs_ground_aa = new SetupMenuValFloat("Ground Angle of Attack", "°", imu_gaa, &glider_ground_aa, RST_NONE, false);
+        ahrs_ground_aa->setHelp(
+            "Angle of attack with tail skid on the ground to adjust the AHRS horizon level. Change this any time");
+        ahrs_ground_aa->setPrecision(0);
+        top->addEntry(ahrs_ground_aa);
+    }
 	SetupMenuValFloat* tcontrol = new SetupMenuValFloat("Temp Control", "°C", nullptr, &mpu_temperature, RST_NONE, false);
     tcontrol->setPrecision(0);
     tcontrol->setHelp("Target temperature of AHRS sensor temp-controler, if supported in hardware (model > 2023)");
@@ -1652,21 +1671,21 @@ void system_menu_create(SetupMenu *sye) {
 	devices->setHelp("Devices, Interf.s, Protocols");
 	sye->addEntry(devices);
 
-#ifdef DEBUG_AND_TEST
-	SetupMenuSelect *logg = new SetupMenuSelect("Logging", RST_NONE, nullptr, &logging);
-	logg->setHelp("R&D option, do not just enable!\n Collect data with NMEA logger in XCSoar");
-	logg->addEntry("Disable");
-	logg->addEntry("Wind");
-	logg->addEntry("GYRO/MAG");
-	logg->addEntry("Both");
-	logg->addEntry("All Sensor Data");
-	sye->addEntry(logg);
+    if (gflags.expert) {
+        SetupMenuSelect *logg = new SetupMenuSelect("Logging", RST_NONE, nullptr, &logging);
+        logg->setHelp("R&D option, do not just enable!\n Collect data with NMEA logger in XCSoar");
+        logg->addEntry("Disable");
+        logg->addEntry("Wind");
+        logg->addEntry("GYRO/MAG");
+        logg->addEntry("Both");
+        logg->addEntry("All Sensor Data");
+        sye->addEntry(logg);
 
-	// SetupAction *devdump = new SetupAction("Device Setup Dump", deviceDumpAction, 0);
-	// sye->addEntry(devdump);
-	SetupMenuDisplay *info = new ShowFlightInfo("Flight Info");
-	sye->addEntry(info);
-#endif
+        // SetupAction *devdump = new SetupAction("Device Setup Dump", deviceDumpAction, 0);
+        // sye->addEntry(devdump);
+        SetupMenuDisplay *info = new ShowFlightInfo("Flight Info");
+        sye->addEntry(info);
+    }
 }
 
 void setup_create_root(SetupMenu *top) {
