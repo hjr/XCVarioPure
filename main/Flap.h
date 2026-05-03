@@ -22,10 +22,11 @@
 //   0         1        2   ...   n-2          n-1    -> level index
 //   ^- max speed for L1   ...     ^- max speed for L(n-1)
 //             ^- min speed for L1 ...          ^- min speed for L(n-1)
-//   ^- sens_delta := L1calsens - L0calsens ... etc.
+//             ^- speed_delta := L1speed - L0speed ... etc. (speed_delta < 0)
 //   |--           Sensor Value     ...       --|      -> steady increase/decrease of sensor reading
+//             ^- sens_delta := L1calsens - L0calsens ... etc.
 // Level 0 | Level 1 |  ...  | Level n-2 | Level n-1 | -> recommended speed band
-//         ^fl0.5..  ^fl1.5 maps to speed band prep_speed(L2) <= v < prep_speed(L1
+//         ^fl0.5..  ^fl1.5 maps to speed band prep_speed(L0) > v >= prep_speed(L1)
 //
 // Flap levels need to be prepared for the actual wingload on initialization and after changes. The resulting
 // prepared speeds are used for all calculations. -> prep_speed

@@ -278,12 +278,12 @@ mps_t Flap::getSpeedBand(float wkf, mps_t &maxv) const
         // assuming linear interpolation between flap positions
         // map band so that at a full flap position
         // the speed band is centered between the two flap speeds (no shift)
-        mps_t shift = (wki - wkf) * flevel[wki].speed_delta;
+        mps_t shift = (wkf - wki) * flevel[wki].speed_delta;
         minv += shift;
         maxv += shift;
         ESP_LOGI(FNAME,"shift:%.1f center speed:%.1fmps", shift, (minv + maxv)/2);
     }
-    ESP_LOGI(FNAME,"wkf:%.1f minv:%.1f maxv:%.1f", wkf, minv, maxv);
+    ESP_LOGI(FNAME,"wki:%d wkf:%.1f minv:%.1f maxv:%.1f", wki, wkf, minv, maxv);
 
     return minv;
 }
@@ -296,7 +296,7 @@ mps_t Flap::getSpeed(float wkf) const
     }
 
     // speed from prep_speed@(wki+0.5) up to prep_speed+speed_delta@(wki-0.5)
-    float ret = flevel[wki].prep_speed + (wki - wkf - 0.5f) * flevel[wki].speed_delta;
+    float ret = flevel[wki].prep_speed + (wkf - wki) * flevel[wki].speed_delta;
     ESP_LOGI(FNAME, "getspeed: %.1f (f%.1fi%d)", ret, wkf, wki);
     return ret;
 }
