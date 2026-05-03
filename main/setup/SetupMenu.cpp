@@ -210,20 +210,17 @@ int config_gear_warning(SetupMenuSelect *p) {
 	return 0;
 }
 
-int do_display_test(SetupMenuSelect* p) {
-    if (display_test.get()) {
-        MYUCG->setColor(0, 0, 0);
-        MYUCG->drawBox(0, 0, DISPLAY_W, DISPLAY_H);
-        while (!Rotary->readSwitch(300)) {
-            ESP_LOGI(FNAME, "Wait for key press");
-        }
-        MYUCG->setColor(255, 255, 255);
-        MYUCG->drawBox(0, 0, DISPLAY_W, DISPLAY_H);
-        while (!Rotary->readSwitch(300)) {
-            ESP_LOGI(FNAME, "Wait for key press");
-        }
+int do_display_test(SetupAction* p) {
+    MYUCG->setColor(0, 0, 0);
+    MYUCG->drawBox(0, 0, DISPLAY_W, DISPLAY_H);
+    while (!Rotary->readSwitch(300)) {
+        ESP_LOGI(FNAME, "Wait for key press");
     }
-    p->setSelect(0);
+    MYUCG->setColor(255, 255, 255);
+    MYUCG->drawBox(0, 0, DISPLAY_W, DISPLAY_H);
+    while (!Rotary->readSwitch(300)) {
+        ESP_LOGI(FNAME, "Wait for key press");
+    }
     return 0;
 }
 
@@ -1458,15 +1455,12 @@ void system_menu_create_hardware_type(SetupMenu *top) {
 	diso->addEntry( "NINETY");
 #endif
 
-	SetupMenuSelect *dtest = new SetupMenuSelect("Display Test", RST_NONE, do_display_test, &display_test);
-	top->addEntry(dtest);
+	SetupAction *dtest = new SetupAction("Display Test", do_display_test, 0);
 	dtest->setHelp("Start display test screens, press rotary to cancel");
-	dtest->addEntry("Cancel");
-	dtest->addEntry("Start Test");
+	top->addEntry(dtest);
 
 	SetupMenuValFloat *dcadj = new SetupMenuValFloat("Display Clk Adj", "%", nullptr, &display_clock_adj, RST_IMMEDIATE);
-	dcadj->setHelp(
-			"Modify display clock by given percentage (restarts on exit)");
+	dcadj->setHelp("Modify display clock by given percentage (restarts on exit)");
 	top->addEntry(dcadj);
 
 }

@@ -14,46 +14,21 @@
 
 extern AdaptUGC *MYUCG;
 
-constexpr const char action_help[] = "Long Press to exit action control.";
 
-SetupAction::SetupAction(const char *title, int (*action)(SetupAction *), int code, bool end_menu) :
+SetupAction::SetupAction(const char *title, int (*action)(SetupAction *), int code) :
     MenuEntry(title),
     _action(action),
-    _code(code),
-    _end_menu(end_menu)
+    _code(code)
 {
     ESP_LOGI(FNAME, "SetupAction( %s ) ", title);
-    // helptext = action_help;
 }
 
 void SetupAction::enter()
 {
-    if ( (*_action)(this) ) {
-        // hijacked
-    };
-    if ( ! hasHelp() ) {
-        return; // do not enter at all, just one action
+    // decide on return value wether this got hijacked
+    if ( ! (*_action)(this) ) {
+        // or control is handed straight back to the calling menu
+        _parent->display(); // refresh parent menu, e.g. to update values after action
     }
-    MenuEntry::enter();
 }
 
-void SetupAction::display(int mode)
-{
-    ESP_LOGI(FNAME, "display() instance=%p mode=%d", this, mode);
-    int line = _parent->getHighlight()+1;
-    int indent = MYUCG->getStrWidth(_title.c_str()) + 12;
-    MYUCG->setPrintPos(indent, (line + 1) * 25);
-    MYUCG->printf( " %3d  ", mode );
-    showhelp();
-}
-
-void SetupAction::press()
-{
-    ESP_LOGI(FNAME, "press() instance=%p", this);
-    (*_action)(this);
-}
-
-void SetupAction::longPress()
-{
-    exit(1+(_end_menu?1:0));
-}

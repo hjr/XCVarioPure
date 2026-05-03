@@ -288,7 +288,6 @@ extern SetupNG<float>  		s2f_delay;
 extern SetupNG<float>  		factory_volt_adjust;
 
 extern SetupNG<int>  		display_type;
-extern SetupNG<int>  		display_test;
 extern SetupNG<int>  		display_orientation;
 extern SetupNG<int>  		flapbox_enable;
 extern SetupNG<kmh_t>  		wk_speed_0;
