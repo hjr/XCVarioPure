@@ -219,6 +219,15 @@ struct SOUND {
     const VOICECONF* vconf;
     int8_t repetitions; // -1 = infinite
     SOUND& operator=(const SOUND&) = default;
+    int32_t getTotalDuration() const {
+        int32_t total = 0;
+        const DURATION* d = timeseq;
+        while (d->duration > 0) {
+            total += d->duration;
+            d++;
+        }
+        return total;
+    }
 };
 struct DMACMD {
     void init();
@@ -1016,7 +1025,7 @@ void  Audio::calculateFrequency(float val) {
         vario_tim[0].setSamples(50);
         vario_tim[1].setSamples(50);
     }
-    if ( (inDeadBand(val) || speaker_volume < 1.0) && volumeadjust == 0) {
+    if ( (inDeadBand(val) || speaker_volume < 1.0) && volumeadjust == 0 && ! current_dmacmd->voice[2].active) {
         vario_seq[0].step = vario_extra[0].step = vario_seq[1].step = vario_extra[1].step = 0;
         if ( current_dmacmd->repcount == -1 ) { mute(); } // stop only the vario sound
     }
@@ -1232,6 +1241,7 @@ void Audio::dactask()
                 if ( current_dmacmd->repcount < 0 ) { // double check only the endless vario is playing
                     const SOUND* snd = sound_list[event.param];
                     next_time = snd->timeseq;
+                    unmute(); // make sure the sound is audible, even if vario is in dead band
                     ESP_LOGI(FNAME, "Overlay sound %d", event.param );
                     const int from_voice = 2; // first 1/2 voices are reserved for vario
                     for ( int i = from_voice; i < MAX_VOICES; i++ ) {
