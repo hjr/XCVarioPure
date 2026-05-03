@@ -26,7 +26,7 @@ int16_t MenuEntry::dwidth;
 int16_t MenuEntry::dheight;
 
 MenuEntry::MenuEntry(const char *t) :
-    RotaryObserver(),
+    RotaryReceiver(),
     _title(t)
 {
     _help_line_start[0] = 0;

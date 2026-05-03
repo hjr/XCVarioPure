@@ -43,7 +43,7 @@ struct ScreenMsg {
 };
 
 
-class MessageBox final : public Clock_I, public RotaryObserver
+class MessageBox final : public Clock_I, public RotaryReceiver
 {
     using MessagePtr = std::unique_ptr<ScreenMsg>;
 

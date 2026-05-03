@@ -38,7 +38,7 @@ class SetupMenu;
 class ScreenRoot;
 
 
-class MenuEntry : public RotaryObserver
+class MenuEntry : public RotaryReceiver
 {
 	friend class ScreenRoot;
 
