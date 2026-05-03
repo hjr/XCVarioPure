@@ -182,8 +182,8 @@ void FlapsBox::draw(mps_t ias)
     mps_t minv, maxv;
     minv = _flap->getSpeedBand(curr_fp, maxv);
     // enlarge the speed band just for a nicer overlapping visualization
-    minv -= Units::kmh_to_mps(7.f);
-    maxv += Units::kmh_to_mps(7.f);
+    minv -= Units::kmh_to_mps(5.f);
+    maxv += Units::kmh_to_mps(5.f);
     if ( airborne.get() == false ) {
         // on ground, set the ias virtually into the green band for the correct start position
         ias = _flap->getSpeed(flap_takeoff.get()); // pretend start speed
