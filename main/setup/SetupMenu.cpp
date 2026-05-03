@@ -85,7 +85,7 @@ static void system_menu_create_hardware_imu(SetupMenu *top);
 static void system_menu_create_hardware_ahrs_parameter(SetupMenu *top);
 
 
-static char small_buf[32];
+static char small_buf[64];
 
 static int set_parent_parent_dirty(SetupMenuSelect* p) {
     p->getParent()->getParent()->setDirty();
@@ -832,8 +832,10 @@ void SetupMenu::press()
 {
 	ESP_LOGI(FNAME,"press() inSet %d highl: %d", gflags.inSetup, highlight );
 	if (highlight == -1) {
-		_parent->highlightTop();
-		exit();
+        if (factory_menu.get() != 0) { // lock factory menu
+            _parent->highlightTop();
+    		exit();
+        }
 	} else {
 		ESP_LOGI(FNAME,"SetupMenu to child");
 		if ((highlight >= 0) && (highlight < _childs.size())) {
@@ -1767,13 +1769,15 @@ SetupMenu* SetupMenu::createTopSetup() {
 
 
 SetupMenu* SetupMenu::createFactorySetup() {
-    SetupMenu *setup = new SetupMenu("Factory Setup", nullptr);
-
-    SetupMenu *soft = new SetupMenu("Software", system_menu_create_software);
-    setup->addEntry(soft);
+    Version V;
+    sprintf(small_buf, "%s - %s", SetupCommon::getDefaultID(), V.version());
+    SetupMenu *setup = new SetupMenu(small_buf, nullptr);
 
     SetupMenuValFloat *met_adj = SetupMenu::createVoltmeterAdjustMenu();
     setup->addEntry(met_adj);
+
+    SetupAction *dtest = new SetupAction("Display Test", do_display_test, 0);
+    setup->addEntry(dtest);
 
     SetupMenuSelect* bias_zero = new SetupMenuSelect("IMU Biases", RST_NONE, imu_calib);
     bias_zero->addEntry("Cancel");
