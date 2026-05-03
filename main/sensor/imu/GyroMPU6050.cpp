@@ -82,7 +82,7 @@ void GyroMPU6050::postProcess() {
     _bias_estimator.update(gyro, (_isResting > 0) && accSensor->isResting());
     vector_f bias = _bias_estimator.getBias();
     if ( rest != rest_old) {
-        ESP_LOGI(FNAME, "rest state changed: %c -> %c (%c)", rest_old ? 'R' : 'M', rest ? 'R' : 'M', (_isResting > 0) ? 'u' : '_');
+        ESP_LOGI(FNAME, "rest state changed: %c -> %c (%d)", rest_old ? 'R' : 'M', rest ? 'R' : 'M', _isResting);
         rest_old = rest;
     }
     if ( rest ) {
