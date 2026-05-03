@@ -894,7 +894,8 @@ static int exitFactoryMenu(SetupMenuSelect* p){
             p->menuPrintLn("Accel. bias not done.", 9, 5);
             p->setSelect(0);
         }
-        else if (!gflags.leak_test_passed) {
+        else if (leak_test_loss.get() > LeakTest::LEAK_TEST_MAX_LOSS
+                || leak_test_loss.get() == 0.f) {
             // not done, show warning
             p->menuPrintLn("Leak test not passed.", 9, 5);
             p->setSelect(0);

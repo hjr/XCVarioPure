@@ -31,8 +31,6 @@ void LeakTest::display(int mode) {
     menuPrintLn(_title.c_str(), 0);
 
 	// Constants for thresholds
-	constexpr float ST_THRESHOLD   = 0.05f;   // %
-	constexpr float TE_THRESHOLD   = 0.05f;   // %
 	constexpr float SPEED_THRESHOLD = 1.0f;  // %
 	constexpr float MIN_SPEED      = 10.0f;  // Pa
 	constexpr int   MAX_ITER       = 12;     // 12 * 5s = 60s
@@ -41,6 +39,7 @@ void LeakTest::display(int mode) {
 	// Baseline values
 	float sba = 0.0f, ste = 0.0f, sspeed = 0.0f;
 	bool failed = false;
+    float leak_loss = 0.0f;
 
 	for (int i = 0; i < MAX_ITER; i++) {
 		float ba = 0.0f, te = 0.0f, speed = 0.0f;
@@ -87,27 +86,32 @@ void LeakTest::display(int mode) {
 		menuPrintLn(buf, 4);
 
 		if (i >= 1) {
-			float bad = 100.0f * (ba - sba) / sba;
-			float ted = 100.0f * (te - ste) / ste;
-			float speedd = (fabs(sspeed) > 1e-6f) ?
+			float ba_delta = 100.0f * (ba - sba) / sba;
+			float te_delta = 100.0f * (te - ste) / ste;
+			float speed_delta = (fabs(sspeed) > 1e-4f) ?
 					(100.0f * (speed - sspeed) / sspeed) : 0.0f;
 
-			snprintf(buf, sizeof(buf), "ST delta: %2.3f %%", bad);
+			snprintf(buf, sizeof(buf), "ST delta: %2.3f %%", ba_delta);
 			menuPrintLn(buf, 5);
 			ESP_LOGI(FNAME, "%s", buf);
 
-			snprintf(buf, sizeof(buf), "TE delta: %2.3f %%", ted);
+			snprintf(buf, sizeof(buf), "TE delta: %2.3f %%", te_delta);
 			menuPrintLn(buf, 6);
 			ESP_LOGI(FNAME, "%s", buf);
 
-			snprintf(buf, sizeof(buf), "PI delta: %2.2f %%", speedd);
+			snprintf(buf, sizeof(buf), "PI delta: %2.2f %%", speed_delta);
 			menuPrintLn(buf, 7);
 			ESP_LOGI(FNAME, "%s", buf);
 
+            // capture result
+            if ( fabs(ba_delta) > leak_loss ) {
+                leak_loss = fabs(ba_delta);
+            }
+
 			// Stopping condition
-			if ((fabs(bad) > ST_THRESHOLD) ||
-					(fabs(ted) > TE_THRESHOLD) ||
-					((sspeed > MIN_SPEED) && (fabs(speedd) > SPEED_THRESHOLD))) {
+			if ((fabs(ba_delta) > LEAK_TEST_MAX_LOSS) ||
+					(fabs(te_delta) > LEAK_TEST_MAX_LOSS) ||
+					((sspeed > MIN_SPEED) && (fabs(speed_delta) > SPEED_THRESHOLD))) {
 				failed = true;
 				break;
 			}
@@ -116,6 +120,7 @@ void LeakTest::display(int mode) {
 		snprintf(buf, sizeof(buf), "Seconds: %d", (i * 5) + 5);
 		menuPrintLn(buf, 8);
 	}
+    leak_test_loss.set(leak_loss);
 
 	// Final result
 	if (failed) {
