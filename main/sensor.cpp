@@ -942,6 +942,14 @@ void system_startup(void *args){
         }
     }
 
+    // Check if the factory procedure is completed, otherwise anoi with the factory menu
+    if ( factory_menu.get() == 0 ) {
+        BootUpScreen::terminate(); // remove logo immidiately
+        // normal boot, schedule the factory menu as a very first thing todo
+        int screenEvent = ScreenEvent(ScreenEvent::FACTORY_CONFIG).raw;
+        xQueueSend(uiEventQueue, &screenEvent, 0);
+    }
+
     // Set QNH from setup Airfiled elevation, when ! Second && ! airborn
     if (!SetupCommon::isClient() && !airborne.get()) {
         // remove logo

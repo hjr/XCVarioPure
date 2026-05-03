@@ -56,7 +56,8 @@ struct ScreenEvent
         FLARM_ALARM_TIMEOUT,
         POLAR_CONFIG,
         QNH_ADJUST,
-        BALLAST_CONFIRM };
+        BALLAST_CONFIRM,
+        FACTORY_CONFIG };
 
     uint32_t raw;
     ScreenEvent() = delete;
