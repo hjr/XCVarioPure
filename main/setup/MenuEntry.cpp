@@ -156,6 +156,7 @@ bool MenuEntry::isFirstLevel() const
 void MenuEntry::setHelp( const char *txt )
 {
     helptext = (char*)txt;
+    _help_line_start[0] = 0;
 
     if (!helptext) {
         return;
