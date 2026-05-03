@@ -139,6 +139,8 @@ static int expert_menu_action(SetupMenuChar *p) {
         p->setHelp("Expert menus are unlocked now");
     }
     p->showhelp();
+    vTaskDelay(pdMS_TO_TICKS(1000));
+    p->setTerminateSetup();
     return 0;
 }
 
@@ -832,9 +834,9 @@ void SetupMenu::press()
 {
 	ESP_LOGI(FNAME,"press() inSet %d highl: %d", gflags.inSetup, highlight );
 	if (highlight == -1) {
-        if (factory_menu.get() != 0) { // lock factory menu
+        if (factory_menu.get()) { // lock factory menu
             _parent->highlightTop();
-    		exit();
+            exit();
         }
 	} else {
 		ESP_LOGI(FNAME,"SetupMenu to child");
@@ -847,7 +849,9 @@ void SetupMenu::press()
 void SetupMenu::longPress()
 {
 	if (highlight == -1) {
-		exit(-1); // fast exit
+        if (factory_menu.get()) { // lock factory menu
+            exit(-1); // fast exit
+        }
 	} else {
 		press();
 	}
@@ -1438,7 +1442,7 @@ void system_menu_create_software(SetupMenu *top) {
     }
     top->addEntry(fa);
 
-    small_buf[0] = '\0';    
+    small_buf[0] = '\0';
     SetupMenuChar* exp = new SetupMenuChar("Expert Menu",  "0A", 4, RST_NONE, expert_menu_action, small_buf);
     exp->setHelp("Enter code to unlock expert menu settings");
     top->addEntry(exp);
