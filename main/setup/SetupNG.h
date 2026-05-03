@@ -425,6 +425,7 @@ extern SetupNG<axes_i16_abi> gyro_bias;
 extern SetupNG<axes_i16_abi> accl_bias;
 extern SetupNG<celsius_t> 	mpu_temperature;
 extern SetupNG<meter_t> 	imu_leverarm;
+extern SetupNG<float>  		leak_test_loss;
 extern SetupNG<int> 		xcv_role;
 extern SetupNG<int> 		my_caps;
 extern SetupNG<int> 		peer_caps;
