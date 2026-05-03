@@ -362,16 +362,16 @@ void options_menu_create_compasswind_circlingwind(SetupMenu *top) {
 
 void options_menu_create_wind(SetupMenu *top) {
 	// Wind speed observation window
-	SetupMenuSelect *windcal = new SetupMenuSelect("Wind Calculation", RST_NONE, windResourcesAction, &wind_enable);
-	windcal->addEntry("Disable", WA_OFF);
+	SetupMenuSelect *windcal = new SetupMenuSelect("Source", RST_NONE, windResourcesAction, &wind_enable);
+	// windcal->addEntry("Disable", WA_OFF, 0);
 	// windcal->addEntry("Straight", WA_STRAIGHT);
-	windcal->addEntry("Circling", WA_CIRCLING);
-	windcal->addEntry("Both", WA_BOTH);
+	// windcal->addEntry("Circling", WA_CIRCLING);
+	windcal->addEntry("XCVario", WA_BOTH);
 	windcal->addEntry("External", WA_EXTERNAL);
-	windcal->setHelp("Enable Wind calculation for straight flight (needs compass), circling, both or external source");
+	windcal->setHelp("Chose the source for the wind calculation");
 	top->addEntry(windcal);
 
-    SetupMenuSelect *wref = new SetupMenuSelect("Wind Ref.", RST_NONE, nullptr, &wind_reference);
+    SetupMenuSelect *wref = new SetupMenuSelect("Reference", RST_NONE, nullptr, &wind_reference);
     wref->setHelp("Display wind relative to glider is default, choose north-up, if prefered");
     wref->addEntry("Heading-Up");
     wref->addEntry("North-Up");
