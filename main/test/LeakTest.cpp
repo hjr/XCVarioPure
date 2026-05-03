@@ -31,11 +31,11 @@ void LeakTest::display(int mode) {
     menuPrintLn(_title.c_str(), 0);
 
 	// Constants for thresholds
-	constexpr float ST_THRESHOLD   = 0.1f;   // %
-	constexpr float TE_THRESHOLD   = 0.1f;   // %
+	constexpr float ST_THRESHOLD   = 0.05f;   // %
+	constexpr float TE_THRESHOLD   = 0.05f;   // %
 	constexpr float SPEED_THRESHOLD = 1.0f;  // %
 	constexpr float MIN_SPEED      = 10.0f;  // Pa
-	constexpr int   MAX_ITER       = 24;     // 24 * 5s = 120s
+	constexpr int   MAX_ITER       = 12;     // 12 * 5s = 60s
 	constexpr float INV_LOOPS      = 1.0f / LOOPS;
 
 	// Baseline values
