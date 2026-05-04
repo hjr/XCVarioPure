@@ -11,7 +11,7 @@
 #include "SensorBase.h"
 #include "logdef.h"
 
-#ifndef CONFIG_LOG_DISABLED
+#ifndef ALL_LOGS_DISABLED
 const char *idmemo[] = { "", "Tmp", "dP", "sP", "teP", "Pos", "Alt", "Var", "Mag", "Acc", "Gyr", "HUM", "FLP" };
 #endif
 
