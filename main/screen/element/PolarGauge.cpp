@@ -63,7 +63,8 @@ PolarGauge::PolarGauge(int16_t refx, int16_t refy, int16_t scale_end, int16_t ra
     ScreenElement(refx, refy),
     _flavor(flavor),
     _scale_max(deg2rad((float)scale_end)),
-    _radius(radius)
+    _radius(radius),
+    _scale_line_len(15 + (_flavor == CLUB ? 7 : 0))
 {
     func = new GaugeFunc(1.,0.);
     if ( flavor != COMPASS ) {
@@ -301,14 +302,15 @@ void PolarGauge::drawDisc(float a) const
 }
 
 // a : in [rad]
-// l2 : line end radius in [pixel]
+// l1_off : line start offset from radius in [pixel]
 // w : line width in [pixel]
 // cidx : color index
-void PolarGauge::drawOneScaleLine(float a, int16_t l2, int16_t w, int16_t cidx) const
+void PolarGauge::drawOneScaleLine(float a, int16_t l1_off, int16_t w, int16_t cidx) const
 {
     float si = fast_sin_rad(a);
     float co = fast_cos_rad(a);
-    int16_t l1 = _radius;
+    int16_t l1 = _radius + l1_off;
+    int16_t l2 = _radius + _scale_line_len;
     int16_t w0 = w / 2;
     int16_t w1 = w - w0; // total width := w1 + w0
     int16_t xn_0 = _ref.x - fast_iroundf(co * l1 - si * w0);
@@ -441,12 +443,12 @@ void PolarGauge::drawScale(float from, float to)
     // line width in pixel
     int16_t w1 = 1, w2 = 2, w3 = 3;
     if ( _flavor == CLUB ) {
-        w1 = 0;
-        w2 = 0;
+        w1 = 2;
+        w2 = 4;
         w3 = 6;
     }
     // line density on outer scale area
-    int16_t modulo = (_range > 10) ? 20 : (_range < 6) ? 5 : 10; // typically start in "no details" area
+    int16_t modulo = (_range > 10) ? 20 : (_range < 5) ? 5 : 10; // typically start in "no details" area
     int16_t special_mark = -1000;
     if ( _avg_climb > .0 ) {
         special_mark = _avg_climb * 10.f;
@@ -461,85 +463,63 @@ void PolarGauge::drawScale(float from, float to)
 
     // increment in 1/10 scale steps
     int16_t start = fast_iroundf(_range)*10, stop = fast_iroundf(_mrange)*10;
-    int16_t l_start = start, l_stop = stop; // for labels
+    int16_t middleat = 10 * func->getZero();
     if (from > -1000.)
     {
         // partial scale repainting
         start = (int)(clipValue(from) * 10) + 1; // alias .1
         stop = (int)(clipValue(to) * 10) - 1;
-        if (std::abs(start) <= 10) {
-            modulo = (_dist05 > 24) ? 1 : (_dist05 > 16) ? 2 : (_dist05 > 8) ? 5 : 10;
+        if (start < middleat + 10 && start > middleat - 10) {
+            modulo = (_dist05 > 29) ? 1 : (_dist05 > 20) ? 2 : (_dist05 > 12) ? 5 : 10;
         }
         // ESP_LOGI(FNAME, "scale from %d to %d", start, stop);
     }
-    // else {
-    //     // put scale unit on to of the last scale
-    //     int16_t ival = dice_up(_range);
-    //     int16_t x0 = CosCenteredDeg2(ival, _radius+30) - MYUCG->getStrWidth(VarioUnit->getName());
-    //     int16_t y0 = SinCenteredDeg2(ival, _radius+30);
-    //     MYUCG->setFont(ucg_font_fub11_hr);
-    //     MYUCG->setPrintPos(x0, y0);
-    //     MYUCG->setColor(COLOR_HEADER);
-    //     MYUCG->print(VarioUnit->getName());
-    // }
 
     MYUCG->setFontPosCenter();
     MYUCG->setFont(ucg_font_fub14_hn);
-    bool draw_label = false;
-    int middleat = 10 * func->getZero();
+    bool draw_label;
     for (int16_t a = start; a >= stop; a--)
     {
+        draw_label = false;
 
         if (a == middleat + 10 || a == middleat - 10)
         {
             draw_label = true;
             if (a > 0)
             {
-                modulo = (_dist05 > 24) ? 1 : (_dist05 > 16) ? 2 : (_dist05 > 8) ? 5 : 10; // go into the details around zero
+                modulo = (_dist05 > 29) ? 1 : (_dist05 > 20) ? 2 : (_dist05 > 12) ? 5 : 10; // go into the details around zero
             }
             else
             {
-                modulo = (_range > 10) ? 20 : (_range < 6) ? 5 : 10; // leave the details around zero
+                modulo = (_range > 10) ? 20 : (_range < 5) ? 5 : 10; // leave the details around zero
             }
         }
-        // if ( a == 4 ) {
-        //     int16_t tmp = dice_rad((*func)(static_cast<float>(0.f)));
-        //     drawDirLabel(tmp + 20, "+");
-        // }
-        // else if ( a == -4 ) {
-        //     int16_t tmp = dice_rad((*func)(static_cast<float>(0.f)));
-        //     drawDirLabel(tmp - 16, "-");
-        // }
 
         if (!(a % modulo))
         {
             float val = (*func)(static_cast<float>(a) / 10.);
             // a line to draw
             int16_t width = w1; // .1 little/short lines
-            int16_t end = _radius + 7;
+            int16_t r_off = _scale_line_len / 2;
 
             if (!(a % 5))
             {
                 // .5 small line
                 width = w2;
-                end = _radius + (_flavor == CLUB ? 24 : 12);
+                r_off = _scale_line_len / 3;
             }
 
             if (!(a % 10))
             {
-                // every integer big line
-                if (modulo < 11 || a == l_start || a == l_stop || a == mid_lpos_upper || a == mid_lpos_lower || a == middleat)
-                {
-                    width = w3;
-                    end = _radius + 15 + (_flavor == CLUB ? 7 : 0);
-                }
-                draw_label = a != middleat && (draw_label || _range < 5. || a == mid_lpos_upper || a == mid_lpos_lower || a == l_start || a == l_stop);
+                width = w3;
+                r_off = 0;
+                draw_label = true;
             }
             // ESP_LOGI(FNAME, "lines a:%d end:%d label: %d  width: %d", a, end, draw_label, width );
 
             if (width) {
-                drawOneScaleLine(val, end, width, width-1);
-                if (draw_label || _flavor == CLUB)
+                drawOneScaleLine(val, r_off, width, width-1);
+                if (draw_label)
                 {
                     drawOneLabel(val, a / 10);
                 }
