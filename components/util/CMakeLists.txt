@@ -10,5 +10,7 @@ set_target_properties(${COMPONENT_LIB} PROPERTIES
     CXX_EXTENSIONS OFF
 )
 
+target_compile_options(${COMPONENT_LIB} PRIVATE -O2)
+
 # using <cmath> etc.
 target_link_libraries(${COMPONENT_LIB} PRIVATE m)
