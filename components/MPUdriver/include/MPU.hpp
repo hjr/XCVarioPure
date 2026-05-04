@@ -85,7 +85,7 @@ class MPU
     //! \}
     //! \name Setup
     //! \{
-    esp_err_t initialize();
+    esp_err_t initialize(bool isICM20602 = false);
     esp_err_t reset();
     esp_err_t setSleep(bool enable);
     esp_err_t testConnection();
@@ -259,6 +259,7 @@ class MPU
     uint8_t buffer[16];     /*!< Commom buffer for temporary data */
     esp_err_t err;          /*!< Holds last error code */
     raw_axes_t accel_factory_offset;
+    bool _isICM20602; /*!< Flag to indicate if the chip is ICM20602, which has some differences from MPU6050 */
 };
 
 }  // namespace mpud

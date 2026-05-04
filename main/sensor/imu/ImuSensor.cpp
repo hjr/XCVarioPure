@@ -87,7 +87,7 @@ bool MpuImu::setup() {
     ESP_LOGI(FNAME, "MPU initialize");
     esp_err_t err = myMPU.reset();
     err |= myMPU.resetFIFO();
-    err |= myMPU.initialize();       // this will initialize the chip and set default configurations
+    err |= myMPU.initialize(_who_typ == ImuType::ICM20602);       // this will initialize the chip and set default configurations
     // err |= myMPU.setSampleRate(50);  // in (Hz)
     // err |= myMPU.setAccelFullScale(MpuImu::ACCEL_SCALE);
     // err |= myMPU.setGyroFullScale(MpuImu::GYRO_SCALE);

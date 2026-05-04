@@ -49,8 +49,10 @@ namespace mpud
  *  - A soft reset is performed first, which takes 100-200ms.
  *  - When using SPI, the primary I2C Slave module is disabled right away.
  * */
-esp_err_t MPU::initialize()
+esp_err_t MPU::initialize(bool isICM20602p)
 {
+	// memorize the chip type for later use
+	_isICM20602 = isICM20602p;
 	// reset device (wait a little to clear all registers)
     // -> done a priori
 	// wake-up the device (power on-reset state is asleep for some models)
@@ -854,7 +856,7 @@ esp_err_t MPU::setAccelOffset(raw_axes_t bias)
 	buffer[3] = (uint8_t)(facBias.y);
 	buffer[4] = (uint8_t)(facBias.z >> 8);
 	buffer[5] = (uint8_t)(facBias.z);
-	if (MPU_ERR_CHECK(writeBytes(regs::XA_OFFSET_H, 6, buffer))) return err;
+	if (MPU_ERR_CHECK(writeBytes(_isICM20602 ? regs::ICM20602_XA_OFFSET_H : regs::XA_OFFSET_H, 6, buffer))) return err;
 
 #elif defined CONFIG_MPU6500
 	buffer[0] = (uint8_t)(facBias.x >> 8);
@@ -875,7 +877,7 @@ raw_axes_t MPU::readAccelOffsetRegister()
 	raw_axes_t bias;
 
 #if defined CONFIG_MPU6050
-	MPU_ERR_CHECK(readBytes(regs::XA_OFFSET_H, 6, buffer));
+	MPU_ERR_CHECK(readBytes(_isICM20602 ? regs::ICM20602_XA_OFFSET_H : regs::XA_OFFSET_H, 6, buffer));
 	bias.x = (buffer[0] << 8) | buffer[1];
 	bias.y = (buffer[2] << 8) | buffer[3];
 	bias.z = (buffer[4] << 8) | buffer[5];
