@@ -470,7 +470,7 @@ struct axes_t
     bool operator == ( const axes_t<T> &right ) const
         { return x == right.x && y == right.y && z == right.z; }
     bool isZero() const { return bool( !(x|y|z) ); }
-    void setZero() { x=y=z=.0; }
+    void setZero() { x=y=z=0; }
     axes_t<T>& operator+=(const axes_t<int16_t>& right)
         { x += right.x; y += right.y; z += right.z; return *this; }
     axes_t<T>& operator+=(const axes_t<float>& right)
@@ -479,6 +479,8 @@ struct axes_t
         { axes_t<T> tmp(*this); tmp += right; return tmp; }
     axes_t<T>& operator-=(const axes_t<int16_t>& right)
         { x -= right.x; y -= right.y; z -= right.z; return *this; }
+    axes_t<T>& operator*=(T right)
+        { x *= right; y *= right; z *= right; return *this; }
     axes_t<T>& operator/=(T right)
         { x /= right; y /= right; z /= right; return *this; }
     axes_t<T> operator/(T right)
