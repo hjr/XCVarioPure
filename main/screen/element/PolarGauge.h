@@ -84,6 +84,7 @@ public:
     GaugeFlavor _flavor = CLUB;
     float _scale_max = 1.57f; // half scale extend in rad
     int16_t _radius = 50; // pixel
+    int16_t _scale_line_len = 50 + 20; // pixel, end of scale
     float _range = 5.; // max positive value of the scale
     float _mrange = -5.; // resulting from range and zero_at, assuming an always symetric scale
     int16_t _dist05;
