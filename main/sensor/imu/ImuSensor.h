@@ -67,6 +67,7 @@ protected:
     inline esp_err_t setGyroOffset(mpud::raw_axes_t bias) { return _MPUdev.setGyroOffset(bias); }
     inline mpud::raw_axes_t getAccelOffset() const { return _MPUdev.getAccelOffset(); }
     inline esp_err_t setAccelOffset(mpud::raw_axes_t bias) { return _MPUdev.setAccelOffset(bias); }
+    inline bool isIcm20602() const { return _who_typ == ImuType::ICM20602; }
 
     // Heat control & parameters
     void initHeatCtrl();

@@ -840,31 +840,38 @@ raw_axes_t MPU::getGyroOffset()
  * */
 esp_err_t MPU::setAccelOffset(raw_axes_t bias)
 {
-	raw_axes_t facBias;
-	// apply saved values of factory offset
+	raw_axes_t regBias = accel_factory_offset;
+	// apply saved values to the factory offset
+    // MPU6050 semantik might be:  output = raw_measurement + register_offset
+    // if ( ! _isICM20602 ) {
+    //     bias *= -1;
+    // }
+    // but all tests show that both MPU6050 and ICM20602 follow the same semantik, which is:
+    // ICM20602 semantik: output = raw_measurement - register_offset
 	// note: preserve bit 0 of factory value (for temperature compensation)
-	facBias.x = (bias.x<<1) + accel_factory_offset.x;
-	facBias.y = (bias.y<<1) + accel_factory_offset.y;
-	facBias.z = (bias.z<<1) + accel_factory_offset.z;
+    bias.x = (bias.x << 1);
+    bias.y = (bias.y << 1);
+    bias.z = (bias.z << 1);
+	regBias -= bias; // alias regBias = factory_offset - bias
 
 	MPU_LOGI(" setAccelOffset %d %d %d", bias.x, bias.y, bias.z);
 
 #if defined CONFIG_MPU6050
-	buffer[0] = (uint8_t)(facBias.x >> 8);
-	buffer[1] = (uint8_t)(facBias.x);
-	buffer[2] = (uint8_t)(facBias.y >> 8);
-	buffer[3] = (uint8_t)(facBias.y);
-	buffer[4] = (uint8_t)(facBias.z >> 8);
-	buffer[5] = (uint8_t)(facBias.z);
+	buffer[0] = (uint8_t)(regBias.x >> 8);
+	buffer[1] = (uint8_t)(regBias.x);
+	buffer[2] = (uint8_t)(regBias.y >> 8);
+	buffer[3] = (uint8_t)(regBias.y);
+	buffer[4] = (uint8_t)(regBias.z >> 8);
+	buffer[5] = (uint8_t)(regBias.z);
 	if (MPU_ERR_CHECK(writeBytes(_isICM20602 ? regs::ICM20602_XA_OFFSET_H : regs::XA_OFFSET_H, 6, buffer))) return err;
 
 #elif defined CONFIG_MPU6500
-	buffer[0] = (uint8_t)(facBias.x >> 8);
-	buffer[1] = (uint8_t)(facBias.x);
-	buffer[3] = (uint8_t)(facBias.y >> 8);
-	buffer[4] = (uint8_t)(facBias.y);
-	buffer[6] = (uint8_t)(facBias.z >> 8);
-	buffer[7] = (uint8_t)(facBias.z);
+	buffer[0] = (uint8_t)(regBias.x >> 8);
+	buffer[1] = (uint8_t)(regBias.x);
+	buffer[3] = (uint8_t)(regBias.y >> 8);
+	buffer[4] = (uint8_t)(regBias.y);
+	buffer[6] = (uint8_t)(regBias.z >> 8);
+	buffer[7] = (uint8_t)(regBias.z);
 	return MPU_ERR_CHECK(writeBytes(regs::XA_OFFSET_H, 8, buffer));
 #endif
 
