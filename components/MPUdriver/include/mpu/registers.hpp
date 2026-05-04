@@ -311,6 +311,7 @@ constexpr uint8_t MOTCTRL_MOT_COUNT_BIT         = (1);  // [1:0]
 constexpr uint8_t MOTCTRL_MOT_COUNT_LENGTH      = (2);
 
 //------------------------------------------------------------------------------
+// Extra registers of the MPU6500 simmilar to the ones of the ICM20602
 constexpr uint8_t ACCEL_CONFIG2                = (0x1D);
 constexpr uint8_t ACONFIG2_FIFO_SIZE_BIT       = (7);  // [7:6]
 constexpr uint8_t ACONFIG2_FIFO_SIZE_LENGTH    = (2);
@@ -318,13 +319,22 @@ constexpr uint8_t ACONFIG2_ACCEL_FCHOICE_B_BIT = (3);
 constexpr uint8_t ACONFIG2_A_DLPF_CFG_BIT      = (2);  // [2:0]
 constexpr uint8_t ACONFIG2_A_DLPF_CFG_LENGTH   = (3);
 
+// Diverging ICM20602 accel bias registers from MPU6050's ones
+// need this here to cover MPU6050 and ICM20602 with the same codebase
+constexpr uint8_t ICM20602_XA_OFFSET_H = (0x77);
+constexpr uint8_t ICM20602_XA_OFFSET_L = (0x78);
+constexpr uint8_t ICM20602_YA_OFFSET_H = (0x7A);
+constexpr uint8_t ICM20602_YA_OFFSET_L = (0x7B);
+constexpr uint8_t ICM20602_ZA_OFFSET_H = (0x7D);
+constexpr uint8_t ICM20602_ZA_OFFSET_L = (0x7E);
+
 //------------------------------------------------------------------------------
 #endif
 
 /*******************************************************************************
  * MPU6500 and MPU9250 registers
  ******************************************************************************/
-#if defined CONFIG_MPU6500
+#if defined CONFIG_MPU6500 
 constexpr uint8_t SELF_TEST_X_GYRO  = (0x00);  // XG_ST_DATA[7:0]
 constexpr uint8_t SELF_TEST_Y_GYRO  = (0x01);  // YG_ST_DATA[7:0]
 constexpr uint8_t SELF_TEST_Z_GYRO  = (0x02);  // ZG_ST_DATA[7:0]
