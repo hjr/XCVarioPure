@@ -116,7 +116,7 @@ static int caid_reference(SetupMenuSelect* p) {
 
 static int factory_nvs_action(SetupMenuSelect* p) {
     if (p->getSelect() == 1) {
-        factory_reset.set(factory_reset.get() | 1);
+        factory_reset.set( 1);
     }
     else if (p->getSelect() == 2) {
         ESP_LOGI(FNAME, "Clearing NVS...");
@@ -451,7 +451,7 @@ static void doImuCalibration(SetupMenuSelect* p) {
 }
 
 
-static void factoryAccCalibration(SetupMenuSelect* p) {
+static void factoryAccCalibration(SetupMenuSelect* p, bool check_only=false) {
     MYUCG->setFont(ucg_font_ncenR14_hr, true);
     p->clear();
     p->menuPrintLn("Factory Acc. Calibration", 2, 18);
@@ -470,7 +470,7 @@ static void factoryAccCalibration(SetupMenuSelect* p) {
     // reset lever arm
     accSensor->getMpu().setLeverArm(0.f);
     // need to reset the acc bias, because this is the only way we can really measure it
-    accSensor->resetBias();
+    if ( ! check_only ) accSensor->resetBias();
 
     int pos = 0;
     bool abort = false;
@@ -519,7 +519,12 @@ static void factoryAccCalibration(SetupMenuSelect* p) {
     else {
         // calculate bias from samples and push to sensor
         vector_f bias = accSensor->getMpu().extractAccBias(samples, 6);
-        accSensor->pushBias(bias);
+        if ( check_only ) {
+            ESP_LOGI(FNAME, "Acc bias check: %f/%f/%f", bias.x, bias.y, bias.z);
+        }
+        else {
+            accSensor->pushBias(bias);
+        }
         AUDIO->startSound(AUDIO_TADDA | PRIO_SND_MASK, false, 100);
         p->clear();
         p->menuPrintLn("Success !", 2, 20);
@@ -549,6 +554,9 @@ static int imu_calib(SetupMenuSelect* p) {
         case 3:
             // factory acc calib
             factoryAccCalibration(p);
+            break;
+        case 6:
+            factoryAccCalibration(p, true);
             break;
         case 4:
             // set Gyro bias to zero
@@ -1787,6 +1795,7 @@ SetupMenu* SetupMenu::createFactorySetup() {
     SetupMenuSelect* bias_zero = new SetupMenuSelect("IMU Biases", RST_NONE, imu_calib);
     bias_zero->addEntry("Cancel");
     bias_zero->addEntry("Acc. Bias Calib.", 3);
+    bias_zero->addEntry("AccBias Check", 6);
     bias_zero->addEntry("Gyro Reset", 4);
     bias_zero->addEntry("Acc. Reset", 5);
     setup->addEntry(bias_zero);
