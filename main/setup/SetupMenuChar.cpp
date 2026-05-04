@@ -177,6 +177,13 @@ void SetupMenuChar::longPress(){
     if (_dirty && bits._restart) {
         scheduleReboot();
     }
+    if (bits._end_menu) {
+        exit(2);
+        return;
+    } else if (bits._end_setup) {
+        exit(-1);
+        return;
+    }
     exit();
 }
 
