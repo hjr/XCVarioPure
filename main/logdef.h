@@ -5,6 +5,6 @@
 // __FILENAME__ liefert nur den Dateinamen, ohne Pfad
 #define FNAME __FILENAME__
 
-#if defined(CONFIG_LOG_DISABLED)
+#if defined(ALL_LOGS_DISABLED)
 # include "logdefnone.h"
 #endif
