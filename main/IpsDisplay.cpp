@@ -537,7 +537,7 @@ void IpsDisplay::initDisplay() {
     }
     if (battery_display.get() ) {
         if (!BATgauge) {
-            BATgauge = new Battery(DISPLAY_W - 10, DISPLAY_H - 12, display_orientation.get() == DISPLAY_NINETY);
+            BATgauge = new Battery(DISPLAY_W - 10, DISPLAY_H - 12, true);
         }
     }
     else {
