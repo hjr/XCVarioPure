@@ -790,7 +790,8 @@ void system_menu_create_software(SetupMenu *top) {
     }
     top->addEntry(fa);
 
-    small_buf[0] = '\0';
+    small_buf[0] = ' ';
+    small_buf[1] = '\0';
     SetupMenuChar* exp = new SetupMenuChar("Expert Menu",  "0A", 4, RST_NONE, expert_menu_action, small_buf);
     exp->setHelp("Enter code to unlock expert menu settings");
     top->addEntry(exp);
