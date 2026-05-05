@@ -228,10 +228,13 @@ static void factoryAccCalibration(SetupMenuSelect* p, bool check_only=false) {
     p->menuPrintLn("Abort with button.", nlidx++);
     nlidx++;
 
+    // the whole calibration is done in the device frame reference, alias default glider frame
     // reset lever arm
     accSensor->getMpu().setLeverArm(0.f);
+    // ensure no reference rotation set, no GAA
+    accSensor->getMpu().applyImuReference(0, MpuImu::getDefaultImuReference(false));
     // need to reset the acc bias, because this is the only way we can really measure it
-    if ( ! check_only ) accSensor->resetBias();
+    if ( ! check_only ) { accSensor->resetBias(); }
 
     int pos = 0;
     bool abort = false;
@@ -285,12 +288,21 @@ static void factoryAccCalibration(SetupMenuSelect* p, bool check_only=false) {
             ESP_LOGI(FNAME, "Acc bias check: %f/%f/%f", bias.x, bias.y, bias.z);
         }
         else {
-            accSensor->pushBias(bias);
+            accSensor->pushBias(bias); // map back to sensor frame and set, also saves to nvs
+            // calculate the factory reference calibration from the samples, and save to nvs
+            // to be used as default reference on reset
+            for (int i = 0; i < 6; i++) {
+               samples[i] = samples[i] - bias; // correct samples with the extracted bias
+            }
+            accSensor->getMpu().calculateFactoryReference(samples, 6);
             // set menu help to show the quality of the result
-            imu_menu_help = "Before: \n" + std::to_string(res0);
+            imu_menu_help = "RMS Before: " + std::to_string(res0) + "\n";
             axes_i16_abi tmp = accl_bias.get();
-            imu_menu_help += " Bias: (" + std::to_string(tmp.x) + "," + std::to_string(tmp.y) + "," + std::to_string(tmp.z) + ")\n";
-            imu_menu_help += " After: " + std::to_string(res);
+            imu_menu_help += "Bias: (" + std::to_string(tmp.x) + "," + std::to_string(tmp.y) + "," + std::to_string(tmp.z) + ")\n";
+            imu_menu_help += "RMS After: " + std::to_string(res) + "\n";
+            char buf[12];
+            snprintf(buf, sizeof(buf), "%.2f°", rad2deg(imu_facref.get().getAngle()));
+            imu_menu_help += "ChipRef.: " + std::string(buf);
             SetupMenu *menu = p->getParent();
             menu->setHelp(imu_menu_help.c_str());
         }

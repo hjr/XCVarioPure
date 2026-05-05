@@ -36,7 +36,7 @@ public:
 
     ImuType getImuType() const { return _who_typ; }
     temp_status_t getTempStatus() const;
-    static Quaternion getDefaultImuReference();
+    static Quaternion getDefaultImuReference(bool include_factory_ref=true);
     void applyImuReference(const degree_t gAA, const Quaternion& basic) {
         _ref_rot = concatGaaAndImuReference(gAA, basic);
     }
@@ -46,6 +46,7 @@ public:
     void zeroAccBias();
     int getAccelSamplesAndCalib(vector_f gyro_integral, rad_t& wing_angle, rad_t& ground_angle);
     vector_f extractAccBias(vector_f *samples, int nr, float *res0, float *res);
+    void calculateFactoryReference(vector_f *corr_samples, int nr);
     void setLeverArm(float la) { _leverarm = la; }
     inline float getLeverArm() const { return _leverarm; }
     void setRefRot(const Quaternion& ref) { _ref_rot = ref; }

@@ -142,9 +142,11 @@ temp_status_t MpuImu::getTempStatus() const {
 //
 
 // Calc the rotation for the "upright", "topdown" and "ninety" vario mounting positions
-Quaternion MpuImu::getDefaultImuReference() {
+// by default also include the factory reference correction, 
+// which is the same for all mounting positions, but can be refined by the user in the reference calibration
+Quaternion MpuImu::getDefaultImuReference(bool include_factory_ref) {
 
-    // Revert from calibrated IMU to default mapping, which fits
+    // Default device mount mapping, which fits
     // roughly to an upright, top down, or ninety degree installation.
     // IMU on PCB raw: X up, Y left, Z backwards
     // IMU on PCB to "NED" reference: X forward, Y right, Z down
@@ -154,6 +156,9 @@ Quaternion MpuImu::getDefaultImuReference() {
         accelDefaultRef = Quaternion(deg2rad(180.0f), vector_f(1, 0, 0)) * accelDefaultRef;
     } else if (display_orientation.get() == DISPLAY_NINETY) {
         accelDefaultRef = Quaternion(deg2rad(90.0f), vector_f(1, 0, 0)) * accelDefaultRef;
+    }
+    if (include_factory_ref) {
+        accelDefaultRef = accelDefaultRef * imu_facref.get();
     }
     return accelDefaultRef;
 }
@@ -298,8 +303,8 @@ class ACC_Bias {
     int _nr;
 };
 
+// Extract the current bias from samples
 vector_f MpuImu::extractAccBias(vector_f *samples, int nr, float *res0, float *res) {
-    // Extract the current bias from samples
     std::vector<float> start{.0, .0, .0};
     std::vector<std::vector<float> > acc_simp{{0.05, 0, 0}, {0, -0.05, 0}, {0, 0, 0.05}, {0, 0, 0}};
     ACC_Bias bias_min;
@@ -310,6 +315,30 @@ vector_f MpuImu::extractAccBias(vector_f *samples, int nr, float *res0, float *r
     if (res0) *res0 = bias_min.operator()(start);
     if (res) *res = bias_min.operator()(x);
     return bias;
+}
+
+// Create a factory reference calib that aligns the sensor with the vario housing
+void MpuImu::calculateFactoryReference(vector_f *corr_samp, int nr) {
+    // a quaternion form the X,Y axes of the measurements
+    int16_t idx_pos_x = 0, idx_neg_x = 0;
+    int16_t idx_pos_y = 0, idx_neg_y = 0;
+    int16_t idx_pos_z = 0, idx_neg_z = 0;
+    for (int16_t i = 1; i < 6; i++) {
+        if (corr_samp[i].x > corr_samp[idx_pos_x].x) idx_pos_x = i;
+        if (corr_samp[i].x < corr_samp[idx_neg_x].x) idx_neg_x = i;
+        if (corr_samp[i].y > corr_samp[idx_pos_y].y) idx_pos_y = i;
+        if (corr_samp[i].y < corr_samp[idx_neg_y].y) idx_neg_y = i;
+        if (corr_samp[i].z > corr_samp[idx_pos_z].z) idx_pos_z = i;
+        if (corr_samp[i].z < corr_samp[idx_neg_z].z) idx_neg_z = i;
+    }
+    vector_f X = (corr_samp[idx_pos_x] - corr_samp[idx_neg_x]).get_normalized();
+    vector_f Y = (corr_samp[idx_pos_y] - corr_samp[idx_neg_y]).get_normalized();
+    // rotation from sensor -> sensor corrected, so that it can be used as a factory sensor 
+    // reference in sequence with the default mounting position
+    Quaternion q_meas = Quaternion::fromRotationMatrix(X, Y);
+    Quaternion q_result = _ref_rot.get_conjugate() * q_meas * _ref_rot;
+    ESP_LOGI(FNAME, "Factory reference correction: (%.2f,%.2f,%.2f,%.2f) %f degree", q_result._w, q_result._x, q_result._y, q_result._z, rad2deg(q_result.getAngle()));
+    imu_facref.set(q_result, false);
 }
 
 void MpuImu::restoreAccelOffset() const {
