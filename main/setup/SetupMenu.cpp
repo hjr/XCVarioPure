@@ -360,7 +360,7 @@ static void doImuCalibration(SetupMenuSelect* p) {
         bool button = false;
         once = false;
 
-        AUDIO->startSound(AUDIO_TADDA | PRIO_SND_MASK, false, 100);
+        AUDIO->startSound(AUDIO_TADDA_SHORT | PRIO_SND_MASK, false, 100);
 
         for (int i=0; i<3; i++) {
 
@@ -414,7 +414,7 @@ static void doImuCalibration(SetupMenuSelect* p) {
             gyro_integral -= gyroSensor->getBias() * (float)((stop_time - start_time) / 100.f); // 10 Hz
             // sample the accel for the bob vector
             ret = accSensor->getMpu().getAccelSamplesAndCalib(gyro_integral, angle, ground_angle);
-            if (i<2 || ret == 4) AUDIO->startSound(AUDIO_TADDA | PRIO_SND_MASK, false, 100);
+            if (i<2 || ret == 4) AUDIO->startSound(AUDIO_TADDA_SHORT | PRIO_SND_MASK, false, 100);
         }
     }
 
@@ -491,7 +491,7 @@ static void factoryAccCalibration(SetupMenuSelect* p, bool check_only=false) {
         if ( ! abort ) {
             // read the acc average
             samples[pos] = accSensor->getAVG(2000);
-            if (pos < 5) { AUDIO->startSound(AUDIO_TADDA | PRIO_SND_MASK, false, 100); }
+            if (pos < 5) { AUDIO->startSound(AUDIO_TADDA_SHORT | PRIO_SND_MASK, false, 100); }
             pos++;
         }
         gyroSensor->resetRest();
@@ -525,7 +525,7 @@ static void factoryAccCalibration(SetupMenuSelect* p, bool check_only=false) {
         else {
             accSensor->pushBias(bias);
         }
-        AUDIO->startSound(AUDIO_TADDA | PRIO_SND_MASK, false, 100);
+        AUDIO->startSound(AUDIO_TADDA_LONG | PRIO_SND_MASK, false, 100);
         p->clear();
         p->menuPrintLn("Success !", 2, 20);
     }

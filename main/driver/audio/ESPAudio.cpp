@@ -429,19 +429,27 @@ const std::array<TONE, 2> wind_seq1 = {{ {500}, {0.} }};
 const std::array<VOICECONF, 2> wind_vconf = {{ {2, 220}}};
 const SOUND WindGust = { wind_tim.data(), { wind_seq1.data(), nullptr, nullptr, nullptr }, wind_vconf.data(), 0 };
 
-// Tadda
-const std::array<DURATION, 4> tadda_tim = {{  {130}, {20}, {1050}, {0} }};
-const std::array<TONE, 4> tadda_seq1 = {{  {fD5}, {0}, {fD5}, {0} }};
-const std::array<TONE, 4> tadda_seq2 = {{  {fFs5}, {0}, {fFs5}, {0} }};
-const std::array<TONE, 4> tadda_seq3 = {{  {fA5}, {0}, {fA5}, {0} }};
-const std::array<TONE, 4> tadda_seq4 = {{  {fD6}, {0}, {fD6}, {0} }};
+// Tadda kurz
+const std::array<DURATION, 4> taddas_tim = {{  {170}, {80}, {800}, {0} }};
+const std::array<TONE, 4> taddas_seq1 = {{  {fD5}, {0}, {fD5}, {0} }};
+const std::array<TONE, 4> taddas_seq2 = {{  {fFs5}, {0}, {fFs5}, {0} }};
+const std::array<TONE, 4> taddas_seq3 = {{  {fA5}, {0}, {fA5}, {0} }};
+const std::array<TONE, 4> taddas_seq4 = {{  {fD6}, {0}, {fD6}, {0} }};
 const std::array<VOICECONF, 4> tadda_vconf = {{ {0, 128}, {0, 120}, {0, 110}, {0, 100} }};
-const SOUND Tadda = { tadda_tim.data(), { tadda_seq1.data(), tadda_seq2.data(), tadda_seq3.data(), tadda_seq4.data() }, tadda_vconf.data(), 0 };
+const SOUND Tadda_short = { taddas_tim.data(), { taddas_seq1.data(), taddas_seq2.data(), taddas_seq3.data(), taddas_seq4.data() }, tadda_vconf.data(), 0 };
+
+// Tadda lang
+const std::array<DURATION, 9> taddal_tim = {{  {170}, {80}, {160}, {80}, {160}, {80}, {1000}, {200}, {0} }};
+const std::array<TONE, 9> taddal_seq1 = {{  {fD5}, {0}, {0}, {0}, {fD5}, {0}, {fD5}, {fD5}, {0} }};
+const std::array<TONE, 9> taddal_seq2 = {{  {0}, {0}, {fFs5}, {0}, {0}, {0}, {fFs5}, {fFs5}, {0} }};
+const std::array<TONE, 9> taddal_seq3 = {{  {0}, {0}, {0}, {0}, {fA5}, {0}, {fA5}, {fA5}, {0} }};
+const std::array<TONE, 9> taddal_seq4 = {{  {0}, {0}, {0}, {0}, {0}, {0}, {fD6}, {0}, {0} }};
+const SOUND Tadda_long = { taddal_tim.data(), { taddal_seq1.data(), taddal_seq2.data(), taddal_seq3.data(), taddal_seq4.data() }, tadda_vconf.data(), 0 };
 
 // list of sounds
-const std::array<const SOUND*, 17> sound_list = { { &NoSound, &VarioSound, &CheckSound, &FailSound, 
+const std::array<const SOUND*, 18> sound_list = { { &NoSound, &VarioSound, &CheckSound, &FailSound, 
                                                     &TurnOut, &TurnIn, &Knock, &WindGust, &TurnIn, &FlapForward, &FlapBack,
-                                                    &Tadda,
+                                                    &Tadda_short, &Tadda_long,
                                                     &StallWarn, &GloadWarn, &GearWarn, &FlarmIntro, &FlarmCode } };
 
 // To call from ISR context
