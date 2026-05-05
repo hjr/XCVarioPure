@@ -166,23 +166,36 @@ void MenuEntry::setHelp( const char *txt )
     if (nlidx == 0) {
         return; // fits in one line, no need to split
     }
+    const char *nlptr = reinterpret_cast<const char*>(std::memchr(helptext, '\n', nlidx));
+    if ( nlptr != nullptr ) {
+        nlidx = nlptr - helptext; // force split at first newline, ignore width
+    }
 
     const char* p = helptext + nlidx;
     int16_t nlidx_prev = 0;
     int lines = 0;
     while (lines < MAX_HELP_LINES) {
         // go backwards, find the last space before end_idx
-        while ( (p > helptext) && (*p != ' ') ) {
+        while ( (p > helptext) ) {
+            if ( (*p == ' ') || (*p == '\n') ) {
+                p++;
+                nlidx++;
+                break;
+            }
             p--;
             nlidx--;
         }
-        _help_line_start[lines] = nlidx + nlidx_prev;
+        _help_line_start[lines] = nlidx_prev + nlidx;
         nlidx_prev = _help_line_start[lines];
         lines++;
         // get the potential next line end
         nlidx = MYUCG->IdxToTextWidth(p, dwidth);
         if ( nlidx == 0 ) {
             break;
+        }
+        nlptr = reinterpret_cast<const char*>(std::memchr(p, '\n', nlidx));
+        if ( nlptr != nullptr ) {
+            nlidx = nlptr - p;
         }
         p += nlidx;
     }
