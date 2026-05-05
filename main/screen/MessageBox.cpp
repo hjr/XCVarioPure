@@ -20,7 +20,7 @@
 extern AdaptUGC *MYUCG;
 MessageBox *MBOX; // the global representation
 
-const int CLOCK_DIVIDER = 8;
+constexpr int CLOCK_DIVIDER = 8;
 
 // A message is represented throught
 // - alert level (1,2,3,4)
