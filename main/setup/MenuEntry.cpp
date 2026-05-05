@@ -68,12 +68,10 @@ void MenuEntry::menuClearLn(int ln) const {
 
 void MenuEntry::menuPrintChar(char chr, int ln, int x) const {
     if ( chr == ' ' ) {
-        MYUCG->drawDisc(x+2, (ln+1)*LINE_HEIGHT - 7, 2, UCG_DRAW_ALL);
+        chr = '_';
     }
-    else {
-        MYUCG->setPrintPos(x,(ln+1)*LINE_HEIGHT);
-        MYUCG->print(chr);
-    }
+    MYUCG->setPrintPos(x,(ln+1)*LINE_HEIGHT);
+    MYUCG->print(chr);
 }
 
 void MenuEntry::reBoot(int s) {
