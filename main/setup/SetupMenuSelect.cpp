@@ -11,6 +11,7 @@
 
 
 const std::string_view ENABLE_MODE[5] = { "Disable", "Enable", "Dynamic", "Primary", "Client" };
+constexpr const char* FORMATSTRING_AND_SPACE = "%s                ";
 
 SetupMenuSelect::SetupMenuSelect( const char* title, e_restart_mode_t restart, int (*exit_action)(SetupMenuSelect *p),
 									SetupNG<int> *anvs) :

@@ -11,10 +11,12 @@
 
 #include <vector>
 
-constexpr const char* FORMATSTRING_AND_SPACE = "%s                ";
-
 class SetupMenuValFloat;
 class SetupMenuSelect;
+extern char small_buf[64];
+extern int set_parent_parent_dirty(SetupMenuSelect* p);
+extern int set_parent_dirty(SetupMenuSelect* p);
+
 
 class SetupMenu : public MenuEntry
 {
@@ -56,6 +58,7 @@ public:
 	void longPress() override;
 
 	static gpio_num_t getGearWarningIO();
+	static void initGearWarning();
 	static int switch_alt_source(SetupMenuSelect* p);
 
 	static SetupMenu* createTopSetup();
@@ -63,7 +66,6 @@ public:
 	static SetupMenuValFloat *createQNHMenu();
 	static SetupMenuValFloat *createBallastMenu();
 	static SetupMenuValFloat *createVoltmeterAdjustMenu();
-	static void initGearWarning();
 
 
 protected:

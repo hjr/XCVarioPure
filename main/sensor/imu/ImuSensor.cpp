@@ -298,7 +298,7 @@ class ACC_Bias {
     int _nr;
 };
 
-vector_f MpuImu::extractAccBias(vector_f *samples, int nr) {
+vector_f MpuImu::extractAccBias(vector_f *samples, int nr, float *res0, float *res) {
     // Extract the current bias from samples
     std::vector<float> start{.0, .0, .0};
     std::vector<std::vector<float> > acc_simp{{0.05, 0, 0}, {0, -0.05, 0}, {0, 0, 0.05}, {0, 0, 0}};
@@ -306,7 +306,9 @@ vector_f MpuImu::extractAccBias(vector_f *samples, int nr) {
     bias_min.set(samples, nr);
     std::vector<float> x = MATH::Simplex(bias_min, start, 1e-6f, acc_simp);
     vector_f bias(x[0], x[1], x[2]);
-    ESP_LOGI(FNAME, "ACC bias: %f,%f,%f", x[0], x[1], x[2]);
+    ESP_LOGI(FNAME, "ACC bias: %f,%f,%f res:%f", x[0], x[1], x[2], bias_min.operator()(x));
+    if (res0) *res0 = bias_min.operator()(start);
+    if (res) *res = bias_min.operator()(x);
     return bias;
 }
 
