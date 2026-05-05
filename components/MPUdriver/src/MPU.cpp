@@ -89,7 +89,7 @@ esp_err_t MPU::initialize(bool isICM20602p)
 
 	// save accelerometer factory offset values
 	accel_factory_offset = readAccelOffsetRegister();
-	MPU_LOGI("Factory offset: %d/%d/%d", accel_factory_offset.x, accel_factory_offset.y, accel_factory_offset.z);
+	MPU_LOGI("Factory offset: %d/%d/%d", accel_factory_offset.x>>1, accel_factory_offset.y>>1, accel_factory_offset.z>>1);
 
 	// set sample rate to 100Hz
 	if (MPU_ERR_CHECK(setSampleRate(50))) return err;
@@ -842,19 +842,19 @@ esp_err_t MPU::setAccelOffset(raw_axes_t bias)
 {
 	raw_axes_t regBias = accel_factory_offset;
 	// apply saved values to the factory offset
-    // MPU6050 semantik might be:  output = raw_measurement + register_offset
-    // if ( ! _isICM20602 ) {
-    //     bias *= -1;
-    // }
-    // but all tests show that both MPU6050 and ICM20602 follow the same semantik, which is:
-    // ICM20602 semantik: output = raw_measurement - register_offset
+    // MPU6050 semantik seems to be:  output = raw_measurement + register_offset
+    // ICM20602 semantik was told to be: output = raw_measurement - register_offset
+    // but in practice, it seems that the offset register is still added instead of subtracted (!)
+    bias *= -1;
 	// note: preserve bit 0 of factory value (for temperature compensation)
     bias.x = (bias.x << 1);
     bias.y = (bias.y << 1);
     bias.z = (bias.z << 1);
-	regBias -= bias; // alias regBias = factory_offset - bias
+	regBias += bias; // alias regBias = factory_offset + bias
 
+	MPU_LOGI(" factory offset %d %d %d", accel_factory_offset.x, accel_factory_offset.y, accel_factory_offset.z);
 	MPU_LOGI(" setAccelOffset %d %d %d", bias.x, bias.y, bias.z);
+	MPU_LOGI(" together       %d %d %d", regBias.x, regBias.y, regBias.z);
 
 #if defined CONFIG_MPU6050
 	buffer[0] = (uint8_t)(regBias.x >> 8);
@@ -863,7 +863,15 @@ esp_err_t MPU::setAccelOffset(raw_axes_t bias)
 	buffer[3] = (uint8_t)(regBias.y);
 	buffer[4] = (uint8_t)(regBias.z >> 8);
 	buffer[5] = (uint8_t)(regBias.z);
-	if (MPU_ERR_CHECK(writeBytes(_isICM20602 ? regs::ICM20602_XA_OFFSET_H : regs::XA_OFFSET_H, 6, buffer))) return err;
+    if ( _isICM20602 ) {
+        if (MPU_ERR_CHECK(writeBytes(regs::ICM20602_XA_OFFSET_H, 2, buffer))) return err;
+        if (MPU_ERR_CHECK(writeBytes(regs::ICM20602_YA_OFFSET_H, 2, buffer+2))) return err;
+        if (MPU_ERR_CHECK(writeBytes(regs::ICM20602_ZA_OFFSET_H, 2, buffer+4))) return err;
+    }
+
+    else {
+        if (MPU_ERR_CHECK(writeBytes(regs::XA_OFFSET_H, 6, buffer))) return err;
+    }
 
 #elif defined CONFIG_MPU6500
 	buffer[0] = (uint8_t)(regBias.x >> 8);
@@ -884,16 +892,23 @@ raw_axes_t MPU::readAccelOffsetRegister()
 	raw_axes_t bias;
 
 #if defined CONFIG_MPU6050
-	MPU_ERR_CHECK(readBytes(_isICM20602 ? regs::ICM20602_XA_OFFSET_H : regs::XA_OFFSET_H, 6, buffer));
+    if ( _isICM20602 ) {
+        MPU_ERR_CHECK(readBytes(regs::ICM20602_XA_OFFSET_H, 2, buffer));
+        MPU_ERR_CHECK(readBytes(regs::ICM20602_YA_OFFSET_H, 2, buffer+2));
+        MPU_ERR_CHECK(readBytes(regs::ICM20602_ZA_OFFSET_H, 2, buffer+4));
+    }
+    else {
+        MPU_ERR_CHECK(readBytes(regs::XA_OFFSET_H, 6, buffer));
+    }
 	bias.x = (buffer[0] << 8) | buffer[1];
 	bias.y = (buffer[2] << 8) | buffer[3];
 	bias.z = (buffer[4] << 8) | buffer[5];
 
 #elif defined CONFIG_MPU6500
 	MPU_ERR_CHECK(readBytes(regs::XA_OFFSET_H, 8, buffer));
-	bias.x                        = (buffer[0] << 8) | buffer[1];
-	bias.y                        = (buffer[3] << 8) | buffer[4];
-	bias.z                        = (buffer[6] << 8) | buffer[7];
+	bias.x = (buffer[0] << 8) | buffer[1];
+	bias.y = (buffer[3] << 8) | buffer[4];
+	bias.z = (buffer[6] << 8) | buffer[7];
 #endif
 
 	return bias;
