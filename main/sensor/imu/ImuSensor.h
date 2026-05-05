@@ -45,7 +45,7 @@ public:
     void zeroGyroBias();
     void zeroAccBias();
     int getAccelSamplesAndCalib(vector_f gyro_integral, rad_t& wing_angle, rad_t& ground_angle);
-    vector_f extractAccBias(vector_f *samples, int nr);
+    vector_f extractAccBias(vector_f *samples, int nr, float *res0, float *res);
     void setLeverArm(float la) { _leverarm = la; }
     inline float getLeverArm() const { return _leverarm; }
     void setRefRot(const Quaternion& ref) { _ref_rot = ref; }

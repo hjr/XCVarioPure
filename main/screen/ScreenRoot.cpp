@@ -14,10 +14,10 @@
 #include "setup/SubMenuAudio.h"
 #include "setup/SubMenuDevices.h"
 #include "setup/SubMenuFlap.h"
+#include "setup/SubMenuImu.h"
 #include "setup/SetupNG.h"
 #include "IpsDisplay.h"
 #include "driver/audio/ESPAudio.h"
-#include "screen/element/ArrowIndicator.h"
 
 #include "sensor.h"
 #include "logdefnone.h"
@@ -130,6 +130,7 @@ void ScreenRoot::exit(int levels)
     free_connected_devices_menu();
     free_audio_menu();
     free_flap_menu();
+    free_imu_menu();
 
     // current menu status
     current = nullptr; // no current item any more
