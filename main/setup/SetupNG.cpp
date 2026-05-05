@@ -635,7 +635,8 @@ SetupNG<float>      	display_clock_adj("DSCLADHJ", 0, true, SYNC_NONE, PERSISTEN
 SetupNG<int> 			ahrs_raw_data("AHRSRAW", 0 );
 
 SetupNG<float>				glider_ground_aa("GLD_GND_AA", 12.0, true, SYNC_FROM_MASTER, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(-5, 20, 1));
-SetupNG<Quaternion>			imu_reference("IMU_REFERENCE", Quaternion(), false);
+SetupNG<Quaternion>			imu_reference("IMU_REFERENCE", Quaternion(), true);
+SetupNG<Quaternion>			imu_facref("IMU_FACTORY", Quaternion(), false);
 SetupNG<axes_i16_abi>		gyro_bias("GYRO_BIAS", {0, 0, 0} );
 SetupNG<axes_i16_abi>		accl_bias("ACCL_BIAS", {0, 0, 0}, false ); // never reset this factoy calibration
 SetupNG<celsius_t> 			mpu_temperature("MPUTEMP", 45.0, true, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(30, 60, 1)); // default for AHRS chip temperature (XCV 2023)
