@@ -81,7 +81,6 @@ Clock::Clock()
         };
         esp_timer_create(&t_args, &_clock_timer);
         esp_timer_start_periodic(_clock_timer, TICK_ATOM * 1000); // the timers API is on usec
-        clock_registry.clear();
     }
 }
 Clock::~Clock()
