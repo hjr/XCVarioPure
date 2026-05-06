@@ -445,7 +445,7 @@ void system_menu_create_hardware_ahrs_parameter(SetupMenu *top) {
 }
 
 void system_menu_create_hardware_imu(SetupMenu *top) {
-    if (gflags.expert) {
+#ifdef DEBUG_AND_TEST
         SetupMenuSelect* imu_calib_collect = new SetupMenuSelect("IMU Reference", RST_NONE, imu_calib);
         imu_calib_collect->setHelp("Calibrate IMU to glider reference. Run the procedure by selecting Start.");
         imu_calib_collect->addEntry("Cancel", 0);
@@ -455,17 +455,18 @@ void system_menu_create_hardware_imu(SetupMenu *top) {
         imu_calib_collect->addEntry("Reset", 2);
         top->addEntry(imu_calib_collect);
 
-        SetupMenuSelect* gyro_reset = new SetupMenuSelect("Gyro Zero", RST_NONE, imu_calib);
-        gyro_reset->setHelp("Reset gyro bias to zero");
-        gyro_reset->addEntry("Cancel", 0);
-        gyro_reset->addEntry("Gyro Reset", 4);
-        top->addEntry(gyro_reset);
-
         SetupMenuValFloat* ahrs_ground_aa = new SetupMenuValFloat("Ground Angle of Attack", "°", imu_gaa, &glider_ground_aa, RST_NONE, false);
         ahrs_ground_aa->setHelp(
             "Angle of attack with tail skid on the ground to adjust the AHRS horizon level. Change this any time");
         ahrs_ground_aa->setPrecision(0);
         top->addEntry(ahrs_ground_aa);
+#endif
+    if ( gflags.expert ) {
+        SetupMenuSelect* gyro_reset = new SetupMenuSelect("Gyro Zero", RST_NONE, imu_calib);
+        gyro_reset->setHelp("Reset gyro bias to zero");
+        gyro_reset->addEntry("Cancel", 0);
+        gyro_reset->addEntry("Gyro Reset", 4);
+        top->addEntry(gyro_reset);
     }
 	SetupMenuValFloat* tcontrol = new SetupMenuValFloat("Temp Control", "°C", nullptr, &mpu_temperature, RST_NONE, false);
     tcontrol->setPrecision(0);
