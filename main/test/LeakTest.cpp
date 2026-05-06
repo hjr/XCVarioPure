@@ -24,9 +24,28 @@ extern AdaptUGC *MYUCG;
 // If the readings deviate beyond defined thresholds, it indicates a potential leak.
 //
 
+const char *LeakTest::getStatus() {
+    float loss = leak_test_loss.get();
+    const char* status;
+    if (loss == 0.0f) {
+        status = "TBD";
+    } else if (loss < LEAK_TEST_MAX_LOSS) {
+        status = "PASSED";
+    } else {
+        status = "FAILED";
+    }
+    return status;
+}
+
+const char* LeakTest::value() const {
+    char buf[32];
+    snprintf(buf, sizeof(buf), "%.3f (%s)", leak_test_loss.get(),  getStatus());
+    _result.assign(buf);
+    return _result.c_str();
+}
+
 void LeakTest::display(int mode) {
     ESP_LOGI(FNAME, "Starting Leak test");
-
     clear();
     MYUCG->setFont(ucg_font_ncenR14_hr, true);
     menuPrintLn(_title.c_str(), 0);
@@ -159,14 +178,13 @@ void LeakTest::display(int mode) {
 
     // --- Result ---
     if (failed) {
-        menuPrintLn("Test FAILED", 9);
+        menuPrintLn("FAILED", 10);  // unify const string element
         ESP_LOGI(FNAME, "FAILED");
     } else {
-        menuPrintLn("Test PASSED", 9);
+        menuPrintLn("PASSED", 10);
         ESP_LOGI(FNAME, "PASSED");
         gflags.leak_test_passed = 1;
     }
-
     xQueueReset(uiEventQueue);
 }
 
