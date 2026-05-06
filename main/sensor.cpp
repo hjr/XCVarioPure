@@ -502,13 +502,15 @@ void system_startup(void *args){
 
     // Set for now hidden but used setup variable to their default
 #ifndef DEBUG_AND_TEST
-    rot_default.set(rot_default.getDefault());
-    display_variant.set(DISPLAY_WHITE_ON_BLACK);
-    imu_leverarm.set(0.f);
-    ahrs_gyro_factor.set(ahrs_gyro_factor.getDefault());
-    ahrs_min_gyro_factor.set(ahrs_min_gyro_factor.getDefault());
-    ahrs_dynamic_factor.set(ahrs_dynamic_factor.getDefault());
-    gyro_gating.set(gyro_gating.getDefault());
+    rot_default.set(rot_default.getDefault(), false, false);
+    display_variant.set(DISPLAY_WHITE_ON_BLACK, false, false);
+    imu_leverarm.set(0.f, false, false);
+    ahrs_gyro_factor.set(ahrs_gyro_factor.getDefault(), false, false);
+    ahrs_min_gyro_factor.set(ahrs_min_gyro_factor.getDefault(), false, false);
+    ahrs_dynamic_factor.set(ahrs_dynamic_factor.getDefault(), false, false);
+    gyro_gating.set(gyro_gating.getDefault(), false, false);
+    imu_reference.set(imu_reference.getDefault(), false, false);
+    ahrs_ground_aa.set(0.f, false, false);
 #endif
 
 	BatVoltage = new AnalogInput((22.0+1.2)/1200, ADC_CHANNEL_7); // created allways, but only used on master XCV
