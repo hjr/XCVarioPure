@@ -1119,7 +1119,7 @@ SetupMenu* SetupMenu::createFactorySetup() {
 }
 
 SetupMenuValFloat* SetupMenu::createQNHMenu() {
-	SetupMenuValFloat *qnh = new SetupMenuValFloat("QNH", "", qnh_adj, &QNH, RST_NONE, false);
+	SetupMenuValFloat *qnh = new SetupMenuValFloat("QNH", "", qnh_adj, &QNH, RST_NONE, true);
     qnh->setPrecision(2);
 	qnh->setTerminateMenu();
 	qnh->setHelp("QNH pressure value from ATC. On ground you may adjust to airfield altitude above MSL");
