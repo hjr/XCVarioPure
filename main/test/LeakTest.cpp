@@ -50,6 +50,12 @@ void LeakTest::display(int mode) {
     MYUCG->setFont(ucg_font_ncenR14_hr, true);
     menuPrintLn(_title.c_str(), 0);
 
+    if ( !asSensor || !baroSensor || !teSensor ) {
+        menuPrintLn("Missing sensors. Pls set", 2);
+        menuPrintLn("to \"Master\" and try again.", 3);
+        return;
+    }
+
     constexpr float SPEED_THRESHOLD = 1.0f;    // %
     constexpr float MIN_SPEED       = 10.0f;   // Pa
     constexpr int   MAX_ITER        = 12;      // 5s 
