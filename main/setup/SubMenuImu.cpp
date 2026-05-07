@@ -215,24 +215,35 @@ static void doImuCalibration(SetupMenuSelect* p) {
 static void factoryAccCalibration(SetupMenuSelect* p, bool check_only=false) {
     MYUCG->setFont(ucg_font_ncenR14_hr, true);
     p->clear();
-    p->menuPrintLn("Factory Acc. Calibration", 2, 18);
-    constexpr int16_t next_step = 4;
+    p->menuPrintLn("Factory Acc. Calibration", 1, 18);
+    constexpr int16_t next_step = 3;
     int16_t nlidx = next_step;
     p->menuPrintLn("Choose 6 unique orientations.", nlidx++);
     nlidx++;
-    p->menuPrintLn("Wait for MPU warmup", nlidx++);
-    while( accSensor->getMpu().getTempStatus() != temp_status_t::MPU_T_LOCKED ){
-        if( Rotary->readSwitch(200) ) continue;  // exit by press
+    p->menuPrintLn("Wait for MPU warmup", nlidx);
+    bool abort = false;
+    int n_stable = 0;
+    while( n_stable < 25 ){  // 5 seconds locked MPU temp
+    	if( accSensor->getMpu().getTempStatus() == temp_status_t::MPU_T_LOCKED ){
+    		ESP_LOGI(FNAME, "Locked");
+    		n_stable++;
+    	}
+        if( Rotary->readSwitch(200) ) {
+        	abort = true;
+        	break;  // exit by press
+        }
     }
-    p->menuPrintLn("MPU Temperature locked", nlidx++);
-    p->menuPrintLn("Start with button.", nlidx);
-    while (!Rotary->readSwitch(200)) ;
-    p->menuClearLn(nlidx);
-    p->menuPrintLn("Wait for the Chimes, ", nlidx++);
-    p->menuPrintLn("to go on.", nlidx++);
-    p->menuPrintLn("Abort with button.", nlidx++);
-    nlidx++;
-
+    if( ! abort ){
+    	p->menuClearLn(nlidx);
+    	p->menuPrintLn("MPU Temperature locked", nlidx++);
+    	p->menuPrintLn("Start with button.", nlidx);
+    	while (!Rotary->readSwitch(200)) ;
+    	p->menuClearLn(nlidx);
+    	p->menuPrintLn("Wait for the Chimes, ", nlidx++);
+    	p->menuPrintLn("to go on.", nlidx++);
+    	p->menuPrintLn("Abort with button.", nlidx++);
+    	nlidx++;
+    }
     // the whole calibration is done in the device frame reference, alias default glider frame
     // reset lever arm
     accSensor->getMpu().setLeverArm(0.f);
@@ -242,7 +253,7 @@ static void factoryAccCalibration(SetupMenuSelect* p, bool check_only=false) {
     if ( ! check_only ) { accSensor->resetBias(); }
 
     int pos = 0;
-    bool abort = false;
+
     vector_f samples[6];
     while (pos < 6 && !abort)
     {
