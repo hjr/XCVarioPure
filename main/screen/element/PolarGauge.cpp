@@ -42,7 +42,7 @@ public:
 class LogGaugeFunc : public GaugeFunc
 {
 public:
-    LogGaugeFunc(float scale, float zero) : GaugeFunc(scale, zero) {}
+    LogGaugeFunc(float scale, float zero) : GaugeFunc(scale, zero) {_log=true;}
     float operator()(float a) const override { return fast_log2f(std::abs((a-_mid_at)) + 1.f) * _scale_k * (std::signbit((a-_mid_at)) ? -1. : 1.); }
     float invers(float rad) const override { return ((pow(2., std::abs(rad)) - 1.f) / _scale_k * (std::signbit(rad) ? -1.f : 1.f)) + _mid_at; }
 };
@@ -463,13 +463,14 @@ void PolarGauge::drawScale(float from, float to)
     // increment in 1/10 scale steps
     int16_t start = fast_iroundf(_range)*10, stop = fast_iroundf(_mrange)*10;
     int16_t middleat = 10 * func->getZero();
+    bool logscale = func->isLog();
     if (from > -1000.)
     {
         // partial scale repainting
         start = (int)(clipValue(from) * 10) + 1; // alias .1
         stop = (int)(clipValue(to) * 10) - 1;
         if (start < middleat + 10 && start > middleat - 10) {
-            modulo = (_dist05 > 29) ? 1 : (_dist05 > 20) ? 2 : (_dist05 > 12) ? 5 : 10;
+            modulo = (logscale && _dist05 > 47) ? 1 : (logscale && _dist05 > 28) ? 2 : (_dist05 > 29) ? 5 : 10;
         }
         // ESP_LOGI(FNAME, "scale from %d to %d", start, stop);
     }
@@ -486,7 +487,7 @@ void PolarGauge::drawScale(float from, float to)
             draw_label = true;
             if (a > 0)
             {
-                modulo = (_dist05 > 29) ? 1 : (_dist05 > 20) ? 2 : (_dist05 > 12) ? 5 : 10; // go into the details around zero
+                modulo = (logscale && _dist05 > 47) ? 1 : (logscale && _dist05 > 28) ? 2 : (_dist05 > 29) ? 5 : 10; // go into the details around zero
             }
             else
             {

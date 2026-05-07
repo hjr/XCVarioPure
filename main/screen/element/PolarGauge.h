@@ -32,10 +32,12 @@ public:
     // inverse to operator. Get the value for an indicator position in radian
     virtual float invers(float rad) const { return 0.; }
     float getZero() const { return _mid_at; }
+    bool isLog() const { return _log; }
 
 protected:
     float _scale_k; // scale factor
     float _mid_at; // value at the middle of the scale
+    bool _log = false; // is the function logarithmic
 };
 
 // a polar gauge
