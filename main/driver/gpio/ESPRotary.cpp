@@ -263,9 +263,12 @@ void ESPRotary::sendEscape() const
 }
 
 // In case an event triggered routine is asking itself for button status (events)
+// Recursing wait on a queue must be called a hack. Use it only for exceptional, not regular use-cases.
+// delay > in msec, default 2 msec
 bool ESPRotary::readSwitch(int delay) const {
     // return true for any button event in the queue, except a release
     // default: wait for just a very short time and shovel all not interresting events off the queue
+    int to_time = Clock::getMillis() + delay;
     UiEvent event;
     while (xQueueReceive(uiEventQueue, &event, pdMS_TO_TICKS(delay)) == pdTRUE) {
         uint8_t detail = event.getUDetail();
@@ -273,6 +276,10 @@ bool ESPRotary::readSwitch(int delay) const {
         if (event.isButtonEvent() && (detail == ButtonEvent::SHORT_PRESS || detail == ButtonEvent::LONG_PRESS)) {
             return true;
         }
+        if (Clock::getMillis() >= to_time) {
+            break;
+        }
+        delay = std::max(to_time - Clock::getMillis(), 2);
     }
     return false;
 }
