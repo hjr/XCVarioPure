@@ -510,7 +510,7 @@ void system_startup(void *args){
     ahrs_dynamic_factor.set(ahrs_dynamic_factor.getDefault(), false, false);
     gyro_gating.set(gyro_gating.getDefault(), false, false);
     imu_reference.set(imu_reference.getDefault(), false, false);
-    ahrs_ground_aa.set(0.f, false, false);
+    glider_ground_aa.set(0.f, false, false);
 #endif
 
 	BatVoltage = new AnalogInput((22.0+1.2)/1200, ADC_CHANNEL_7); // created allways, but only used on master XCV
