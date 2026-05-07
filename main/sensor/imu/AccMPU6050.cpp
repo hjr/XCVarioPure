@@ -135,6 +135,7 @@ void AccMPU6050::postProcess() {
     _processed = _lpf_accel.filter(accel); // todo subtraced soft bias
     const vector_f& gyro = gyroSensor->getRef();
     // ESP_LOGI( FNAME, " Accel: %.3f,%.3f,%.3f Gyro: %.3f,%.4f,%.4f dt: %.4f", accel.x, accel.y, accel.z, gyro.x, gyro.y, gyro.z, dt );
+    // ESP_LOGI( FNAME, " Accel: %.3f,%.3f,%.3f dt: %.4f TS:%d", accel.x, accel.y, accel.z, dt, _my_mpu.getTempStatus() );
 
     // create a gyro base rotation delta
     d_gyro = Quaternion::fromGyro(gyro, dt);

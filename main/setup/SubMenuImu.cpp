@@ -220,6 +220,11 @@ static void factoryAccCalibration(SetupMenuSelect* p, bool check_only=false) {
     int16_t nlidx = next_step;
     p->menuPrintLn("Choose 6 unique orientations.", nlidx++);
     nlidx++;
+    p->menuPrintLn("Wait for MPU warmup", nlidx++);
+    while( accSensor->getMpu().getTempStatus() != temp_status_t::MPU_T_LOCKED ){
+        if( Rotary->readSwitch(200) ) continue;  // exit by press
+    }
+    p->menuPrintLn("MPU Temperature locked", nlidx++);
     p->menuPrintLn("Start with button.", nlidx);
     while (!Rotary->readSwitch(200)) ;
     p->menuClearLn(nlidx);
