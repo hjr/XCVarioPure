@@ -419,7 +419,7 @@ extern SetupNG<int> 		logging;
 extern SetupNG<float>      	display_clock_adj;
 extern SetupNG<int> 		ahrs_raw_data;
 
-extern SetupNG<float> 		glider_ground_aa;
+extern SetupNG<degree_t> 		glider_ground_aa;
 extern SetupNG<Quaternion> 	imu_reference;
 extern SetupNG<Quaternion>	imu_facref;
 extern SetupNG<axes_i16_abi> gyro_bias;
