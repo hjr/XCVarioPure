@@ -11,6 +11,7 @@
 #include "Colors.h"
 #include "Atmosphere.h"
 #include "AdaptUGC.h"
+#include "sensor/gps/GpsVSensor.h"
 #include "setup/SetupNG.h"
 #include "logdefnone.h"
 
@@ -48,8 +49,8 @@ bool WindIcon::draw(WindData w)
         ESP_LOGI(FNAME, "Wind (%d,%d)", w.getDeg(), wstrength);
 
         _wind = w;
-        if ( headref ) {
-            rad_t heading = getHeading();
+        if ( headref && heading_tru.getValid() ) {
+            rad_t heading = heading_tru.get();
             ESP_LOGI(FNAME, "heading %.1f", Units::rad_to_deg(heading));
             w.inclHeading(heading);
             if (changed ) drawDirection(_wind.getDeg());
@@ -115,7 +116,7 @@ void WindIcon::drawDirection(int16_t deg) const
 {
     MYUCG->setFont(ucg_font_fub11_hr, true);
     MYUCG->setColor(COLOR_WGREY);
-    char s[16] = {"---"};
+    char s[16] = {"  ---  "};
     if ( _wind.isValid() ) {
        sprintf(s, " %3d' ", deg);
     }

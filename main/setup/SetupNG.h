@@ -217,8 +217,9 @@ extern SetupNG<int>  		synoptic_wind; // int alias WindData
 extern SetupNG<float>  		swind_sideslip_lim;
 extern SetupNG<int>  		ext_syn_wind; // synoptic and
 extern SetupNG<int>  		ext_inst_wind; // instant external wind
-extern SetupNG<rad_t>  		mag_hdm;
-extern SetupNG<rad_t>  		mag_hdt;
+extern SetupNG<rad_t>  		heading_mag;
+extern SetupNG<rad_t>  		heading_tru;
+extern SetupNG<rad_t>  		heading_wca;
 extern SetupNG<mps_t>  		average_climb;
 extern SetupNG<float>  		flap_pos;
 extern SetupNG<pascal_t>  	statp;
@@ -228,7 +229,8 @@ extern SetupNG<meter_t>  	altitude_isa;
 extern SetupNG<mps_t>       ias;
 extern SetupNG<mps_t>  		tas;
 extern SetupNG<mps_t>  		gnd_speed;
-extern SetupNG<meter_t>  		te_alt;
+extern SetupNG<rad_t>  		gnd_course;
+extern SetupNG<meter_t>  	te_alt;
 extern SetupNG<mps_t>  		te_vario;
 extern SetupNG<mps_t>  		te_netto;
 extern SetupNG<rad_t>  		slip_angle;

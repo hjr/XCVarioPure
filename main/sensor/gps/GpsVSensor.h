@@ -12,6 +12,9 @@
 #include "../SensorMgr.h"
 #include "math/vector_3d.h"
 
+class GpsVSensor;
+extern GpsVSensor* gpsSensor;
+
 class GpsVSensor final : public SensorTP<vector_f> {
 private:
     GpsVSensor();
@@ -23,19 +26,22 @@ public:
     bool probe() override { return true; }
     bool setup() override { return true; }
 
-    // Never used
-    bool doRead(vector_f &val) override {
-        return false;
-    }
+    // Main API
+    bool doRead(vector_f &val) override { return false; } // not used
+    void postProcess() override;
+    static bool getValid() { return gpsSensor && gpsSensor->getHeadValid(); }
+    inline bool isValid() const { return getHeadValid(); }
+    int getNumSat() const { return _numSat; }
+    void setNumSat(int num) { _numSat = num; return; }
 
     // Injection API
-    void inject(float lat, float lon);
+    void inject(float lat, float lon, mps_t gndSpeed, rad_t gndCourse);
     void setExternalAltitude(float);
 
 private:
+    int16_t _numSat;
     float _lat_ref = 0.f;
     float _lon_ref = 0.f;
     float _alt = 0.f;
 };
 
-extern GpsVSensor* gpsSensor;

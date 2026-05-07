@@ -186,7 +186,7 @@ void MultiGauge::update_nvs()
         _nvsvar = &te_netto;
         break;
     case MultiGauge::GAUGE_HEADING:
-        _nvsvar = &mag_hdt;
+        _nvsvar = &heading_tru;
         break;
     case MultiGauge::GAUGE_OAT:
         _nvsvar = &OAT;

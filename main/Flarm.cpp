@@ -11,14 +11,14 @@ rad_t Flarm::RelativeBearing = 0.f; // -pi .. pi
 int Flarm::AlarmType = 0;
 int Flarm::RelativeVertical = 0; // meter
 int Flarm::HorizontalDistance = 0; // meter
-mps_t Flarm::gndSpeed = 0.f;
-rad_t Flarm::gndCourse = 0;
-bool Flarm::myGPS_OK = false;
+// mps_t Flarm::gndSpeed = 0.f;
+// rad_t Flarm::gndCours = 0;
+// bool Flarm::myGPS_OK = false;
 int Flarm::IcaoId = 0;
 int Flarm::_confirmedId = 0;
 int Flarm::_confirmedTime = 0;
 
-int Flarm::_numSat=0;
+// int Flarm::_numSat=0;
 
 
 

@@ -26,6 +26,7 @@
 #include "protocol/ProtocolItf.h"
 #include "protocol/NMEA.h"
 #include "sensor/mag/Compass.h"
+#include "sensor/gps/GpsVSensor.h"
 #include "Flarm.h"
 #include "setup/SetupNG.h"
 #include "sensor.h"
@@ -93,7 +94,7 @@ void StraightWind::tick(){
 bool StraightWind::calculateWind()
 {
 	// ESP_LOGI(FNAME,"Straight wind, calculateWind()");
-	if( Flarm::gpsStatus() == false ) {
+	if( GpsVSensor::getValid() == false ) {
 		// GPS status not valid
 		ESP_LOGI(FNAME,"Restart Cycle: GPS Status invalid");
 		status="Bad GPS";
@@ -118,7 +119,7 @@ bool StraightWind::calculateWind()
 	// }
 
 	// Get current ground speed in km/h
-	mps_t cgs = Flarm::getGndSpeed();
+	mps_t cgs = gnd_speed.get(); // Flarm::getGndSpeed();
 
 	if( ! airborne.get() )
 	{
@@ -148,7 +149,7 @@ bool StraightWind::calculateWind()
 	}
 
 	// Get current true course from GPS .. Calculate average true course TC
-	averageTC = Flarm::getGndCourse();
+	averageTC = gnd_course.get();
 	// averageTC = Vector::normalize( averageTC + (ctc - averageTC) * 1/wind_gps_lowpass.get());
 	averageGS += (cgs -averageGS) * 1/wind_gps_lowpass.get();
 

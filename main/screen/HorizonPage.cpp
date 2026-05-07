@@ -13,11 +13,11 @@
 #include "math/Floats.h"
 
 #include "sensor/imu/AccMPU6050.h"
+#include "sensor/gps/GpsVSensor.h"
 #include "setup/SetupNG.h"
 #include "AdaptUGC.h"
 #include "Colors.h"
 #include "logdef.h"
-#include "Flarm.h"
 
 #include <cstdint>
 
@@ -203,14 +203,14 @@ void HorizonPage::draw( Quaternion q )
 
     // --- Magnetic Heading (HDG) / Track (TRK) ---
     static bool was_valid = false;
-    bool valid = (mag_hdt.getValid() || Flarm::gpsStatus());
+    bool valid = heading_tru.getValid() && GpsVSensor::getValid();
     if (valid) {
         int heading;
-        bool isMag = mag_hdt.getValid();
+        bool isMag = heading_tru.getValid();
         if (isMag) {
-            heading = fast_iroundf(Units::rad_to_deg(mag_hdt.get()));
+            heading = fast_iroundf(Units::rad_to_deg(heading_tru.get()));
         } else {
-            heading = fast_iroundf(Units::rad_to_deg(Flarm::getGndCourse()));
+            heading = fast_iroundf(Units::rad_to_deg(gnd_course.get()));
         }
         if (heading >= 0 && (heading != heading_old || !was_valid)) {
             int baseY = DISPLAY_H / 2 + BOX_SIZE / 2 + 25;

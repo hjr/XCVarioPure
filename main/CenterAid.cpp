@@ -273,7 +273,7 @@ void CenterAid::tick(int tick){
             if( gyro_last == 0 ){
                 gyro_last = gyro_footing;
             }
-            rad_t gpshead = Flarm::getGndCourse();
+            rad_t gpshead = gnd_course.get();
             rad_t gyro = gyro_footing;
             rad_t gyro_delta =  gyro - gyro_last;
             gyro_last = gyro;

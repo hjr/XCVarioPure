@@ -46,8 +46,9 @@ MagVSensor* MagVSensor::createMagVSensor() {
 bool MagVSensor::setup() {
     loadCalibration();
 
-    mag_hdm.setInvalid();
-    mag_hdt.setInvalid();
+    // todo later
+    heading_mag.setInvalid();
+    // heading_tru.setInvalid();
 
     return true;
 }
@@ -58,8 +59,8 @@ void MagVSensor::postProcess()
     if ( ++tick % 5 != 0 ) return; // only process every 5th reading
 
     if ( ! getHeadValid() ) {
-        mag_hdm.setInvalid();
-        mag_hdt.setInvalid();
+        heading_mag.setInvalid();
+        heading_tru.setInvalid();
         // ESP_LOGI(FNAME, "mag reading not valid");
         return;
     }
@@ -73,8 +74,9 @@ void MagVSensor::postProcess()
     // ESP_LOGI(FNAME, "mag (%.2f,%.2f,%.2f) heading %.2f", _processed.x, _processed.y, _processed.z, Units::rad_to_deg(heading));
 
     // publish the heading
-    mag_hdm.set(_lpf_heading.filter(heading));
-    mag_hdt.set(_lpf_heading.get() - Units::deg_to_rad(compass_declination.get()));
+    heading_mag.set(_lpf_heading.filter(heading));
+    // todo later
+    // heading_tru.set(_lpf_heading.get() - Units::deg_to_rad(compass_declination.get()));
 }
 
 // this is called from the protocol handler when a new magnetometer reading is received from CAN

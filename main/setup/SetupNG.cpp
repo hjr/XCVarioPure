@@ -431,8 +431,9 @@ SetupNG<int>  			synoptic_wind( "SYNWND", 0.0, false, SYNC_FROM_MASTER, VOLATILE
 SetupNG<float>  		swind_sideslip_lim( "SWSL", 2.0, false, SYNC_FROM_MASTER, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(0, 45.0, 0.1));
 SetupNG<int>  			ext_syn_wind( "EXSYNWND", 0.0, false, SYNC_BIDIR, VOLATILE ); // synoptic and
 SetupNG<int>  			ext_inst_wind( "EXINSWND", 0.0, false, SYNC_BIDIR, VOLATILE ); // instant external wind
-SetupNG<rad_t>  		mag_hdm( "HDM", -1.0, false, SYNC_FROM_MASTER, VOLATILE );
-SetupNG<rad_t>  		mag_hdt( "HDT", -1.0, false, SYNC_FROM_MASTER, VOLATILE );
+SetupNG<rad_t>  		heading_mag( "HDM", .0f, false, SYNC_FROM_MASTER, VOLATILE );
+SetupNG<rad_t>  		heading_tru( "HDT", .0f, false, SYNC_FROM_MASTER, VOLATILE );
+SetupNG<rad_t>  		heading_wca( "WCA", .0f, false, SYNC_FROM_MASTER, VOLATILE );
 SetupNG<mps_t>  		average_climb( "AVCL", 0.0, false, SYNC_NONE, VOLATILE );
 SetupNG<float>  		flap_pos( "FLPS", 0.0, false, SYNC_BIDIR, VOLATILE );
 SetupNG<pascal_t>  		statp( "STAT", 0.0, false, SYNC_FROM_MASTER, VOLATILE, calc_altis );
@@ -442,6 +443,7 @@ SetupNG<meter_t>  		altitude_isa( "ALT_ISA", 0.0, false, SYNC_NONE, VOLATILE ); 
 SetupNG<mps_t>  		ias( "IASV", 0.0, false, SYNC_NONE, VOLATILE); // derived from dynp in calc_speeds()
 SetupNG<mps_t>  		tas( "TASV", 0.0, false, SYNC_NONE, VOLATILE ); // derived from ias + OAT + altitude in calc_speeds()
 SetupNG<mps_t>  		gnd_speed( "GNDV", -1.0, false, SYNC_NONE, VOLATILE );
+SetupNG<rad_t>  		gnd_course( "GNDC", -10.0, false, SYNC_NONE, VOLATILE );
 SetupNG<meter_t>  		te_alt( "TEALT", 0.0, false, SYNC_FROM_MASTER, VOLATILE, feed_te_alt );
 SetupNG<mps_t>  		te_vario( "TEVA", 0.0, false, SYNC_NONE, VOLATILE ); // derived from te_alt in VarioFilter
 SetupNG<mps_t>  		te_netto( "TENET", 0.0, false, SYNC_NONE, VOLATILE ); // derived from te_alt in VarioFilter

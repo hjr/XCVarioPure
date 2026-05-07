@@ -10,6 +10,8 @@
 
 #include "math/Units.h"
 #include "math/Floats.h"
+#include "math/Trigonometry.h"
+#include "math/vector_3d.h"
 #include "vector.h"
 
 #include <cstdint>
@@ -36,6 +38,11 @@ union WindData
     // getters
     constexpr int getDeg2() const { return dir; }
     constexpr int getVDeg2() const { return dir + 360; } // get wind vector direction -> +180° shift
+    constexpr vector_f getVector() const {
+        int16_t wdir2 = (dir + 360) % 720;
+        float wval = static_cast<float>(val) / 8.f;
+        return vector_f(wval * fast_cos_idx(wdir2), wval * fast_sin_idx(wdir2), .0f);
+    }
     constexpr int getDeg() const { return dir/2; }
     constexpr mps_t getVal() const { return static_cast<float>(val) / 8.0f; }
     constexpr bool isValid() const { return raw != 0xffff; }

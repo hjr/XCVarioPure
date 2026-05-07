@@ -147,10 +147,10 @@ static void toyFeed(int count) // Called at 5Hz from clientLoop or sensorloop
         // Some extra NMEA sentences
         if( !(count%5) ) {
             if ( compass_nmea_hdm.get() ) {
-                ToyNmeaPrtcl->sendXCVNmeaHDM(mag_hdm.get());
+                ToyNmeaPrtcl->sendXCVNmeaHDM(heading_mag.get());
             }
             if ( compass_nmea_hdt.get() ) {
-                ToyNmeaPrtcl->sendXCVNmeaHDT(mag_hdt.get());
+                ToyNmeaPrtcl->sendXCVNmeaHDT(heading_tru.get());
             }
         }
     }

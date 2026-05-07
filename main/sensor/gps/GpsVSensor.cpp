@@ -7,12 +7,22 @@
  ***********************************************************/
 #include "GpsVSensor.h"
 
+#include "math/Floats.h"
+#include "math/Trigonometry.h"
+#include "math/Units.h"
+#include "wind/Wind.h"
+#include "vector.h"
+
+
+#include "logdef.h"
+
 constexpr int SENSOR_HISTORY_DURATION_MS = 10000;  // 10 sec
 constexpr int DUTY_CYCLE_MS = 1000; // 1Hz Flarm update rate
 constexpr size_t HSIZE = SENSOR_HISTORY_DURATION_MS / DUTY_CYCLE_MS;
 static __attribute__((aligned(4))) vector_f gps_buffer[ HSIZE + 1 ];
 
 GpsVSensor* gpsSensor = nullptr;
+
 
 GpsVSensor::GpsVSensor() : SensorTP<vector_f>(gps_buffer, HSIZE, DUTY_CYCLE_MS)
 {
@@ -28,8 +38,9 @@ GpsVSensor* GpsVSensor::createGpsVSensor() {
     return gpsSensor;
 }
 
-void GpsVSensor::inject(float lat, float lon)
+void GpsVSensor::inject(float lat, float lon, mps_t gndSpeed, rad_t gndCourse)
 {
+    // only the position goes into the sensor history
     vector_f v;
     v.x = lat;
     v.y = lon;
@@ -41,6 +52,9 @@ void GpsVSensor::inject(float lat, float lon)
         _lat_ref = lat;
         _lon_ref = lon;
     }
+    // publish current speed an course through blackboard for other consumers, e.g. wind calc
+    gnd_speed.set(gndSpeed);
+    gnd_course.set(gndCourse);
 }
 
 void GpsVSensor::setExternalAltitude(float alt) {
@@ -53,3 +67,58 @@ void GpsVSensor::setExternalAltitude(float alt) {
         }
     }
 }
+
+
+void GpsVSensor::postProcess() {
+    // check if we have a valid fix
+    if ( ! getHeadValid() ) {
+        // invalidate derived black board values
+        gnd_speed.setInvalid();
+        gnd_course.setInvalid();
+        heading_tru.setInvalid();
+        heading_wca.set(0.f);
+        return;
+    }
+
+    rad_t track = gnd_course.get();
+    // check on avg wind
+    if( ! tas.getValid() || ! synoptic_wind.getValid() ) {
+        heading_tru.set(track); // fall back
+        heading_wca.set(0.f);
+        return;
+    }
+
+    // calc heading (incl wind)
+    mps_t groundspeed = gnd_speed.get();
+    WindData wind = static_cast<WindData>(synoptic_wind.get());
+
+    // wind vector
+    vector_f wind_vec = wind.getVector();
+
+    // ground vector
+    vector_f ground_vec = {groundspeed * fast_cos_rad(track), groundspeed * fast_sin_rad(track), .0f};
+
+    // air vector = ground - wind
+    vector_f air_vec = ground_vec - wind_vec;
+    ESP_LOGI(FNAME, "wvec: (%.1f, %.1f) gvec: (%.1f, %.1f) -> avec: (%.1f, %.1f)", 
+        Units::mps_to_kmh(wind_vec.x), Units::mps_to_kmh(wind_vec.y), 
+        Units::mps_to_kmh(ground_vec.x), Units::mps_to_kmh(ground_vec.y), 
+        Units::mps_to_kmh(air_vec.x), Units::mps_to_kmh(air_vec.y));
+
+    // and for plausible airspeed result to prevent wild heading indications
+    float true_airspeed = tas.get();
+    if (!floatEqualFastAbs(air_vec.get_norm(), true_airspeed, 0.1f * true_airspeed)) {
+        heading_tru.set(track); // fallback to track if airspeed calculation seems off
+        ESP_LOGW(FNAME, "postProcess: airspeed mismatch: air_vec=%.1f vs TAS=%.1f, fallback to track", 
+            Units::mps_to_kmh(air_vec.get_norm()), Units::mps_to_kmh(true_airspeed));
+        return;
+    }
+    float headg = Vector::polar(air_vec.y, air_vec.x);
+    ESP_LOGI(FNAME, "computeHeading: track=%.1f groundspeed=%.1f tas=%.1f wind=%d@%.1f -> head=%.1f airspeed=%.1f wca=%.1f", 
+        Units::rad_to_deg(track), Units::mps_to_kmh(groundspeed), Units::mps_to_kmh(true_airspeed), wind.getDeg(), 
+        Units::mps_to_kmh(wind.getVal()), Units::rad_to_deg(headg), Units::mps_to_kmh(air_vec.get_norm()), 
+        Units::rad_to_deg(Vector::angleDiff(headg, track)));
+    heading_tru.set(headg);
+    heading_wca.set(Vector::angleDiff(headg, track));
+}
+

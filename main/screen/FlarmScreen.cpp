@@ -15,6 +15,7 @@
 #include "DrawDisplay.h"
 #include "driver/audio/ESPAudio.h"
 #include "sensor/imu/AccMPU6050.h"
+#include "sensor/gps/GpsVSensor.h"
 #include "Flarm.h"
 #include "vector.h"
 #include "math/Trigonometry.h"
@@ -72,8 +73,7 @@ void FlarmScreen::display(int mode)
     // ESP_LOGI(FNAME,"Target in B%.1f°, dH%dm, dV%dm", Units::rad_to_deg(Flarm::RelativeBearing), Flarm::HorizontalDistance, Flarm::RelativeVertical );
     // calc the vector to the target from distance and bearing in ground nav frame
     // add the wind correction angle
-    rad_t wca = getWCA();
-    rad_t rel_target_bearing = Vector::normalizePI(Flarm::RelativeBearing + wca);
+    rad_t rel_target_bearing = Vector::normalizePI(Flarm::RelativeBearing + heading_wca.get());
     vector_f bearingVec = vector_f(Flarm::HorizontalDistance * fast_cos_rad(rel_target_bearing),
                                Flarm::HorizontalDistance * fast_sin_rad(rel_target_bearing),
                                -Flarm::RelativeVertical); // NED frame

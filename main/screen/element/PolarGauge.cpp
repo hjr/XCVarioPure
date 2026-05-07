@@ -14,6 +14,7 @@
 #include "math/Trigonometry.h"
 #include "math/Floats.h"
 #include "math/Units.h"
+#include "sensor/gps/GpsVSensor.h"
 #include "Atmosphere.h"
 #include "Colors.h"
 #include "AdaptUGC.h"
@@ -22,8 +23,6 @@
 
 #include <cmath>
 #include <algorithm>
-
-rad_t getHeading(); // fixme
 
 extern AdaptUGC *MYUCG;
 static constexpr const ucg_color_t bow_color[4] = {{COLOR_DGREEN}, {COLOR_BLUE}, {COLOR_ORANGE}, {COLOR_RED}};
@@ -268,8 +267,8 @@ void PolarGauge::drawFigure(float a)
 
 void PolarGauge::drawWind(WindData s, WindData i)
 {
-    if ( wind_reference.get() == static_cast<int>(WindReference::WR_HEADING) ) {
-        rad_t heading = getHeading();
+    if ( wind_reference.get() == static_cast<int>(WindReference::WR_HEADING) && heading_tru.getValid() ) {
+        rad_t heading = heading_tru.get();
         ESP_LOGI(FNAME, "heading %.1f", Units::rad_to_deg(heading));
         s.inclHeading(heading);
         i.inclHeading(heading);

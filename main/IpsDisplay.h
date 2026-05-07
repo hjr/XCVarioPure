@@ -32,10 +32,6 @@ class FlapsBox;
 class Quaternion;
 class Connection;
 
-// fixme needs a home
-rad_t getHeading();
-rad_t getWCA();
-
 // Some geometry helper
 struct Point;
 using Vector2d = Point;

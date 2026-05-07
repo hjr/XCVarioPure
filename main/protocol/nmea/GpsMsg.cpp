@@ -7,12 +7,10 @@
  ***********************************************************/
 
 #include "GpsMsg.h"
-#include "Flarm.h"
 #include "sensor/gps/GpsVSensor.h"
 #include "wind/CircleWind.h"
 #include "wind/WindCalcTask.h"
 #include "driver/time/Clock.h"
-#include "setup/SetupNG.h"
 #include "math/Units.h"
 #include "sensor.h"
 #include "logdef.h"
@@ -84,27 +82,24 @@ dl_action_t GpsMsg::parseGPRMC(NmeaPlugin *plg)
     float lon = decodeNMEADegMin( s + word->at(4), *(s + word->at(5)) );
     float tmp;
     sscanf( s + word->at(6), "%f", &tmp );
-    Flarm::gndSpeed = Units::knots_to_mps(tmp);
+    mps_t gndSpeed = Units::knots_to_mps(tmp);
     sscanf( s + word->at(7), "%f", &tmp );
-    Flarm::gndCourse = Units::deg_to_rad(tmp);
+    rad_t gndCourse = Units::deg_to_rad(tmp);
     int valid_date_scan = sscanf( s + word->at(8),"%02d%02d%02d", &t.tm_mday, &t.tm_mon, &t.tm_year );
     // ESP_LOGI(FNAME,"SC: %d/%d/%d %02d:%02d:%02d ", t.tm_year, t.tm_mon, t.tm_mday, t.tm_hour, t.tm_min, t.tm_sec );
 
     // ESP_LOGI(FNAME,"G: %s",_gprmc );
-    // ESP_LOGI(FNAME,"parseGPRMC() GPS: %d, Speed: %3.1f mps, Track: %3.1f° warn:%c", Flarm::myGPS_OK, Flarm::gndSpeed, Units::rad_to_deg(Flarm::gndCourse), warn);
-    // ESP_LOGI(FNAME,"GP%s, GPS_OK:%d warn:%c T:%s D:%s", gprmc+3, myGPS_OK, warn, time, date  );
-    // set the GND speed
-    gnd_speed.set(Flarm::gndSpeed);
+    // ESP_LOGI(FNAME,"parseGPRMC() GPS: %c, Speed: %3.1f mps, Track: %3.1f° warn:%c", warn, gndSpeed, Units::rad_to_deg(gndCourse), warn);
+    // ESP_LOGI(FNAME,"GP%s, warn:%c T:%s D:%s", gprmc+3, warn, time, date  );
 
-    Flarm::myGPS_OK = (warn == 'A');
-    if (Flarm::myGPS_OK) {
-        if (!std::isnan(lat) && !std::isnan(lon)) {
+    if ( warn == 'A' ) {
+        if (!std::isnan(lat) && !std::isnan(lon) && gpsSensor) {
            // valid fix
-           gpsSensor->inject(lat, lon);
+           gpsSensor->inject(lat, lon, gndSpeed, gndCourse);
         }
         if ( BackgroundTaskQueue ) {
-            ESP_LOGD(FNAME,"Track: %3.2f, GPRMC: %s", Flarm::gndCourse, sm->_frame.c_str() );
-            circleWind->setNewSample(Vector(Flarm::gndCourse, Flarm::gndSpeed));
+            ESP_LOGD(FNAME,"Track: %3.2f, GPRMC: %s", gndCourse, sm->_frame.c_str() );
+            circleWind->setNewSample(Vector(gndCourse, gndSpeed));
 
             CalkTaskJob job(CalkTaskJob::CALK_TASK_EVENT_NEW_GPSPOSE);
             xQueueSend(BackgroundTaskQueue, &job, 0);
@@ -162,10 +157,10 @@ dl_action_t GpsMsg::parseGPGGA(NmeaPlugin *plg)
     {
         int numSat = atoi(sm->_frame.c_str() + word->at(6));
         ESP_LOGD(FNAME, "numSat=%d", numSat);
-        if ((numSat != Flarm::_numSat) && (wind_enable.get() & WA_BOTH))
+        if (gpsSensor && BackgroundTaskQueue)
         {
-            Flarm::_numSat = numSat;
-            if (BackgroundTaskQueue) {
+            gpsSensor->setNumSat(numSat);
+            if (numSat != gpsSensor->getNumSat()) {
                 CalkTaskJob job(CalkTaskJob::CALK_TASK_EVENT_NUMSAT);
                 job.setDetail(numSat);
                 xQueueSend(BackgroundTaskQueue, &job, 0);
