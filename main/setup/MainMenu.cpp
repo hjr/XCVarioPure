@@ -291,7 +291,7 @@ static int exitFactoryMenu(SetupMenuSelect* p){
             p->menuPrintLn("Bat. volt. adjust not done.", 9, 5);
             p->setSelect(0);
         }
-        else if ( accbias == axes_i16_abi() ) {
+        else if ( accSensor && (accbias == axes_i16_abi()) ) {
             // not done, show warning
             p->menuPrintLn("Accel. bias not done.", 9, 5);
             p->setSelect(0);
@@ -1100,13 +1100,15 @@ SetupMenu* SetupMenu::createFactorySetup() {
     SetupAction *dtest = new SetupAction("Display Test", do_display_test, 0);
     setup->addEntry(dtest);
 
-    SetupMenuSelect* bias_zero = new SetupMenuSelect("IMU Biases", RST_NONE, imu_calib);
-    bias_zero->addEntry("Cancel");
-    bias_zero->addEntry("Acc. Bias Calib.", 3);
-    bias_zero->addEntry("AccBias Check", 6);
-    bias_zero->addEntry("Gyro Reset", 4);
-    bias_zero->addEntry("Acc. Reset", 5);
-    setup->addEntry(bias_zero);
+    if( accSensor ){
+    	SetupMenuSelect* bias_zero = new SetupMenuSelect("IMU Biases", RST_NONE, imu_calib);
+    	bias_zero->addEntry("Cancel");
+    	bias_zero->addEntry("Acc. Bias Calib.", 3);
+    	bias_zero->addEntry("AccBias Check", 6);
+    	bias_zero->addEntry("Gyro Reset", 4);
+    	bias_zero->addEntry("Acc. Reset", 5);
+    	setup->addEntry(bias_zero);
+    }
 
     SetupMenuDisplay *leak = new LeakTest("Leak Test");
     setup->addEntry(leak);
