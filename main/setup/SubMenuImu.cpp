@@ -97,7 +97,7 @@ static void doImuCalibration(SetupMenuSelect* p) {
     float gnorm;
     bool abort = false;
     do {
-        abort = Rotary->readSwitch(500); // fixme -> interferes with MBOX and malfunct totaly when MBOX activ
+        abort = Rotary->readSwitch(500);
         gyro = gyroSensor->getAVG(1000) - gyroSensor->getBias();
         gnorm = gyro.get_norm();
         ESP_LOGI(FNAME, "gyro norm: %f, gcalm %d acalm %d", gnorm, gyroSensor->isResting(), accSensor->isResting());
