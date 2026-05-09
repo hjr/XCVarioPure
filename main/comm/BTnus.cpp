@@ -76,6 +76,8 @@ public:
     static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if,
                                     esp_ble_gatts_cb_param_t *param)
     {
+        if(!BLUEnus) return; // safety check
+
         switch (event)
         {
         case ESP_GATTS_MTU_EVT:
@@ -263,6 +265,23 @@ public:
             BLUEnus->_server_running = true;
             break;
         }
+        case ESP_GATTS_STOP_EVT:
+        {
+            if ( BLUEnus->service_handle == param->stop.service_handle ) {
+                ESP_LOGI(FNAME, "ESP_GATTS_STOP_EVT, service stopped");
+                esp_ble_gatts_delete_service(param->stop.service_handle);
+            }
+            break;
+        }
+        case ESP_GATTS_DELETE_EVT:
+        {
+            if ( BLUEnus->service_handle == param->stop.service_handle ) {
+                esp_ble_gatts_delete_service(param->stop.service_handle);
+                BLUEnus->service_handle = 0;
+                BLUEnus->_server_running = false;
+            }
+            break;
+        }
         case ESP_GATTS_ADD_CHAR_EVT:
         {
             const esp_bt_uuid_t *uuid = &param->add_char.char_uuid;
@@ -289,8 +308,6 @@ public:
         case ESP_GATTS_EXEC_WRITE_EVT:
         case ESP_GATTS_UNREG_EVT:
         case ESP_GATTS_ADD_INCL_SRVC_EVT:
-        case ESP_GATTS_DELETE_EVT:
-        case ESP_GATTS_STOP_EVT:
         case ESP_GATTS_OPEN_EVT:
         case ESP_GATTS_CANCEL_OPEN_EVT:
         case ESP_GATTS_CLOSE_EVT:
@@ -369,6 +386,7 @@ BTnus::BTnus() :
 BTnus::~BTnus()
 {
     stop();
+    BLUEnus = nullptr;
     core.release();
 }
 
@@ -460,9 +478,21 @@ bool BTnus::start()
 void BTnus::stop()
 {
     ESP_LOGI(FNAME, "BTle stop()");
-    esp_ble_gap_stop_advertising();
-    esp_ble_gatts_app_unregister(0x42);
-    esp_ble_gatts_stop_service(service_handle);
+    esp_ble_gap_stop_advertising(); // should actually wait for ESP_GAP_BLE_ADV_STOP_COMPLETE_EVT
+    vTaskDelay(100 / portTICK_PERIOD_MS);
+    if ( BLUEnus->my_conn_id != 0xFFFF ) {
+        ESP_LOGI(FNAME, "Closing connection with conn_id: %d", BLUEnus->my_conn_id);
+        esp_ble_gatts_close(my_gatts_if, BLUEnus->my_conn_id);
+        BLUEnus->my_conn_id = 0xFFFF;
+    }
+    esp_ble_gatts_stop_service(service_handle); // -> ESP_GATTS_STOP_EVT
+    // wait max. 2 seconds for service to be stopped and deleted, otherwise just continue with unregistration
+    int wait_time = 0;
+    while(_server_running && wait_time < 2000) { // wait for service to be stopped and deleted
+        vTaskDelay(50 / portTICK_PERIOD_MS);
+        wait_time += 50;
+    }
+    esp_ble_gatts_app_unregister(my_gatts_if); // -> ESP_GATTS_UNREG_EVT
     _server_running = false;
     my_gatts_if = ESP_GATT_IF_NONE;
 }

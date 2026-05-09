@@ -618,9 +618,7 @@ uint8_t DeviceManager::removeDevice(DeviceId did, bool nvsave)
             }
             else if ( itf == BLUEnus ) {
                 ESP_LOGI(FNAME, "stopping BTle");
-                BTnus *tmp = BLUEnus;
-                BLUEnus = nullptr;
-                delete tmp;
+                delete BLUEnus; // organizes the proper nullptr setting of global pointer in destructor
                 ret = RESTART_BT_CHANGE; // restart needed
             }
             else if ( itf == S1 ) {
