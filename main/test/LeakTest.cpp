@@ -3,14 +3,14 @@
 #include "sensor/press_diff/AirspeedSensor.h"
 #include "sensor/pressure/PressureSensor.h"
 #include "screen/DrawDisplay.h"
+#include "setup/SetupNG.h"
 #include "AdaptUGC.h"
 #include "math/Units.h"
 #include "sensor.h"
 #include "logdefnone.h"
-#include <cmath>
-#include <algorithm>
 
 #include <cmath>
+#include <algorithm>
 
 #define LOOPS 150
 
@@ -51,9 +51,10 @@ void LeakTest::display(int mode) {
     menuPrintLn(_title.c_str(), 0);
 
     if ( !asSensor || !baroSensor || !teSensor ) {
-        menuPrintLn("Missing sensors. Pls set", 2);
-        menuPrintLn("to \"Master\" and try again.", 3);
-        return;
+        menuPrintLn("Missing sensors.", 2);
+        menuPrintLn("Start as \"Master\".", 3);
+        xcv_role.set(MASTER_ROLE);
+        reBoot(2);
     }
 
     constexpr float SPEED_THRESHOLD = 1.0f;    // %

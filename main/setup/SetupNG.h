@@ -76,7 +76,6 @@ typedef enum e_compasss_sensor_type { CS_DISABLE=0, CS_I2C=1, CS_CAN=3 } e_compa
 typedef enum e_sync { SYNC_NONE, SYNC_FROM_MASTER, SYNC_FROM_CLIENT, SYNC_BIDIR } e_sync_t;       // determines if data is synched from/to client. BIDIR means sync at commit from both sides
 typedef enum e_reset { RESET_NO, RESET_YES } e_reset_t;   // determines if data is reset to defaults on factory reset
 enum e_volatility { VOLATILE, PERSISTENT };  // stored in RAM only, or additionally in FLASH
-typedef enum e_can_mode { CAN_MODE_MASTER, CAN_MODE_CLIENT, CAN_MODE_STANDALONE } e_can_mode_t;
 enum e_altimeter_source { ALT_TE_SENSOR, ALT_BARO_SENSOR, ALT_EXTERNAL };
 typedef enum e_s2f_arrow_color { AC_WHITE_WHITE, AC_BLUE_BLUE, AC_GREEN_RED } e_s2f_arrow_color_t;
 typedef enum e_vario_needle_color { VN_COLOR_ORANGE, VN_COLOR_CREAM, VN_COLOR_WHITE }  e_vario_needle_color_t;
