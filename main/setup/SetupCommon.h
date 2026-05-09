@@ -22,6 +22,7 @@ struct t_setup_flags {
     uint8_t _quant : 3; // quantity
     bool _dirty    : 1; // has changed
     bool _valid    : 1; // valid data
+	bool _hidden   : 1; // do not show in config backup
 };
 
 class SetupCommon {
@@ -51,6 +52,7 @@ public:
 	uint8_t getSync() const { return flags._sync; }
     bool getValid() const { return flags._valid; }
     void setInvalid() { flags._valid = false; }
+    bool isHidden() const { return flags._hidden; }
 
 	static bool initSetup();  // returns false if at least one entry was blank
 	static char *getID();
@@ -78,7 +80,7 @@ public:
 protected:
 	virtual void setDefault() = 0;
 	const std::string_view _key; // unique identification TAG
-	t_setup_flags flags = {false, false, 0, 0, false, false};
+	t_setup_flags flags = {false, false, 0, 0, false, false, false};
 	void (*_action)(); // action on a value change
 
 private:

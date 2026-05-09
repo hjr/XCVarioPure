@@ -14,21 +14,18 @@
 #include "driver/audio/ESPAudio.h"
 #include "glider/Polars.h"
 #include "sensor.h"
-#include "wind/StraightWind.h"
-#include "wind/CircleWind.h"
+#include "wind/Wind.h"
 #include "driver/audio/ESPAudio.h"
 #include "Flap.h"
 #include "comm/DeviceMgr.h"
 #include "comm/CanBus.h"
 #include "comm/Configuration.h"
 #include "comm/SerialLine.h"
-#include "protocol/NMEA.h"
 #include "driver/time/AliveMonitor.h"
 #include "protocol/nmea/SeeYouMsg.h"
 #include "protocol/nmea/XCVSyncMsg.h"
 #include "screen/element/Battery.h"
 #include "screen/element/Altimeter.h"
-#include "screen/element/PolarGauge.h"
 #include "screen/element/MultiGauge.h"
 #include "sensor/press_diff/AirspeedSensor.h"
 #include "Atmosphere.h"
@@ -47,7 +44,7 @@
 
 template <typename T>
 SetupNG<T>::SetupNG( const char *akey, T adefault, bool reset, e_sync_t sync, e_volatility vol,
-        void (* action)(), quantity_t quant, const limits_t *l) :
+        void (* action)(), quantity_t quant, const limits_t *l, bool hidden) :
     SetupCommon(akey),
     _default(adefault),
     _limt(l)
@@ -57,9 +54,10 @@ SetupNG<T>::SetupNG( const char *akey, T adefault, bool reset, e_sync_t sync, e_
     // 	ESP_LOGE(FNAME,"SetupNG(%s) key > 15 char !", akey );
     // }
     flags._reset = reset;
-    flags._sync = sync;
     flags._volatile = vol;
+    flags._sync = sync;
     flags._quant = (uint8_t)quant;
+    flags._hidden = hidden;
     _action = action;
 }
 
@@ -480,7 +478,7 @@ SetupNG<float>  		deadband_neg("DEADBAND_NEG" , -0.3, true, SYNC_BIDIR, PERSISTE
 
 SetupNG<float>  		wifi_max_power( "WIFI_MP" , 50, true, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(10.0, 100.0, 5.0));
 SetupNG<int>  			factory_reset( "FACTORY_RES" , 0, true ); // factory reset flag
-SetupNG<int>  			factory_menu( "FACTMENU" , 0, false ); // 0: factory factory menu 1: normal setup menu
+SetupNG<int>  			factory_menu( "FACTMENU" , 0, false, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, nullptr, true ); // 0: factory factory menu 1: normal setup menu
 SetupNG<int>  			alt_select( "ALT_SELECT" , ALT_BARO_SENSOR );
 SetupNG<int>  			fl_auto_transition( "FL_AUTO" , 0 );
 SetupNG<int>  			alt_display_mode( "ALT_DISP_MODE" , Altimeter::MODE_QNH );

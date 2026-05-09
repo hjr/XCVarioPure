@@ -173,7 +173,7 @@ bool SetupCommon::syncEntry( int entry ){
 void SetupCommon::giveConfigChanges( httpd_req *req, bool log_only ){
 	ESP_LOGI(FNAME,"giveConfigChanges");
 	for(int i = 0; i < instances.size(); i++ ) {
-		if( instances[i]->isDefault() == false ) {
+		if( instances[i]->isDefault() == false && instances[i]->isHidden() == false ) {
 			std::string val = instances[i]->getValueAsStr();
 			if( ! val.empty() ){
 				std::string cfg(instances[i]->key());
@@ -199,9 +199,9 @@ int SetupCommon::restoreConfigChanges( int len, char *data ){
 	int i=0;
 	int valid=0;
 	while( std::getline(fs, line, '\n') ) {
-		if( line.find( "xcvario-config" ) != std::string::npos ){
+		if( line.find( "xcvario-" ) != std::string::npos ){
 			valid++;
-			ESP_LOGI(FNAME,"found xcvario-config, valid=%d", valid );
+			ESP_LOGI(FNAME,"found xcvario-xxx, valid=%d", valid );
 		}
 		else if( line.find( "text/comma-separated-values" ) != std::string::npos ){
 			valid++;

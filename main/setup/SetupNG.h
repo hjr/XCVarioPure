@@ -136,7 +136,8 @@ class SetupNG : public SetupCommon {
             e_volatility vol = PERSISTENT,
             void (*action)() = nullptr,
             quantity_t quant = quantity_t::QUANT_NONE,
-            const limits_t* l = nullptr);
+            const limits_t* l = nullptr,
+            bool hidden = false);
     virtual ~SetupNG() = default;
     char typeName(void) const override;
     std::string getValueAsStr() const override;
