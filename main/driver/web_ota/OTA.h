@@ -17,6 +17,7 @@ class OTA final : public SetupMenuDisplay, public Clock_I
     ~OTA();
     void display(int) override;
     void press() override;
+    void longPress() override {} // prevent long press from going back, as we want to stay in the OTA screen
     bool tick() override;
 
   private:
