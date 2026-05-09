@@ -532,6 +532,7 @@ void system_startup(void *args){
 		.isr_cpu_id = ESP_INTR_CPU_AFFINITY_AUTO,
 		.intr_flags = ESP_INTR_FLAG_IRAM
 	};
+    battery_voltage.set(12.0); // set initial value, to not have 0V or a nan somewhere.
 	ESP_ERROR_CHECK(spi_bus_initialize(SPI3_HOST, &buscfg, SPI_DMA_CH_AUTO));
 
 	MYUCG = new AdaptUGC();
