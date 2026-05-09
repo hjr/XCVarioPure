@@ -33,7 +33,7 @@ public:
     bool probe();
     bool setup();
     bool hasHeatCtlr() const { return _pictrl != nullptr; }
-
+    float getTemperature() const { return _MPUdev.getTemperature(); }
     ImuType getImuType() const { return _who_typ; }
     temp_status_t getTempStatus() const;
     static Quaternion getDefaultImuReference(bool include_factory_ref=true);

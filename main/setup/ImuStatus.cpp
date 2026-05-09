@@ -1,36 +1,27 @@
 #include "ImuStatus.h"
 
-#include "screen/DrawDisplay.h"
-#include "AdaptUGC.h"
-#include "math/Units.h"
-#include "sensor.h"
-#include "logdefnone.h"
-#include <cmath>
-#include <algorithm>
-#include <cmath>
 #include "sensor/imu/AccMPU6050.h"
 #include "sensor/imu/GyroMPU6050.h"
-#include "math/Floats.h"
 
 //
-// This test checks for leaks in the pressure system by monitoring the stability of the 
-// static and total pressure readings over time.
-// It collects readings every 5 seconds for up to 1 minute and compares them against
-// the initial baseline.
-// If the readings deviate beyond defined thresholds, it indicates a potential leak.
 //
+//
+
+void ImuStatus::press(){
+	go_on = false;
+}
 
 void ImuStatus::display(int mode) {
-    clear(true);
+    clear();
     menuPrintLn(_title.c_str(), 0);
 
     // we show the status if Accelerator, Gyro, Heating
     char buf[64];
-    clear(true); // filled font true
-    while(1){
+    clear(); // filled font true
+    while(go_on){
     	int idx=1;
     	menuPrintLn("Acccelerator [g]:", idx++ );
-    	if( Rotary->readSwitch(200) ) { break; } // exit by press
+    	vTaskDelay(pdMS_TO_TICKS(200));
     	if( accSensor->getMpu().hasHeatCtlr() ){
     		const char * tstat;
     		switch( accSensor->getTempStatus() ){
