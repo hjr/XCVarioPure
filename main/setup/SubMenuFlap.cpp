@@ -127,7 +127,6 @@ static int flap_cal_act(SetupMenuSelect *p)
         MYUCG->setFont(ucg_font_ncenR14_hr, true);
         MYUCG->printf("Saved");
         vTaskDelay(pdMS_TO_TICKS(800));
-        p->clear();
     }
     p->setSelect(0);
     return 0;

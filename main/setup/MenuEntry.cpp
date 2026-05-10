@@ -318,8 +318,6 @@ bool MenuEntry::showhelp(bool inln)
 void MenuEntry::clear() {
     MYUCG->setColor(COLOR_BLACK);
     MYUCG->drawBox(0, 0, dwidth, dheight);
-    MYUCG->setFont(ucg_font_ncenR14_hr);
-    MYUCG->setPrintPos(1, 30);
     MYUCG->setColor(COLOR_WHITE);
 }
 
@@ -329,6 +327,5 @@ void MenuEntry::clearHelpLines(int16_t ln) const
 	int16_t hy = ln * LINE_HEIGHT + 2;
 	MYUCG->setColor(COLOR_BLACK);
 	MYUCG->drawBox(0, hy, dwidth, dheight-hy-1);
-	MYUCG->setFont(ucg_font_ncenR14_hr);
 	MYUCG->setColor(COLOR_WHITE);
 }
