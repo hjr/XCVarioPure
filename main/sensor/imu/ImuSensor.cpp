@@ -22,6 +22,7 @@
 
 #include <string_view>
 #include <algorithm> // for std::clamp
+#include <cmath>
 
 
 static const std::string_view TYPES[] = { "UNKNOWN", "MPU6050", "MPU6500", "ICM20602", "ICM20689" };
@@ -29,23 +30,25 @@ static const std::string_view TYPES[] = { "UNKNOWN", "MPU6050", "MPU6500", "ICM2
 
 mpud::MPU myMPU; // TODO as optional resource
 
+// for heat control, optimized by for fast swing in, stable operation and low gap to target
 // for heat control
 struct PIController {
-    const float Kp = 0.3f;
-    const float Ki = 0.033f;
-    const float dt = 1.0f; // seconds
+    const float Kp = 0.38f;
+    const float Ki = 4.0/255;
     float I  = 0.0f;
 
     float update(float set, float meas) {
         float e = set - meas;
-        float u = Kp * e + Ki * I;
+        float u = Kp * e + I;
 
-        // anti-windup
-        if ((u > 0.0f && u < 1.0f) || (e > 0))
-            I += e * dt;
+        // anti-windup and add integrator when not oversteerd and close
+        if ((u > 0.0f && u < 1.0f) && (fabs(e) < 4.0f))
+            I += e*Ki;
+        I = std::clamp(I, -1.0f, 1.0f);
+        float pwm=std::clamp(u, 0.0f, 1.0f);
 
-        I = std::clamp(I, -20.0f, 20.0f);
-        return std::clamp(u, 0.0f, 1.0f);
+        ESP_LOGI(FNAME, "MPU Temp Control: T=%.2f Target=%.2f PWM=%d I:%.3f P:%.3f", meas, set, int(pwm*255), I, Kp*e );
+        return pwm;
     }
 };
 
@@ -181,6 +184,7 @@ void MpuImu::zeroAccBias() {
     accl_bias.set({});
     myMPU.setAccelOffset({});
 }
+
 
 // Concatenation of ground angle of attack and the basic reference calibration rotation
 Quaternion MpuImu::concatGaaAndImuReference(const degree_t gAA, const Quaternion& basic) {
@@ -390,7 +394,7 @@ void MpuImu::temp_control() {
     unsigned pwm = (unsigned)(_pictrl->update(mpu_target_temp, temp) * 255.f);
     ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, pwm);
     ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0);
-    // ESP_LOGI(FNAME, "MPU Temp Control: T=%.2f Target=%.2f PWM=%d", temp, mpu_target_temp, pwm);
+    // ESP_LOGI(FNAME, "MPU Temp Control: T=%.2f Target=%.2f PWM=%d Lock:%d", temp, mpu_target_temp, pwm, (int)getTempStatus() );
 }
 
 void MpuImu::clearpwm() {
