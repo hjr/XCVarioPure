@@ -2,22 +2,24 @@
 
 #include "sensor/imu/AccMPU6050.h"
 #include "sensor/imu/GyroMPU6050.h"
+#include "logdefnone.h"
 
 //
 //
 //
 
 void ImuStatus::press(){
+	ESP_LOGI(FNAME, "press() %d", go_on);
 	go_on = false;
 }
 
 void ImuStatus::display(int mode) {
+	ESP_LOGI(FNAME, "display() %d", go_on);
     clear();
     menuPrintLn(_title.c_str(), 0);
-
     // we show the status if Accelerator, Gyro, Heating
     char buf[64];
-    clear(); // filled font true
+    clear();
     while(go_on){
     	int idx=1;
     	menuPrintLn("Acccelerator [g]:", idx++ );

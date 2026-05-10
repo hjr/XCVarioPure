@@ -9,6 +9,7 @@
 #include "setup/SetupMenu.h"
 #include "setup/SetupMenuSelect.h"
 #include "setup/SetupMenuValFloat.h"
+#include "setup/ImuStatus.h"
 #include "setup/SetupNG.h"
 #include "sensor/imu/AccMPU6050.h"
 #include "sensor/imu/GyroMPU6050.h"
@@ -483,6 +484,9 @@ void system_menu_create_hardware_imu(SetupMenu *top) {
         gyro_reset->addEntry("Cancel", 0);
         gyro_reset->addEntry("Gyro Reset", 4);
         top->addEntry(gyro_reset);
+
+        SetupMenuDisplay* imus = new ImuStatus("Imu Status");
+        top->addEntry(imus);
     }
 	SetupMenuValFloat* tcontrol = new SetupMenuValFloat("Temp Control", "°C", nullptr, &mpu_temperature, RST_NONE, false);
     tcontrol->setPrecision(0);
