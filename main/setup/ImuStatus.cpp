@@ -47,7 +47,7 @@ void ImuStatus::display(int mode) {
             snprintf(buf, sizeof(buf), "No Heating");
         }
         menuPrintLn(buf, idx++);
-        const char* rest = accSensor->isResting() ? "  Resting      " : "  -- Moving --";
+        const char* rest = accSensor->isResting() ? "  Resting        " : "  -- Moving --";
         menuPrintLn(rest, idx++);
         vector_f attv = accSensor->getAttVector();
         snprintf(buf, sizeof(buf), "  X:%1.3f Y:%1.3f Z:%1.3f   ", attv.x, attv.y, attv.z);
@@ -55,7 +55,7 @@ void ImuStatus::display(int mode) {
         snprintf(buf, sizeof(buf), "  Pitch %.1f° Roll: %.1f°   ", accSensor->getPitchDeg(), accSensor->getRollDeg());
         menuPrintLn(buf, idx++);
         menuPrintLn("Gyro [°/s]:", idx++);
-        rest = gyroSensor->isResting() ? "  Resting      " : "  -- Moving --";
+        rest = gyroSensor->isResting() ? "  Resting        " : "  -- Moving --";
         menuPrintLn(rest, idx++);
         const vector_f& gyro = gyroSensor->getRef();
         snprintf(buf, sizeof(buf), "  X:%1.2f Y:%1.2f Z:%1.2f     ", rad2deg(gyro.x), rad2deg(gyro.y), rad2deg(gyro.z));
