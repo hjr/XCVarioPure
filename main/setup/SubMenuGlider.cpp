@@ -109,7 +109,7 @@ void glider_menu_create(SetupMenu *top) {
 	if( Polars::hasFlaps(Speed2Fly.getMyGliderIdx()) ) {
 		// last chance to create the FLAP object
 		if( ! FLAP ) {
-			FLAP = Flap::theFlap();
+			Flap::theFlap();
 		}
 		tmp_menu->unlock();
 		tmp_menu->setBuzzword();

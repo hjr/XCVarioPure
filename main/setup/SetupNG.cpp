@@ -345,7 +345,6 @@ void flap_act() {
     }
     else if ( FLAP ) {
         delete FLAP;
-        FLAP = nullptr;
     }
 }
 

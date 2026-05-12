@@ -125,7 +125,6 @@ private:
     AnalogInput *sensorAdc = nullptr;
     std::vector<FlapLevel> flevel;
     bool _sens_order = true; // if true, sensval are in descending order from flap level 0, 1, 2, ...
-    bool _legacy_imported = false;
     static const FlapLevel dummy;
     int rawFiltered = 0;
 };

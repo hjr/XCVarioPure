@@ -50,13 +50,9 @@ static const std::array<FLConf, Flap::MAX_NR_POS> FL_STORE = {{
 // Flap class implementation
 Flap::Flap() {
     configureADC();
-    if ( initFromNVS() ) {
-        // migrated from old settings may need to sort levels according speed.
-        modLevels();
-    }
-    else {
-        prepLevels();
-    }
+    initFromNVS();
+    prepLevels();
+    FLAP = this;
 }
 Flap::~Flap() {
     if (sensorAdc) {
@@ -64,6 +60,7 @@ Flap::~Flap() {
         sensorAdc = nullptr;
     }
     _instance = nullptr;
+    FLAP = nullptr;
 }
 Flap *Flap::theFlap() {
     if (!_instance) {
@@ -369,64 +366,6 @@ bool Flap::initFromNVS()
         }
     }
 
-    if ( flevel.size() == 0 && ! _legacy_imported ) {
-        // try to read from old settings
-        const char *old_speed[] = {"FLAP_MINUS_3", "FLAP_MINUS_2", "FLAP_MINUS_1", "FLAP_0", "FLAP_PLUS_1", "FLAP_PLUS_2", ""};
-        const char *old_lblidx[] = {"WKLM3", "WKLM2", "WKLM1", "WKL0", "WKLP1", "WKLP2", "WKLP3"};
-        const char *old_sens[] = {"WKSM3", "WKSM2", "WKSM1", "WKSP0", "WKSP1", "WKSP2", "WKSP3"};
-        // legacy predefined flap labels         // -9,..,-2,-1,+0,+1,+2,..,+9
-        const std::string_view flap_labels[55] = { "-9", "-8", "-7", "-6", "-5", "-4", "-3", "-2", "-1", "+0",  // 9
-            "+1", "+2", "+3", "+4", "+5", "+6", "+7", "+8", "+9",     // 18
-            " 0", " 1", " 2", " 3", " 4", " 5", " 6", " 7", " 8", " 9", "10",  // 29
-            "11", "12", "13", "14", "15", "16", "17", "18", "19", "20",   // 39
-            " N", " L", " S", "3a", "3b", " A", "21", "22", "23", "24", "25", "26", "27", "T", "" };  // 55
-
-        ESP_LOGI(FNAME, "migrating old flap settings");
-        float flstart, flend;
-        if ( SetupCommon::getOldFloat("FL_NEG_M", flstart) && SetupCommon::getOldFloat("FL_POS_M", flend) ) {
-            // old settings with min/max flags
-            const int end = std::min((int)(flend - flstart + 1), MAX_NR_POS);
-            ESP_LOGI( FNAME, "found old flap range %.1f to %.1f, levels %d", flstart, flend, end ); 
-            int old_iter = flstart + 3;
-            for ( int i=0; i<end; i++ ) {
-                kmh_t nvsspeed;
-                bool good = SetupCommon::getOldFloat( old_speed[old_iter], nvsspeed );
-                if ( ! good && old_iter == (MAX_NR_POS-1) ) {
-                    // last position is not defined  for legacy, so default
-                    // last entry must be the smallest speed
-                    nvsspeed = std::min(flevel.back().nvs_speed - 20.0f, Units::mps_to_kmh(GENERAL_V_MIN));
-                    if ( nvsspeed < 1.f ) {
-                        nvsspeed = 1.f;
-                    }
-                    good = true;
-                }
-                int lblidx;
-                good &= SetupCommon::getOldInt( old_lblidx[old_iter], lblidx );
-                int sensval;
-                good &= SetupCommon::getOldInt( old_sens[old_iter], sensval );
-                if ( good && lblidx >=0 && lblidx < 55 ) {
-                    int ilabel;
-                    std::strncpy((char*)&ilabel,flap_labels[lblidx].data(), 4);
-                    ((char*)&ilabel)[3] = '\0';
-                    flevel.push_back( FlapLevel{ nvsspeed, ilabel, sensval } );
-                    ESP_LOGI( FNAME, "migrated old flap level %d %s: %.1f (%d)", i, (char*)&ilabel, nvsspeed, sensval );
-                }
-                old_iter++;
-            }
-            // convert takeoff flap setting
-            float wktoflap;
-            if ( SetupCommon::getOldFloat("FLAPTO", wktoflap) ) {
-                // map to new flap index
-                int nto = wktoflap - flstart;
-                nto = std::clamp(nto, 0, (int)flevel.size()-1);
-                ESP_LOGI( FNAME, "migrated old takeoff flap setting: %.1f mapped to index %d", wktoflap, nto );
-                flap_takeoff.set( nto, false, false );
-            }
-        }
-        _legacy_imported = true; // avoid repeated attempts
-
-        return true;
-    }
     ESP_LOGI(FNAME, "found %d flap levels", (int)flevel.size());
     return false;
 }

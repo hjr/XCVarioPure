@@ -1026,7 +1026,7 @@ void system_startup(void *args){
     ScreenRoot::initScreens();
 
     if (flapbox_enable.get()) {
-        FLAP = Flap::theFlap();  // check on FLAP pointer further on
+        Flap::theFlap();  // check on FLAP pointer further on
     }
     if (hardwareRevision.get() != XCVARIO_20) {
         gpio_pullup_en(GPIO_NUM_34);  // fixme gear warning input
