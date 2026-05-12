@@ -14,7 +14,7 @@
 class Battery : public ScreenElement
 {
 public:
-    Battery(int16_t cx, int16_t cy, bool sbs=false);
+    Battery(int16_t cx, int16_t cy);
     // API
     using BatteryDisplay = enum { BAT_NONE, BAT_PERCENTAGE, BAT_VOLTAGE, BAT_VOLTAGE_BIG };
     void setThresholds();
@@ -27,5 +27,4 @@ private:
     int _charge = -1;
     int _yellow;
     int _red;
-    bool _side_text = false;
 };

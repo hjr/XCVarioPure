@@ -651,8 +651,7 @@ static void screens_menu_create_vario(SetupMenu *top) {
     batv->setHelp("Display battery charge state either in Percentage e.g. 75% or Voltage e.g. 12.5V");
     batv->addEntry("Disable");
     batv->addEntry("Percentage");
-    batv->addEntry("Voltage");
-    batv->addEntry("Voltage Big");
+    batv->addEntry("Voltage", 2);
     top->addEntry(batv);
 }
 
