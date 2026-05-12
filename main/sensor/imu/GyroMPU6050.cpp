@@ -71,7 +71,7 @@ void GyroMPU6050::postProcess() {
     static bool rest_old = false;
     const vector_f& gyro = getHead();
 
-    _processed = gyro; //  - _bias_estimator.getBias(); // a corrected measurment
+    _processed = gyro - _bias_estimator.getBias(); // a corrected measurment
     rps_t gate = Units::deg_to_rad(gyro_gating.get());
     _processed.x = abs(_processed.x) < gate ? 0.0 : _processed.x;
     _processed.y = abs(_processed.y) < gate ? 0.0 : _processed.y;
@@ -80,22 +80,9 @@ void GyroMPU6050::postProcess() {
 
     // feed the bias filter
     _bias_estimator.update(gyro, (_isResting > 0) && accSensor->isResting());
-    vector_f bias = _bias_estimator.getBias();
     if ( rest != rest_old) {
         ESP_LOGI(FNAME, "rest state changed: %c -> %c (%d)", rest_old ? 'R' : 'M', rest ? 'R' : 'M', _isResting);
         rest_old = rest;
-    }
-    if ( rest ) {
-        // ESP_LOGI(FNAME, "gyro bEKF: %c - %f/%f/%f (%f/%f/%f)", rest ? 'R' : 'M', bias.x, bias.y, bias.z, _processed.x, _processed.y, _processed.z);
-        if ( !airborne.get() // only on the ground
-            && _restTimer > 30000 // only after a long rest (30sec)
-            && bias.get_norm() > GyroMPU6050::GYRO_THRESHOLD // only push if bias is > threshold
-            && _bias_update < 3 
-            && !gflags.inSimulationMode ) { // only push if we have a stable bias and are airborne
-            pushBias(bias);
-            resetRest(); // to avoid multiple pushes in a row, only update bias once per rest phase
-            _bias_update++;
-        }
     }
 }
 
@@ -130,6 +117,11 @@ bool GyroMPU6050::detectRest() {
         _isResting = 0;
     }
     return _isResting > 1;
+}
+
+void GyroMPU6050::saveBias() {
+    vector_f bias = _bias_estimator.getBias();
+    pushBias(bias);
 }
 
 void GyroMPU6050::pushBias(vector_f& bias) {

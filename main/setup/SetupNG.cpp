@@ -31,6 +31,7 @@
 #include "Atmosphere.h"
 #include "sensor/VarioFilter.h"
 #include "sensor/imu/AccMPU6050.h"
+#include "sensor/imu/GyroMPU6050.h"
 #include "logdefnone.h"
 
 #include <freertos/FreeRTOS.h>
@@ -384,9 +385,15 @@ void chg_display_orientation(){
 
 static void ch_airborne_state() {
     ESP_LOGI(FNAME, "airborne state changed");
-    if (airborne.get() && logged_tests.find("FAILED") == std::string::npos) {
-        logged_tests.clear();
-        logged_tests.shrink_to_fit();
+    if (airborne.get()) {
+        // take-off triggered
+        if (logged_tests.find("FAILED") == std::string::npos) {
+            logged_tests.clear();
+            logged_tests.shrink_to_fit();
+        }
+        if (gyroSensor && !gflags.inSimulationMode) {
+             gyroSensor->saveBias();
+        }
     }
 }
 

@@ -14,6 +14,9 @@
 
 
 class MpuImu;
+class GyroMPU6050;
+
+extern GyroMPU6050 *gyroSensor;
 
 class GyroMPU6050 final : public SensorTP<vector_f>
 {
@@ -33,10 +36,11 @@ public:
     void resetRest();
     inline float getAxD() const { return _gyro_lpf_dwydt.get(); }
     bool detectRest();
-    void pushBias(vector_f& bias);
+    void saveBias();
     inline const vector_f& getBias() const { return _bias_estimator.getBias(); }
 
 private:
+    void pushBias(vector_f& bias);
     MpuImu& _my_mpu;
     const float _scale;
     // low-pass filter for gyro y-axis to get dw/dt
@@ -46,7 +50,5 @@ private:
     uint8_t _bias_update = 0;
     int _restTimer = 0; // milliseconds since last movement
     uint8_t _isResting = 0; // goes in three stages: 0 = moving, 1 = long half rest (bias update enforced), 2 = rest 
-
 };
 
-extern GyroMPU6050 *gyroSensor;
