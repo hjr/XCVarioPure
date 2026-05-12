@@ -47,12 +47,12 @@ public:
 	bool mustReset() const { return flags._reset; }
 	const char* key() const { return _key.data(); }
 	bool sync();
-	bool getDirty() const { return flags._dirty; }
-	void setDirty() { flags._dirty = true; }
-	uint8_t getSync() const { return flags._sync; }
-    bool getValid() const { return flags._valid; }
-    void setInvalid() { flags._valid = false; }
-    bool isHidden() const { return flags._hidden; }
+	inline bool getDirty() const { return flags._dirty; }
+	inline void setDirty() { flags._dirty = true; }
+	inline bool getSync() const { return flags._sync; }
+    inline bool getValid() const { return flags._valid; }
+    inline void setInvalid() { flags._valid = false; }
+    inline bool isHidden() const { return flags._hidden; }
 
 	static bool initSetup();  // returns false if at least one entry was blank
 	static char *getID();

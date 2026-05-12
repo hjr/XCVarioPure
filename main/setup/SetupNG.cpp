@@ -182,13 +182,14 @@ bool SetupNG<T>::set( T aval, bool dosync, bool doAct ) {
         flags._valid = true;
     }
 
-    if( _value == aval && !dosync && !doAct) {
+    if( _value != aval) {
         // ESP_LOGI(FNAME,"Value already in config: %s(%s)", _key.data(), getValueAsStr().c_str() );
-        return( true );
+        _value = aval;
+        setDirty();
     }
 
     _value = aval;
-    if ( dosync ) {
+    if ( dosync && getDirty() ) {
         // ESP_LOGI( FNAME,"Syncing %s after set", _key.data());
         sync();
     }
@@ -197,10 +198,6 @@ bool SetupNG<T>::set( T aval, bool dosync, bool doAct ) {
             (*_action)();
         }
     }
-    if( flags._volatile == VOLATILE ){
-        return true;
-    }
-    setDirty();
     // ESP_LOGI(FNAME,"set_%s(%s)", _key.data(), getValueAsStr().c_str() );
     return true;
 }

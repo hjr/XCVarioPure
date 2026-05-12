@@ -125,10 +125,10 @@ bool SetupCommon::exists() const {
 }
 
 bool SetupCommon::commit() {
-	// ESP_LOGI(FNAME,"NVS commit(): %s ", _key.data());
 	if( flags._volatile != PERSISTENT ){
 			return true;
 	}
+	ESP_LOGI(FNAME,"NVS commit(): %s ", _key.data());
 	write();
 	bool ret = NVS.commit();
 	if( !ret ) {
