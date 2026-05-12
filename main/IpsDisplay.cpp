@@ -360,7 +360,7 @@ static void initRefs()
 	AMIDX = gflags.isPro ? (DISPLAY_W/2 + 30) : (DISPLAY_W/2 + 20);
 	AMIDY = (DISPLAY_H)/2 - (gflags.isPro ? 0 : 2);
 	if ( display_orientation.get() == DISPLAY_NINETY ) {
-		INNER_RIGHT_ALIGN = DISPLAY_W - 74;
+		INNER_RIGHT_ALIGN = DISPLAY_W - 69;
 		AMIDX = DISPLAY_W/2 - 46;
 		AVGOFFX = -2;
 	}
@@ -624,7 +624,7 @@ void IpsDisplay::initDisplay() {
     }
     if (S2FBARgauge) {
         if (display_orientation.get() == DISPLAY_NINETY) {
-            S2FBARgauge->setRef(DISPLAY_W - 120, AMIDY);
+            S2FBARgauge->setRef(DISPLAY_W - 74, AMIDY);
             S2FBARgauge->setWidth(36);
         } else {
             if (FLAPSgauge) {

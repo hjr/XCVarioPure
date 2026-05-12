@@ -155,9 +155,9 @@ void MultiGauge::drawUnit() const
         break;
     }
     if ( _large ) {
-        MYUCG->setPrintPos(_ref.x+5,_ref.y-3);
+        MYUCG->setPrintPos(_ref.x+3,_ref.y-3);
         MYUCG->print(unit_str);
-        MYUCG->setPrintPos(_ref.x+5,_ref.y-17);
+        MYUCG->setPrintPos(_ref.x+3,_ref.y-17);
         MYUCG->print(mode_str);
     } else {
         MYUCG->setPrintPos(_ref.x+3,_ref.y-12);
