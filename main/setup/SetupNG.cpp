@@ -411,7 +411,7 @@ SetupNG<mps_t> 			polar_sink2( "POLAR_SINK2",    -0.97, true, SYNC_BIDIR, PERSIS
 SetupNG<kmh_t> 			polar_speed3( "POLAR_SPEED3",   175, true, SYNC_BIDIR, PERSISTENT, change_polar, quantity_t::QUANT_NONE, &polar_speed_limits);
 SetupNG<mps_t> 			polar_sink3( "POLAR_SINK3",    -2.24, true, SYNC_BIDIR, PERSISTENT, change_polar, quantity_t::QUANT_NONE, &polar_sink_limits);
 SetupNG<kmh_t>			polar_stall_speed( "STALL_SPEED", 0, true, SYNC_BIDIR, PERSISTENT, change_polar, quantity_t::QUANT_HSLEGACY, &polar_speed_limits);
-SetupNG<kilogram_t> 	polar_max_ballast( "POLAR_MAX_BAL",  80, true, SYNC_BIDIR, PERSISTENT, change_ballast, quantity_t::QUANT_MASS, LIMITS(0, 500, 1));
+SetupNG<kilogram_t> 	polar_max_ballast( "POLAR_MAX_BAL", 160, true, SYNC_BIDIR, PERSISTENT, change_ballast, quantity_t::QUANT_MASS, LIMITS(0, 500, 1));
 SetupNG<float> 			polar_wingarea( "POLAR_WINGAREA", 10.5, true, SYNC_BIDIR, PERSISTENT, change_ballast, quantity_t::QUANT_NONE, LIMITS(0, 50, 0.1));
 
 SetupNG<float>  		speedcal( "SPEEDCAL", 0.0, true, SYNC_BIDIR, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(-100, 100, 1));

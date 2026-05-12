@@ -26,6 +26,7 @@ S2F Speed2Fly;
 float S2F::bal_percent = 0.f;
 
 void S2F::begin(){
+	_glider_index = Polars::findMyGlider(glider_type.get());
 	if( empty_weight.get() == 0 )
 		empty_weight.set( (polar_wingload.get() * polar_wingarea.get()) - 80.0 );
 	calculateOverweight();

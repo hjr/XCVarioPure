@@ -493,8 +493,9 @@ void system_startup(void *args){
 			(chip_info.features & CHIP_FEATURE_EMB_FLASH) ? "embedded" : "external");
 	ESP_LOGI(FNAME, "QNH.get() %.1f hPa", QNH.get() );
 	// register_coredump();
-	Speed2Fly.setPolar(Polars::findMyGlider(glider_type.get()));
 
+    // Initialize the glider polar data and Speed2Fly calculation
+    Speed2Fly.begin();
 	AverageVario::begin();
 
     // Design the club
@@ -914,8 +915,7 @@ void system_startup(void *args){
         MenuEntry::reBoot(3);
     }
 
-    // Initialize the glider polar data and Speed2Fly calculation
-    Speed2Fly.begin();
+
 #ifdef S2F_Test
     Speed2Fly.test();
 #endif
@@ -965,7 +965,7 @@ void system_startup(void *args){
         int screenEvent;
         // airfield use case
         // Glider polar set?
-        ESP_LOGI(FNAME, "Check glider polar configuration %d, unchanged %d", glider_type.get(), S2F::isPolarEqualTo(Speed2Fly.getMyGliderIdx()));
+        ESP_LOGI(FNAME, "Check glider type: %d, default %d, unchanged %d, configured: %d", glider_type.get(), glider_type.getDefault(), S2F::isPolarEqualTo(Speed2Fly.getMyGliderIdx()), glider_polar_configured);
         if (!glider_polar_configured) {
             screenEvent = ScreenEvent(ScreenEvent::POLAR_CONFIG).raw;
             xQueueSend(uiEventQueue, &screenEvent, 0);
