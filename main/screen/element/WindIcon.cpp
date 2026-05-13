@@ -53,7 +53,7 @@ bool WindIcon::draw(WindData w)
             rad_t heading = heading_tru.get();
             ESP_LOGI(FNAME, "heading %.1f", Units::rad_to_deg(heading));
             w.inclHeading(heading);
-            if (changed ) drawDirection(_wind.getDeg());
+            if (changed || _dirty) drawDirection(_wind.getDeg());
         }
 
         drawIcon(w.getDeg2());
