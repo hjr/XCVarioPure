@@ -437,14 +437,14 @@ void IpsDisplay::writeText( int line, const char *text )
 	ucg->setFont(ucg_font_ncenR14_hr, true );
 	ucg->setPrintPos( 1, 26*line );
 	ucg->setColor(COLOR_WHITE);
-	ucg->printf("%s", text);
+	ucg->print(text);
 }
 
 void IpsDisplay::writeText( int line, std::string &text ){
 	ucg->setFont(ucg_font_ncenR14_hr, true );
 	ucg->setPrintPos( 1, 26*line );
 	ucg->setColor(COLOR_WHITE);
-	ucg->printf("%s",text.c_str());
+	ucg->print(text.c_str());
 }
 
 

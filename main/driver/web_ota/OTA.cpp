@@ -14,6 +14,7 @@
 #include "screen/ScreenRoot.h"
 #include "IpsDisplay.h"
 #include "AdaptUGC.h"
+#include "Colors.h"
 #include "driver/time/Clock.h"
 #include "comm/WifiApSta.h"
 #include "logdef.h"
@@ -25,7 +26,9 @@
 #include <esp_netif.h>
 #include <esp_ota_ops.h>
 
+extern AdaptUGC *MYUCG;
 
+typedef void (*dpp_ota_qr_cb_t)(const char *uri);  // callback QR renderer
 
 
 // the menu to select classic upload or the easy connect method
@@ -61,6 +64,39 @@
 //     return ota_menu;
 // }
 
+static constexpr const int16_t qrCodeMaxWidth = 114;
+
+static bool drawQrCode(const char *textBuffer,int16_t xref, int16_t yref) {
+
+    uint8_t *tempBuffer = (uint8_t *)malloc(qrcodegen_BUFFER_LEN_FOR_VERSION(4));
+    uint8_t *qrcodeBuffer = (uint8_t *)malloc(qrcodegen_BUFFER_LEN_FOR_VERSION(4));
+
+    bool qrSuccess = qrcodegen_encodeText(textBuffer, tempBuffer, qrcodeBuffer, qrcodegen_Ecc_LOW, 4, 4, qrcodegen_Mask_AUTO, true);
+
+    if ( qrSuccess ) {
+        // Calculate module size for best fit
+        int16_t size = qrcodegen_getSize(qrcodeBuffer);
+        int16_t dotSize = qrCodeMaxWidth / size;
+
+        // Center QRCode
+        xref += (120 - (size * dotSize)) / 2;
+
+        for (int16_t y = 0; y < size; y++) {
+            MYUCG->startBuffering(xref, yref + (y * dotSize), (size*dotSize)+1, dotSize+1);
+            for (int16_t x = 0; x < size; x++) {
+                if (qrcodegen_getModule(qrcodeBuffer, x, y)) {
+                    MYUCG->drawBox(xref + (x * dotSize), yref + (y * dotSize), dotSize, dotSize);
+                }
+            }
+            MYUCG->finishBuffering();
+        }
+    }
+    free(tempBuffer);
+    free(qrcodeBuffer);
+
+    return qrSuccess;
+}
+
 
 OTA::OTA(bool dpp) :
     SetupMenuDisplay(""),
@@ -83,50 +119,29 @@ void OTA::display(int some){
 	wifi->ConfigureIntf(80);
 
 	Display->clear();
-	int line=1;
-	Display->writeText(line++,"Firmware Upload");
-	Display->writeText(line++,"Use Wifi: ESP32 OTA");
-	Display->writeText(line++,"Password: xcvario-21");
-	Display->writeText(line++,"Open: http://192.168.4.1");
-
-	enum qrcodegen_Ecc errCorLvl = qrcodegen_Ecc_LOW; // Error correction level
-	// ESP_LOGI(FNAME, "Generate QRCODE");
+	int line=0;
+	MYUCG->setFont(ucg_font_ncenR14_hr, true );
+	MYUCG->setColor(COLOR_WHITE);
+    menuPrintLn("Firmware Upload", line++, 30);
+	menuPrintLn("Use Wifi: ESP32 OTA", line++);
+	menuPrintLn("Password: xcvario-21", line++);
+	menuPrintLn("Open: http://192.168.4.1", line++);
 
 	// Make and print the QR Code symbol
-	const size_t textBufferSize = 128;
-	char *textBuffer = (char *)malloc(textBufferSize);
-	uint8_t *tempBuffer = (uint8_t *)malloc(qrcodegen_BUFFER_LEN_FOR_VERSION(4));
-	uint8_t *qrcodeBuffer = (uint8_t *)malloc(qrcodegen_BUFFER_LEN_FOR_VERSION(4));
-
-	snprintf(textBuffer, textBufferSize, "WIFI:S:%s;T:WPA;P:%s;;", OTA_SSID, AP_PASSPHARSE);
-	bool qrSuccess = qrcodegen_encodeText(textBuffer, tempBuffer, qrcodeBuffer, errCorLvl, 4, 4, qrcodegen_Mask_AUTO, true);
-
-	size_t qrCodeMaxWidth = 114;
-	size_t yOffset = 130;
-	size_t xOffset = 0;
+	constexpr int textBufferSize = 128;
+	char textBuffer[textBufferSize];
+	int16_t xOffset = 0;
+	int16_t yOffset = 130;
 
 	const char *wifiText = "WIFI:";
-	size_t strWidth = Display->ucg->getStrWidth(wifiText);
-	Display->ucg->setPrintPos((120 - strWidth) / 2, 130);
-	Display->ucg->print(wifiText);
+	int16_t strWidth = MYUCG->getStrWidth(wifiText);
+	MYUCG->setPrintPos((120 - strWidth) / 2, 130);
+	MYUCG->print(wifiText);
+	snprintf(textBuffer, textBufferSize, "WIFI:S:%s;T:WPA;P:%s;;", OTA_SSID, AP_PASSPHARSE);
 
-	if( qrSuccess ) {
-		// Calculate module size for best fit
-		int size = qrcodegen_getSize(qrcodeBuffer);
-		int dotSize = qrCodeMaxWidth / size;
-
-		// Center QRCode
-		xOffset += (120 - (size * dotSize)) / 2;
-
-		for( int y = 0; y < size; y++ ) {
-			for( int x = 0; x < size; x++ ) {
-				if( qrcodegen_getModule(qrcodeBuffer, x, y) ) {
-				  Display->ucg->drawBox(xOffset + (x * dotSize), yOffset + (y * dotSize), dotSize, dotSize);
-				}
-			}
-		}
-	} else {
-		Display->ucg->drawFrame(xOffset + ((120 - qrCodeMaxWidth) / 2), yOffset, qrCodeMaxWidth, qrCodeMaxWidth);
+	if( ! drawQrCode(textBuffer, xOffset, yOffset) ) {
+        // In case of error draw empty rectangle
+		MYUCG->drawFrame(xOffset + ((120 - qrCodeMaxWidth) / 2), yOffset, qrCodeMaxWidth, qrCodeMaxWidth);
 	}
 
 	// Generate URL QR Code using the AP IP-address
@@ -134,38 +149,18 @@ void OTA::display(int some){
 	esp_netif_ip_info_t ip_info;
 	esp_netif_get_ip_info(esp_netif_get_handle_from_ifkey("WIFI_AP_DEF"), &ip_info);    // Return ESPs IP for everybody else
 
-	snprintf(textBuffer, textBufferSize, "http://" IPSTR, IP2STR(&ip_info.ip));
-	qrSuccess = qrcodegen_encodeText(textBuffer, tempBuffer, qrcodeBuffer, errCorLvl, 4, 4, qrcodegen_Mask_AUTO, true);
 
 	const char *urlText = "URL:";
-	strWidth = Display->ucg->getStrWidth(urlText);
-	Display->ucg->setPrintPos(120 + (120 - strWidth) / 2, 130);
-	Display->ucg->print(urlText);
+	strWidth = MYUCG->getStrWidth(urlText);
+	MYUCG->setPrintPos(120 + (120 - strWidth) / 2, 130);
+	MYUCG->print(urlText);
+	snprintf(textBuffer, textBufferSize, "http://" IPSTR, IP2STR(&ip_info.ip));
 
 	xOffset = 120;
-	if( qrSuccess ) {
-		// Calculate module size for best fit
-		int size = qrcodegen_getSize(qrcodeBuffer);
-		int dotSize = qrCodeMaxWidth / size;
-
-		// Center QRCode
-		xOffset += (120 - (size * dotSize)) / 2;
-
-		for( int y = 0; y < size; y++ ) {
-			for( int x = 0; x < size; x++ ) {
-				if( qrcodegen_getModule(qrcodeBuffer, x, y) ) {
-				  Display->ucg->drawBox(xOffset + (x * dotSize), yOffset + (y * dotSize), dotSize, dotSize);
-				}
-			}
-		}
-	} else {
-		// In case of error draw empty rectangle
-		Display->ucg->drawFrame(xOffset + ((120 - qrCodeMaxWidth) / 2), yOffset, qrCodeMaxWidth, qrCodeMaxWidth);
+	if( ! drawQrCode(textBuffer, xOffset, yOffset) ) {
+        // In case of error draw empty rectangle
+		MYUCG->drawFrame(xOffset + ((120 - qrCodeMaxWidth) / 2), yOffset, qrCodeMaxWidth, qrCodeMaxWidth);
 	}
-
-	free(textBuffer);
-	free(qrcodeBuffer);
-	free(tempBuffer);
 
 	Webserver.start();
     Clock::start(this);
@@ -178,18 +173,17 @@ void OTA::press() {
 
 // exceptional use of the ticker for display output
 bool OTA::tick() {
-    int16_t line = 9;
+    int16_t line = 8;
     char txt[40];
     sprintf(txt,"Timeout in %d sec  ", _count-- );
-    Display->writeText(line+2,txt);
-    std::string pro("Progress: ");
-    pro += std::to_string( Webserver.getOtaProgress() ) + " %";
-    Display->writeText(line+3, pro.c_str());
+    menuPrintLn(txt, line+2);
+    sprintf(txt,"Progress: %d %%  ", Webserver.getOtaProgress() );
+    menuPrintLn(txt, line+3);
 
     bool update_end = _count < 0;
     if( Webserver.getOtaStatus() == otaStatus::DONE ){
         ESP_LOGI(FNAME,"Flash status, Now restart");
-        Display->writeText(line+3,"Download SUCCESS !");
+        menuPrintLn("Download SUCCESS !", line+3);
         vTaskDelay(3000/portTICK_PERIOD_MS);
         update_end = true;
     }
