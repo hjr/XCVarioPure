@@ -6,13 +6,13 @@
 #include "setup/MenuEntry.h"
 #include "comm/DeviceMgr.h"
 #include "protocol/NMEA.h"
+#include "version.h"
 #include "logdef.h"
 
 #include <esp_ota_ops.h>
 #include <cstdint>
 
 cWebserver* cWebserver::m_instance = nullptr;
-extern char * program_version;
 extern bool do_factory_reset();
 extern void send_config( httpd_req *req );
 extern int restore_config( int len, char *data );
@@ -219,8 +219,7 @@ esp_err_t GET_status_json_handler(httpd_req_t *req)
 
 	char jsonBuffer[200];
     const char json[] = R"({"compile_time":"%s","compile_date":"%s","program_version":"%s","ota_status":"%d","coredump_available":"%d"})";
-
-	snprintf(jsonBuffer, 199, json, __TIME__, __DATE__, program_version, 0, coredump_available());
+	snprintf(jsonBuffer, 199, json, __TIME__, __DATE__, FW_VERSION, 0, coredump_available());
 
 	httpd_resp_set_type(req, "application/json ");
 	httpd_resp_send(req, jsonBuffer, strlen(jsonBuffer));
@@ -464,7 +463,7 @@ esp_err_t DELETE_reset_handler(httpd_req_t *req)
 static esp_err_t _coredump_to_server_begin_cb_OTA(void * priv)
 {
 	char ver[128];
-	sprintf( ver, "Software Version: %s\r\n", program_version );
+	sprintf( ver, "Software Version: %s\r\n", FW_VERSION );
 	httpd_resp_send_chunk((httpd_req*)priv, ver, strlen( ver ) );
 	const char *head="================= CORE DUMP START =================\r\n";
 	httpd_resp_send_chunk((httpd_req*)priv, head, strlen( head ) );

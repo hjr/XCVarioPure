@@ -21,7 +21,7 @@
 #include "driver/gpio/AnalogInput.h"
 #include "IpsDisplay.h"
 #include "S2F.h"
-#include "Version.h"
+#include "version.h"
 #include "glider/Polars.h"
 #include "Flarm.h"
 #include "driver/time/Clock.h"
@@ -546,17 +546,17 @@ void system_startup(void *args){
     MessageBox::createMessageBox();
 
     MenuRoot = new ScreenRoot(Display); // the root setup menu, screens still disabled
-
-	Version V;
-	std::string ver( " Rev: " );
-	ver += V.version();
-	char hw[24];
-	sprintf( hw,", XCV-%d", hardwareRevision.get()+18);  // plus 18, e.g. 2 = XCVario-20
-	std::string hwrev( hw );
-	ver += hwrev;
-	Display->writeText(1, ver.c_str() );
-	logged_tests.assign(ver);
-	logged_tests += "\n";
+    {
+        // print the firmware and hardware revision first
+        std::string ver("Rev: ");
+        ver += FW_VERSION;
+        char hw[24];
+        sprintf( hw,", XCV-%d", hardwareRevision.get()+18);  // plus 18, e.g. 2 = XCV-20
+        ver += hw;
+        Display->writeText(1, ver.c_str() );
+        logged_tests.assign(ver);
+        logged_tests += "\n";
+    }
 
     // Start UI task responsible to manage screens and display. Needed to habe the boot screen and message box working
     xTaskCreate(&UiEventLoop, "UIloop", 6144, Rotary, 4, NULL); // increase stack by 1K
@@ -593,9 +593,9 @@ void system_startup(void *args){
     bool glider_polar_configured = glider_type.get() != glider_type.getDefault() 
             || ! S2F::isPolarEqualTo(Speed2Fly.getMyGliderIdx());
     if (glider_polar_configured) {
-        ver.assign("  >> ");
-        ver += Polars::getPolarName(Speed2Fly.getMyGliderIdx());
-        MBOX->pushMessage(1, ver.c_str());
+        std::string polnam("  >> ");
+        polnam += Polars::getPolarName(Speed2Fly.getMyGliderIdx());
+        MBOX->pushMessage(1, polnam.c_str());
     }
 
     // Create serial interfaces
@@ -920,8 +920,7 @@ void system_startup(void *args){
     Speed2Fly.test();
 #endif
 
-    Version myVersion;
-    ESP_LOGI(FNAME, "Firmware Version %s", myVersion.version());
+    ESP_LOGI(FNAME, "Firmware Version %s", FW_VERSION);
     printf("\n\n%s", logged_tests.c_str());
     if (!selftestPassed) {
         printf("\nSelftest failed, see above LOG for Problems\n\n");

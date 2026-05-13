@@ -21,7 +21,7 @@
 #include "sensor/VarioFilter.h"
 #include "S2F.h"
 #include "Flarm.h"
-#include "Version.h"
+#include "version.h"
 #include "glider/Polars.h"
 #include "math/Floats.h"
 #include "math/Units.h"
@@ -759,9 +759,8 @@ void system_menu_create_software(SetupMenu *top) {
     ahrsid->lock();
     top->addEntry(ahrsid);
 
-    Version V;
     SetupMenuSelect* ver = new SetupMenuSelect("Version", RST_NONE, nullptr);
-    ver->addEntry(V.version());
+    ver->addEntry(FW_VERSION);
     ver->lock();
     top->addEntry(ver);
 
@@ -1089,8 +1088,7 @@ SetupMenu* SetupMenu::createTopSetup() {
 
 
 SetupMenu* SetupMenu::createFactorySetup() {
-    Version V;
-    sprintf(small_buf, "%s - %s", SetupCommon::getDefaultID(), V.version());
+    sprintf(small_buf, "%s - %s", SetupCommon::getDefaultID(), FW_VERSION);
     SetupMenu *setup = new SetupMenu(small_buf, nullptr);
 
     SetupMenuValFloat *met_adj = SetupMenu::createVoltmeterAdjustMenu();

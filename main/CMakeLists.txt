@@ -31,13 +31,26 @@ elseif(CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
     message(STATUS "Building in Release-Developer mode")
     add_compile_definitions(ALL_LOGS_DISABLED=1)
     add_compile_definitions(LOG_LOCAL_LEVEL=ESP_LOG_NONE)
+    add_compile_definitions(COMPILER_OPTIMIZATION_ASSERTIONS_SILENT)
     add_compile_definitions(DEBUG_AND_TEST=1)
 elseif(CMAKE_BUILD_TYPE STREQUAL "RelWithLogInfo")
     message(STATUS "Building in Release-Logging mode")
+    add_compile_definitions(COMPILER_OPTIMIZATION_ASSERTIONS_SILENT)
 else()
     message(STATUS "Building in Debug mode")
     add_compile_definitions(DEBUG_AND_TEST=1)
 endif()
 
+# a firmware version string
+string(TIMESTAMP FW_VERSION "%y%m%d-%H%M")
 
+configure_file(
+    ${CMAKE_CURRENT_SOURCE_DIR}/version.h.in
+    ${CMAKE_CURRENT_BINARY_DIR}/version.h
+    @ONLY
+)
+
+include_directories(
+    ${CMAKE_CURRENT_BINARY_DIR}
+)
 

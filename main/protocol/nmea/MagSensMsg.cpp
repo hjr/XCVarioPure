@@ -7,10 +7,7 @@
 #include "comm/DeviceMgr.h"
 #include "protocol/MagSensBin.h"
 #include "sensor/mag/MagVSensor.h"
-
 #include "sensor.h"
-#include "setup/SetupNG.h"
-#include "Version.h"
 #include "logdefnone.h"
 
 #include <string>
