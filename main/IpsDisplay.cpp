@@ -81,7 +81,7 @@ static int16_t AMIDX;
 static int16_t AVGOFFX;
 static int16_t UPPERYPOS;
 static int16_t LOWERYPOS;
-constexpr const float OPT_Y_IN = 0.262f;
+constexpr const float OPT_Y_IN = 0.216f;
 
 static int16_t INNER_RIGHT_ALIGN = 170;
 static int16_t LOAD_MPG_POS = 0;
@@ -350,8 +350,8 @@ void IpsDisplay::drawPolyFrame(Point *pts, int n)
 static void initRefs()
 {
 	AVGOFFX = gflags.isPro ? -5-38 : -8;
-    UPPERYPOS = OPT_Y_IN * DISPLAY_H + 19;
-    LOWERYPOS = (1. - OPT_Y_IN) * DISPLAY_H + 19;
+    UPPERYPOS = OPT_Y_IN * DISPLAY_H + 17;
+    LOWERYPOS = (1. - OPT_Y_IN) * DISPLAY_H + 17;
 	INNER_RIGHT_ALIGN = DISPLAY_W - 44;
 	LOAD_MPG_POS = DISPLAY_H*0.33;
 	LOAD_MIAS_POS = DISPLAY_H*0.63;
@@ -360,7 +360,7 @@ static void initRefs()
 	AMIDX = gflags.isPro ? (DISPLAY_W/2 + 30) : (DISPLAY_W/2 + 20);
 	AMIDY = (DISPLAY_H)/2 - (gflags.isPro ? 0 : 2);
 	if ( display_orientation.get() == DISPLAY_NINETY ) {
-		INNER_RIGHT_ALIGN = DISPLAY_W - 69;
+		// INNER_RIGHT_ALIGN = DISPLAY_W - 69;
 		AMIDX = DISPLAY_W/2 - 46;
 		AVGOFFX = -2;
 	}
@@ -645,7 +645,7 @@ void IpsDisplay::initDisplay() {
     }
     if (FLAPSgauge) {
         if (display_orientation.get() == DISPLAY_NINETY) {
-            FLAPSgauge->setLength(120);
+            FLAPSgauge->setLength(90);
         } else {
             FLAPSgauge->setLength(90);
             FLAPSgauge->setRef(DISPLAY_W - 29, AMIDY + (S2FBARgauge ? 17 : 0));
