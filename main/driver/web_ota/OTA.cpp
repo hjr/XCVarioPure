@@ -11,12 +11,14 @@
 #include "OTA.h"
 
 #include "Webserver.h"
+#include "dpp_ota.h"
 #include "screen/ScreenRoot.h"
 #include "IpsDisplay.h"
 #include "AdaptUGC.h"
 #include "Colors.h"
 #include "driver/time/Clock.h"
 #include "comm/WifiApSta.h"
+#include "setup/SetupNG.h"
 #include "logdef.h"
 
 #include "qrcodegen.h"
@@ -97,6 +99,9 @@ static bool drawQrCode(const char *textBuffer,int16_t xref, int16_t yref) {
     return qrSuccess;
 }
 
+void qr_renderer_callback(const char *uri) {
+    drawQrCode(uri, 60, 130);
+}
 
 OTA::OTA(bool dpp) :
     SetupMenuDisplay(""),
@@ -114,55 +119,76 @@ OTA::~OTA()
 
 // OTA with legacy access point
 void OTA::display(int some){
-	ESP_LOGI(FNAME,"Now start Wifi OTA");
+	ESP_LOGI(FNAME,"Now start OTA update");
 	WifiApSta *wifi = WifiApSta::createWifiApSta();
-	wifi->ConfigureIntf(80);
 
 	Display->clear();
 	int line=0;
-	MYUCG->setFont(ucg_font_ncenR14_hr, true );
-	MYUCG->setColor(COLOR_WHITE);
-    menuPrintLn("Firmware Upload", line++, 30);
-	menuPrintLn("Use Wifi: ESP32 OTA", line++);
-	menuPrintLn("Password: xcvario-21", line++);
-	menuPrintLn("Open: http://192.168.4.1", line++);
+    MYUCG->setFont(ucg_font_ncenR14_hr, true );
+    MYUCG->setColor(COLOR_WHITE);
 
-	// Make and print the QR Code symbol
-	constexpr int textBufferSize = 128;
-	char textBuffer[textBufferSize];
-	int16_t xOffset = 0;
-	int16_t yOffset = 130;
+    if ( _do_dpp ) {
+        wifi->setDppQrCallback(qr_renderer_callback);
+        wifi->ConfigureIntf(9999);
+        // Use the easy connect method with DPP
+        menuPrintLn("DPP Easy Connect", line++, 30);
+        char hw[24];
+        sprintf( hw,", XCV-%d", hardwareRevision.get()+18);
 
-	const char *wifiText = "WIFI:";
-	int16_t strWidth = MYUCG->getStrWidth(wifiText);
-	MYUCG->setPrintPos((120 - strWidth) / 2, 130);
-	MYUCG->print(wifiText);
-	snprintf(textBuffer, textBufferSize, "WIFI:S:%s;T:WPA;P:%s;;", OTA_SSID, AP_PASSPHARSE);
+        dpp_ota_config_t otacfg = {
+            .update_server_url = "https://192.168.200.69/api/firmware",
+            .hw_version        = hw,
+            .serial_number     = SetupCommon::getDefaultID(),
+            .server_cert_pem   = nullptr, //my_root_ca_pem,  // als eingebettetes Array
+        };
 
-	if( ! drawQrCode(textBuffer, xOffset, yOffset) ) {
-        // In case of error draw empty rectangle
-		MYUCG->drawFrame(xOffset + ((120 - qrCodeMaxWidth) / 2), yOffset, qrCodeMaxWidth, qrCodeMaxWidth);
-	}
+        xTaskCreate(dpp_ota_task, "dpp_ota", 8192, &otacfg, 5, NULL);
+    }
+    else {
+        wifi->ConfigureIntf(80);
+        // Use the classic method with AP and manual connection
+        menuPrintLn("Firmware Upload", line++, 30);
+        menuPrintLn("Use Wifi: ESP32 OTA", line++);
+        menuPrintLn("Password: xcvario-21", line++);
+        menuPrintLn("Open: http://192.168.4.1", line++);
 
-	// Generate URL QR Code using the AP IP-address
-	// TODO: Show after Wifi has been connected?
-	esp_netif_ip_info_t ip_info;
-	esp_netif_get_ip_info(esp_netif_get_handle_from_ifkey("WIFI_AP_DEF"), &ip_info);    // Return ESPs IP for everybody else
+        // Make and print the QR Code symbol
+        constexpr int textBufferSize = 128;
+        char textBuffer[textBufferSize];
+        int16_t xOffset = 0;
+        int16_t yOffset = 130;
+
+        const char *wifiText = "WIFI:";
+        int16_t strWidth = MYUCG->getStrWidth(wifiText);
+        MYUCG->setPrintPos((120 - strWidth) / 2, 130);
+        MYUCG->print(wifiText);
+        snprintf(textBuffer, textBufferSize, "WIFI:S:%s;T:WPA;P:%s;;", OTA_SSID, AP_PASSPHARSE);
+
+        if( ! drawQrCode(textBuffer, xOffset, yOffset) ) {
+            // In case of error draw empty rectangle
+            MYUCG->drawFrame(xOffset + ((120 - qrCodeMaxWidth) / 2), yOffset, qrCodeMaxWidth, qrCodeMaxWidth);
+        }
+
+        // Generate URL QR Code using the AP IP-address
+        // TODO: Show after Wifi has been connected?
+        esp_netif_ip_info_t ip_info;
+        esp_netif_get_ip_info(esp_netif_get_handle_from_ifkey("WIFI_AP_DEF"), &ip_info);    // Return ESPs IP for everybody else
 
 
-	const char *urlText = "URL:";
-	strWidth = MYUCG->getStrWidth(urlText);
-	MYUCG->setPrintPos(120 + (120 - strWidth) / 2, 130);
-	MYUCG->print(urlText);
-	snprintf(textBuffer, textBufferSize, "http://" IPSTR, IP2STR(&ip_info.ip));
+        const char *urlText = "URL:";
+        strWidth = MYUCG->getStrWidth(urlText);
+        MYUCG->setPrintPos(120 + (120 - strWidth) / 2, 130);
+        MYUCG->print(urlText);
+        snprintf(textBuffer, textBufferSize, "http://" IPSTR, IP2STR(&ip_info.ip));
 
-	xOffset = 120;
-	if( ! drawQrCode(textBuffer, xOffset, yOffset) ) {
-        // In case of error draw empty rectangle
-		MYUCG->drawFrame(xOffset + ((120 - qrCodeMaxWidth) / 2), yOffset, qrCodeMaxWidth, qrCodeMaxWidth);
-	}
+        xOffset = 120;
+        if( ! drawQrCode(textBuffer, xOffset, yOffset) ) {
+            // In case of error draw empty rectangle
+            MYUCG->drawFrame(xOffset + ((120 - qrCodeMaxWidth) / 2), yOffset, qrCodeMaxWidth, qrCodeMaxWidth);
+        }
 
-	Webserver.start();
+        Webserver.start();
+    }
     Clock::start(this);
 }
 

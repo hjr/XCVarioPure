@@ -10,10 +10,12 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include <lwip/sockets.h>
+#include "esp_http_client.h"
 #include <esp_system.h>
 #include <esp_random.h>
 #include <esp_wifi.h>
 #include <esp_mac.h>
+#include <esp_dpp.h>
 #include <esp_event.h>
 #include <mutex>
 
@@ -284,58 +286,143 @@ public:
 		wifi->socket_server_task_pid = nullptr;
 	}
 
-	static void wifi_event_handler(void* arg, esp_event_base_t event_base,	int32_t event_id, void* event_data)
-	{
-		WifiApSta *mywifi = static_cast<WifiApSta*>(arg);
-		if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
-			sock_server_t *xcvcl = mywifi->_socks[4];
-			ESP_LOGI(FNAME,"SYSTEM_EVENT_STA_START hndl %d ap %d", xcvcl ? xcvcl->sock_hndl : -2, xcvcl ? xcvcl->is_ap : -2);
-			if ( xcvcl && xcvcl->sock_hndl < 0 && !xcvcl->is_ap ) {
-				vTaskDelay(pdMS_TO_TICKS(1000));
-				mywifi->client_connect();
-			}
-		}
-		else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
-			ESP_LOGI(FNAME,"SYSTEM_EVENT_STA_DISCONNECTED");
-			sock_server_t *xcvcl = mywifi->_socks[4];
-			if( xcvcl && !xcvcl->is_ap ) {
-				if ( xcvcl->sock_hndl > 0 ) {
-					close( xcvcl->sock_hndl );
-					xcvcl->sock_hndl = -1;
-					xcvcl->alive = false; // mark as dead
-					xcvcl->peers.clear();
-				}
-			}
-		}
-		else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
-			[[maybe_unused]] ip_event_got_ip_t* event = (ip_event_got_ip_t*)event_data;
-			ESP_LOGI(FNAME, "SYSTEM_EVENT_STA_GOT_IP ip:" IPSTR, IP2STR(&event->ip_info.ip));
-			vTaskDelay(pdMS_TO_TICKS(1000));
-			sock_server_t *xcvcl = mywifi->_socks[4];
-			if( xcvcl  && xcvcl->sock_hndl < 0 ) {
-				if ( xcvcl->sock_hndl > 0 ) {
-					ESP_LOGI(FNAME,"need to recreate the sta  socket");
-					close(xcvcl->sock_hndl);
-					xcvcl->alive = false; // mark as dead
-				}
-				peer_record_t new_rec;
-				new_rec.clientAddress.sin_addr.s_addr = event->ip_info.gw.addr;
-				xcvcl->peers.clear();
-				xcvcl->peers.push_back(new_rec); // sta has just one peer, the master XCVario
-				xcvcl->sock_hndl = 0; // this is the indicator to connect to the AP
-			}
-		}
-		else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_AP_STACONNECTED) {
-			[[maybe_unused]] wifi_event_ap_staconnected_t* event = (wifi_event_ap_staconnected_t*) event_data;
-			ESP_LOGI(FNAME,"station %x:%x:%x:%x:%x:%x joined, AID=%d", MAC2STR(event->mac), event->aid);
-		}
-		else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_AP_STADISCONNECTED) {
-			[[maybe_unused]] wifi_event_ap_stadisconnected_t* event = (wifi_event_ap_stadisconnected_t*) event_data;
-			ESP_LOGI(FNAME,"station %x:%x:%x:%x:%x:%x left, AID=%d", MAC2STR(event->mac), event->aid);
-		}
-	}
+    static void wifi_event_handler(void* arg, esp_event_base_t event_base,	int32_t event_id, void* event_data)
+    {
+        WifiApSta *mywifi = static_cast<WifiApSta*>(arg);
+        if (event_base == WIFI_EVENT) {
+            switch (event_id) {
+            case WIFI_EVENT_STA_START:
+            {
+                if ( mywifi->_current_mode == WifiApSta::STADPP ) {
+                // DPP bootstrap + listen startet nach STA-Start
+                    ESP_LOGI(FNAME, "DPP: STA gestartet, starte DPP Listen");
+                    ESP_ERROR_CHECK(esp_supp_dpp_start_listen());
+                    break;
+                }
+
+                sock_server_t *xcvcl = mywifi->_socks[4];
+                ESP_LOGI(FNAME,"SYSTEM_EVENT_STA_START hndl %d ap %d", xcvcl ? xcvcl->sock_hndl : -2, xcvcl ? xcvcl->is_ap : -2);
+                if ( xcvcl && xcvcl->sock_hndl < 0 && !xcvcl->is_ap ) {
+                    vTaskDelay(pdMS_TO_TICKS(1000));
+                    mywifi->client_connect();
+                }
+                break;
+            }
+            case WIFI_EVENT_STA_DISCONNECTED:
+            {
+                if ( mywifi->_current_mode == WifiApSta::STADPP ) {
+                    ESP_LOGW(FNAME, "WiFi getrennt");
+                    xEventGroupSetBits(mywifi->_dpp_event_group, DPP_FAILED_BIT);
+                    break;
+                }
+                ESP_LOGI(FNAME,"SYSTEM_EVENT_STA_DISCONNECTED");
+                sock_server_t *xcvcl = mywifi->_socks[4];
+                if( xcvcl && !xcvcl->is_ap ) {
+                    if ( xcvcl->sock_hndl > 0 ) {
+                        close( xcvcl->sock_hndl );
+                        xcvcl->sock_hndl = -1;
+                        xcvcl->alive = false; // mark as dead
+                        xcvcl->peers.clear();
+                    }
+                }
+                break;
+            }
+            case WIFI_EVENT_AP_STACONNECTED:
+            {
+                [[maybe_unused]] wifi_event_ap_staconnected_t* event = (wifi_event_ap_staconnected_t*) event_data;
+                ESP_LOGI(FNAME,"station %x:%x:%x:%x:%x:%x joined, AID=%d", MAC2STR(event->mac), event->aid);
+                break;
+            }
+            case WIFI_EVENT_AP_STADISCONNECTED:
+            {
+                [[maybe_unused]] wifi_event_ap_stadisconnected_t* event = (wifi_event_ap_stadisconnected_t*) event_data;
+                ESP_LOGI(FNAME,"station %x:%x:%x:%x:%x:%x left, AID=%d", MAC2STR(event->mac), event->aid);
+                break;
+            }
+            case ESP_SUPP_DPP_URI_READY:
+            {
+                // URI is ready → render QR-Code
+                const char *uri = (const char *)event_data;
+                ESP_LOGI(FNAME, "DPP URI: %s", uri);
+                if (mywifi->_dpp_qr_callback) {
+                    mywifi->_dpp_qr_callback(uri);
+                }
+                break;
+            }
+            case ESP_SUPP_DPP_CFG_RECVD: {
+                // Credentials received → connect to WiFi
+                wifi_config_t *wifi_cfg = (wifi_config_t *)event_data;
+                ESP_LOGI(FNAME, "DPP Credentials received, SSID: %s", wifi_cfg->sta.ssid);
+                ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, wifi_cfg));
+                ESP_ERROR_CHECK(esp_wifi_connect());
+                break;
+            }
+            case ESP_SUPP_DPP_FAIL:
+                ESP_LOGE(FNAME, "DPP failed");
+                xEventGroupSetBits(mywifi->_dpp_event_group, DPP_FAILED_BIT);
+                break;
+            default:
+                break;
+            }
+        }
+        else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
+            [[maybe_unused]] ip_event_got_ip_t* event = (ip_event_got_ip_t*)event_data;
+            ESP_LOGI(FNAME, "SYSTEM_EVENT_STA_GOT_IP ip:" IPSTR, IP2STR(&event->ip_info.ip));
+            if ( mywifi->_current_mode == WifiApSta::STADPP ) {
+                xEventGroupSetBits(mywifi->_dpp_event_group, DPP_CONNECTED_BIT);
+            }
+            else {
+                vTaskDelay(pdMS_TO_TICKS(1000));
+                sock_server_t *xcvcl = mywifi->_socks[4];
+                if( xcvcl  && xcvcl->sock_hndl < 0 ) {
+                    if ( xcvcl->sock_hndl > 0 ) {
+                        ESP_LOGI(FNAME,"need to recreate the sta  socket");
+                        close(xcvcl->sock_hndl);
+                        xcvcl->alive = false; // mark as dead
+                    }
+                    peer_record_t new_rec;
+                    new_rec.clientAddress.sin_addr.s_addr = event->ip_info.gw.addr;
+                    xcvcl->peers.clear();
+                    xcvcl->peers.push_back(new_rec); // sta has just one peer, the master XCVario
+                    xcvcl->sock_hndl = 0; // this is the indicator to connect to the AP
+                }
+            }
+        }
+    }
 
 }; // WIFI_EVENT_HANDLER
+
+
+// void dpp_enrollee_event_cb(esp_supp_dpp_event_t event, void *data)
+// {
+//     switch (event) {
+//     case ESP_SUPP_DPP_URI_READY:
+//         if (data != NULL) {
+//             esp_qrcode_config_t cfg = ESP_QRCODE_CONFIG_DEFAULT();
+
+//             ESP_LOGI(TAG, "Scan below QR Code to configure the enrollee:");
+//             esp_qrcode_generate(&cfg, (const char *)data);
+//         }
+//         break;
+//     case ESP_SUPP_DPP_CFG_RECVD:
+//         memcpy(&s_dpp_wifi_config, data, sizeof(s_dpp_wifi_config));
+//         s_retry_num = 0;
+//         esp_wifi_set_config(ESP_IF_WIFI_STA, &s_dpp_wifi_config);
+//         esp_wifi_connect();
+//         break;
+//     case ESP_SUPP_DPP_FAIL:
+//         if (s_retry_num < 5) {
+//             ESP_LOGI(TAG, "DPP Auth failed (Reason: %s), retry...", esp_err_to_name((int)data));
+//             ESP_ERROR_CHECK(esp_supp_dpp_start_listen());
+//             s_retry_num++;
+//         } else {
+//             xEventGroupSetBits(mywifi->_dpp_event_group, DPP_FAILED_BIT);
+//         }
+//         break;
+//     default:
+//         break;
+//     }
+// }
 
 
 WifiApSta::WifiApSta() :
@@ -370,7 +457,7 @@ WifiApSta::~WifiApSta()
 
 			// Close the server socket
 			shutdown(_socks[i]->sock_hndl, SHUT_RDWR);
-			// vTaskDelay(pdMS_TO_TICKS(100)); // let the server do the clean up work
+			vTaskDelay(pdMS_TO_TICKS(100)); // let the server do the clean up work
 			close(_socks[i]->sock_hndl);
 			_socks[i] = nullptr;
 		}
@@ -379,15 +466,31 @@ WifiApSta::~WifiApSta()
 	// stop the server task
 	_terminte_sock_server = true;
 
-	esp_wifi_stop();
-	if ( _ap_netif ) {
-		ESP_LOGV(FNAME,"now esp_netif_destroy_default_wifi");
-		esp_event_handler_instance_unregister(WIFI_EVENT, ESP_EVENT_ANY_ID, _wifi_evnt_handler);
-		esp_wifi_deinit();
-		ESP_LOGV(FNAME,"now esp_netif_destroy_default_wifi");
-		esp_netif_destroy_default_wifi(_ap_netif);
-		_ap_netif = nullptr;
-	}
+    if (_wifi_evnt_handler) {
+        esp_event_handler_instance_unregister(WIFI_EVENT, ESP_EVENT_ANY_ID, _wifi_evnt_handler);
+        _wifi_evnt_handler = nullptr;
+    }
+    if (_ip_evnt_handler) {
+        esp_event_handler_instance_unregister(IP_EVENT, IP_EVENT_STA_GOT_IP, _ip_evnt_handler);
+        _ip_evnt_handler = nullptr;
+    }
+    if (_ap_netif) {
+        ESP_LOGV(FNAME, "now esp_netif_destroy_default_wifi ap");
+        esp_netif_destroy_default_wifi(_ap_netif);
+        _ap_netif = nullptr;
+    } else if (_sta_netif) {
+        ESP_LOGV(FNAME,"now esp_netif_destroy_default_wifi sta");
+        esp_netif_destroy_default_wifi(_sta_netif);
+        _sta_netif = nullptr;
+    }
+    if (_dpp_event_group) {
+        ESP_LOGV(FNAME,"now esp_netif_destroy_default_wifi");
+        esp_supp_dpp_deinit();
+        vEventGroupDelete(_dpp_event_group);
+        _dpp_event_group = nullptr;
+    }
+    esp_wifi_stop();
+    esp_wifi_deinit();
 }
 
 bool  WifiApSta::isAlive(){
@@ -461,59 +564,60 @@ bool WifiApSta::scanMaster(int master_xcv_num)
 // the Interface Config API
 //
 // it's mostly static IP a cfg depending of port so give here port minus 8880
-void WifiApSta::ConfigureIntf(int port)
-{
-	bool isAP = ! ((xcv_role.get()==SECOND_ROLE) && (port==8884));
-	bool need_to_start = false;
-	if (port >= 8880 && port <= 8884) {
-		if ( port == 8884 && _sta_netif && _socks[8884-8880] && _socks[8884-8880]->sock_hndl <= 0) {
-			ESP_LOGI(FNAME, "Only connecting STA");
-			client_connect();
-			return; // STA already configured
-		}
-		char ssid_buf[20];
-		ssid_buf[0] = '\0';
-		if ( (int)master_xcvario.get() != 0 ) {
-			sprintf(ssid_buf, "XCVario-%d", (int)master_xcvario.get());
-		}
-		need_to_start = initialize_wifi(isAP, MAX_CLIENTS, isAP ? SetupCommon::getID() : ssid_buf);
-	}
-	else if ( port == 80 ) {
-		initialize_wifi(true, 2, "ESP32 OTA");
-		esp_wifi_start();
-		return;  // no socket server for the OTA webserver
-	}
-	else {
-		ESP_LOGE(FNAME, "Invalid cfg: %d, should be between 8880 and 8884, or 80", port);
-		return;
-	}
+void WifiApSta::ConfigureIntf(int port) {
+    bool isAP = !((xcv_role.get() == SECOND_ROLE) && (port == 8884));
+    bool need_to_start = false;
+    if (port >= 8880 && port <= 8884) {
+        if (port == 8884 && _sta_netif && _socks[8884 - 8880] && _socks[8884 - 8880]->sock_hndl <= 0) {
+            ESP_LOGI(FNAME, "Only connecting STA");
+            client_connect();
+            return;  // STA already configured
+        }
+        char ssid_buf[20];
+        ssid_buf[0] = '\0';
+        if ((int)master_xcvario.get() != 0) {
+            sprintf(ssid_buf, "%s%d", SSID_PREFIX, (int)master_xcvario.get());
+        }
+        need_to_start = initialize_wifi(isAP ? WifiApSta::AP : WifiApSta::STA, MAX_CLIENTS, isAP ? SetupCommon::getID() : ssid_buf);
+    } else if (port == 80) {
+        initialize_wifi(WifiApSta::AP, 2, OTA_SSID);
+        esp_wifi_start();
+        return;  // no socket server for the OTA webserver
+    } else if (port == 9999) {
+        // connect to the XCV update server for firmware updates
+        initialize_wifi(WifiApSta::STADPP, 0, nullptr);
+        esp_wifi_start();
+        return;  // no socket server for the OTA webserver
+    } else {
+        ESP_LOGE(FNAME, "Invalid cfg: %d, should be between 8880 and 8884, 80, or 9999", port);
+        return;
+    }
 
-	// create the one and only task if not yet done, before we create the sockets
-	if( !socket_server_task_pid ) {
-		xTaskCreate(&WIFI_EVENT_HANDLER::socket_server, "wifitask", 4096, this, 8, &socket_server_task_pid);
-		ESP_LOGI(FNAME, "SocketServerTask started: %p", socket_server_task_pid );
-	}
+    // create the one and only task if not yet done, before we create the sockets
+    if (!socket_server_task_pid) {
+        xTaskCreate(&WIFI_EVENT_HANDLER::socket_server, "wifitask", 4096, this, 8, &socket_server_task_pid);
+        ESP_LOGI(FNAME, "SocketServerTask started: %p", socket_server_task_pid);
+    }
 
-	int pidx = port-8880;
-	sock_server_t *sock = _socks[pidx];  // particular pointer to socket server record for this port
-	if ( sock == nullptr ) {  // its a one-way train, we can only create those ATM
-		_socks[pidx] = sock = new sock_server_t(port);  // WiFiAP only once, all point to here
-		sock->is_ap = isAP;
-		if ( isAP ) {
-			int sock_err = sock->create_ap_socket();  // Create already the socket for this port structure as interface to the server task
-			if( sock_err < 0 ) {
-				ESP_LOGE(FNAME, "Socket creation port %d FAILED with (%d): Abort ConfigureIntf", port, sock_err );
-				return;
-			}
-		}
-		ESP_LOGI(FNAME, "Sock creation successful port: %d socket: %d", port, sock->sock_hndl);
-	}
+    int pidx = port - 8880;
+    sock_server_t* sock = _socks[pidx];                 // particular pointer to socket server record for this port
+    if (sock == nullptr) {                              // its a one-way train, we can only create those ATM
+        _socks[pidx] = sock = new sock_server_t(port);  // WiFiAP only once, all point to here
+        sock->is_ap = isAP;
+        if (isAP) {
+            int sock_err = sock->create_ap_socket();  // Create already the socket for this port structure as interface to the server task
+            if (sock_err < 0) {
+                ESP_LOGE(FNAME, "Socket creation port %d FAILED with (%d): Abort ConfigureIntf", port, sock_err);
+                return;
+            }
+        }
+        ESP_LOGI(FNAME, "Sock creation successful port: %d socket: %d", port, sock->sock_hndl);
+    }
 
-	if ( need_to_start ) {
-		ESP_LOGI(FNAME,"now start wifi");
-		ESP_ERROR_CHECK(esp_wifi_start());
-	}
-
+    if (need_to_start) {
+        ESP_LOGI(FNAME, "now start wifi");
+        ESP_ERROR_CHECK(esp_wifi_start());
+    }
 }
 
 int WifiApSta::Send(const char *msg, int &len, int port)
@@ -577,6 +681,11 @@ static esp_netif_t *wifi_consfig_sta(const char* staid)
 	ESP_LOGV(FNAME,"now esp_netif_create_default_wifi_sta");
 	esp_netif_t *esp_netif_sta = esp_netif_create_default_wifi_sta();
 
+    if ( staid == nullptr || strlen(staid) == 0 ) {
+        // DPP mode, no SSID given, we will wait for the credentials to be received via DPP
+        ESP_LOGE(FNAME, "Invalid SSID for STA mode: '%s'", staid);
+        return esp_netif_sta;
+    }
 	wifi_config_t wifi_sta_config;
 	memset(&wifi_sta_config, 0, sizeof(wifi_sta_config));
 	wifi_sta_config.sta.scan_method = WIFI_FAST_SCAN; // stops scan after finding the SSID
@@ -612,44 +721,51 @@ static esp_netif_t *wifi_config_softap(uint8_t maxcon, const char* ssid)
 	return esp_netif_ap;
 }
 
+bool WifiApSta::initialize_wifi(wifi_mode_t mode, int maxcon, const char* ssid) {
+    if (!netif_initialized) {
+        netif_initialized = true;
+        ESP_ERROR_CHECK(esp_netif_init());  // can only be called once
 
-bool WifiApSta::initialize_wifi(bool ap_mode, int maxcon, const char* ssid)
-{
-	if ( ! netif_initialized ) {
-		netif_initialized = true;
-		ESP_ERROR_CHECK(esp_netif_init()); // can only be called once
+        // create both modes the very first time
+        ESP_ERROR_CHECK(esp_event_loop_create_default());
 
-		// create both modes the very first time
-		ESP_ERROR_CHECK(esp_event_loop_create_default());
+        ESP_LOGV(FNAME, "now esp_wifi_init");
+        wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
+        ESP_ERROR_CHECK(esp_wifi_init(&cfg));
 
-		ESP_LOGV(FNAME,"now esp_wifi_init");
-		wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
-		ESP_ERROR_CHECK(esp_wifi_init(&cfg));
+        ESP_LOGV(FNAME, "now esp_event_handler_instance_register");
+        ESP_ERROR_CHECK(esp_event_handler_instance_register(WIFI_EVENT, 
+            ESP_EVENT_ANY_ID, WIFI_EVENT_HANDLER::wifi_event_handler, 
+            this, &_wifi_evnt_handler));
+        ESP_ERROR_CHECK(esp_event_handler_instance_register(IP_EVENT, 
+            IP_EVENT_STA_GOT_IP, WIFI_EVENT_HANDLER::wifi_event_handler, 
+            this, &_ip_evnt_handler));
 
-		ESP_LOGV(FNAME,"now esp_event_handler_instance_register");
-		ESP_ERROR_CHECK(esp_event_handler_instance_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &WIFI_EVENT_HANDLER::wifi_event_handler, this, &_wifi_evnt_handler));
-		ESP_ERROR_CHECK(esp_event_handler_instance_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &WIFI_EVENT_HANDLER::wifi_event_handler, this, &_ip_evnt_handler));
+        if (mode != AP) {
+            // station config
+            ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
+            _sta_netif = wifi_consfig_sta(ssid);
+            if ( mode == STADPP ) {
+                ESP_ERROR_CHECK(esp_supp_dpp_init(NULL));
+                ESP_ERROR_CHECK(esp_supp_dpp_bootstrap_gen("1,6,11", DPP_BOOTSTRAP_QR_CODE, 
+                    nullptr, nullptr));
+                _dpp_event_group = xEventGroupCreate();
+            }
+        } else {
+            // access point config
+            ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_AP));
+            _ap_netif = wifi_config_softap(maxcon, ssid);
+        }
 
-		if ( ! ap_mode ) {
-			// station config
-			ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
-			_sta_netif = wifi_consfig_sta(ssid);
-		}
-		else {
-			// access point config
-			ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_AP));
-			_ap_netif = wifi_config_softap(maxcon, ssid);
-		}
+        // ESP_LOGV(FNAME,"now esp_wifi_set_storage");
+        // ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));
+        // For further testing, may improve wifi range
+        // ESP_ERROR_CHECK(esp_wifi_set_protocol(ESP_IF_WIFI_STA, WIFI_PROTOCOL_LR ));
 
-		// ESP_LOGV(FNAME,"now esp_wifi_set_storage");
-		// ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));
-		// For further testing, may improve wifi range
-		// ESP_ERROR_CHECK(esp_wifi_set_protocol(ESP_IF_WIFI_STA, WIFI_PROTOCOL_LR ));
-
-		ESP_ERROR_CHECK(esp_wifi_set_max_tx_power( int(wifi_max_power.get()*80.0/100.0) ));
-		return true; // need to start wifi before we can connect to it
-	}
-	return false;
+        ESP_ERROR_CHECK(esp_wifi_set_max_tx_power(int(wifi_max_power.get() * 80.0 / 100.0)));
+        return true;  // need to start wifi before we can connect to it
+    }
+    return false;
 }
 
 void WifiApSta::client_connect()
