@@ -82,7 +82,6 @@ const ParserEntry SeeYouMsg::_pt[] = {
 
 // helper function to send attribute setting
 void send_attr(NmeaPrtcl &nmea, int attridx, float val)
-
 {
     // e.g. send message "$PLXV0,MC,W,1.2*CS\r\n"
     Message* msg = nmea.newMessage();
@@ -176,7 +175,8 @@ void NmeaPrtcl::sendSeeYouS()
 
     msg->buffer = "$PLXVS,";
     char tmp[50];
-    std::sprintf(tmp, "%.1f,", Units::pipe(OAT.get(), Units::celsius));
+    celsius_t temp = OAT.getValid() ? Units::pipe(OAT.get(), Units::celsius) : 0;
+    std::sprintf(tmp, "%.1f,", temp);
     msg->buffer += tmp;
     std::sprintf(tmp, "%1d,", CRMOD.getCMode());
     msg->buffer += tmp;
@@ -206,7 +206,8 @@ void NmeaPrtcl::sendLK8EX1()
     msg->buffer += tmp;
     std::sprintf(tmp, "%d,", fast_iroundf(te_vario.get() * 100.)); // cm/sec
     msg->buffer += tmp;
-    std::sprintf(tmp, "%.1f,", Units::pipe(OAT.get(), Units::celsius));
+    celsius_t temp = OAT.getValid() ? Units::pipe(OAT.get(), Units::celsius) : 0;
+    std::sprintf(tmp, "%.1f,", temp);
     msg->buffer += tmp;
     std::sprintf(tmp, "%.1f", battery_voltage.get());
     msg->buffer += tmp;
