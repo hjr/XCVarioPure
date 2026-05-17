@@ -287,26 +287,48 @@ public:
 	static void wifi_event_handler(void* arg, esp_event_base_t event_base,	int32_t event_id, void* event_data)
 	{
 		WifiApSta *mywifi = static_cast<WifiApSta*>(arg);
-		if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
-			sock_server_t *xcvcl = mywifi->_socks[4];
-			ESP_LOGI(FNAME,"SYSTEM_EVENT_STA_START hndl %d ap %d", xcvcl ? xcvcl->sock_hndl : -2, xcvcl ? xcvcl->is_ap : -2);
-			if ( xcvcl && xcvcl->sock_hndl < 0 && !xcvcl->is_ap ) {
-				vTaskDelay(pdMS_TO_TICKS(1000));
-				mywifi->client_connect();
-			}
-		}
-		else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
-			ESP_LOGI(FNAME,"SYSTEM_EVENT_STA_DISCONNECTED");
-			sock_server_t *xcvcl = mywifi->_socks[4];
-			if( xcvcl && !xcvcl->is_ap ) {
-				if ( xcvcl->sock_hndl > 0 ) {
-					close( xcvcl->sock_hndl );
-					xcvcl->sock_hndl = -1;
-					xcvcl->alive = false; // mark as dead
-					xcvcl->peers.clear();
+        if (event_base == WIFI_EVENT) {
+            switch (event_id) {
+            case WIFI_EVENT_STA_START:
+            {
+				sock_server_t *xcvcl = mywifi->_socks[4];
+				ESP_LOGI(FNAME,"SYSTEM_EVENT_STA_START hndl %d ap %d", xcvcl ? xcvcl->sock_hndl : -2, xcvcl ? xcvcl->is_ap : -2);
+				if ( xcvcl && xcvcl->sock_hndl < 0 && !xcvcl->is_ap ) {
+					vTaskDelay(pdMS_TO_TICKS(1000));
+					mywifi->client_connect();
 				}
+                break;
 			}
-		}
+            case WIFI_EVENT_STA_DISCONNECTED:
+            {
+				ESP_LOGI(FNAME,"SYSTEM_EVENT_STA_DISCONNECTED");
+				sock_server_t *xcvcl = mywifi->_socks[4];
+				if( xcvcl && !xcvcl->is_ap ) {
+					if ( xcvcl->sock_hndl > 0 ) {
+						close( xcvcl->sock_hndl );
+						xcvcl->sock_hndl = -1;
+						xcvcl->alive = false; // mark as dead
+						xcvcl->peers.clear();
+					}
+				}
+                break;
+			}
+            case WIFI_EVENT_AP_STACONNECTED:
+            {
+                [[maybe_unused]] wifi_event_ap_staconnected_t* event = (wifi_event_ap_staconnected_t*) event_data;
+                ESP_LOGI(FNAME,"station %x:%x:%x:%x:%x:%x joined, AID=%d", MAC2STR(event->mac), event->aid);
+                break;
+            }
+            case WIFI_EVENT_AP_STADISCONNECTED:
+            {
+                [[maybe_unused]] wifi_event_ap_stadisconnected_t* event = (wifi_event_ap_stadisconnected_t*) event_data;
+                ESP_LOGI(FNAME,"station %x:%x:%x:%x:%x:%x left, AID=%d", MAC2STR(event->mac), event->aid);
+                break;
+            }
+            default:
+                break;
+            }
+        }
 		else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
 			[[maybe_unused]] ip_event_got_ip_t* event = (ip_event_got_ip_t*)event_data;
 			ESP_LOGI(FNAME, "SYSTEM_EVENT_STA_GOT_IP ip:" IPSTR, IP2STR(&event->ip_info.ip));
@@ -324,14 +346,6 @@ public:
 				xcvcl->peers.push_back(new_rec); // sta has just one peer, the master XCVario
 				xcvcl->sock_hndl = 0; // this is the indicator to connect to the AP
 			}
-		}
-		else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_AP_STACONNECTED) {
-			[[maybe_unused]] wifi_event_ap_staconnected_t* event = (wifi_event_ap_staconnected_t*) event_data;
-			ESP_LOGI(FNAME,"station %x:%x:%x:%x:%x:%x joined, AID=%d", MAC2STR(event->mac), event->aid);
-		}
-		else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_AP_STADISCONNECTED) {
-			[[maybe_unused]] wifi_event_ap_stadisconnected_t* event = (wifi_event_ap_stadisconnected_t*) event_data;
-			ESP_LOGI(FNAME,"station %x:%x:%x:%x:%x:%x left, AID=%d", MAC2STR(event->mac), event->aid);
 		}
 	}
 
@@ -357,37 +371,54 @@ WifiApSta *WifiApSta::createWifiApSta()
 
 WifiApSta::~WifiApSta()
 {
-	// fixme need work here
+    // fixme still needs work to reliably restart WiFi, 
+    // currently no crash, but a disfunctional WiFi after restart.
+    
+	// stop the server task
+	_terminte_sock_server = true;
+    int16_t wait_counter = 22;
+    do {
+        vTaskDelay(pdMS_TO_TICKS(100));
+        wait_counter--;
+    } while (socket_server_task_pid != nullptr && wait_counter > 0); // wait for the server task to terminate
+
 	for (int i=0; i < NUM_TCP_PORTS; i++) {
 		if (_socks[i]) {
-			// for (auto &client_rec : _socks[i]->clients) {
-			// 	if (client_rec.client >= 0) {
-			// 		shutdown(client_rec.client, SHUT_RDWR);
-			// 		close(client_rec.client);
-			// 	}
-			// }
+			for (auto &client_rec : _socks[i]->peers) {
+				if (client_rec.peer >= 0) {
+					shutdown(client_rec.peer, SHUT_RDWR);
+					close(client_rec.peer);
+				}
+			}
 			_socks[i]->peers.clear();
 
 			// Close the server socket
 			shutdown(_socks[i]->sock_hndl, SHUT_RDWR);
-			// vTaskDelay(pdMS_TO_TICKS(100)); // let the server do the clean up work
+			vTaskDelay(pdMS_TO_TICKS(100)); // let the server do the clean up work
 			close(_socks[i]->sock_hndl);
 			_socks[i] = nullptr;
 		}
 	}
 
-	// stop the server task
-	_terminte_sock_server = true;
-
-	esp_wifi_stop();
-	if ( _ap_netif ) {
-		ESP_LOGV(FNAME,"now esp_netif_destroy_default_wifi");
-		esp_event_handler_instance_unregister(WIFI_EVENT, ESP_EVENT_ANY_ID, _wifi_evnt_handler);
-		esp_wifi_deinit();
-		ESP_LOGV(FNAME,"now esp_netif_destroy_default_wifi");
-		esp_netif_destroy_default_wifi(_ap_netif);
-		_ap_netif = nullptr;
-	}
+    if (_wifi_evnt_handler) {
+        esp_event_handler_instance_unregister(WIFI_EVENT, ESP_EVENT_ANY_ID, _wifi_evnt_handler);
+        _wifi_evnt_handler = nullptr;
+    }
+    if (_ip_evnt_handler) {
+        esp_event_handler_instance_unregister(IP_EVENT, IP_EVENT_STA_GOT_IP, _ip_evnt_handler);
+        _ip_evnt_handler = nullptr;
+    }
+    if (_ap_netif) {
+        ESP_LOGV(FNAME, "now esp_netif_destroy_default_wifi ap");
+        esp_netif_destroy_default_wifi(_ap_netif);
+        _ap_netif = nullptr;
+    } else if (_sta_netif) {
+        ESP_LOGV(FNAME,"now esp_netif_destroy_default_wifi sta");
+        esp_netif_destroy_default_wifi(_sta_netif);
+        _sta_netif = nullptr;
+    }
+    esp_wifi_stop();
+    esp_wifi_deinit();
 }
 
 bool  WifiApSta::isAlive(){
@@ -474,12 +505,12 @@ void WifiApSta::ConfigureIntf(int port)
 		char ssid_buf[20];
 		ssid_buf[0] = '\0';
 		if ( (int)master_xcvario.get() != 0 ) {
-			sprintf(ssid_buf, "XCVario-%d", (int)master_xcvario.get());
+            sprintf(ssid_buf, "%s%d", SSID_PREFIX, (int)master_xcvario.get());
 		}
 		need_to_start = initialize_wifi(isAP, MAX_CLIENTS, isAP ? SetupCommon::getID() : ssid_buf);
 	}
 	else if ( port == 80 ) {
-		initialize_wifi(true, 2, "ESP32 OTA");
+		initialize_wifi(true, 2, OTA_SSID);
 		esp_wifi_start();
 		return;  // no socket server for the OTA webserver
 	}
@@ -490,6 +521,7 @@ void WifiApSta::ConfigureIntf(int port)
 
 	// create the one and only task if not yet done, before we create the sockets
 	if( !socket_server_task_pid ) {
+        _terminte_sock_server = false;
 		xTaskCreate(&WIFI_EVENT_HANDLER::socket_server, "wifitask", 4096, this, 8, &socket_server_task_pid);
 		ESP_LOGI(FNAME, "SocketServerTask started: %p", socket_server_task_pid );
 	}
@@ -572,7 +604,7 @@ int WifiApSta::Send(const char *msg, int &len, int port)
 	return 50;  // this port -> socket number is currently unavailable please try again 50 ms later
 }
 
-static esp_netif_t *wifi_consfig_sta(const char* staid)
+static esp_netif_t *wifi_config_sta(const char* staid)
 {
 	ESP_LOGV(FNAME,"now esp_netif_create_default_wifi_sta");
 	esp_netif_t *esp_netif_sta = esp_netif_create_default_wifi_sta();
@@ -618,7 +650,8 @@ bool WifiApSta::initialize_wifi(bool ap_mode, int maxcon, const char* ssid)
 	if ( ! netif_initialized ) {
 		netif_initialized = true;
 		ESP_ERROR_CHECK(esp_netif_init()); // can only be called once
-
+    }
+    if ( ! _sta_netif && ! _ap_netif ) {
 		// create both modes the very first time
 		ESP_ERROR_CHECK(esp_event_loop_create_default());
 
@@ -627,13 +660,13 @@ bool WifiApSta::initialize_wifi(bool ap_mode, int maxcon, const char* ssid)
 		ESP_ERROR_CHECK(esp_wifi_init(&cfg));
 
 		ESP_LOGV(FNAME,"now esp_event_handler_instance_register");
-		ESP_ERROR_CHECK(esp_event_handler_instance_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &WIFI_EVENT_HANDLER::wifi_event_handler, this, &_wifi_evnt_handler));
-		ESP_ERROR_CHECK(esp_event_handler_instance_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &WIFI_EVENT_HANDLER::wifi_event_handler, this, &_ip_evnt_handler));
+		ESP_ERROR_CHECK(esp_event_handler_instance_register(WIFI_EVENT, ESP_EVENT_ANY_ID, WIFI_EVENT_HANDLER::wifi_event_handler, this, &_wifi_evnt_handler));
+		ESP_ERROR_CHECK(esp_event_handler_instance_register(IP_EVENT, IP_EVENT_STA_GOT_IP, WIFI_EVENT_HANDLER::wifi_event_handler, this, &_ip_evnt_handler));
 
 		if ( ! ap_mode ) {
 			// station config
 			ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
-			_sta_netif = wifi_consfig_sta(ssid);
+			_sta_netif = wifi_config_sta(ssid);
 		}
 		else {
 			// access point config
