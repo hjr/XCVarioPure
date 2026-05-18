@@ -11,8 +11,7 @@
 #include "ImuSensor.h"
 #include "AccMPU6050.h"
 #include "../SensorMgr.h"
-#include "SetupNG.h"
-#include "sensor.h"
+#include "setup/SetupNG.h"
 #include "logdef.h"
 
 #include "mpu/math.hpp"
@@ -79,7 +78,9 @@ void GyroMPU6050::postProcess() {
     bool rest = detectRest() && accSensor->isResting();
 
     // feed the bias filter
-    _bias_estimator.update(gyro, (_isResting > 0) && accSensor->isResting());
+    if (!airborne.get()) {
+        _bias_estimator.update(gyro, (_isResting > 0) && accSensor->isResting());
+    }
     if ( rest != rest_old) {
         ESP_LOGI(FNAME, "rest state changed: %c -> %c (%d)", rest_old ? 'R' : 'M', rest ? 'R' : 'M', _isResting);
         rest_old = rest;
