@@ -612,6 +612,7 @@ static void screens_menu_create_vario(SetupMenu *top) {
     tgauge->addEntry("IAS Speed", MultiGauge::GAUGE_IAS_SPEED);
     tgauge->addEntry("TAS Speed", MultiGauge::GAUGE_TAS_SPEED);
     tgauge->addEntry("GND Speed", MultiGauge::GAUGE_GND_SPEED);
+    tgauge->addEntry("Altitude", MultiGauge::GAUGE_ALTIMETER);
     tgauge->addEntry("Speed2Fly", MultiGauge::GAUGE_S2F);
     tgauge->addEntry("McCready", MultiGauge::GAUGE_MC);
     tgauge->addEntry("Net. Vario", MultiGauge::GAUGE_NETTO);

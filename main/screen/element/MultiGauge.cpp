@@ -8,6 +8,7 @@
 
 #include "MultiGauge.h"
 
+#include "Altimeter.h"
 #include "Colors.h"
 #include "math/Floats.h"
 #include "setup/SetupNG.h"
@@ -73,6 +74,10 @@ void MultiGauge::draw()
         case GAUGE_MC:
             fval = VarioUnit->apply(_nvsvar->get());
             if (fval < 10.f) { precision = 10.f; }
+            break;
+        case GAUGE_ALTIMETER:
+            fval = AltUnit->apply(_nvsvar->get());
+            if (alt_display_mode.get() == Altimeter::MODE_QFE) { fval -= airfield_elevation.get(); }
             break;
         default:
             fval = _nvsvar->get();
@@ -151,6 +156,18 @@ void MultiGauge::drawUnit() const
     case GAUGE_MC:
         unit_str = "MC";
         break;
+    case GAUGE_ALTIMETER:
+        if (alt_display_mode.get() == Altimeter::MODE_QFE) {
+            mode_str = "QFE";
+        }
+        else if (alt_display_mode.get() == Altimeter::MODE_QNH) {
+            mode_str = "QNH";
+        }
+        unit_str = AltUnit->getName();
+        if (AltUnit == &Units::flightlevel) {
+            mode_str = "ISA";
+        }
+        break;
     default:
         break;
     }
@@ -170,32 +187,35 @@ void MultiGauge::drawUnit() const
 void MultiGauge::update_nvs()
 {
     switch (_display) {
-    case MultiGauge::GAUGE_IAS_SPEED:
+    case GAUGE_IAS_SPEED:
         _nvsvar = &ias;
         break;
-    case MultiGauge::GAUGE_TAS_SPEED:
+    case GAUGE_TAS_SPEED:
         _nvsvar = &tas;
         break;
-    case MultiGauge::GAUGE_GND_SPEED:
+    case GAUGE_GND_SPEED:
         _nvsvar = &gnd_speed;
         break;
-    case MultiGauge::GAUGE_S2F:
+    case GAUGE_S2F:
         _nvsvar = &s2f_ideal;
         break;
-    case MultiGauge::GAUGE_NETTO:
+    case GAUGE_NETTO:
         _nvsvar = &te_netto;
         break;
-    case MultiGauge::GAUGE_HEADING:
+    case GAUGE_HEADING:
         _nvsvar = &heading_tru;
         break;
-    case MultiGauge::GAUGE_OAT:
+    case GAUGE_OAT:
         _nvsvar = &OAT;
         break;
-    case MultiGauge::GAUGE_SLIP:
+    case GAUGE_SLIP:
         _nvsvar = &slip_angle;
         break;
-    case MultiGauge::GAUGE_MC:
+    case GAUGE_MC:
         _nvsvar = &MC;
+        break;
+    case GAUGE_ALTIMETER:
+        _nvsvar = &altitude;
         break;
     // case GAUGE_TRACK:
     // 	_nvsvar = &;
