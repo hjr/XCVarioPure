@@ -11,9 +11,12 @@ from matplotlib.animation import FuncAnimation
 # --- Konfiguration ---
 BAUDRATE = 115200
 FLIGHT_DATA_DIR = os.getenv("FLIGHT_DATA", "${HOME}/flight_data")
+WO_GPS = False
+IS_ENU = False;
 
 # Nur diese Sätze weiterleiten (PXCV ignorieren)
-ALLOWED_PREFIXES = {"$GPGGA", "$GPGSA", "$GPRMC", "$GPRMZ", "$PFLAU", "$PFLAA", "$PFLAL", "$SENS"}
+ALLOWED_PREFIXES = {"$GPGGA", "$GPGSA", "$GPRMC", "$PGRMZ", "$PFLAU", "$PFLAA", "$PFLAL", "$SENS"}
+#ALLOWED_PREFIXES = {"$GPGGA", "$GPGSA", "$GPRMC", "$GPRMZ", "$PFLAU", "$PFLAA", "$PFLAL"}
 
 # --- Erstes .nmea File finden ---
 def find_first_nmea_file(flight):
@@ -23,14 +26,41 @@ def find_first_nmea_file(flight):
             return os.path.join(directory, file)
     return None
 
+#Original :
+#$SENS,3242.043,2908723,955.400,955.395,27.352,17.44,-0.1967,-0.1073,0.8429,-1.4391,0.0000,4.6402,1185.0690,-1188.3779,7553.8076
+#
+#Converted:
+#$SENS,3242.043,2908723,955.400,955.395,27.352,17.44,0.1967,-0.1073,0.8429,-1.4391,-0.0000,-4.6402,1185.0690,1188.3779,-7553.8076q
+def flip_25_to_ned(line: str) -> str:
+    parts = line.strip().split(',')
+    if len(parts) < 8 or parts[0] != '$SENS':
+        return line
+    #fixed = parts[:7] # Erste 7 Felder bleiben gleich (Index 0 bis 6)
+    # Ab Index 7: Vorzeichen nach dieser maske umkehren
+    to_flip = [False, True, True, False, True, True , False, True, True]
+    flipped = []
+    for i in range(7, len(parts)):
+        val = parts[i]
+        if to_flip[i-7] == True:
+            num = -float(val)
+            flipped.append(str(num))
+        else:
+            flipped.append(val)  # falls kein Float → unverändert
+    #flipped = [f"{ -float(v):.4f}" if v.lstrip('-+').replace('.','').isdigit() else v
+    #           for v in parts[7:]]
+    return ','.join(parts[:7] + flipped)
+
 # --- NMEA-Zeilen laden und mit Zeitstempeln versehen ---
 def load_flight_data(filepath):
     lines = []
     last_gps_timestamp = None  # Letzter valider GPS-Timestamp (Ground Truth)
-    last_sens_timestamp = None  # Letzter SENS-Timestamp
+    #last_sens_timestamp = None  # Letzter SENS-Timestamp
     time_ref = 0.0  # Relative-Zeit seit Start (für Deltas)
     has_valid_gps = False  # Flag: Erst nach validem GPS starten
     seen_sens_line = False # Flag. Eine erste SENS Zeile gefunden
+    if WO_GPS:
+        last_gps_timestamp = 0
+        has_valid_gps = True
 
     with open(filepath, "r", errors="ignore") as f:
         for raw_line in f:
@@ -50,6 +80,8 @@ def load_flight_data(filepath):
                 continue  # z. B. $PXCV ignorieren
 
             timestamp = None
+            if WO_GPS:
+                timestamp = last_gps_timestamp
             lat = lon = None
 
             try:
@@ -88,17 +120,21 @@ def load_flight_data(filepath):
                             print("First timestamp", timestamp)
                             has_valid_gps = True  # Ab jetzt einlesen
 
-                elif line.startswith("$SENS"):
+                elif line.startswith("$SENS") or "$SENS" not in ALLOWED_PREFIXES:
                     seen_sens_line = True
                     timestamp = last_gps_timestamp + 0.1
-
+                    if line.startswith("$SENS") and IS_ENU:
+                        # Zeile zu NED konvertieren
+                        #print("v", line)
+                        line = flip_25_to_ned(line)
+                        #print("n", line)
                 # --- Andere Sätze: sofort ---
                 else:
                     timestamp = last_gps_timestamp  # $PFLAU, $PFLAA usw. ohne Wartezeit
                 last_gps_timestamp = timestamp
 
             except Exception as e:
-                #print(f"Parse-Fehler bei: {line} → {e}")
+                print(f"Parse-Fehler bei: {line} → {e}")
                 last_gps_timestamp = timestamp
 
             # --- Nur nach validem GPS einlesen ---
@@ -327,10 +363,13 @@ if __name__ == "__main__":
     # Pflicht-Argument (Positional Argument)
     parser.add_argument("directory", type=str, help="Directory name, which contains the NMEA log")
     parser.add_argument("-p", "--port", type=str, default="/dev/ttyUSB1", help="Serial port path (e.g., /dev/ttyUSB1)")
+    parser.add_argument("-e", "--enforce", action="store_true", default=False, help="Enforce loading flight data w/o GPS data")
 
     args = parser.parse_args()
     flight_dir = args.directory
+    IS_ENU =  flight_dir.startswith("25") or flight_dir.startswith("24")
     SERIAL_PORT = args.port
+    WO_GPS = args.enforce
 
     # --- Serielle Schnittstelle ---
     try:
