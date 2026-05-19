@@ -332,7 +332,6 @@ extern SetupNG<float>		ahrs_dynamic_factor;
 extern SetupNG<float>       gyro_gating;
 extern SetupNG<int>		    s2f_switch_type;
 extern SetupNG<int>		    hardwareRevision;
-extern SetupNG<t_tenchar_id> ahrs_licence;
 // extern SetupNG<int>		    dummy;
 extern SetupNG<int>		    wk_sens_pos_0;
 extern SetupNG<int>		    wk_sens_pos_1;

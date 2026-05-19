@@ -1,7 +1,6 @@
 
 #include "sensor.h"
 
-#include "Cipher.h"
 #include "ESP32NVS.h"
 #include "imu/ImuSensor.h"
 #include "sensor/pressure/PressureSensor.h"
@@ -1076,12 +1075,7 @@ extern "C" void  app_main(void)
 	// Access to the non volatile setup
 	DeviceManager::Instance(); // Create a blank DM, because on a cleard flash initSetup starts to access it.
 	ESP32NVS::CreateInstance(); // NVS is needed for the SetupCommon::initSetup() to work, and to query nvs var existance
-	// Check on the existance of some nvs variables
-	if ( ! ahrs_licence.exists() ) {
-		Cipher crypt;
-		crypt.initTest();
-	}
-    // check on legacy nvs variables to detect a XCVpro update
+    // check on legacy nvs variables to detect a XCV pure update, before initialize the setup module.
     if (!flarm_devsetup.exists()) {
         ESP_LOGI(FNAME, "Init devices");
         gflags.first_pro_run = true;

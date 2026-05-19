@@ -503,10 +503,6 @@ void system_menu_create_hardware_imu(SetupMenu *top) {
 	araw->setHelp( "Send RAW AHRS gyro and accelerator data in XCV,G..,A.. format");
 	araw->mkEnable();
 
-	// SetupMenuChar *ahrslc = new SetupMenuChar("License Key", "0A#", 4, RST_NONE, add_key, ahrs_licence.get().id);
-	// ahrslc->setHelp("Enter valid AHRS License Key to enabled the 'AHRS Option'");
-	// top->addEntry(ahrslc);
-
 #ifdef DEBUG_AND_TEST
 	SetupMenu *ahrspa = new SetupMenu("Parameters", system_menu_create_hardware_ahrs_parameter);
 	ahrspa->setHelp("AHRS constants such as gyro trust and filtering");

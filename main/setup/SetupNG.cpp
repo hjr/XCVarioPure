@@ -547,7 +547,6 @@ SetupNG<float>		    ahrs_dynamic_factor("AHRSGDYN", 5, true, SYNC_NONE, PERSISTE
 SetupNG<float>       	gyro_gating("GYRO_GAT", 1.0, true, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(0, 10, 0.1));
 SetupNG<int>		    s2f_switch_type("S2FHWSW", S2F_HW_SWITCH );
 SetupNG<int>		    hardwareRevision("HWREV", HW_UNKNOWN, false);
-SetupNG<t_tenchar_id>	ahrs_licence("AHRS_LIC", t_tenchar_id(""), false );
 // SetupNG<int>		    dummy("DUMMY", 0, false, SYNC_NONE, VOLATILE );
 SetupNG<int>		    wk_sens_pos_0("WK_SP_0", 0, false );
 SetupNG<int>		    wk_sens_pos_1("WK_SP_1", 0, false );
