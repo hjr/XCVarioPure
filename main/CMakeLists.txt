@@ -17,6 +17,10 @@ add_subdirectory("test")
 add_subdirectory("wind")
 add_subdirectory("wmm")
 
+if(DEFINED ENV{VARIO_PRIVATE_COMPONENTS})
+    set(EXTRA_COMPONENT_DIRS ${EXTRA_COMPONENT_DIRS} $ENV{VARIO_PRIVATE_COMPONENTS})
+endif()
+
 if(DEFINED ENV{BUILD_TYPE})
     set(CMAKE_BUILD_TYPE $ENV{BUILD_TYPE} CACHE STRING "" FORCE)
 endif()
