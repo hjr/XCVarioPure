@@ -776,16 +776,57 @@ void eglib_DrawFilledTriangle(
   pg_DrawPolygon(&eglib_pg, eglib);
 }
 
+// only convex tetragons supported (faster)
 void eglib_DrawTetragon(eglib_t *eglib, int16_t x0, int16_t y0, int16_t x1, int16_t y1, int16_t x2, int16_t y2, int16_t x3, int16_t y3)
 {
-  pg_struct eglib_pg;
-  pg_ClearPolygonXY(&eglib_pg);
-  pg_AddPolygonXY(&eglib_pg, eglib, x0, y0);
-  pg_AddPolygonXY(&eglib_pg, eglib, x1, y1);
-  pg_AddPolygonXY(&eglib_pg, eglib, x2, y2);
-  pg_AddPolygonXY(&eglib_pg, eglib, x3, y3);
-  pg_DrawPolygon(&eglib_pg, eglib);
+    int miny = y0, maxy = y0;
+
+    if (y1 < miny) miny = y1;
+    if (y2 < miny) miny = y2;
+    if (y3 < miny) miny = y3;
+
+    if (y1 > maxy) maxy = y1;
+    if (y2 > maxy) maxy = y2;
+    if (y3 > maxy) maxy = y3;
+
+    for (int y = miny; y <= maxy; y++)
+    {
+        int nodes[2];
+        int cnt = 0;
+
+#define PROCESS_EDGE(ax, ay, bx, by) \
+        do { \
+            if (((ay) < y && (by) >= y) || ((by) < y && (ay) >= y)) { \
+                if ((by) != (ay)) { \
+                    int t = (int)(y - (ay)) * ((bx) - (ax)); \
+                    nodes[cnt++] = (ax) + (int)(t / ((by) - (ay))); \
+                } \
+            } \
+        } while(0)
+
+        PROCESS_EDGE(x0, y0, x1, y1);
+        PROCESS_EDGE(x1, y1, x2, y2);
+        PROCESS_EDGE(x2, y2, x3, y3);
+        PROCESS_EDGE(x3, y3, x0, y0);
+
+#undef PROCESS_EDGE
+
+        if (cnt == 2)                    // Almost always true for convex
+        {
+            int xa = nodes[0];
+            int xb = nodes[1];
+
+            if (xa > xb) {
+                int tmp = xa;
+                xa = xb;
+                xb = tmp;
+            }
+
+            eglib_DrawHLine(eglib, xa, y, xb - xa + 1);
+        }
+    }
 }
+
 //
 // Frames
 //
