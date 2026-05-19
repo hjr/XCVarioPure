@@ -298,7 +298,8 @@ esp_err_t POST_update_handler(httpd_req_t *req)
 			ESP_LOG_BUFFER_HEX(FNAME, otaBuffer, std::min(100, recv_len));
 			updateTarget = 0; // reset target
 			if (strncmp(&otaBuffer[0x50], "sensor", 6) == 0 
-				|| strncmp(&otaBuffer[0x50], "xcvario_pro", 11) == 0) {
+				|| strncmp(&otaBuffer[0x50], "xcvario_pro", 11) == 0
+				|| strncmp(&otaBuffer[0x50], "xcvario_pure", 12) == 0) {
 				ESP_LOGI(FNAME, "Recognized a sensor update.");
 				updateTarget = 1;
 				if (ESP_OK != esp_ota_begin(otaUpdatePartition, otaSize, &otaHandle))

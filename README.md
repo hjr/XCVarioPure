@@ -1,8 +1,8 @@
-# XCVario Pro
+# XCVario Pure
 
 An ESP32-based, lean variometer system with an open data interface supporting OpenVario, Cambridge, Borgelt, Naviter, and XCVario formats, running on dedicated XCVario hardware.
 
-![Vario](https://github.com/hjr/XCVarioPro/blob/master/XcvPro.png)
+![Vario](https://github.com/hjr/XCVarioPure/blob/master/XcvPure.png)
 
 The project is rooted in the open-source and open-hardware flight computer community and is based on the ESP32 SoC, supporting modern digital sensors such as BMP280, SPL06-007, DS1820B, TE4525, ABPMRR, MP5004DP, AHRS MPU6050, and the QMC5883L magnetometer.
 
@@ -11,7 +11,7 @@ The variometer features a sunlight-readable 2.4-inch IPS LCD display with a brig
 ## Vision
 While the amazing availability of high-fidelity sensors combined with today’s highly miniaturized computational power provides the perfect ingredients for a project like this, it quickly becomes clear that the overall quality of the resulting system design is tightly linked to the quality of the software it is built on. Recognizing this, it also becomes evident that further improvements in quality and usability of a variometer like this are hardly achievable with a “pick-it-for-free” mentality. Significant effort is required, and that effort needs to be funded — which in turn becomes a major challenge for the project.
 
-The evolution from **XCVario** to **XCVario Pro** therefore comes with the addition of a dedicated software expert to the XCVario team, responsible for all software-related aspects. The variometer will retain a basic feature set based on an open-source code base, as it did initially. In addition, it will offer licensed features intended to fund ongoing maintenance and further development, with the goal of evolving the variometer into a best-in-class product.
+The evolution from **XCVario** to **XCVario Pure** therefore comes with the addition of a dedicated software expert to the XCVario team, responsible for all software-related aspects. The variometer will retain a basic feature set based on an open-source code base, as it did initially. In addition, it will offer licensed features intended to fund ongoing maintenance and further development, with the goal of evolving the variometer into a best-in-class product.
 
 The original ambition of providing a high-quality variometer sensor that turns any club glider with an outdated variometer into a fun-to-fly aircraft remains unchanged. Beyond this, several new capabilities will be introduced, addressing key limitations found in common variometer designs that currently prevent optimal performance, along with a number of new features:
 
@@ -56,7 +56,7 @@ The ESP32 module contains a Bluetooth and Wi-Fi  module plus serial interfaces, 
 * Sound sequencer with a variety of sound bites for sonification of most visual variometer information
 * Integrated loudspeaker with 2-watt audio power
 * S2F (Speed-to-Fly) indicator with configurable MC, ballast, and bugs based on glider polars
-* Around 150 predefined polars included (list: https://github.com/hjr/XCVarioPro/blob/master/components/glider/PolarTable.txt)
+* Around 150 predefined polars included (list: https://github.com/hjr/XCVarioPure/blob/master/components/glider/PolarTable.txt)
 * IAS or TAS airspeed indication
 * OAT (Outside Air Temperature) sensor
 * Flap assistant with or without flap position sensor

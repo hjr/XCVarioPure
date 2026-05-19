@@ -638,7 +638,7 @@ void system_startup(void *args){
 
     // DEVMAN serialization, read in all configured devices.
     DEVMAN->reserectFromNvs();
-    if (gflags.first_pro_run) {
+    if (gflags.first_pure_run) {
         DEVMAN->introduceDevices(); // create a flarm etc.
     }
     if (CAN) {
@@ -1078,13 +1078,13 @@ extern "C" void  app_main(void)
     // check on legacy nvs variables to detect a XCV pure update, before initialize the setup module.
     if (!flarm_devsetup.exists()) {
         ESP_LOGI(FNAME, "Init devices");
-        gflags.first_pro_run = true;
+        gflags.first_pure_run = true;
     }
     ESP_LOGI(FNAME, "Init all NVS Setup items");
     SetupCommon::initSetup();
     Units::setAll();  // set all units according to setup
 
-    if ( gflags.first_pro_run ) {
+    if ( gflags.first_pure_run ) {
         ESP_LOGI(FNAME, "First Pro run, do some migration work");
         int tmp;
         if ( SetupCommon::getOldInt("CANMOD", tmp) ) {
@@ -1128,8 +1128,8 @@ extern "C" void  app_main(void)
                 ESP_LOGI(FNAME, "ICM20602 detected -> hardwareRevision (XCV-25)");
             }
         }
-        if ( gflags.first_pro_run ) {
-            // Set the IMU reference to default, because Pro is now on "NED"
+        if ( gflags.first_pure_run ) {
+            // Set the IMU reference to default, because Pure is now on "NED"
             imu->resetImuReference();
         }
     } else {

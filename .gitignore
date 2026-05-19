@@ -9,5 +9,3 @@
 dependencies.lock
 sdkconfig
 sdkconfig.old
-cipherkey.h.in
-main/pro/
