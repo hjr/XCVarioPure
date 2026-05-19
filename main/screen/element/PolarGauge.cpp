@@ -308,20 +308,29 @@ void PolarGauge::drawOneScaleLine(float a, int16_t l1_off, int16_t w, int16_t ci
 {
     float si = fast_sin_rad(a);
     float co = fast_cos_rad(a);
+
     int16_t l1 = _radius + l1_off;
     int16_t l2 = _radius + _scale_line_len;
-    int16_t w0 = w / 2;
-    int16_t w1 = w - w0; // total width := w1 + w0
-    int16_t xn_0 = _ref.x - fast_iroundf(co * l1 - si * w0);
-    int16_t yn_0 = _ref.y - fast_iroundf(si * l1 + co * w0);
-    int16_t xn_1 = _ref.x - fast_iroundf(co * l1 + si * w1);
-    int16_t yn_1 = _ref.y - fast_iroundf(si * l1 - co * w1);
-    int16_t xn_2 = _ref.x - fast_iroundf(co * l2 + si * w1);
-    int16_t yn_2 = _ref.y - fast_iroundf(si * l2 - co * w1);
-    int16_t xn_3 = _ref.x - fast_iroundf(co * l2 - si * w0);
-    int16_t yn_3 = _ref.y - fast_iroundf(si * l2 + co * w0);
-    // ESP_LOGI(FNAME,"drawTetragon  x0:%d y0:%d x1:%d y1:%d x2:%d y2:%d x3:%d y3:%d", xn_0, yn_0, xn_1, yn_1, xn_2, yn_2, xn_3, yn_3 );
-    cidx = std::clamp(cidx, (int16_t)0, (int16_t)2);  
+
+    // Compute perpendicular offset once and round it as a vector
+    int16_t px = fast_iroundf(-si * (w / 2.0f));   // perpendicular x component
+    int16_t py = fast_iroundf( co * (w / 2.0f));   // perpendicular y component
+
+    // Inner points (using same rounded perp offset)
+    int16_t xn_0 = _ref.x - fast_iroundf(co * l1 + px);
+    int16_t yn_0 = _ref.y - fast_iroundf(si * l1 + py);
+
+    int16_t xn_1 = _ref.x - fast_iroundf(co * l1 - px);
+    int16_t yn_1 = _ref.y - fast_iroundf(si * l1 - py);
+
+    // Outer points (same rounded perp offset)
+    int16_t xn_2 = _ref.x - fast_iroundf(co * l2 - px);
+    int16_t yn_2 = _ref.y - fast_iroundf(si * l2 - py);
+
+    int16_t xn_3 = _ref.x - fast_iroundf(co * l2 + px);
+    int16_t yn_3 = _ref.y - fast_iroundf(si * l2 + py);
+
+    cidx = std::clamp(cidx, (int16_t)0, (int16_t)2);
     MYUCG->setColor(lne_color[cidx].color[0], lne_color[cidx].color[1], lne_color[cidx].color[2]);
     MYUCG->drawTetragon(xn_0, yn_0, xn_1, yn_1, xn_2, yn_2, xn_3, yn_3);
 }
