@@ -23,7 +23,7 @@ public:
     Altimeter(int16_t cx, int16_t cy, bool big=true);
 
     // API
-    using AltitudeDisplay = enum { MODE_QNH, MODE_QFE };
+    using AltitudeDisplay = enum { MODE_QNH, MODE_QFE, MODE_ISA };
     using AltQuantisation = enum { ALT_QUANT_DISABLE, ALT_QUANT_2, ALT_QUANT_5, ALT_QUANT_10, ALT_QUANT_20 };
     using AltAttr = enum : uint8_t { ATTR_SMALL = 1 };
 
