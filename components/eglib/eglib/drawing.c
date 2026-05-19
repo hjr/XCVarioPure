@@ -673,15 +673,15 @@ static void pg_line_init(pg_struct * pg, uint8_t pge_index)
   pge->curr_idx = idx;
   
   if ( y2 == y1 ) return;
-  
+
   if (y2 < y1)
   {
     pg_word_t tmp = x1;
-    x2 = x1;
-    x1 = tmp;
+    x1 = x2;
+    x2 = tmp;
     tmp = y1;
-    y2 = y1;
-    y1 = tmp;
+    y1 = y2;
+    y2 = tmp;
   }
   pge_Init(pge, x1, y1, x2, y2);
 }
