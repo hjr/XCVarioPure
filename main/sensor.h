@@ -25,7 +25,6 @@ union global_flags {
         uint16_t first_pro_run : 1;
         uint16_t inSimulationMode : 1;
         uint16_t isPro : 1;
-        uint16_t leak_test_passed : 1;
         uint16_t expert : 1;
     };
     uint16_t raw;

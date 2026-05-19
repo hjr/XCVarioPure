@@ -173,8 +173,9 @@ void LeakTest::display(int mode) {
                 break;
             }
 
-            if( fabs(baro_delta) > leak_loss ) leak_loss = fabs(baro_delta);
-            if( fabs(te_delta) > leak_loss ) leak_loss = fabs(te_delta);
+            if( fabs(baro_delta_f) > leak_loss ) leak_loss = fabs(baro_delta_f);
+            if( fabs(te_delta_f) > leak_loss ) leak_loss = fabs(te_delta_f);
+
         }
 
         snprintf(buf, sizeof(buf), "Seconds: %d", (i + 1) * 5);
@@ -190,7 +191,6 @@ void LeakTest::display(int mode) {
     } else {
         menuPrintLn("PASSED", 10);
         ESP_LOGI(FNAME, "PASSED");
-        gflags.leak_test_passed = 1;
     }
     xQueueReset(uiEventQueue);
 }
