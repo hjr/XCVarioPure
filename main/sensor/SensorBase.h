@@ -81,9 +81,9 @@ private:
     inline int wrap_back(int offset) const {
         return (_head + _capacity - (offset % _capacity)) % _capacity;
     }
-    int    _capacity;
-    int    _head;       ///< Index of the next write position (also count when full)
-    uint8_t _full :1;   ///< Whether the buffer has wrapped around
+    int    _capacity;       ///< Maximum number of entries in the buffer
+    int    _head;           ///< Index of the next write position (also count when full)
+    uint8_t _full :1;       ///< Whether the buffer has wrapped around
     uint8_t _heap_alloced :1; ///< Whether the buffer was heap allocated
 
     alignas(T) T* _buffer;
@@ -172,6 +172,10 @@ public:
     void pushToHistory(const T& value, uint32_t now_ms) {
         _last_update_time_ms = now_ms;
         _history.push(value);
+        if (_running_avg_count > 0) {
+            _running_avg_sum += value;
+            _running_avg_sum -= _history[_running_avg_count];
+        }
     }
     // Publish on black board NVS variable
     void publishNVS() {
@@ -252,6 +256,29 @@ public:
         return M2 / (float)count;  // population variance
     }
 
+    // start/change a running average
+    bool startRunningAvg(int interval_ms) {
+        if (interval_ms <= 0 || interval_ms > getCapacityMS()) {
+            return false; // invalid interval
+        }
+        _running_avg_count = interval_ms / _update_interval_ms;
+        _running_avg_sum = T{};
+        for (int i = 0; i < _running_avg_count; ++i) {
+            _running_avg_sum += _history[i];
+        }
+        return true;
+    }
+    T getRunningAvg() const {
+        if (_running_avg_count == 0) {
+            return T{};
+        }
+        return _running_avg_sum / (float)_running_avg_count;
+    }
+    void stopRunningAvg() {
+        _running_avg_count = 0;
+        _running_avg_sum = T{};
+    }
+
     // a bit of debugging feature to dump the history, e.g. for calibration
     void dump(int interval_ms) const;
 
@@ -317,6 +344,10 @@ public:
     T getHead() const {
         return _history.getHead();
     }
+    T get(int ms_back) const {
+        int count = getCount(ms_back);
+        return _history[count];
+    }
     T getHeadFiltered() const {
         if ( _filter ) {
             return _filter->get();
@@ -365,14 +396,24 @@ public:
 protected:
     // time window to sample count
     int getCount(int interval_ms) const {
-        uint32_t cutoff_time = Clock::getMillis() - interval_ms;
-        return std::min((_last_update_time_ms - cutoff_time) / _update_interval_ms, (uint32_t)_history.level());
+        // assume history might not be updated regularly, calculate count based on time rather than index
+        // uint32_t cutoff_time = Clock::getMillis() - interval_ms;
+        // return std::min((_last_update_time_ms - cutoff_time) / _update_interval_ms, (uint32_t)_history.level());
+        // assume regular updates, simply calculate count based on index
+        return std::min((interval_ms / _update_interval_ms), (uint32_t)_history.level());
     }
+    int getCapacityMS() const {
+        return (_history.getCapacity() - 1) * _update_interval_ms;
+    }
+
 
     FixedSensorHistory<T> _history;
     SetupNG<float> *_nvsvar = nullptr; ///< Optional link to NVS variable for sync etc.
     FilterItf<T>*   _filter = nullptr; ///< Optional filter plugin, ownership not handled here
     T               _invalid = T{};    ///< Invalid value representation
     T               _processed = T{};  ///< Last valid value as published on the black board
+    // a running (fast) average
+    int             _running_avg_count = 0;
+    T               _running_avg_sum = T{};
 };
 
