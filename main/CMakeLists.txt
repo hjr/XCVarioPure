@@ -46,7 +46,31 @@ else()
 endif()
 
 # a firmware version string
-string(TIMESTAMP FW_VERSION "%y%m%d-%H%M")
+execute_process(
+    COMMAND git describe --tags --abbrev=0
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    OUTPUT_VARIABLE FW_TAG
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+
+execute_process(
+    COMMAND git rev-parse --short HEAD
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    OUTPUT_VARIABLE FW_HASH
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+
+execute_process(
+    COMMAND git diff --quiet
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    RESULT_VARIABLE FW_DIRTY
+)
+
+set(FW_VERSION "${FW_TAG}-${FW_HASH}")
+
+if(FW_DIRTY)
+    set(FW_VERSION "${FW_VERSION}-dirty")
+endif()
 
 configure_file(
     ${CMAKE_CURRENT_SOURCE_DIR}/version.h.in

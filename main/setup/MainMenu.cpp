@@ -755,12 +755,12 @@ void options_menu_create(SetupMenu *opt) { // dynamic!
 }
 
 void system_menu_create_software(SetupMenu *top) {
-    SetupMenuSelect *ahrsid = new SetupMenuSelect("XCV unique Id", RST_NONE);
+    SetupMenuSelect *ahrsid = new SetupMenuSelect("XCVario S/N", RST_NONE);
     ahrsid->addEntry(SetupCommon::getDefaultID());
     ahrsid->lock();
     top->addEntry(ahrsid);
 
-    SetupMenuSelect* ver = new SetupMenuSelect("Version", RST_NONE, nullptr);
+    SetupMenuSelect* ver = new SetupMenuSelect("Rev.", RST_NONE, nullptr);
     ver->addEntry(FW_VERSION);
     ver->lock();
     top->addEntry(ver);
