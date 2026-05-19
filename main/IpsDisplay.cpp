@@ -57,7 +57,7 @@ int screens_init = INIT_DISPLAY_NULL;
 int   IpsDisplay::tick = 0;
 
 
-// Average Vario data
+// Vario gauges
 PolarGauge* IpsDisplay::MAINgauge = nullptr;
 PolarGauge* IpsDisplay::WNDgauge = nullptr;
 WindIcon*  IpsDisplay::WNDicon = nullptr;

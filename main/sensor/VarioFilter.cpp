@@ -26,7 +26,7 @@ VarioFilter bmpVario; // static instance of it
 
 constexpr int DUTY_CYCLE_MS = 100; // 10Hz
 constexpr size_t HSIZE = MAX_SENSOR_HISTORY_DURATION_MS / DUTY_CYCLE_MS;
-static mps_t __attribute__((aligned(4))) vario_buffer[ HSIZE + 1 ]; // history buffer for airspeed sensor
+static __attribute__((aligned(4))) meter_t vario_buffer[ HSIZE + 1 ]; // history buffer for airspeed sensor
 
 // Data and dtructures for different filter variants
 static meter_t averageAlt = 0.f;
@@ -175,8 +175,8 @@ bool VarioFilter::setup() {
 // call in main loop every 100 ms
 // extract from real existing sensors according to the selected TE compensation method
 // a total energy compensated altitude.
-bool VarioFilter::doRead(float& val) {
-    float curr_altitude;
+bool VarioFilter::doRead(meter_t& val) {
+    meter_t curr_altitude;
     if (te_comp_enable.get() == TE_TEK_EPOT) {
         curr_altitude = altitude_isa.get();  // already read
         if (!altitude_isa.getValid() || std::isnan(curr_altitude)) {
@@ -184,7 +184,7 @@ bool VarioFilter::doRead(float& val) {
         }
         mps_t ta_speed = tas.get();  // m/s
         float cw = Speed2Fly.getCw(ta_speed);
-        float ealt = ((ta_speed * ta_speed) / (2 * Units::g0)) * (1 + (te_comp_adjust.get() / 100.0)) * (1 - cw);  // Ekin ~ h = v²/2g  * adjust * (1-cw)
+        meter_t ealt = ((ta_speed * ta_speed) / (2 * Units::g0)) * (1 + (te_comp_adjust.get() / 100.0)) * (1 - cw);  // Ekin ~ h = v²/2g  * adjust * (1-cw)
         curr_altitude += ealt;
         ESP_LOGD(FNAME, "Energy Alt @%0.1f km/h: %0.1f cw: %f", tas.get(), ealt, cw);
     } else if (te_comp_enable.get() == TE_TEK_PRESSURE) {
@@ -197,7 +197,7 @@ bool VarioFilter::doRead(float& val) {
         curr_altitude = teSensor->readAltitudeISA(success);
     }
 
-    val = curr_altitude;
+    val = curr_altitude; // meter
     // linear prediction and innovation gating
     // const float max_10thsec_step = 8.0f;  // max 80 m/s vertical speed
     // if (accept(curr_altitude, max_10thsec_step) || _prepare_sim_jump) {

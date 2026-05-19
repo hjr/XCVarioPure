@@ -15,7 +15,7 @@
 // Implementation of a stable Vario with flight optimized Iltis-Kalman filter
 //
 
-class VarioFilter final : public SensorTP<float> {
+class VarioFilter final : public SensorTP<meter_t> {
    public:
     using TekComp_Type = enum : uint8_t { TE_TEK_PROBE, TE_TEK_EPOT, TE_TEK_PRESSURE, TE_TEK_IMU, TE_TEK_MAX_TYPES };
 
@@ -24,7 +24,7 @@ class VarioFilter final : public SensorTP<float> {
     bool probe() override { return true; }
     bool setup() override;
 
-    bool doRead(float& val) override;
+    bool doRead(meter_t& val) override;
     void postProcess() override;
 
     void configChange();

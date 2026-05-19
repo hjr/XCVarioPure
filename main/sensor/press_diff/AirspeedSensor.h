@@ -11,11 +11,11 @@
 #include "../SensorBase.h"
 #include "math/Units.h"
 
-class AirspeedSensor : public SensorTP<float> {
+class AirspeedSensor : public SensorTP<pascal_t> {
 public:
     using ASens_Type = enum : uint8_t { ABPMRR, TE4525, MP3V5004, MCPH21, MAX_TYPES, NONE = 0xff };
 
-    static constexpr float DYNP_THRESHOLD = Units::mps_to_pascal(10.0f / 3.6f); // ca. 10 km/h
+    static constexpr pascal_t DYNP_THRESHOLD = Units::mps_to_pascal(10.0f / 3.6f); // ca. 10 km/h
 
     AirspeedSensor();
     virtual ~AirspeedSensor() {};
@@ -23,7 +23,7 @@ public:
     static AirspeedSensor *autoSetup();
 
     bool setup() override;
-    bool doRead(float &val) override;
+    bool doRead(pascal_t &val) override;
     void postProcess() override;
     virtual void changeConfig() = 0;
 
