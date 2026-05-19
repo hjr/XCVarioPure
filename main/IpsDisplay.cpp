@@ -612,8 +612,8 @@ void IpsDisplay::initDisplay() {
         }
     }
     if (vario_upper_gauge.get()) {
-        if (!TOPgauge) {
-            TOPgauge = new MultiGauge(INNER_RIGHT_ALIGN, UPPERYPOS, (MultiGauge::MultiDisplay)vario_upper_gauge.get(), gflags.isPro || display_orientation.get() == DISPLAY_NINETY);
+        if (!TOPgauge) {  // except wind and altimeter, we need less space for max 3 digit numbers here
+            TOPgauge = new MultiGauge(INNER_RIGHT_ALIGN-15, UPPERYPOS, (MultiGauge::MultiDisplay)vario_upper_gauge.get(), gflags.isPro || display_orientation.get() == DISPLAY_NINETY);
         }
         TOPgauge->setDisplay((MultiGauge::MultiDisplay)(vario_upper_gauge.get()));
     } else {
