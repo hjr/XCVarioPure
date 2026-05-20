@@ -593,46 +593,47 @@ int WifiApSta::Send(const char *msg, int &len, int port)
     return 0; // we do not want to trigger retries in the sender
 }
 
-static esp_netif_t *wifi_config_sta(const char* staid)
-{
-	ESP_LOGV(FNAME,"now esp_netif_create_default_wifi_sta");
-	esp_netif_t *esp_netif_sta = esp_netif_create_default_wifi_sta();
+static esp_netif_t* wifi_config_sta(const char* staid) {
+    ESP_LOGV(FNAME, "now esp_netif_create_default_wifi_sta");
+    esp_netif_t* esp_netif_sta = esp_netif_create_default_wifi_sta();
 
-	wifi_config_t wifi_sta_config;
-	memset(&wifi_sta_config, 0, sizeof(wifi_sta_config));
-	wifi_sta_config.sta.scan_method = WIFI_FAST_SCAN; // stops scan after finding the SSID
-	wifi_sta_config.sta.channel = 6; // a hint
-	wifi_sta_config.sta.threshold.authmode = WIFI_AUTH_WPA_WPA2_PSK;
-	strcpy( (char *)wifi_sta_config.sta.ssid, staid );
-	strcpy((char *)wifi_sta_config.sta.password, AP_PASSPHARSE);
+    if (staid != nullptr && staid[0] != '\0') {
+        ESP_LOGI(FNAME, "Configuring WiFi in STA mode with SSID: %s", staid);
 
-	ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_sta_config));
-	return esp_netif_sta;
+        wifi_config_t wifi_sta_config;
+        memset(&wifi_sta_config, 0, sizeof(wifi_sta_config));
+        wifi_sta_config.sta.scan_method = WIFI_FAST_SCAN;  // stops scan after finding the SSID
+        wifi_sta_config.sta.channel = 6;                   // a hint
+        wifi_sta_config.sta.threshold.authmode = WIFI_AUTH_WPA_WPA2_PSK;
+        strcpy((char*)wifi_sta_config.sta.ssid, staid);
+        strcpy((char*)wifi_sta_config.sta.password, AP_PASSPHARSE);
+
+        ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_sta_config));
+    }
+    return esp_netif_sta;
 }
 
-static esp_netif_t *wifi_config_softap(uint8_t maxcon, const char* ssid)
-{
-	ESP_LOGV(FNAME,"now esp_netif_create_default_wifi_ap");
-	esp_netif_t *esp_netif_ap = esp_netif_create_default_wifi_ap();
+static esp_netif_t* wifi_config_softap(uint8_t maxcon, const char* ssid) {
+    ESP_LOGV(FNAME, "now esp_netif_create_default_wifi_ap");
+    esp_netif_t* esp_netif_ap = esp_netif_create_default_wifi_ap();
 
-	wifi_config_t wifi_ap_config;
-	memset(&wifi_ap_config, 0, sizeof(wifi_ap_config));
-	strcpy( (char *)wifi_ap_config.ap.ssid, ssid );
-	wifi_ap_config.ap.ssid_len = strlen( (char *)wifi_ap_config.ap.ssid );
-	strcpy( (char *)wifi_ap_config.ap.password, AP_PASSPHARSE );
-	wifi_ap_config.ap.channel = 6;
-	wifi_ap_config.ap.max_connection = maxcon;
-	wifi_ap_config.ap.authmode = WIFI_AUTH_WPA_WPA2_PSK;
-	wifi_ap_config.ap.ssid_hidden = 0;
-	wifi_ap_config.ap.beacon_interval = 100;
+    wifi_config_t wifi_ap_config;
+    memset(&wifi_ap_config, 0, sizeof(wifi_ap_config));
+    strcpy((char*)wifi_ap_config.ap.ssid, ssid);
+    wifi_ap_config.ap.ssid_len = strlen((char*)wifi_ap_config.ap.ssid);
+    strcpy((char*)wifi_ap_config.ap.password, AP_PASSPHARSE);
+    wifi_ap_config.ap.channel = 6;
+    wifi_ap_config.ap.max_connection = maxcon;
+    wifi_ap_config.ap.authmode = WIFI_AUTH_WPA_WPA2_PSK;
+    wifi_ap_config.ap.ssid_hidden = 0;
+    wifi_ap_config.ap.beacon_interval = 100;
 
-	ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_AP, &wifi_ap_config));
-	ESP_LOGI(FNAME, "wifi config SUCCESS. SSID:%s password:%s channel:%d", (char *)wifi_ap_config.ap.ssid, 
-		(char *)wifi_ap_config.ap.password, wifi_ap_config.ap.channel );
+    ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_AP, &wifi_ap_config));
+    ESP_LOGI(FNAME, "wifi config SUCCESS. SSID:%s password:%s channel:%d", (char*)wifi_ap_config.ap.ssid, (char*)wifi_ap_config.ap.password,
+             wifi_ap_config.ap.channel);
 
-	return esp_netif_ap;
+    return esp_netif_ap;
 }
-
 
 bool WifiApSta::initialize_wifi(bool ap_mode, int maxcon, const char* ssid)
 {
