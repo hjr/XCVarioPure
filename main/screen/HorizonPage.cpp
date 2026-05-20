@@ -103,29 +103,47 @@ void HorizonPage::draw( Quaternion q )
         }
 
         // --- Aircraft symbol ---
-        MYUCG->setColor( COLOR_YELLOW );
-        MYUCG->drawDisc(DISPLAY_W/2, DISPLAY_H/2, 2, UCG_DRAW_ALL);
-        MYUCG->drawHLine(DISPLAY_W/2 + 15, DISPLAY_H/2, 30);
-        MYUCG->drawVLine(DISPLAY_W/2 + 15, DISPLAY_H/2, 5);
-        MYUCG->drawHLine(DISPLAY_W/2 - 15, DISPLAY_H/2, -30);
-        MYUCG->drawVLine(DISPLAY_W/2 - 15, DISPLAY_H/2, 5);
+        const int cx = DISPLAY_W / 2;
+        const int cy = DISPLAY_H / 2;
+        MYUCG->setColor(COLOR_WHITE);
+        // center ring
+        MYUCG->drawCircle(cx, cy, 5, UCG_DRAW_ALL);
+        MYUCG->drawCircle(cx, cy, 6, UCG_DRAW_ALL);
 
-        // --- NEW: fixed centered pitch scale WITH NUMBERS ---
-        int cx = DISPLAY_W / 2;
-        int cy = DISPLAY_H / 2;
+        // small top post
+        MYUCG->drawVLine(cx, cy - 10, 5);
+
+        // thicker wings (+20% span, shifted 5px outward)
+        MYUCG->drawHLine(cx + 13, cy,     32);
+        MYUCG->drawHLine(cx + 13, cy + 1, 32);
+
+        MYUCG->drawHLine(cx - 45, cy,     32);
+        MYUCG->drawHLine(cx - 45, cy + 1, 32);
+
+        // vertical hooks near fuselage moved outward too
+        MYUCG->drawVLine(cx + 13, cy, 4);
+        MYUCG->drawVLine(cx - 13, cy, 4);
+
+        // wing tips upward
+        MYUCG->drawLine(cx + 45, cy, cx + 51, cy - 4);
+        MYUCG->drawLine(cx - 45, cy, cx - 51, cy - 4);
+
 
         int full_len = 30;
         int short_len = (int)(full_len * 0.3f);
         float px_per_5deg = 12.0f;
 
         // text config
-        MYUCG->setColor(COLOR_YELLOW);
         MYUCG->setFont(ucg_font_fub11_hr, false );   // small, readable
         int gap = 8;                        // space between line and number
 
         for (int deg = -35; deg <= 35; deg += 5) {
 
             if (deg == 0) continue;
+            if (deg == 5)
+                MYUCG->setColor(COLOR_WHITE);
+            else
+                MYUCG->setColor(COLOR_POINTER);
 
             int y = cy - (int)((deg / 5.0f) * px_per_5deg);
             bool isLong = (deg % 10 == 0);
@@ -192,7 +210,7 @@ void HorizonPage::draw( Quaternion q )
         // --- bank value
         int roll = fast_iroundf(accSensor->getRollDeg());
         MYUCG->setFont(ucg_font_fub20_hn, true);
-        snprintf(buf, sizeof(buf), " % 4d°", roll);
+        snprintf(buf, sizeof(buf), " % 4d°   ", roll);
         int strWidth = MYUCG->getStrWidth(buf);
         MYUCG->setColor(COLOR_WHITE);
         MYUCG->setPrintPos(DISPLAY_W / 2 - strWidth / 2 +5, baseY);

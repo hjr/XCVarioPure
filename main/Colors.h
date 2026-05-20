@@ -31,12 +31,12 @@ extern uint8_t g_col_header_light_b;
 #define COLOR_WGREY  95, 95, 95
 #define COLOR_BLUE   255, 255, 0
 #define COLOR_LBLUE  200, 200, 0
-#define COLOR_SKYBLUE 138, 91, 1 // 167, 135, 48
+#define COLOR_SKYBLUE 255-65, 255-125, 0
 #define COLOR_BBLUE  170, 160, 0
 #define COLOR_LBBLUE  85, 80, 0
 #define COLOR_BROWN   205, 240, 250  // Chocolate Brown
-#define COLOR_EARTH   119, 176, 232
-#define COLOR_POINTER 255-222, 0, 255-44
+#define COLOR_EARTH   255-10, 255-10, 255-10  // relative dark brown 
+#define COLOR_POINTER 255-235,0, 255-35 // Neon yellow
 #define COLOR_FIGURE  232, 151, 3   // 2c75fd
 #define COLOR_PURPLE  73, 211, 1
 #define COLOR_MARINE  255, 190, 70 // 0, 65, 185
