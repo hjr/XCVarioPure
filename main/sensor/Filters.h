@@ -10,8 +10,10 @@
 
 #include "math/Units.h"
 
+//
 // Simple filter not knowing the signal history
-
+// filters are designed for floating point values only (!)
+//
 template <typename T>
 class FilterItf {
 public:
@@ -48,7 +50,7 @@ public:
     T filter(T input);
     T get() const { return _last_output; }
     const T& getRef() const { return _last_output; }
-private:
+protected:
     float _alpha;
     T _last_output;
 };
@@ -62,4 +64,22 @@ public:
     float filter(float input) override;
 private:
     float _threshold;
+};
+
+template <typename T>
+class AdaptiveLowPassFilterT : public LowPassFilterT<float>
+{
+public:
+    AdaptiveLowPassFilterT(float alpha_min, float alpha_max) :
+        LowPassFilterT<float>(alpha_max),
+        _alpha_min(alpha_min), _alpha_max(alpha_max) {}
+    void setBeta(float beta) { _beta = beta; }
+    void setThreshold(float threshold) { _threshold = threshold; }
+    T filter(T input);
+    using LowPassFilterT<float>::filter;
+private:
+    float _alpha_min, _alpha_max;
+    float _beta = 0.02;
+    float _activity = 0.f;
+    float _threshold = 40.f;
 };

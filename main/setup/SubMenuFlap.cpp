@@ -16,7 +16,8 @@
 #include "setup/SetupMenuChar.h"
 #include "setup/SetupMenuValFloat.h"
 #include "AdaptUGC.h"
-#include "average.h"
+#include "sensor/Filters.h"
+#include "math/Floats.h"
 #include "logdefnone.h"
 
 #include <string>
@@ -49,11 +50,12 @@ static int select_flap_sens_pin(SetupMenuSelect *p)
             MYUCG->printf("Check Sensor Reading,");
             MYUCG->setPrintPos(5, 80);
             MYUCG->printf("Press Button to exit");
+            AdaptiveLowPassFilterT<float> alpf(0.08f,0.25f);
             while (! Rotary->readSwitch(100))
             {
                 // ESP_LOGI(FNAME,"SW wait loop");
                 MYUCG->setPrintPos(5, 120);
-                MYUCG->printf("Sensor: %d       ", FLAP->getSensorRaw());
+                MYUCG->printf("Sensor: % 4d   ", fast_iroundf(alpf.filter(FLAP->getSensorRaw())));
             }
         }
         vTaskDelay(pdMS_TO_TICKS(800));
@@ -72,7 +74,7 @@ static int select_flap_sens_pin(SetupMenuSelect *p)
     return 0;
 }
 
-static int wk_calib_level(SetupMenuSelect *p, int wk, Average<15> &filter)
+static int wk_calib_level(SetupMenuSelect *p, int wk, AdaptiveLowPassFilterT<float> &alpf)
 {
     MYUCG->setPrintPos(1, 60);
     MYUCG->printf("Set Flap %s ", FLAP->getFL(wk)->label);
@@ -81,11 +83,11 @@ static int wk_calib_level(SetupMenuSelect *p, int wk, Average<15> &filter)
     while (! Rotary->readSwitch() && FLAP)
     {
         i++;
-        sensval = filter((int)(FLAP->getSensorRaw()));
-        if (!(i % 5))
+        sensval = fast_iroundf(alpf.filter(FLAP->getSensorRaw()));
+        if (!(i % 20))
         {
             MYUCG->setPrintPos(1, 140);
-            MYUCG->printf("Sensor: %d      ", sensval);
+            MYUCG->printf("Sensor: % 4d   ", sensval);
         }
     }
     return sensval;
@@ -107,7 +109,7 @@ static int flap_cal_act(SetupMenuSelect *p)
         ESP_LOGI(FNAME, "Abort calibration, no signal");
         return 0;
     }
-    Average<15> filter;
+    AdaptiveLowPassFilterT<float> filter(0.08f, 0.25f);
     if (p->getSelect())
     {
         // do calibration
