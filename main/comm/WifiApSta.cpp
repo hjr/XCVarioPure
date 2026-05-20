@@ -283,70 +283,64 @@ public:
 		wifi->socket_server_task_pid = nullptr;
 	}
 
-	static void wifi_event_handler(void* arg, esp_event_base_t event_base,	int32_t event_id, void* event_data)
-	{
-		WifiApSta *mywifi = static_cast<WifiApSta*>(arg);
+    static void wifi_event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data) {
+        WifiApSta* mywifi = static_cast<WifiApSta*>(arg);
         if (event_base == WIFI_EVENT) {
             switch (event_id) {
-            case WIFI_EVENT_STA_START:
-            {
-				sock_server_t *xcvcl = mywifi->_socks[4];
-				ESP_LOGI(FNAME,"SYSTEM_EVENT_STA_START hndl %d ap %d", xcvcl ? xcvcl->sock_hndl : -2, xcvcl ? xcvcl->is_ap : -2);
-				if ( xcvcl && xcvcl->sock_hndl < 0 && !xcvcl->is_ap ) {
-					vTaskDelay(pdMS_TO_TICKS(1000));
-					mywifi->client_connect();
-				}
-                break;
-			}
-            case WIFI_EVENT_STA_DISCONNECTED:
-            {
-				ESP_LOGI(FNAME,"SYSTEM_EVENT_STA_DISCONNECTED");
-				sock_server_t *xcvcl = mywifi->_socks[4];
-				if( xcvcl && !xcvcl->is_ap ) {
-					if ( xcvcl->sock_hndl > 0 ) {
-						close( xcvcl->sock_hndl );
-						xcvcl->sock_hndl = -1;
-						xcvcl->alive = false; // mark as dead
-						xcvcl->peers.clear();
-					}
-				}
-                break;
-			}
-            case WIFI_EVENT_AP_STACONNECTED:
-            {
-                [[maybe_unused]] wifi_event_ap_staconnected_t* event = (wifi_event_ap_staconnected_t*) event_data;
-                ESP_LOGI(FNAME,"station %x:%x:%x:%x:%x:%x joined, AID=%d", MAC2STR(event->mac), event->aid);
+            case WIFI_EVENT_STA_START: {
+                sock_server_t* xcvcl = mywifi->_socks[4];
+                ESP_LOGI(FNAME, "SYSTEM_EVENT_STA_START hndl %d ap %d", xcvcl ? xcvcl->sock_hndl : -2, xcvcl ? xcvcl->is_ap : -2);
+                if (xcvcl && xcvcl->sock_hndl < 0 && !xcvcl->is_ap) {
+                    vTaskDelay(pdMS_TO_TICKS(1000));
+                    mywifi->client_connect();
+                }
                 break;
             }
-            case WIFI_EVENT_AP_STADISCONNECTED:
-            {
-                [[maybe_unused]] wifi_event_ap_stadisconnected_t* event = (wifi_event_ap_stadisconnected_t*) event_data;
-                ESP_LOGI(FNAME,"station %x:%x:%x:%x:%x:%x left, AID=%d", MAC2STR(event->mac), event->aid);
+            case WIFI_EVENT_STA_DISCONNECTED: {
+                ESP_LOGI(FNAME, "SYSTEM_EVENT_STA_DISCONNECTED");
+                sock_server_t* xcvcl = mywifi->_socks[4];
+                if (xcvcl && !xcvcl->is_ap) {
+                    if (xcvcl->sock_hndl > 0) {
+                        close(xcvcl->sock_hndl);
+                        xcvcl->sock_hndl = -1;
+                        xcvcl->alive = false;  // mark as dead
+                        xcvcl->peers.clear();
+                    }
+                }
+                break;
+            }
+            case WIFI_EVENT_AP_STACONNECTED: {
+                [[maybe_unused]] wifi_event_ap_staconnected_t* event = (wifi_event_ap_staconnected_t*)event_data;
+                ESP_LOGI(FNAME, "station %x:%x:%x:%x:%x:%x joined, AID=%d", MAC2STR(event->mac), event->aid);
+                break;
+            }
+            case WIFI_EVENT_AP_STADISCONNECTED: {
+                [[maybe_unused]] wifi_event_ap_stadisconnected_t* event = (wifi_event_ap_stadisconnected_t*)event_data;
+                ESP_LOGI(FNAME, "station %x:%x:%x:%x:%x:%x left, AID=%d", MAC2STR(event->mac), event->aid);
                 break;
             }
             default:
                 break;
             }
+        } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
+            [[maybe_unused]] ip_event_got_ip_t* event = (ip_event_got_ip_t*)event_data;
+            ESP_LOGI(FNAME, "SYSTEM_EVENT_STA_GOT_IP ip:" IPSTR, IP2STR(&event->ip_info.ip));
+            vTaskDelay(pdMS_TO_TICKS(1000));
+            sock_server_t* xcvcl = mywifi->_socks[4];
+            if (xcvcl && xcvcl->sock_hndl != 0) {
+                if (xcvcl->sock_hndl > 0) {
+                    ESP_LOGI(FNAME, "need to recreate the sta  socket");
+                    close(xcvcl->sock_hndl);
+                    xcvcl->alive = false;  // mark as dead
+                }
+                peer_record_t new_rec;
+                new_rec.clientAddress.sin_addr.s_addr = event->ip_info.gw.addr;
+                xcvcl->peers.clear();
+                xcvcl->peers.push_back(new_rec);  // sta has just one peer, the master XCVario
+                xcvcl->sock_hndl = 0;             // this is the indicator to connect to the AP
+            }
         }
-		else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
-			[[maybe_unused]] ip_event_got_ip_t* event = (ip_event_got_ip_t*)event_data;
-			ESP_LOGI(FNAME, "SYSTEM_EVENT_STA_GOT_IP ip:" IPSTR, IP2STR(&event->ip_info.ip));
-			vTaskDelay(pdMS_TO_TICKS(1000));
-			sock_server_t *xcvcl = mywifi->_socks[4];
-			if( xcvcl  && xcvcl->sock_hndl < 0 ) {
-				if ( xcvcl->sock_hndl > 0 ) {
-					ESP_LOGI(FNAME,"need to recreate the sta  socket");
-					close(xcvcl->sock_hndl);
-					xcvcl->alive = false; // mark as dead
-				}
-				peer_record_t new_rec;
-				new_rec.clientAddress.sin_addr.s_addr = event->ip_info.gw.addr;
-				xcvcl->peers.clear();
-				xcvcl->peers.push_back(new_rec); // sta has just one peer, the master XCVario
-				xcvcl->sock_hndl = 0; // this is the indicator to connect to the AP
-			}
-		}
-	}
+    }
 
 }; // WIFI_EVENT_HANDLER
 
