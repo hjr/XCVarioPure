@@ -1,6 +1,5 @@
 
 #include "WifiApSta.h"
-#include "sensor.h"
 #include "setup/SetupNG.h"
 #include "setup/SetupCommon.h"
 #include "comm/DataLink.h"
@@ -597,11 +596,7 @@ int WifiApSta::Send(const char *msg, int &len, int port)
 		}
 	}
 	socks->alive = sendOK; // if at least one client works, we say wifi is okay -> blue symbol
-	if( sendOK ) {
-		return 0;
-	}
-	len = 0;
-	return 50;  // this port -> socket number is currently unavailable please try again 50 ms later
+    return 0; // we do not want to trigger retries in the sender
 }
 
 static esp_netif_t *wifi_config_sta(const char* staid)
