@@ -39,11 +39,7 @@ private:
     static BootUpScreen *inst;
     void animate();
 
-    unsigned char *logo_bitmap = nullptr;
     int16_t x_offset;
     int16_t y_offset;
-    int16_t fini_part;
-    int16_t yline;
-    int16_t yline_to;
-    bool _branded = false;
+    float _fadein = 0.f;
 };

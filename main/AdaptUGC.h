@@ -8,11 +8,39 @@
 
 // later we want to get rid of UGC, so lets add all needed API definitions here
 
-typedef struct _ucg_color_t
+union ucg_color_t
 {
+    struct {
+        uint8_t r;
+        uint8_t g;
+        uint8_t b;
+    };
 	uint8_t color[3];             /* 0: Red, 1: Green, 2: Blue */
-}ucg_color_t;
+    constexpr ucg_color_t() : color{0, 0, 0} {}
+    constexpr ucg_color_t(uint8_t r_, uint8_t g_, uint8_t b_) : color{r_, g_, b_} {}
+    void fadeTo(const ucg_color_t& target, float fade) {
+        r = ifade(target.r, fade);
+        g = ifade(target.g, fade);
+        b = ifade(target.b, fade);
+    }
+    static constexpr uint8_t ifade(uint8_t target, float fade) {
+        return 255 - uint8_t((255 - target) * fade);
+    };
+};
 
+constexpr color_t to_color(const ucg_color_t& ucg) noexcept
+{
+    return {.r = ucg.r, .g = ucg.g, .b = ucg.b};
+}
+
+constexpr ucg_color_t to_ucg(const color_t& c) noexcept
+{
+    ucg_color_t result{};
+    result.r = c.r;
+    result.g = c.g;
+    result.b = c.b;
+    return result;
+}
 
 #define UCG_DRAW_UPPER_RIGHT EGLIB_DRAW_UPPER_RIGHT
 #define UCG_DRAW_UPPER_LEFT  EGLIB_DRAW_UPPER_LEFT
@@ -98,6 +126,7 @@ public:
 	inline void drawHLine(int16_t x, int16_t y, int16_t len)  { eglib_DrawHLine(eglib, x, y, len); }
 	inline void drawVLine(int16_t x, int16_t y, int16_t len)  { eglib_DrawVLine(eglib, x, y, len); }
 	inline void drawPixel(int16_t x, int16_t y)  { eglib_DrawPixel(eglib, x, y); }
+	inline void drawPixelColor(int16_t x, int16_t y, ucg_color_t color)  { eglib_DrawPixelColor(eglib, x, y, to_color(color)); }
 	inline void drawRBox(int16_t x, int16_t y, int16_t w, int16_t h, int16_t r)  { eglib_DrawRoundBox(eglib, x, y, w, h, r); }
 	inline void drawRFrame(int16_t x, int16_t y, int16_t w, int16_t h, int16_t r)  { eglib_DrawRoundFrame(eglib, x, y, w, h, r); }
 	inline void drawTriangle(int16_t x0, int16_t y0, int16_t x1, int16_t y1, int16_t x2, int16_t y2)  { eglib_DrawFilledTriangle(eglib, x0, y0, x1, y1, x2, y2); }
