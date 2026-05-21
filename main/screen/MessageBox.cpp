@@ -22,7 +22,7 @@ MessageBox *MBOX; // the global representation
 
 constexpr int CLOCK_DIVIDER = 8;
 
-// A message is represented throught
+// A message is represented through
 // - alert level (1,2,3,4)
 // - a text message
 // - a time-out in seconds (0 means default per alert level, a time-out >180 sec enforces a confirmation option)
@@ -73,7 +73,7 @@ uint8_t MessageBox::pushMessage(int alert_level, const char *str, int to, bool c
     if ( alert_level == 4 ) {
         _msg_to = 0; // trigger immediate display
     }
-    if ( ! current ) {
+    if ( ! current && _active ) {
         Clock::start(this);
     }
     return ret;

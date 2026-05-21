@@ -552,7 +552,6 @@ void system_startup(void *args){
         char hw[24];
         sprintf( hw,", XCV-%d", hardwareRevision.get()+18);  // plus 18, e.g. 2 = XCV-20
         ver += hw;
-        Display->writeText(1, ver.c_str() );
         logged_tests.assign(ver);
         logged_tests += "\n";
     }
@@ -583,6 +582,7 @@ void system_startup(void *args){
         // }
 
         BootUpScreen::terminate(); // screen now belongs to OTA
+        MBOX->resume();
         Rotary->begin(); // Start rotary to allow aborting by user input.
         MenuRoot->begin(new OTA(choice==1));
         return; // do not continue with normal boot, OTA menu will take over;
@@ -934,6 +934,9 @@ void system_startup(void *args){
             AUDIO->startSound(AUDIO_CHECK_SOUND);
         }
     }
+
+    MBOX->resume(); // created in paused mode
+
 
     // Check if the factory procedure is completed, otherwise anoi with the factory menu
     if ( factory_menu.get() == 0 ) {

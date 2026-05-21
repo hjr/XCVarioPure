@@ -60,6 +60,8 @@ public:
     bool draw();
     int16_t getBoxHeight() const { return MSG_BOX_HEIGHT; }
     // bool isVisible() const { return current != nullptr; }
+    void pause() { _active = false; }
+    void resume() { _active = true; }
 
     // Clock tick callback
     bool tick() override;
@@ -85,6 +87,7 @@ private:
     int _start_scroll = 0; // timings
     int _nr_scroll = 0;
     int _msg_to = 0;
+    bool _active = false;
 };
 
 // exposed pointer to the message box
