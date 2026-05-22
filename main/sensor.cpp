@@ -935,6 +935,8 @@ void system_startup(void *args){
         }
     }
 
+    // present the boot logo vor a sec and go on
+    vTaskDelay(pdMS_TO_TICKS(1000));
     MBOX->resume(); // created in paused mode
 
 

@@ -77,7 +77,7 @@ BootUpScreen::BootUpScreen() :
 
     // offset to pic
     x_offset = width-LOGO_WIDTH/2;
-    y_offset = height-LOGO_HEIGHT/2;
+    y_offset = height-LOGO_HEIGHT;
 
     MYUCG->setColor(COLOR_WHITE);
 
@@ -122,8 +122,6 @@ void BootUpScreen::terminate()
         BootUpScreen *tmp = inst;
         inst = nullptr;
         delete tmp;
-        // MYUCG->setColor(COLOR_BLACK);
-        // MYUCG->clearScreen();
     }
 }
 
@@ -156,7 +154,7 @@ void BootUpScreen::animate()
     c.fadeTo(ucg_color_t(COLOR_PURPLE), _fadein);
     MYUCG->setColor(c.r, c.g, c.b);
     MYUCG->setFont(ucg_font_fub20_hr);
-    MYUCG->setPrintPos(MYUCG->getDisplayWidth()/2 - 22, MYUCG->getDisplayHeight()/2+LOGO_HEIGHT/2 + 34);
+    MYUCG->setPrintPos(MYUCG->getDisplayWidth()/2 - 22, MYUCG->getDisplayHeight()/2 + 34);
     MYUCG->print("pur");
     MYUCG->setColor(COLOR_WHITE);
 }
