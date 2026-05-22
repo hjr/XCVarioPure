@@ -1028,7 +1028,7 @@ void system_startup(void *args){
     WindCalcTask::createWindResources();
 
     // Init the vario screens
-    ScreenRoot::initScreens();
+    MenuRoot->initScreens();
 
     if (flapbox_enable.get()) {
         Flap::theFlap();  // check on FLAP pointer further on

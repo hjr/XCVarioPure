@@ -14,7 +14,6 @@
 #include "math/Trigonometry.h"
 #include "math/Floats.h"
 #include "math/Units.h"
-#include "sensor/gps/GpsVSensor.h"
 #include "Atmosphere.h"
 #include "Colors.h"
 #include "AdaptUGC.h"

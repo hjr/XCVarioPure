@@ -64,15 +64,20 @@ void ScreenRoot::barked()
 
 void ScreenRoot::initScreens()
 {
-    all_screens = 0;
-    if ( screen_gmeter.get() ) {
-        all_screens |= SCREEN_GMETER;
-    }
-    // horizon only if AHRS license is valid
+    all_screens = SCREEN_VARIO; // always
     if (screen_horizon.get()) {
         all_screens |= SCREEN_HORIZON;
     }
-    all_screens |= SCREEN_VARIO; // always
+    if (screen_gmeter.get()) {
+        all_screens |= SCREEN_GMETER;
+        if (screen_gmeter.get() == SCREEN_PRIMARY) {
+            all_screens = SCREEN_GMETER; // override and only show the g meter screen
+            active_screen = SCREEN_GMETER;
+        }
+    }
+    if (!menu_long_press.get()) {
+        all_screens |= SCREEN_SETUP_MENU; // treat setup as a screen in this case
+    }
 }
 
 void ScreenRoot::begin(MenuEntry *setup)
@@ -157,7 +162,13 @@ void ScreenRoot::exit(int levels)
             setRotDynamic(2.5f); // only for volume control
         }
         initScreens(); // re-evaluate available screens
-        BasePage::_DIRTY = true;
+        if (active_screen == SCREEN_SETUP_MENU) {
+            press(); // jump to next screen, e.g. to get out of setup menu if it is treated as a screen
+        }
+        else {
+            screens_init = INIT_DISPLAY_NULL; // set screen dirty to force redraw
+            BasePage::_DIRTY = true;
+        }
     }
 }
 
@@ -181,30 +192,26 @@ void ScreenRoot::press()
     int current_screen = active_screen;
 
     // cycle through screens, incl. setup
-    if (!gflags.inSetup)
-    {
-        while (active_screen < SCREEN_LIST_END)
-        {
-            active_screen <<= 1;
-            if (all_screens & active_screen)
-            {
-                ESP_LOGI(FNAME, "New active_screen: %x", active_screen);
-                break;
-            }
+    ESP_LOGI(FNAME, "Cycle screen from %d (%d)", current_screen, gflags.inSetup);
+    do {
+        if (active_screen < SCREEN_LIST_END) {
+            active_screen <<= 1; // next screen
         }
-        if ( active_screen >= SCREEN_LIST_END ) {
-            ESP_LOGI(FNAME, "select vario screen");
-            active_screen = SCREEN_VARIO;
+        else {
+            active_screen = SCREEN_VARIO; // back to first screen
         }
-    }
+    } while ( ! (all_screens & active_screen) );
+    ESP_LOGI(FNAME, "New active_screen: %x", active_screen);
+
     if ( current_screen != active_screen )
     {
         ESP_LOGI(FNAME, "Switching screen from %d to %d", current_screen, active_screen);
+        screens_init = INIT_DISPLAY_NULL; // set screen dirty to force redraw
         BasePage::_DIRTY = true;
     }
-    // only if menu long press is not set, jump into the setup befor going back to the vario screen
-    if (!menu_long_press.get() && active_screen == SCREEN_VARIO && !gflags.inSetup)
-    {
+
+    // only if menu long press is not set, jump into the setup befor going back to the first screen
+    if (active_screen == SCREEN_SETUP_MENU) {
         begin();
     }
 }

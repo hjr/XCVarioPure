@@ -18,10 +18,14 @@ enum ScreenTypes // bit field
     SCREEN_GMETER = 2,
     SCREEN_HORIZON = 4,
     SCREEN_FLARM = 8,
-    SCREEN_LIST_END = 16
+    SCREEN_SETUP_MENU = 16,
+    SCREEN_LIST_END = 32
 }; // all regular screens
 
 class IpsDisplay;
+class ScreenRoot;
+
+extern ScreenRoot *MenuRoot; // a global
 
 class ScreenRoot final : public SetupMenu, public WDBark_I
 {
@@ -33,7 +37,7 @@ public:
     void barked() override;
 
     // API
-    static void initScreens();
+    void initScreens();
     void begin(MenuEntry *setup=nullptr); // enter setup from outside, or schedule the next one
     void pushTop(MenuEntry *menu); // push menu on top, e.g. the flarm traffic display
     void exit(int levels=0) override;
@@ -49,4 +53,3 @@ private:
     WatchDog_C  _ui_mon_wd;
 };
 
-extern ScreenRoot *MenuRoot;
