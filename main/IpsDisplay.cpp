@@ -382,6 +382,9 @@ IpsDisplay::IpsDisplay( AdaptUGC *aucg ) {
     screen_edge[1] = {DISPLAY_W, 0};
     screen_edge[2] = {DISPLAY_W, DISPLAY_H};
     screen_edge[3] = {0, DISPLAY_H};
+
+    setGlobalColors();
+    initRefs();
 }
 
 IpsDisplay::~IpsDisplay() {
@@ -490,11 +493,7 @@ void IpsDisplay::setGlobalColors() {
 
 void IpsDisplay::initDisplay() {
     // ESP_LOGI(FNAME,"IpsDisplay::initDisplay()");
-    setGlobalColors();
     clear();
-
-    // Create common elements
-    initRefs();
 
     if (!MAINgauge) {
         int16_t scale_geometry = (display_orientation.get() == DISPLAY_NINETY) ? 120 : (gflags.isPro ? 90 : 128 );
@@ -743,8 +742,10 @@ void IpsDisplay::initLoadDisplay(){
 	int max_gscale = gload_pos_limit.get() + 2;
 	int min_gscale = gload_neg_limit.get() - 2;
 	if ( ! MAINgauge ) { // shared with
-		int16_t scale_geometry = ( display_orientation.get() == DISPLAY_NINETY ) ? 120 : 90;
-		MAINgauge = new PolarGauge(AMIDX, AMIDY, scale_geometry, DISPLAY_H/2-20, PolarGauge::GLOAD);
+		int16_t scale_geometry = ( display_orientation.get() == DISPLAY_NINETY ) ? 120 : (gflags.isPro ? 90 : 128 );
+		MAINgauge = new PolarGauge(AMIDX, AMIDY, scale_geometry, 
+            DISPLAY_H/2 - ((display_orientation.get() == DISPLAY_NINETY) ? 20 : 35), 
+            PolarGauge::GLOAD);
 	}
 	MAINgauge->setFigOffset(AVGOFFX, 0);
     MAINgauge->setFigExtras(false);
