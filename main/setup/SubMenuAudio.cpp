@@ -123,7 +123,7 @@ int update_range_entry_s(SetupMenuSelect *p)
     return update_range_entry(nullptr);
 }
 
-static int audio_setup_s(SetupMenuSelect *p) {
+int audio_setup_s(SetupMenuSelect *p) {
     AUDIO->applySetup();
     p->getParent()->setDirty();
     return 0;
@@ -225,13 +225,6 @@ void audio_menu_create_deadband(SetupMenu *top) {
 void audio_menu_create(SetupMenu *audio) {
     if (audio->getNrChilds() == 0)
     {
-        SetupMenuSelect *ageda = new SetupMenuSelect("General Switch", RST_NONE, audio_setup_s, &audio_mute_gen);
-        ageda->setHelp("All audio on, only alarms, or audio switched entirely off");
-        ageda->addEntry("All On", AUDIO_ON);
-        ageda->addEntry("Alarms Only", AUDIO_ALARMS_ONLY);
-        ageda->addEntry("No Sound", AUDIO_OFF);
-        audio->addEntry(ageda);
-
         SetupMenuSelect *asida = new SetupMenuSelect("V-Tone at Sink", RST_NONE, audio_setup_s, &audio_mute_sink);
         asida->setHelp("Select whether vario audio will be on while in sink");
         asida->addEntry(ENABLE_MODE[0].data(), 1);
@@ -245,6 +238,11 @@ void audio_menu_create(SetupMenu *audio) {
         SetupMenuValFloat *flarmv = new SetupMenuValFloat("Alarm Vol. Raise", "%", nullptr, &alarm_volraise);
         flarmv->setHelp("Audio volume raise for alarms and warnings (min. up to 60%)");
         audio->addEntry(flarmv);
+
+        SetupMenuSelect* stawaen = new SetupMenuSelect("Stall Warning", RST_NONE, nullptr, &stall_warning);
+        stawaen->setHelp("Alarm sound when speed goes below configured stall speed");
+        stawaen->mkEnable();
+        audio->addEntry(stawaen);
 
         SetupMenuSelect *amspvol = new SetupMenuSelect("Split Volume", RST_NONE, nullptr, &audio_split_vol);
         amspvol->setHelp("Independent audio volumes for Cruise and Vario mode");

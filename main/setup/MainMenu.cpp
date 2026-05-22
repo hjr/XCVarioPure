@@ -58,23 +58,6 @@
 
 extern AdaptUGC *MYUCG;
 
-static void wiper_menu_create(SetupMenu *top);
-static void bugs_item_create(SetupMenu *top);
-static void vario_menu_create(SetupMenu *top);
-static void vario_menu_create_damping(SetupMenu *top);
-static void vario_menu_create_meanclimb(SetupMenu *top);
-static void vario_menu_create_s2f(SetupMenu *top);
-static void vario_menu_create_ec(SetupMenu *top);
-
-static void options_menu_create(SetupMenu *top);
-static void options_menu_create_units(SetupMenu *top);
-static void options_menu_create_flarm(SetupMenu *top);
-
-static void system_menu_create(SetupMenu *top);
-static void system_menu_create_software(SetupMenu *top);
-static void system_menu_create_hardware_type(SetupMenu *top);
-static void system_menu_create_hardware_rotary(SetupMenu *top);
-
 
 static int caid_reference(SetupMenuSelect* p) {
     if ( theCenteraid ) {
@@ -327,7 +310,7 @@ void vario_menu_create_damping(SetupMenu *top) {
 	top->addEntry(vdav);
 }
 
-void vario_menu_create_meanclimb(SetupMenu *top) {
+static void vario_menu_create_meanclimb(SetupMenu *top) {
 	SetupMenuValFloat *vccm = new SetupMenuValFloat("Minimum climb", "", nullptr, &core_climb_min, RST_NONE, false);
 	vccm->setHelp("Minimum climb rate that counts for arithmetic mean climb value");
 	top->addEntry(vccm);
@@ -348,7 +331,7 @@ void vario_menu_create_meanclimb(SetupMenu *top) {
 	top->addEntry(vcmc);
 }
 
-void vario_menu_create_s2f(SetupMenu *top) {
+static void vario_menu_create_s2f(SetupMenu *top) {
 	SetupMenuValFloat *vds2 = new SetupMenuValFloat("Damping", "sec", s2f_change_action, &s2f_delay, RST_NONE, false);
 	vds2->setHelp("Time constant of S2F low pass filter");
 	top->addEntry(vds2);
@@ -398,7 +381,7 @@ void vario_menu_create_s2f(SetupMenu *top) {
 	top->addEntry(s2flag);
 }
 
-void vario_menu_create_ec(SetupMenu *top) {
+static void vario_menu_create_tek(SetupMenu *top) {
 	SetupMenuSelect *enac = new SetupMenuSelect("TEK", RST_NONE, nullptr, &te_comp_enable);
 	enac->setHelp("Probe and electronic TE compensation options");
 	enac->addEntry("Probe");
@@ -411,7 +394,14 @@ void vario_menu_create_ec(SetupMenu *top) {
 	top->addEntry(elca);
 }
 
-void wiper_menu_create(SetupMenu *top) {
+static void bugs_item_create(SetupMenu *top) {
+	SetupMenuValFloat *bgs = new SetupMenuValFloat("Bugs", "%", nullptr, &bugs, RST_NONE, false);
+	bgs->setHelp("Percent degradation of gliding performance due to bugs contamination");
+	bgs->setTerminateMenu();
+	top->addEntry(bgs);
+}
+
+static void wiper_menu_create(SetupMenu *top) {
 	SetupAction *wiperL = new SetupAction("Wipe left         ", wiper_button, 1);
 	JumboCmdMsg::LeftAction = wiperL;
 	SetupAction *wiperR = new SetupAction("Wipe       right", wiper_button, 0);
@@ -422,14 +412,7 @@ void wiper_menu_create(SetupMenu *top) {
 	bugs_item_create(top);
 }
 
-void bugs_item_create(SetupMenu *top) {
-	SetupMenuValFloat *bgs = new SetupMenuValFloat("Bugs", "%", nullptr, &bugs, RST_NONE, false);
-	bgs->setHelp("Percent degradation of gliding performance due to bugs contamination");
-	bgs->setTerminateMenu();
-	top->addEntry(bgs);
-}
-
-void vario_menu_create(SetupMenu *vae) {
+static void vario_menu_create(SetupMenu *vae) {
 	ESP_LOGI(FNAME,"SetupMenu::vario_menu_create( %p )", vae );
 
 	SetupMenuValFloat *vga = new SetupMenuValFloat("Range", "", audio_setup_f, &scale_range, RST_NONE, false);
@@ -463,14 +446,11 @@ void vario_menu_create(SetupMenu *vae) {
 	meanclimb->setHelp("Options for calculation of Mean Climb (MC recommendation) displayed by green/red dot");
 	vae->addEntry(meanclimb);
 
-	SetupMenu *s2fs = new SetupMenu("S2F Settings", vario_menu_create_s2f);
-	vae->addEntry(s2fs);
-
-	SetupMenu *elco = new SetupMenu("TE Compensation", vario_menu_create_ec);
+	SetupMenu *elco = new SetupMenu("TE Compensation", vario_menu_create_tek);
 	vae->addEntry(elco);
 }
 
-void options_menu_create_units(SetupMenu *top) {
+static void options_menu_create_units(SetupMenu *top) {
 	SetupMenuSelect *alu = new SetupMenuSelect("Altimeter", RST_NONE, unitChangeS, &alt_unit);
 	alu->addEntry("Meter (m)");
 	alu->addEntry("Feet (ft)");
@@ -507,11 +487,6 @@ static void system_menu_create_airspeed(SetupMenu *top) {
     SetupMenuValFloat* spc = new SetupMenuValFloat("AS Calibration", "%", speedcal_change, &speedcal, RST_NONE, false);
     spc->setHelp("Calibration of airspeed sensor (AS). Normally not needed, unless the pressure probe has a systematic error");
     top->addEntry(spc);
-
-    SetupMenuSelect* stawaen = new SetupMenuSelect("Stall Warning", RST_NONE, nullptr, &stall_warning);
-    stawaen->setHelp("Enable alarm sound when speed goes below configured stall speed (until 30% less)");
-    stawaen->mkEnable();
-    top->addEntry(stawaen);
 
     if ( !airborne.get() ) {
         SetupMenuSelect* asze = new SetupMenuSelect("Set Zero", RST_NONE, airspeed_zero, nullptr);
@@ -567,7 +542,7 @@ static void options_menu_create_altimeter(SetupMenu *top) {
 	top->addEntry(alq);
 }
 
-void options_menu_create_flarm(SetupMenu* top) {
+static void options_menu_create_flarm(SetupMenu* top) {
     if (top->getNrChilds() == 0) {
         top->setDynContent();
 
@@ -704,7 +679,7 @@ static void options_menu_create_screens(SetupMenu *top) { // dynamic!
 	tmp_menu->setBuzzword(ENABLE_MODE[screen_gmeter.get()].data());
 }
 
-void options_menu_create(SetupMenu *opt) { // dynamic!
+static void options_menu_create(SetupMenu *opt) { // dynamic!
 	if ( opt->getNrChilds() == 0 ) {
 		opt->setDynContent();
 		SetupMenuSelect *stumo = new SetupMenuSelect("Student Mode", RST_NONE, student_mode_action, &student_mode);
@@ -714,32 +689,37 @@ void options_menu_create(SetupMenu *opt) { // dynamic!
 		stumo->mkEnable();
 		
 		// Vario
-		SetupMenu *va = new SetupMenu("Vario and Speed 2 Fly", vario_menu_create);
+		SetupMenu *va = new SetupMenu("Variometer", vario_menu_create);
 		opt->addEntry(va);
+        va->setHelp("Vario scale range, mode, damping"); 
+
+        //S2F
+        SetupMenu *s2f = new SetupMenu("Speed to Fly", vario_menu_create_s2f);
+        opt->addEntry(s2f);
+        s2f->setHelp("S2F switch options");
 
 		// Audio
 		SetupMenu *ad = new SetupMenu("Audio", audio_menu_create);
 		opt->addEntry(ad);
-
-		// Airspeed
-		SetupMenu *velocity = new SetupMenu("Airspeed", system_menu_create_airspeed);
-		opt->addEntry(velocity);
+        ad->setHelp("Vario tone, deadband");
 
 		// Altimeter
 		SetupMenu *alti = new SetupMenu("Altimeter", options_menu_create_altimeter);
 		alti->setBuzzword(alti_mode[alt_display_mode.get()].data());
 		opt->addEntry(alti);
+        alti->setHelp("Altitude reference, display modes"); 
 
 		SetupMenu *flarm = new SetupMenu("FLARM", options_menu_create_flarm);
 		opt->addEntry(flarm);
-		flarm->setHelp("Option to display FLARM Warnings depending on FLARM alarm level");
+		flarm->setHelp("FLARM alarm level, timeout");
 
 		SetupMenu *compassWindMenu = new SetupMenu("Wind", options_menu_create_wind);
 		opt->addEntry(compassWindMenu);
-		compassWindMenu->setHelp("Setup Compass and Wind");
+        compassWindMenu->setHelp("Wind source");
 
 		SetupMenu *screens = new SetupMenu("Screens & Gauges", options_menu_create_screens);
 		opt->addEntry(screens);
+        screens->setHelp("Screen layout and contents");
 	}
 	SetupMenu *flarm = static_cast<SetupMenu*>(opt->getEntry(5));
 	if ( DEVMAN->getDevice(FLARM_DEV) != nullptr ) {
@@ -752,7 +732,7 @@ void options_menu_create(SetupMenu *opt) { // dynamic!
 	}
 }
 
-void system_menu_create_software(SetupMenu *top) {
+static void system_menu_create_software(SetupMenu *top) {
     SetupMenuSelect *ahrsid = new SetupMenuSelect("XCVario S/N", RST_NONE);
     ahrsid->addEntry(SetupCommon::getDefaultID());
     ahrsid->lock();
@@ -816,7 +796,7 @@ static void system_menu_create_battery(SetupMenu *top) {
 }
 
 
-void system_menu_create_hardware_type(SetupMenu *top) {
+static void system_menu_create_hardware_type(SetupMenu *top) {
 	// Display Orientation
 	SetupMenuSelect * diso = new SetupMenuSelect( "Orientation", RST_ON_EXIT, nullptr, &display_orientation );
 	top->addEntry( diso );
@@ -838,7 +818,7 @@ void system_menu_create_hardware_type(SetupMenu *top) {
 #endif
 }
 
-void system_menu_create_hardware_rotary(SetupMenu *top) {
+static void system_menu_create_hardware_rotary(SetupMenu *top) {
 	SetupMenuSelect *roinc = new SetupMenuSelect("Sensitivity", RST_NONE, set_rotary_increment, &rotary_inc);
 	top->addEntry(roinc);
 	roinc->setHelp(
@@ -872,7 +852,12 @@ static void system_menu_create_hardware(SetupMenu *top) {
         SetupMenu* rotary = new SetupMenu("Rotary Knob", system_menu_create_hardware_rotary);
         top->addEntry(rotary);
 
-        // Flap::setupMenue(top);
+        SetupMenuSelect *ageda = new SetupMenuSelect("Speaker", RST_NONE, audio_setup_s, &audio_mute_gen);
+        ageda->addEntry("Disable", AUDIO_OFF);
+        ageda->addEntry("Enable", AUDIO_ON);
+        top->addEntry(ageda);
+
+        // Todo move into connected devices scheme
         SetupMenu* wkm = new SetupMenu("Flap Sensor", flap_menu_create_flap_sensor);
         top->addEntry(wkm);
 
@@ -886,6 +871,10 @@ static void system_menu_create_hardware(SetupMenu *top) {
 		gear->addEntry("S2 RS232 negative");
 		gear->addEntry("External");  // A $g,w<n>*CS command from an external device
 
+        // Airspeed
+        SetupMenu* velocity = new SetupMenu("Airspeed", system_menu_create_airspeed);
+        top->addEntry(velocity);
+
         if (accSensor) {
             SetupMenu* ahrs = new SetupMenu("IMU & AHRS", system_menu_create_hardware_imu);
             top->addEntry(ahrs);
@@ -895,7 +884,7 @@ static void system_menu_create_hardware(SetupMenu *top) {
         bat->setHelp("Adjust voltage thresholds for battery state indication");
         top->addEntry(bat);
     }
-    SetupMenu* wkm = static_cast<SetupMenu*>(top->getEntry(2));  // Flap Sensor
+    SetupMenu* wkm = static_cast<SetupMenu*>(top->getEntry(3));  // Flap Sensor
     if (Speed2Fly.hasFlaps()) {
         wkm->unlock();
         if (flap_sensor.get()) {
@@ -911,7 +900,7 @@ static void system_menu_create_hardware(SetupMenu *top) {
     }
 }
 
-void system_menu_create(SetupMenu *sye) {
+static void system_menu_create(SetupMenu *sye) {
 	SetupMenu *soft = new SetupMenu("Software", system_menu_create_software);
 	sye->addEntry(soft);
 

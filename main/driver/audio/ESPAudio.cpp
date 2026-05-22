@@ -783,9 +783,6 @@ void Audio::applySetup() {
         if ( audio_mute_gen.get() == AUDIO_ON ) {
             startSound(AUDIO_VARIO_SOUND);
         }
-        if ( audio_mute_gen.get() == AUDIO_ALARMS_ONLY ) {
-            startSound(AUDIO_NO_SOUND);
-        }
     }
     _exponent_max  = std::pow( 2, audio_factor.get());
 
