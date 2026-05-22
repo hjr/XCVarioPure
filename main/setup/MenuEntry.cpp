@@ -159,7 +159,7 @@ void MenuEntry::setHelp( const char *txt )
     if (!helptext) {
         return;
     }
-    MYUCG->setFont(ucg_font_ncenR14_hr);
+    MYUCG->setFont(ucg_font_fub14_hr);
     int16_t nlidx = MYUCG->IdxToTextWidth(helptext, dwidth);
     if (nlidx == 0) {
         return; // fits in one line, no need to split
@@ -293,7 +293,7 @@ bool MenuEntry::showhelp(bool inln)
         MYUCG->drawLine(30, first_hln * LINE_HEIGHT + 2, dwidth - 30, first_hln * LINE_HEIGHT + 2);  // separator
         MYUCG->setColor(COLOR_WHITE);
 
-        MYUCG->setFont(ucg_font_ncenR14_hr);
+        MYUCG->setFont(ucg_font_fub14_hr);
         if ( _help_line_start[0] == 0 ) {
             // just one line
             menuPrintLn(helptext, first_hln);

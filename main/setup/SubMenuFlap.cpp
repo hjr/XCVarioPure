@@ -46,7 +46,7 @@ static int select_flap_sens_pin(SetupMenuSelect *p)
         {
             // ESP_LOGI(FNAME,"select_flap_sens_pin, have sensor");
             MYUCG->setPrintPos(5, 50);
-            MYUCG->setFont(ucg_font_ncenR14_hr, true);
+            MYUCG->setFont(ucg_font_fub14_hr, true);
             MYUCG->printf("Check Sensor Reading,");
             MYUCG->setPrintPos(5, 80);
             MYUCG->printf("Press Button to exit");
@@ -115,7 +115,7 @@ static int flap_cal_act(SetupMenuSelect *p)
         // do calibration
         p->clear();
         MYUCG->setPrintPos(1, 200);
-        MYUCG->setFont(ucg_font_ncenR14_hr, true);
+        MYUCG->setFont(ucg_font_fub14_hr, true);
         MYUCG->printf("Press for next");
         MYUCG->setFont(ucg_font_fub25_hf, true);
         int sensval;
@@ -126,7 +126,7 @@ static int flap_cal_act(SetupMenuSelect *p)
         }
         FLAP->modLevels();
         MYUCG->setPrintPos(1, 260);
-        MYUCG->setFont(ucg_font_ncenR14_hr, true);
+        MYUCG->setFont(ucg_font_fub14_hr, true);
         MYUCG->printf("Saved");
         vTaskDelay(pdMS_TO_TICKS(800));
     }
@@ -204,7 +204,7 @@ static void flap_menu_add_level(SetupMenu *top) // dynamic!
         top->addEntry( flab );
 
         // the minimum speed
-        SetupMenuValFloat *minspeed = new SetupMenuValFloat("Minimum Speed", "", select_speed_action, new_level_speed);
+        SetupMenuValFloat *minspeed = new SetupMenuValFloat("Min. Speed", "", select_speed_action, new_level_speed);
         minspeed->setHelp("Minimum speed for the flap level's speed band");
         minspeed->setPrecision(0);
         top->addEntry( minspeed );
@@ -266,7 +266,7 @@ static void one_flap_level(SetupMenu *top) // dynamic!
         top->addEntry( flab );
 
         // the minimum speed
-        SetupMenuValFloat *minspeed = new SetupMenuValFloat("Minimum Speed", "", level_speed_action, FLAP->getSpeedNVS(lid) );
+        SetupMenuValFloat *minspeed = new SetupMenuValFloat("Min. Speed", "", level_speed_action, FLAP->getSpeedNVS(lid) );
         minspeed->setHelp("Minimum speed for the flap level's speed band");
         minspeed->setPrecision(0);
         top->addEntry( minspeed );

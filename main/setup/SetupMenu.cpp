@@ -75,7 +75,7 @@ void SetupMenu::display(int mode)
 	ESP_LOGI(FNAME,"SetupMenu display %d", highlight );
 	clear();
 	ESP_LOGI(FNAME,"Title: %s child size:%d", _title.c_str(), _childs.size());
-	MYUCG->setFont(ucg_font_ncenR14_hr, true);
+	MYUCG->setFont(ucg_font_fub14_hr, true);
 	MYUCG->setFontPosBottom();
 	menuPrintLn("  <", 0);
 	menuPrintLn(_title.c_str(), 0, 30);

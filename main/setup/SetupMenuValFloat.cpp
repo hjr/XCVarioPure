@@ -146,7 +146,7 @@ void SetupMenuValFloat::displayVal()
 	else {
 		MYUCG->setFont(ucg_font_fub25_hf, true);
 		menuPrintLn(value(), 2);
-		MYUCG->setFont(ucg_font_ncenR14_hr);
+		MYUCG->setFont(ucg_font_fub14_hr);
 	}
 }
 

@@ -47,7 +47,7 @@ const char* LeakTest::value() const {
 void LeakTest::display(int mode) {
     ESP_LOGI(FNAME, "Starting Leak test");
     clear();
-    MYUCG->setFont(ucg_font_ncenR14_hr, true);
+    MYUCG->setFont(ucg_font_fub14_hr, true);
     menuPrintLn(_title.c_str(), 0);
 
     if ( !asSensor || !baroSensor || !teSensor ) {

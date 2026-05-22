@@ -14,7 +14,7 @@ extern AdaptUGC *MYUCG;
 void ImuStatus::display(int mode) {
 	ESP_LOGI(FNAME, "display() %d", go_on);
     clear();
-    MYUCG->setFont(ucg_font_ncenR14_hr, true);
+    MYUCG->setFont(ucg_font_fub14_hr, true);
     menuPrintLn(_title.c_str(), 0);
     // we show the status if Accelerator, Gyro, Heating
     char buf[64];

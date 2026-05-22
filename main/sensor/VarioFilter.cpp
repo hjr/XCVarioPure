@@ -28,7 +28,7 @@ constexpr int DUTY_CYCLE_MS = 100; // 10Hz
 constexpr size_t HSIZE = MAX_SENSOR_HISTORY_DURATION_MS / DUTY_CYCLE_MS;
 static __attribute__((aligned(4))) meter_t vario_buffer[ HSIZE + 1 ]; // history buffer for airspeed sensor
 
-// Data and dtructures for different filter variants
+// Data and structures for different filter variants
 static meter_t averageAlt = 0.f;
 static meter_t Altitude = 0.f;
 static meter_t predictAlt = 0.f;

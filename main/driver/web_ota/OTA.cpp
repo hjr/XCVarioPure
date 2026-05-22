@@ -120,7 +120,7 @@ void OTA::display(int some){
 
 	Display->clear();
 	int line=0;
-	MYUCG->setFont(ucg_font_ncenR14_hr, true );
+	MYUCG->setFont(ucg_font_fub14_hr, true );
 	MYUCG->setColor(COLOR_WHITE);
     menuPrintLn("Firmware Upload", line++, 30);
 	menuPrintLn("Use Wifi: ESP32 OTA", line++);

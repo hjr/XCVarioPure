@@ -76,7 +76,7 @@ static void drawGliderPic(int16_t lev) {
 }
 
 static void doImuCalibration(SetupMenuSelect* p) {
-    MYUCG->setFont(ucg_font_ncenR14_hr, true);
+    MYUCG->setFont(ucg_font_fub14_hr, true);
     p->clear();
     p->menuPrintLn("IMU Glider Reference", 2, 18);
     constexpr int16_t next_step = 4;
@@ -214,7 +214,7 @@ static void doImuCalibration(SetupMenuSelect* p) {
 
 
 static void factoryAccCalibration(SetupMenuSelect* p, bool check_only=false) {
-    MYUCG->setFont(ucg_font_ncenR14_hr, true);
+    MYUCG->setFont(ucg_font_fub14_hr, true);
     p->clear();
     p->menuPrintLn("Factory Acc. Calibration", 1, 18);
     constexpr int16_t next_step = 3;

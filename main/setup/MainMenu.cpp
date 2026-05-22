@@ -214,7 +214,7 @@ int qnh_adj(SetupMenuValFloat* p) {
     MYUCG->setColor(COLOR_WHITE);
     MYUCG->printf("% 5d   %s ", fast_iroundf(alt), AltUnit->getName());
 
-    MYUCG->setFont(ucg_font_ncenR14_hr);
+    MYUCG->setFont(ucg_font_fub14_hr);
     return 0;
 }
 
@@ -223,7 +223,7 @@ int factv_adj(SetupMenuValFloat *p) {
 	ESP_LOGI(FNAME,"factv_adj");
 	BatVoltage->setAdjust(factory_volt_adjust.get());
 	float bat = BatVoltage->get();
-	MYUCG->setFont(ucg_font_ncenR14_hr, true);
+	MYUCG->setFont(ucg_font_fub14_hr, true);
 	MYUCG->setPrintPos(1, 100);
 	MYUCG->setColor( COLOR_WHITE );
 	MYUCG->printf("%0.2f Volt", bat);
@@ -379,7 +379,7 @@ void vario_menu_create_s2f(SetupMenu *top) {
 	s2fsw->addEntry("Switch Invert", S2F_HW_SWITCH_INVERTED);
 	s2fsw->addEntry("Push Button", S2F_HW_PUSH_BUTTON);
 
-	SetupMenuValFloat *autospeed = new SetupMenuValFloat("AutoSpeed Thresh.", "", nullptr, &s2f_threshold, RST_NONE, false);
+	SetupMenuValFloat *autospeed = new SetupMenuValFloat("AutoSpeed", "", nullptr, &s2f_threshold, RST_NONE, false);
 	top->addEntry(autospeed);
 	autospeed->setHelp("Transition speed for the AutoSpeed S2F switch");
 
@@ -399,17 +399,15 @@ void vario_menu_create_s2f(SetupMenu *top) {
 }
 
 void vario_menu_create_ec(SetupMenu *top) {
-	SetupMenuSelect *enac = new SetupMenuSelect("eCompensation", RST_NONE, nullptr, &te_comp_enable);
-	enac->setHelp(
-			"Enable/Disable electronic TE compensation option; Enable only when TE port is connected to ST (static) pressure");
-	enac->addEntry("TEK Probe");
-	enac->addEntry("EPOT");
-	enac->addEntry("PRESSURE");
+	SetupMenuSelect *enac = new SetupMenuSelect("TEK", RST_NONE, nullptr, &te_comp_enable);
+	enac->setHelp("Probe and electronic TE compensation options");
+	enac->addEntry("Probe");
+	enac->addEntry("ePOT");
+	enac->addEntry("ePRESSURE");
 	top->addEntry(enac);
 
-	SetupMenuValFloat *elca = new SetupMenuValFloat("Adjustment", "%", nullptr, &te_comp_adjust, RST_NONE, false);
-	elca->setHelp(
-			"Adjustment option for electronic TE compensation in %. This affects the energy altitude calculated from airspeed");
+	SetupMenuValFloat *elca = new SetupMenuValFloat("eAdjustment", "%", nullptr, &te_comp_adjust, RST_NONE, false);
+	elca->setHelp("Electronic tube factor in %");
 	top->addEntry(elca);
 }
 
@@ -468,7 +466,7 @@ void vario_menu_create(SetupMenu *vae) {
 	SetupMenu *s2fs = new SetupMenu("S2F Settings", vario_menu_create_s2f);
 	vae->addEntry(s2fs);
 
-	SetupMenu *elco = new SetupMenu("Electronic Compensation", vario_menu_create_ec);
+	SetupMenu *elco = new SetupMenu("TE Compensation", vario_menu_create_ec);
 	vae->addEntry(elco);
 }
 
@@ -516,11 +514,11 @@ static void system_menu_create_airspeed(SetupMenu *top) {
     top->addEntry(stawaen);
 
     if ( !airborne.get() ) {
-        SetupMenuSelect* asze = new SetupMenuSelect("Zero Airspeed Sensor", RST_NONE, airspeed_zero, nullptr);
+        SetupMenuSelect* asze = new SetupMenuSelect("Set Zero", RST_NONE, airspeed_zero, nullptr);
         top->addEntry(asze);
-        asze->setHelp("Recalculate zero point for airspeed sensor right now");
+        asze->setHelp("Recalculate zero point for airspeed sensor");
         asze->addEntry("Cancel");
-        asze->addEntry("Start");
+        asze->addEntry("Now");
     }
 
     if ( airspeed_sensor.get() == AirspeedSensor::ABPMRR || airspeed_sensor.get() == AirspeedSensor::TE4525 ) {
@@ -573,7 +571,7 @@ void options_menu_create_flarm(SetupMenu* top) {
     if (top->getNrChilds() == 0) {
         top->setDynContent();
 
-        SetupMenuSelect* flarml = new SetupMenuSelect("Level Threshold", RST_NONE, set_parent_dirty, &flarm_warning);
+        SetupMenuSelect* flarml = new SetupMenuSelect("Level Thresh.", RST_NONE, set_parent_dirty, &flarm_warning);
         flarml->setHelp("Level of FLARM alarm to enable: 1 is lowest (13-18 sec), 2 medium (9-12 sec), 3 highest (0-8 sec) until impact");
         flarml->addEntry("Disable", 4);
         flarml->addEntry("Level 1", 1);
@@ -585,7 +583,7 @@ void options_menu_create_flarm(SetupMenu* top) {
         flarmt->setHelp("The time FLARM alarm warning keeps displayed after alarm went off");
         top->addEntry(flarmt);
 
-        SetupMenuSelect* flarms = new SetupMenuSelect("Alarm Check", RST_NONE, startFlarmSimulation);
+        SetupMenuSelect* flarms = new SetupMenuSelect("Check", RST_NONE, startFlarmSimulation);
         flarms->setHelp("Simulate an airplane crossing from left to right with different alarm levels and vertical distance in 5 seconds");
         flarms->addEntry("Cancel");
         flarms->addEntry("Cross Deeper");
@@ -606,7 +604,7 @@ void options_menu_create_flarm(SetupMenu* top) {
 }
 
 static void screens_menu_create_vario(SetupMenu *top) {
-    SetupMenuSelect *tgauge = new SetupMenuSelect("Upper Gauge", RST_NONE, nullptr, &vario_upper_gauge);
+    SetupMenuSelect *tgauge = new SetupMenuSelect("On Top", RST_NONE, nullptr, &vario_upper_gauge);
     tgauge->setHelp("Choose the content for this gauge");
     tgauge->addEntry("Disable", MultiGauge::GAUGE_NONE);
     tgauge->addEntry("IAS Speed", MultiGauge::GAUGE_IAS_SPEED);
@@ -623,7 +621,7 @@ static void screens_menu_create_vario(SetupMenu *top) {
     }
     top->addEntry(tgauge);
 
-    SetupMenuSelect *bgauge = new SetupMenuSelect("Lower Gauge", RST_NONE, nullptr, &vario_lower_gauge);
+    SetupMenuSelect *bgauge = new SetupMenuSelect("Bottom", RST_NONE, nullptr, &vario_lower_gauge);
     bgauge->setHelp("Choose the content for this gauge");
     bgauge->addEntry("Disable", MultiGauge::GAUGE_NONE);
     bgauge->addEntry("Altimeter", MultiGauge::GAUGE_ALTIMETER);
@@ -648,7 +646,7 @@ static void screens_menu_create_vario(SetupMenu *top) {
     wke->setHelp("An indicator to assist optimum flap setting depending on speed, G-load and ballast");
     top->addEntry(wke);
 
-    SetupMenuSelect *batv = new SetupMenuSelect("Battery Display", RST_NONE, nullptr, &battery_display);
+    SetupMenuSelect *batv = new SetupMenuSelect("Battery", RST_NONE, nullptr, &battery_display);
     batv->setHelp("Display battery charge state either in Percentage e.g. 75% or Voltage e.g. 12.5V");
     batv->addEntry("Disable");
     batv->addEntry("Percentage");
@@ -833,10 +831,11 @@ void system_menu_create_hardware_type(SetupMenu *top) {
 	dtest->setHelp("Start display test screens, press rotary to cancel");
 	top->addEntry(dtest);
 
+#ifdef DEBUG_AND_TEST
 	SetupMenuValFloat *dcadj = new SetupMenuValFloat("Display Clk Adj", "%", nullptr, &display_clock_adj, RST_IMMEDIATE);
 	dcadj->setHelp("Modify display clock by given percentage (restarts on exit)");
 	top->addEntry(dcadj);
-
+#endif
 }
 
 void system_menu_create_hardware_rotary(SetupMenu *top) {
@@ -856,7 +855,7 @@ void system_menu_create_hardware_rotary(SetupMenu *top) {
     rd->addEntry("MC Value");
 #endif
 
-    SetupMenuSelect *sact = new SetupMenuSelect("Enter Setup by", RST_NONE, nullptr, &menu_long_press);
+    SetupMenuSelect *sact = new SetupMenuSelect("Enter Setup", RST_NONE, nullptr, &menu_long_press);
 	top->addEntry(sact);
 	sact->setHelp("Activate setup menu either by short or long button press");
 	sact->addEntry("Short Press");
@@ -965,7 +964,7 @@ void setup_create_root(SetupMenu *top) {
 	if (rot_default.get() == 0) {
 		SetupMenuValFloat *mc = new SetupMenuValFloat("MC", "", nullptr, &MC);
 		mc->setHelp(
-				"Mac Cready value for optimum cruise speed or average climb rate, in same unit as the variometer");
+				"Mac Cready value for optimum cruise speed or average climb rate");
 		mc->setPrecision(1);
 		mc->setTerminateMenu();
 		top->addEntry(mc);
@@ -1102,28 +1101,28 @@ SetupMenu* SetupMenu::createFactorySetup() {
     if( accSensor ){
     	SetupMenuSelect* bias_zero = new SetupMenuSelect("IMU Biases", RST_NONE, imu_calib);
     	bias_zero->addEntry("Cancel");
-    	bias_zero->addEntry("Acc. Bias Calib.", 3);
-    	bias_zero->addEntry("AccBias Check", 6);
+    	bias_zero->addEntry("Acc Calib.", 3);
+    	bias_zero->addEntry("Acc Check", 6);
     	bias_zero->addEntry("Gyro Reset", 4);
-    	bias_zero->addEntry("Acc. Reset", 5);
+    	bias_zero->addEntry("Acc Reset", 5);
     	setup->addEntry(bias_zero);
     }
 
     SetupMenuDisplay *leak = new LeakTest("Leak Test");
     setup->addEntry(leak);
 
-    SetupMenuSelect* fa = new SetupMenuSelect("Exit Factory Menu", RST_NONE, exitFactoryMenu);
+    SetupMenuSelect* fa = new SetupMenuSelect("Exit", RST_NONE, exitFactoryMenu);
     fa->addEntry("Cancel");
     fa->addEntry("Exit");
     setup->addEntry(fa);
     return setup;
 }
 
-SetupMenuValFloat* SetupMenu::createQNHMenu() {
-	SetupMenuValFloat *qnh = new SetupMenuValFloat("QNH", "", qnh_adj, &QNH, RST_NONE, true);
-    qnh->setPrecision(2);
+SetupMenuValFloat* SetupMenu::createQNHMenu(bool inln) {
+	SetupMenuValFloat *qnh = new SetupMenuValFloat("QNH", "", inln?nullptr:qnh_adj, &QNH, RST_NONE, true);
+    qnh->setPrecision(1);
 	qnh->setTerminateMenu();
-	qnh->setHelp("QNH pressure value from ATC. On ground you may adjust to airfield altitude above MSL");
+	qnh->setHelp("\n\nAdjust and confirm");
 	return qnh;
 }
 

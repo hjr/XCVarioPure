@@ -31,7 +31,7 @@ int start_weight_adj(SetupMenuValFloat *p) {
 	MYUCG->setFont(ucg_font_fub25_hf, true);
 	MYUCG->setPrintPos(1, 110);
 	MYUCG->printf("%0.2f kg/m2  ", wingload);
-	MYUCG->setFont(ucg_font_ncenR14_hr);
+	MYUCG->setFont(ucg_font_fub14_hr);
 	return 0;
 }
 

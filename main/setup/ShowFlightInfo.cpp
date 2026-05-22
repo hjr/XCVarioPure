@@ -23,7 +23,7 @@ void ShowFlightInfo::display(int mode) {
     if (mode == 0) {
         clear();
     }
-    MYUCG->setFont(ucg_font_ncenR14_hr);
+    MYUCG->setFont(ucg_font_fub14_hr);
     menuPrintLn(_title.c_str(), 0);
 
     time_t t;

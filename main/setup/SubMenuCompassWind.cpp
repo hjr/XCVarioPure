@@ -166,7 +166,7 @@ static inline int16_t absmax_sign(int16_t a, int16_t b)
 // 	p->clear();
 // 	switch(p->getSelect()) {
 // 	case 1: // Start
-// 		MYUCG->setFont( ucg_font_ncenR14_hr, true );
+// 		MYUCG->setFont( ucg_font_fub14_hr, true );
 // 		MYUCG->setPrintPos( 1, 30 );
 // 		MYUCG->printf( "Calibration started" );
 // 		MYUCG->setPrintPos( 1, 220 );
