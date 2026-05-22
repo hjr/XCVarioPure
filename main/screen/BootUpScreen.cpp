@@ -151,12 +151,14 @@ void BootUpScreen::animate()
 {
     ucg_color_t c;
     _fadein += 0.1f;
-    c.fadeTo(ucg_color_t(COLOR_PURPLE), _fadein);
-    MYUCG->setColor(c.r, c.g, c.b);
-    MYUCG->setFont(ucg_font_fub20_hr);
-    MYUCG->setPrintPos(MYUCG->getDisplayWidth()/2 - 22, MYUCG->getDisplayHeight()/2 + 34);
-    MYUCG->print("pur");
-    MYUCG->setColor(COLOR_WHITE);
+    if (_fadein <= 1.f) {
+        c.fadeTo(ucg_color_t(COLOR_PURPLE), _fadein);
+        MYUCG->setColor(c.r, c.g, c.b);
+        MYUCG->setFont(ucg_font_fub20_hr);
+        MYUCG->setPrintPos(MYUCG->getDisplayWidth()/2 - 22, MYUCG->getDisplayHeight()/2 + 34);
+        MYUCG->print("pur");
+        MYUCG->setColor(COLOR_WHITE);
+    }
 }
 
 
@@ -164,8 +166,8 @@ bool BootUpScreen::tick()
 {
     int evt = ScreenEvent(ScreenEvent::BOOT_SCREEN).raw;
     xQueueSend(uiEventQueue, &evt, 0);
-    if(_fadein > 0.85f) {
-        return true; // animation finished, trigger next step in boot process
+    if (_fadein > 1.f) {
+        return true;
     }
     return false;
 }
