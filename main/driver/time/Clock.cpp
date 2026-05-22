@@ -45,7 +45,7 @@ void IRAM_ATTR Clock::clock_timer_sr(ClockSet*registry)
 
     // Check if there are any requests
     ClkRequest msg;
-    if (xQueueReceive(request_queue, &msg, 0) == pdTRUE) {
+    while (xQueueReceive(request_queue, &msg, 0) == pdTRUE) {
         if (msg.cmd == CMD_START) {
             registry->insert(msg.cb);
         }
@@ -96,11 +96,13 @@ Clock::~Clock()
 void Clock::start(Clock_I *cb)
 {
     ClkRequest req = { CMD_START, cb };
+    ESP_LOGI(FNAME, "Clock start request %p", cb);
     xQueueSend(request_queue, &req, portMAX_DELAY);
 }
 void Clock::stop(Clock_I *cb)
 {
     ClkRequest req = { CMD_STOP, cb };
+    ESP_LOGI(FNAME, "Clock stop request %p", cb);
     xQueueSend(request_queue, &req, portMAX_DELAY);
 }
 int Clock::getSeconds()
