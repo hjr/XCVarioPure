@@ -212,7 +212,7 @@ int qnh_adj(SetupMenuValFloat* p) {
 
     MYUCG->setPrintPos(1, 120);
     MYUCG->setColor(COLOR_WHITE);
-    MYUCG->printf("%5d %s  ", fast_iroundf(alt), AltUnit->getName());
+    MYUCG->printf("% 5d   %s ", fast_iroundf(alt), AltUnit->getName());
 
     MYUCG->setFont(ucg_font_ncenR14_hr);
     return 0;
@@ -995,12 +995,13 @@ void setup_create_root(SetupMenu *top) {
     crewball->setNeverInline();
     top->addEntry(crewball);
 
-    SetupMenuValFloat *qnh_menu = SetupMenu::createQNHMenu();
+    SetupMenuValFloat *qnh_menu = SetupMenu::createQNHMenu(true);
+    qnh_menu->setHelp("QNH pressure value as from next ATC");
 	top->addEntry(qnh_menu);
 
 	SetupMenuValFloat *afe = new SetupMenuValFloat("Airfield Elevation", "", nullptr, &airfield_elevation);
 	afe->setHelp(
-			"Airfield elevation in meters for QNH auto adjust on ground according to this elevation");
+			"Airfield elevation in meters for QNH auto adjust");
 	afe->setRotDynamic(3.0);
 	top->addEntry(afe);
 

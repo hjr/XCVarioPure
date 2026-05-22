@@ -938,11 +938,11 @@ void system_startup(void *args){
     // present the boot logo vor a sec and go on
     vTaskDelay(pdMS_TO_TICKS(1000));
     MBOX->resume(); // created in paused mode
+    BootUpScreen::terminate();
 
 
     // Check if the factory procedure is completed, otherwise anoi with the factory menu
     if ( factory_menu.get() == 0 ) {
-        BootUpScreen::terminate(); // remove logo immidiately
         // normal boot, schedule the factory menu as a very first thing todo
         int screenEvent = ScreenEvent(ScreenEvent::FACTORY_CONFIG).raw;
         xQueueSend(uiEventQueue, &screenEvent, 0);
@@ -950,19 +950,6 @@ void system_startup(void *args){
 
     // Set QNH from setup Airfiled elevation, when ! Second && ! airborn
     if (!SetupCommon::isClient() && !airborne.get()) {
-        // remove logo
-        sleep(1);
-        BootUpScreen::terminate();
-
-        ESP_LOGI(FNAME, "Master Mode: QNH Autosetup, IAS=%3f (<50 km/h)", ias.get());
-        // QNH autosetup
-        meter_t airfield_elev = airfield_elevation.get();
-        ESP_LOGI(FNAME, "Airfield Elevation = %4.1f m (Hist Level = %d)", airfield_elev, baroSensor ? baroSensor->getLevel() : 0);
-        if (airfield_elev > NO_ELEVATION && alt_select.get() == ALT_BARO_SENSOR && baroSensor) {
-            pascal_t qnh_auto = Units::calcQNH(baroSensor->getAVG(300), airfield_elev);
-            QNH.set(qnh_auto);
-            ESP_LOGI(FNAME, "Auto QNH (direkt) = %4.2f hPa", qnh_auto);
-        }
 
         // Some more checks on vario configuration
         int screenEvent;
@@ -973,15 +960,31 @@ void system_startup(void *args){
             screenEvent = ScreenEvent(ScreenEvent::POLAR_CONFIG).raw;
             xQueueSend(uiEventQueue, &screenEvent, 0);
         }
-        // QNH adjust screen, always
-        screenEvent = ScreenEvent(ScreenEvent::QNH_ADJUST).raw;
-        xQueueSend(uiEventQueue, &screenEvent, 0);
+
+        // QNH setup
+        ESP_LOGI(FNAME, "Master Mode: QNH Autosetup, IAS=%3f (<50 km/h)", ias.get());
+        if (airfield_elevation.get() > NO_ELEVATION) {
+            // QNH autosetup
+            meter_t airfield_elev = airfield_elevation.get();
+            ESP_LOGI(FNAME, "Airfield Elevation = %4.1f m (Hist Level = %d)", airfield_elev, baroSensor ? baroSensor->getLevel() : 0);
+            if (airfield_elev > NO_ELEVATION && alt_select.get() == ALT_BARO_SENSOR && baroSensor) {
+                pascal_t qnh_auto = Units::calcQNH(baroSensor->getAVG(300), airfield_elev);
+                QNH.set(qnh_auto);
+                ESP_LOGI(FNAME, "Auto QNH (direkt) = %4.2f hPa", qnh_auto);
+            }
+        }
+        else {
+            // QNH adjust screen
+            screenEvent = ScreenEvent(ScreenEvent::QNH_ADJUST).raw;
+            xQueueSend(uiEventQueue, &screenEvent, 0);
+        }
+
+        // Ballast in use
         if (ballast_kg.get() > 0) {
             // ballast set when boot-up, get a user confirmation
             screenEvent = ScreenEvent(ScreenEvent::BALLAST_CONFIRM).raw;
             xQueueSend(uiEventQueue, &screenEvent, 0);
         }
-
     } else {
         if (SetupCommon::isClient()) {
             bool already_connected = false;
@@ -999,7 +1002,6 @@ void system_startup(void *args){
             }
         }
 
-        BootUpScreen::terminate();
     }
 
     // Finally setup the vario filter. It needs a first valid altimeter reading to not "freak-out"

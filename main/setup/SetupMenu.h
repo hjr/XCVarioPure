@@ -63,7 +63,7 @@ public:
 
 	static SetupMenu* createTopSetup();
 	static SetupMenu* createFactorySetup();
-	static SetupMenuValFloat *createQNHMenu();
+	static SetupMenuValFloat *createQNHMenu(bool inln = false);
 	static SetupMenuValFloat *createBallastMenu();
 	static SetupMenuValFloat *createVoltmeterAdjustMenu();
 
