@@ -249,8 +249,8 @@ void PolarGauge::drawAvgClimb() {
 void PolarGauge::drawFigure(float a)
 {
     if ( _figure && _figure->changed(a) ) {
-        const BoundingBox& prev = _figure->getBoundingBox();
-        MYUCG->startBuffering(prev.pmin.x, prev.pmin.y, prev.pmax.x, prev.pmax.y);
+        // const BoundingBox& prev = _figure->getBoundingBox();
+        // MYUCG->startBuffering(prev.pmin.x, prev.pmin.y, prev.pmax.x, prev.pmax.y);
         
         // if (_wind_avg) {
         //     _wind_avg->redrawBG();
@@ -260,7 +260,7 @@ void PolarGauge::drawFigure(float a)
         // }
         a *= _unit_fac;
         _figure->draw(a);
-        MYUCG->finishBuffering();
+        // MYUCG->finishBuffering();
     }
 }
 

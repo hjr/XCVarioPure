@@ -50,11 +50,12 @@ void LargeFigure::draw() {
         sprintf(s, "% 2.1f", float(_value) / 10.0f);
     }
     else if ( std::abs(_value) < 1000 ) {
-        sprintf(s, "% d", _value / 10);
+        sprintf(s, "% 3d", _value / 10);
     }
     else {
         sprintf(s, " oo");
     }
+    ESP_LOGI(FNAME, "draw large figure val %d, str '%s'", _value, s);
     int16_t tmp = MYUCG->getStrWidth(s+1)/2;
     int16_t signwidth = MYUCG->getCharWidth(s[0]);
     MYUCG->setPrintPos(_ref.x - tmp + 2-signwidth, _ref.y + 2);
@@ -84,7 +85,7 @@ void LargeFigure::drawStatic() {
     MYUCG->print(mode);
 
     str_width = MYUCG->getStrWidth(VarioUnit->getName());
-    MYUCG->setPrintPos(_ref.x - str_width / 2, _bbox.pmin.y + _bbox.pmax.y + MYUCG->getFontLineSpace() +3);
+    MYUCG->setPrintPos(_ref.x - str_width / 2, _bbox.pmin.y + _bbox.pmax.y + MYUCG->getFontLineSpace() +5);
     MYUCG->setColor(COLOR_HEADER);
     MYUCG->print(VarioUnit->getName());
 }
