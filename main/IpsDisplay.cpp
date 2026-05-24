@@ -688,9 +688,6 @@ void IpsDisplay::redrawValues()
     if ( FLAPSgauge ) {
         FLAPSgauge->forceRedraw();
     }
-    if (theCenteraid) {
-        theCenteraid->forceRedraw();
-    }
     if (WNDicon) {
         WNDicon->forceRedraw();
     }

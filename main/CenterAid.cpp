@@ -55,7 +55,7 @@ CenterAid::CenterAid(PolarGauge &g) :
     _glider_on_top = vario_centeraid.get() != 2;
 }
 
-void CenterAid::drawThermal(int tn, int idir, bool fb) {
+void CenterAid::drawThermal(int tn, int idir) {
     // ESP_LOGI(FNAME,"drawThermal, tn: %d, idir: %d, ds: %d", tn, idir, draw_red );
     if (idir >= CA_NUM_DIRS || idir < 0) {
         ESP_LOGE(FNAME, "index out of range: %d", idir);
@@ -74,11 +74,15 @@ void CenterAid::drawThermal(int tn, int idir, bool fb) {
 
     MYUCG->setColor(COLOR_PURPLE);
     if (idir != 0) {
-        if (fb) MYUCG->startBuffering(cx-6, cy-6, 12, 12);
+        MYUCG->startBuffering(cx-6, cy-6, 12, 12);
         if (tn > 0) {
             MYUCG->drawDisc(cx, cy, tn / DRAW_SCALE, UCG_DRAW_ALL);
         }
-        if (fb) MYUCG->finishBuffering();
+        MYUCG->finishBuffering();
+    }
+    else {
+        // draw glider here icon
+        drawGlider(cx, cy);
     }
 }
 
@@ -92,38 +96,29 @@ void CenterAid::drawThermal(int tn, int idir, bool fb) {
 //  .  .
 //  x Cxy + (A,W)
 //
-void CenterAid::drawGlider() {
+void CenterAid::drawGlider(int16_t cx, int16_t cy) {
     constexpr int16_t A = -3;
     constexpr int16_t B = 3;
     constexpr int16_t W = 8;
     const int16_t triangle[3][6] = { { A, -W, A, W, B, 0}, {-A, -W, -B, 0, -A, W}, {-W, B, W, B, 0, A} }; // left, right, tail
-    int ddir = 0;
-    if (!_glider_on_top) {
-        if (flightmode == circling_t::circlingR) {
-            ddir = (3 * CA_NUM_DIRS / 4) % CA_NUM_DIRS;
-        } else if (flightmode == circling_t::circlingL) {
-            ddir = (CA_NUM_DIRS / 4) % CA_NUM_DIRS;
-        }
-    }
-    int16_t cx = _gauge._ref.x + fast_sin_rad(ddir * CA_STEP) * _gauge._radius;
-    int16_t cy = _gauge._ref.y - fast_cos_rad(ddir * CA_STEP) * _gauge._radius; // Todo add/move to IpsDisplay mapping functions
-    MYUCG->setColor(COLOR_BLACK);
+
+    // select triangle for circling direction
     int16_t *trptr = (int16_t*)triangle[2];
     if (_glider_on_top) {
-        MYUCG->drawBox(cx-B, cy-W, 2*B+1, 2*W+1);
+        MYUCG->startBuffering(cx-B, cy-W, 2*B+1, 2*W+1);
         if ( flightmode == circling_t::circlingR )
             trptr = (int16_t*)triangle[0];
         else if (flightmode == circling_t::circlingL) {
             trptr = (int16_t*)triangle[1];
         }
     } else {
-        MYUCG->drawBox(cx-W, cy-B, 2*W+1, 2*B+1);
-        MYUCG->drawBox(2*_gauge._ref.x-cx-W, cy-B, 2*W+1, 2*B+1);
+        MYUCG->startBuffering(cx-W, cy-B, 2*W+1, 2*B+1);
     }
     if ( flightmode == circling_t::circlingR || flightmode == circling_t::circlingL ) {
         MYUCG->setColor(COLOR_LBBLUE);
         MYUCG->drawTriangle(cx + trptr[0], cy + trptr[1], cx + trptr[2], cy + trptr[3], cx + trptr[4], cy + trptr[5]);
     }
+    MYUCG->finishBuffering();
 }
 
 int CenterAid::maxClimbIndex(){
@@ -156,10 +151,6 @@ void CenterAid::checkThermal(){
 
 void CenterAid::drawCenterAid(){
 	// ESP_LOGI(FNAME,"drawCenterAid");
-    if (_dirty) {
-        drawGlider();
-        _dirty = false;
-    }
 	int maxIndex = maxClimbIndex();
 	for( int i=0; i<CA_NUM_DIRS; i++ ){
 		int d = (i+idir) % CA_NUM_DIRS;
@@ -168,14 +159,14 @@ void CenterAid::drawCenterAid(){
 	}
 }
 
-void CenterAid::redrawAt(int deg) {
-    int i = (deg * CA_NUM_DIRS / 360) % CA_NUM_DIRS;
-    int d = (i+idir) % CA_NUM_DIRS;
-    drawThermal(thermals[d], i, false);
-    i = (i + CA_NUM_DIRS / 2) % CA_NUM_DIRS; // opposite direction
-    d = (i+idir) % CA_NUM_DIRS;
-    drawThermal(thermals[d], i, false);
-}
+// void CenterAid::redrawAt(int deg) {
+//     int i = (deg * CA_NUM_DIRS / 360) % CA_NUM_DIRS;
+//     int d = (i+idir) % CA_NUM_DIRS;
+//     drawThermal(thermals[d], i);
+//     i = (i + CA_NUM_DIRS / 2) % CA_NUM_DIRS; // opposite direction
+//     d = (i+idir) % CA_NUM_DIRS;
+//     drawThermal(thermals[d], i);
+// }
 
 
 // add one thermal and draw thermal
@@ -234,7 +225,6 @@ void CenterAid::calcFlightMode( rad_t headingDiff ){
             if( flightmode != circling_t::circlingR && turn_right > 2 ) {
                 flightmode = circling_t::circlingR;
                 ESP_LOGI(FNAME,"New fm: circle right");
-                _dirty = true; // trigger redraw of center aid with new reference
             }
 		}
 		else if( headingDiff < -Units::deg_to_rad(4.f) ) {
@@ -245,7 +235,6 @@ void CenterAid::calcFlightMode( rad_t headingDiff ){
 			if( flightmode != circling_t::circlingL && turn_left > 2 ){
 				flightmode = circling_t::circlingL;
 				ESP_LOGI(FNAME,"New fm: circle left");
-				_dirty = true; // trigger redraw of center aid with new reference
 			}
 		}
 		else{
@@ -256,7 +245,6 @@ void CenterAid::calcFlightMode( rad_t headingDiff ){
 			if( flightmode != circling_t::straight && fly_straight > 2 ) {
 				flightmode = circling_t::straight;
 				ESP_LOGI(FNAME,"New fm: straight");
-                _dirty = true; // trigger redraw of center aid with new reference
 			}
 		}
 	}
