@@ -184,7 +184,7 @@ bool VarioFilter::doRead(meter_t& val) {
         }
         mps_t ta_speed = tas.get();  // m/s
         float cw = Speed2Fly.getCw(ta_speed);
-        meter_t ealt = ((ta_speed * ta_speed) / (2 * Units::g0)) * (1 + (te_comp_adjust.get() / 100.0)) * (1 - cw);  // Ekin ~ h = v²/2g  * adjust * (1-cw)
+        meter_t ealt = ((ta_speed * ta_speed) / (2.f * Units::g0)) * (1.f + (te_comp_adjust.get() / 100.0)); // test * (1.f - cw);  // Ekin ~ h = v²/2g  * adjust * (1-cw)
         curr_altitude += ealt;
         ESP_LOGD(FNAME, "Energy Alt @%0.1f km/h: %0.1f cw: %f", tas.get(), ealt, cw);
     } else if (te_comp_enable.get() == TE_TEK_PRESSURE) {
