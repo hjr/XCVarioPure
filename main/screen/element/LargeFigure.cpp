@@ -74,7 +74,7 @@ void LargeFigure::draw() {
 void LargeFigure::drawStatic() {
     MYUCG->setFont(ucg_font_fub11_hr, true);
     MYUCG->setColor(COLOR_HEADER);
-    const char *mode = "average";
+    const char *mode = "gross";
     if ( CRMOD.getVMode() == CruiseMode::MODE_REL_NETTO) {
         mode = " s-netto ";
     }

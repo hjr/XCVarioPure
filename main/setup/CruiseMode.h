@@ -11,7 +11,7 @@
 #include <cstdint>
 
 // A wrapper to the logic of the setup variables:
-// vario_mode - persistent info, but individual for master/client, about brutto/netto
+// vario_mode - persistent info, but individual for master/client, about gross/netto
 // netto_mode - persistent info, but individual for master/client, about used netto flavor (in case)
 // cruise_mode - volatile status of the s2f mode, whereas syncronized bidirectional
 //

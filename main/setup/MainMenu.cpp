@@ -390,7 +390,7 @@ static void vario_menu_create_tek(SetupMenu *top) {
 	top->addEntry(enac);
 
 	SetupMenuValFloat *elca = new SetupMenuValFloat("eAdjustment", "%", nullptr, &te_comp_adjust, RST_NONE, false);
-	elca->setHelp("Electronic tube factor in %");
+	elca->setHelp("Electronic tube factor as deviation from ideal -1 in %");
 	top->addEntry(elca);
 }
 
@@ -426,8 +426,8 @@ static void vario_menu_create(SetupMenu *vae) {
 
 	SetupMenuSelect *vamod = new SetupMenuSelect("Mode", RST_NONE, nullptr, &vario_mode);
 	vamod->setHelp(
-			"Controls if vario considers polar sink (=Netto), or not (=Brutto), or if Netto vario applies only in Cruise Mode");
-	vamod->addEntry("Brutto");
+			"Controls if vario considers polar sink (=netto), or not (=gross), or if Netto vario applies only in Cruise Mode");
+	vamod->addEntry("Gross");
 	vamod->addEntry("Netto");
 	vamod->addEntry("Cruise-Netto");
 	vae->addEntry(vamod);
