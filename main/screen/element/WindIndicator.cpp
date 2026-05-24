@@ -10,6 +10,7 @@
 
 #include "math/Floats.h"
 #include "PolarGauge.h"
+#include "CenterAid.h"
 #include "LargeFigure.h"
 #include "Colors.h"
 #include "AdaptUGC.h"
@@ -85,86 +86,64 @@ bool WindIndicator::draw(WindData w)
     return false;
 }
 
+
 // 0° reference on top of the compass rose
 void WindIndicator::drawWind(bool erase)
 {
-    if ( ! _wind.isValid() ) {
-        return;
+    if ( ! erase ) ESP_LOGI(FNAME, "wind deg:%d, v:%.1f ", _wind.getDeg(), _wind.getVal());
+    float si = -fast_sin_idx(_wind.getDeg2());
+    float co = fast_cos_idx(_wind.getDeg2());
+
+    int16_t x0 = si * (_gauge._radius-2);
+    int16_t y0 = co * (_gauge._radius-2);
+    int16_t x1 = x0 / 4;
+    int16_t y1 = y0 / 4;
+    if (erase) {
+        MYUCG->setColor(COLOR_BLACK);
+    } else {
+        MYUCG->setColor(_color.color[0], _color.color[1], _color.color[2]);
     }
-
-    ESP_LOGI(FNAME, "wind deg:%d, v:%.1f ", _wind.getDeg(), _wind.getVal());
-    if ( ! _live ) {
-        float si = -fast_sin_idx(_wind.getDeg2());
-        float co = fast_cos_idx(_wind.getDeg2());
-
-        int16_t x0 = si * (_gauge._radius-2);
-        int16_t y0 = co * (_gauge._radius-2);
-        int16_t x1 = x0 / 4;
-        int16_t y1 = y0 / 4;
-        if (erase) {
-            MYUCG->setColor(COLOR_BLACK);
+    // a number at where the wind is coming from
+    int16_t value = _wind.getVal() * _gauge._unit_fac;
+    int16_t sw = _cwidth * count_digits(value);
+    int16_t xshift = sw / 2;
+    if (erase) {
+        MYUCG->drawBox(_gauge._ref.x - x0 - x1 / 2 - xshift, _gauge._ref.y - y0 - y1 / 2 - _cheight / 2, sw, _cheight);
+    } else {
+        char buf[8];
+        if (_wind.isValid()) {
+            sprintf(buf, "%d", value);
         } else {
-            MYUCG->setColor(COLOR_WGREY);
+            sprintf(buf, "oo");
         }
-        // a number at where the wind is coming from
-        int16_t value = _wind.getVal() * _gauge._unit_fac;
-        int16_t sw = _cwidth * count_digits(value);
-        int16_t xshift = sw / 2;
-        if (erase) {
-            MYUCG->drawBox(_gauge._ref.x - x0 - x1 / 2 - xshift, _gauge._ref.y - y0 - y1 / 2 - _cheight / 2, sw, _cheight);
-        } else {
-            char buf[8];
-            if (_wind.isValid() && value < 100) {
-                sprintf(buf, "%d", value);
-            } else {
-                sprintf(buf, "oo");
-            }
-            MYUCG->setFont(ucg_font_fub14_hr);
-            MYUCG->setFontPosCenter();
-            MYUCG->setPrintPos(_gauge._ref.x - x0 - x1 / 2 - xshift, _gauge._ref.y - y0 - y1 / 2);
-            MYUCG->print(buf);
-            MYUCG->setFontPosBottom();
-        }
+        MYUCG->setFont(ucg_font_fub14_hr);
+        MYUCG->setFontPosCenter();
+        MYUCG->setPrintPos(_gauge._ref.x - x0 - x1 / 2 - xshift, _gauge._ref.y - y0 - y1 / 2);
+        MYUCG->print(buf);
+        MYUCG->setFontPosBottom();
     }
 
-    // Calc the bounding box of the arrow
-    if ( _wind.isValid()) {
-        _abox.initialize(_arrow[0]);
-        _abox.add(&_arrow[1], 4);
+    // a tip in direction the wind is blowing (180° other direction)
+    x0 += _gauge._ref.x;
+    y0 += _gauge._ref.y;
+    int16_t wx = fast_iroundf(si);
+    int16_t wy = fast_iroundf(co);
+    if (_live) {
+        int16_t bx = si * 4;
+        int16_t by = co * 4;
+        // ">" like arrow tip
+        MYUCG->drawLine(x0 + by, y0 - bx, x0 + x1, y0 + y1); // +(by,-bx)
+        MYUCG->drawLine(x0 + by + wy, y0 - bx - wx, x0 + x1 + wy, y0 + y1 - wx);
+        MYUCG->drawLine(x0 - by, y0 + bx, x0 + x1, y0 + y1); // +(-by,bx)
+        MYUCG->drawLine(x0 - by - wy, y0 + bx + wx, x0 + x1 - wy, y0 + y1 + wx);
+    } else {
+        // "-" like arrow tip
+        MYUCG->drawTetragon(x0 + wy, y0 - wx,
+            x0 + x1 + wy, y0 + y1 - wx, // +(wy,-wx)
+            x0 + x1 - wy, y0 + y1 + wx, // +(-wy,wx)
+            x0 - wy, y0 + wx);
+        // ESP_LOGI(FNAME, "x0, y0 (%d,%d)", x0, y0);
     }
-    else {
-        _abox.initialize(_gauge._ref);
-        if ( erase ) {
-            return; // only a previously painted arrow can be removed
-         }
-    }
-    if ( ! erase ) {
-        // an arrow tip in direction the wind is blowing (180° other direction)
-        constexpr float vref = Units::kmh_to_mps(25.f); // scale the arrow size with the wind speed
-        float scale = sqrtf((std::clamp(_wind.getVal(), Units::kmh_to_mps(10.f), vref-1.f) - .4f) / vref);
-        Point::scaleNshift(_indgeom, 5, Point(0, -(_gauge._radius-14)), scale, _arrow);
-        Point::rotate(_arrow, 5, _wind.getDeg2(), _arrow);
-        // shift to gauge center
-        for (int i = 0; i < 5; i++) {
-            _arrow[i] += _gauge._ref;
-        }
-    }
-    // MYUCG->drawFrame(_abox.pmin.x, _abox.pmin.y, _abox.pmax.x - _abox.pmin.x +1, _abox.pmax.y - _abox.pmin.y +1);
-    if ( (_abox.pmax.x - _abox.pmin.x +1) * (_abox.pmax.y - _abox.pmin.y +1) > (EGLIB_FRAMEBUFFER_SIZE/3) ) {
-        ESP_LOGI(FNAME, "bbox too big, skip draw");
-        return;
-    }
-    MYUCG->startBuffering(_abox.pmin.x, _abox.pmin.y, _abox.pmax.x - _abox.pmin.x +1, _abox.pmax.y - _abox.pmin.y +1);
-    if ( ! erase ) {
-        MYUCG->setColor(COLOR_MGREY);
-        IpsDisplay::drawPolygon(_arrow, 5);
-        // MYUCG->setColor(_color.color[0], _color.color[1], _color.color[2]);
-        // IpsDisplay::drawPolyFrame(_arrow, 5);
-    }
-    if ( _gauge._figure ) {
-        _gauge._figure->draw();
-    }
-    MYUCG->finishBuffering();
 }
 
 void WindIndicator::redrawBG()

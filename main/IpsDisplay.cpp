@@ -569,7 +569,7 @@ void IpsDisplay::initDisplay() {
         // create it always, because also the center aid is using it
         WNDgauge = new PolarGauge(AMIDX + AVGOFFX, AMIDY, 360, 58, PolarGauge::COMPASS);
     }
-    // WNDgauge->enableWindIndicator(wind_enable.get() > WA_OFF, wind_enable.get() == WA_EXTERNAL);
+    WNDgauge->enableWindIndicator(false /*wind_enable.get() > WA_OFF*/, wind_enable.get() == WA_EXTERNAL);
     WNDgauge->setColor(needle_color.get());
     WNDgauge->setUnit(SpeedUnit->scale);
 
@@ -889,29 +889,32 @@ void IpsDisplay::drawDisplay(){
         if (theCenteraid && !CRMOD.getCMode()) {
             theCenteraid->drawCenterAid();
         }
-        if (wind_enable.get() > WA_OFF && WNDicon) {
+
+        WindData swind, iwind;
+        if (wind_enable.get() & WA_BOTH) {
+            if (synoptic_wind.getValid()) {
+                swind = static_cast<WindData>(synoptic_wind.get());
+            }
+        } else {
+            iwind.raw = ext_inst_wind.get();
+            swind.raw = ext_syn_wind.get();
+        }
+        if (wind_enable.get() == WA_EXTERNAL && WNDgauge) {
             // static int idir=0;
             // static int ival=5;
-            // // the wind simulator to check the wind indicator
+            // the wind simulator to check the wind indicator
             // idir = (idir + (rand()%5))%360; //  a"-" triggers the disc bug"
-            // // idir++;
-            // // ival = (ival+(rand()%5))%360;
+            // idir++;
+            // ival = (ival+(rand()%5))%360;
 
             // WindData swind(Units::deg_to_rad(idir), (mps_t)(fast_sin_idx(idir*1.5)+1)/2*60.f/3.6f - 1);
-            // // WindData iwind(Units::deg_to_rad(ival), (mps_t)ival/3.6);
+            // iwind = WindData(Units::deg_to_rad(idir), (mps_t)ival/3.6);
 
-            WindData swind, iwind;
-            if (wind_enable.get() & WA_BOTH) {
-                if (synoptic_wind.getValid()) {
-                    swind = static_cast<WindData>(synoptic_wind.get());
-                }
-            } else {
-                iwind.raw = ext_inst_wind.get();
-                swind.raw = ext_syn_wind.get();
-            }
             ESP_LOGI(FNAME, "draw wind swind: %d@%.1f cwind: %d@%.1f", swind.getDeg(), Units::mps_to_kph(swind.getVal()), 
                 iwind.getDeg(), Units::mps_to_kph(iwind.getVal()));
-            // WNDgauge->drawWind(swind, iwind);
+            WNDgauge->drawWind(swind, iwind);
+        }
+        if (wind_enable.get() > WA_OFF && WNDicon) {
             WNDicon->draw(swind);
         }
     }
@@ -963,9 +966,9 @@ void IpsDisplay::drawDisplay(){
         }
 
         if (vario_centeraid.get()) {
+            WNDgauge->clearGauge();
             if (CRMOD.getCMode()) {
-                WNDgauge->clearGauge();
-                // WNDgauge->drawRose();
+                WNDgauge->drawRose();
             }
             // else {
             //     WNDgauge->clearGauge();
