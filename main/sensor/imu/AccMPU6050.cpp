@@ -143,7 +143,8 @@ void AccMPU6050::postProcess() {
     if (airborne.get()) {
         float loadFactor = std::clamp(_processed.get_norm(), 0.f, 2.f);
         // rotation around the nav Z axis
-        circle_omega = -gyro.dot(att_vector);
+        circle_omega = sqrt(gyro.y*gyro.y + gyro.z*gyro.z) * (std::signbit(gyro.z)?-1.f:1.f);
+
         // ESP_LOGI(FNAME,"attv: %.3f,%.3f,%.3f - %.3f,%.3f,%.3f - omega %f", att_vector.x, att_vector.y, att_vector.z, z_nav_in_body.x, z_nav_in_body.y, z_nav_in_body.z, circle_omega);
         // ESP_LOGI(FNAME,"attv: %.3f,%.3f,%.3f - omega %f", att_vector.x, att_vector.y, att_vector.z, circle_omega);
         // tan(roll):= petal force/G = m w v / m g
