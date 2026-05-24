@@ -94,8 +94,8 @@ void WindIndicator::drawWind(bool erase)
     float si = -fast_sin_idx(_wind.getDeg2());
     float co = fast_cos_idx(_wind.getDeg2());
 
-    int16_t x0 = si * (_gauge._radius-2);
-    int16_t y0 = co * (_gauge._radius-2);
+    int16_t x0 = si * (_gauge._radius-6);
+    int16_t y0 = co * (_gauge._radius-6);
     int16_t x1 = x0 / 4;
     int16_t y1 = y0 / 4;
     if (erase) {
