@@ -55,7 +55,7 @@ CenterAid::CenterAid(PolarGauge &g) :
     _glider_on_top = vario_centeraid.get() != 2;
 }
 
-void CenterAid::drawThermal(int tn, int idir, bool draw_red) {
+void CenterAid::drawThermal(int tn, int idir, bool fb) {
     // ESP_LOGI(FNAME,"drawThermal, tn: %d, idir: %d, ds: %d", tn, idir, draw_red );
     if (idir >= CA_NUM_DIRS || idir < 0) {
         ESP_LOGE(FNAME, "index out of range: %d", idir);
@@ -72,18 +72,13 @@ void CenterAid::drawThermal(int tn, int idir, bool draw_red) {
     int16_t cx = _gauge._ref.x + fast_sin_rad(ddir * CA_STEP) * _gauge._radius;
     int16_t cy = _gauge._ref.y - fast_cos_rad(ddir * CA_STEP) * _gauge._radius;
 
+    MYUCG->setColor(COLOR_PURPLE);
     if (idir != 0) {
-        MYUCG->startBuffering(cx-6, cy-6, 12, 12);
+        if (fb) MYUCG->startBuffering(cx-6, cy-6, 12, 12);
         if (tn > 0) {
-            // ESP_LOGI(FNAME,"draw TH, dir:%d, TE:%d", idir, tn );
-            // if (draw_red)  // for max climb
-            //     MYUCG->setColor(COLOR_RED);
-            // else
-            //     MYUCG->setColor(COLOR_GREEN);
-            MYUCG->setColor(COLOR_PURPLE);
             MYUCG->drawDisc(cx, cy, tn / DRAW_SCALE, UCG_DRAW_ALL);
         }
-        MYUCG->finishBuffering();
+        if (fb) MYUCG->finishBuffering();
     }
 }
 
@@ -169,9 +164,17 @@ void CenterAid::drawCenterAid(){
 	for( int i=0; i<CA_NUM_DIRS; i++ ){
 		int d = (i+idir) % CA_NUM_DIRS;
 		// ESP_LOGI(FNAME,"dir:%d TE:%d", d, thermals[d] );
-		bool red = d != maxIndex ? false : true;
-		drawThermal( thermals[d], i, red );
+		drawThermal( thermals[d], i );
 	}
+}
+
+void CenterAid::redrawAt(int deg) {
+    int i = (deg * CA_NUM_DIRS / 360) % CA_NUM_DIRS;
+    int d = (i+idir) % CA_NUM_DIRS;
+    drawThermal(thermals[d], i, false);
+    i = (i + CA_NUM_DIRS / 2) % CA_NUM_DIRS; // opposite direction
+    d = (i+idir) % CA_NUM_DIRS;
+    drawThermal(thermals[d], i, false);
 }
 
 

@@ -20,13 +20,14 @@ public:
     static void remove();
 	void tick(int tick);
 	void drawCenterAid();
+    void redrawAt(int deg);
     void setGeometry(int r);
 	void setGliderOnTop(bool onTop) { _glider_on_top = onTop; }
 	void forceRedraw() { _dirty = true; }
 
 private:
 	CenterAid(PolarGauge &g);
-	void drawThermal( int th, int idir, bool draw_red=false );
+	void drawThermal( int th, int idir, bool fb=true );
 	void drawGlider();
 	void ageThermal();
 	void addThermal( int teval );
