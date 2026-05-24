@@ -417,7 +417,7 @@ void PolarGauge::drawOneLabel(float val, int16_t labl) const
         MYUCG->setFont(ucg_font_fub20_hn, false);
         x = CosCenteredDeg2(dice_rad(val), _radius - 16) - MYUCG->getStrWidth(s)/2;
         y = SinCenteredDeg2(dice_rad(val), _radius - 16);
-        MYUCG->setColor(COLOR_HEADER);
+        MYUCG->setColor(COLOR_HEADER_LIGHT);
     }
     MYUCG->setPrintPos(x, y);
     MYUCG->print(s);
