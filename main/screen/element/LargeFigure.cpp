@@ -13,7 +13,7 @@
 #include "Atmosphere.h"
 #include "math/Floats.h"
 #include "setup/CruiseMode.h"
-#include "logdef.h"
+#include "logdefnone.h"
 
 #include <cmath>
 #include <cstdio>
@@ -55,11 +55,12 @@ void LargeFigure::draw() {
     else {
         sprintf(s, " oo");
     }
-    ESP_LOGI(FNAME, "draw large figure val %d, str '%s'", _value, s);
     int16_t tmp = MYUCG->getStrWidth(s+1)/2;
+    ESP_LOGI(FNAME, "draw large figure val %d, str '%s', len %d", _value, s, tmp);
     int16_t signwidth = MYUCG->getCharWidth(s[0]);
     MYUCG->setPrintPos(_ref.x - tmp + 2-signwidth, _ref.y + 2);
-    MYUCG->startBuffering(_ref.x - tmp + 3-10, _ref.y + 2 - 36/2, 2*tmp + 7, 36);
+    constexpr int16_t tmpmax = 33; // maximum width of the figure (like -8.8), used for buffering and clearing
+    MYUCG->startBuffering(_ref.x - tmpmax + 3-10, _ref.y + 2 - 36/2, 2*tmpmax + 7, 36);
     MYUCG->print(s);
     MYUCG->finishBuffering();
 
