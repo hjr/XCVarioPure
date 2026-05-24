@@ -15,6 +15,7 @@
 #include "setup/SubMenuGlider.h"
 #include "setup/SubMenuFlap.h"
 #include "setup/SubMenuImu.h"
+#include "setup/SubMenuOTA.h"
 #include "setup/ShowBootMsg.h"
 #include "setup/ShowFlightInfo.h"
 #include "screen/element/MultiGauge.h"
@@ -743,12 +744,9 @@ static void system_menu_create_software(SetupMenu *top) {
     ver->lock();
     top->addEntry(ver);
 
-    SetupMenuSelect* upd = new SetupMenuSelect("Update", RST_IMMEDIATE, nullptr, &software_update);
-    upd->setHelp("Update using the internet connection of your smart phone, or upload a binary using the ESP32 webserver.");
-    upd->addEntry("Cancel");
-    upd->addEntry("Easy Connect");
-    upd->addEntry("Webserver");
-    top->addEntry(upd);
+    SetupMenu* upd_soft = new SetupMenu("Update Software", software_menu_create_OTA);
+    upd_soft->setHelp("Update using the internet connection of your smart phone, or upload a binary using the ESP32 webserver.");
+    top->addEntry(upd_soft);
 
     if (logged_tests.size() > 0) {
         SetupMenuDisplay* dis = new SetupMenuDisplay("Show Boot Messages", show_boot_log);
