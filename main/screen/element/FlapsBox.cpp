@@ -40,8 +40,8 @@ FBoxStateHash::FBoxStateHash(float f, float minvd, float maxvd) :
 {
     top_pix = static_cast<int16_t>(minvd * FlapsBox::PIX_PER_MPS);
     bottom_pix = static_cast<int16_t>(maxvd * FlapsBox::PIX_PER_MPS);
-    top_exseed = (bottom_pix < -FlapsBox::BOX_LENGTH/2) ? 1 : 0;
-    bottom_exseed = (top_pix > FlapsBox::BOX_LENGTH/2) ? 1 : 0;
+    top_exseed = (bottom_pix < -(FlapsBox::BOX_LENGTH/2-5)) ? 1 : 0;
+    bottom_exseed = (top_pix > (FlapsBox::BOX_LENGTH/2-5)) ? 1 : 0;
 }
 
 bool FBoxStateHash::operator!=(const FBoxStateHash &other) const noexcept
