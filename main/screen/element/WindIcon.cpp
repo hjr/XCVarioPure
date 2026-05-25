@@ -53,7 +53,7 @@ bool WindIcon::draw(WindData w)
             rad_t heading = heading_tru.get();
             ESP_LOGI(FNAME, "heading %.1f", Units::rad_to_deg(heading));
             w.inclHeading(heading);
-            if (changed || _dirty) drawDirection(_wind.getDeg());
+            if (changed || _dirty) drawDirection();
         }
 
         drawIcon(w.getDeg2());
@@ -112,13 +112,13 @@ void WindIcon::drawUnit() const
     }
 }
 
-void WindIcon::drawDirection(int16_t deg) const
+void WindIcon::drawDirection() const
 {
     MYUCG->setFont(ucg_font_fub11_hr, true);
     MYUCG->setColor(COLOR_WGREY);
     char s[16] = {"  ---  "};
     if ( _wind.isValid() ) {
-       sprintf(s, " %3d' ", deg);
+       sprintf(s, " % 3d'", _wind.getDeg());
     }
     MYUCG->setPrintPos(_ref.x - _radius - _str_width - MYUCG->getStrWidth(s)/2, _ref.y - 2 * _radius - 2);
     MYUCG->print(s);

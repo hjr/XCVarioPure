@@ -34,7 +34,7 @@ class WindIcon : public ScreenElement
   private:
     void drawIcon(int16_t deg2) const;
     void drawUnit() const;
-    void drawDirection(int16_t deg) const;
+    void drawDirection() const;
 
   private: // attributes
     WindData _wind; // current wind data
