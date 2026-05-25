@@ -23,8 +23,7 @@ union SwitchEvent {
     uint16_t raw = 0;
 
     constexpr SwitchEvent() = delete;
-    constexpr SwitchEvent(int f, int t)
-        : from((f & 0xFF)), to((t & 0xFF)) {}
+    constexpr SwitchEvent(int8_t f, int8_t t) : from(f), to(t) {}
     constexpr bool operator!=(const SwitchEvent &other) const noexcept {
         return raw != other.raw; }
 };
@@ -64,7 +63,8 @@ private: // attributes
     Flap* _flap;
     LowPassFilterT<float> _fp_filter;
     FBoxStateHash _state = {0,0,0};
-    int   _last_flap_idx = 0;
+    int16_t _last_flap_idx = 0;
+    int16_t _flap_off_idx = 0;
     int   _snd_event_time = 0;
     SwitchEvent _last_event;
     int   _same_event_to = -1;
