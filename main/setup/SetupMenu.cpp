@@ -89,7 +89,7 @@ void SetupMenu::display(int mode)
 		MYUCG->setColor(COLOR_WHITE);
         const char *cv = child->value();
 		if ( ! child->isLeaf()  || cv ) {
-			MYUCG->setColor(COLOR_BBLUE);
+			MYUCG->setColor(COLOR_LBBLUE);
 		}
 		menuPrintLn(child->getTitle(), i+1);
 
