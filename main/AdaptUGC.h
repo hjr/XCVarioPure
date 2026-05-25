@@ -4,7 +4,7 @@
 #include <eglib.h>
 #include <cstdint>
 #include <cstring>
-
+#include <algorithm>
 
 // later we want to get rid of UGC, so lets add all needed API definitions here
 
@@ -22,9 +22,10 @@ union ucg_color_t
         r = ifade(target.r, fade);
         g = ifade(target.g, fade);
         b = ifade(target.b, fade);
-    }
-    static constexpr uint8_t ifade(uint8_t target, float fade) {
-        return 255 - uint8_t((255 - target) * fade);
+    } 
+    static constexpr uint8_t ifade(int target, float fade){
+        return uint8_t(255 - std::clamp(int((256 - target) * fade), 0, 255)); // be able to fade to 255 as well
+        
     };
 };
 

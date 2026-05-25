@@ -72,7 +72,11 @@ void CenterAid::drawThermal(int tn, int idir) {
     int16_t cx = _gauge._ref.x + fast_sin_rad(ddir * CA_STEP) * _gauge._radius;
     int16_t cy = _gauge._ref.y - fast_cos_rad(ddir * CA_STEP) * _gauge._radius;
 
-    MYUCG->setColor(COLOR_PURPLE);
+    // a green thermal spot that brightens with increasing thermal strength (up to 10%)
+    ucg_color_t col = { COLOR_GREEN };
+    col.fadeTo(col, tn * (130.f/(float)PEAK_STORAGE) +.8f);
+    ESP_LOGI(FNAME,"drawThermal, tn: %d, fade: %.3f, color: %d,%d,%d", tn, tn * (30.f/(float)PEAK_STORAGE) +.8f, col.color[0], col.color[1], col.color[2]);
+    MYUCG->setColor(col.color[0], col.color[1], col.color[2]);
     if (idir != 0) {
         MYUCG->startBuffering(cx-6, cy-6, 12, 12);
         if (tn > 0) {
@@ -115,7 +119,7 @@ void CenterAid::drawGlider(int16_t cx, int16_t cy) {
         MYUCG->startBuffering(cx-W, cy-B, 2*W+1, 2*B+1);
     }
     if ( flightmode == circling_t::circlingR || flightmode == circling_t::circlingL ) {
-        MYUCG->setColor(COLOR_LBBLUE);
+        MYUCG->setColor(COLOR_WHITE);
         MYUCG->drawTriangle(cx + trptr[0], cy + trptr[1], cx + trptr[2], cy + trptr[3], cx + trptr[4], cy + trptr[5]);
     }
     MYUCG->finishBuffering();
@@ -137,14 +141,13 @@ int CenterAid::maxClimbIndex(){
 void CenterAid::checkThermal(){
 	// ESP_LOGI(FNAME,"checkThermal");
 	idir = (int)(cur_heading * ((float)CA_NUM_DIRS / PI2f)) % CA_NUM_DIRS;
-	mps_t th = te_vario.get();
-	th = th > 5.0 ? 5.0 : th;  // limit to 5 m/s to avoid peak value excess
+	mps_t th = std::clamp(te_vario.get(), 0.0f, 5.0f); // limit to 5 m/s to avoid peak value excess
 	if( th > peak_value  )
 		peak_value += (th - peak_value)*0.1;  // a bit low passing to catch values out of the row
 	if( peak_value > 1.0 )                // don't go below 1 m/s this is maximum sensitivity
 		peak_value = peak_value * 0.999;  // Peak value aging 0.1% per 100 mS or 1% per second
 	scale = PEAK_STORAGE/peak_value;      // scale orients itself at measured peak values
-	int ti = std::clamp((int)(th*scale), -126, 127); // positive limit of 8 bit integer type
+	int ti = std::clamp((int)(th*scale), 2*DRAW_SCALE, 127); // positive limit of 8 bit integer type
 	ESP_LOGI(FNAME,"newThermal dir:%d, TE:%.2f Peak:%.2f TI:%d", idir, th, peak_value, ti  );
 	addThermal( ti  );  // 1 m/s = 10; 5 m/s = 50; -10 m/s = -100
 }
