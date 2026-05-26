@@ -545,7 +545,7 @@ void DMACMD::dump() {
 #if defined(AUDIO_DEBUG)
     ESP_LOGI(FNAME, "dmacmd dump");
     ESP_LOGI(FNAME, "idx %d rep %d vc %d cnt %u", (int)idx, (int)repcount, (int)voicecount, (int)counter);
-    // if ( timeseq ) ESP_LOGI(FNAME, "tim012 %d, %d, %d", (int)timeseq[0].duration, (int)timeseq[1].duration, (int)timeseq[2].duration);
+    // if ( timeseq ) { ESP_LOGI(FNAME, "tim012 %d, %d, %d", (int)timeseq[0].duration, (int)timeseq[1].duration, (int)timeseq[2].duration); }
     for (int j = 0; j < MAX_VOICES; j++) {
         if ( voice[j].seq ) {
             ESP_LOGI(FNAME, "Voice %d", j);

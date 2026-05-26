@@ -143,7 +143,7 @@ static IRAM_ATTR void ecomm_begin(eglib_t *_eglib) {
 
 static IRAM_ATTR void esend(eglib_t *_eglib, enum hal_dc_t dc, uint8_t *bytes, uint32_t length)
 {
-	// if ( length == 0 ) ESP_LOGI("ILI9341", "esend() DC-IO:%d dc:%s len:%u\n", config->gpio_dc, dc? "DAT": "CMD", (unsigned)length);
+	// if ( length == 0 ) { ESP_LOGI("ILI9341", "esend() DC-IO:%d dc:%s len:%u\n", config->gpio_dc, dc? "DAT": "CMD", (unsigned)length); }
 	// ESP_LOG_BUFFER_HEXDUMP("ILI9341", bytes, length, ESP_LOG_INFO);
 	if (dc == HAL_DATA)
 	{
