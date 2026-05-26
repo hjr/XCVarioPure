@@ -379,7 +379,7 @@ static int imu_status_action(SetupMenuDisplay *p, int mode) {
     // we show the status if Accelerator, Gyro, Heating
     char buf[64];
     while (true) {
-        int idx = 1;
+        int idx = 0;
         p->menuPrintLn("Accelerometer [g]:", idx++);
         if (Rotary->readSwitch(200)) {
             // exit by press;
@@ -411,7 +411,9 @@ static int imu_status_action(SetupMenuDisplay *p, int mode) {
         const vector_f* tmp = &accSensor->getRef();
         snprintf(buf, sizeof(buf), "  %s (%.2f/%.2f/%.2f)  ", rest, tmp->x, tmp->y, tmp->z);
         p->menuPrintLn(buf, idx++);
-        p->menuPrintLn("Gyro [°/s]:", idx++);
+        tmp = &gyroSensor->getBias();
+        snprintf(buf, sizeof(buf), "Gyro [°/s]: b(%.2f/%.2f/%.2f)  ", rad2deg(tmp->x), rad2deg(tmp->y), rad2deg(tmp->z));
+        p->menuPrintLn(buf, idx++);
         rest = gyroSensor->isResting() ? "Rest" : "Move";
         tmp = &gyroSensor->getRef();
         snprintf(buf, sizeof(buf), "  %s (%.2f/%.2f/%.2f)  ", rest, rad2deg(tmp->x), rad2deg(tmp->y), rad2deg(tmp->z));
