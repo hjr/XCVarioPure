@@ -1108,11 +1108,11 @@ SetupMenu* SetupMenu::createFactorySetup() {
 }
 
 SetupMenuValFloat* SetupMenu::createQNHMenu(bool inln) {
-	SetupMenuValFloat *qnh = new SetupMenuValFloat("QNH", "", inln?nullptr:qnh_adj, &QNH, RST_NONE, true);
-    qnh->setPrecision(1);
-	qnh->setTerminateMenu();
-	qnh->setHelp("\n\nAdjust and confirm");
-	return qnh;
+    SetupMenuValFloat* qnh = new SetupMenuValFloat("QNH", "", inln ? nullptr : qnh_adj, &QNH, RST_NONE, true);
+    qnh->setPrecision(qnh_unit.get() + 1);  // 1 decimal for hPa, 2 for inHg
+    qnh->setTerminateMenu();
+    qnh->setHelp("\n\nAdjust and confirm");
+    return qnh;
 }
 
 SetupMenuValFloat* SetupMenu::createBallastMenu() {
