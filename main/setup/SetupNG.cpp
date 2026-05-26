@@ -323,7 +323,7 @@ static void calc_speeds() {
     }
     if (statp.getValid() && ias.getValid()) {
         tas.set(Atmosphere::TAS(ias.get(), statp.get(), temp));
-        ESP_LOGI(FNAME, "calc_speeds: IAS=%.2f, statp=%.2f, OAT=%.2f -> TAS=%.2f", ias.get(), statp.get(), temp, tas.get());
+        // ESP_LOGI(FNAME, "calc_speeds: IAS=%.2f, statp=%.2f, OAT=%.2f -> TAS=%.2f", ias.get(), statp.get(), temp, tas.get());
     }
     else {
         tas.setInvalid();
@@ -387,6 +387,7 @@ static void ch_airborne_state() {
     ESP_LOGI(FNAME, "airborne state changed");
     if (airborne.get()) {
         // take-off triggered
+        ESP_LOGI(FNAME, "take-off detected");
         if (logged_tests.find("FAILED") == std::string::npos) {
             logged_tests.clear();
             logged_tests.shrink_to_fit();
