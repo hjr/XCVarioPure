@@ -529,14 +529,15 @@ void system_menu_create_hardware_imu(SetupMenu *top) {
         }
         imu_calib_collect->addEntry("Reset", 2);
         top->addEntry(imu_calib_collect);
+#endif
 
+    if ( gflags.expert ) {
         SetupMenuValFloat* gaa = new SetupMenuValFloat("Angle of Atk.", "°", imu_gaa, &glider_ground_aa, RST_NONE, false);
         gaa->setHelp(
             "Ground angle of attack with tail skid on the ground to adjust the AHRS horizon level");
         gaa->setPrecision(0);
         top->addEntry(gaa);
-#endif
-    if ( gflags.expert ) {
+    
         SetupMenuSelect* gyro_reset = new SetupMenuSelect("Gyro Zero", RST_NONE, imu_calib);
         gyro_reset->setHelp("Reset gyro bias to zero");
         gyro_reset->addEntry("Cancel", 0);
