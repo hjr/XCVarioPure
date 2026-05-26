@@ -90,7 +90,7 @@ bool WindIndicator::draw(WindData w)
 // 0° reference on top of the compass rose
 void WindIndicator::drawWind(bool erase)
 {
-    if ( ! erase ) ESP_LOGI(FNAME, "wind deg:%d, v:%.1f ", _wind.getDeg(), _wind.getVal());
+    ESP_LOGI(FNAME, "wind deg:%d, v:%.1f ", _wind.getDeg(), _wind.getVal());
     float si = -fast_sin_idx(_wind.getDeg2());
     float co = fast_cos_idx(_wind.getDeg2());
 
