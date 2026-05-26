@@ -87,7 +87,7 @@ void FlarmScreen::display(int mode)
     if ( rel_target_bearing < 0 ) { side_bear = 0; }
         
     // project in NAV frame
-    Point p = Point::centralProjection(bearingVec, 1000.f);
+    Point p = Point::centralProjection(bearingVec, 88.f); // start clipping from 60° on
     ESP_LOGI(FNAME,"CentralProj %d,%d", p.x, p.y);
     // map the target point according to the current horizon line on the display
     p = l.mapToHorizon(p);
