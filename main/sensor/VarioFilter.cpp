@@ -183,16 +183,28 @@ bool VarioFilter::doRead(meter_t& val) {
             curr_altitude = getHead();  // ignore readout when failed
         }
         mps_t ta_speed = tas.get();  // m/s
-        float cw = Speed2Fly.getCw(ta_speed);
-        meter_t ealt = ((ta_speed * ta_speed) / (2.f * Units::g0)) * (1.f + (te_comp_adjust.get() / 100.0)); // test * (1.f - cw);  // Ekin ~ h = v²/2g  * adjust * (1-cw)
+        meter_t ealt = ((ta_speed * ta_speed) / (2.f * Units::g0)) * (1.f + (te_comp_adjust.get() / 100.0)); // Ekin ~ h = v²/2g  * adjust
         curr_altitude += ealt;
-        ESP_LOGD(FNAME, "Energy Alt @%0.1f km/h: %0.1f cw: %f", tas.get(), ealt, cw);
-    } else if (te_comp_enable.get() == TE_TEK_PRESSURE) {
+        ESP_LOGD(FNAME, "Energy Alt @%0.1f km/h: %0.1f", tas.get(), ealt);
+    }
+    else if (te_comp_enable.get() == TE_TEK_PRESSURE) {
         pascal_t barP = baroSensor->getHead();
         pascal_t dynP = asSensor->getHead();
-        curr_altitude = Units::calcAltitudeISA((barP - dynP) * (1 + (te_comp_adjust.get() / 100.0)));  // subtract PI pressure like TEK probe does
+        curr_altitude = Units::calcAltitudeISA(barP - dynP * (1 + (te_comp_adjust.get() / 100.0)));  // subtract PI pressure like TEK probe does
         // ESP_LOGI(FNAME,"TE alt: %4.3f m, ST: %.1f PI: %.1f", _currentAlt, barP, (dynP*100) );
-    } else {  // TE_TEK_PROBE
+    }
+    else if (te_comp_enable.get() == TE_TEK_MIX) {
+        // method 1
+        mps_t ta_speed = tas.get();  // m/s
+        meter_t ealt = ((ta_speed * ta_speed) / (2.f * Units::g0)) * (1.f + (te_comp_adjust.get() / 100.0)); // Ekin ~ h = v²/2g  * adjust
+        curr_altitude = altitude_isa.get() + ealt;
+        // method 2
+        pascal_t barP = baroSensor->getHead();
+        pascal_t dynP = asSensor->getHead();
+        curr_altitude += Units::calcAltitudeISA(barP - dynP * (1 + (te_comp_adjust.get() / 100.0)));  // subtract PI pressure like TEK probe does
+        curr_altitude /= 2.f; // simple average of both methods
+    }
+    else {  // TE_TEK_PROBE
         bool success;
         curr_altitude = teSensor->readAltitudeISA(success);
     }

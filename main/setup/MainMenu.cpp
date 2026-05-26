@@ -387,6 +387,7 @@ static void vario_menu_create_tek(SetupMenu *top) {
 	enac->addEntry("Probe");
 	enac->addEntry("ePOT");
 	enac->addEntry("ePRESSURE");
+	enac->addEntry("eMIX", VarioFilter::TE_TEK_MIX);
 	top->addEntry(enac);
 
 	SetupMenuValFloat *elca = new SetupMenuValFloat("eAdjustment", "%", nullptr, &te_comp_adjust, RST_NONE, false);

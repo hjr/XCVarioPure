@@ -17,7 +17,7 @@
 
 class VarioFilter final : public SensorTP<meter_t> {
    public:
-    using TekComp_Type = enum : uint8_t { TE_TEK_PROBE, TE_TEK_EPOT, TE_TEK_PRESSURE, TE_TEK_IMU, TE_TEK_MAX_TYPES };
+    using TekComp_Type = enum : uint8_t { TE_TEK_PROBE, TE_TEK_EPOT, TE_TEK_PRESSURE, TE_TEK_IMU, TE_TEK_MIX, TE_TEK_MAX_TYPES };
 
     VarioFilter();
     const char* name() const override { return "tek_vario"; }
