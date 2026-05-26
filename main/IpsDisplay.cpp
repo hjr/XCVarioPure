@@ -567,7 +567,8 @@ void IpsDisplay::initDisplay() {
 
     if (!WNDgauge) {
         // create it always, because also the center aid is using it
-        WNDgauge = new PolarGauge(AMIDX + AVGOFFX, AMIDY, 360, 58, PolarGauge::COMPASS);
+        WNDgauge = new PolarGauge(AMIDX + AVGOFFX, AMIDY, 360, 
+            (display_orientation.get() == DISPLAY_NINETY) ? 56 : 58, PolarGauge::COMPASS);
     }
     WNDgauge->enableWindIndicator(false /*wind_enable.get() > WA_OFF*/, wind_enable.get() == WA_EXTERNAL);
     WNDgauge->setColor(needle_color.get());
