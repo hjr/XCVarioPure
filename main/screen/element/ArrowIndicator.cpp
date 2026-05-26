@@ -161,11 +161,6 @@ bool ArrowIndicator::drawOver(int16_t val,float a)
         (int16_t)(_gauge._ref.x - fast_iroundf(co * _tip)),
         (int16_t)(_gauge._ref.y - fast_iroundf(si * _tip)),
     };
-    if (_gauge._dirty) {
-        // the moment when the old position is probably invalid, just draw the new position
-        _last_a = a;
-        prev = n;
-    }
     ESP_LOGI(FNAME,"drawTetragon  x0:%d y0:%d x1:%d y1:%d x2:%d y2:%d x3:%d y3:%d", n.x_0, n.y_0, n.x_1, n.y_1, n.x_2, n.y_2, n.x_3, n.y_3 );
     BoundingBox pbox({prev.x_0, prev.y_0}, {prev.x_0, prev.y_0});
     pbox.add((Point*)(&prev.x_1), 6);

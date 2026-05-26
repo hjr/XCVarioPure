@@ -111,7 +111,9 @@ bool MessageBox::nextMsg()
     const int16_t dheight = MYUCG->getDisplayHeight();
     const int16_t dwidth = MYUCG->getDisplayWidth();
     // clear message area
-    MYUCG->undoClipRange();
+    if ( current ) {
+        MYUCG->undoClipRange();
+    }
     removeMsg();
 
     {
@@ -126,10 +128,10 @@ bool MessageBox::nextMsg()
             current = nullptr;
             return false;
         }
-        if ( current->wantsConfirmation() ) {
-            attach(); // observe rotary for confirmation
-            current->text += "  ... pls confirm";
-        }
+    }
+    if ( current->wantsConfirmation() ) {
+        attach(); // observe rotary for confirmation
+        current->text += ", please confirm";
     }
 
     // prepare screen with a colored line on top
