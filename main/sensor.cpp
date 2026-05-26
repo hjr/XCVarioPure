@@ -924,15 +924,9 @@ void system_startup(void *args){
     if (!selftestPassed) {
         printf("\nSelftest failed, see above LOG for Problems\n\n");
         MBOX->pushMessage(2, "Selftest FAILED", ScreenMsg::CONFIRM);
-        if (!airborne.get()) {
-            AUDIO->startSound(AUDIO_FAIL_SOUND);
-        }
     } else {
         printf("\n*****  Selftest PASSED  ********\n\n");
         boot_screen->finish(3);  // signal self tests passed
-        if (!airborne.get()) {
-            AUDIO->startSound(AUDIO_CHECK_SOUND);
-        }
     }
 
     // present the boot logo vor a sec and go on
