@@ -162,7 +162,7 @@ bool Flap()
 }
 bool Omega()
 {
-    float ref = s2f_gyro_deg.get();
+    dps_t ref = s2f_gyro_deg.get();
     if ( accSensor && abs(accSensor->getCircleOmegaENUDeg()) < ref)
     {
         return true;

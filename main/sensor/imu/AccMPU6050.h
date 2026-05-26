@@ -42,7 +42,7 @@ public:
     inline degree_t getYawDeg() { return rad2deg(euler_rad.Yaw()); }
     float getGyroFooting() const;
     inline degree_t getMagnHeadingDeg() { return rad2deg(filtered_mag_heading); }
-    inline degree_t getCircleOmegaENUDeg() { return rad2deg(-circle_omega); }
+    inline dps_t getCircleOmegaENUDeg() { return rad2deg(-circle_omega); }
     inline Quaternion getAHRSQuaternion() { return att_quat; }
     inline vector_f getAttVector() { return att_vector; }
     inline float getGload() const { return -getRef().z; }

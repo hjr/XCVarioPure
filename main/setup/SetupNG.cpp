@@ -461,8 +461,8 @@ SetupNG<int>  			s2f_switch_mode( "AUDIO_MODE", AM_MANUALLY, false, SYNC_BIDIR, 
 SetupNG<kmh_t>  		s2f_threshold( "S2F_SPEED", 120.0, true, SYNC_BIDIR, PERSISTENT, nullptr, quantity_t::QUANT_HSLEGACY, LIMITS(20.0, 250.0, 1.0));
 SetupNG<float>  		s2f_flap_pos( "S2F_FLAP", 1, true, SYNC_BIDIR, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(0, 6, 0.1));
 static const limits_t percentage_limits = {0, 100, 1.0};
-SetupNG<float>  		s2f_gyro_deg( "S2F_GYRO", 4, true, SYNC_BIDIR, PERSISTENT, nullptr, quantity_t::QUANT_NONE, &percentage_limits);
-SetupNG<float>  		s2f_auto_lag( "S2F_HYST", 5, true, SYNC_BIDIR, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(2, 20, 1));
+SetupNG<dps_t>  		s2f_gyro_deg( "S2F_GYRO", 4, true, SYNC_BIDIR, PERSISTENT, nullptr, quantity_t::QUANT_NONE, &percentage_limits);
+SetupNG<second_t>  		s2f_auto_lag( "S2F_HYST", 5, true, SYNC_BIDIR, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(2, 20, 1));
 
 						// set audio volume exclusively through the Audio class
 SetupNG<float> 			audio_volume("AUD_VOL", 10, true, SYNC_BIDIR, VOLATILE, change_volume, quantity_t::QUANT_NONE, &percentage_limits);

@@ -246,8 +246,8 @@ extern SetupNG<int>  		s2f_switch_mode;
 extern SetupNG<kmh_t>  		s2f_threshold;
 extern SetupNG<float>  		s2f_flap_pos;
 
-extern SetupNG<float>  		s2f_gyro_deg;
-extern SetupNG<float>  		s2f_auto_lag;
+extern SetupNG<dps_t>  		s2f_gyro_deg;
+extern SetupNG<second_t>  	s2f_auto_lag;
 
 
 extern SetupNG<float>  		audio_volume;
