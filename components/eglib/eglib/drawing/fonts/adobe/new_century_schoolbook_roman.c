@@ -7703,7 +7703,7 @@ const struct font_t font_Adobe_NewCenturySchoolbookRoman_11px = {
   },
   .unicode_blocks_count = 1,
 };
-
+/*
 const struct glyph_unicode_block_t unicode_block_Adobe_NewCenturySchoolbookRoman_14px_BasicLatin = {
   .charcode_start = 32,
   .charcode_end = 126,
@@ -10260,18 +10260,18 @@ const struct glyph_unicode_block_t unicode_block_Adobe_NewCenturySchoolbookRoman
     },
   },
 };
-
-const struct font_t font_Adobe_NewCenturySchoolbookRoman_14px = {
-  .pixel_size = 14,
-  .ascent = 13,
-  .descent = -3,
-  .line_space = 16,
-  .unicode_blocks = (const struct glyph_unicode_block_t *[FONT_MAX_UNICODE_BLOCKS]){
-    &unicode_block_Adobe_NewCenturySchoolbookRoman_14px_BasicLatin,
-  },
-  .unicode_blocks_count = 1,
-};
-
+*/
+// const struct font_t font_Adobe_NewCenturySchoolbookRoman_14px = {
+//   .pixel_size = 14,
+//   .ascent = 13,
+//   .descent = -3,
+//   .line_space = 16,
+//   .unicode_blocks = (const struct glyph_unicode_block_t *[FONT_MAX_UNICODE_BLOCKS]){
+//     &unicode_block_Adobe_NewCenturySchoolbookRoman_14px_BasicLatin,
+//   },
+//   .unicode_blocks_count = 1,
+// };
+/*
 const struct glyph_unicode_block_t unicode_block_Adobe_NewCenturySchoolbookRoman_17px_BasicLatin = {
   .charcode_start = 32,
   .charcode_end = 126,
@@ -11038,7 +11038,7 @@ const struct glyph_unicode_block_t unicode_block_Adobe_NewCenturySchoolbookRoman
     },
   },
 };
-
+*/
 const struct glyph_unicode_block_t unicode_block_Adobe_NewCenturySchoolbookRoman_17px_Latin1Supplement = {
   .charcode_start = 161,
   .charcode_end = 255,
@@ -12829,17 +12829,17 @@ const struct glyph_unicode_block_t unicode_block_Adobe_NewCenturySchoolbookRoman
   },
 };
 
-const struct font_t font_Adobe_NewCenturySchoolbookRoman_17px = {
-  .pixel_size = 17,
-  .ascent = 14,
-  .descent = -3,
-  .line_space = 17,
-  .unicode_blocks = (const struct glyph_unicode_block_t *[FONT_MAX_UNICODE_BLOCKS]){
-    &unicode_block_Adobe_NewCenturySchoolbookRoman_17px_BasicLatin,
-  },
-  .unicode_blocks_count = 1,
-};
-
+// const struct font_t font_Adobe_NewCenturySchoolbookRoman_17px = {
+//   .pixel_size = 17,
+//   .ascent = 14,
+//   .descent = -3,
+//   .line_space = 17,
+//   .unicode_blocks = (const struct glyph_unicode_block_t *[FONT_MAX_UNICODE_BLOCKS]){
+//     &unicode_block_Adobe_NewCenturySchoolbookRoman_17px_BasicLatin,
+//   },
+//   .unicode_blocks_count = 1,
+// };
+/*
 const struct glyph_unicode_block_t unicode_block_Adobe_NewCenturySchoolbookRoman_18px_BasicLatin = {
   .charcode_start = 32,
   .charcode_end = 126,
@@ -13606,7 +13606,7 @@ const struct glyph_unicode_block_t unicode_block_Adobe_NewCenturySchoolbookRoman
     },
   },
 };
-
+*/
 const struct glyph_unicode_block_t unicode_block_Adobe_NewCenturySchoolbookRoman_18px_Latin1Supplement = {
   .charcode_start = 161,
   .charcode_end = 255,
@@ -15397,17 +15397,17 @@ const struct glyph_unicode_block_t unicode_block_Adobe_NewCenturySchoolbookRoman
   },
 };
 
-const struct font_t font_Adobe_NewCenturySchoolbookRoman_18px = {
-  .pixel_size = 18,
-  .ascent = 16,
-  .descent = -4,
-  .line_space = 20,
-  .unicode_blocks = (const struct glyph_unicode_block_t *[FONT_MAX_UNICODE_BLOCKS]){
-    &unicode_block_Adobe_NewCenturySchoolbookRoman_18px_BasicLatin,
-  },
-  .unicode_blocks_count = 1,
-};
-
+// const struct font_t font_Adobe_NewCenturySchoolbookRoman_18px = {
+//   .pixel_size = 18,
+//   .ascent = 16,
+//   .descent = -4,
+//   .line_space = 20,
+//   .unicode_blocks = (const struct glyph_unicode_block_t *[FONT_MAX_UNICODE_BLOCKS]){
+//     &unicode_block_Adobe_NewCenturySchoolbookRoman_18px_BasicLatin,
+//   },
+//   .unicode_blocks_count = 1,
+// };
+/*
 const struct glyph_unicode_block_t unicode_block_Adobe_NewCenturySchoolbookRoman_20px_BasicLatin = {
   .charcode_start = 32,
   .charcode_end = 126,
@@ -16941,7 +16941,7 @@ const struct glyph_unicode_block_t unicode_block_Adobe_NewCenturySchoolbookRoman
     },
   },
 };
-
+*/
 const struct glyph_unicode_block_t unicode_block_Adobe_NewCenturySchoolbookRoman_20px_LatinExtendedA = {
   .charcode_start = 256,
   .charcode_end = 382,
@@ -17965,17 +17965,17 @@ const struct glyph_unicode_block_t unicode_block_Adobe_NewCenturySchoolbookRoman
   },
 };
 
-const struct font_t font_Adobe_NewCenturySchoolbookRoman_20px = {
-  .pixel_size = 20,
-  .ascent = 16,
-  .descent = -4,
-  .line_space = 20,
-  .unicode_blocks = (const struct glyph_unicode_block_t *[FONT_MAX_UNICODE_BLOCKS]){
-    &unicode_block_Adobe_NewCenturySchoolbookRoman_20px_BasicLatin,
-	&unicode_block_Adobe_NewCenturySchoolbookRoman_20px_Latin1Supplement
-  },
-  .unicode_blocks_count = 2,
-};
+// const struct font_t font_Adobe_NewCenturySchoolbookRoman_20px = {
+//   .pixel_size = 20,
+//   .ascent = 16,
+//   .descent = -4,
+//   .line_space = 20,
+//   .unicode_blocks = (const struct glyph_unicode_block_t *[FONT_MAX_UNICODE_BLOCKS]){
+//     &unicode_block_Adobe_NewCenturySchoolbookRoman_20px_BasicLatin,
+// 	&unicode_block_Adobe_NewCenturySchoolbookRoman_20px_Latin1Supplement
+//   },
+//   .unicode_blocks_count = 2,
+// };
 
 const struct glyph_unicode_block_t unicode_block_Adobe_NewCenturySchoolbookRoman_24px_BasicLatin = {
   .charcode_start = 32,

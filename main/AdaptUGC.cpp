@@ -14,7 +14,7 @@
 static eglib_t myeglib;
 
 // const uint8_t ucg_font_9x15B_mf[] = { UCG_FONT_9x15B_MF };
-const uint8_t ucg_font_ncenR14_hr[] = { UCG_FONT_NCENR14_HR };
+// const uint8_t ucg_font_ncenR14_hr[] = { UCG_FONT_NCENR14_HR };
 const uint8_t ucg_font_fub11_tr[] = { UCG_FONT_FUB11_TR };
 const uint8_t ucg_font_fub11_hr[] = { UCG_FONT_FUB11_HR };
 const uint8_t ucg_font_fub14_hn[] = { UCG_FONT_FUB14_HN };
@@ -66,9 +66,9 @@ void AdaptUGC::setFont(const uint8_t *f, bool filled ){    // adapter
 	// case UCG_FONT_9x15B_MF:
 	// 	eglib_SetFont(eglib, &font_FreeFont_FreeMonoBold_15px);
 	// 	break;
-	case UCG_FONT_NCENR14_HR:
-		eglib_SetFont(eglib, &font_Adobe_NewCenturySchoolbookRoman_20px);
-		break;
+	// case UCG_FONT_NCENR14_HR:
+	// 	eglib_SetFont(eglib, &font_Adobe_NewCenturySchoolbookRoman_20px);
+	// 	break;
 	case UCG_FONT_FUB11_TR:
 		eglib_SetFont(eglib, &font_Adobe_HelveticaBold_17px);
 		break;

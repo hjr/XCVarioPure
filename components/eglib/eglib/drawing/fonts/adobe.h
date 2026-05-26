@@ -4040,7 +4040,7 @@ extern const struct glyph_unicode_block_t unicode_block_Adobe_NewCenturySchoolbo
  * and can be extended with :c:func:`eglib_AddUnicodeBlockToFont` to support
  * extra unicode blocks defined below.
  */
-extern const struct font_t font_Adobe_NewCenturySchoolbookRoman_14px;
+// extern const struct font_t font_Adobe_NewCenturySchoolbookRoman_14px;
 
 /**
  * Unicode blocks
@@ -4104,7 +4104,7 @@ extern const struct glyph_unicode_block_t unicode_block_Adobe_NewCenturySchoolbo
  * and can be extended with :c:func:`eglib_AddUnicodeBlockToFont` to support
  * extra unicode blocks defined below.
  */
-extern const struct font_t font_Adobe_NewCenturySchoolbookRoman_18px;
+// extern const struct font_t font_Adobe_NewCenturySchoolbookRoman_18px;
 
 /**
  * Unicode blocks
@@ -4136,7 +4136,7 @@ extern const struct glyph_unicode_block_t unicode_block_Adobe_NewCenturySchoolbo
  * and can be extended with :c:func:`eglib_AddUnicodeBlockToFont` to support
  * extra unicode blocks defined below.
  */
-extern const struct font_t font_Adobe_NewCenturySchoolbookRoman_20px;
+// extern const struct font_t font_Adobe_NewCenturySchoolbookRoman_20px;
 
 /**
  * Unicode blocks
@@ -4146,12 +4146,12 @@ extern const struct font_t font_Adobe_NewCenturySchoolbookRoman_20px;
 /**
  * .. image:: adobe/Adobe_NewCenturySchoolbookRoman_20px_BasicLatin.png
  */
-extern const struct glyph_unicode_block_t unicode_block_Adobe_NewCenturySchoolbookRoman_20px_BasicLatin;
+// extern const struct glyph_unicode_block_t unicode_block_Adobe_NewCenturySchoolbookRoman_20px_BasicLatin;
 
 /**
  * .. image:: adobe/Adobe_NewCenturySchoolbookRoman_20px_Latin1Supplement.png
  */
-extern const struct glyph_unicode_block_t unicode_block_Adobe_NewCenturySchoolbookRoman_20px_Latin1Supplement;
+// extern const struct glyph_unicode_block_t unicode_block_Adobe_NewCenturySchoolbookRoman_20px_Latin1Supplement;
 
 /**
  * .. image:: adobe/Adobe_NewCenturySchoolbookRoman_20px_LatinExtendedA.png
