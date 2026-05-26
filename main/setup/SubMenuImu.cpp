@@ -9,7 +9,7 @@
 #include "setup/SetupMenu.h"
 #include "setup/SetupMenuSelect.h"
 #include "setup/SetupMenuValFloat.h"
-#include "setup/ImuStatus.h"
+#include "setup/SetupMenuDisplay.h"
 #include "setup/SetupNG.h"
 #include "sensor/imu/AccMPU6050.h"
 #include "sensor/imu/GyroMPU6050.h"
@@ -373,6 +373,62 @@ int imu_calib(SetupMenuSelect* p) {
     return 0;
 }
 
+static int imu_status_action(SetupMenuDisplay *p, int mode) {
+    ESP_LOGI(FNAME, "display() %d", go_on);
+    p->clear();
+    // we show the status if Accelerator, Gyro, Heating
+    char buf[64];
+    while (true) {
+        int idx = 1;
+        p->menuPrintLn("Accelerometer [g]:", idx++);
+        if (Rotary->readSwitch(200)) {
+            // exit by press;
+            break;
+        }
+        if (accSensor->getMpu().hasHeatCtlr()) {
+            const char* tstat;
+            switch (accSensor->getTempStatus()) {
+            case temp_status_t::MPU_T_LOCKED:
+                tstat = "Locked";
+                break;
+            case temp_status_t::MPU_T_LOW:
+                tstat = "Too Low";
+                break;
+            case temp_status_t::MPU_T_HIGH:
+                tstat = "Too High";
+                break;
+            case temp_status_t::MPU_T_UNKNOWN:
+            default:
+                tstat = "Unknown";
+                break;
+            }
+            snprintf(buf, sizeof(buf), "  Heating %.1f°: %s    ", accSensor->getMpu().getTemperature(), tstat);
+        } else {
+            snprintf(buf, sizeof(buf), "No Heating");
+        }
+        p->menuPrintLn(buf, idx++);
+        const char* rest = accSensor->isResting() ? "Rest" : "Move";
+        const vector_f* tmp = &accSensor->getRef();
+        snprintf(buf, sizeof(buf), "  %s (%.2f/%.2f/%.2f)  ", rest, tmp->x, tmp->y, tmp->z);
+        p->menuPrintLn(buf, idx++);
+        p->menuPrintLn("Gyro [°/s]:", idx++);
+        rest = gyroSensor->isResting() ? "Rest" : "Move";
+        tmp = &gyroSensor->getRef();
+        snprintf(buf, sizeof(buf), "  %s (%.2f/%.2f/%.2f)  ", rest, rad2deg(tmp->x), rad2deg(tmp->y), rad2deg(tmp->z));
+        p->menuPrintLn(buf, idx++);
+        p->menuPrintLn("AHRS:", idx++);
+        snprintf(buf, sizeof(buf), "  Pitch %.1f° Roll: %.1f°   ", accSensor->getPitchDeg(), accSensor->getRollDeg());
+        p->menuPrintLn(buf, idx++);
+        vector_f att = accSensor->getAttVector();
+        snprintf(buf, sizeof(buf), "  AttVec (%.2f/%.2f/%.2f)  ", att.x, att.y, att.z);
+        p->menuPrintLn(buf, idx++);
+        snprintf(buf, sizeof(buf), "  Omega %.3f  ", accSensor->getCircleOmegaENUDeg());
+        p->menuPrintLn(buf, idx++);
+    }
+    p->exit();
+    return 0;
+}
+
 void screens_menu_create_extreme_records(SetupMenu *top) {
 	SetupMenuValFloat *gmpos = new SetupMenuValFloat("Peak Positive G", "", nullptr, &gload_pos_max, RST_NONE, false);
 	top->addEntry(gmpos);
@@ -472,9 +528,9 @@ void system_menu_create_hardware_imu(SetupMenu *top) {
         imu_calib_collect->addEntry("Reset", 2);
         top->addEntry(imu_calib_collect);
 
-        SetupMenuValFloat* gaa = new SetupMenuValFloat("Ground Angle of Attack", "°", imu_gaa, &glider_ground_aa, RST_NONE, false);
+        SetupMenuValFloat* gaa = new SetupMenuValFloat("Angle of Atk.", "°", imu_gaa, &glider_ground_aa, RST_NONE, false);
         gaa->setHelp(
-            "Angle of attack with tail skid on the ground to adjust the AHRS horizon level. Change this any time");
+            "Ground angle of attack with tail skid on the ground to adjust the AHRS horizon level");
         gaa->setPrecision(0);
         top->addEntry(gaa);
 #endif
@@ -485,7 +541,7 @@ void system_menu_create_hardware_imu(SetupMenu *top) {
         gyro_reset->addEntry("Gyro Reset", 4);
         top->addEntry(gyro_reset);
 
-        SetupMenuDisplay* imus = new ImuStatus("Imu Status");
+        SetupMenuDisplay* imus = new SetupMenuDisplay("Imu Status", imu_status_action);
         top->addEntry(imus);
     }
 	SetupMenuValFloat* tcontrol = new SetupMenuValFloat("Temp Control", "°C", nullptr, &mpu_temperature, RST_NONE, false);
