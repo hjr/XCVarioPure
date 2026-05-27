@@ -11,6 +11,8 @@
 #include "../SensorBase.h"
 #include "../SensorMgr.h"
 #include "math/vector_3d.h"
+#include "vector.h"
+#include "math/Units.h"
 
 class GpsVSensor;
 extern GpsVSensor* gpsSensor;
@@ -33,6 +35,7 @@ public:
     inline bool isValid() const { return getHeadValid(); }
     int getNumSat() const { return _numSat; }
     void setNumSat(int num) { _numSat = num; return; }
+    rps_t getOmega() const { return _omega; }
 
     // Injection API
     void inject(float lat, float lon, mps_t gndSpeed, rad_t gndCourse);
@@ -43,5 +46,7 @@ private:
     float _lat_ref = 0.f;
     float _lon_ref = 0.f;
     float _alt = 0.f;
+    rps_t _omega = 0.f;
+    Vector _prev_diff = {};
 };
 

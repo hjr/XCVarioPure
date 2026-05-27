@@ -18,6 +18,7 @@
 #ifndef VECTOR_H
 #define VECTOR_H
 
+#include "math/vector_3d_fwd.h"
 #include "math/Units.h"
 
 /**
@@ -50,6 +51,7 @@ public:
     Vector();
     Vector(const Vector&) = default;
     Vector(rad_t angle, mps_t speed);
+    Vector(const vector_f& v);
 
     ~Vector();
 
@@ -65,8 +67,8 @@ public:
 
     void reset();
     bool isValid() const { return flags.dirtyDR == false || flags.dirtyXY == false; }
-    Vector cross(Vector& v);
-    float  dot(Vector& v);
+    float cross(Vector& v);
+    float dot(Vector& v);
 
     /**
      * Get angle in degrees.

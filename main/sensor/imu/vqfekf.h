@@ -23,6 +23,6 @@ private:
     vector_f biasEstimate = {};      // Current estimated gyro bias
     vector_f biasP = {};             // Covariance diagonal (simplified, independent per axis)
     float biasQ = 1e-6f;             // process noise (very small)
-    float restR = 1e-5f;             // sensor noise at rest (very small → strong confidence)
+    float restR = 1e-3f;             // sensor noise at rest (very small → strong confidence)
     float motionR = 1e-2f;           // sensor noise during motion (large → weak confidence)
 };

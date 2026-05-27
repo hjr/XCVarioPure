@@ -13,6 +13,7 @@
 #include "setup/SetupNG.h"
 #include "sensor/imu/AccMPU6050.h"
 #include "sensor/imu/GyroMPU6050.h"
+#include "sensor/gps/GpsVSensor.h"
 #include "driver/audio/ESPAudio.h"
 #include "Colors.h"
 #include "AdaptUGC.h"
@@ -424,7 +425,7 @@ static int imu_status_action(SetupMenuDisplay *p, int mode) {
         vector_f att = accSensor->getAttVector();
         snprintf(buf, sizeof(buf), "  AttVec (%.2f/%.2f/%.2f)  ", att.x, att.y, att.z);
         p->menuPrintLn(buf, idx++);
-        snprintf(buf, sizeof(buf), "  Omega %.3f  ", accSensor->getCircleOmegaENUDeg());
+        snprintf(buf, sizeof(buf), "  Omega %.2f/%.2f  ", accSensor->getCircleOmegaENUDeg(), rad2deg(gpsSensor->getOmega()));
         p->menuPrintLn(buf, idx++);
     }
     p->exit();

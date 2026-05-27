@@ -344,6 +344,9 @@ public:
     T getHead() const {
         return _history.getHead();
     }
+    T getIdx(int i) const {
+        return _history[i];
+    }
     T get(int ms_back) const {
         int count = getCount(ms_back);
         return _history[count];

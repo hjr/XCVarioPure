@@ -10,7 +10,8 @@
 
 #include "ImuSensor.h"
 #include "AccMPU6050.h"
-#include "../SensorMgr.h"
+#include "sensor/gps/GpsVSensor.h"
+#include "sensor/SensorMgr.h"
 #include "setup/SetupNG.h"
 #include "logdef.h"
 
@@ -75,12 +76,12 @@ void GyroMPU6050::postProcess() {
     _processed.x = abs(_processed.x) < gate ? 0.0 : _processed.x;
     _processed.y = abs(_processed.y) < gate ? 0.0 : _processed.y;
     _processed.z = abs(_processed.z) < gate ? 0.0 : _processed.z;
-    bool rest = detectRest() && accSensor->isResting();
+    float omegalp = _gps_omega_lpf.filter(gpsSensor->getOmega());
+    bool rest = detectRest() && accSensor->isResting() && abs(omegalp) < Units::deg_to_rad(1.5f);
 
     // feed the bias filter
-    if (!airborne.get()) {
-        _bias_estimator.update(gyro, (_isResting > 0) && accSensor->isResting());
-    }
+    _bias_estimator.update(gyro, (_isResting > 0) && accSensor->isResting());
+
     if ( rest != rest_old) {
         ESP_LOGI(FNAME, "rest state changed: %c -> %c (%d)", rest_old ? 'R' : 'M', rest ? 'R' : 'M', _isResting);
         rest_old = rest;

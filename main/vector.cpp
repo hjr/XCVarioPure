@@ -15,6 +15,7 @@
  ***********************************************************************/
 
 #include "vector.h"
+#include "math/vector_3d.h"
 #include "math/Units.h"
 #include "math/Floats.h"
 #include "math/Trigonometry.h"
@@ -36,6 +37,13 @@ Vector::Vector(rad_t angle, mps_t speed) {
     setAngleRad(angle);
     flags.dirtyDR = false;
     flags.dirtyXY = true;
+}
+
+Vector::Vector(const vector_f& v) {
+    _x = v.x;
+    _y = v.y;
+    flags.dirtyXY = false;
+    flags.dirtyDR = true;
 }
 
 //  in: -oo < angle < oo
@@ -105,18 +113,15 @@ void Vector::reset() {
     flags.dirtyDR = true;
 }
 
-Vector Vector::cross(Vector& v) {
+float Vector::cross(Vector& v) {
     if (flags.dirtyXY) {
         recalcXY();
     }
     if (v.flags.dirtyXY) {
         v.recalcXY();
     }
-    Vector result;
-    result._x = _y * v._x - _x * v._y;
-    result._y = _x * v._y - _y * v._x;
-    result.flags.dirtyDR = true;
-    return result;
+    float c = _y * v._x - _x * v._y;
+    return c;
 }
 
 float  Vector::dot(Vector& v) {

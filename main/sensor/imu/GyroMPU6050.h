@@ -45,6 +45,7 @@ private:
     const float _scale;
     // low-pass filter for gyro y-axis to get dw/dt
     LowPassFilterT<float> _gyro_lpf_dwydt{0.5f}; // to compensate the accelerometer mounting position in front of CG
+    LowPassFilterT<float> _gps_omega_lpf{0.3f};
     // vqf rest detection and bias estimation
     BiasEstimatorEKF _bias_estimator;
     uint8_t _bias_update = 0;

@@ -80,8 +80,18 @@ void GpsVSensor::postProcess() {
         return;
     }
 
-    rad_t track = gnd_course.get();
+    // calculate an omega when we have at lease 3 valid points in the history
+    if ( _history.level() >= 3 ) {
+        Vector vec(getHead() - getIdx(1));
+        float d = _prev_diff.dot(vec);
+        float c = _prev_diff.cross(vec);
+        constexpr float one_div_by_dt = 1.f / (DUTY_CYCLE_MS / 1000.f);
+        _omega = atan2f(c, d) * one_div_by_dt;
+        _prev_diff = vec;
+    }
+
     // check on avg wind
+    rad_t track = gnd_course.get();
     if( ! tas.getValid() || ! synoptic_wind.getValid() ) {
         heading_tru.set(track); // fall back
         heading_wca.set(0.f);
@@ -120,5 +130,6 @@ void GpsVSensor::postProcess() {
         Units::rad_to_deg(Vector::angleDiff(headg, track)));
     heading_tru.set(headg);
     heading_wca.set(Vector::angleDiff(headg, track));
+
 }
 
