@@ -118,7 +118,7 @@ void WindIcon::drawDirection() const
     MYUCG->setColor(COLOR_WGREY);
     char s[16] = {"  ---  "};
     if ( _wind.isValid() ) {
-       sprintf(s, " % 3d'", _wind.getDeg());
+       sprintf(s, " % 3d' ", _wind.getDeg());
     }
     MYUCG->setPrintPos(_ref.x - _radius - _str_width - MYUCG->getStrWidth(s)/2, _ref.y - 2 * _radius - 2);
     MYUCG->print(s);
