@@ -173,10 +173,11 @@ void HorizonPage::draw( Quaternion q )
                     float side = l.fct(Point(center_x, center_y));
 
                     // choose background color
-                    if(side > 0)
+                    if(side > 0) {
                         MYUCG->setColor(1, COLOR_SKYBLUE); // bg color sky
-                    else
+                    } else {
                         MYUCG->setColor(1, COLOR_EARTH);   // bg color earth
+                    }
 
                     MYUCG->setPrintPos(cx - len/2 - gap - str_w, text_y);
                     MYUCG->print(buf);
@@ -188,10 +189,11 @@ void HorizonPage::draw( Quaternion q )
                     side = l.fct(Point(center_x, center_y));
 
                     // choose background color
-                    if(side > 0)
+                    if(side > 0) {
                         MYUCG->setColor(1, COLOR_SKYBLUE); // bg color sky
-                    else
+                    } else {
                         MYUCG->setColor(1, COLOR_EARTH);   // bg color earth
+                    }
 
                     MYUCG->setPrintPos(cx + len/2 + gap, text_y);
                     MYUCG->print(buf);

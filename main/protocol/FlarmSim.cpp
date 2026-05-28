@@ -45,7 +45,7 @@ const SIMRUN simVariant[6] = {
     // simVariant 4: crossing from left to right, level
     { {400.f, 200.f, 0.f}, {5.f, -20.f, 0.f}, 0.f, 0.f },
     // simVariant 5: target circling
-    { {400.f, 0.f, -20.f}, {-5.f, -17.f, 1.5f}, 12.f, 0.f }
+    { {400.f, 0.f, -20.f}, {-5.f, -17.f, 3.5f}, 12.f, 0.f }
 };
 
 

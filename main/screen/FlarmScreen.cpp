@@ -20,9 +20,11 @@
 #include "vector.h"
 #include "math/Trigonometry.h"
 #include "math/Quaternion.h"
+#include "Atmosphere.h"
 #include "AdaptUGC.h"
 #include "logdefnone.h"
 
+#include <algorithm>
 
 extern AdaptUGC *MYUCG;
 FlarmScreen *FLARMSCREEN = nullptr;
@@ -74,12 +76,14 @@ void FlarmScreen::display(int mode)
     // calc the vector to the target from distance and bearing in ground nav frame
     // add the wind correction angle
     rad_t rel_target_bearing = Vector::normalizePI(Flarm::RelativeBearing + heading_wca.get());
-    vector_f bearingVec = vector_f(Flarm::HorizontalDistance * fast_cos_rad(rel_target_bearing),
-                               Flarm::HorizontalDistance * fast_sin_rad(rel_target_bearing),
-                               -Flarm::RelativeVertical); // NED frame
+    vector_f bearingVec;
+    bearingVec.x = Flarm::HorizontalDistance * fast_cos_rad(rel_target_bearing);
+    bearingVec.y = Flarm::HorizontalDistance * fast_sin_rad(rel_target_bearing);
+    float hrel = Flarm::RelativeVertical / 20.f; // magnify vertical position for small alt diff
+    bearingVec.z = - hrel / (4.f + std::abs(hrel)) * 250.f; // "-" for NED frame, 
     ESP_LOGI(FNAME,"BearingVec %1.1f,%1.1f,%1.1f", bearingVec.x, bearingVec.y, bearingVec.z );
 
-    // determine side and altDiff for audio alarm
+    // determine side and altDiff for audio alarm code
     constexpr const rad_t MID_FUNNEL_RAD = Units::deg_to_rad(30.f);
     meter_t dist = (Flarm::HorizontalDistance>0) ? Flarm::HorizontalDistance : 0.1f;
     int alt_bear = (std::abs(fast_atan((float)Flarm::RelativeVertical/dist)) < MID_FUNNEL_RAD) ? 1 : (Flarm::RelativeVertical > 0 ? 2 : 0);
@@ -87,7 +91,7 @@ void FlarmScreen::display(int mode)
     if ( rel_target_bearing < 0 ) { side_bear = 0; }
         
     // project in NAV frame
-    Point p = Point::centralProjection(bearingVec, 88.f); // start clipping from 60° on
+    Point p = Point::centralProjection(bearingVec, 100.f); // start clipping from ca. 50° on
     ESP_LOGI(FNAME,"CentralProj %d,%d", p.x, p.y);
     // map the target point according to the current horizon line on the display
     p = l.mapToHorizon(p);
@@ -127,8 +131,8 @@ void FlarmScreen::display(int mode)
         MYUCG->setColor(COLOR_RED);
     }
 
-    // draw target as a  disc, depict the distance through the size
-    int16_t size = (300 - Flarm::HorizontalDistance) / 5;
+    // draw target as a disc, depict the non linear compressed distance through the size
+    int16_t size = 300 - (300 * Flarm::HorizontalDistance/ (Flarm::HorizontalDistance + 30));
     if ( size < 20 ) {
         size = 20;
     }
@@ -137,6 +141,7 @@ void FlarmScreen::display(int mode)
     float roll = -accSensor->getRoll();
     if ( bearingVec.x > 0.f ) {
         MYUCG->setColor(COLOR_WHITE);
+        // fuselage as disc
         MYUCG->drawDisc( p.x, p.y, size/3, UCG_DRAW_ALL);
         // draw little wings as tetragon rolled according to horizontal angle
         Point w1 = Point( size, 0 ).rotate(roll);
@@ -162,6 +167,28 @@ void FlarmScreen::display(int mode)
         MYUCG->drawLine( p.x - x1.x, p.y - x1.y, p.x + x1.x, p.y + x1.y );
         MYUCG->drawLine( p.x - x1.y, p.y + x1.x, p.x + x1.y, p.y - x1.x );
     }
+    // write the alt difference to the target, left, or right of it
+    MYUCG->setFont(ucg_font_fub20_hr);
+    MYUCG->setFontPosCenter();
+    MYUCG->setColor(COLOR_WHITE);
+    char buf[20];
+    snprintf(buf, sizeof(buf), "%+d%s", (int)AltUnit->apply(Flarm::RelativeVertical), AltUnit->getName());
+    p.y = std::clamp(p.y, (int16_t)20, (int16_t)(DISPLAY_H - 20));
+    int16_t swidth = MYUCG->getStrWidth(buf);
+    if (l.fct(Point(p.x + swidth/2, p.y)) > 0.f) {
+        MYUCG->setColor(1, COLOR_SKYBLUE); // bg color sky
+    } else {
+        MYUCG->setColor(1, COLOR_EARTH);   // bg color earth
+    }
+    if ( p.x < DISPLAY_W / 2 ) {
+        MYUCG->setPrintPos(p.x + size + 5, p.y);
+    }
+    else {
+        MYUCG->setPrintPos(p.x - size - swidth - 5, p.y);
+    }
+    MYUCG->print(buf);
+    MYUCG->setFontPosBottom();
+    MYUCG->setColor(1, COLOR_BLACK); // bg color
 
     // start encoded audio alarm
     uint16_t alarm = Audio::encFlarmParam(AUDIO_ALARM_FCODE, Flarm::AlarmLevel, side_bear, alt_bear);
