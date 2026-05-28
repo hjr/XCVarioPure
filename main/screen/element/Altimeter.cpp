@@ -170,11 +170,10 @@ void Altimeter::draw(meter_t alt_input)
     }
     if ( _aattr & ATTR_SMALL ) {
         MYUCG->setFont(ucg_font_fub20_hn, true);
-        MYUCG->setColor(COLOR_WGREY);
     } else {
         MYUCG->setFont(ucg_font_fub25_hf, true);
-        MYUCG->setColor(COLOR_WHITE);
     }
+    MYUCG->setColor(COLOR_WGREY);
     
     if (!used_quant)
     {

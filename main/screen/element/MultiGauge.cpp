@@ -90,12 +90,11 @@ void MultiGauge::draw()
     ESP_LOGI(FNAME, "draw val %d (old: %d)", val, val_prev);
 
     if ( _large ) {
-        MYUCG->setColor(COLOR_WHITE);
         MYUCG->setFont(ucg_font_fub25_hn, true);
     } else {
-        MYUCG->setColor(COLOR_WGREY);
         MYUCG->setFont(ucg_font_fub20_hn, true);
     }
+    MYUCG->setColor(COLOR_WGREY);
 
     char s[32] = {"   ---"};
     if (_nvsvar->getValid()) {
