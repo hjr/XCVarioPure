@@ -74,12 +74,12 @@ void LargeFigure::draw() {
 void LargeFigure::drawStatic() {
     MYUCG->setFont(ucg_font_fub11_hr, true);
     MYUCG->setColor(COLOR_HEADER);
-    const char *mode = "gross";
+    const char *mode = " gross ";
     if ( CRMOD.getVMode() == CruiseMode::MODE_REL_NETTO) {
-        mode = " s-netto ";
+        mode = "s-netto";
     }
     else if ( CRMOD.getVMode() == CruiseMode::MODE_NORMAL_NETTO) {
-        mode = "  netto  ";
+        mode = " netto ";
     }
     int16_t str_width = MYUCG->getStrWidth(mode);
     MYUCG->setPrintPos(_ref.x - str_width / 2, _bbox.pmin.y -6);
