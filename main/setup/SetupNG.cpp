@@ -492,7 +492,7 @@ SetupNG<int>  			alt_display_mode( "ALT_DISP_MODE" , Altimeter::MODE_QNH );
 SetupNG<float>  		transition_alt( "TRANS_ALT", 50, true, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(0, 400, 10)); // Transition Altitude
 SetupNG<int>  			glider_type( "GLIDER_TYPE_IDX", 1000, true, SYNC_BIDIR, PERSISTENT, polar_update );
 
-SetupNG<float>  		as_offset( "AS_OFFSET" , -1.f ); // enforce an air speed sensor zero calibration at first start and after a factory reset
+SetupNG<float>  		as_offset( "AS_OFFSET" , -1.f, true, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, nullptr, true); // enforce an air speed sensor zero calibration at first start and after a factory reset
 static const limits_t bat_limits = {0.0, 28.0, 0.1};
 SetupNG<float>  		bat_low_volt( "BAT_LOW_VOLT" , 11.5, true, SYNC_BIDIR, PERSISTENT, nullptr, quantity_t::QUANT_NONE, &bat_limits);
 SetupNG<float>  		bat_red_volt( "BAT_RED_VOLT", 11.75, true, SYNC_BIDIR, PERSISTENT, nullptr, quantity_t::QUANT_NONE, &bat_limits);
@@ -551,7 +551,7 @@ SetupNG<float>		    ahrs_min_gyro_factor("AHRSLGYF", 20, true, SYNC_NONE, PERSIS
 SetupNG<float>		    ahrs_dynamic_factor("AHRSGDYN", 5, true, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(0.5, 10, 0.1));
 SetupNG<dps_t>       	gyro_gating("GYRO_GAT", 0.5, true, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(0, 10, 0.1));
 SetupNG<int>		    s2f_switch_type("S2FHWSW", S2F_HW_SWITCH );
-SetupNG<int>		    hardwareRevision("HWREV", HW_UNKNOWN, false);
+SetupNG<int>		    hardwareRevision("HWREV", HW_UNKNOWN, false, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, nullptr, true);
 // SetupNG<int>		    dummy("DUMMY", 0, false, SYNC_NONE, VOLATILE );
 SetupNG<int>		    wk_sens_pos_0("WK_SP_0", 0, false );
 SetupNG<int>		    wk_sens_pos_1("WK_SP_1", 0, false );
@@ -605,7 +605,7 @@ SetupNG<float> 			flap_takeoff("FLAPTOp", 0,  false, SYNC_BIDIR, PERSISTENT, nul
 SetupNG<int> 			audio_mute_sink( "AUDISS", 0, false, SYNC_BIDIR, PERSISTENT, change_audio );
 SetupNG<int> 			audio_mute_gen( "AUDISG", AUDIO_ON, false, SYNC_NONE, PERSISTENT, change_audio );
 SetupNG<int>			vario_mode("VAMOD", CRUISE_ONLY_NETTO, true, SYNC_NONE, PERSISTENT, change_cruise);  // switch to netto mode when cruising
-SetupNG<int>			airspeed_sensor("PTYPE", AirspeedSensor::NONE, false);
+SetupNG<int>			airspeed_sensor("PTYPE", AirspeedSensor::NONE, false, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, nullptr, true);
 SetupNG<int>			cruise_audio_mode("CAUDIO", 0 );
 SetupNG<int>			netto_mode("NETMOD", NETTO_RELATIVE, true, SYNC_NONE, PERSISTENT, change_cruise);  // regard polar sink
 SetupNG<kmh_t>			v_max("VMAX", 270, true, SYNC_BIDIR, PERSISTENT, nullptr, quantity_t::QUANT_HSLEGACY, &polar_speed_limits);
@@ -642,8 +642,8 @@ SetupNG<int> 			ahrs_raw_data("AHRSRAW", 0 );
 SetupNG<degree_t>			glider_ground_aa("GLD_GND_AA", 12.0, true, SYNC_FROM_MASTER, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(-20, 20, 1));
 SetupNG<Quaternion>			imu_reference("IMU_REFERENCE", Quaternion(), true);
 SetupNG<Quaternion>			imu_facref("IMU_FACTORY", Quaternion(), false);
-SetupNG<axes_i16_abi>		gyro_bias("GYRO_BIAS", {0, 0, 0} );
-SetupNG<axes_i16_abi>		accl_bias("ACCL_BIAS_PUR", {0, 0, 0}, false ); // never reset this factoy calibration
+SetupNG<axes_i16_abi>		gyro_bias("GYRO_BIAS", {0, 0, 0}, true, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, nullptr, true);
+SetupNG<axes_i16_abi>		accl_bias("ACCL_BIAS_PUR", {0, 0, 0}, false, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, nullptr, true); // never reset this factoy calibration
 SetupNG<celsius_t> 			mpu_temperature("MPUTEMP", 45.0, true, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(30, 60, 1)); // default for AHRS chip temperature (XCV 2023)
 SetupNG<meter_t> 			imu_leverarm("IMU_LEVER", 0.f, true, SYNC_NONE, PERSISTENT, set_imu_leverarm, quantity_t::QUANT_NONE, LIMITS(0, 3, .1));
 SetupNG<float>  			leak_test_loss("LEAK_TEST", 0.0, false );
