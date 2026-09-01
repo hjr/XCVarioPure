@@ -41,6 +41,7 @@ private:
     void drawGlider(int16_t cx, int16_t cy);
     // int maxClimbIndex();
     Point getThermalCG() const;
+    void resetNorm();
 
     const PolarGauge &_gauge;
     bool _glider_on_top; // circle aid reference on top, or 90° on the side.
@@ -50,6 +51,7 @@ private:
     uint8_t _cdir = 0; // right & left
     LowPassFilterT<float> _confidence; // 0..1, how confident we are that we are thermaling;
     rad_t cur_heading = 0.f; // accumulating heading delta and dice in e.g.15° steps
+    LowPassFilterT<float> _th_norm; // normalization factor for thermal strength
 };
 
 extern ThermalAssist  *thrmAssist;

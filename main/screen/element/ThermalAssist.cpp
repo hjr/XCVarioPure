@@ -73,9 +73,11 @@ void ThermalAssist::remove()
 ThermalAssist::ThermalAssist(PolarGauge &g) :
     _gauge(g),
     _glider_on_top(true),
-    _confidence(LowPassFilterT<float>::alphaFromTau(2.0, 0.1f))
+    _confidence(LowPassFilterT<float>::alphaFromTau(2.0, 0.1f)),
+    _th_norm(LowPassFilterT<float>::alphaFromTau(20.0, 1.0f))
 {
     _glider_on_top = thermal_assist.get() != 2;
+    resetNorm();
 }
 
 // th_strength normalized to 0 .. 1
@@ -184,6 +186,10 @@ Point ThermalAssist::getThermalCG() const {
     return Point(sx, sy);
 }
 
+void ThermalAssist::resetNorm() {
+    _th_norm.reset(std::min(1.f, MC.get()));
+}
+
 void ThermalAssist::draw() {
     // get the peak and min thermals
     float th_min = thermals[0].strength;
@@ -199,12 +205,12 @@ void ThermalAssist::draw() {
     }
     // calc peak norm
     th_min = std::max(th_min - 0.2f, .0f);
-    float th_norm = std::max(th_max - th_min, 0.5f);
+    _th_norm.filter(std::max(th_max - th_min, 1.f));
 
-    ESP_LOGI(FNAME,"TA draw, peak norm: %.2f, %.2f, %.2f", th_min, th_max, th_norm);
+    ESP_LOGI(FNAME,"TA draw, peak norm: %.2f, %.2f, %.2f", th_min, th_max, _th_norm.get());
     for (int i = 0; i < CA_NUM_DIRS; i++) {
         int d = (i + _idir) % CA_NUM_DIRS;
-        float ths = std::min((thermals[d].getStrength() - th_min) / th_norm, 1.f); // normalized strength 0..1
+        float ths = std::min((thermals[d].getStrength() - th_min) / _th_norm.get(), 1.f); // normalized strength 0..1
 
         // ESP_LOGI(FNAME,"dir:%d TE:%.1f", d, thermals[d].strength );
         drawThermal(ths, i);
@@ -261,7 +267,8 @@ void ThermalAssist::checkHeading(rad_t vheading, rad_t omega, rad_t bank) {
             _cdir = new_c_dir;
         }
         else {
-            ESP_LOGI(FNAME,"ThermalAssist checkHeading, no thermal detected, reset peak value");
+            resetNorm();
+            ESP_LOGI(FNAME,"ThermalAssist checkHeading, no thermaling detected, reset peak value");
             thermals[_idir].set(0.f);
         }
 
