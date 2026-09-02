@@ -598,8 +598,10 @@ static void screens_menu_create_vario(SetupMenu *top) {
     tgauge->addEntry("Net. Vario", MultiGauge::GAUGE_NETTO);
     tgauge->addEntry("OATemp.", MultiGauge::GAUGE_OAT);
     tgauge->addEntry("Heading", MultiGauge::GAUGE_HEADING);
+
     if (gflags.expert) {
         tgauge->addEntry("Slip Angle", MultiGauge::GAUGE_SLIP);
+        tgauge->addEntry("Debug", MultiGauge::GAUGE_DEBUG);
     }
     top->addEntry(tgauge);
 

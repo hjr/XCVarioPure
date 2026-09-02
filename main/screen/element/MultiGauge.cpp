@@ -23,6 +23,8 @@
 
 extern AdaptUGC *MYUCG;
 
+constexpr int scale[] = { 1, 10, 100, 1000 }; // mantissa length right of the comma
+
 MultiGauge::MultiGauge(int16_t cx, int16_t cy, MultiDisplay d, bool l) :
     ScreenElement(cx, cy),
     _display(d),
@@ -42,7 +44,7 @@ void MultiGauge::setDisplay(MultiDisplay d)
 void MultiGauge::draw()
 {
     float fval = 0;
-    float precision = 1.f; // only 1 and 10 are supported
+    int precision = 0; // 10^precision; only 0, 1, 2, 3 are supported
     if ( ! _nvsvar->getValid() ) {
         _dirty = true;
     }
@@ -59,32 +61,33 @@ void MultiGauge::draw()
             break;
         case GAUGE_NETTO:
             fval = VarioUnit->apply(_nvsvar->get());
-            if (fval < 10.f) { precision = 10.f; }
+            if (fval < 10.f) { precision = 1; }
             break;
         case GAUGE_OAT:
             fval = TempUnit->apply(_nvsvar->get());
-            if ( TempUnit == &Units::celsius ) { precision = 10.f; }
+            if ( TempUnit == &Units::celsius ) { precision = 1; }
             break;
         case GAUGE_SLIP:
-            precision = 10.f;
+            precision = 1;
             [[fallthrough]];
         case GAUGE_HEADING:
             fval = Units::rad_to_deg(_nvsvar->get());
             break;
         case GAUGE_MC:
             fval = VarioUnit->apply(_nvsvar->get());
-            if (fval < 10.f) { precision = 10.f; }
+            if (fval < 10.f) { precision = 1; }
             break;
         case GAUGE_ALTIMETER:
             fval = AltUnit->apply(_nvsvar->get());
             if (alt_display_mode.get() == Altimeter::MODE_QFE) { fval -= airfield_elevation.get(); }
             break;
         default:
+            precision = 2;
             fval = _nvsvar->get();
             break;
         }
     }
-    int val = fast_iroundf(fval * precision);
+    int val = fast_iroundf(fval * scale[precision]);
 
     if (val_prev == val && ! _dirty) { return; }
     ESP_LOGI(FNAME, "draw val %d (old: %d)", val, val_prev);
@@ -98,8 +101,8 @@ void MultiGauge::draw()
 
     char s[32] = {"   ---"};
     if (_nvsvar->getValid()) {
-        if (precision > 1.f) {
-            sprintf(s, "  %.1f", val/precision);
+        if (precision > 0) {
+            sprintf(s, "  %.*f", precision, fval);
         } else {
             // here we have only positive values
             if ( val >= 0 ) {
@@ -226,6 +229,9 @@ void MultiGauge::update_nvs()
         break;
     case GAUGE_ALTIMETER:
         _nvsvar = &altitude;
+        break;
+    case GAUGE_DEBUG:
+        _nvsvar = &debugvar;
         break;
     // case GAUGE_TRACK:
     // 	_nvsvar = &;

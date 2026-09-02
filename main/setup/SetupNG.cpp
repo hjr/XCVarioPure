@@ -454,6 +454,7 @@ SetupNG<mps_t>  		te_vario( "TEVA", 0.0, false, SYNC_NONE, VOLATILE ); // derive
 SetupNG<mps_t>  		te_netto( "TENET", 0.0, false, SYNC_NONE, VOLATILE ); // derived from te_alt in VarioFilter
 SetupNG<rad_t>  		slip_angle( "SLANGLE", 0.0, false, SYNC_FROM_MASTER, VOLATILE );
 SetupNG<float>  		battery_voltage( "BATV", 0.0, false, SYNC_FROM_MASTER, VOLATILE );
+SetupNG<float>  		debugvar( "DEBUG", 0.0, false, SYNC_NONE, VOLATILE );
 
 SetupNG<int>  			xcv_alive( "AL_XCV", ALIVE_NONE, false, SYNC_NONE, VOLATILE );
 SetupNG<int>  			mags_alive( "AL_MAGS", ALIVE_NONE, false, SYNC_NONE, VOLATILE );

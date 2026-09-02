@@ -238,6 +238,7 @@ void ThermalAssist::checkHeading(rad_t vheading, rad_t omega, rad_t bank) {
     float c_bank = std::clamp((fabsf(bank)-Units::deg_to_rad(8.0f)) / Units::deg_to_rad(16.0f), 0.0f, 1.0f);
     // 3. steadiness/duration confidence
     _confidence.filter( (c_turn + c_bank) / 2.f );
+    debugvar.set(_confidence.get());
 
     // integrate footing/heading, create a new thermal when the heading has changed by 15° or more
     rad_t diff = Vector::angleDiff( vheading, cur_heading );
