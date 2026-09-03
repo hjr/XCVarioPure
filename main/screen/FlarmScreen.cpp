@@ -116,27 +116,6 @@ void FlarmScreen::display(int mode)
     MYUCG->setColor( COLOR_EARTH );
     IpsDisplay::drawPolygon(below, nb);
 
-    // draw crosshair in the middle of the screen
-    MYUCG->setColor( COLOR_WHITE );
-    Point hc0(-15, -1);
-    Point hc1(15, -1);
-    Point hc2(15, 1);
-    Point hc3(-15, 1);
-    hc0 = l.mapToHorizon(hc0);
-    hc1 = l.mapToHorizon(hc1);
-    hc2 = l.mapToHorizon(hc2);
-    hc3 = l.mapToHorizon(hc3);
-    MYUCG->drawTetragon(hc0.x, hc0.y, hc1.x, hc1.y, hc2.x, hc2.y, hc3.x, hc3.y);
-    hc0 = Point(-1, -15);
-    hc1 = Point(-1, 15);
-    hc2 = Point(1, 15);
-    hc3 = Point(1, -15);
-    hc0 = l.mapToHorizon(hc0);
-    hc1 = l.mapToHorizon(hc1);
-    hc2 = l.mapToHorizon(hc2);
-    hc3 = l.mapToHorizon(hc3);
-    MYUCG->drawTetragon(hc0.x, hc0.y, hc1.x, hc1.y, hc2.x, hc2.y, hc3.x, hc3.y);
-
     // limit target to display area
     p = l.limitToScreen(p, true);
     ESP_LOGI(FNAME,"ClippPt %d,%d", p.x, p.y);
@@ -210,6 +189,26 @@ void FlarmScreen::display(int mode)
     MYUCG->print(buf);
     MYUCG->setFontPosBottom();
     MYUCG->setColor(1, COLOR_BLACK); // bg color
+
+    // canope symbol transparent on top
+    const int16_t cx = DISPLAY_W / 2;
+    const int16_t cy = (DISPLAY_H - MBOX->getBoxHeight()) / 2;
+    MYUCG->setColor(COLOR_HEADER_LIGHT);
+    // center ring
+    MYUCG->drawCircle(cx, cy, 3, UCG_DRAW_ALL);
+    MYUCG->drawCircle(cx, cy, 4, UCG_DRAW_ALL);
+
+    // avionic panel
+    constexpr int16_t panel_halfwidth = 27;
+    constexpr int16_t panel_halfheight = 12;
+    MYUCG->drawRFrame(cx - panel_halfwidth, cy - panel_halfheight, 2 * panel_halfwidth, 2 * panel_halfheight, 3);
+    MYUCG->drawRFrame(cx - panel_halfwidth + 1, cy - panel_halfheight + 1, 2 * (panel_halfwidth - 1), 2 * (panel_halfheight - 1), 3);
+
+    // sides
+    constexpr int16_t side_len = 17;
+    constexpr int16_t side_incl = 4;
+    MYUCG->drawLine(cx - panel_halfwidth, cy - side_incl, cx - panel_halfwidth - side_len, cy + side_incl);
+    MYUCG->drawLine(cx + panel_halfwidth, cy - side_incl, cx + panel_halfwidth + side_len, cy + side_incl);
 
     // start encoded audio alarm
     uint16_t alarm = Audio::encFlarmParam(AUDIO_ALARM_FCODE, Flarm::AlarmLevel, side_bear, alt_bear);
