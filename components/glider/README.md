@@ -1,5 +1,9 @@
 # Compressed glider polars
 
+# Preceeding house keeping info
+	uint16_t index;			// uuid for the XCVario setup
+	std::string_view type;	// glider type, sorting key for the user interface selection list
+
 # run-time floting point representation:
 	float    wingload;		// kg/mxm
 	float    speed1;		// km/h
@@ -21,6 +25,10 @@
 	int16_t  sink3;			// 1/100x m/s
 	uint8_t  max_ballast;	// 2x kg
 	uint16_t wingarea;		// 1/100x mxm
+
+# Additional info in the Polat Table
+	uint8_t  flags;			cfm
+    // bit 0 = 0x01 -> has flaps
 
 # Rational
 Accepted and negligible reduction is the linear reposition of polar points to the nearest integer km/h speed. As well as the reduction of the max. water ballast down to a 2 liters resolution.

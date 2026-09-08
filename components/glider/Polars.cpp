@@ -20,7 +20,8 @@
 
 struct compressed_polar {
 	uint16_t index;
-	std::string_view type;	// units
+	std::string_view type;	// glider type
+							// units
 	uint16_t wingload;		// 1/100x kg/mxm
 	uint8_t  speed1;		// km/h
 	int16_t  sink1;			// 1/100x m/s
