@@ -13,7 +13,7 @@ add_custom_command(
     COMMAND python ${GENERATOR_SCRIPT}
             --input "${INPUT_DATA_FILE}"
             --output "${GENERATED_SRC}"
-    DEPENDS ${GENERATOR_SCRIPT}
+    DEPENDS ${GENERATOR_SCRIPT} ${INPUT_DATA_FILE}
     COMMENT "Generating packed glider polars"
     VERBATIM
 )
