@@ -120,9 +120,9 @@ constexpr std::pair<DeviceId, DeviceAttributes> DEVATTR[] = {
     {DeviceId::JUMBO_DEV,  {"jumbo putzi", {{CAN_BUS}}, {{JUMBOCMD_P}, 1} , 0, 0, nullptr}}, // auto reg
     {DeviceId::XCVARIOFIRST_DEV, {"Master XCV", {{S2_RS232}}, {{XCVSYNC_P}, 1}, 0, IS_SEL|SECOND_ONLY, &master_devsetup}},
     {DeviceId::XCVARIOSECOND_DEV, {"Second XCV", {{S2_RS232}}, {{XCVSYNC_P}, 1}, 0, IS_SEL|MASTER_ONLY, &second_devsetup}},
-#ifdef DEBGUG_AND_TEST
+// #ifdef DEBGUG_AND_TEST
     {DeviceId::MAGLEG_DEV, {"MagSens rev0", {{CAN_BUS}}, {{MAGSENSBIN_P}, 1}, MagSensBin::LEGACY_MAGSTREAM_ID, IS_SEL|MASTER_ONLY, &magleg_devsetup}},
-#endif
+// #endif
     {DeviceId::MAGSENS_DEV, {"MagSens rev1", {{CAN_BUS}}, {{MAGSENS_P}, 1}, 0, 0, nullptr}}, // auto reg -> future use
     {DeviceId::NAVI_DEV,   {"Navi", {{WIFI_APSTA, S1_RS232, S2_RS232, BT_SPP, BT_LE}},
                                     {{XCVARIO_P, CAMBRIDGE_P, OPENVARIO_P, BORGELT_P, SEEYOU_P, KRT2_REMOTE_P, ATR833_REMOTE_P}, 1},
