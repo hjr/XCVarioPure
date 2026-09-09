@@ -124,6 +124,9 @@ public:
     void sendXcvRPYL();
     void sendXcvAPENV1();
     void sendXcvAhrsRaw();
+    void sendXcvAllConfig();
+    void sendXcvIntItem(const char *id, int value);
+    void sendXcvFloatItem(const char *id, float value);
     void sendXcvGeneric();
     void sendOpenVario();
     void sendBorgelt();

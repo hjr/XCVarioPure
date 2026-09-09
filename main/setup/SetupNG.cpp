@@ -398,6 +398,10 @@ static void ch_airborne_state() {
         if (gyroSensor && !gflags.inSimulationMode) {
              gyroSensor->saveBias();
         }
+        ProtocolItf *prtcl = DEVMAN->getProtocol(NAVI_DEV, XCVARIO_P);
+        if ( prtcl ) {
+            (static_cast<NmeaPrtcl*>(prtcl))->sendXcvAllConfig();
+        }
     }
 }
 
