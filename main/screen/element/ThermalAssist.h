@@ -41,7 +41,6 @@ private:
     void drawGlider(int16_t cx, int16_t cy);
     // int maxClimbIndex();
     Point getThermalCG() const;
-    void resetNorm();
 
     const PolarGauge &_gauge;
     bool _glider_on_top; // circle aid reference on top, or 90° on the side.
