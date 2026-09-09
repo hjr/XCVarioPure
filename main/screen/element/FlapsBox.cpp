@@ -11,6 +11,8 @@
 #include "Flap.h"
 #include "Colors.h"
 #include "AdaptUGC.h"
+#include "comm/DeviceMgr.h"
+#include "protocol/NMEA.h"
 #include "driver/audio/ESPAudio.h"
 #include "driver/time/Clock.h"
 #include "math/Floats.h"
@@ -113,8 +115,6 @@ void FlapsBox::drawLabels(FBoxStateHash cs)
     MYUCG->drawHLine(boxx, _ref.y - 14, boxw);
     MYUCG->drawHLine(boxx, _ref.y + 14, boxw);
     MYUCG->finishBuffering();
-
-    _state = cs;
 }
 
 // currently called ca. every 0,3sec, 
@@ -173,6 +173,16 @@ void FlapsBox::draw(mps_t ias)
         ESP_LOGI(FNAME,"wkf:%.1f bo:%d minv:%.1f maxv:%.1f ias:%.1f", current_state.getWk(), band_offset, minv, maxv, ias);
         drawLabels(current_state);
     }
+
+    // Check on logging
+    if ( logging.get() == LOGG_RAW_SENSOR_DATA && _state.wkidx10 != current_state.wkidx10 ) {
+        ProtocolItf *prtcl = DEVMAN->getProtocol(NAVI_DEV, XCVARIO_P);
+        if ( prtcl ) {
+            (static_cast<NmeaPrtcl*>(prtcl))->sendXcvIntItem("FLP", current_state.wkidx10);
+        }
+    }
+
+    _state = current_state;
     _dirty = false;
 
     if ( flapbox_enable.get() == (uint8_t)flap_box_conf::FLAP_BOX_VIS ) {

@@ -215,6 +215,62 @@ void NmeaPrtcl::sendXcvAhrsRaw()
     DEV::Send(msg);
 }
 
+// !XCV,CA,PolarId,empty weight, crew weight, ballast, speedcal, QNH*CHK
+//   All Config items are sent as a single telegram
+void NmeaPrtcl::sendXcvAllConfig()
+{
+    if ( _dl.isBinActive() || !accSensor || !gyroSensor) {
+        return; // no NMEA output in binary mode
+    }
+
+    Message *msg = newMessage();
+
+    msg->buffer = "!XCV,CA1,";
+    char str[50];
+    std::sprintf(str, "%d,%d,%d,%d,", glider_type.get(), (int)empty_weight.get(), (int)crew_weight.get(), (int)ballast_kg.get());
+    msg->buffer += str;
+    std::sprintf(str, "%d,%.2f", (int)speedcal.get(), QNH.get());
+    msg->buffer += str;
+
+    msg->buffer += "*" + NMEA::CheckSum(msg->buffer.c_str()) + "\r\n";
+    DEV::Send(msg);
+}
+
+// !XCV items with up to three letter Id's
+void NmeaPrtcl::sendXcvIntItem(const char *id, int value)
+{
+    if ( _dl.isBinActive() || !accSensor || !gyroSensor) {
+        return; // no NMEA output in binary mode
+    }
+
+    Message *msg = newMessage();
+
+    msg->buffer = "!XCV,";
+    char str[30];
+    std::sprintf(str, "%s,%d", id, value);
+    msg->buffer += str;
+
+    msg->buffer += "*" + NMEA::CheckSum(msg->buffer.c_str()) + "\r\n";
+    DEV::Send(msg);
+}
+
+void NmeaPrtcl::sendXcvFloatItem(const char *id, float value)
+{
+    if ( _dl.isBinActive() || !accSensor || !gyroSensor) {
+        return; // no NMEA output in binary mode
+    }
+
+    Message *msg = newMessage();
+
+    msg->buffer = "!XCV,";
+    char str[30];
+    std::sprintf(str, "%s,%.3f", id, value);
+    msg->buffer += str;
+
+    msg->buffer += "*" + NMEA::CheckSum(msg->buffer.c_str()) + "\r\n";
+    DEV::Send(msg);
+}
+
 /*
  * $PTAS1,xxx,yyy,zzzzz,aaa*CS<CR><LF>
  * xxx:   CV or current vario. =vario*10+200 range 0-400(display +/-20.0 knots)
