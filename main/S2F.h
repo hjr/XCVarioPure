@@ -29,7 +29,9 @@ public:
 	mps_t getDelta() const { return _s2f_delta; }
 	mps_t getStallSpeed() const { return _stall_speed; }
 	mps_t getSink( mps_t v );
-	mps_t getMinsinkSpeed() { return _min_sink_speed; };
+	mps_t getMinsink();
+	mps_t getMinsinkSpeed();
+	mps_t getStaticMinsinkSpeed() { return _min_sink_speed; };
 	mps_t getCirclingSink(mps_t v);
 	float getCw( mps_t v );
 	static float getLoadFactor();
@@ -41,7 +43,7 @@ private:
 	void calculateOverweight();
 	void recalcSinkNSpeeds();
 	static float getBallastPercent();
-	float getVn( float v );
+	// float getVn( float v );
 	bool calcValidPolar();
 
     int _glider_index = 0;

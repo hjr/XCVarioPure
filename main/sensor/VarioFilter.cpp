@@ -15,7 +15,7 @@
 #include "S2F.h"
 #include "AverageVario.h"
 #include "setup/SetupNG.h"
-#include "logdef.h"
+#include "logdefnone.h"
 
 
 #include <cmath>
@@ -119,7 +119,9 @@ static VarioKF vkf;
 
 VarioFilter::VarioFilter() :
     SensorTP<float>(vario_buffer, HSIZE, DUTY_CYCLE_MS),
-    _tealt_lpf(0.25f)
+    _tealt_lpf(0.25f),
+    _Gact(15.f, DUTY_CYCLE_MS / 1000.f),
+    _Goptimal(15.f, DUTY_CYCLE_MS / 1000.f)
 {
     _id = SensorId::VARIOMETER;
     setNVSVar(&te_alt);
@@ -143,6 +145,8 @@ void VarioFilter::init(meter_t alt)
 void VarioFilter::configChange() {
     // vario needle damping
     _lpf.setTau(vario_delay.get(), 0.1f); // 10 Hz
+    _Gact.setTau(vario_av_delay.get()); // same integration time for the climb score
+    _Goptimal.setTau(vario_av_delay.get());
 #if FILTER == 3
     vkf.setTau(vario_delay.get()); // KF
 #endif
@@ -245,7 +249,24 @@ void VarioFilter::postProcess() {
 
     te_vario.set(_TEF);
     _polar_sink = Speed2Fly.getSink(ias.get());
-    te_netto.set(_TEF - _polar_sink);
+    float te_net = _TEF - _polar_sink;
+    te_netto.set(te_net);
+
+    // calc the climb score
+    if ( te_net > 0.f && airborne.get()) {
+        // achieved gross climb integral
+        _Gact.filter(std::max(_TEF, 0.f));
+        // Gmax​(N)=N−S(vopt​)); max. gross achievable integral with current load and net vario
+        _Goptimal.filter(te_net + Speed2Fly.getMinsink());
+    }
+    else {
+        _Gact.filter(.0f);
+        _Goptimal.filter(.0f);
+    }
+    // thermal performance : actual gross / max. achievable gross
+    float tp = _Gact.get() / _Goptimal.get();
+    ESP_LOGI(FNAME, "Varioscore TE: %.3f, sink: %.3f, Gact: %.3f, Gmax: %.3f, tp: %.3f", _TEF, _polar_sink, _Gact.get(), _Goptimal.get(), tp);
+    thermal_score.set(tp);
 
 	if( !(N%10) ){ // every second one sample
 		_avg_vario = avgTE( _TEF );

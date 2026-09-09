@@ -35,6 +35,8 @@ class VarioFilter final : public SensorTP<meter_t> {
     void init(meter_t alt);
 
     LowPassFilterT<float> _tealt_lpf;
+    LeakyIntegratorT<float> _Gact;
+    LeakyIntegratorT<float> _Goptimal;
     uint32_t _prev_time = 0;
     Average<34, float, float> TEavg;
 #if FILTER == 0

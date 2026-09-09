@@ -42,7 +42,15 @@ T AdaptiveLowPassFilterT<T>::filter(T input)
     return static_cast<T>(LowPassFilterT<float>::filter(input));
 }
 
+template <typename T>
+T LeakyIntegratorT<T>::filter(T input)
+{
+    _last_output = _decay * _last_output + input * _dt;
+    return _last_output;
+}
+
 // we explicitly need those instantiations
 template class LowPassFilterT<float>;
 template class LowPassFilterT<vector_f>;
 template class AdaptiveLowPassFilterT<float>;
+template class LeakyIntegratorT<float>;
