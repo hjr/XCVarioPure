@@ -190,6 +190,7 @@ mps_t S2F::calculate(mps_t netto_vario, bool circling)
 }
 
 // v_in : [m/s]
+// sink rate at given airspeed and current load factor
 mps_t S2F::getSink( mps_t v_in ) {
 	float v_stall = _stall_speed * 0.9;
 	if ( v_in < v_stall || !_valid ){
@@ -203,13 +204,22 @@ mps_t S2F::getSink( mps_t v_in ) {
 	return s;
 }
 
+// min sink at current load factor
+mps_t S2F::getMinsink() {
+    return _min_sink * std::sqrtf(getLoadFactor());
+}
+
+// min sink speed at current load factor
+mps_t S2F::getMinsinkSpeed() {
+    return _min_sink_speed * std::sqrtf(std::sqrtf(getLoadFactor()));
+}
+
 mps_t S2F::getCirclingSink(mps_t v) {
     if (v > _stall_speed * 0.6)
         return _circling_sink;
     else
         return 0;
 }
-
 
 // v : [m/s]
 float S2F::getCw( mps_t v ) {
@@ -303,14 +313,15 @@ float S2F::getLoadFactor() {
     return g;
 }
 
-float S2F::getVn(float v) {
-    float Vn = v * std::sqrtf(getLoadFactor());
-    if (Vn > _stall_speed) {
-        return Vn;
-    } else {
-        return _stall_speed;
-    }
-}
+// ??
+// float S2F::getVn(float v) {
+//     float Vn = v * std::sqrtf(getLoadFactor());
+//     if (Vn > _stall_speed) {
+//         return Vn;
+//     } else {
+//         return _stall_speed;
+//     }
+// }
 
 bool S2F::calcValidPolar() {
     return (a2 < 0 && a1 > 0 && a0 < 0);

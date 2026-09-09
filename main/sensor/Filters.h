@@ -83,3 +83,22 @@ private:
     float _activity = 0.f;
     float _threshold = 40.f;
 };
+
+// A simple leaky integrator filter
+// designed for const dt sampling
+template <typename T>
+class LeakyIntegratorT : public FilterItf<T>{
+public:
+    constexpr explicit LeakyIntegratorT(float tau, float dt) : _dt(dt), _decay(expf(-dt / tau)), _last_output(T{}) {}
+    void setTau(second_t tau) { _decay = decayFromTau(tau, _dt); }
+    void reset(T init_val = T{}) { _last_output = init_val; }
+    T filter(T input);
+    T get() const { return _last_output; }
+private:
+    static constexpr inline float decayFromTau(second_t tau, second_t dt) {
+        return expf(-dt / tau);
+    }
+    const float _dt;
+    float _decay;
+    T _last_output;
+};

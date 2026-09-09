@@ -20,9 +20,11 @@ public:
     void draw() override;
     void draw(float a) override;
     void drawStatic();
+    void drawProgressive(float a);
     void showExtras(bool show) { _show_extras = show; }
 
 private:
     int16_t _value = 0;
+    int16_t _score = 0;
     bool _show_extras = true;
 };
