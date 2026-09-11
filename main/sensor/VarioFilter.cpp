@@ -257,11 +257,11 @@ void VarioFilter::postProcess() {
         // achieved gross climb integral
         _Gact.filter(std::max(_TEF, 0.f));
         // Gmax​(N)=N−S(vopt​)); max. gross achievable integral with current load and net vario
-        _Goptimal.filter(te_net + Speed2Fly.getMinsink());
+        _Goptimal.filter(std::max(te_net + Speed2Fly.getMinsink(), .1f));
     }
     else {
         _Gact.filter(.0f);
-        _Goptimal.filter(.0f);
+        _Goptimal.filter(.1f);
     }
     // thermal performance : actual gross / max. achievable gross
     float tp = _Gact.get() / _Goptimal.get();

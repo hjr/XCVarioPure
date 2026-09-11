@@ -99,7 +99,7 @@ void LargeFigure::drawStatic() {
 }
 
 void LargeFigure::drawProgressive(float a) {
-    int16_t ival = fast_iroundf(a * 100);
+    int16_t ival = std::clamp(fast_iroundf(a * 100), 0, 100);
 
     if (_score == ival && !_dirty) {
         return;
