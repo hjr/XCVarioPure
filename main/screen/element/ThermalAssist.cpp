@@ -74,7 +74,7 @@ ThermalAssist::ThermalAssist(PolarGauge &g) :
     _gauge(g),
     _glider_on_top(true),
     _confidence(LowPassFilterT<float>::alphaFromTau(2.0, 0.1f)),
-    _th_norm(LowPassFilterT<float>::alphaFromTau(20.0, 1.0f))
+    _th_norm(LowPassFilterT<float>::alphaFromTau(vario_av_delay.get(), .5f))
 {
     _glider_on_top = thermal_assist.get() != 2;
     _th_norm.reset(std::min(1.f, MC.get()));
@@ -265,7 +265,7 @@ void ThermalAssist::checkHeading(rad_t vheading, rad_t omega, rad_t bank) {
             _cdir = new_c_dir;
         }
         else {
-            _th_norm.filter(MC.get());
+            _th_norm.filter(std::min(1.f, MC.get()));
             ESP_LOGI(FNAME,"ThermalAssist checkHeading, no thermaling detected, reset peak value");
             thermals[_idir].set(0.f);
         }
