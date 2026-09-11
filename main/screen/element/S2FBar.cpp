@@ -25,10 +25,10 @@ static constexpr const int16_t SYMBOL_SIZE = 10;
 S2FBar::S2FBar(int16_t cx, int16_t cy, int16_t width, int16_t gap) :
     ScreenElement(cx, cy),
     _width_half(width/2),
-    _gap_half(gap/2)
+    _gap_half(gap/2),
+    _step(stepFromWidth(width))
 {
-    stepFromWidth(width);
-    MYUCG->setFont(ucg_font_fub11_hr);
+    _bbox = { Point(_ref.x - _width_half - 2, _ref.y - _gap_half - 4 * _step), Point(2 * _width_half + 2, 2 * _gap_half + 8 * _step) };
 }
 
 
@@ -68,10 +68,7 @@ void S2FBar::drawArrow(int16_t x, int16_t y, int16_t level, bool del)
 
 void S2FBar::drawBlock(int16_t level)
 {
-    int16_t prev = _prev_s2f_level/2;
-    level = std::abs(level/2);
-
-    if ( level == std::abs(prev) && !_dirty) {
+    if ( level == std::abs(_prev_hash._s2f_level/2) && !_dirty) {
         return;
     }
 
@@ -84,8 +81,10 @@ void S2FBar::drawBlock(int16_t level)
     MYUCG->drawRBox(_ref.x - _width_half + 3, _ref.y - _gap_half + 1, 2 * _width_half - 6, 2 * _gap_half - 3, 2);
 }
 
-void S2FBar::drawCircle()
+void S2FBar::drawCircle(int16_t score)
 {
+    MYUCG->startBuffering(_bbox.pmin.x, _bbox.pmin.y, _bbox.pmax.x, _bbox.pmax.y);
+
     // draw circle
     MYUCG->setColor(COLOR_WGREY);
     MYUCG->drawCircle(_ref.x, _ref.y + 4, SYMBOL_SIZE, UCG_DRAW_UPPER_RIGHT | UCG_DRAW_LOWER_RIGHT | UCG_DRAW_LOWER_LEFT);
@@ -94,43 +93,61 @@ void S2FBar::drawCircle()
     constexpr const int16_t S2FTS = SYMBOL_SIZE/2;
     MYUCG->drawTriangle(tipx - S2FTS +2, _ref.y + 4 + S2FTS +1, tipx + S2FTS+2, _ref.y + 4 + S2FTS -2, tipx, _ref.y + 4);
 
+    if ( score < 25 ) {
+        MYUCG->finishBuffering();
+        return;
+    }
+
+    // draw score
+    MYUCG->setFont(ucg_font_fub14_hr, true);
+    MYUCG->setColor(COLOR_WHITE);
+
+    MYUCG->setPrintPos(_ref.x - 12, _ref.y + 6);
+    MYUCG->print(score);
+    MYUCG->finishBuffering();
 }
 
 // speed to fly delta given in m/s, s2fd > 0 means speed up
 // bars dice up 10 km/h steps
 void S2FBar::draw(mps_t s2fd, bool cruise)
 {
-    int8_t level = 0;
+    Hash current = _prev_hash;
     if ( cruise ) {
         // dice up into 10 kmh steps, map to -4..+4, 0 means no speed up/down
         // draw max. three bars, then change color of the last one
-        level = std::clamp(fast_iroundf(s2fd / LEVEL_DELTA), -4, 4);
+        current._s2f_level = std::clamp(fast_iroundf(s2fd / LEVEL_DELTA), -4, 4);
+        current._cruise_mode = 1;
+    }
+    else {
+        current._score = std::clamp(fast_iroundf(thermal_score.get() * 100), 0, 100);
+        current._cruise_mode = 0;
     }
 
     if ( _dirty ) {
         // force redraw of all
-        _prev_s2f_level = 0;
+        _prev_hash._s2f_level = 0;
     }
-    if ( cruise == _prev_cruise_mode && level == _prev_s2f_level && !_dirty ) {
+    if ( current._raw == _prev_hash._raw && !_dirty ) {
         return;
     }
-    if ( cruise != _prev_cruise_mode ) {
+    if ( cruise != _prev_hash._cruise_mode ) {
         // clear bounding box
         MYUCG->setColor(COLOR_BLACK);
-        MYUCG->drawBox(_ref.x - _width_half - 2, _ref.y - _gap_half - 4 * _step, 2 * _width_half + 4, 2 * _gap_half + 8 * _step);
-        // MYUCG->setColor(COLOR_WHITE);
-        // MYUCG->drawFrame(_ref.x - _width_half - 2, _ref.y - _gap_half - 4 * _step, 2 * _width_half + 4, 2 * _gap_half + 8 * _step);
-        _prev_s2f_level = 0;
+        MYUCG->drawBox(_bbox.pmin.x, _bbox.pmin.y, _bbox.pmax.x, _bbox.pmax.y);
+        current._s2f_level = 0; // draw all levels
     }
+
+    // MYUCG->setColor(COLOR_WHITE);
+    // MYUCG->drawFrame(_bbox.pmin.x, _bbox.pmin.y, _bbox.pmax.x + 1, _bbox.pmax.y + 1);
 
     if ( cruise ) {
         // ESP_LOGI(FNAME,"s2fbar %d %d", s2fd, level);
-        if (level != _prev_s2f_level) {
-            ESP_LOGI(FNAME,"S2FBar::draw s2fd: %d level: %d prev: %d", s2fd, level, _prev_s2f_level);
+        if (current._s2f_level != _prev_hash._s2f_level) {
+            ESP_LOGI(FNAME,"S2FBar::draw s2fd: %d level: %d prev: %d", s2fd, current._s2f_level, _prev_hash._s2f_level);
 
-            int16_t inc = (level - _prev_s2f_level > 0) ? 1 : -1;
-            for (int16_t i = _prev_s2f_level + ((_prev_s2f_level == 0 || _prev_s2f_level * inc > 0) ? inc : 0);
-                i != level + ((i * inc < 0) ? 0 : inc); i += inc)
+            int16_t inc = (current._s2f_level - _prev_hash._s2f_level > 0) ? 1 : -1;
+            for (int16_t i = _prev_hash._s2f_level + ((_prev_hash._s2f_level == 0 || _prev_hash._s2f_level * inc > 0) ? inc : 0);
+                i != current._s2f_level + ((i * inc < 0) ? 0 : inc); i += inc)
             {
                 if (i != 0)
                 {
@@ -141,13 +158,12 @@ void S2FBar::draw(mps_t s2fd, bool cruise)
         }
 
         // Fill the gap with a block if the speed is close to the target, otherwise clear it
-        drawBlock(level);
+        drawBlock(current._s2f_level);
     }
     else {
-        drawCircle();
+        drawCircle(current._score);
     }
-    _prev_s2f_level = level;
-    _prev_cruise_mode = cruise;
+    _prev_hash._raw = current._raw;
     
     _dirty = false;
 }

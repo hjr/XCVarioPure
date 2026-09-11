@@ -98,23 +98,6 @@ void LargeFigure::drawStatic() {
     MYUCG->print(VarioUnit->getName());
 }
 
-void LargeFigure::drawProgressive(float a) {
-    int16_t ival = std::clamp(fast_iroundf(a * 100), 0, 100);
-
-    if (_score == ival && !_dirty) {
-        return;
-    }
-
-    _score = ival;
-    
-    // draw e.g. score
-    MYUCG->setFont(ucg_font_fub11_hr, true);
-    MYUCG->setColor(COLOR_WHITE);
-
-    MYUCG->setPrintPos(_ref.x - 14, _bbox.pmin.y + _bbox.pmax.y + MYUCG->getFontLineSpace() +5);
-    MYUCG->printf(" %d ", ival);
-}
-
 void LargeFigure::draw(float val) {
     int16_t ival = fast_iroundf(val * 10); // integer value in steps of 10th
 
@@ -124,9 +107,6 @@ void LargeFigure::draw(float val) {
         draw();
         if ( _dirty && _show_extras) {
             drawStatic();
-        }
-        if ( _show_extras && thermal_score.getValid() ) {
-            drawProgressive(thermal_score.get());
         }
     }
     _dirty = false;

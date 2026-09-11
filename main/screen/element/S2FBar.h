@@ -23,26 +23,27 @@ public:
     S2FBar(int16_t cx, int16_t cy, int16_t width, int16_t gap);
 
     // API
-    void setWidth(int16_t width) { _width_half=width/2; stepFromWidth(width); }
-    void setGap(int16_t gap) { _gap_half=gap/2; }
+    constexpr void setWidth(int16_t width) { _width_half=width/2; _step = stepFromWidth(width); }
+    constexpr void setGap(int16_t gap) { _gap_half=gap/2; }
     using ScreenElement::draw;
     void draw(mps_t s2fd, bool cruise);
 
 private:
-    void stepFromWidth(int16_t width) { _step = (width+4)/8; }
+    constexpr int16_t stepFromWidth(int16_t width) { return (width+4)/8; }
     // void drawSpeed(mps_t v);
     void drawBlock(int16_t level);
-    void drawCircle();
+    void drawCircle(int16_t score);
     void drawArrow(int16_t x, int16_t y, int16_t level, bool del);
 
 private: // attributes
-    union {
+    union Hash {
         struct {
-            int8_t _prev_cruise_mode = 1;
-            int8_t _prev_s2f_level = 0;
+            int8_t _cruise_mode = 1;
+            int8_t _s2f_level = 0;
+            int8_t _score = 0;
         };
-        int16_t _prev_hash;
-    };
+        int32_t _raw;
+    } _prev_hash;
     int16_t _width_half;
     int16_t _gap_half;
     int16_t _step;
