@@ -307,6 +307,9 @@ static int select_device_action(SetupMenuSelect *p)
     SetupMenu *top = p->getParent();
     // memorize and lock the device selector
     new_device = (DeviceId)p->getValue();
+    if ( new_device == NO_DEVICE ) {
+        return 0;
+    }
     p->lock();
 
     if ( new_device == NAVI_DEV ) {
@@ -327,6 +330,7 @@ static int select_device_action(SetupMenuSelect *p)
     SetupMenuSelect *interface = static_cast<SetupMenuSelect*>(top->getEntry(3));
     const DeviceAttributes &dattr = DeviceManager::getDevAttr(new_device);
     interface->delAllEntries();
+    interface->addEntry("select one", NO_PHY);
     const PackedInt5Array &tmp = dattr.itfs;
     ESP_LOGI(FNAME,"List Itfs raw %x", (unsigned)tmp.data);
     for (int i=0; i<tmp.maxSize; ++i) {
@@ -335,6 +339,10 @@ static int select_device_action(SetupMenuSelect *p)
         if ( iid != NO_PHY && DEVMAN->isAvail(iid) ) {
             interface->addEntry(DeviceManager::getItfName(iid).data(), iid);
         }
+    }
+    if ( interface->numEntries() == 1 ) {
+        interface->delAllEntries();
+        interface->addEntry("---", NO_PHY);
     }
     interface->unlock();
     return 0;
@@ -352,11 +360,13 @@ static int select_interface_action(SetupMenuSelect *p)
     // memorize interface
     new_interface = (InterfaceId)p->getValue();
     ESP_LOGI(FNAME, "nr childs %s: %d", top->getTitle(), top->getNrChilds());
+    SetupMenuSelect *confirm = static_cast<SetupMenuSelect*>(top->getEntry(4));
     if ( new_device > 0 && new_interface > 0) {
-        SetupMenuSelect *confirm = static_cast<SetupMenuSelect*>(top->getEntry(4));
-        p->lock();
         confirm->unlock();
         top->highlightLast();
+    }
+    else {
+        confirm->lock();
     }
     return 0;
 }
@@ -445,6 +455,7 @@ static void connected_devices_menu_add_device(SetupMenu *top) // dynamic!
     flavor->lock();
 
     // list all available devices for configuration
+    ndev->addEntry("select one", NO_DEVICE);
     for ( auto did : DeviceManager::allKnownDevs() ) {
         ESP_LOGI(FNAME,"Dev %d", did);
         const DeviceAttributes &da = DeviceManager::getDevAttr(did);
@@ -455,7 +466,8 @@ static void connected_devices_menu_add_device(SetupMenu *top) // dynamic!
             ndev->addEntry(da.name.data(), did);
         }
     }
-    if ( ndev->numEntries() == 0 ) {
+    if ( ndev->numEntries() == 1 ) {
+        ndev->delAllEntries();
         ndev->addEntry("---", NO_DEVICE);
     }
     ndev->unlock();
