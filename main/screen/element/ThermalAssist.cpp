@@ -74,7 +74,7 @@ ThermalAssist::ThermalAssist(PolarGauge &g) :
     _gauge(g),
     _glider_on_top(true),
     _confidence(LowPassFilterT<float>::alphaFromTau(2.0, 0.1f)),
-    _th_norm(LowPassFilterT<float>::alphaFromTau(vario_av_delay.get(), .5f))
+    _th_norm(LowPassFilterT<float>::alphaFromTau(vario_av_delay.get() * 2, .5f))
 {
     _glider_on_top = thermal_assist.get() != 2;
     _th_norm.reset(std::min(1.f, MC.get()));
