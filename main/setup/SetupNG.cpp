@@ -545,7 +545,7 @@ SetupNG<t_tenchar_id>  	ota_ap( "OTA_AP",  t_tenchar_id(""), false );
 SetupNG<t_tenchar_id>  	ota_pwd( "OTA_PWD",  t_tenchar_id(""), false );
 SetupNG<int>  			battery_display( "BAT_DISPLAY", Battery::BAT_NONE, true );
 SetupNG<int>		    log_level( "LOG_LEVEL", 3 );
-SetupNG<float>		    te_comp_adjust ( "ECOMP_ADJ", 92.f, true, SYNC_BIDIR, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(80, 100, 0.1));
+SetupNG<float>		    te_comp_adjust ( "ECOMP_ADJ", 92.f, true, SYNC_BIDIR, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(80, 120, 0.1));
 SetupNG<int>		    te_comp_enable( "TECOMP_ENA", 0, false, SYNC_BIDIR, PERSISTENT );
 SetupNG<int>		    rotary_inc( "ROTARY_INC", 1 );
 SetupNG<int>		    student_mode( "STUD_MOD", 0 );
