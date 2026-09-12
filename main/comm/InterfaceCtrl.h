@@ -17,6 +17,7 @@ class DataLink;
 class SensorBase;
 
 // All managed interfaces -> max 16 (setup uses 4 bits to store)
+// Do not change sequence of the enum values as they are used in nvs permanent storage
 typedef enum {
     NO_PHY = 0,
     CAN_BUS,
@@ -27,6 +28,7 @@ typedef enum {
     BT_SPP,
     BT_LE,
     OW_BUS,
+    GPIO_PIN,
     XCVPROXY // todo not yet implemented
 } InterfaceId;
 

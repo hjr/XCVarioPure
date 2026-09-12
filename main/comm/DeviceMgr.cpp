@@ -117,6 +117,7 @@ constexpr std::pair<DeviceId, DeviceAttributes> DEVATTR[] = {
     {DeviceId::FLARM_DEV,  {"", {{S2_RS232}}, {{FLARM_P, FLARMBIN_P}, 2}, 0, 0, nullptr}},
     {DeviceId::FLARM_DEV,  {"", {{BT_SPP}}, {{FLARM_P}, 1}, 0, 0, nullptr}},
     // {DeviceId::FLARM_DEV,  {"", {{XCVPROXY}}, {{FLARM_P, FLARMBIN_P}, 2}, 0, 0, nullptr}},
+    {DeviceId::FLAP_SENS_DEV,  {"FlapSens", {{GPIO_PIN}}, {{GPIO_P}, 1}, 0, IS_SEL, &flp_sens_devsetup}},
     {DeviceId::JUMBO_DEV,  {"jumbo putzi", {{CAN_BUS}}, {{JUMBOCMD_P}, 1} , 0, 0, nullptr}}, // auto reg
     {DeviceId::XCVARIOFIRST_DEV, {"Master XCV", {{S2_RS232}}, {{XCVSYNC_P}, 1}, 0, IS_SEL|SECOND_ONLY, &master_devsetup}},
     {DeviceId::XCVARIOSECOND_DEV, {"Second XCV", {{S2_RS232}}, {{XCVSYNC_P}, 1}, 0, IS_SEL|MASTER_ONLY, &second_devsetup}},
@@ -189,6 +190,7 @@ constexpr std::pair<InterfaceId, std::string_view> INTFCS[] = {
     {OW_BUS, "OneWire bus"},
     {S1_RS232, "S1 serial"},
     {S2_RS232, "S2 serial"},
+    {GPIO_PIN, "Pin I/O"},
     {WIFI_APSTA, "Wifi"},
     {BT_SPP, "BT serial"},
     {BT_LE, "BT low energy"}
@@ -233,6 +235,7 @@ constexpr std::pair<ProtocolType, std::string_view> PRTCLS[] = {
     {KRT2_REMOTE_P, "KRT2"},
     {ATR833_REMOTE_P, "ATR833"},
     {XCVQUERY_P, "XCV Query"},
+    {GPIO_P, "Signal"},
 };
 
 std::string_view DeviceManager::getPrtclName(ProtocolType pid) {

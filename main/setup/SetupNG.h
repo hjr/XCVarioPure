@@ -435,6 +435,7 @@ extern SetupNG<int> 		peer_caps;
 
 extern SetupNG<DeviceNVS>	anemoi_devsetup;
 extern SetupNG<DeviceNVS>	flarm_devsetup;
+extern SetupNG<DeviceNVS>	flp_sens_devsetup;
 extern SetupNG<DeviceNVS>	master_devsetup;
 extern SetupNG<DeviceNVS>	second_devsetup;
 extern SetupNG<DeviceNVS>	magleg_devsetup;

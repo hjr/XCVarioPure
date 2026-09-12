@@ -661,6 +661,7 @@ SetupNG<int>			peer_caps("PCAPS", 0, false, SYNC_NONE, VOLATILE );
 // Connected device entries persistance
 SetupNG<DeviceNVS>		anemoi_devsetup("ANEMOI", DeviceNVS() );
 SetupNG<DeviceNVS>		flarm_devsetup("FLARM", DeviceNVS() );
+SetupNG<DeviceNVS>		flp_sens_devsetup("FLPSENS", DeviceNVS() );
 SetupNG<DeviceNVS>		master_devsetup("MASTER", DeviceNVS() );
 SetupNG<DeviceNVS>		second_devsetup("SECOND", DeviceNVS() );
 SetupNG<DeviceNVS>		magleg_devsetup("MAGLEG", DeviceNVS() );

@@ -11,6 +11,7 @@
 #include <cstdint>
 
 // List of supported devices
+// Do not change sequence of the enum values as they are used in nvs permanent storage
 enum DeviceId : uint8_t
 {
     NO_DEVICE,
@@ -35,12 +36,14 @@ enum DeviceId : uint8_t
     RADIO_PROXY,
     TEMPSENS_DEV,
     FLARM_HOST3_DEV,
+    FLAP_SENS_DEV,
     TEST_DEV,
     TEST_DEV2
 };
 
 
 // Supported protocol id's
+// Do not change sequence of the enum values as they are used in nvs permanent storage
 enum ProtocolType : uint8_t
 {
     NO_ONE = 0, // not a protocol
@@ -65,6 +68,7 @@ enum ProtocolType : uint8_t
     XCNAV_P,
     SEEYOU_P, // <- 20
     XCVSENS_P,
+    GPIO_P,
     TEST_P
 };
 // old ones .. P_EYE_PEYA, P_EYE_PEYI
