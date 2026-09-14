@@ -118,7 +118,7 @@ static VarioKF vkf;
 #endif
 
 VarioFilter::VarioFilter() :
-    SensorTP<float>(vario_buffer, HSIZE, DUTY_CYCLE_MS),
+    SensorTP<float>(vario_buffer, HSIZE, DUTY_CYCLE_MS, 1),
     _tealt_lpf(0.25f),
     _Gact(15.f, DUTY_CYCLE_MS / 1000.f),
     _Goptimal(15.f, DUTY_CYCLE_MS / 1000.f)

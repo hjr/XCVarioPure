@@ -25,7 +25,7 @@ constexpr size_t HSIZE = SENSOR_HISTORY_DURATION_MS / DUTY_CYCLE_MS;
 static __attribute__((aligned(4))) vector_f gyro_buffer[ HSIZE + 1 ];
 
 GyroMPU6050::GyroMPU6050(MpuImu &mmpu) :
-    SensorTP<vector_f>(gyro_buffer, HSIZE, DUTY_CYCLE_MS),
+    SensorTP<vector_f>(gyro_buffer, HSIZE, DUTY_CYCLE_MS, 1),
     _my_mpu(mmpu),
     _scale(Units::deg_to_rad(mpud::math::gyroResolution(MpuImu::GYRO_SCALE))), // scale factor for raw gyro data to rad/s
     _gyro_lpf_dwydt(LowPassFilterT<float>::alphaFromTau(0.3333, DUTY_CYCLE_MS / 1000.f)),

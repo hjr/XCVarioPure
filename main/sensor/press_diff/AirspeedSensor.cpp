@@ -28,7 +28,7 @@ constexpr size_t HSIZE = SENSOR_HISTORY_DURATION_MS / DUTY_CYCLE_MS;
 static __attribute__((aligned(4))) pascal_t as_buffer[ HSIZE + 1 ]; // history buffer for airspeed sensor
 
 AirspeedSensor::AirspeedSensor() :
-    SensorTP<pascal_t>(as_buffer, HSIZE, DUTY_CYCLE_MS),
+    SensorTP<pascal_t>(as_buffer, HSIZE, DUTY_CYCLE_MS, 10),
     _dynp_zoglpf(0.25f, Units::mps_to_pascal(Units::kmh_to_mps(25.0f)))
 {
     _id = SensorId::DIFFPRESSURE | SensorFlags::SENSOR_LOCAL;
@@ -157,7 +157,7 @@ void AirspeedSensor::postProcess()
     bool rest_old = _isResting;
     if (std::fabsf(getHead()) < DYNP_THRESHOLD && std::fabsf(getIntegral(1000)) < DYNP_THRESHOLD) {
          // min. 5 sec below threshold, consider as rest
-        _restTimer += getDutyCycle();
+        _restTimer += getProcessInterval();
         if ( _restTimer > 5000) {
             _isResting = true;
         }
@@ -171,31 +171,30 @@ void AirspeedSensor::postProcess()
     }
 
     // airborne status update
-    if ( !(_counter % 10) ) {
-        if (!airborne.get() && (ias.get() > Speed2Fly.getStallSpeed())) {
-            // todo set airborn time, but dont save to nvs
-            _ab_counter++;
-            if ( _ab_counter > 10 ) { // needs to be above stall for 10 seconds
-                _ab_counter = 0;
-                airborne.set(true);
-                // todo save airborne time
-                ESP_LOGI(FNAME, "Airborne detected by airspeed sensor");
-            }
-        } else if (airborne.get() && (ias.get() < Speed2Fly.getStallSpeed())) {
-            _ab_counter++;
-            if ( _ab_counter > 10 && _isResting ) { // needs to be resting for 10 seconds
-                _ab_counter = 0;
-                airborne.set(false);
-                ESP_LOGI(FNAME, "Landed detected by airspeed sensor");
-            }
-        }
-        else {
+    if (!airborne.get() && (ias.get() > Speed2Fly.getStallSpeed())) {
+        // todo set airborn time, but dont save to nvs
+        _ab_counter++;
+        if ( _ab_counter > 10 ) { // needs to be above stall for 10 seconds
             _ab_counter = 0;
+            airborne.set(true);
+            // todo save airborne time
+            ESP_LOGI(FNAME, "Airborne detected by airspeed sensor");
+        }
+    } else if (airborne.get() && (ias.get() < Speed2Fly.getStallSpeed())) {
+        _ab_counter++;
+        if ( _ab_counter > 10 && _isResting ) { // needs to be resting for 10 seconds
+            _ab_counter = 0;
+            airborne.set(false);
+            ESP_LOGI(FNAME, "Landed detected by airspeed sensor");
         }
     }
+    else {
+        _ab_counter = 0;
+    }
+
     _counter++; // increment counter for auto offset correction, starts with 0 after setup
     if (!airborne.get()) {
-        if ( !(_counter % 50) ) {
+        if ( !(_counter % 5) ) {
             // check every 5 seconds for a usefull offset correction measurement
             float raw = getAVG(1000) / getMultiplier() + _offset; // convert to raw value
             // ESP_LOGI(FNAME,"AS raw value during rest: %f, raw offset: %d, variance: %f", raw, (int)_offset, getVariance(1000));

@@ -24,7 +24,7 @@ static __attribute__((aligned(4))) vector_f mag_buffer[ HSIZE + 1 ];
 
 MagVSensor* magSensor = nullptr;
 
-MagVSensor::MagVSensor() : SensorTP<vector_f>(mag_buffer, HSIZE, DUTY_CYCLE_MS),
+MagVSensor::MagVSensor() : SensorTP<vector_f>(mag_buffer, HSIZE, DUTY_CYCLE_MS, 5),
     _lpf_heading(LowPassFilterT<float>::alphaFromTau(1.f, .5f))
 {
     _id = SensorId::MAGNETO;
@@ -55,9 +55,6 @@ bool MagVSensor::setup() {
 
 void MagVSensor::postProcess()
 {
-    static uint8_t tick = 0;
-    if ( ++tick % 5 != 0 ) return; // only process every 5th reading
-
     if ( ! getHeadValid() ) {
         heading_mag.setInvalid();
         // heading_tru.setInvalid(); // fixme later, currently set from gps sensor as temporary solution

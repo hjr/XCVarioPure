@@ -58,16 +58,19 @@ constexpr bool operator==(SensorId a, SensorId b) {
 struct SensorEntry {
     SensorId    id = SensorId::NONE; // enum
     SensorBase* sensor = nullptr;   // polymorph
-    int         dutycycle = 0;      // x 100msec loops, 0 for not part of the loop
+    uint16_t    dutycycle = 0;      // x 100msec loops
+    uint16_t    postproccycle = 0;  // x 100msec loops, 0 for not part of the loop
     constexpr bool isActive() const { return sensor != nullptr; }
 };
 
 class SensorRegistry
 {
 public:
-    static constexpr int MaxSensors = 10;
+    static constexpr int MaxSensors = 14;
 
     static bool registerSensor(SensorBase* sensor);
+    static bool deregisterSensor(SensorBase* sensor);
+    static void applyChange();
     static bool isRegistered(SensorId id);
     static void disable(SensorId id);
     static void enterSimMode();
@@ -79,6 +82,8 @@ public:
     static void dump();
 
 private:
+    static bool addSensor(SensorBase* sensor);
+    static bool removeSensor(SensorBase* sensor);
     static SensorEntry* find(SensorId id);
     static std::array<SensorEntry, MaxSensors> all_sensors;
 };

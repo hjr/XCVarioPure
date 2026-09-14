@@ -99,7 +99,6 @@ uint8_t g_col_header_light_g;
 uint8_t g_col_header_light_b;
 uint8_t gyro_flash_savings=0;
 
-// boot with flasg "inSetup":=true and release the screen for other purpouse by setting it false.
 global_flags gflags = {};
 
 const constexpr char passed_text[] = "PASSED\n";
@@ -262,8 +261,10 @@ static void checkWarnings()
 
 static int client_sync_dataIdx = 10000;
 void startClientSync() {
-    // Start the client sync in a moment
-    client_sync_dataIdx = 0;
+    if (SetupCommon::isMaster()) {
+        // Start the client sync in a moment
+        client_sync_dataIdx = 0;
+    }
 }
 
 void readSensors(void *pvParameters)
@@ -295,7 +296,7 @@ void readSensors(void *pvParameters)
         for (SensorEntry *e = SensorRegistry::begin(); e != SensorRegistry::end(); ++e)
         {
             if ( ! e->isActive() ) break;
-            if ( !(count%e->dutycycle) ) {
+            if ( e->postproccycle && !(count%e->postproccycle) ) {
                 e->sensor->postProcess();
             }
         }
@@ -331,7 +332,7 @@ void readSensors(void *pvParameters)
         }
 
         // Check on new clients connecting
-        if (SetupCommon::isMaster() && client_sync_dataIdx < SetupCommon::numEntries()) {
+        if (client_sync_dataIdx < SetupCommon::numEntries()) {
             while (client_sync_dataIdx < SetupCommon::numEntries()) {
                 if (SetupCommon::syncEntry(client_sync_dataIdx++)) {
                     break;  // Hit entry to actually sync and send data
@@ -389,6 +390,9 @@ void readSensors(void *pvParameters)
         if ( !(count % 50) ) { // all 5 seconds
             SetupCommon::commitDirty(); // flash NVS settings permanently
         }
+
+        // check on sensor loop changes
+        SensorRegistry::applyChange();
 
 #ifdef DEBUG_AND_TEST
         if ( !(count % 300) ) {
@@ -1045,6 +1049,7 @@ void system_startup(void *args){
     }
 
     // enter normal operation
+    gflags.sensread_running = true;
     xTaskCreate(&readSensors, "readSensors", 5120, NULL, 12, NULL);
 
     CRMOD.updateCache();  // correct initialization

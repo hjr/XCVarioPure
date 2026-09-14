@@ -95,7 +95,7 @@ private:
 //
 class SensorBase {
 public:
-    SensorBase(int ums);
+    SensorBase(int ums, int process_multiple = 1);
     virtual ~SensorBase();
 
     virtual const char* name() const = 0;
@@ -104,17 +104,19 @@ public:
     virtual bool update(uint32_t now_ms) = 0;
     virtual void postProcess() {};
     virtual bool isResting() const { return false; } // whether the sensor is in a calm state
-    int getDutyCycle() const { return _update_interval_ms; }
+    uint16_t getDutyCycle() const { return _update_interval_ms; }
     float getDutyCycleS() const { return (float)_update_interval_ms / 1000.0f; }
+    uint16_t getProcessInterval() const { return _process_interval_ms; }
     inline int getLastUpdateTimeMs() const { return _last_update_time_ms; }
     int getLastObservationTime() const { return _last_update_time_ms - _latency_ms; }
-    inline int getLatency() const { return _latency_ms; }
+    inline uint16_t getLatency() const { return _latency_ms; }
     inline int getValidDuration() const { return _valid_time_ms; }
     inline SensorId getId() const { return _id; }
 
 protected:
-    uint32_t _update_interval_ms;   ///< Expected update interval
-    uint32_t _latency_ms;           ///< Sensor conversion/acquisition latency
+    uint16_t _update_interval_ms;   ///< Expected update interval
+    uint16_t _process_interval_ms;  ///< a multiple of the update interval for post processing
+    uint16_t _latency_ms;           ///< Sensor conversion/acquisition latency
     uint32_t _last_update_time_ms;  ///< Time the update got registered
     uint32_t _valid_time_ms;        ///< Time interval the reading is considered valid and might be used
     SensorId _id; /// SensorId as integer
@@ -124,8 +126,8 @@ template <typename T>
 class SensorTP : public SensorBase {
 public:
     SensorTP() = delete;
-    SensorTP(void *buf, size_t cap, uint32_t ums) :
-        SensorBase(ums),
+    SensorTP(void *buf, size_t cap, uint32_t ums, int pmult) :
+        SensorBase(ums, pmult),
         _history((T*)buf, cap)
     {
         if constexpr (std::is_same_v<T, float>) { // only for float types
@@ -398,7 +400,7 @@ public:
 
 protected:
     // time window to sample count
-    int getCount(int interval_ms) const {
+    int getCount(uint32_t interval_ms) const {
         // assume history might not be updated regularly, calculate count based on time rather than index
         // uint32_t cutoff_time = Clock::getMillis() - interval_ms;
         // return std::min((_last_update_time_ms - cutoff_time) / _update_interval_ms, (uint32_t)_history.level());

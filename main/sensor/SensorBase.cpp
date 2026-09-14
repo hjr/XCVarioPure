@@ -13,8 +13,9 @@
 #include "math/vector_3d.h"
 #include "logdef.h"
 
-SensorBase::SensorBase(int ums) :
+SensorBase::SensorBase(int ums, int process_multiple) :
     _update_interval_ms(ums),
+    _process_interval_ms(process_multiple * ums),
     _latency_ms(0),
     _last_update_time_ms(0),
     _valid_time_ms(3*ums),

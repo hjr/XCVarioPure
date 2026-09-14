@@ -24,7 +24,7 @@ static __attribute__((aligned(4))) vector_f gps_buffer[ HSIZE + 1 ];
 GpsVSensor* gpsSensor = nullptr;
 
 
-GpsVSensor::GpsVSensor() : SensorTP<vector_f>(gps_buffer, HSIZE, DUTY_CYCLE_MS)
+GpsVSensor::GpsVSensor() : SensorTP<vector_f>(gps_buffer, HSIZE, DUTY_CYCLE_MS, 1)
 {
     _id = SensorId::POSITION;
     _latency_ms = 750;      // classical Flarm latency
