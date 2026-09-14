@@ -11,6 +11,7 @@
 #include "Colors.h"
 #include "AdaptUGC.h"
 #include "setup/SetupNG.h"
+#include "math/Floats.h"
 
 #include "logdefnone.h"
 
@@ -39,7 +40,7 @@ void Battery::draw(float volt)
         blank();
         return;
     }
-    int chargev = (int)(volt * 10);
+    int chargev = fast_iroundf(volt * 10.f);
     if (_charge == chargev && !_dirty) {
         return;
     }
