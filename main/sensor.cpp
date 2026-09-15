@@ -849,7 +849,7 @@ void system_startup(void *args){
                 logged_tests += passed_text;
             }
         } else {
-            ESP_LOGI(FNAME, "Absolute pressure sensor TESTs failed");
+            ESP_LOGE(FNAME, "Absolute pressure sensor TESTs failed");
         }
 
         // register the GPS processer as sensor, it is created when e.g. a connected Flarm is configured
@@ -863,8 +863,20 @@ void system_startup(void *args){
 
         // Create the battery volt meter
         batSensor = new BatteryVoltage(); // created allways, but only used on master XCV
-        batSensor->setup();
-        SensorRegistry::registerSensor(batSensor);
+        if ( batSensor ) {
+            logged_tests += "Battery Voltage Sensor: ";
+            if (batSensor->setup()) {
+                logged_tests += passed_text;
+                SensorRegistry::registerSensor(batSensor);
+            }
+            else {
+                ESP_LOGE(FNAME, "Error: Battery voltage metering out of bounds");
+                MBOX->pushMessage(1, "Bat Meter: Fail");
+                logged_tests += failed_text;
+                selftestPassed = false;
+            }
+            printf("Battery voltage metering value=%f\n", batSensor->get());
+        }
     }
     else {
         boot_screen->finish(1);
@@ -904,26 +916,6 @@ void system_startup(void *args){
                     hardwareRevision.set(XCVARIO_23);  // XCV-23, including AHRS temperature control
                 }
             }
-        }
-    }
-
-    if ( batSensor ) {
-        // Check the battery monitor
-        float value;
-        for (int i=0; i<3; i++) {
-            batSensor->doRead(value);
-            batSensor->pushAndPublish(value, Clock::getMillis());
-        }
-        value = batSensor->get();
-        logged_tests += "Battery Voltage Sensor: ";
-        printf("Battery voltage metering value=%f\n", value);
-        if (value < 1 || value > 28.0) {
-            ESP_LOGE(FNAME, "Error: Battery voltage metering out of bounds, act value=%f", value);
-            MBOX->pushMessage(1, "Bat Meter: Fail");
-            logged_tests += failed_text;
-            selftestPassed = false;
-        } else {
-            logged_tests += passed_text;
         }
     }
 

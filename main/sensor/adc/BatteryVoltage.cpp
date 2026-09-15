@@ -34,7 +34,15 @@ BatteryVoltage::BatteryVoltage() :
 bool BatteryVoltage::setup() {
     begin(ADC_ATTEN_DB_0, ADC_UNIT_1, ADC_CHANNEL_7, true);
     setAdjust(factory_volt_adjust.get());
-    return true;
+
+    // Check the battery monitor
+    float value;
+    for (int i=0; i<3; i++) {
+        doRead(value);
+        pushAndPublish(value, Clock::getMillis());
+    }
+    value = get();
+    return (value > 1 && value < 28.0);
 }
 
 void BatteryVoltage::setAdjust(float adj){
