@@ -1,44 +1,31 @@
-/*
- * AnalogInput.h
- *
- *  Created on: Mar 18, 2018
- *      Author: iltis
- */
+/***********************************************************
+ ***   THIS DOCUMENT CONTAINS PROPRIETARY INFORMATION.   ***
+ ***    IT IS THE EXCLUSIVE CONFIDENTIAL PROPERTY OF     ***
+ ***     Rohs Engineering Design AND ITS AFFILIATES.     ***
+ ***                                                     ***
+ ***       Copyright (C) Rohs Engineering Design         ***
+ ***********************************************************/
 
 #pragma once
 
-#include "driver/time/ClockIntf.h"
+#include "sensor/SensorBase.h"
 
 #include <esp_adc/adc_oneshot.h>
 
+class AnalogInput : public SensorTP<float> {
+   public:
+    explicit AnalogInput(void *buf, size_t cap, uint32_t ums, int pm);
+    virtual ~AnalogInput();
 
-class AnalogInput final : public Clock_I {
-public:
-	explicit AnalogInput(float multiplier, adc_channel_t ch);
-	virtual ~AnalogInput();
+    // partial sensor API
+    bool probe() override { return true; }; // they are known at compile time
+    bool doRead(float& val) override; // read raw adc value
 
-	void begin(adc_atten_t attenuation, adc_unit_t unit=ADC_UNIT_1, bool calibration=true);
-	void setAdjust(float adj);
-	unsigned int getRaw() const;
- 	// create raw readings
-    bool tick() override;
-	// get a calibrated voltage reading
-	float get(bool damp=true);
+   protected:
+    void begin(adc_atten_t attenuation, adc_unit_t unit, adc_channel_t ch, bool calibration);
 
-    
-
-private:
-	const adc_channel_t _adc_ch;
-	static adc_oneshot_unit_handle_t _adc_handle;
-	adc_cali_handle_t _adc_cali = nullptr;
-	// buffers
-	static constexpr int RAWBUF = 5;
-	uint16_t raw[RAWBUF];
-	int rawidx = 0;
-	float _multiplier;
-	float _adjust_factor;   // reverse mV after voltage divider 22K/1.2K to Volt
-	float _damped_value = 0.;
+   private:
+    adc_channel_t _adc_ch;
+    static adc_oneshot_unit_handle_t _adc_handle;
+    adc_cali_handle_t _adc_cali = nullptr;
 };
-
-
-

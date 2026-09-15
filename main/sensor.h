@@ -33,7 +33,6 @@ union global_flags {
 
 class CANbus;
 class SerialLine;
-class AnalogInput;
 class WatchDog_C;
 
 extern global_flags gflags;
@@ -41,11 +40,8 @@ extern CANbus *CAN;
 extern SerialLine *S1,*S2;
 
 extern WatchDog_C *uiMonitor;
-extern AnalogInput *BatVoltage;
 
 extern std::string logged_tests;
-
-extern AnalogInput *AnalogInWk;
 
 extern meter_t alt_external;
 

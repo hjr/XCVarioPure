@@ -13,8 +13,9 @@
 #include "logdef.h"
 
 #include <atomic>
+
 #ifndef ALL_LOGS_DISABLED
-const char *idmemo[] = { "", "Tmp", "dP", "sP", "teP", "Pos", "Alt", "Var", "Mag", "Acc", "Gyr", "HUM", "FLP" };
+const char *idmemo[] = { "", "Tmp", "dP", "sP", "teP", "Pos", "Alt", "Var", "Mag", "Acc", "Gyr", "HUM", "FLP", "Bat" };
 #endif
 
 // manage max. 14 sensors at a time (incl. all virtual filter sensors)

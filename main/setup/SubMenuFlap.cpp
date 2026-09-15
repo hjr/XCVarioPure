@@ -9,6 +9,7 @@
 #include "SubMenuFlap.h"
 
 #include "Flap.h"
+#include "sensor/adc/FlapSens.h"
 #include "Atmosphere.h"
 #include "setup/SetupNG.h"
 #include "setup/SetupMenu.h"
@@ -44,7 +45,7 @@ static int select_flap_sens_pin(SetupMenuSelect *p)
         // enable flap sensor
         p->clear();
         ESP_LOGI(FNAME, "select_flap_sens_pin, have flap");
-        if (FLAP->haveAdcSensor())
+        if (flapSensor)
         {
             // ESP_LOGI(FNAME,"select_flap_sens_pin, have sensor");
             MYUCG->setPrintPos(5, 50);
@@ -57,7 +58,7 @@ static int select_flap_sens_pin(SetupMenuSelect *p)
             {
                 // ESP_LOGI(FNAME,"SW wait loop");
                 MYUCG->setPrintPos(5, 120);
-                MYUCG->printf("Sensor: % 4d   ", fast_iroundf(alpf.filter(FLAP->getSensorRaw())));
+                MYUCG->printf("Sensor: % 4d   ", fast_iroundf(alpf.filter(flapSensor->getHead())));
             }
         }
         vTaskDelay(pdMS_TO_TICKS(800));
@@ -80,10 +81,10 @@ static int wk_calib_level(SetupMenuSelect *p, int wk, AdaptiveLowPassFilterT<flo
     MYUCG->printf("Set Flap %s ", FLAP->getFL(wk)->label);
     int sensval = 0;
     int i = 0;
-    while (! Rotary->readSwitch() && FLAP)
+    while (! Rotary->readSwitch() && flapSensor)
     {
         i++;
-        sensval = fast_iroundf(alpf.filter(FLAP->getSensorRaw()));
+        sensval = fast_iroundf(alpf.filter(flapSensor->getHead()));
         if (!(i % 20))
         {
             MYUCG->setPrintPos(1, 140);
@@ -100,7 +101,7 @@ static int flap_cal_act(SetupMenuSelect *p)
     {
         return 0;
     }
-    if (!FLAP->haveAdcSensor())
+    if (!flapSensor)
     {
         p->clear();
         MYUCG->setPrintPos(1, 60);
@@ -109,6 +110,7 @@ static int flap_cal_act(SetupMenuSelect *p)
         ESP_LOGI(FNAME, "Abort calibration, no signal");
         return 0;
     }
+    
     AdaptiveLowPassFilterT<float> filter(0.08f, 0.25f);
     if (p->getSelect())
     {

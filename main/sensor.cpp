@@ -3,6 +3,7 @@
 
 #include "ESP32NVS.h"
 #include "imu/ImuSensor.h"
+#include "sensor/adc/BatteryVoltage.h"
 #include "sensor/pressure/PressureSensor.h"
 #include "sensor/press_diff/AirspeedSensor.h"
 #include "sensor/imu/AccMPU6050.h"
@@ -16,7 +17,6 @@
 #include "setup/CruiseMode.h"
 #include "driver/audio/ESPAudio.h"
 #include "driver/gpio/ESPRotary.h"
-#include "driver/gpio/AnalogInput.h"
 #include "IpsDisplay.h"
 #include "S2F.h"
 #include "version.h"
@@ -75,8 +75,6 @@
 
 
 SemaphoreHandle_t spiMutex=NULL;
-
-AnalogInput *BatVoltage = nullptr;
 
 AdaptUGC *MYUCG = 0;  // ( SPI_DC, CS_Display, RESET_Display );
 WatchDog_C *uiMonitor = nullptr;
@@ -314,9 +312,6 @@ void readSensors(void *pvParameters)
             AverageVario::recalcAvgClimb();
         }
 
-        // flap sensor update -> fixme create an external device gpio and a sensor to register
-        if (FLAP && FLAP->haveAdcSensor()) { FLAP->progress(count); }
-
         // Need to be done for client and main vario
         s2f_ideal.set(Speed2Fly.calculate(te_netto.get(), !CRMOD.getCMode()));
 
@@ -345,11 +340,6 @@ void readSensors(void *pvParameters)
 
         // every second todo convert into a sensor
         if ( !(count%10) ) {
-            // battery voltage update
-            if ( SetupCommon::isMaster() ) {
-                battery_voltage.set(BatVoltage->get());
-            }
-
             // Check auto s2f mode filter every second
             if (S2FSWITCH) {
                 S2FSWITCH->checkCruiseMode();
@@ -521,10 +511,8 @@ void system_startup(void *args){
             xcv_role.setReadOnly();
         }
     }
-	BatVoltage = new AnalogInput((22.0+1.2)/1200, ADC_CHANNEL_7); // created allways, but only used on master XCV
-	BatVoltage->begin(ADC_ATTEN_DB_0);  // for battery voltage
-	BatVoltage->setAdjust(factory_volt_adjust.get());
-	spi_bus_config_t buscfg = {
+
+    spi_bus_config_t buscfg = {
 		.mosi_io_num = SPI_MOSI,
 		.miso_io_num = SPI_MISO,
 		.sclk_io_num = SPI_SCLK,
@@ -870,6 +858,11 @@ void system_startup(void *args){
         if ( magSensor ) {
             SensorRegistry::registerSensor(magSensor);
         }
+
+        // Create the battery volt meter
+        batSensor = new BatteryVoltage(); // created allways, but only used on master XCV
+        batSensor->setup();
+        SensorRegistry::registerSensor(batSensor);
     }
     else {
         boot_screen->finish(1);
@@ -912,16 +905,24 @@ void system_startup(void *args){
         }
     }
 
-    float bat = BatVoltage->get(false);
-    logged_tests += "Battery Voltage Sensor: ";
-    printf("Battery voltage metering value=%f\n", bat);
-    if (bat < 1 || bat > 28.0) {
-        ESP_LOGE(FNAME, "Error: Battery voltage metering out of bounds, act value=%f", bat);
-        MBOX->pushMessage(1, "Bat Meter: Fail");
-        logged_tests += failed_text;
-        selftestPassed = false;
-    } else {
-        logged_tests += passed_text;
+    if ( batSensor ) {
+        // Check the battery monitor
+        float value;
+        for (int i=0; i<3; i++) {
+            batSensor->doRead(value);
+            batSensor->pushAndPublish(value, Clock::getMillis());
+        }
+        value = batSensor->get();
+        logged_tests += "Battery Voltage Sensor: ";
+        printf("Battery voltage metering value=%f\n", value);
+        if (value < 1 || value > 28.0) {
+            ESP_LOGE(FNAME, "Error: Battery voltage metering out of bounds, act value=%f", value);
+            MBOX->pushMessage(1, "Bat Meter: Fail");
+            logged_tests += failed_text;
+            selftestPassed = false;
+        } else {
+            logged_tests += passed_text;
+        }
     }
 
     // hardware components now got all detected

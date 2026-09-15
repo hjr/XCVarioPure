@@ -107,21 +107,16 @@ public:
     void removeLevel(int idx);
     void clearAllLevels() { flevel.clear(); prepLevels(); }
 
-    // periodic feed
-    void progress(int count);
-
     // recommendations
     float getOptimum(mps_t speed) const;
     mps_t getSpeedBand(float wkf, mps_t &maxv) const;
     mps_t getSpeed(float wkf) const;
-    static float getFlapPosition();
 
     // sensor access
     static inline bool sensAvailable() { return XcvCaps::haveCap(XcvCaps::FLAPSENS_CAP); }
-    bool haveAdcSensor() const { return sensorAdc != nullptr; }
-    void configureADC();
-    void removeADC();
-    int getSensorRaw() const;
+    static void configureADC();
+    static void removeADC();
+    bool sensorToLeverPosition(int sensorreading, float &wkf) const;
     int getNrPositions() const { return flevel.size(); }
     static constexpr const int MAX_NR_POS = 7;
 
@@ -129,16 +124,14 @@ private:
     // helper
     bool initFromNVS();
     void saveToNVS();
-    float sensorToLeverPosition(int sensorreading) const;
     int getWkIndex(float wkf) const;
+
     // attributes
     static Flap *_instance;
-    AnalogInput *sensorAdc = nullptr;
     std::vector<FlapLevel> flevel;
     bool _sens_order = true; // if true, sensval are in descending order from flap level 0, 1, 2, ...
     static const FlapLevel dummy;
     int rawFiltered = 0;
-    AdaptiveLowPassFilterT<float> _alp_filter;
 };
 
 extern Flap* FLAP;

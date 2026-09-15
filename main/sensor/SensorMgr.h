@@ -27,6 +27,7 @@ enum SensorId : uint8_t {
     GYRO_INERTIAL,
     HUMIDITY,
     FLAP_POSITION,
+    BATTERY_VOLTAGE,
     MAX_SENSOR_ID
 };
 

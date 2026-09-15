@@ -58,7 +58,7 @@ bool FBoxStateHash::operator!=(const FBoxStateHash &other) const noexcept
 FlapsBox::FlapsBox(Flap* flap, int16_t cx, int16_t cy, bool vertical) :
     ScreenElement(cx, cy),
     _flap(flap),
-    _fp_filter(0.3f),
+    _fp_filter(0.37f),
     _last_event(0,0),
     _vertical(vertical)
 {
@@ -136,7 +136,7 @@ void FlapsBox::draw(mps_t ias)
     bool have_sens = Flap::sensAvailable();
     float flap_ideal = _flap->getOptimum(ias);
     if ( have_sens ) {
-        curr_fp = Flap::getFlapPosition();
+        curr_fp = flap_pos.get()
         ESP_LOGI(FNAME, "flap position from sensor: %1.2f", curr_fp);
         // rasterize to .0, and .5
         float fp_base = fast_floorf(curr_fp);

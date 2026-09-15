@@ -2,12 +2,12 @@
 #include "Flap.h"
 
 #include "glider/Polars.h"
-#include "driver/gpio/AnalogInput.h"
 #include "setup/SetupNG.h"
 #include "setup/Capability.h"
+#include "sensor/adc/FlapSens.h"
 #include "sensor/imu/AccMPU6050.h"
+#include "sensor/SensorMgr.h"
 #include "math/Floats.h"
-#include "sensor.h"
 #include "logdefnone.h"
 
 #include <array>
@@ -49,8 +49,7 @@ static const std::array<FLConf, Flap::MAX_NR_POS> FL_STORE = {{
 
 ///////////////////////////////////////
 // Flap class implementation
-Flap::Flap() :
-    _alp_filter{0.08f, 0.5f}
+Flap::Flap()
 {
     configureADC();
     initFromNVS();
@@ -126,15 +125,12 @@ void Flap::prepLevels()
         _sens_order = flevel[0].sensval > flevel.back().sensval;
         FlapLevel vne(v_max.get(), 0, 0);
         vne.prep_speed = Units::kmh_to_mps(vne.nvs_speed);
-        vne.sensval = flevel[0].sensval;
+        vne.sensval = flevel[0].sensval + (_sens_order ? 100 : -100); // avoid zero deltas ;
         FlapLevel *prev = &vne;
         int sdelta = 0;
         float vdelta = 0.0f;
         for (FlapLevel &fl : flevel) { // iterate 0, 1, ..
             sdelta = fl.sensval - prev->sensval;
-            if (sdelta == 0) {
-                sdelta = _sens_order ? -1 : 1; // avoid zero deltas 
-            }
             fl.sens_delta = sdelta;
             vdelta = fl.prep_speed - prev->prep_speed;
             if (vdelta > -1.f ) {
@@ -176,33 +172,6 @@ void Flap::removeLevel(int idx)
 }
 
 
-// 10 Hz update
-void Flap::progress(int count) {
-    if ( sensorAdc ) {
-        int wkraw = std::clamp(getSensorRaw(), -1, 4096);
-        if (wkraw < 0) {
-            // drop erratic negative readings
-            ESP_LOGW(FNAME, "negative flap sensor reading: %d", wkraw);
-            return;
-        }
-        // ESP_LOGI(FNAME,"flap sensor =%d", wkraw );
-        rawFiltered = fast_iroundf(_alp_filter.filter(wkraw));
-        if (!(count % 3)) { // 3.3 Hz
-            float lever = sensorToLeverPosition(rawFiltered);
-            // ESP_LOGI(FNAME, "wk sensor=%1.2f  raw=%d", lever, rawFiltered);
-            if (lever < 0.) {
-                lever = 0.;
-            } else if (lever > flevel.size() - 1) {
-                lever = flevel.size() - 1;
-            }
-
-            if ((int)(flap_pos.get() * 10) != (int)(lever * 10)) {
-                flap_pos.set(lever); // update secondary vario
-                // ESP_LOGI(FNAME, "wk sensor=%1.2f  raw=%d", lever, rawFiltered);
-            }
-        }
-    }
-}
 
 /////////////////////////////////////////////////
 // the core API functions for flap recommendations
@@ -300,11 +269,6 @@ mps_t Flap::getSpeed(float wkf) const
     return ret;
 }
 
-float Flap::getFlapPosition()
-{
-    return flap_pos.get();
-}
-
 //////////////////////////////////
 // sensor access
 //////////////////////////////////
@@ -312,25 +276,26 @@ float Flap::getFlapPosition()
 // create the optional flap sensor
 void Flap::configureADC() {
     ESP_LOGI(FNAME, "Flap::configureADC");
-    if (sensorAdc) {
-        delete sensorAdc;
-        sensorAdc = nullptr;
-    }
+    if (flap_sensor.get() && !flapSensor) {
+        // only one port needed for XCV23+ HW
+        flapSensor = new FlapSens();
+        flapSensor->setup();
+        ESP_LOGI(FNAME, "Flap sensor configured");
 
-    if ( flap_sensor.get() ) {
-        // nonzero -> configured, only one port needed for XCV23+ HW
-        sensorAdc = new AnalogInput(-1, ADC_CHANNEL_6);
-    }
-    if (sensorAdc) {
-        ESP_LOGI(FNAME, "Flap sensor properly configured");
-        sensorAdc->begin(ADC_ATTEN_DB_0, ADC_UNIT_1, false);
-        delay(10);
-        uint32_t read = sensorAdc->getRaw();
+        // Check the sensor
+        float value;
+        for (int i=0; i<3; i++) {
+            flapSensor->doRead(value);
+            flapSensor->pushAndPublish(value, Clock::getMillis());
+        }
+        uint32_t read = (uint32_t)flapSensor->getHead();
         if (read == 0 || read >= 4096) { // try GPIO pin 34, series 2021-2
             ESP_LOGI(FNAME, "Flap sensor not found or edge value, reading: %d", (int)read);
         } else {
             ESP_LOGI(FNAME, "Flap sensor looks good, reading: %d", (int)read);
         }
+        SensorRegistry::registerSensor(flapSensor);
+
         XcvCaps::addToMine(XcvCaps::FLAPSENS_CAP);
     } else {
         ESP_LOGI(FNAME, "Sensor ADC NOT properly configured");
@@ -338,16 +303,41 @@ void Flap::configureADC() {
 }
 
 void Flap::removeADC() {
-    if (sensorAdc) {
-        delete sensorAdc;
-        sensorAdc = nullptr;
-    }
     XcvCaps::removeFromMine(XcvCaps::FLAPSENS_CAP);
+    if (flapSensor) {
+        SensorRegistry::deregisterSensor(flapSensor);
+        delete flapSensor;
+        flapSensor = nullptr;
+    }
 }
 
-int Flap::getSensorRaw() const
+bool Flap::sensorToLeverPosition(int val, float &wkf) const
 {
-    return sensorAdc ? sensorAdc->getRaw() : 0;
+    int wkmax = flevel.size()-1;
+    if ( wkmax > 0 ) {
+        int wki = wkmax;
+        for (int i = 0; i < flevel.size(); i++)
+        {
+            if (_sens_order) {
+                // sensor readings going down with increasing flap index
+                if (val > flevel[i].sensval) {
+                    wki = i;
+                    break;
+                }
+            }
+            else {
+                if (val < flevel[i].sensval) {
+                    wki = i;
+                    break;
+                }
+            }
+        }
+        wkf = std::clamp(wki + (float)(val - flevel[wki].sensval) / flevel[wki].sens_delta, 0.f, (float)wkmax);
+        // ESP_LOGI(FNAME,"getLeverPos(%d): wk: %d, cal %d, delta %d, frac: %1.2f ", val, wki, flevel[wki].sensval, flevel[wki].sens_delta, (float)(val - flevel[wki].sensval) / flevel[wki].sens_delta);
+        return true;
+    }
+    wkf = 0.;
+    return false;
 }
 
 
@@ -405,30 +395,3 @@ void Flap::saveToNVS()
     }
 }
 
-
-float Flap::sensorToLeverPosition( int val ) const
-{
-    int wk = flevel.size()-1;
-    if ( wk > 0 ) {
-        for (int i = 0; i < flevel.size(); i++)
-        {
-            if (_sens_order) {
-                // sensor readings going down with increasing flap index
-                if (val > flevel[i].sensval) {
-                    wk = i;
-                    break;
-                }
-            }
-            else {
-                if (val < flevel[i].sensval) {
-                    wk = i;
-                    break;
-                }
-            }
-        }
-        float wkf = wk + (float)(val - flevel[wk].sensval) / flevel[wk].sens_delta;
-        // ESP_LOGI(FNAME,"getLeverPos(%d): wk: %d, cal %d, delta %d, frac: %1.2f ", val, wk, flevel[wk].sensval, flevel[wk].sens_delta, (float)(val - flevel[wk].sensval) / flevel[wk].sens_delta);
-        return wkf;
-    }
-    return 0.;
-}

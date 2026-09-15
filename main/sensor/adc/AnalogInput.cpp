@@ -1,13 +1,13 @@
-/*
- * AnalogInput.cpp
- *
- *  Created on: Mar 18, 2018
- *      Author: iltis
- */
+/***********************************************************
+ ***   THIS DOCUMENT CONTAINS PROPRIETARY INFORMATION.   ***
+ ***    IT IS THE EXCLUSIVE CONFIDENTIAL PROPERTY OF     ***
+ ***     Rohs Engineering Design AND ITS AFFILIATES.     ***
+ ***                                                     ***
+ ***       Copyright (C) Rohs Engineering Design         ***
+ ***********************************************************/
 
-#include "driver/gpio/AnalogInput.h"
-
-#include "driver/time/Clock.h"
+#include "AnalogInput.h"
+#include "sensor/SensorMgr.h"
 #include "logdefnone.h"
 
 #include <esp_adc/adc_cali.h>
@@ -26,103 +26,81 @@ constexpr const unsigned DEFAULT_VREF = 1100;
 
 adc_oneshot_unit_handle_t AnalogInput::_adc_handle = nullptr;
 
-// multiplier - Uin(Umeasured) := ? ; including 1/1000, because adc measures in mV
-AnalogInput::AnalogInput( float multiplier, adc_channel_t ch) :
-	Clock_I(7),
-	_adc_ch(ch),
-	_multiplier(multiplier)
+AnalogInput::AnalogInput(void *buf, size_t cap, uint32_t ums, int pm) :
+    SensorTP<float>(buf, cap, ums, pm),
+    _adc_ch(ADC_CHANNEL_7)
 {
-	for( int i=0; i<RAWBUF; i++ ) {
-		raw[i] = 0;
-	}
 }
 
 AnalogInput::~AnalogInput()
 {
-	Clock::stop(this);
+    if (_adc_cali) {
+        adc_cali_delete_scheme_line_fitting(_adc_cali);
+        _adc_cali = nullptr;
+    }
+    // the _adc_handle is a shared resource so that it would need a use counter,
+    // or just to leave it.
+    // if (_adc_handle) {
+    //     adc_oneshot_del_unit(_adc_handle);
+    //     _adc_handle = nullptr;
+    // }
 }
 
 // can handle only one unit, but multiple channels on it
-void AnalogInput::begin(adc_atten_t attenuation, adc_unit_t unit, bool calibration)
+void AnalogInput::begin(adc_atten_t attenuation, adc_unit_t unit, adc_channel_t ch, bool calibration)
 {
-	ESP_LOGI(FNAME,"begin() unit: %d ch:%d cal:%d att: %d", unit, _adc_ch, calibration, attenuation  );
+    ESP_LOGI(FNAME, "begin() unit: %d ch:%d cal:%d att: %d", unit, ch, calibration, attenuation);
 
-	if ( ! _adc_handle ) {
-		adc_oneshot_unit_init_cfg_t init_config = {
-			.unit_id = unit,
-			.clk_src = (adc_oneshot_clk_src_t)0,
-			.ulp_mode = ADC_ULP_MODE_DISABLE,
-		};
-		ESP_ERROR_CHECK(adc_oneshot_new_unit(&init_config, &_adc_handle));
-	}
+    if (!_adc_handle) {
+        adc_oneshot_unit_init_cfg_t init_config = {
+            .unit_id = unit,
+            .clk_src = (adc_oneshot_clk_src_t)0,
+            .ulp_mode = ADC_ULP_MODE_DISABLE,
+        };
+        ESP_ERROR_CHECK(adc_oneshot_new_unit(&init_config, &_adc_handle));
+    }
 
-	adc_oneshot_chan_cfg_t config = {
+    adc_oneshot_chan_cfg_t config = {
         .atten = attenuation,
         .bitwidth = ADC_BITWIDTH_12,
     };
+    _adc_ch = ch;
     ESP_ERROR_CHECK(adc_oneshot_config_channel(_adc_handle, _adc_ch, &config));
 
-	if ( calibration ) {
+    if (calibration) {
         adc_cali_line_fitting_config_t cali_config = {
             .unit_id = unit,
             .atten = attenuation,
             .bitwidth = ADC_BITWIDTH_12,
-			.default_vref = DEFAULT_VREF,
+            .default_vref = DEFAULT_VREF,
         };
-        esp_err_t ret = adc_cali_create_scheme_line_fitting(&cali_config, &_adc_cali);
-        if (ret == ESP_OK && _adc_cali) {
-			ESP_LOGI(FNAME, "calibration scheme version is %s", "Line Fitting");
+        if (_adc_cali) {
+            adc_cali_delete_scheme_line_fitting(_adc_cali);
+            _adc_cali = nullptr;
         }
-	}
-	Clock::start(this);
+        adc_cali_create_scheme_line_fitting(&cali_config, &_adc_cali);
+    }
 }
 
-void AnalogInput::setAdjust(float adj){
-	_adjust_factor = _multiplier * ((100.0 + adj) / 100.0);
-}
+bool AnalogInput::doRead(float& val) {
+    constexpr int BATCH = 3;
+    int adc = 0;
+    esp_err_t err = ESP_OK;
+    for (int i = 0; i < BATCH; i++) {
+        int rawadc = 0;
+        err = adc_oneshot_read(_adc_handle, _adc_ch, &rawadc);
+        if ( err != ESP_OK ) { break; }
+        adc += rawadc;
+    }
+    if ( err == ESP_OK ) {
+        int raw = adc / BATCH;
+        if ( _adc_cali ) {
+            adc = raw;
+            adc_cali_raw_to_voltage(_adc_cali, adc, &raw);
+        }
+        val = static_cast<float>(raw);
+        return true;
+    }
 
-unsigned int AnalogInput::getRaw() const {
-	int adc = 0;
-	for( int i=0; i<RAWBUF; i++ ) {
-		adc += raw[i];
-	}
-	ESP_LOGI(FNAME,"ADC raw :%d ch :%d", adc/RAWBUF, _adc_ch );
-	return adc/RAWBUF;
-}
-bool AnalogInput::tick()
-{
-	constexpr int BATCH = 3;
-	int adc = 0;
-	for( int i=0; i<BATCH; i++ ) {
-		int rawadc = 0;
-		adc_oneshot_read(_adc_handle, _adc_ch, &rawadc);
-		adc += rawadc;
-	}
-	raw[rawidx++] = adc/BATCH;
-	rawidx = rawidx % RAWBUF;
-	return false;
-}
-
-
-float AnalogInput::get(bool damp) {
-	int adc = getRaw();
-	int voltage;
-
-	if ( _adc_cali ) {
-		ESP_LOGI(FNAME,"ADC have cal");
-		adc_cali_raw_to_voltage(_adc_cali, adc, &voltage);
-	}
-	else {
-		ESP_LOGI(FNAME,"ADC no cal");
-		voltage = adc;
-	}
-	ESP_LOGI(FNAME,"ADC raw ch:%d raw %d cal-volt: %d  corr-volt: %f, _adjust_factor: %f", _adc_ch, adc, voltage, _adjust_factor * voltage, _adjust_factor);
-
-	if ( damp ) {
-		_damped_value += ( voltage - _damped_value ) * 0.35;
-		return _adjust_factor * _damped_value;
-	}
-	else {
-		return _adjust_factor * voltage;
-	}
+    return false;
 }

@@ -39,7 +39,7 @@
 #include "sensor/imu/AccMPU6050.h"
 #include "sensor/pressure/PressureSensor.h"
 #include "sensor/press_diff/AirspeedSensor.h"
-#include "driver/gpio/AnalogInput.h"
+#include "sensor/adc/BatteryVoltage.h"
 #include "Colors.h"
 #include "AdaptUGC.h"
 #include "sensor.h"
@@ -201,11 +201,12 @@ int qnh_adj(SetupMenuValFloat* p) {
     return 0;
 }
 
-// Battery Voltage Meter Calibration
+// battery voltage meter calibration
+// only reachable, when batSensor exists
 int factv_adj(SetupMenuValFloat *p) {
 	ESP_LOGI(FNAME,"factv_adj");
-	BatVoltage->setAdjust(factory_volt_adjust.get());
-	float bat = BatVoltage->get();
+	batSensor->setAdjust(factory_volt_adjust.get());
+	float bat = batSensor->get();
 	MYUCG->setFont(ucg_font_fub14_hr, true);
 	MYUCG->setPrintPos(1, 100);
 	MYUCG->setColor( COLOR_WHITE );
@@ -803,7 +804,7 @@ static void system_menu_create_battery(SetupMenu *top) {
 	SetupMenuValFloat *bfull = new SetupMenuValFloat("Full", "Volt ", nullptr, &bat_full_volt, RST_NONE, false);
 	top->addEntry(bfull);
 
-    if ( SetupCommon::isMaster() ) {
+    if ( batSensor ) {
         SetupMenuValFloat *met_adj = SetupMenu::createVoltmeterAdjustMenu();
         top->addEntry(met_adj);
     }

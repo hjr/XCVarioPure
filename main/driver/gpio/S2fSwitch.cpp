@@ -156,7 +156,7 @@ bool Flap()
 {
     if (FLAP) 
     {
-        return FLAP->getFlapPosition() < s2f_flap_pos.get();
+        return flap_pos.get() < s2f_flap_pos.get();
     }
     return true;
 }
