@@ -270,9 +270,11 @@ void readSensors(void *pvParameters)
     esp_task_wdt_add(NULL);
     int count = 0;
     uint32_t sparse_time;
-    [[maybe_unused]] int max_time = 0;
-    [[maybe_unused]] int max_time_to = 0;
-    [[maybe_unused]] float avg_delta = 0;
+#ifdef DEBUG_AND_TEST
+    int max_time = 0;
+    int max_time_to = 0;
+    float avg_delta = 0;
+#endif
 
     while (1) {
         TickType_t xLastWakeTime = xTaskGetTickCount();
@@ -397,7 +399,7 @@ void readSensors(void *pvParameters)
             }
             extern MessagePool MP;
             ESP_LOGI(FNAME, "MPool in-use:%d, acq-fails: %d", MP.nrUsed(), MP.nrAcqFails());
-            ESP_LOGI(FNAME, "Sensor loop avg: %0.f, max %d", avg_delta, max_time);
+            std::printf("Sensor loop avg: %0.f, max %d\n", avg_delta, max_time);
 
             // struct timeval tv;
             // gettimeofday(&tv, NULL);
