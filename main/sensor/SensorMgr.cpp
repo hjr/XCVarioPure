@@ -128,8 +128,8 @@ bool SensorRegistry::addSensor(SensorBase* s)
     for (auto& e : all_sensors) {
         if (!e.isActive()) {
             e = { id, s, (uint16_t)(s->getDutyCycle() / 100), (uint16_t)(s->getProcessInterval() / 100) }; // store dutycycle in 100ms units
-            ESP_LOGW(FNAME, "%d. %s::%s sensor (%s) 0x%x registered with dutycycle %dmsec and postproccycle %dmsec", 
-                idx, isLocalSensor(id) ? "local" : "extern", idmemo[static_cast<int>(id) & 0x3f], s->name(), static_cast<int>(id), e.dutycycle * 100, e.postproccycle * 100);
+            ESP_LOGW(FNAME, "%d. %s::%s sensor%s (%s) 0x%x registered with dutycycle %dmsec and postproccycle %dmsec", 
+                idx, (isLocalSensor(id) ? "local" : "extern"), idmemo[static_cast<int>(id) & 0x3f], (isEssentialSensor(id) ? "*" : ""), s->name(), static_cast<int>(id), e.dutycycle * 100, e.postproccycle * 100);
             return true;
         }
         idx++;
