@@ -21,7 +21,7 @@
 #include "setup/SetupNG.h"
 #include "math/Floats.h"
 #include "math/Trigonometry.h"
-#include "logdef.h"
+#include "logdefnone.h"
 
 #include <cmath>
 #include <math.h>

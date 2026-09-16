@@ -424,13 +424,13 @@ Device* DeviceManager::addDevice(DeviceId did, ProtocolType proto, int listen_po
         }
     }
     else if ( iid == S1_RS232) {
-        if ( S1 ) { // S1 is instantiated allways (!)
+        if ( S1 ) { // S1 is instantiated always (!)
             S1->ConfigureIntf(-1); // load nvs setup
             itf = S1;
         }
     }
     else if ( iid == S2_RS232) {
-        if ( S2 ) { // S2 is instantiated allways (!)
+        if ( S2 ) { // S2 is instantiated always (!)
             S2->ConfigureIntf(-1);
             itf = S2;
         }

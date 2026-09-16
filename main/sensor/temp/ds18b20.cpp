@@ -58,7 +58,7 @@ bool DS18B20::primeRead(uint32_t now_ms)
     if ( OneWIRE->sendCommand(_address, DS18B20_CMD_CONVERT_TEMP) == ESP_OK ) {
         _converting = true;
     }
-    _convert_start_ms = now_ms; // allways keep timing for conversion
+    _convert_start_ms = now_ms; // always keep timing for conversion
     return _converting;
 }
 

@@ -649,7 +649,7 @@ void system_startup(void *args){
         }
     }
     if (CAN) {
-        // just allways, it respects the XCV role setting
+        // just always, it respects the XCV role setting
         DEVMAN->addDevice(CANREGISTRAR_DEV, REGISTRATION_P, CAN_REG_PORT, CAN_REG_PORT, CAN_BUS);
     }
 
@@ -871,7 +871,7 @@ void system_startup(void *args){
         }
 
         // Create the battery volt meter
-        batSensor = new BatteryVoltage(); // created allways, but only used on master XCV
+        batSensor = new BatteryVoltage(); // created always, but only used on master XCV
         if ( batSensor ) {
             logged_tests += "Battery Voltage Sensor: ";
             if (batSensor->setup()) {

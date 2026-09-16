@@ -23,7 +23,6 @@ public:
 
 private:
     // Received messages
-    static dl_action_t parseExcl_xsX(NmeaPlugin *plg);
     static dl_action_t parseExcl_xcs(NmeaPlugin *plg);
 
     static const ParserEntry _pt[];
