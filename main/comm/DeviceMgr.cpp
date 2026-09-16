@@ -23,6 +23,7 @@
 #include "setup/Capability.h"
 #include "setup/DataMonitor.h"
 #include "setup/SetupNG.h"
+#include "sensor/adc/FlapSens.h"
 #include "sensor/mag/MagVSensor.h"
 #include "sensor/gps/GpsVSensor.h"
 #include "sensor/temp/ds18b20.h"
@@ -117,7 +118,7 @@ constexpr std::pair<DeviceId, DeviceAttributes> DEVATTR[] = {
     {DeviceId::FLARM_DEV,  {"", {{S2_RS232}}, {{FLARM_P, FLARMBIN_P}, 2}, 0, 0, nullptr}},
     {DeviceId::FLARM_DEV,  {"", {{BT_SPP}}, {{FLARM_P}, 1}, 0, 0, nullptr}},
     // {DeviceId::FLARM_DEV,  {"", {{XCVPROXY}}, {{FLARM_P, FLARMBIN_P}, 2}, 0, 0, nullptr}},
-    {DeviceId::FLAP_SENS_DEV,  {"FlapSens", {{GPIO_PIN}}, {{GPIO_P}, 1}, 0, IS_SEL, &flp_sens_devsetup}},
+    {DeviceId::FLAP_SENS_DEV,  {"FlapSens", {{GPIO_PIN}}, {{NO_ONE}, 0}, 0, IS_SEL, &flp_sens_devsetup}},
     {DeviceId::JUMBO_DEV,  {"jumbo putzi", {{CAN_BUS}}, {{JUMBOCMD_P}, 1} , 0, 0, nullptr}}, // auto reg
     {DeviceId::XCVARIOFIRST_DEV, {"Master XCV", {{S2_RS232}}, {{XCVSYNC_P}, 1}, 0, IS_SEL|SECOND_ONLY, &master_devsetup}},
     {DeviceId::XCVARIOSECOND_DEV, {"Second XCV", {{S2_RS232}}, {{XCVSYNC_P}, 1}, 0, IS_SEL|MASTER_ONLY, &second_devsetup}},
@@ -248,15 +249,28 @@ std::string_view DeviceManager::getPrtclName(ProtocolType pid) {
 }
 
 // a dummy interface
+template<const char* Id, InterfaceId IdVal>
 class DmyItf final : public InterfaceCtrl
 {
 public:
     DmyItf() : InterfaceCtrl(true, false) {}
-    const char* getStringId() const override { return "NUL"; }
-    void ConfigureIntf(int cfg) override {}
-    int Send(const char *msg, int &len, int port=0) { return 0; }
+
+    InterfaceId getId() const override { return IdVal; }
+    const char* getStringId() const override { return Id; }
+
+    void ConfigureIntf(int) override {}
+
+    int Send(const char*, int&, int = 0) override
+    {
+        return 0;
+    }
 };
-static DmyItf dummy_itf;
+
+static constexpr char NUL_ID[]  = "NUL";
+static constexpr char GPIO_ID[] = "GPIO";
+static DmyItf<NUL_ID, NO_PHY>  dummy_itf;
+InterfaceCtrl *GpioDummy = nullptr;
+
 static ItfTarget monitor_target = {};
 
 static int tt_snd(Message *msg)
@@ -449,11 +463,18 @@ Device* DeviceManager::addDevice(DeviceId did, ProtocolType proto, int listen_po
         }
         itf = OneWIRE;
     }
+    else if ( iid == GPIO_PIN ) {
+        ESP_LOGI(FNAME, "GPIO interface selected");
+        if ( !GpioDummy ) {
+            GpioDummy = new DmyItf<GPIO_ID, GPIO_PIN>();
+        }
+        itf = GpioDummy;
+    }
     // else // NO_PHY is just the hint to take the same interface
 
     bool is_new = false;
     Device *dev = getDevice(did);
-    if (dev && itf == &dummy_itf) { // that means NO_PHY -> "take the same" was requeset
+    if (dev && itf == &dummy_itf) { // that means NO_PHY -> "take the same" was requested
         // Device already exists
         itf = dev->_itf;
     }
@@ -487,6 +508,9 @@ Device* DeviceManager::addDevice(DeviceId did, ProtocolType proto, int listen_po
                 dev->_sensor = OneWIRE->probeAndSetup(DS18B20MODEL); // DS18B20
             } else if ( iid == NO_PHY && did == TEMPSENS_DEV ) {
                 dev->_sensor = new TempSim();
+            }
+            else if ( did == FLAP_SENS_DEV ) {
+                dev->_sensor = FlapSens::create();
             }
             
             if ( ! dev->_sensor ) {
@@ -636,6 +660,9 @@ uint8_t DeviceManager::removeDevice(DeviceId did, bool nvsave)
             }
             else if ( itf == OneWIRE ) {
                 ESP_LOGI(FNAME, "keeping OneWire");
+            }
+            else if ( itf == GpioDummy ) {
+                ESP_LOGI(FNAME, "keeping GpioDummy");
             }
         }
 

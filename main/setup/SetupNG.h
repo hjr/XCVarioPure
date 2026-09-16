@@ -346,7 +346,6 @@ extern SetupNG<int>		    wk_sens_pos_6;
 extern SetupNG<int>       	stall_warning;
 extern SetupNG<int>       	flarm_warning;
 extern SetupNG<second_t>    flarm_alarm_time;
-extern SetupNG<int>       	flap_sensor;
 // extern SetupNG<float>       compass_dev_0;
 // extern SetupNG<float>       compass_dev_45;
 // extern SetupNG<float>       compass_dev_90;

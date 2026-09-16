@@ -16,6 +16,7 @@
 #include "setup/SetupMenuSelect.h"
 #include "setup/SetupMenuChar.h"
 #include "setup/SetupMenuValFloat.h"
+#include "setup/SetupAction.h"
 #include "setup/Capability.h"
 #include "AdaptUGC.h"
 #include "sensor/Filters.h"
@@ -36,42 +37,28 @@ static std::string flap_level_buzz[Flap::MAX_NR_POS];
 
 
 // Action Routines
-static int select_flap_sens_pin(SetupMenuSelect *p)
+int select_flap_sens_check(SetupAction *p)
 {
-    ESP_LOGI(FNAME, "select_flap_sens_pin");
-    Flap::theFlap()->configureADC();
-    if (p->getSelect())
+    p->clear();
+    ESP_LOGI(FNAME, "select_flap_sens_check");
+    if (flapSensor)
     {
-        // enable flap sensor
-        p->clear();
-        ESP_LOGI(FNAME, "select_flap_sens_pin, have flap");
-        if (flapSensor)
+        // ESP_LOGI(FNAME,"select_flap_sens_pin, have sensor");
+        MYUCG->setPrintPos(5, 50);
+        MYUCG->setFont(ucg_font_fub14_hr, true);
+        MYUCG->printf("Check Sensor Reading,");
+        MYUCG->setPrintPos(5, 80);
+        MYUCG->printf("Press Button to exit");
+        AdaptiveLowPassFilterT<float> alpf(0.08f,0.5f);
+        while (! Rotary->readSwitch(200))
         {
-            // ESP_LOGI(FNAME,"select_flap_sens_pin, have sensor");
-            MYUCG->setPrintPos(5, 50);
-            MYUCG->setFont(ucg_font_fub14_hr, true);
-            MYUCG->printf("Check Sensor Reading,");
-            MYUCG->setPrintPos(5, 80);
-            MYUCG->printf("Press Button to exit");
-            AdaptiveLowPassFilterT<float> alpf(0.08f,0.25f);
-            while (! Rotary->readSwitch(100))
-            {
-                // ESP_LOGI(FNAME,"SW wait loop");
-                MYUCG->setPrintPos(5, 120);
-                MYUCG->printf("Sensor: % 4d   ", fast_iroundf(alpf.filter(flapSensor->getHead())));
-            }
+            MYUCG->setPrintPos(5, 120);
+            MYUCG->printf("Sensor: % 4d   ", fast_iroundf(alpf.filter(flapSensor->getHead())));
         }
-        vTaskDelay(pdMS_TO_TICKS(800));
-        p->clear();
     }
-    else
-    {
-        // disable flap sensor
-        ESP_LOGI(FNAME, "NO flap");
-        Flap::theFlap()->removeADC();
-    }
-    p->getParent()->setDirty();
-    p->getParent()->getParent()->setDirty();
+    vTaskDelay(pdMS_TO_TICKS(800));
+    p->clear();
+
     return 0;
 }
 
@@ -80,16 +67,11 @@ static int wk_calib_level(SetupMenuSelect *p, int wk, AdaptiveLowPassFilterT<flo
     MYUCG->setPrintPos(1, 60);
     MYUCG->printf("Set Flap %s ", FLAP->getFL(wk)->label);
     int sensval = 0;
-    int i = 0;
-    while (! Rotary->readSwitch() && flapSensor)
+    while (!Rotary->readSwitch(200))
     {
-        i++;
         sensval = fast_iroundf(alpf.filter(flapSensor->getHead()));
-        if (!(i % 20))
-        {
-            MYUCG->setPrintPos(1, 140);
-            MYUCG->printf("Sensor: % 4d   ", sensval);
-        }
+        MYUCG->setPrintPos(1, 140);
+        MYUCG->printf("Sensor: % 4d    ", sensval);
     }
     return sensval;
 }
@@ -106,12 +88,12 @@ static int flap_cal_act(SetupMenuSelect *p)
         p->clear();
         MYUCG->setPrintPos(1, 60);
         MYUCG->printf("No Sensor, Abort");
-        vTaskDelay(pdMS_TO_TICKS(2000));
+        vTaskDelay(pdMS_TO_TICKS(1000));
         ESP_LOGI(FNAME, "Abort calibration, no signal");
         return 0;
     }
     
-    AdaptiveLowPassFilterT<float> filter(0.08f, 0.25f);
+    AdaptiveLowPassFilterT<float> filter(0.08f, 0.5f);
     if (p->getSelect())
     {
         // do calibration
@@ -136,27 +118,17 @@ static int flap_cal_act(SetupMenuSelect *p)
     return 0;
 }
 
-void flap_menu_create_flap_sensor(SetupMenu *wkm) // dynamic!
+void options_menu_create_flap_dev(SetupMenu *wkm)
 {
-    if ( wkm->getNrChilds() == 0 ) {
-        wkm->setDynContent();
-        SetupMenuSelect *wkes = new SetupMenuSelect("Flap Sensor", RST_NONE, select_flap_sens_pin, &flap_sensor);
-        wkes->mkEnable();
-        wkes->setHelp("A connected Flap sensor");
-        wkm->addEntry(wkes);
+    SetupAction *wkes = new SetupAction("Check Sensor", select_flap_sens_check, 0);
+    wkes->setHelp("Check raw sensor readings");
+    wkm->addEntry(wkes);
 
-        SetupMenuSelect *wkcal = new SetupMenuSelect("Sensor Calibration", RST_NONE, flap_cal_act);
-        wkcal->addEntry("Cancel");
-        wkcal->addEntry("Start");
-        wkcal->setHelp("Calibrate the flap sensor to the configured levels. (Press button to proceed)");
-        wkm->addEntry(wkcal);
-    }
-    SetupMenu *wkcal = static_cast<SetupMenu*>(wkm->getEntry(1));
-    if ( flap_sensor.get() ) {
-        wkcal->unlock();
-    } else {
-        wkcal->lock();
-    }
+    SetupMenuSelect *wkcal = new SetupMenuSelect("Sensor Calib.", RST_NONE, flap_cal_act);
+    wkcal->addEntry("Cancel");
+    wkcal->addEntry("Start");
+    wkcal->setHelp("Calibrate the flap sensor to the configured levels. (Press button to proceed)");
+    wkm->addEntry(wkcal);
 }
 
 

@@ -114,8 +114,6 @@ public:
 
     // sensor access
     static inline bool sensAvailable() { return XcvCaps::haveCap(XcvCaps::FLAPSENS_CAP); }
-    static void configureADC();
-    static void removeADC();
     bool sensorToLeverPosition(int sensorreading, float &wkf) const;
     int getNrPositions() const { return flevel.size(); }
     static constexpr const int MAX_NR_POS = 7;

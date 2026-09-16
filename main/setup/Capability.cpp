@@ -66,7 +66,10 @@ void XcvCaps::updateCapsFromDev(DeviceId did, bool add)
         case TEMPSENS_DEV:
             cap = XcvCaps::TEMP_CAP;
             break;
-        default:
+        case FLAP_SENS_DEV:
+            cap = XcvCaps::FLAPSENS_CAP;
+            break;
+       default:
             break;
     }
     if ( cap != 0 ) {

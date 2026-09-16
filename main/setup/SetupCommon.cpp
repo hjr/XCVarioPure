@@ -271,6 +271,9 @@ bool SetupCommon::getOldInt(const char* key, int& val) {
         return false;
     }
 }
+bool SetupCommon::eraseEntry( const char * key ) {
+    return NVS.erase(key);
+}
 
 void SetupCommon::commitDirty(){
 	for(int i = 0; i < instances.size(); i++ ) {

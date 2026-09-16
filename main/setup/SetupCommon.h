@@ -68,6 +68,7 @@ public:
 	static int restoreConfigChanges( int len, char *data );
 	static bool getOldFloat( const char * key, float &val );
 	static bool getOldInt( const char * key, int &val );
+    static bool eraseEntry( const char * key );
 
 	// housekeeping supporters
 	static void setSyncProto(XCVSyncMsg *sp) { syncProto = sp; }

@@ -11,8 +11,11 @@
 #include "AnalogInput.h"
 
 class FlapSens final : public AnalogInput {
-   public:
+private:
     explicit FlapSens();
+
+public:
+    static FlapSens* create();
     virtual ~FlapSens();
 
     // sensor API
@@ -20,7 +23,7 @@ class FlapSens final : public AnalogInput {
     bool setup() override;
     void postProcess() override;
 
-   private:
+private:
     AdaptiveLowPassFilterT<float> _alp_filter;
 };
 

@@ -14,6 +14,7 @@
 #include "setup/SetupMenuChar.h"
 #include "setup/SetupMenuValFloat.h"
 #include "setup/SubMenuCompassWind.h"
+#include "setup/SubMenuFlap.h"
 #include "setup/SetupAction.h"
 #include "setup/Capability.h"
 #include "setup/DataMonitor.h"
@@ -57,6 +58,9 @@ static SetupMenu::SetupMenuCreator_t get_itf_menu_creator(DeviceId did)
     if ( did == MAGLEG_DEV ) {
         return options_menu_create_compass_dev;
     }
+    else if ( did == FLAP_SENS_DEV ) {
+        return options_menu_create_flap_dev;
+    }
     return nullptr;
 }
 
@@ -68,7 +72,7 @@ static void connected_devices_menu_create_wifi(SetupMenu *top);
 static void connected_devices_menu_create_bluetooth(SetupMenu *top);
 static void connected_devices_menu_create_interfaceSX(SetupMenu *top);
 static void connected_devices_menu_create_interfaceCAN(SetupMenu *top);
-static void connected_devices_menu_create_interfaceOW(SetupMenu *top);
+static void connected_devices_menu_create_empty_conf(SetupMenu *top);
 
 static SetupMenu::SetupMenuCreator_t get_itf_menu_creator(InterfaceId iid)
 {
@@ -88,7 +92,10 @@ static SetupMenu::SetupMenuCreator_t get_itf_menu_creator(InterfaceId iid)
         return connected_devices_menu_create_interfaceCAN;
     }
     else if ( iid == OW_BUS ) {
-        return connected_devices_menu_create_interfaceOW;
+        return connected_devices_menu_create_empty_conf;
+    }
+    else if ( iid == GPIO_PIN ) {
+        return connected_devices_menu_create_empty_conf;
     }
     return nullptr;
 }
@@ -247,10 +254,10 @@ void connected_devices_menu_create_interfaceCAN(SetupMenu *top)
     canmode->addEntry("1000 kbit (default)", CAN_SPEED_1MBIT);
 }
 
-void connected_devices_menu_create_interfaceOW(SetupMenu *top)
+void connected_devices_menu_create_empty_conf(SetupMenu *top)
 {
     top->lock();
-    top->setHelp("One Wire interface bus has no config");
+    top->setHelp("This interface has no config");
 }
 
 
@@ -301,6 +308,8 @@ static int remove_device(SetupMenuSelect *p)
 
 ///////////////////////////
 // Add Devices
+static int select_interface_action(SetupMenuSelect *p);
+
 static int select_device_action(SetupMenuSelect *p)
 {
     ESP_LOGI(FNAME,"action did %d", p->getValue());
@@ -344,6 +353,10 @@ static int select_device_action(SetupMenuSelect *p)
         interface->delAllEntries();
         interface->addEntry("---", NO_PHY);
     }
+    else if ( interface->numEntries() == 2 ) {
+        interface->setSelect(1); // there is no actual choice to be made
+        return select_interface_action(interface);
+    }
     interface->unlock();
     return 0;
 }
@@ -354,7 +367,7 @@ static int select_flavor_action(SetupMenuSelect *p)
     top->setHighlight(3);
     return 0;
 }
-static int select_interface_action(SetupMenuSelect *p)
+int select_interface_action(SetupMenuSelect *p)
 {
     SetupMenu *top = p->getParent();
     // memorize interface

@@ -873,9 +873,6 @@ static void system_menu_create_hardware(SetupMenu *top) { // dynamic!
         top->addEntry(ageda);
 
         // Todo move into connected devices scheme
-        SetupMenu* wkm = new SetupMenu("Flap Sensor", flap_menu_create_flap_sensor);
-        top->addEntry(wkm);
-
         SetupMenuSelect *gear = new SetupMenuSelect("Gear Warn", RST_NONE, config_gear_warning, &gear_warning);
 		top->addEntry(gear);
 		gear->setHelp("Enable gear warning on S2 flap sensor or serial RS232 pin (pos. or neg. signal) or by external command");
@@ -900,22 +897,6 @@ static void system_menu_create_hardware(SetupMenu *top) { // dynamic!
         SetupMenu *bat = new SetupMenu("Battery Meter", system_menu_create_battery);
         bat->setHelp("Adjust voltage thresholds for battery state indication");
         top->addEntry(bat);
-    }
-    SetupMenu* wkm = static_cast<SetupMenu*>(top->getEntry(3));  // Flap Sensor
-    if (Speed2Fly.hasFlaps() && ! XcvCaps::isPeerCap(XcvCaps::FLAPSENS_CAP)) {
-        wkm->unlock();
-        if (flap_sensor.get()) {
-            wkm->setBuzzword(ENABLE_MODE[1].data());  // enabled
-        } else {
-            wkm->setBuzzword(ENABLE_MODE[0].data());  // disabled
-        }
-    } else {
-        wkm->lock();
-        if ( XcvCaps::isPeerCap(XcvCaps::FLAPSENS_CAP) ) {
-            wkm->setBuzzword(ENABLE_MODE[4].data());  // from peer
-        } else {
-            wkm->setBuzzword("n/a");
-        }
     }
 }
 

@@ -4,9 +4,7 @@
 #include "glider/Polars.h"
 #include "setup/SetupNG.h"
 #include "setup/Capability.h"
-#include "sensor/adc/FlapSens.h"
 #include "sensor/imu/AccMPU6050.h"
-#include "sensor/SensorMgr.h"
 #include "math/Floats.h"
 #include "logdefnone.h"
 
@@ -51,13 +49,11 @@ static const std::array<FLConf, Flap::MAX_NR_POS> FL_STORE = {{
 // Flap class implementation
 Flap::Flap()
 {
-    configureADC();
     initFromNVS();
     prepLevels();
     FLAP = this;
 }
 Flap::~Flap() {
-    removeADC();
     _instance = nullptr;
     FLAP = nullptr;
 }
@@ -272,44 +268,6 @@ mps_t Flap::getSpeed(float wkf) const
 //////////////////////////////////
 // sensor access
 //////////////////////////////////
-
-// create the optional flap sensor
-void Flap::configureADC() {
-    ESP_LOGI(FNAME, "Flap::configureADC");
-    if (flap_sensor.get() && !flapSensor) {
-        // only one port needed for XCV23+ HW
-        flapSensor = new FlapSens();
-        flapSensor->setup();
-        ESP_LOGI(FNAME, "Flap sensor configured");
-
-        // Check the sensor
-        float value;
-        for (int i=0; i<3; i++) {
-            flapSensor->doRead(value);
-            flapSensor->pushAndPublish(value, Clock::getMillis());
-        }
-        uint32_t read = (uint32_t)flapSensor->getHead();
-        if (read == 0 || read >= 4096) { // try GPIO pin 34, series 2021-2
-            ESP_LOGI(FNAME, "Flap sensor not found or edge value, reading: %d", (int)read);
-        } else {
-            ESP_LOGI(FNAME, "Flap sensor looks good, reading: %d", (int)read);
-        }
-        SensorRegistry::registerSensor(flapSensor);
-
-        XcvCaps::addToMine(XcvCaps::FLAPSENS_CAP);
-    } else {
-        ESP_LOGI(FNAME, "Sensor ADC NOT properly configured");
-    }
-}
-
-void Flap::removeADC() {
-    XcvCaps::removeFromMine(XcvCaps::FLAPSENS_CAP);
-    if (flapSensor) {
-        SensorRegistry::deregisterSensor(flapSensor);
-        delete flapSensor;
-        flapSensor = nullptr;
-    }
-}
 
 bool Flap::sensorToLeverPosition(int val, float &wkf) const
 {

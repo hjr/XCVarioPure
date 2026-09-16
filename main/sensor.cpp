@@ -637,6 +637,17 @@ void system_startup(void *args){
     if (gflags.first_pure_run) {
         DEVMAN->introduceDevices(); // create a flarm etc.
     }
+    {
+        // Check on abandonned FLAP_SENS nvs variable (remove in 2028)
+        int fval;
+        if (SetupCommon::getOldInt("FLAP_SENS", fval)) {
+            ESP_LOGI(FNAME, "Found old FLAP_SENS var: %d", fval);
+            SetupCommon::eraseEntry("FLAP_SENS");
+            if (fval != 0) {
+                DEVMAN->addDevice(FLAP_SENS_DEV, NO_ONE, 0, 0, GPIO_PIN, true);
+            }
+        }
+    }
     if (CAN) {
         // just allways, it respects the XCV role setting
         DEVMAN->addDevice(CANREGISTRAR_DEV, REGISTRATION_P, CAN_REG_PORT, CAN_REG_PORT, CAN_BUS);
