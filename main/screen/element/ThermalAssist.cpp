@@ -16,6 +16,7 @@
 #include "setup/SetupNG.h"
 #include "AdaptUGC.h"
 #include "Colors.h"
+#include "screen/MessageBox.h"
 #include "logdefnone.h"
 
 #include <algorithm>
@@ -203,6 +204,11 @@ void ThermalAssist::draw() {
     // calc peak norm
     th_min = std::max(th_min - 0.2f, .0f);
     _th_norm.filter(std::max(th_max - th_min, 1.f));
+    // Check norm
+    if ( _th_norm.get() < 1e-3f || std::isnan(_th_norm.get()) ) {
+        MBOX->pushMessage(3, "TA norm NaN");
+        _th_norm.reset(std::min(1.f, MC.get()));
+    }
 
     ESP_LOGI(FNAME,"TA draw, peak norm: %.2f, %.2f, %.2f", th_min, th_max, _th_norm.get());
     for (int i = 0; i < CA_NUM_DIRS; i++) {
