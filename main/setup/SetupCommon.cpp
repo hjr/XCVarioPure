@@ -25,7 +25,6 @@
 
 #include <cstdio>
 #include <string>
-#include <sstream>
 
 char SetupCommon::_ID[18] = { 0 };
 char SetupCommon::default_id[6] = { 0 };
@@ -91,18 +90,15 @@ bool SetupCommon::init()
 }
 
 bool SetupCommon::erase() {
-	if( flags._volatile != PERSISTENT ){
-		return true;
-	}
-	bool ret = NVS.erase(_key.data());
-	if( !ret ){
-		return false;
-	}
-	else {
-		// ESP_LOGI(FNAME,"NVS erased key  %s", _key.data());
-		setDefault();
-		return true;
-	}
+    if (flags._volatile != PERSISTENT) {
+        return true;
+    }
+    if (NVS.erase(_key.data())) {
+        // ESP_LOGI(FNAME,"NVS erased key  %s", _key.data());
+        setDefault();
+        return true;
+    }
+    return false;
 }
 
 // do the set blob that actually does not write to the flash either
@@ -110,10 +106,7 @@ bool SetupCommon::write()
 {
 	// ESP_LOGI(FNAME,"NVS write(): ");
 	ESP_LOGI(FNAME,"NVS set blob(key:%s, val: %s, len:%d )", _key.data(), getValueAsStr().c_str(), getSize() );
-	bool ret = NVS.setBlob( _key.data(), getPtr(), getSize() );
-	if( !ret )
-		return false;
-	return true;
+	return NVS.setBlob( _key.data(), getPtr(), getSize() );
 }
 
 bool SetupCommon::exists() const {
@@ -126,7 +119,7 @@ bool SetupCommon::exists() const {
 
 bool SetupCommon::commit() {
 	if( flags._volatile != PERSISTENT ){
-			return true;
+        return true;
 	}
 	ESP_LOGI(FNAME,"NVS commit(): %s ", _key.data());
 	write();
@@ -138,17 +131,14 @@ bool SetupCommon::commit() {
 	return true;
 }
 
-bool SetupCommon::sync(){
-	if( syncProto &&
-		( (!syncProto->isMaster() && flags._sync == SYNC_FROM_CLIENT)
-			|| (syncProto->isMaster() && flags._sync == SYNC_FROM_MASTER)
-			|| flags._sync == SYNC_BIDIR ) ) {
-		ESP_LOGI( FNAME,"Now sync %s", _key.data());
-		syncProto->sendItem(_key.data(), typeName(), getPtr(), getSize() );
-		return true;
-
-	}
-	return false;
+bool SetupCommon::sync() {
+    if (syncProto && ((!syncProto->isMaster() && flags._sync == SYNC_FROM_CLIENT) ||
+                      (syncProto->isMaster() && flags._sync == SYNC_FROM_MASTER) || flags._sync == SYNC_BIDIR)) {
+        ESP_LOGI(FNAME, "Now sync %s", _key.data());
+        syncProto->sendItem(_key.data(), typeName(), getPtr(), getSize());
+        return true;
+    }
+    return false;
 }
 
 SetupCommon *SetupCommon::getMember( const char * key ){
@@ -193,29 +183,34 @@ void SetupCommon::giveConfigChanges( httpd_req *req, bool log_only ){
 
 int SetupCommon::restoreConfigChanges( int len, char *data ){
 	ESP_LOGI(FNAME,"restoreConfigChanges len: %d \n %s", len, data );
-	std::istringstream fs;
-	fs.str( data );
-	std::string line;
 	int i=0;
 	int valid=0;
-	while( std::getline(fs, line, '\n') ) {
-		if( line.find( "xcvario-" ) != std::string::npos ){
+    char *line = data;
+    char *end  = data + len;
+	while( line < end ) {
+        char *next = static_cast<char*>(memchr(line, '\n', end - line));
+        if (!next) {
+            next = end;
+        }
+        const int line_len = next - line;
+        if (memmem(line, line_len, "xcvario-", 8) != nullptr) {
 			valid++;
 			ESP_LOGI(FNAME,"found xcvario-xxx, valid=%d", valid );
 		}
-		else if( line.find( "text/comma-separated-values" ) != std::string::npos ){
+        else if( memmem(line, line_len, "text/comma-separated-values", 27) != nullptr ){
 			valid++;
 			ESP_LOGI(FNAME,"found text/comma-separated-values, valid=%d", valid );
 		}
-		else if( line.find( "text/csv" ) != std::string::npos ){
+        else if( memmem(line, line_len, "text/csv", 8) != nullptr ){
 			valid++;
 			ESP_LOGI(FNAME,"found text/csv, valid=%d", valid );
 		}
-		else if( (line.length() > 1) && (valid >= 2) && line.find( "," ) != std::string::npos ){
-			ESP_LOGI(FNAME, "%d, len:%d, %s\n", i, line.length(), line.c_str() );
-			std::string key = line.substr(0, line.find(','));
-			std::string value = line.substr(line.find(',')+1, line.length());
-			ESP_LOGI(FNAME, "%d %s ", i, key.c_str()  );
+        else if( (line_len > 1) && (valid >= 2) && memmem(line, line_len, ",", 1) != nullptr ){
+            ESP_LOGI(FNAME, "%d, len:%d, %.*s\n", i, line_len, line_len, line );
+            const char *comma = static_cast<const char*>(memmem(line, line_len, ",", 1));
+            std::string key(line, comma - line);
+            std::string value(comma + 1, line + line_len - (comma + 1));
+            ESP_LOGI(FNAME, "%d %s ", i, key.c_str()  );
 			SetupCommon * item = getMember( key.c_str() );
 			if( item ){
 				ESP_LOGI(FNAME, ", typename: %c \n", item->typeName()  );
@@ -240,6 +235,7 @@ int SetupCommon::restoreConfigChanges( int len, char *data ){
 			}
 			i++;
 		}
+        line = (next < end) ? next + 1 : end;
 	}
 	ESP_LOGI(FNAME,"return %d", i);
 	return i;

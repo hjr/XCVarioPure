@@ -8,10 +8,8 @@
 
 #include "nmea_util.h"
 
-#include <iostream>
-#include <sstream>
-#include <iomanip>
 #include <cstdlib>
+#include <string>
 
 namespace NMEA {
 
@@ -98,11 +96,18 @@ void ensureTermination(std::string& str)
 
 std::string hexDump(const char *buffer, int len)
 {
-    std::ostringstream oss;
-    for (const char *c=buffer; len>0; len--, c++) {
-        oss << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(*c);
+    static constexpr char hex[] = "0123456789abcdef";
+
+    std::string result;
+    result.resize(2 * len);
+
+    for (int i = 0; i < len; ++i) {
+        const uint8_t v = static_cast<uint8_t>(buffer[i]);
+        result[2 * i]     = hex[v >> 4];
+        result[2 * i + 1] = hex[v & 0x0f];
     }
-    return oss.str();
+
+    return result;
 }
 
 

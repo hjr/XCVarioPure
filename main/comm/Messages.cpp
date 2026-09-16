@@ -8,17 +8,12 @@
 
 #include "Messages.h"
 
-#include <sstream>
-#include <iomanip>
+#include "protocol/nmea_util.h"
 
 std::string Message::hexDump(int upto) const
 {
-    if ( upto == 0 ) upto = buffer.size();
-    std::ostringstream oss;
-    for (unsigned char c : buffer.substr(0,upto)) {
-        oss << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(c);
-    }
-    return oss.str();
+    if ( upto == 0 ) { upto = buffer.size(); }
+    return NMEA::hexDump(buffer.data(), upto);
 }
 
 MessagePool::MessagePool()

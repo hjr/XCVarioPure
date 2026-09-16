@@ -11,7 +11,6 @@
 #include "AdaptUGC.h"
 #include "sensor.h"
 
-#include <sstream>
 #include <string>
 
 extern AdaptUGC *MYUCG;
@@ -24,13 +23,20 @@ int show_boot_log(SetupMenuDisplay *p,int mode)
     int ln = line_height;
     MYUCG->setFont(ucg_font_fub11_tr);
 
-    std::istringstream stream(logged_tests);
-    std::string line;
-    while (std::getline(stream, line)) {
+    size_t start = 0;
+    while (start < logged_tests.size()) {
+        size_t end = logged_tests.find('\n', start);
+        if (end == std::string::npos) {
+            end = logged_tests.size();
+        }
+
         MYUCG->setPrintPos(0, ln);
-        MYUCG->print(line.c_str());
+        MYUCG->print(logged_tests.substr(start, end - start).c_str());
+
         ln += line_height;
+        start = end + 1;
     }
+
     if ( mode == 0 ) {
         MYUCG->setPrintPos(20, ln+line_height);
         MYUCG->print("Press button to exit");

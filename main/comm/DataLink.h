@@ -17,7 +17,7 @@
 
 #include <set>
 
-using EnumList = std::set<int>;
+using EnumList = std::set<uint8_t>;
 class NmeaPrtcl;
 class NmeaPlugin;
 

@@ -8,6 +8,7 @@
 
 #include "SerialLine.h"
 
+#include "comm/DataLink.h"
 #include "math/Floats.h"
 #include "setup/SetupNG.h"
 #include "logdefnone.h"

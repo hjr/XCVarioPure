@@ -1,6 +1,5 @@
 #pragma once
 
-#include "comm/DataLink.h"
 #include "comm/InterfaceCtrl.h"
 
 #include "setup/SetupNG.h"
