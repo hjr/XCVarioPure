@@ -18,7 +18,7 @@
 class VarioFilter final : public SensorTP<meter_t> {
    public:
     VarioFilter();
-    const char* name() const override { return "tek_vario"; }
+    const char* name() const override { return "TekVario"; }
     bool probe() override { return true; }
     bool setup() override;
 
