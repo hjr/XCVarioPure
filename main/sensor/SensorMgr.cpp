@@ -18,6 +18,9 @@
 const char *idmemo[] = { "", "Tmp", "dP", "sP", "teP", "Pos", "Alt", "Var", "Mag", "Acc", "Gyr", "HUM", "FLP", "Bat" };
 #endif
 
+// queue changes
+QueueHandle_t SensorRegistry::sensChangeQueue = nullptr;
+
 // manage max. 14 sensors at a time (incl. all virtual filter sensors)
 std::array<SensorEntry, SensorRegistry::MaxSensors> SensorRegistry::all_sensors {};
 int SensorRegistry::numSensors = 0;
@@ -25,9 +28,14 @@ int SensorRegistry::numSensors = 0;
 // pending sensor change (add/remove) while sensor reading is running
 struct SensorChange {
     SensorBase* sensor;
-    enum Type : uint8_t { Add, Remove } type;
+    enum Type : uint8_t { Add, Remove, Sim } type;
 };
-std::atomic<SensorChange*> _pending;
+
+// initiate the synchronized sensor chenge by creating the queue
+void SensorRegistry::createQueue()
+{
+    sensChangeQueue = xQueueCreate(10, sizeof(SensorChange*));
+}
 
 bool SensorRegistry::registerSensor(SensorBase *s)
 {
@@ -37,12 +45,14 @@ bool SensorRegistry::registerSensor(SensorBase *s)
         return false;
     }
 
-    if ( gflags.sensread_running ) {
-        if (_pending.load() != nullptr || numSensors >= SensorRegistry::MaxSensors) {
+    if (sensChangeQueue) {
+        SensorChange* change = new SensorChange{ s, SensorChange::Add };
+        if (numSensors >= SensorRegistry::MaxSensors || xQueueSend(sensChangeQueue, &change, 0) != pdTRUE) {
+            delete change;
             ESP_LOGE(FNAME, "Cannot register sensor");
             return false;
         }
-        _pending.store(new SensorChange{ s, SensorChange::Add });
+        
         ESP_LOGI(FNAME, "Sensor registration scheduled");
         return true;
     }
@@ -57,12 +67,14 @@ bool SensorRegistry::deregisterSensor(SensorBase* s)
         return false;
     }
 
-    if ( gflags.sensread_running ) {
-        if (_pending.load() != nullptr) {
+    if (sensChangeQueue) {
+        SensorChange* change = new SensorChange{ s, SensorChange::Remove };
+        if (xQueueSend(sensChangeQueue, &change, 0) != pdTRUE) {
+            delete change;
             ESP_LOGE(FNAME, "Cannot deregister sensor");
             return false;
         }
-        _pending.store(new SensorChange{ s, SensorChange::Remove });
+        
         ESP_LOGI(FNAME, "Sensor deregistration scheduled");
         return true;
     }
@@ -72,16 +84,17 @@ bool SensorRegistry::deregisterSensor(SensorBase* s)
 
 void SensorRegistry::applyChange()
 {
-    SensorChange* change = _pending.load();
-    if (!change) { return; }
-
-    if (change->type == SensorChange::Add) {
-        addSensor(change->sensor);
-    } else if (change->type == SensorChange::Remove) {
-        removeSensor(change->sensor);
+    SensorChange* change = nullptr;
+    while (xQueueReceive(sensChangeQueue, &change, 0) == pdTRUE) {
+        if (change->type == SensorChange::Add) {
+            addSensor(change->sensor);
+        } else if (change->type == SensorChange::Remove) {
+            removeSensor(change->sensor);
+        } else if (change->type == SensorChange::Sim) {
+            goSimMode();
+        }
+        delete change;
     }
-    _pending.store(nullptr);
-    delete change;
 }
 
 bool SensorRegistry::isRegistered(SensorId id) {
@@ -102,10 +115,11 @@ void SensorRegistry::disable(SensorId id)
 
 void SensorRegistry::enterSimMode()
 {
-    ESP_LOGI(FNAME, "SensorRegistry entering SIMULATION MODE");
-    for (SensorEntry* e = all_sensors.data(); e != end(); ++e) {
-        if (e->isActive() && !isEssentialSensor(e->id)) {
-            e->id = e->id & ~SensorFlags::SENSOR_LOCAL; // no further sensor reading
+    if (sensChangeQueue) {
+        SensorChange* change = new SensorChange{ nullptr, SensorChange::Sim };
+        if (xQueueSend(sensChangeQueue, &change, 0) != pdTRUE) {
+            delete change;
+            ESP_LOGE(FNAME, "Cannot enter simulation mode");
         }
     }
 }
@@ -139,7 +153,7 @@ bool SensorRegistry::removeSensor(SensorBase* s)
 {
     for (int i = 0; i < numSensors; ++i) {
         if (all_sensors[i].sensor == s) {
-            ESP_LOGI(FNAME, "Remove sensor %d. of type 0x%x", i, all_sensors[i].id);
+            ESP_LOGW(FNAME, "%d. remove %s sensor (%s)", i, idmemo[static_cast<int>(s->getId()) & 0x3f], s->name());
             delete s;
             for (int j = i + 1; j < all_sensors.size(); ++j) {
                 all_sensors[j - 1] = all_sensors[j];
@@ -151,6 +165,17 @@ bool SensorRegistry::removeSensor(SensorBase* s)
 
     return true;
 }
+
+void SensorRegistry::goSimMode()
+{
+    ESP_LOGW(FNAME, "SensorRegistry entering SIMULATION MODE");
+    for (SensorEntry* e = all_sensors.data(); e != end(); ++e) {
+        if (e->isActive() && !isEssentialSensor(e->id)) {
+            e->id = e->id & ~SensorFlags::SENSOR_LOCAL; // no further sensor reading
+        }
+    }
+}
+
 
 SensorEntry* SensorRegistry::find(SensorId id) {
     for (SensorEntry *e = all_sensors.data(); e != end(); ++e)

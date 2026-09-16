@@ -26,7 +26,6 @@ union global_flags {
         uint16_t inSimulationMode : 1;
         uint16_t isPro : 1;
         uint16_t expert : 1;
-        uint16_t sensread_running : 1;
     };
     uint16_t raw;
 };

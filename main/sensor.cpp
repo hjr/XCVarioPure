@@ -276,6 +276,9 @@ void readSensors(void *pvParameters)
     float avg_delta = 0;
 #endif
 
+    // create the sensor change queue
+    SensorRegistry::createQueue();
+
     while (1) {
         TickType_t xLastWakeTime = xTaskGetTickCount();
         count++;  // 10x per second
@@ -1053,7 +1056,6 @@ void system_startup(void *args){
     }
 
     // enter normal operation
-    gflags.sensread_running = true;
     xTaskCreate(&readSensors, "readSensors", 5120, NULL, 12, NULL);
 
     CRMOD.updateCache();  // correct initialization

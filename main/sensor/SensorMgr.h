@@ -8,6 +8,9 @@
 
 #pragma once
 
+#include <freertos/FreeRTOS.h>
+#include <freertos/queue.h>
+
 #include <array>
 #include <cstdint>
 
@@ -68,6 +71,7 @@ class SensorRegistry
 {
 public:
     static constexpr int MaxSensors = 14;
+    static void createQueue();
 
     static bool registerSensor(SensorBase* sensor);
     static bool deregisterSensor(SensorBase* sensor);
@@ -85,7 +89,10 @@ public:
 private:
     static bool addSensor(SensorBase* sensor);
     static bool removeSensor(SensorBase* sensor);
+    static void goSimMode();
     static SensorEntry* find(SensorId id);
+    // data structures for managing sensors and pending changes
+    static QueueHandle_t sensChangeQueue;
     static std::array<SensorEntry, MaxSensors> all_sensors;
     static int numSensors;
 };
