@@ -81,7 +81,7 @@ private:
     float _alpha_min, _alpha_max;
     float _beta = 0.05f;
     float _activity = 0.f;
-    float _threshold = 40.f;
+    float _threshold = 50.f; // dedicated for raw flap sens readings
 };
 
 // A simple leaky integrator filter

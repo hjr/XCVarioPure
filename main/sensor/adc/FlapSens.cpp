@@ -16,14 +16,14 @@
 
 FlapSens *flapSensor = nullptr;
 
-constexpr int SENSOR_HISTORY_DURATION_MS = 300;  // .3 seconds for the adc to average readings
-constexpr int DUTY_CYCLE_MS = 100; // 100ms cycle time for adc
+constexpr int SENSOR_HISTORY_DURATION_MS = 200;
+constexpr int DUTY_CYCLE_MS = 200; // 200ms cycle time for adc
 constexpr size_t HSIZE = SENSOR_HISTORY_DURATION_MS / DUTY_CYCLE_MS;
 static __attribute__((aligned(4))) float  flps_buffer[ HSIZE + 1 ];
 
 FlapSens::FlapSens() :
-    AnalogInput(flps_buffer, HSIZE, DUTY_CYCLE_MS, 2),
-    _alp_filter{0.08f, 0.6f}
+    AnalogInput(flps_buffer, HSIZE, DUTY_CYCLE_MS, 1),
+    _alp_filter{0.08f, 0.5f}
 {
     _id = SensorId::FLAP_POSITION | SensorFlags::SENSOR_LOCAL,
     _valid_time_ms = 3000; // 3 seconds
