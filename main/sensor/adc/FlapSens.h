@@ -13,7 +13,7 @@
 class FlapSens final : public AnalogInput {
    public:
     explicit FlapSens();
-    virtual ~FlapSens() {};
+    virtual ~FlapSens();
 
     // sensor API
     const char* name() const override { return "FlapSens"; }

@@ -35,6 +35,10 @@ GyroMPU6050::GyroMPU6050(MpuImu &mmpu) :
     // push a single previous value
     pushAndPublish(vector_f(0,0,0), 0);
 }
+GyroMPU6050::~GyroMPU6050() {
+    gyroSensor = nullptr;
+}
+
 const char *GyroMPU6050::name() const { return _my_mpu.name(); }
 
 bool GyroMPU6050::doRead(vector_f& val) {

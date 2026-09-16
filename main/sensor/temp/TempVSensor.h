@@ -16,8 +16,12 @@
 class TempVSensor : public SensorTP<float> {
 public:
     TempVSensor();
-    ~TempVSensor() = default;
+    TempVSensor& operator=(const TempVSensor&) = delete;
+    TempVSensor(const TempVSensor&) = delete;
+    virtual ~TempVSensor();
+
     bool probe() override { return true; };
+    
 private:
     LowPassFilterT<float> _lpf;
 };

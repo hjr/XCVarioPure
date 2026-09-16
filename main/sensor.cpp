@@ -286,7 +286,6 @@ void readSensors(void *pvParameters)
         // read all sensors
         for (SensorEntry *e = SensorRegistry::begin(); e != SensorRegistry::end(); ++e)
         {
-            if ( ! e->isActive() ) break;
             if ( isLocalSensor(e->id) && !(count%e->dutycycle) ) {
                 e->sensor->update(sparse_time);
             }
@@ -295,7 +294,6 @@ void readSensors(void *pvParameters)
         // post process all sensors
         for (SensorEntry *e = SensorRegistry::begin(); e != SensorRegistry::end(); ++e)
         {
-            if ( ! e->isActive() ) break;
             if ( e->postproccycle && !(count%e->postproccycle) ) {
                 e->sensor->postProcess();
             }

@@ -22,6 +22,7 @@ class GyroMPU6050 final : public SensorTP<vector_f>
 {
 public:
     GyroMPU6050(MpuImu &mmpu);
+    virtual ~GyroMPU6050();
 
     static constexpr float GYRO_THRESHOLD = Units::deg_to_rad(0.2f); // thresholds (VQF-typical)
     static constexpr float GYRO_THRESHOLD2 = GYRO_THRESHOLD * GYRO_THRESHOLD; // squared for variance comparison

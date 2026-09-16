@@ -9,7 +9,7 @@ class PressureSensor : public SensorTP<pascal_t>
     using PSens_Type = enum : uint8_t { SPL06_007, BME280_SPI, PS_MAX_TYPES };
 
     PressureSensor(SensorId id);
-    virtual ~PressureSensor() {};
+    virtual ~PressureSensor();
 
     virtual bool selfTest(celsius_t& t, pascal_t& p) = 0;
     virtual celsius_t readTemperature(bool& success) = 0;

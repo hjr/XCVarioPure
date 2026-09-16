@@ -21,6 +21,7 @@ class AccMPU6050 final : public SensorTP<vector_f>
 {
 public:
     AccMPU6050(MpuImu &mmpu);
+    virtual ~AccMPU6050();
 
     static constexpr float ACCVAR_THRESHOLD2 = Units::ms2_to_g(0.04f * 0.04f); // variance threshold for rest detection (VQF-typical)
     static constexpr float ACCEL_THRESHOLD = Units::ms2_to_g(1.5f); // thresholds (VQF-typical)

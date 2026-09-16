@@ -479,9 +479,6 @@ Device* DeviceManager::addDevice(DeviceId did, ProtocolType proto, int listen_po
             else if ( did == FLARM_DEV ) {
                 dev->_sensor = GpsVSensor::createGpsVSensor(); // create flarm processor
             }
-            if ( nvsave && dev->_sensor ) {
-                SensorRegistry::registerSensor(dev->_sensor); // only when freshly configured (not a boot-up)
-            }
         }
         else {
             // a sensor w/o a data link?
@@ -497,6 +494,9 @@ Device* DeviceManager::addDevice(DeviceId did, ProtocolType proto, int listen_po
                 // suppress making it permanent
                 nvsave = false;
             }
+        }
+        if ( dev->_sensor ) {
+            SensorRegistry::registerSensor(dev->_sensor);
         }
         // update the capability list
         XcvCaps::updateCapsFromDev(did, true);
@@ -992,15 +992,10 @@ Device::~Device()
         }
     }
 
-    // Todo: Currently not the authentic place to manage the sensors.
-    // They grant once created and registered to some static buffer memory and are referenced through a set of exquisit global pointers. 
-    // So they are not really owned by the device, but more by the bus (OneWire) or the manager (Flarm). So do not delete them here, 
-    // but let them be, until the bus or manager decides to clean up. That is just how it is currently implemented.
-    // if ( _sensor && !SensorRegistry::isRegistered(_sensor->getId()) ) {
-    //     ESP_LOGI(FNAME, "Delete sensor for device %d.", _id);
-    //     delete _sensor;
-    //     // _sensor = nullptr;
-    // }
+    if ( _sensor  ) {
+        ESP_LOGI(FNAME, "Delete sensor for device %d.", _id);
+        SensorRegistry::deregisterSensor(_sensor); // deregistering will delete the sensor
+    }
 }
 
 ProtocolItf *Device::getProtocol(ProtocolType p) const

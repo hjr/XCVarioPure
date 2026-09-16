@@ -43,6 +43,9 @@ AccMPU6050::AccMPU6050(MpuImu &mmpu) :
     // accelerometer filter init.
     _lpf_accel.reset({0.f,0.f,1.f});
 }
+AccMPU6050::~AccMPU6050() {
+    accSensor = nullptr;
+}
 
 bool AccMPU6050::doRead(vector_f& val) {
 

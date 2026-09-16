@@ -38,6 +38,14 @@ PressureSensor::PressureSensor(SensorId id) : SensorTP<pascal_t>((id == SensorId
     }
 }
 
+PressureSensor::~PressureSensor() {
+    if (this == baroSensor) {
+        baroSensor = nullptr;
+    } else if (this == teSensor) {
+        teSensor = nullptr;
+    }
+}
+
 meter_t PressureSensor::readAltitude(pascal_t qnh, bool& success) {
     success = getHeadValid();
     return Units::calcAltitude( qnh, getHead() );

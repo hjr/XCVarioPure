@@ -31,6 +31,10 @@ BatteryVoltage::BatteryVoltage() :
     setFilter(&_lpf_volt);
 }
 
+BatteryVoltage::~BatteryVoltage() {
+    batSensor = nullptr;
+}
+
 bool BatteryVoltage::setup() {
     begin(ADC_ATTEN_DB_0, ADC_UNIT_1, ADC_CHANNEL_7, true);
     setAdjust(factory_volt_adjust.get());

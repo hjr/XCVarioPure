@@ -14,7 +14,7 @@
 class BatteryVoltage final : public AnalogInput {
    public:
     explicit BatteryVoltage();
-    virtual ~BatteryVoltage() {};
+    virtual ~BatteryVoltage();
 
     // sensor API
     const char* name() const override { return "Battery"; }

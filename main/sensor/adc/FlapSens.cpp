@@ -29,6 +29,10 @@ FlapSens::FlapSens() :
     _valid_time_ms = 3000; // 3 seconds
 }
 
+FlapSens::~FlapSens() {
+    flapSensor = nullptr;
+}
+
 bool FlapSens::setup() {
     begin(ADC_ATTEN_DB_0, ADC_UNIT_1, ADC_CHANNEL_6, false);
     return true;

@@ -19,6 +19,7 @@ private:
     MagVSensor();
 
 public:
+    virtual ~MagVSensor();
     static MagVSensor* createMagVSensor();
 
     const char* name() const override { return "MAG"; }

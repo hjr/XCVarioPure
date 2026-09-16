@@ -18,7 +18,7 @@ public:
     static constexpr pascal_t DYNP_THRESHOLD = Units::mps_to_pascal(12.f / 3.6f); // ca. 12 km/h
 
     AirspeedSensor();
-    virtual ~AirspeedSensor() {};
+    virtual ~AirspeedSensor();
 
     static AirspeedSensor *autoSetup();
 

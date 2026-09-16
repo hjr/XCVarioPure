@@ -22,12 +22,14 @@ SensorBase::SensorBase(int ums, int process_multiple) :
     _id(SensorId::NONE)
 {
     // Pls register sensors as needed for the read-sensor loop and in the proper order
+    // and when they are fully initialized and tested functional.
     // SensorRegistry::registerSensor(this);
 }
 
+// destructing a registered sensor is only allowed from the registry itself
+// so please just deregister the sensor.
 SensorBase::~SensorBase()
 {
-    // deregister is a nogo and would by chance crash the sensor loop grabbing a nullptr
 }
 
 template <typename T>

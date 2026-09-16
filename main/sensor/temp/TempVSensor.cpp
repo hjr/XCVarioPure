@@ -27,3 +27,6 @@ TempVSensor::TempVSensor() :
     setFilter(&_lpf);
     oatSensor = this;
 }
+TempVSensor::~TempVSensor() {
+    oatSensor = nullptr;
+}

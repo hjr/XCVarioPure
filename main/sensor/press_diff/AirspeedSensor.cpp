@@ -35,6 +35,9 @@ AirspeedSensor::AirspeedSensor() :
     setNVSVar(&dynp);
     setFilter(&_dynp_zoglpf);
 }
+AirspeedSensor::~AirspeedSensor() {
+    asSensor = nullptr;
+}
 
 static AirspeedSensor* factory(AirspeedSensor::ASens_Type type)
 {

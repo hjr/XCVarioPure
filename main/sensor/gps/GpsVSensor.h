@@ -20,8 +20,11 @@ extern GpsVSensor* gpsSensor;
 class GpsVSensor final : public SensorTP<vector_f> {
 private:
     GpsVSensor();
-
+    GpsVSensor(const GpsVSensor&) = delete;
+    GpsVSensor& operator=(const GpsVSensor&) = delete;
+    
 public:
+    virtual ~GpsVSensor();
     static GpsVSensor* createGpsVSensor();
 
     const char* name() const override { return "GPS"; }

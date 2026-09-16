@@ -76,8 +76,8 @@ public:
     static void disable(SensorId id);
     static void enterSimMode();
 
-    static auto begin() { return all_sensors.begin(); }
-    static auto end()   { return all_sensors.end(); }
+    static SensorEntry* begin() { return all_sensors.begin(); }
+    static SensorEntry* end() { return all_sensors.data() + numSensors; }
 
     // for debug purposes
     static void dump();
@@ -87,5 +87,6 @@ private:
     static bool removeSensor(SensorBase* sensor);
     static SensorEntry* find(SensorId id);
     static std::array<SensorEntry, MaxSensors> all_sensors;
+    static int numSensors;
 };
 

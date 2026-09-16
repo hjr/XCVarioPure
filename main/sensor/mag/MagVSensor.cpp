@@ -34,6 +34,9 @@ MagVSensor::MagVSensor() : SensorTP<vector_f>(mag_buffer, HSIZE, DUTY_CYCLE_MS, 
     _bias = {};
     _scale = { 1.f, 1.f, 1.f };
 }
+MagVSensor::~MagVSensor() {
+    magSensor = nullptr;
+}
 
 MagVSensor* MagVSensor::createMagVSensor() {
     if ( !magSensor ) {
