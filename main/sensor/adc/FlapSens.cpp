@@ -39,6 +39,8 @@ FlapSens* FlapSens::create() {
         flapSensor->setup();
         ESP_LOGI(FNAME, "Flap sensor configured");
 
+        flapSensor->pushAndPublish(0.f, Clock::getMillis());
+#ifdef DEBUG_AND_TEST
         // Check the sensor
         float value;
         for (int i=0; i<3; i++) {
@@ -51,7 +53,7 @@ FlapSens* FlapSens::create() {
         } else {
             ESP_LOGI(FNAME, "Flap sensor looks good, reading: %d", (int)read);
         }
-
+#endif
     }
     return flapSensor;
 }
@@ -61,7 +63,7 @@ bool FlapSens::setup() {
     return true;
 }
 
-// 5 Hz update
+// max. 5 Hz update
 void FlapSens::postProcess() {
     float wkraw = std::clamp(getHead(), -1.f, 4096.f);
     if (wkraw < 0) {
@@ -69,7 +71,7 @@ void FlapSens::postProcess() {
         ESP_LOGW(FNAME, "negative flap sensor reading: %f", wkraw);
         return;
     }
-    // ESP_LOGI(FNAME,"flap sensor =%d", wkraw );
+    ESP_LOGI(FNAME,"flap sensor = %f", wkraw );
     int raw_filtered = fast_iroundf(_alp_filter.filter(wkraw));
 
     if (FLAP) {
@@ -82,4 +84,14 @@ void FlapSens::postProcess() {
             }
         }
     }
+}
+
+void FlapSens::enterSimMode()
+{
+    // drop postprocessing
+    _process_interval_ms = 0;
+    // raise valid time
+    _valid_time_ms = 100000;
+    // route the flap position directly to NVS
+    setNVSVar(&flap_pos);
 }

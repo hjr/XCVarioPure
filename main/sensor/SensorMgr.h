@@ -34,6 +34,7 @@ public:
 
     static bool registerSensor(SensorBase* sensor);
     static bool deregisterSensor(SensorBase* sensor);
+    static void updateCycleTimes(SensorBase* sensor);
     static void applyChange();
     static bool isRegistered(SensorType typ);
     static void disable(SensorId id);

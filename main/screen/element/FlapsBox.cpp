@@ -136,7 +136,7 @@ void FlapsBox::draw(mps_t ias)
     bool have_sens = Flap::sensAvailable();
     float flap_ideal = _flap->getOptimum(ias);
     if ( have_sens ) {
-        curr_fp = flap_pos.get()
+        curr_fp = flap_pos.get();
         ESP_LOGI(FNAME, "flap position from sensor: %1.2f", curr_fp);
         // rasterize to .0, and .5
         float fp_base = fast_floorf(curr_fp);

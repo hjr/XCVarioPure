@@ -79,6 +79,20 @@ bool SensorRegistry::deregisterSensor(SensorBase* s)
     return removeSensor(s);
 }
 
+void SensorRegistry::updateCycleTimes(SensorBase* s)
+{
+    if (!s) {
+        ESP_LOGE(FNAME, "Attempt to update cycle times for nullptr sensor");
+        return;
+    }
+
+    SensorEntry *entry = find(s->getId().type);
+    if (entry && entry->sensor == s) {
+        entry->dutycycle = (uint16_t)(s->getDutyCycle() / 100);
+        entry->postproccycle = (uint16_t)(s->getProcessInterval() / 100);
+    }
+}
+
 void SensorRegistry::applyChange()
 {
     SensorChange* change = nullptr;

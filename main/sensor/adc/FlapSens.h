@@ -23,6 +23,9 @@ public:
     bool setup() override;
     void postProcess() override;
 
+    // sim mode
+    void enterSimMode();
+
 private:
     AdaptiveLowPassFilterT<float> _alp_filter;
 };

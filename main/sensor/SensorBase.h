@@ -114,7 +114,7 @@ public:
 
 protected:
     uint16_t _update_interval_ms;   ///< Expected update interval
-    uint16_t _process_interval_ms;  ///< a multiple of the update interval for post processing
+    uint16_t _process_interval_ms;  ///< a multiple of the update interval for post processing, or "0" if not used
     uint16_t _latency_ms;           ///< Sensor conversion/acquisition latency
     uint32_t _last_update_time_ms;  ///< Time the update got registered
     uint32_t _valid_time_ms;        ///< Time interval the reading is considered valid and might be used

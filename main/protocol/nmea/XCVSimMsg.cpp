@@ -17,8 +17,9 @@
 #include "sensor/imu/AccMPU6050.h"
 #include "sensor/imu/GyroMPU6050.h"
 #include "sensor/mag/MagVSensor.h"
+#include "sensor/adc/FlapSens.h"
 #include "math/Trigonometry.h"
-#include "logdef.h"
+#include "logdefnone.h"
 
 #include <cstring>
 
@@ -96,7 +97,49 @@ dl_action_t XCVSimMsg::parse_Sens(NmeaPlugin *plg)
     return NOACTION; // never forward the simulation
 }
 
+
+dl_action_t XCVSimMsg::parseExcl_XCV(NmeaPlugin *plg)
+{
+    ProtocolState *sm = plg->getNMEA().getSM();
+    const std::vector<int> *word = &sm->_word_start;
+
+    ESP_LOGD(FNAME, "XCV: %d, %s", word->at(0), sm->_frame.c_str());
+    int time = Clock::getMillis();
+
+    const char *s = sm->_frame.c_str();
+    const char *key = s + word->at(0);
+    if (strncmp(key, "CA1", 3) == 0)
+    {
+        //          glider type, empty weight, crew weight, ballast, speed cal, QNH
+        // !XCV,CA1,2305,229,88,0,0,102000.00*42
+        ESP_LOGI(FNAME, "ConfigAll1");
+        int value = atoi(s + word->at(1));
+        glider_type.set(value);
+        value = atoi(s + word->at(2));
+        empty_weight.set(value);
+        value = atoi(s + word->at(3));
+        crew_weight.set(value);
+        value = atoi(s + word->at(4)); // ballast
+        ballast_kg.set(value);
+        value = atoi(s + word->at(5)); // speed cal
+        speedcal.set(value);
+        float fvalue = atof(s + word->at(6)); // QNH
+        QNH.set(fvalue);
+    }
+    else if (strncmp(key, "FLP", 3) == 0)
+    {
+        // flap (x10) setting changed 
+        // !XCV,FLP,33*17
+        float fvalue = atoi(s + word->at(1)) / 10.f;
+        ESP_LOGI(FNAME, "New flap setting %f", fvalue);
+        if (flapSensor) flapSensor->pushAndPublish(fvalue, time);
+    }
+
+    return NOACTION;
+}
+
 const ParserEntry XCVSimMsg::_pt[] = {
     {Key("SENS"), XCVSimMsg::parse_Sens},
+    {Key("XCV"), XCVSimMsg::parseExcl_XCV},
     {}
 };

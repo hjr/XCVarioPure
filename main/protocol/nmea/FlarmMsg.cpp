@@ -18,6 +18,7 @@
 #include "sensor/mag/MagVSensor.h"
 #include "sensor/temp/TempVSensor.h"
 #include "sensor/VarioFilter.h"
+#include "sensor/adc/FlapSens.h"
 #include "screen/MessageBox.h"
 #include "comm/DeviceMgr.h"
 #include "setup/SetupNG.h"
@@ -168,7 +169,7 @@ dl_action_t FlarmMsg::parsePFLAU(NmeaPlugin *plg)
     if ( word->size() >= 10 ) {
         Flarm::IcaoId = atoi(s + word->at(9));
     }
-    ESP_LOGI(FNAME,"RB: %f ALT:%d  DIST %d", Flarm::RelativeBearing, Flarm::RelativeVertical, Flarm::RelativeDistance);
+    ESP_LOGI(FNAME,"RB: %f ALT:%d  DIST %d", Flarm::RelativeBearing, Flarm::RelativeVertical, Flarm::HorizontalDistance);
 
     if ( Flarm::AlarmLevel >= flarm_warning.get() && ! Flarm::isConfirmed() ) {
         ESP_LOGI(FNAME,"FLARM ALARM LEVEL %d", Flarm::AlarmLevel);
@@ -228,6 +229,11 @@ dl_action_t FlarmMsg::parsePFLAX(NmeaPlugin *plg)
                 SensorBase *mag = MagVSensor::createMagVSensor(); // add a mag sensor so that it is not part of the sensor doread loop
                 SensorRegistry::registerSensor(mag);
                 // disable real sensors
+                // a flap sensor as a plain buffer
+                if (flapSensor) {
+                    flapSensor->enterSimMode();
+                    SensorRegistry::updateCycleTimes(flapSensor);
+                }
                 // disable all the local sensor reads
                 SensorRegistry::enterSimMode();
                 // add the XCVSimMsg NMEA plugin to the same data link / protocol instance
