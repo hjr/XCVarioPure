@@ -34,9 +34,9 @@ static spi_transaction_t ta = {
 };
 
 
-BME280_SPI::BME280_SPI(SensorId id) :
-	PressureSensor(id | SensorFlags::SENSOR_LOCAL),
-	_cs((id == SensorId::STATIC_PRESSURE) ? CS_bme280BA : CS_bme280TE)
+BME280_SPI::BME280_SPI(SensorType typ) :
+	PressureSensor(SensorId(typ, SensorId::SENSOR_LOCAL | 4)),
+	_cs((typ == SensorType::STATIC_PRESSURE) ? CS_bme280BA : CS_bme280TE)
 {
 	_t_fine = 0;
 	_dig_T1 = 0;

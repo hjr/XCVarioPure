@@ -8,6 +8,8 @@
 
 #pragma once
 
+#include "SensorTypes.h"
+
 #include <freertos/FreeRTOS.h>
 #include <freertos/queue.h>
 
@@ -16,51 +18,8 @@
 
 class SensorBase;
 
-enum SensorId : uint8_t {
-    NONE = 0,
-    TEMPERATURE,
-    DIFFPRESSURE,
-    STATIC_PRESSURE,
-    TE_PRESSURE,
-    POSITION,
-    ALTITUDE,
-    VARIOMETER,
-    MAGNETO,
-    ACC_INERTIAL,
-    GYRO_INERTIAL,
-    HUMIDITY,
-    FLAP_POSITION,
-    BATTERY_VOLTAGE,
-    MAX_SENSOR_ID
-};
-
-enum SensorFlags : uint8_t {
-    SENSOR_LOCAL     = 0x80,
-    SENSOR_ESSENTIAL = 0x40
-};
-
-constexpr bool isLocalSensor(SensorId id) {
-    return (static_cast<uint8_t>(id) & static_cast<uint8_t>(SensorFlags::SENSOR_LOCAL)) != 0;
-}
-constexpr bool isEssentialSensor(SensorId id) {
-    return (static_cast<uint8_t>(id) & static_cast<uint8_t>(SensorFlags::SENSOR_ESSENTIAL)) != 0;
-}
-constexpr SensorId operator|(SensorId a, SensorFlags b) {
-    return static_cast<SensorId>(
-        static_cast<uint8_t>(a) | static_cast<uint8_t>(b)
-    );
-}
-constexpr SensorId operator&(SensorId a, int b) {
-    return static_cast<SensorId>(
-        static_cast<uint8_t>(a) & b
-    );
-}
-constexpr bool operator==(SensorId a, SensorId b) {
-    return static_cast<uint8_t>(a & 0x1f) == static_cast<uint8_t>(b & 0x1f);
-}
-
 struct SensorEntry {
-    SensorId    id = SensorId::NONE; // enum
+    SensorId    id = SensorId(SensorType::NONE);
     SensorBase* sensor = nullptr;   // polymorph
     uint16_t    dutycycle = 0;      // x 100msec loops
     uint16_t    postproccycle = 0;  // x 100msec loops, 0 for not part of the loop
@@ -76,7 +35,7 @@ public:
     static bool registerSensor(SensorBase* sensor);
     static bool deregisterSensor(SensorBase* sensor);
     static void applyChange();
-    static bool isRegistered(SensorId id);
+    static bool isRegistered(SensorType typ);
     static void disable(SensorId id);
     static void enterSimMode();
 
@@ -90,7 +49,7 @@ private:
     static bool addSensor(SensorBase* sensor);
     static bool removeSensor(SensorBase* sensor);
     static void goSimMode();
-    static SensorEntry* find(SensorId id);
+    static SensorEntry* find(SensorType typ);
     // data structures for managing sensors and pending changes
     static QueueHandle_t sensChangeQueue;
     static std::array<SensorEntry, MaxSensors> all_sensors;

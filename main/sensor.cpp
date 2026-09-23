@@ -289,7 +289,7 @@ void readSensors(void *pvParameters)
         // read all sensors
         for (SensorEntry *e = SensorRegistry::begin(); e != SensorRegistry::end(); ++e)
         {
-            if ( isLocalSensor(e->id) && !(count%e->dutycycle) ) {
+            if ( e->id.isLocalSensor() && !(count%e->dutycycle) ) {
                 e->sensor->update(sparse_time);
             }
         }
@@ -786,7 +786,7 @@ void system_startup(void *args){
         // Configure pressure sensors
         ESP_LOGI(FNAME, "Absolute pressure sensors init, detect type of sensor type..");
         logged_tests += "Baro Sensor: ";
-        baroSensor = PressureSensor::autoSetup(SensorId::STATIC_PRESSURE);
+        baroSensor = PressureSensor::autoSetup(SensorType::STATIC_PRESSURE);
         bool batest = false;
         celsius_t ba_t, te_t;
         pascal_t ba_p, te_p;
@@ -811,7 +811,7 @@ void system_startup(void *args){
         }
 
         logged_tests += "TE Sensor: ";
-        teSensor = PressureSensor::autoSetup(SensorId::TE_PRESSURE);
+        teSensor = PressureSensor::autoSetup(SensorType::TE_PRESSURE);
         bool tetest = false;
         if (teSensor) {
             if (!teSensor->selfTest(te_t, te_p)) {
@@ -862,15 +862,6 @@ void system_startup(void *args){
             }
         } else {
             ESP_LOGE(FNAME, "Absolute pressure sensor TESTs failed");
-        }
-
-        // register the GPS processer as sensor, it is created when e.g. a connected Flarm is configured
-        if (gpsSensor) {
-            SensorRegistry::registerSensor(gpsSensor);
-        }
-        // last registered sensor is the optional mag sensor
-        if ( magSensor ) {
-            SensorRegistry::registerSensor(magSensor);
         }
 
         // Create the battery volt meter

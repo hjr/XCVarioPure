@@ -19,7 +19,7 @@ SensorBase::SensorBase(int ums, int process_multiple) :
     _latency_ms(0),
     _last_update_time_ms(0),
     _valid_time_ms(3*ums),
-    _id(SensorId::NONE)
+    _id(SensorType::NONE)
 {
     // Pls register sensors as needed for the read-sensor loop and in the proper order
     // and when they are fully initialized and tested functional.

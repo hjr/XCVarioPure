@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include "SensorTypes.h"
 #include "setup/SetupNG.h"
 #include "Filters.h"
 #include "driver/time/Clock.h"
@@ -30,8 +31,6 @@
 // 
 
 constexpr int MAX_SENSOR_HISTORY_DURATION_MS = 50000;  // milliseconds
-
-enum SensorId : uint8_t;
 
 template <typename T>
 class FixedSensorHistory {

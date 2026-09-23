@@ -10,7 +10,7 @@ namespace i2cbus {
 
 class SPL06_007 : public PressureSensor {
    public:
-    SPL06_007(SensorId id);
+    SPL06_007(SensorType typ);
     virtual ~SPL06_007() {};
     const char* name() const override { return "SPL06_007"; }
     bool probe() override;

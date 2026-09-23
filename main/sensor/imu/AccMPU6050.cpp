@@ -35,7 +35,7 @@ AccMPU6050::AccMPU6050(MpuImu &mmpu) :
     _lpf_accel(LowPassFilterT<vector_f>::alphaFromTau(0.3, DUTY_CYCLE_MS / 1000.f)),
     _lpf_slip_angle(LowPassFilterT<float>::alphaFromTau(0.3, DUTY_CYCLE_MS / 1000.f))
 {
-    _id = SensorId::ACC_INERTIAL | SensorFlags::SENSOR_LOCAL;
+    _id = SensorId(SensorType::ACC_INERTIAL, SensorId::SENSOR_LOCAL | 1);
 
     // push a single previous value
     pushAndPublish(vector_f(1,0,0), 0);

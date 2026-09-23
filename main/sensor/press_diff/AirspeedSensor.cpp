@@ -31,7 +31,7 @@ AirspeedSensor::AirspeedSensor() :
     SensorTP<pascal_t>(as_buffer, HSIZE, DUTY_CYCLE_MS, 10),
     _dynp_zoglpf(0.25f, Units::mps_to_pascal(Units::kmh_to_mps(25.0f)))
 {
-    _id = SensorId::DIFFPRESSURE | SensorFlags::SENSOR_LOCAL;
+    _id = SensorId(SensorType::DIFFPRESSURE, SensorId::SENSOR_LOCAL | 3);
     setNVSVar(&dynp);
     setFilter(&_dynp_zoglpf);
 }

@@ -9,10 +9,7 @@
 #include "SensorMgr.h"
 
 #include "SensorBase.h"
-#include "sensor.h"
 #include "logdef.h"
-
-#include <atomic>
 
 #ifndef ALL_LOGS_DISABLED
 const char *idmemo[] = { "", "Tmp", "dP", "sP", "teP", "Pos", "Alt", "Var", "Mag", "Acc", "Gyr", "HUM", "FLP", "Bat" };
@@ -97,8 +94,8 @@ void SensorRegistry::applyChange()
     }
 }
 
-bool SensorRegistry::isRegistered(SensorId id) {
-    return find(id) != nullptr;
+bool SensorRegistry::isRegistered(SensorType typ) {
+    return find(typ) != nullptr;
 }
 
 
@@ -106,10 +103,10 @@ bool SensorRegistry::isRegistered(SensorId id) {
 // one way action (for e.g. sim mode), needs a reboot to revert.
 void SensorRegistry::disable(SensorId id)
 {
-    SensorEntry *entry = find(id);
+    SensorEntry *entry = find(id.type);
     if (entry) {
-        ESP_LOGW(FNAME, "Sensor %s removed from update loop", idmemo[static_cast<int>(entry->id) & 0x3f]);
-        entry->id = entry->id & ~SensorFlags::SENSOR_LOCAL; // clear local sensor flag
+        ESP_LOGW(FNAME, "Sensor %s removed from update loop", idmemo[id.type]);
+        entry->id.flags = entry->id.flags & ~SensorId::SENSOR_LOCAL; // clear local sensor flag
     }
 }
 
@@ -127,23 +124,48 @@ void SensorRegistry::enterSimMode()
 bool SensorRegistry::addSensor(SensorBase* s)
 {
     SensorId id = s->getId();
-    SensorEntry *existing = find(id);
-    if ( existing ) {
-        if ( existing->sensor != s ) {
-            ESP_LOGW(FNAME, "Sensor %s already registered, replacing it", idmemo[static_cast<int>(id) & 0x3f]);
-            SensorBase *old_sensor = existing->sensor;
-            *existing = { id, s, (uint16_t)(s->getDutyCycle() / 100), (uint16_t)(s->getProcessInterval() / 100) };
-            delete old_sensor;
+    SensorEntry *existing = find(id.type);
+    if (existing) {
+        if (existing->sensor != s) {
+            if (existing->id.prio == id.prio) {
+                ESP_LOGW(FNAME, "Sensor %s already registered, replacing it", idmemo[id.type]);
+                SensorBase *old_sensor = existing->sensor;
+                *existing = { id, s, (uint16_t)(s->getDutyCycle() / 100), (uint16_t)(s->getProcessInterval() / 100) };
+                delete old_sensor;
+                return true;
+            } else {
+                ESP_LOGW(FNAME, "Sensor %s already registered with different priority", idmemo[id.type]);
+                removeSensor(existing->sensor);
+            }
         }
-        return true;
     }
 
     if (numSensors < SensorRegistry::MaxSensors) {
-        SensorEntry* e = end();
+        // respect sensor priority
+        int i = 0;
+        SensorEntry* e = nullptr;
+        for (; i < numSensors; ++i) {
+            if (all_sensors[i].id.prio > id.prio) {
+                e = &all_sensors[i];
+                break;
+            }
+        }
+        if ( e && i < numSensors) {
+            // shift all sensors with lower priority one position to the right
+            for (int j = numSensors; j > i; --j) {
+                all_sensors[j] = all_sensors[j - 1];
+            }
+        } else {
+            e = end();
+        }
         *e = { id, s, (uint16_t)(s->getDutyCycle() / 100), (uint16_t)(s->getProcessInterval() / 100) }; // store dutycycle in 100ms units
-            ESP_LOGW(FNAME, "%d. %s::%s sensor%s (%s) 0x%x registered with dutycycle %dmsec and postproccycle %dmsec", 
-                numSensors, (isLocalSensor(id) ? "local" : "extern"), idmemo[static_cast<int>(id) & 0x3f], (isEssentialSensor(id) ? "*" : ""), s->name(), static_cast<int>(id), e->dutycycle * 100, e->postproccycle * 100);
+            ESP_LOGW(FNAME, "%d. %s::%s sensor%s (%s) registered with dutycycle %dmsec and postproccycle %dmsec", 
+                numSensors, (id.isLocalSensor() ? "local" : "extern"), idmemo[id.type], (id.isEssentialSensor() ? "*" : ""), s->name(), e->dutycycle * 100, e->postproccycle * 100);
+        // increment numSensors to account for the new sensor
         numSensors++;
+#ifdef DEBUG_AND_TEST
+        dump();
+#endif
         return true;
     }
     return false; // full
@@ -153,7 +175,7 @@ bool SensorRegistry::removeSensor(SensorBase* s)
 {
     for (int i = 0; i < numSensors; ++i) {
         if (all_sensors[i].sensor == s) {
-            ESP_LOGW(FNAME, "%d. remove %s sensor (%s)", i, idmemo[static_cast<int>(s->getId()) & 0x3f], s->name());
+            ESP_LOGW(FNAME, "%d. remove %s sensor (%s)", i, idmemo[s->getId().type], s->name());
             delete s;
             for (int j = i + 1; j < all_sensors.size(); ++j) {
                 all_sensors[j - 1] = all_sensors[j];
@@ -170,25 +192,26 @@ void SensorRegistry::goSimMode()
 {
     ESP_LOGW(FNAME, "SensorRegistry entering SIMULATION MODE");
     for (SensorEntry* e = all_sensors.data(); e != end(); ++e) {
-        if (e->isActive() && !isEssentialSensor(e->id)) {
-            e->id = e->id & ~SensorFlags::SENSOR_LOCAL; // no further sensor reading
+        if (e->isActive() && !e->id.isEssentialSensor()) {
+            e->id.flags = e->id.flags & ~SensorId::SENSOR_LOCAL; // no further sensor reading
         }
     }
 }
 
 
-SensorEntry* SensorRegistry::find(SensorId id) {
+SensorEntry* SensorRegistry::find(SensorType typ) {
     for (SensorEntry *e = all_sensors.data(); e != end(); ++e)
-        if (e->id == id) return e;
+        if (e->id.type == typ) return e;
     return nullptr;
 }
 
 #ifdef DEBUG_AND_TEST
 void SensorRegistry::dump() {
     ESP_LOGI(FNAME, "Dumping registered sensors:");
+    int i = 1;
     for (const auto& e : all_sensors) {
         if (e.isActive()) {
-            ESP_LOGI(FNAME, "  Sensor %s (0x%x), dutycycle: %d00ms\n", idmemo[static_cast<int>(e.id) & 0x3f], static_cast<int>(e.id), e.dutycycle);
+            ESP_LOGI(FNAME, "%d: prio%02d Sensor %s::%s (f:%x), dutycycle: %d00ms/%d00ms", i++, e.id.prio, idmemo[e.id.type], e.sensor->name(), static_cast<int>(e.id.flags), e.dutycycle, e.postproccycle);
         }
     }
 }

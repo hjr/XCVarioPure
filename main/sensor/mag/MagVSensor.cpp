@@ -27,7 +27,7 @@ MagVSensor* magSensor = nullptr;
 MagVSensor::MagVSensor() : SensorTP<vector_f>(mag_buffer, HSIZE, DUTY_CYCLE_MS, 5),
     _lpf_heading(LowPassFilterT<float>::alphaFromTau(1.f, .5f))
 {
-    _id = SensorId::MAGNETO;
+    _id = SensorId(SensorType::MAGNETO, 8);
     _latency_ms = 20; // estimated latency of CAN sensor
     _valid_time_ms = 2000; // 2 seconds
     // as a replacement for the missing auto-calibration

@@ -19,7 +19,7 @@ TempVSensor::TempVSensor() :
     SensorTP<float>(temp_buffer, HSIZE, DUTY_CYCLE_MS, 0),
     _lpf(0.5f)
 {
-    _id = SensorId::TEMPERATURE;
+    _id = SensorId(SensorType::TEMPERATURE, 15);
     _latency_ms = 750;      // 0.75 seconds
     _valid_time_ms = 10000; // 10 seconds
     setNVSVar(&OAT);

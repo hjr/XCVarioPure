@@ -34,7 +34,7 @@ altitude calculation by open source community on github.
 
 class BME280_SPI : public PressureSensor {
    public:
-    BME280_SPI(SensorId id);
+    BME280_SPI(SensorType id);
 
     const char* name() const override { return "BME280_SPI"; }
     bool probe() override;

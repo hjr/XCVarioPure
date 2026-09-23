@@ -24,7 +24,7 @@ BatteryVoltage::BatteryVoltage() :
     AnalogInput(batv_buffer, HSIZE, DUTY_CYCLE_MS, 0),
     _lpf_volt(0.35)
 {
-    _id = SensorId::BATTERY_VOLTAGE | SensorFlags::SENSOR_LOCAL | SensorFlags::SENSOR_ESSENTIAL,
+    _id = SensorId(SensorType::BATTERY_VOLTAGE, SensorId::SENSOR_LOCAL | SensorId::SENSOR_ESSENTIAL | 15);
     _valid_time_ms = 10000; // 10 seconds
     setNVSVar(&battery_voltage);
     _lpf_volt.reset(12.8f); // expect a 12V system by default

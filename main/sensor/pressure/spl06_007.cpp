@@ -11,10 +11,10 @@
 #define SPL06_007_TE   0x76
 
 
-SPL06_007::SPL06_007(SensorId id) :
-    PressureSensor(id | SensorFlags::SENSOR_LOCAL),
+SPL06_007::SPL06_007(SensorType typ) :
+    PressureSensor(SensorId(typ, SensorId::SENSOR_LOCAL | 4)),
     _bus(&i2c1),
-    _address( (id == SensorId::STATIC_PRESSURE) ? SPL06_007_BARO : SPL06_007_TE )
+    _address( (typ == SensorType::STATIC_PRESSURE) ? SPL06_007_BARO : SPL06_007_TE )
 {
 }
 

@@ -25,7 +25,7 @@ FlapSens::FlapSens() :
     AnalogInput(flps_buffer, HSIZE, DUTY_CYCLE_MS, 1),
     _alp_filter{0.08f, 0.5f}
 {
-    _id = SensorId::FLAP_POSITION | SensorFlags::SENSOR_LOCAL,
+    _id = SensorId(SensorType::FLAP_POSITION, SensorId::SENSOR_LOCAL | 15);
     _valid_time_ms = 3000; // 3 seconds
 }
 

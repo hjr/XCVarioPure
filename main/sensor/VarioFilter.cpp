@@ -123,7 +123,7 @@ VarioFilter::VarioFilter() :
     _Gact(15.f, DUTY_CYCLE_MS / 1000.f),
     _Goptimal(15.f, DUTY_CYCLE_MS / 1000.f)
 {
-    _id = SensorId::VARIOMETER;
+    _id = SensorId(SensorType::VARIOMETER, 9);
     setNVSVar(&te_alt);
     setFilter(&_tealt_lpf);
 }
@@ -164,9 +164,9 @@ void VarioFilter::configChange() {
 bool VarioFilter::setup() {
     // Decide if sensor readings come from local sensor or master (ctor gets called too early for this)
     if (SetupCommon::isMaster()) {
-        _id = _id | SensorFlags::SENSOR_LOCAL;
+        _id.flags |= SensorId::SENSOR_LOCAL;
         // mark as essential sensor to be able to simulate
-        _id = _id | SensorFlags::SENSOR_ESSENTIAL;
+        _id.flags |= SensorId::SENSOR_ESSENTIAL;
     }
 
     ESP_LOGI(FNAME, "VarioFilter setup as %s sensor with alt %f", (isLocalSensor(_id) ? "local" : "remote"), altitude.get());

@@ -29,10 +29,11 @@ constexpr size_t HSIZE = SENSOR_HISTORY_DURATION_MS / DUTY_CYCLE_MS;
 static __attribute__((aligned(4))) pascal_t pstat_buffer[ HSIZE + 1 ];
 static __attribute__((aligned(4))) pascal_t te_buffer[ HSIZE + 1 ];
 
-PressureSensor::PressureSensor(SensorId id) : SensorTP<pascal_t>((id == SensorId::STATIC_PRESSURE) ? pstat_buffer : te_buffer, HSIZE, DUTY_CYCLE_MS, 0)
+PressureSensor::PressureSensor(SensorId id) :
+    SensorTP<pascal_t>((id.type == SensorType::STATIC_PRESSURE) ? pstat_buffer : te_buffer, HSIZE, DUTY_CYCLE_MS, 0)
 {
-    _id = id | SensorFlags::SENSOR_LOCAL;
-    if (id == SensorId::STATIC_PRESSURE) {
+    _id = id;
+    if (id.type == SensorType::STATIC_PRESSURE) {
         _valid_time_ms = 3000; // 3 seconds for the barometric altimeter
         setNVSVar(&statp);
     }
@@ -56,17 +57,17 @@ meter_t PressureSensor::readAltitudeISA(bool& success) {
     return Units::calcAltitudeISA(getHead());
 }
 
-static PressureSensor* factory(PressureSensor::PSens_Type type, SensorId id)
+static PressureSensor* factory(PressureSensor::PSens_Type type, SensorType t)
 {
     PressureSensor* ret = nullptr;
     switch (type) {
     case PressureSensor::SPL06_007:
     {
-        ret = new SPL06_007(id);
+        ret = new SPL06_007(t);
         break;
     }
     case PressureSensor::BME280_SPI:
-        ret = new BME280_SPI(id);
+        ret = new BME280_SPI(t);
         break;
     default:
         ESP_LOGI(FNAME, "Not supported sensor");
@@ -75,13 +76,13 @@ static PressureSensor* factory(PressureSensor::PSens_Type type, SensorId id)
     return ret;
 }
 
-PressureSensor* PressureSensor::autoSetup(SensorId id) {
+PressureSensor* PressureSensor::autoSetup(SensorType typ) {
     PressureSensor* p_sens = nullptr;
     // Probe any kind of ever known sensors
-    for ( PSens_Type t = SPL06_007; t < PS_MAX_TYPES; t = static_cast<PSens_Type>(t + 1) ) {
-        p_sens = factory(t, id);
+    for ( PSens_Type pst = SPL06_007; pst < PS_MAX_TYPES; pst = static_cast<PSens_Type>(pst + 1) ) {
+        p_sens = factory(pst, typ);
         if ( p_sens && p_sens->probe() ) {
-            ESP_LOGI(FNAME, "Found %s as sensor %d", p_sens->name(), id);
+            ESP_LOGI(FNAME, "Found %s as sensor %d", p_sens->name(), typ);
             p_sens->setup();
             break;
         }
@@ -93,7 +94,7 @@ PressureSensor* PressureSensor::autoSetup(SensorId id) {
     }
 
     if ( ! p_sens ) {
-        ESP_LOGW(FNAME, "Sensor not found for id %d", id);
+        ESP_LOGW(FNAME, "Sensor not found for id %d", typ);
     }
 
     return p_sens;
