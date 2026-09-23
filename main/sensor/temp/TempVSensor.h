@@ -20,8 +20,13 @@ public:
     TempVSensor(const TempVSensor&) = delete;
     virtual ~TempVSensor();
 
-    bool probe() override { return true; };
+    bool probe() override { return true; }; // not used
     
+    // For sim purposes
+    const char* name() const override { return "Temp"; }
+    bool setup() override { return true; }
+    bool doRead(float &val) override { return false; } // never used
+
 private:
     LowPassFilterT<float> _lpf;
 };

@@ -16,6 +16,7 @@
 #include "sensor.h"
 #include "sensor/SensorMgr.h"
 #include "sensor/mag/MagVSensor.h"
+#include "sensor/temp/TempVSensor.h"
 #include "sensor/VarioFilter.h"
 #include "screen/MessageBox.h"
 #include "comm/DeviceMgr.h"
@@ -219,12 +220,15 @@ dl_action_t FlarmMsg::parsePFLAX(NmeaPlugin *plg)
                 // XCV extension to switch to simulation mode
                 ESP_LOGI(FNAME,"enter SIMULATION MODE");
                 // replace the temp sensor with a virtual one
-                DEVMAN->removeDevice(TEMPSENS_DEV);
-                DEVMAN->addDevice(TEMPSENS_DEV, NO_ONE, 0, 0, NO_PHY);
+                DEVMAN->removeDevice(TEMPSENS_DEV); // destroy OW connectivity
+                while (oatSensor) vTaskDelay(pdMS_TO_TICKS(10));
+                SensorBase *temp = new TempVSensor();
+                SensorRegistry::registerSensor(temp);
                 DEVMAN->removeDevice(MAGLEG_DEV); // drop input from a sensor
                 SensorBase *mag = MagVSensor::createMagVSensor(); // add a mag sensor so that it is not part of the sensor doread loop
                 SensorRegistry::registerSensor(mag);
                 // disable real sensors
+                // disable all the local sensor reads
                 SensorRegistry::enterSimMode();
                 // add the XCVSimMsg NMEA plugin to the same data link / protocol instance
                 nmea.addPlugin(new XCVSimMsg(nmea));
