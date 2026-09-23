@@ -7,6 +7,8 @@
 #include "AdaptUGC.h"
 #include "logdefnone.h"
 
+#include <mutex>
+
 constexpr int SCROLL_TOP = 20;
 
 extern AdaptUGC *MYUCG;
@@ -20,6 +22,67 @@ DataMonitor::DataMonitor() :
 	DM = this;
 }
 
+void DataMonitor::start(SetupAction *p, ItfTarget ch)
+{
+	ESP_LOGI(FNAME,"start %x (i%dp%d)", unsigned(ch.raw), ch.iid, ch.port );
+	attach();
+	_parent = p->getParent();
+	tx_total = 0;
+	rx_total = 0;
+	channel = ch;
+	bin_mode = false;
+	MYUCG->setColor( COLOR_BLACK );
+	MYUCG->drawBox( 0, 0, LINE_WIDTH, SCROLL_BOTTOM );
+	MYUCG->setColor( COLOR_WHITE );
+	MYUCG->setFont(ucg_font_fub11_tr, true );
+	paused = false;
+	header();
+	if( display_orientation.get() == DISPLAY_TOPDOWN ) {
+		MYUCG->scrollSetMargins( 0, SCROLL_TOP );
+	}
+	else {
+		MYUCG->scrollSetMargins( SCROLL_TOP, 0 );
+	}
+	map_pos = SCROLL_TOP;
+	paused = false; // will resume with press()
+	DEVMAN->startMonitoring(channel);
+	ESP_LOGI(FNAME,"started");
+}
+
+void DataMonitor::monitorString(e_dir_t dir, bool binary, const char *str, int len)
+{
+	ESP_LOGI(FNAME,"dir %d, len %d", (int)dir, len );
+    std::lock_guard<SemaphoreMutex> lock(_mutex);
+	bin_mode = binary;
+	if( paused )
+	{
+		// ESP_LOGI(FNAME,"not active, return started:%d paused:%d", mon_started, paused );
+		header( len, dir );
+		return;
+	}
+	printString(dir, str, len);
+}
+
+void DataMonitor::press(){
+	ESP_LOGI(FNAME,"press paused: %d", paused );
+	paused = ! paused;
+}
+
+void DataMonitor::longPress()
+{
+	ESP_LOGI(FNAME,"stop");
+	paused = true; // stop scrolled output
+	DEVMAN->stopMonitoring(); // stop the feed
+	vTaskDelay(pdMS_TO_TICKS(100)); // streaming and controlling tasks are different ones ..
+	MYUCG->scrollLines( 0 ); // then reset scroll lines
+	DM = nullptr;
+	exit(); // pop back to the activating action parent menu
+	delete this;
+}
+
+////////////////////////////////
+// helper functions
+////////////////////////////////
 int DataMonitor::maxChar( const char *str, int pos, int len ){
 	int N=0;
 	int i=0;
@@ -65,19 +128,6 @@ void DataMonitor::header( int len, e_dir_t dir )
 	MYUCG->setFont(ucg_font_fub11_tr, true );
 	MYUCG->setPrintPos( 0, SCROLL_TOP );
 	MYUCG->printf( "%s%s: RX:%d TX:%d %s  ", b, what, rx_total, tx_total, paused?"hold":"bytes" );
-}
-
-void DataMonitor::monitorString(e_dir_t dir, bool binary, const char *str, int len)
-{
-	ESP_LOGI(FNAME,"dir %d, len %d", (int)dir, len );
-	bin_mode = binary;
-	if( paused )
-	{
-		// ESP_LOGI(FNAME,"not active, return started:%d paused:%d", mon_started, paused );
-		header( len, dir );
-		return;
-	}
-	printString(dir, str, len);
 }
 
 void DataMonitor::printString(e_dir_t dir, const char *str, int len ){
@@ -139,48 +189,4 @@ void DataMonitor::scroll(int scroll){
 		map_pos = scroll;
 	}
 	MYUCG->scrollLines( map_pos );  // set frame origin fixme
-}
-
-void DataMonitor::press(){
-	ESP_LOGI(FNAME,"press paused: %d", paused );
-	paused = ! paused;
-}
-
-void DataMonitor::longPress()
-{
-	ESP_LOGI(FNAME,"stop");
-	paused = true; // stop scrolled output
-	DEVMAN->stopMonitoring(); // stop the feed
-	vTaskDelay(pdMS_TO_TICKS(100)); // streaming and controlling tasks are different ones ..
-	MYUCG->scrollLines( 0 ); // then reset scroll lines
-	DM = nullptr;
-	exit(); // pop back to the activating action parent menu
-	delete this;
-}
-
-void DataMonitor::start(SetupAction *p, ItfTarget ch)
-{
-	ESP_LOGI(FNAME,"start %x (i%dp%d)", unsigned(ch.raw), ch.iid, ch.port );
-	attach();
-	_parent = p->getParent();
-	tx_total = 0;
-	rx_total = 0;
-	channel = ch;
-	bin_mode = false;
-	MYUCG->setColor( COLOR_BLACK );
-	MYUCG->drawBox( 0, 0, LINE_WIDTH, SCROLL_BOTTOM );
-	MYUCG->setColor( COLOR_WHITE );
-	MYUCG->setFont(ucg_font_fub11_tr, true );
-	paused = false;
-	header();
-	if( display_orientation.get() == DISPLAY_TOPDOWN ) {
-		MYUCG->scrollSetMargins( 0, SCROLL_TOP );
-	}
-	else {
-		MYUCG->scrollSetMargins( SCROLL_TOP, 0 );
-	}
-	map_pos = SCROLL_TOP;
-	paused = false; // will resume with press()
-	DEVMAN->startMonitoring(channel);
-	ESP_LOGI(FNAME,"started");
 }

@@ -322,7 +322,7 @@ void DataLink::process(const char *packet, int len)
             }
             if ( control.act == NXT_PROTO ) {
                 switchProtocol();
-                break; // end loop imidiately
+                break; // end loop immediately
             }
         } else {
             _sm.reset();
