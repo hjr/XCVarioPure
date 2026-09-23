@@ -8,6 +8,7 @@
 
 #include "setup/MenuEntry.h"
 #include "comm/InterfaceCtrl.h"
+#include "comm/Mutex.h"
 
 class SetupAction;
 
@@ -17,22 +18,27 @@ class DataMonitor: public MenuEntry
 {
 public:
 	DataMonitor();
-	void monitorString(e_dir_t dir, bool binary, const char *s, int len );
+    ~DataMonitor() = default;
+
+    // main API
 	void start(SetupAction *p, ItfTarget ch);
+	void monitorString(e_dir_t dir, bool binary, const char *s, int len );
+    // polymorphic API
 	void display(int) override {}
 	const char* value() const override { return ""; }
 	void press() override;
 	void rot( int count ) override {};
 	void longPress() override;
-	void escape() override {};
-	int maxChar( const char *s, int pos, int len);
 
 private:
 	const int LINE_WIDTH;
 	const int SCROLL_BOTTOM;
-	void printString(e_dir_t dir, const char *s, int len );
+	int maxChar( const char *s, int pos, int len);
 	void header(int len=0, e_dir_t dir=DIR_RX);
+	void printString(e_dir_t dir, const char *s, int len );
 	void scroll(int scroll);
+    // attributes
+    mutable SemaphoreMutex _mutex;
 	int map_pos;
 	bool paused = true;
 	ItfTarget channel = {};
