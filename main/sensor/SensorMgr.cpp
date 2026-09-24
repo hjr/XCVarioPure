@@ -178,7 +178,7 @@ bool SensorRegistry::addSensor(SensorBase* s)
         // increment numSensors to account for the new sensor
         numSensors++;
 #ifdef DEBUG_AND_TEST
-        dump();
+        // dump();
 #endif
         return true;
     }
