@@ -4,7 +4,7 @@
 #include "setup/SetupCommon.h"
 #include "comm/DataLink.h"
 #include "driver/gpio/ESPRotary.h"
-#include "logdef.h"
+#include "logdefnone.h"
 
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>

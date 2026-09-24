@@ -130,9 +130,6 @@ ESPRotary::ESPRotary(gpio_num_t aclk, gpio_num_t adt, gpio_num_t asw) :
 	// Init. the button early
 	gpio_set_direction(_sw, GPIO_MODE_INPUT);
 	gpio_pullup_en(_sw); // Button
-	// Rotary Encoder
-	gpio_set_direction(clk, GPIO_MODE_INPUT);
-	gpio_set_direction(dt, GPIO_MODE_INPUT);
 }
 
 ESPRotary::~ESPRotary()
@@ -166,6 +163,8 @@ void ESPRotary::begin()
 			.io_loop_back = 0,
 		},
 	};
+    // pcnt_new_channel trys to configure puu-ups on the two input pins automatically
+    // and provoces two idf error messages. The here used gpio pins do not have the internal pull-up option.
 	ESP_ERROR_CHECK(pcnt_new_channel(pcnt_unit, &chan_config, &pcnt_chan));
 
 	// Decide on pulse counter hardware revision 

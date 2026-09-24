@@ -1050,9 +1050,10 @@ void system_startup(void *args){
     if (flapbox_enable.get()) {
         Flap::theFlap();  // check on FLAP pointer further on
     }
-    if (hardwareRevision.get() != XCVARIO_20) {
-        gpio_pullup_en(GPIO_NUM_34);  // fixme gear warning input
-    }
+    // if (hardwareRevision.get() != XCVARIO_20) {
+    // This pin has no internal pull-up resistor !!
+    //     gpio_pullup_en(GPIO_NUM_34);  // fixme gear warning input
+    // }
 
     // enter normal operation
     xTaskCreate(&readSensors, "readSensors", 5120, NULL, 12, NULL);
