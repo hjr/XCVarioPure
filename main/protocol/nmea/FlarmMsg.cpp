@@ -225,10 +225,6 @@ dl_action_t FlarmMsg::parsePFLAX(NmeaPlugin *plg)
                 while (oatSensor) vTaskDelay(pdMS_TO_TICKS(10));
                 SensorBase *temp = new TempVSensor();
                 SensorRegistry::registerSensor(temp);
-                DEVMAN->removeDevice(MAGLEG_DEV); // drop input from a sensor
-                SensorBase *mag = MagVSensor::createMagVSensor(); // add a mag sensor so that it is not part of the sensor doread loop
-                SensorRegistry::registerSensor(mag);
-                // disable real sensors
                 // a flap sensor as a plain buffer
                 if (flapSensor) {
                     flapSensor->enterSimMode();
