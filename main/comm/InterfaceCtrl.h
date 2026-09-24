@@ -11,7 +11,7 @@
 #include "Mutex.h"
 
 #include <cstdint>
-#include <map>
+#include <array>
 
 class DataLink;
 class SensorBase;
@@ -61,6 +61,29 @@ union ItfTarget {
     constexpr void setPort(int p) { port = p; }
 };
 
+// DataLink entries for mapping an interface to its corresponding data links.
+class DataLinks {
+    struct Entry {
+        int key;
+        DataLink* link;
+    };
+
+    std::array<Entry, 5> _entries{};
+    uint8_t _size = 0;
+    mutable SemaphoreMutex _mutex;
+
+public:
+    Entry* find(int key);
+    DataLink* findDL(int key);
+    bool insert(int key, DataLink* link);
+    DataLink*  erase(int key);
+    void deleteAllDataLinks();
+    size_t size() const { return _size; }
+    Entry* begin() {return &_entries[0]; }
+    Entry* end() {return &_entries[0] + _size; }
+};
+
+
 // ISO/OSI 1..n relation from interface to data link layer.
 // Because in the given embedded context a 1..1 relation is in most of the 
 // use cases enough, it can be locked down to just one data link.
@@ -83,7 +106,6 @@ public:
     void addDataLink(DataLink *dl);
     DataLink* MoveDataLink(int port);
     void DeleteDataLink(int port);
-    void DeleteAllDataLinks();
     void startMonitoring(ItfTarget tgt);
     void stopMonitoring();
     int getNrDLinks() const { return _dlink.size(); }
@@ -91,12 +113,10 @@ public:
     bool getTestOk() const { return _functional; }
 
 protected:
-    std::map<int, DataLink*> _dlink;
-    mutable SemaphoreMutex _dlink_mutex;
+    DataLinks _dlink;
     uint8_t _functional :1 = false; // to be flipped from self tests
 
 private:
-    void DeleteAllDataLinksLocked();
     uint8_t _one_to_one :1;
     uint8_t _dl_support :1;
 };

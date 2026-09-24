@@ -11,7 +11,6 @@
 #include <driver/gpio.h>
 #include <esp_err.h>
 #include <string>
-#include <mutex>
 
 
 /*
@@ -51,14 +50,7 @@ void canRxTask(void *arg)
         {
             msg.assign((char *)rx.data, rx.data_length_code);
             ESP_LOGD(FNAME, "CAN RX NMEA chunk, id:0x%x, len:%d msg: %s", (unsigned int)rx.identifier, rx.data_length_code, msg.c_str());
-            DataLink* dltarget = nullptr;
-            {
-                std::lock_guard<SemaphoreMutex> lock(can->_dlink_mutex);
-                auto dl = can->_dlink.find(rx.identifier);
-                if ( dl != can->_dlink.end() ) {
-                    dltarget = dl->second;
-                }
-            }
+            DataLink* dltarget = can->_dlink.findDL(rx.identifier);
             if ( dltarget ) {
                 dltarget->process(msg.data(), msg.size());
                 to_once = true;
@@ -245,7 +237,7 @@ void CANbus::stop()
     // send terminate signals to tasks
     terminate_receiver = true;            // for receiver
 
-    DeleteAllDataLinks();
+    _dlink.deleteAllDataLinks();
 }
 
 bool CANbus::selfTest()

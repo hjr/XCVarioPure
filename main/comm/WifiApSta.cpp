@@ -384,14 +384,7 @@ public:
                         if (sizeRead > 0) {
                             ESP_LOGI(FNAME, "FD socket recv: connection %d, port %d, read:%d bytes", config->sock_hndl, config->port, sizeRead);
                             tmp_alive = true;
-                            DataLink* dltarget = nullptr;
-                            {
-                                std::lock_guard<SemaphoreMutex> lock(wifi->_dlink_mutex);
-                                auto dl = wifi->_dlink.find(config->port);
-                                if (dl != wifi->_dlink.end()) {
-                                    dltarget = dl->second;
-                                }
-                            }
+                            DataLink* dltarget = wifi->_dlink.findDL(config->port);
                             if (dltarget) {
                                 dltarget->process(r, sizeRead);
                             }
@@ -418,14 +411,7 @@ public:
                             ESP_LOGI(FNAME, "FD socket recv: connection %d, port %d, read:%d bytes", client_rec.sock_hndl, config->port,
                                      sizeRead);
                             tmp_alive = true;
-                            DataLink* dltarget = nullptr;
-                            {
-                                std::lock_guard<SemaphoreMutex> lock(wifi->_dlink_mutex);
-                                auto dl = wifi->_dlink.find(config->port);
-                                if (dl != wifi->_dlink.end()) {
-                                    dltarget = dl->second;
-                                }
-                            }
+                            DataLink* dltarget = wifi->_dlink.findDL(config->port);
                             if (dltarget) {
                                 dltarget->process(r, sizeRead);
                             }

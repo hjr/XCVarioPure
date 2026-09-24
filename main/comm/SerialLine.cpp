@@ -17,7 +17,6 @@
 #include <freertos/queue.h>
 
 #include <soc/uart_reg.h>
-#include <mutex>
 
 
 constexpr int BUF_LEN = 128;
@@ -57,16 +56,10 @@ void uartTask(SerialLine *s) {
         // sleep until the UART gives us something to do
         BaseType_t ret = xQueueReceive((QueueHandle_t)s->_event_queue, &event, pdMS_TO_TICKS(10000));
         // fetch the data link
-        DataLink* dltarget = nullptr;
-        {
-            std::lock_guard<SemaphoreMutex> lock(s->_dlink_mutex);
-            auto dlit = s->_dlink.begin();
-            if ( dlit != s->_dlink.end() ) {
-                dltarget = dlit->second;
-            }
-        }
+        DataLink* dltarget = s->_dlink.begin()->link; // only the first entry is used here
         if (ret != pdTRUE) {
-            // time-out, propagate as empty message
+            // time-out, propagate as empty message,
+            // or no data link
             if (dltarget) {
                 dltarget->process(nullptr, 0);
             }
@@ -86,7 +79,7 @@ void uartTask(SerialLine *s) {
             if (count > 0 && dltarget) {
                 rx_buf[count] = '\0';
                 // ESP_LOGI(FNAME, "Data received from UART%d: %dc", un, count);
-                dltarget->process(rx_buf, count); // SX interfaces do have only one data link
+                if (dltarget) dltarget->process(rx_buf, count); // SX interfaces do have only one data link
             }
             break;
         }

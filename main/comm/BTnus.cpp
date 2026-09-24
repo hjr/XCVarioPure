@@ -21,7 +21,6 @@
 
 #include <string>
 #include <cstring>
-#include <mutex>
 
 
 // Nordic UART Service
@@ -154,17 +153,8 @@ public:
                     if (count > 0)
                     {
                         // rxBuf[count] = '\0';
-                        DataLink *dltarget = nullptr;
-                        {
-                            std::lock_guard<SemaphoreMutex> lock(BLUEnus->_dlink_mutex);
-                            auto dlit = BLUEnus->_dlink.begin();
-                            if (dlit != BLUEnus->_dlink.end())
-                            {
-                                dltarget = dlit->second;
-                            }
-                        }
-                        if (dltarget)
-                        {
+                        DataLink *dltarget = BLUEnus->_dlink.begin()->link;  // only the first entry is used here
+                        if (dltarget) {
                             dltarget->process(rxBuf, count);
                         }
                     }

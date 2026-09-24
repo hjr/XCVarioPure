@@ -21,7 +21,6 @@
 #include <esp_bt_device.h>
 #include <esp_gap_bt_api.h>
 #include <esp_spp_api.h>
-#include <mutex>
 
 constexpr int RFCOMM_SERVER_CHANNEL = 1;
 // #define HEARTBEAT_PERIOD_MS 50
@@ -35,68 +34,58 @@ class BTspp_EVENT_HANDLER
 public:
 
 // SPP Callback function
-static void spp_event_handler(esp_spp_cb_event_t event, esp_spp_cb_param_t *param)
-{
-	// assert(BLUEspp) this is 
+static void spp_event_handler(esp_spp_cb_event_t event, esp_spp_cb_param_t* param) {
+    // assert(BLUEspp) this is
     switch (event) {
     case ESP_SPP_INIT_EVT:
-		ESP_LOGI(FNAME, "SPP initialized");
-		// Start listening for incoming connections
-		esp_spp_start_srv(ESP_SPP_SEC_AUTHENTICATE, ESP_SPP_ROLE_SLAVE, RFCOMM_SERVER_CHANNEL, SetupCommon::getID());
-		esp_bt_gap_set_scan_mode(ESP_BT_CONNECTABLE, ESP_BT_GENERAL_DISCOVERABLE);
-		BLUEspp->_server_running = true;
-		break;
+        ESP_LOGI(FNAME, "SPP initialized");
+        // Start listening for incoming connections
+        esp_spp_start_srv(ESP_SPP_SEC_AUTHENTICATE, ESP_SPP_ROLE_SLAVE, RFCOMM_SERVER_CHANNEL, SetupCommon::getID());
+        esp_bt_gap_set_scan_mode(ESP_BT_CONNECTABLE, ESP_BT_GENERAL_DISCOVERABLE);
+        BLUEspp->_server_running = true;
+        break;
 
-	case ESP_SPP_SRV_STOP_EVT:
-		ESP_LOGI(FNAME, "SPP server stoped");
-		BLUEspp->_server_running = true;
-		break;
+    case ESP_SPP_SRV_STOP_EVT:
+        ESP_LOGI(FNAME, "SPP server stoped");
+        BLUEspp->_server_running = true;
+        break;
 
-	case ESP_SPP_SRV_OPEN_EVT:
-		ESP_LOGI(FNAME, "SPP rcomm opened, handle: %u", (unsigned)param->open.handle);
-		BLUEspp->_client_handle = param->open.handle;
-		esp_bt_gap_set_scan_mode(ESP_BT_CONNECTABLE, ESP_BT_NON_DISCOVERABLE);
-		break;
+    case ESP_SPP_SRV_OPEN_EVT:
+        ESP_LOGI(FNAME, "SPP rcomm opened, handle: %u", (unsigned)param->open.handle);
+        BLUEspp->_client_handle = param->open.handle;
+        esp_bt_gap_set_scan_mode(ESP_BT_CONNECTABLE, ESP_BT_NON_DISCOVERABLE);
+        break;
 
-	// never received this for rfcomm channels
-	// case ESP_SPP_OPEN_EVT:
-	// 	ESP_LOGI(FNAME, "SPP connection opened, handle: %d", param->open.handle);
-	// 	BLUEspp->_client_handle = param->open.handle;
-	// 	esp_bt_gap_set_scan_mode(ESP_BT_CONNECTABLE, ESP_BT_NON_DISCOVERABLE);
-	// 	break;
+        // never received this for rfcomm channels
+        // case ESP_SPP_OPEN_EVT:
+        // 	ESP_LOGI(FNAME, "SPP connection opened, handle: %d", param->open.handle);
+        // 	BLUEspp->_client_handle = param->open.handle;
+        // 	esp_bt_gap_set_scan_mode(ESP_BT_CONNECTABLE, ESP_BT_NON_DISCOVERABLE);
+        // 	break;
 
-	case ESP_SPP_CLOSE_EVT:
-		ESP_LOGI(FNAME, "SPP connection closed, handle: %u", (unsigned)param->close.handle);
-		BLUEspp->_client_handle = 0;
-		esp_bt_gap_set_scan_mode(ESP_BT_CONNECTABLE, ESP_BT_GENERAL_DISCOVERABLE);
-		break;
+    case ESP_SPP_CLOSE_EVT:
+        ESP_LOGI(FNAME, "SPP connection closed, handle: %u", (unsigned)param->close.handle);
+        BLUEspp->_client_handle = 0;
+        esp_bt_gap_set_scan_mode(ESP_BT_CONNECTABLE, ESP_BT_GENERAL_DISCOVERABLE);
+        break;
 
-	case ESP_SPP_DATA_IND_EVT:
-	{
-		ESP_LOGI(FNAME, "Received data, handle: %u, length: %d", (unsigned)param->data_ind.handle, param->data_ind.len);
-		// Process received data
-		int count = param->data_ind.len;
-		char *rxBuf = (char *)param->data_ind.data;
-		if (count > 0)
-		{
-			rxBuf[count] = '\0';
-			DataLink* dltarget = nullptr;
-			{
-				std::lock_guard<SemaphoreMutex> lock(BLUEspp->_dlink_mutex);
-				auto dlit = BLUEspp->_dlink.begin();
-				if ( dlit != BLUEspp->_dlink.end() ) {
-					dltarget = dlit->second;
-				}
-			}
-			if ( dltarget ) {
-				dltarget->process(rxBuf, count);
-			}
-		}
-		break;
-	}
-	default:
-		break;
-	}
+    case ESP_SPP_DATA_IND_EVT: {
+        ESP_LOGI(FNAME, "Received data, handle: %u, length: %d", (unsigned)param->data_ind.handle, param->data_ind.len);
+        // Process received data
+        int count = param->data_ind.len;
+        char* rxBuf = (char*)param->data_ind.data;
+        if (count > 0) {
+            rxBuf[count] = '\0';
+            DataLink* dltarget = BLUEspp->_dlink.begin()->link;  // only the first entry is used here
+            if (dltarget) {
+                dltarget->process(rxBuf, count);
+            }
+        }
+        break;
+    }
+    default:
+        break;
+    }
 }
 };
 
