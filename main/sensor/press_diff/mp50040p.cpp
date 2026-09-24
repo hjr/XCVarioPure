@@ -2,9 +2,10 @@
 #include "mp50040p.h"
 
 #include "../adc/mcp3221.h"
-#include "logdefnone.h"
+#include "sensor.h"
+#include "logdef.h"
 
-#include <I2Cbus.hpp>
+#include <driver/i2c_master.h>
 
 constexpr float MP50040P_CORR = 5000.0/4096.0;  // according to above formula, this is the relation between adc readout and Pascal
 
@@ -38,7 +39,7 @@ const float min_pascal = 10.0;
 // 100 mm H2O:  P = 1000 Pascal o. 0.6 V o. 0.2*4096 = 819.2
 
 
-MP5004DP::MP5004DP() : AirspeedSensor(), _mcp(&i2c1)
+MP5004DP::MP5004DP() : AirspeedSensor(), _mcp()
 {
     setMultiplier(MP50040P_CORR);
     changeConfig();
@@ -46,11 +47,7 @@ MP5004DP::MP5004DP() : AirspeedSensor(), _mcp(&i2c1)
 
 bool MP5004DP::probe()
 {
-    if (_mcp.selfTest() != ESP_OK)
-    {
-        return false;
-    }
-    return _mcp.readVal() >= 0;
+    return _mcp.probe(i2c_bus) && _mcp.readVal() >= 0;
 }
 
 void MP5004DP::changeConfig()

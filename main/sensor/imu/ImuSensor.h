@@ -16,6 +16,8 @@
 
 #include <mpu/types.hpp>
 
+#include <driver/i2c_master.h>
+
 #include <cstdint>
 
 class AccMPU6050;
@@ -31,7 +33,7 @@ public:
     MpuImu();
     ~MpuImu();
     const char *name() const;
-    bool probe();
+    bool probe(i2c_master_bus_handle_t bus);
     bool setup();
     bool hasHeatCtlr() const { return _pictrl != nullptr; }
     float getTemperature() const { return _MPUdev.getTemperature(); }

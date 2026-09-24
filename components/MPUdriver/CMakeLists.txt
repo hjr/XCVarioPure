@@ -1,6 +1,6 @@
 idf_component_register( SRC_DIRS "src"  
 						INCLUDE_DIRS "include" "."
-						REQUIRES I2Cbus )
+						REQUIRES esp_driver_i2c )
 
 component_compile_options(PUBLIC -DMPU_COMPONENT_TRUE=1)
 

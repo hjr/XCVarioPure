@@ -45,7 +45,7 @@
 // This MACROS are defined in "skdconfig.h" and set through 'menuconfig'.
 // Can use to check which protocol has been selected.
 #if defined CONFIG_MPU_I2C
-#include "I2Cbus.hpp"
+#include <driver/i2c_master.h>
 static I2C_t& i2c                     = i2c0;  // i2c0 or i2c1
 static constexpr gpio_num_t SDA       = GPIO_NUM_14;
 static constexpr gpio_num_t SCL       = GPIO_NUM_26;
@@ -108,7 +108,7 @@ static void mpuTask(void*)
 {
 // Let MPU know which bus and address to use
 #if defined CONFIG_MPU_I2C
-    MPU.setBus(i2c);
+    MPU.setDev(i2c);
     MPU.setAddr(mpud::MPU_I2CADDRESS_AD0_LOW);
 #elif defined CONFIG_MPU_SPI
     MPU.setBus(spi);

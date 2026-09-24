@@ -14,6 +14,7 @@ public:
     virtual ~MS4525DO() = default;
 
     const char *name() const override;
+    bool probe() override;
     void changeConfig() override;
 
 protected:

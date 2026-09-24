@@ -8,25 +8,33 @@
 
 
 #include "AsSensI2c.h"
+#include "sensor.h"
 #include "logdefnone.h"
 
-#include <I2Cbus.hpp>
+#include <driver/i2c_master.h>
 
-bool AsSensI2c::probe()
+bool AsSensI2c::probe_i2c(uint8_t addr)
 {
-    uint8_t data[4];
-    esp_err_t err = ESP_FAIL;
-    for (int i = 0; i < 4; i++)
-    {
-        err = _bus->readBytes(_address, 0, 4, data);
-        if (err == ESP_OK)
-            break;
-    }
-    if (err != ESP_OK)
-    {
-        ESP_LOGW(FNAME, "%s probing I2C for address %02x FAILED", name(), _address);
+    if ( i2c_master_probe(i2c_bus, addr, 10) != ESP_OK ) {
+        ESP_LOGE(FNAME, "I2C probe FAIL");
         return false;
     }
+
+    i2c_device_config_t cfg = {
+        .dev_addr_length = I2C_ADDR_BIT_LEN_7,
+        .device_address  = addr,
+        .scl_speed_hz    = 100000,
+        .scl_wait_us     = 0,
+        .flags = {
+            .disable_ack_check = 1,
+        }
+    };
+    if (i2c_master_bus_add_device(i2c_bus, &cfg, &_dev) != ESP_OK) {
+        _dev = NULL;
+        ESP_LOGE(FNAME, "I2C add device FAIL");
+        return false;
+    }
+
     return true;
 }
 
@@ -39,8 +47,9 @@ bool AsSensI2c::probe()
 bool AsSensI2c::fetch_pressure(int32_t &p, uint16_t &t)
 {
     // ESP_LOGI(FNAME,"fetch_pressure");
+    uint8_t reg = 0x0;
     uint8_t data[4];
-    esp_err_t err = _bus->readBytes(_address, 0, 4, data);
+    esp_err_t err = i2c_master_transmit_receive(_dev, &reg, 1, data, 4, 10);
     if (err != ESP_OK)
     {
         // i2c error detected

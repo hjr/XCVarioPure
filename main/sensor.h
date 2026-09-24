@@ -33,10 +33,13 @@ union global_flags {
 class CANbus;
 class SerialLine;
 class WatchDog_C;
+struct i2c_master_bus_t;
+using i2c_master_bus_handle_t = i2c_master_bus_t*;
 
 extern global_flags gflags;
 extern CANbus *CAN;
 extern SerialLine *S1,*S2;
+extern i2c_master_bus_handle_t i2c_bus;
 
 extern WatchDog_C *uiMonitor;
 

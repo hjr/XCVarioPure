@@ -10,6 +10,8 @@
 
 #include "AirspeedSensor.h"
 
+#include <driver/i2c_types.h>
+
 namespace i2cbus {
     class I2C;
 }
@@ -17,13 +19,12 @@ namespace i2cbus {
 class AsSensI2c : public AirspeedSensor
 {
 public:
-    AsSensI2c(i2cbus::I2C *b, char addr) : AirspeedSensor(), _bus(b), _address(addr) {};
+    AsSensI2c() : AirspeedSensor() {};
     virtual ~AsSensI2c() {};
 
-    bool probe() override;
+    bool probe_i2c(uint8_t addr);
 
 protected:
     bool fetch_pressure(int32_t &p, uint16_t &t) override;
-    i2cbus::I2C *_bus;
-    const uint8_t _address;
+    i2c_master_dev_handle_t _dev = NULL;
 };

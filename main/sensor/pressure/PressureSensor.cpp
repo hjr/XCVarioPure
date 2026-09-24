@@ -16,8 +16,6 @@
 #include "math/Floats.h"
 #include "logdef.h"
 
-#include <I2Cbus.hpp>
-
 #include <freertos/FreeRTOS.h>
 
 PressureSensor *baroSensor = nullptr;

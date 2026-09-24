@@ -51,7 +51,7 @@ class MPU : public mpud::MPU {
             i2c.begin((gpio_num_t)CONFIG_MPU_TEST_I2CBUS_SDA_PIN, (gpio_num_t)CONFIG_MPU_TEST_I2CBUS_SCL_PIN,
                 CONFIG_MPU_TEST_I2CBUS_CLOCK_HZ);
         }
-        this->setBus(i2c);
+        this->setDev(i2c);
         this->setAddr((mpud::mpu_i2caddr_t)(CONFIG_MPU_TEST_I2CBUS_ADDR + mpud::MPU_I2CADDRESS_AD0_LOW));
 
         #elif CONFIG_MPU_SPI

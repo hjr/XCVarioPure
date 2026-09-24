@@ -3,7 +3,7 @@
 #include "setup/SetupNG.h"
 #include "logdefnone.h"
 
-#include <I2Cbus.hpp>
+#include <driver/i2c_master.h>
 
 #define MAX_AUTO_CORRECTED_OFFSET 50
 
@@ -29,7 +29,7 @@ const int16_t MS4525Span = MS4525FullScaleCounts - MS4525MinScaleCounts;
 // MS4525D sensor differential pressure
 // const int16_t MS4525ZeroCounts = (MS4525MinScaleCounts + MS4525FullScaleCounts) / 2;
 
-MS4525DO::MS4525DO() : AsSensI2c(&i2c1, I2C_ADDRESS_MS4525DO)
+MS4525DO::MS4525DO() : AsSensI2c()
 {
     changeConfig();
 }
@@ -41,6 +41,18 @@ const char *MS4525DO::name() const {
     else {
         return "MS4525DO";
     }
+}
+
+bool MS4525DO::probe()
+{
+    ESP_LOGI(FNAME, "MS4525DO probe");
+    
+    if ( !probe_i2c(I2C_ADDRESS_MS4525DO) ) {
+        ESP_LOGE(FNAME, "MS4525DO probe FAIL");
+        return false;
+    }
+
+    return true;
 }
 
 void MS4525DO::changeConfig()

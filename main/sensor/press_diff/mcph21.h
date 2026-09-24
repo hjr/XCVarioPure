@@ -10,7 +10,7 @@ class MCPH21 final : public AsSensI2c
 public:
     // instance methods
     MCPH21();
-    ~MCPH21() = default;
+    ~MCPH21();
 
     const char *name() const override { return "MCPH21"; }
     bool probe() override;

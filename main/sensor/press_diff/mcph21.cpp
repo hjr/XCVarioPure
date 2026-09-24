@@ -3,7 +3,7 @@
 #include "setup/SetupNG.h"
 #include "logdefnone.h"
 
-#include <I2Cbus.hpp>
+#include <driver/i2c_master.h>
 
 
 #define I2C_ADDRESS_MCPH21    0x7F  //  Datasheet testcode: IC_Send(0xFE,..) what is 7F shifted right 1 bit
@@ -24,35 +24,46 @@
 // const int16_t MCPH21MinScaleCounts = 0;
 // const float MCPH21multiplier =  2 * 6894.76 / MCPH21Span;
 
-MCPH21::MCPH21() : AsSensI2c(&i2c1, I2C_ADDRESS_MCPH21)
+MCPH21::MCPH21() : AsSensI2c()
 {
     changeConfig();
 }
 
+MCPH21::~MCPH21()
+{
+    if (_dev) {
+        i2c_master_bus_rm_device(_dev);
+        _dev = NULL;
+    }
+}
+
 bool MCPH21::probe()
 {
-    ESP_LOGI(FNAME, "MCPH21 selftest I2C addr: %x", _address);
-    uint8_t byte[2] = {0};
-    esp_err_t err = _bus->testConnection(_address);
-    if (err != ESP_OK) {
-        ESP_LOGI(FNAME, "MCPH21 testConnection: FAIL I2C addr: %x", _address);
+    ESP_LOGI(FNAME, "MCPH21 probe");
+    
+    if ( !probe_i2c(I2C_ADDRESS_MCPH21) ) {
+        ESP_LOGE(FNAME, "MCPH21 probe FAIL");
         return false;
     }
-    err = _bus->readByte(_address, 0x01, byte);
+
+    uint8_t reg = 0x01;
+    uint8_t byte;
+    esp_err_t err = i2c_master_transmit_receive(_dev, &reg, 1, &byte, 1, 10);
     if (err != ESP_OK) {
         ESP_LOGI(FNAME, "MCPH21 selftest read Chip ID reg 0x01 failed");
         return false;
     }
     else {
-        ESP_LOGI(FNAME, "MCPH21 selftest read Chip ID reg 0x01: %x ", byte[0]);
+        ESP_LOGI(FNAME, "MCPH21 selftest read Chip ID reg 0x01: %x ", byte);
     }
-    err = _bus->readByte(_address, 0xA8, byte);
+    reg = 0xA8;
+    err = i2c_master_transmit_receive(_dev, &reg, 1, &byte, 1, 10);
     if (err != ESP_OK) {
         ESP_LOGI(FNAME, "MCPH21 selftest read Chip ID reg 0xA8 failed");
         return false;
     }
     else {
-        ESP_LOGI(FNAME, "MCPH21 selftest read Chip ID reg 0xA8: %x", byte[0]);
+        ESP_LOGI(FNAME, "MCPH21 selftest read Chip ID reg 0xA8: %x", byte);
     }
     return true;
 }
@@ -60,7 +71,8 @@ bool MCPH21::probe()
 bool MCPH21::setup()
 {
     // set continuous mode
-    esp_err_t err = _bus->writeByte(_address, 0x30, 0x0B); // continuous mode, sleep 62.5msec
+    uint8_t tx[2] = { 0x30, 0x0B }; // continuous mode, sleep 62.5msec
+    esp_err_t err = i2c_master_transmit(_dev, tx, 2, 10);
 
     if (err != ESP_OK) {
         ESP_LOGE(FNAME, "MCPH21: failed to set continuous mode: %s", esp_err_to_name(err));
@@ -87,13 +99,15 @@ void MCPH21::changeConfig()
 bool MCPH21::fetch_pressure(int32_t &p, uint16_t &t)
 {
     // ESP_LOGI(FNAME,"MCPH21::fetch_pressure");
+    uint8_t reg = 0x06;
     uint8_t pres[3];
-    esp_err_t err = _bus->readBytes(_address, 0x06, 3, pres);
+    esp_err_t err = i2c_master_transmit_receive(_dev, &reg, 1, pres, 3, 10);
     if (err != ESP_OK)
     {
-        ESP_LOGW(FNAME, "fetch_pressure() readBytes I2C error");
+        ESP_LOGW(FNAME, "fetch_pressure readBytes I2C error");
         return false;
     }
+
 #ifdef RANDOM_TEST
     Press_H = esp_random() % 255;   
     Press_L = esp_random() % 255;
@@ -102,8 +116,6 @@ bool MCPH21::fetch_pressure(int32_t &p, uint16_t &t)
     p = (int32_t(pres[0]) << 16) + (int32_t(pres[1]) << 8) + int32_t(pres[2]);
     if (p & 0x800000) p |= 0xFF000000; // sign extend negative numbers
 
-    // err = _bus->readBytes(_address, 0x09, 2, pres);
-    // t = pres[0] * 256 + pres[1];
     return true;
 }
 
@@ -123,12 +135,14 @@ int MCPH21::getMaxACOffset()
 
 float MCPH21::getTemperature()
 {
+    uint8_t reg = 0x09;
     uint8_t t_buf[2];
+    esp_err_t err = i2c_master_transmit_receive(_dev, &reg, 1, t_buf, 2, 10);
+
     float temp = 0.f;
-    esp_err_t err = _bus->readBytes(_address, 0x09, 2, t_buf);
     if (err != ESP_OK)
     {
-        ESP_LOGI(FNAME, "MCPH21 read pressure 0x09 failed");
+        ESP_LOGI(FNAME, "MCPH21 read temperature 0x09 failed");
         return 0.0;
     }
     else

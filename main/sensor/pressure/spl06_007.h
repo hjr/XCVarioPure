@@ -2,16 +2,14 @@
 
 #include "PressureSensor.h"
 
-#include <cstdint>
+#include <driver/i2c_types.h>
 
-namespace i2cbus {
-    class I2C;
-}
+#include <cstdint>
 
 class SPL06_007 : public PressureSensor {
    public:
     SPL06_007(SensorType typ);
-    virtual ~SPL06_007() {};
+    virtual ~SPL06_007();
     const char* name() const override { return "SPL06_007"; }
     bool probe() override;
     bool setup() override;
@@ -22,7 +20,7 @@ class SPL06_007 : public PressureSensor {
    private:
     bool get_raw(int32_t& val, int32_t* tvalptr);
 
-	i2cbus::I2C* _bus;
+    i2c_master_dev_handle_t _dev = NULL;
     uint8_t _address;
 
     int32_t c00, c10;

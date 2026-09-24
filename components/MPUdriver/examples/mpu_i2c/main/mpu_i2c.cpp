@@ -9,23 +9,25 @@
  * Example on how to setup MPU through I2C for basic usage.
  */
 
-#include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-
-#include "driver/gpio.h"
-#include "driver/i2c.h"
-#include "esp_err.h"
-#include "esp_log.h"
-#include "freertos/FreeRTOS.h"
-#include "freertos/portmacro.h"
-#include "freertos/task.h"
 #include "sdkconfig.h"
 
-#include "I2Cbus.hpp"
 #include "MPU.hpp"
 #include "mpu/math.hpp"
 #include "mpu/types.hpp"
+
+#include <freertos/FreeRTOS.h>
+#include <freertos/portmacro.h>
+#include <freertos/task.h>
+
+#include <driver/gpio.h>
+#include <driver/i2c.h>
+#include <esp_err.h>
+#include <esp_log.h>
+#include <driver/i2c_master.h>
+
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 static const char* TAG = "example";
 
@@ -54,7 +56,7 @@ extern "C" void app_main() {
     */
 
     MPU_t MPU;  // create a default MPU object
-    MPU.setBus(i2c0);  // set bus port, not really needed since default is i2c0
+    MPU.setDev(i2c0);  // set bus port, not really needed since default is i2c0
     MPU.setAddr(mpud::MPU_I2CADDRESS_AD0_LOW);  // set address, default is AD0_LOW
 
     // Great! Let's verify the communication

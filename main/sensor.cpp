@@ -43,7 +43,6 @@
 #include "driver/gpio/S2fSwitch.h"
 #include "AverageVario.h"
 
-#include "I2Cbus.hpp"
 #include "Flap.h"
 #include "wind/WindCalcTask.h"
 #include "comm/SerialLine.h"
@@ -60,6 +59,7 @@
 
 #include <coredump_to_server.h>
 #include <driver/spi_master.h>
+#include <driver/i2c_master.h>
 #include <esp_task_wdt.h>
 #include <esp_task.h>
 #include <soc/sens_reg.h> // needed for adc pin reset
@@ -78,6 +78,9 @@ SemaphoreHandle_t spiMutex=NULL;
 
 AdaptUGC *MYUCG = 0;  // ( SPI_DC, CS_Display, RESET_Display );
 WatchDog_C *uiMonitor = nullptr;
+
+// the i2c bus resource
+i2c_master_bus_handle_t i2c_bus;
 
 // Magnetic sensor / compass
 SerialLine *S1 = NULL;
@@ -556,7 +559,7 @@ void system_startup(void *args){
     }
 
     // Start UI task responsible to manage screens and display. Needed to habe the boot screen and message box working
-    xTaskCreate(&UiEventLoop, "UIloop", 6144, Rotary, 4, NULL); // increase stack by 1K
+    xTaskCreate(&UiEventLoop, "UIloop", 6144, Rotary, 4, NULL);
 
     if (gflags.schedule_reboot) {
         MBOX->pushMessage(3, "Detecting XCV hardware");
@@ -889,12 +892,17 @@ void system_startup(void *args){
     AUDIO->applySetup();
     if (audio_mute_gen.get() != AUDIO_OFF) {
         ESP_LOGI(FNAME, "Audio begin");
-        logged_tests += "Digi. Audio Poti test: ";
+        logged_tests += "Audio & Poti test: ";
         if (AUDIO->isUp() && AUDIO->isPotiUp()) {
             logged_tests += passed_text;
         } else {
-            ESP_LOGE(FNAME, "Error: Digital potentiomenter selftest failed");
-            MBOX->pushMessage(1, "Digital Poti: Failure");
+            if ( !AUDIO->isUp() ) {
+                ESP_LOGE(FNAME, "Error: Audio initialization failed");
+                MBOX->pushMessage(1, "Audio init.: Failure");
+            } else {
+                ESP_LOGE(FNAME, "Error: Digital potentiomenter selftest failed");
+                MBOX->pushMessage(1, "Digital Poti: Failure");
+            }
             selftestPassed = false;
             logged_tests += failed_text;
         }
@@ -1125,12 +1133,25 @@ extern "C" void  app_main(void)
     }
 
     // start i2c bus 1
+    i2c_master_bus_config_t config = {
+        .i2c_port = I2C_NUM_1,
+        .sda_io_num = GPIO_NUM_21,
+        .scl_io_num = GPIO_NUM_22,
+        .clk_source = I2C_CLK_SRC_DEFAULT,
+        .glitch_ignore_cnt = 7,
+        .intr_priority = 0,
+        .trans_queue_depth = 0,
+        .flags = {
+            .enable_internal_pullup = true,
+            .allow_pd = false,
+        },
+    };
     ESP_LOGI(FNAME, "Now setup I2C bus GPIO 21/22");
-    i2c1.begin(GPIO_NUM_21, GPIO_NUM_22, 100000);
+    ESP_ERROR_CHECK(i2c_new_master_bus(&config, &i2c_bus));
 
     // probe on IMU
     MpuImu *imu = new MpuImu();
-    if (imu->probe()) {
+    if (imu->probe(i2c_bus)) {
         accSensor = new AccMPU6050(*imu);
         gyroSensor = new GyroMPU6050(*imu);
         if (imu->getImuType() == ImuType::MPU6050) {

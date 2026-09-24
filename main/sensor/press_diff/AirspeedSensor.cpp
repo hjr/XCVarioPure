@@ -16,7 +16,7 @@
 #include "setup/SetupNG.h"
 #include "S2F.h"
 #include "math/Floats.h"
-#include "logdefnone.h"
+#include "logdef.h"
 
 #include <freertos/FreeRTOS.h>
 
@@ -67,14 +67,13 @@ static AirspeedSensor* factory(AirspeedSensor::ASens_Type type)
 
 AirspeedSensor* AirspeedSensor::autoSetup()
 {
-    ESP_LOGI(FNAME, "Airspeed sensor init..  type configured: %d", airspeed_sensor.get());
+    ESP_LOGI(FNAME, "Airspeed sensor init..  nvs configured: %d", airspeed_sensor.get());
     AirspeedSensor *as_sens = nullptr;
     if (airspeed_sensor.get() != AirspeedSensor::NONE)
     {
-        as_sens = factory((ASens_Type)airspeed_sensor.get());
-
         // there is a configured sensor
         ESP_LOGI(FNAME, "There is valid config for airspeed sensor: check this one first...");
+        as_sens = factory((ASens_Type)airspeed_sensor.get());
         if (!as_sens->probe()) {
             delete as_sens;
             as_sens = nullptr;

@@ -2,6 +2,8 @@
 
 #include "driver/time/ClockIntf.h"
 
+#include <driver/i2c_types.h>
+
 #include <cstdint>
 
 namespace i2cbus {
@@ -20,11 +22,10 @@ class Poti : public Clock_I
 {
 public:
     Poti() = delete;
-    explicit Poti(i2cbus::I2C *i2cbus, uint8_t addr, void (*mcb)(), void (*ucb)());
+    explicit Poti(void (*mcb)(), void (*ucb)());
     virtual ~Poti() {};
     bool begin();
-    virtual bool reset() = 0;
-    bool haveDevice();
+    virtual bool probe(i2c_master_bus_handle_t bus) = 0;
     virtual e_poti_type getType() const = 0;
     bool tick() override;
 
@@ -34,8 +35,8 @@ public:
 
 protected:
     static constexpr int calcDbFromVolume(float val);
+    i2c_master_dev_handle_t _dev = nullptr;
     i2cbus::I2C *bus = nullptr;
-    const uint8_t I2C_ADDR;
 
     int errorcount = 0;
     static float RANGE;

@@ -931,6 +931,91 @@ raw_axes_t MPU::getAccelOffset()
 	return bias;
 }
 
+/*! Read a single bit from a register*/
+esp_err_t MPU::readBit(uint8_t regAddr, uint8_t bitNum, uint8_t* data)
+{
+    uint8_t buffer;
+    err = i2c_master_transmit_receive(_dev, &regAddr, 1, &buffer, 1, 10);
+
+    if (!err) {
+        uint8_t mask = 1 << bitNum;
+        buffer &= mask;
+        buffer >>= bitNum;
+        *data = buffer;
+    }
+    return err;
+}
+/*! Read a range of bits from a register */
+esp_err_t MPU::readBits(uint8_t regAddr, uint8_t bitStart, uint8_t length, uint8_t* data)
+{
+    uint8_t buffer;
+    err = i2c_master_transmit_receive(_dev, &regAddr, 1, &buffer, 1, 10);
+
+    if (!err) {
+        uint8_t mask = ((1 << length) - 1) << (bitStart - length + 1);
+        buffer &= mask;
+        buffer >>= (bitStart - length + 1);
+        *data = buffer;
+    }
+    return err;
+}
+/*! Write a single bit to a register */
+esp_err_t MPU::writeBit(uint8_t regAddr, uint8_t bitNum, uint8_t data)
+{
+    uint8_t value;
+
+    // read the register
+    err = i2c_master_transmit_receive(_dev, &regAddr, 1, &value, 1, 10);
+
+    if (err != ESP_OK)
+        return err;
+
+    // manipulate bit
+    if (data) {
+        value |= (1 << bitNum);
+    } else {
+        value &= ~(1 << bitNum);
+    }
+
+    // write back the register
+    uint8_t tx[2] = { regAddr, value };
+
+    return err = i2c_master_transmit(_dev, tx, sizeof(tx), 10);
+}
+/*! Write a range of bits to a register */
+esp_err_t MPU::writeBits(uint8_t regAddr, uint8_t bitStart, uint8_t length, uint8_t data)
+{
+    uint8_t buffer;
+    err = i2c_master_transmit_receive(_dev, &regAddr, 1, &buffer, 1, 10);
+    if (err != ESP_OK) {
+        return err;
+    }
+    uint8_t mask = ((1 << length) - 1) << (bitStart - length + 1);
+    data <<= (bitStart - length + 1);
+    data &= mask;
+    buffer &= ~mask;
+    buffer |= data;
+    return writeByte(regAddr, buffer);
+}
+/*! Write a value to a register */
+esp_err_t MPU::writeByte(uint8_t regAddr, uint8_t data)
+{
+    uint8_t tx[2] = { regAddr, data };
+    return err = i2c_master_transmit(_dev, tx, sizeof(tx), 10);
+}
+/*! Write a sequence to data to a sequence of registers */
+esp_err_t MPU::writeBytes(uint8_t regAddr, size_t length, const uint8_t* data)
+{
+    if (length > 12 || (data == nullptr && length != 0))
+        return ESP_ERR_INVALID_ARG;
+
+    uint8_t tx[13];
+
+    tx[0] = regAddr;
+    memcpy(tx + 1, data, length);
+
+    return err = i2c_master_transmit(_dev, tx, length + 1, 10);
+}
 
 /**
  * @brief Read accelerometer raw data.
@@ -1255,10 +1340,10 @@ esp_err_t MPU::readFIFO(size_t length, uint8_t* data)
 /**
  * @brief Write data to FIFO buffer.
  * */
-esp_err_t MPU::writeFIFO(size_t length, const uint8_t* data)
-{
-	return MPU_ERR_CHECK(writeBytes(regs::FIFO_R_W, length, data));
-}
+// esp_err_t MPU::writeFIFO(size_t length, const uint8_t* data)
+// {
+// 	return MPU_ERR_CHECK(writeBytes(regs::FIFO_R_W, length, data));
+// }
 
 /**
  * @brief Configure the Auxiliary I2C Master.

@@ -1,10 +1,7 @@
 #pragma once
 
-#include "esp_err.h"
-
-namespace i2cbus {
-    class I2C;
-}
+#include <esp_err.h>
+#include <driver/i2c_master.h>
 
 
 // Connect module using I2C port pins sda and scl. The output is referenced to the supply voltage which can be
@@ -13,11 +10,11 @@ namespace i2cbus {
 class MCP3221
 {
 public:
-    MCP3221(i2cbus::I2C *b);
-    ~MCP3221() = default;
+    MCP3221() = default;
+    ~MCP3221();
 
     // check for reply with I2C bus address
-    esp_err_t selfTest();
+    bool probe(i2c_master_bus_handle_t bus);
 
     // raw read value of airspeed sensor
     int readVal();
@@ -25,13 +22,7 @@ public:
     // Reads the analog register of the MCP3221 and converts it to a useable value. (a voltage)
     esp_err_t readRaw(uint16_t &val);
 
-    // alpha = 1.0  means no filter
-    //         0.1  means 10 samples until full value
-    // float readAVG(float alpha);
-
 private:
-    i2cbus::I2C *_bus;
-    const uint8_t _address;
-    // float exponential_average;
+    i2c_master_dev_handle_t _dev = nullptr;
 };
 

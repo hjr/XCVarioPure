@@ -11,10 +11,10 @@ class CAT5171 : public Poti
 public:
     // Connect module using I2C port
     CAT5171() = delete;
-    explicit CAT5171(i2cbus::I2C *i2cbus, void (*mute_cb)(), void (*unmute_cb)());
-    virtual ~CAT5171() {}
+    explicit CAT5171(void (*mute_cb)(), void (*unmute_cb)());
+    virtual ~CAT5171();
 
-    bool reset() override;
+    bool probe(i2c_master_bus_handle_t bus) override;
     e_poti_type getType() const override { return POTI_CAT5171; }
 
 private:

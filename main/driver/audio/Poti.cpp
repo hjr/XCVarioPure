@@ -7,20 +7,19 @@
  ***********************************************************/
 
 #include "Poti.h"
-#include "I2Cbus.hpp"
 #include "driver/time/Clock.h"
 #include "logdefnone.h"
 
+#include <driver/i2c_master.h>
 #include <esp_system.h>
+
 #include <cmath>
 
 
 float Poti::RANGE;
 
-Poti::Poti(i2cbus::I2C *i2cbus, uint8_t addr, void (*mcb)(), void (*ucb)()) :
+Poti::Poti(void (*mcb)(), void (*ucb)()) :
     Clock_I(1),
-    bus(i2cbus),
-    I2C_ADDR(addr),
     _mute_cb(mcb),
     _unmute_cb(ucb)
 {
@@ -44,19 +43,6 @@ bool Poti::begin() {
     // else
     ESP_LOGE(FNAME, "Error reading wiper!");
     return (false);
-}
-
-bool Poti::haveDevice()
-{
-    esp_err_t err = bus->testConnection(I2C_ADDR);
-    if (err == ESP_OK)
-    {
-        ESP_LOGI(FNAME, "haveDevice: OK");
-        return true;
-    }
-    // else
-    ESP_LOGI(FNAME, "haveDevice: NONE");
-    return false;
 }
 
 bool Poti::tick() {

@@ -24,11 +24,7 @@
 #include <algorithm> // for std::clamp
 #include <cmath>
 
-
-static const std::string_view TYPES[] = { "UNKNOWN", "MPU6050", "MPU6500", "ICM20602", "ICM20689" };
-
-
-mpud::MPU myMPU; // TODO as optional resource
+static const std::string_view TYPES[] = {"UNKNOWN", "MPU6050", "MPU6500", "ICM20602", "ICM20689"};
 
 // for heat control, optimized by for fast swing in, stable operation and low gap to target
 // for heat control
@@ -52,9 +48,8 @@ struct PIController {
     }
 };
 
-
 MpuImu::MpuImu() :
-    _MPUdev(myMPU)
+    _MPUdev(*new mpud::MPU())
 {
     // init lever arm from nvs
     setLeverArm(imu_leverarm.get());
@@ -65,42 +60,65 @@ MpuImu::~MpuImu() {
         clearpwm(); // ensure heating is off
         delete _pictrl;
     }
+    delete &_MPUdev;
 }
 
 const char *MpuImu::name() const {
     return TYPES[static_cast<int>(_who_typ)].data();
 }
 
-bool MpuImu::probe() {
+bool MpuImu::probe(i2c_master_bus_handle_t bus) {
     // probe on MPU
-	myMPU.setBus(i2c1);  // set communication bus
-	myMPU.setAddr(mpud::MPU_I2CADDRESS_AD0_LOW);  // set address
-	if (myMPU.reset() != ESP_OK) {
-		ESP_LOGI( FNAME,"MPU not avail");
+    if (i2c_master_probe(bus, mpud::MPU_I2CADDRESS_AD0_LOW, 10) != ESP_OK) {
         return false;
-	}
+    }
+
+    i2c_device_config_t cfg = {
+        .dev_addr_length = I2C_ADDR_BIT_LEN_7,
+        .device_address  = mpud::MPU_I2CADDRESS_AD0_LOW,
+        .scl_speed_hz    = 100000,
+        .scl_wait_us     = 0,
+        .flags = {
+            .disable_ack_check = 1,
+        }
+    };
+
+    i2c_master_dev_handle_t dev;
+    if (i2c_master_bus_add_device(bus, &cfg, &dev) != ESP_OK) {
+        return false;
+    }
+
+    _MPUdev.setDev(dev);
+    if (_MPUdev.reset() != ESP_OK) {
+        ESP_LOGI( FNAME,"MPU not avail");
+    }
+
     vTaskDelay(pdMS_TO_TICKS(100)); // wait after reset
     _who_typ = getImuId();
     if (_who_typ != ImuType::UNKNOWN) {
         ESP_LOGI(FNAME, "found %s", name());
         return true;
     }
+
+    ESP_LOGI(FNAME, "MPU not found, I2C error: %s", esp_err_to_name(err));
+    _MPUdev.setDev(NULL);
+    i2c_master_bus_rm_device(dev);
     return false;
 }
 
 bool MpuImu::setup() {
     ESP_LOGI(FNAME, "MPU initialize");
-    esp_err_t err = myMPU.reset();
+    esp_err_t err = _MPUdev.reset();
     vTaskDelay(pdMS_TO_TICKS(50)); // wait after reset (crucial for Release build)
-    err |= myMPU.resetFIFO();
+    err |= _MPUdev.resetFIFO();
     // initialize the chip and set default configurations
     // which is: 500Hz; ACCEL_FS_8G scale; GYRO_FS_250DPS scale; DLPF_10HZ low pass
-    err |= myMPU.initialize(_who_typ == ImuType::ICM20602);
+    err |= _MPUdev.initialize(_who_typ == ImuType::ICM20602);
     axes_i16_abi tmp = gyro_bias.get(); // will get refined on Rest condition while on the ground
-    err |= myMPU.setGyroOffset(mpud::raw_axes_t(tmp.x, tmp.y, tmp.z));
+    err |= _MPUdev.setGyroOffset(mpud::raw_axes_t(tmp.x, tmp.y, tmp.z));
     ESP_LOGI(FNAME, "MPU current gyro bias: %d/%d/%d", tmp.x, tmp.y, tmp.z);
     tmp = accl_bias.get();
-    err |= myMPU.setAccelOffset(mpud::raw_axes_t(tmp.x, tmp.y, tmp.z));
+    err |= _MPUdev.setAccelOffset(mpud::raw_axes_t(tmp.x, tmp.y, tmp.z));
     ESP_LOGI(FNAME, "MPU current accel bias: %d/%d/%d", tmp.x, tmp.y, tmp.z);
 
     // Check on heat control availability
@@ -121,7 +139,7 @@ bool MpuImu::setup() {
 }
 
 ImuType MpuImu::getImuId() {
-    switch (myMPU.whoAmI()) {
+    switch (_MPUdev.whoAmI()) {
     case 0x68: return ImuType::MPU6050;
     case 0x70: return ImuType::MPU6500;
     case 0x12: return ImuType::ICM20602;
@@ -178,13 +196,13 @@ void MpuImu::resetImuReference(bool save_nvs) {
 
 void MpuImu::zeroGyroBias() {
     gyro_bias.set({});
-    myMPU.setGyroOffset({});
+    _MPUdev.setGyroOffset({});
 }
 
 void MpuImu::zeroAccBias() {
     // never get this into the hands of a user. This is only for development and factory setup purposes.
     accl_bias.set({});
-    myMPU.setAccelOffset({});
+    _MPUdev.setAccelOffset({});
 }
 
 

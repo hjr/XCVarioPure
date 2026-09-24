@@ -1,9 +1,9 @@
 
 #include "mcp3221.h"
 
-#include "logdefnone.h"
+#include "logdef.h"
 
-#include <I2Cbus.hpp>
+#include <driver/i2c_master.h>
 
 #define MCP3221_CONVERSE 0x4d   //10011010 NOTE IF IT ENDS IN 1, this is the READ ADDRESS. This is all this device does.
                                 //It opens a conversation via this specific READ address
@@ -15,41 +15,46 @@
 //   -  -o
 //   S  -o   o- SDA
 
-
-MCP3221::MCP3221(i2cbus::I2C *b) : _bus(b), _address(MCP3221_CONVERSE)
+MCP3221::~MCP3221()
 {
-    // exponential_average = 0;
+    if (_dev) {
+        i2c_master_bus_rm_device(_dev);
+        _dev = nullptr;
+    }
 }
 
 // scan bus for I2C address
-esp_err_t MCP3221::selfTest(){
-	uint8_t data[2];
-	esp_err_t err = _bus->readBytes(MCP3221_CONVERSE, 0, 2, data );
-	if( err != ESP_OK ){
-		ESP_LOGI(FNAME,"MCP3221 selftest, scan for I2C address %02x FAILED", MCP3221_CONVERSE );
-		return ESP_FAIL;
-	}
-	ESP_LOGI(FNAME,"MCP3221 selftest, scan for I2C address %02x PASSED", MCP3221_CONVERSE );
-	return ESP_OK;
+bool MCP3221::probe(i2c_master_bus_handle_t bus)
+{
+    ESP_LOGI(FNAME, "MCP3221 probe");
+    i2c_device_config_t cfg = {
+        .dev_addr_length = I2C_ADDR_BIT_LEN_7,
+        .device_address  = MCP3221_CONVERSE,
+        .scl_speed_hz    = 100000,
+        .scl_wait_us     = 0,
+        .flags = {
+            .disable_ack_check = 1,
+        }
+    };
+
+    if (i2c_master_bus_add_device(bus, &cfg, &_dev) != ESP_OK) {
+        _dev = nullptr;
+        ESP_LOGE(FNAME, "MCP3221 add device FAIL");
+        return false;
+    }
+
+    uint8_t data[2];
+    esp_err_t err = i2c_master_receive(_dev, data, sizeof(data), 10);
+    if (err != ESP_OK) {
+        ESP_LOGI(FNAME, "MCP3221 selftest, scan for I2C address %02x FAILED", MCP3221_CONVERSE);
+        i2c_master_bus_rm_device(_dev);
+        _dev = nullptr;
+        return false;
+    }
+    ESP_LOGI(FNAME, "MCP3221 selftest, scan for I2C address %02x PASSED", MCP3221_CONVERSE);
+
+    return true;
 }
-
-// float MCP3221::readAVG( float alpha ) {
-
-// 	uint16_t newval;
-// 	esp_err_t ret = readRaw(newval);
-// 	// ESP_LOGI(FNAME,"Airspeed AD1: %d", newval );
-// 	if( ret == ESP_OK ){
-// 		// ESP_LOGI(FNAME, "%d", newval );
-// 		if ( exponential_average == 0 ){
-// 			exponential_average = newval;
-// 		}
-// 		exponential_average = exponential_average + alpha*(newval - exponential_average);
-// 		return exponential_average;
-// 	}
-// 	else
-// 		return 0.0;
-// }
-
 
 // You cannot write to an MCP3221, it has no writable registers.
 // MCP3221 also requires an ACKnowledge between each byte sent, before it will send the next byte. So we need to be a bit manual with how we talk to it.
@@ -96,16 +101,15 @@ int MCP3221::readVal()
 
 esp_err_t MCP3221::readRaw(uint16_t &val)
 {
-	uint8_t data[2];
-	esp_err_t err = _bus->readBytes(MCP3221_CONVERSE, 0, 2, data );
-	if( err != ESP_OK ){
-		val = 0;
-	}
-	else{
-		val = (data[0] << 8) + data[1];
-	}
+    uint8_t data[2];
+    esp_err_t err = i2c_master_receive(_dev, data, sizeof(data), 10);
+    if (err != ESP_OK) {
+        val = 0;
+    } else {
+        val = (data[0] << 8) + data[1];
+    }
 
-	return( err );
+    return err;
 }
 
 

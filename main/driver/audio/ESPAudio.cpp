@@ -11,17 +11,18 @@
 #include "mcp4018.h"
 #include "cat5171.h"
 #include "driver/gpio/S2fSwitch.h"
+#include "driver/time/Clock.h"
 #include "S2F.h"
-#include "I2Cbus.hpp"
 #include "setup/CruiseMode.h"
 #include "setup/SetupNG.h"
-#include "sensor/VarioFilter.h"
+#include "sensor.h"
 #include "logdefnone.h"
 
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include <freertos/queue.h>
 #include <esp_system.h>
+#include <driver/i2c_master.h>
 
 #include <cmath>
 #include <cstdio>
@@ -970,14 +971,14 @@ bool Audio::startAudio(int16_t ch)
 
     if ( ! _poti ) {
         ESP_LOGI(FNAME,"Find digital poti");
-        _poti = new MCP4018(&i2c1, mute, unmute);
-        if (_poti->haveDevice() && _poti->begin()) {
+        _poti = new MCP4018(mute, unmute);
+        if (_poti->probe(i2c_bus) && _poti->begin()) {
             ESP_LOGI(FNAME, "MCP4018 digital Poti found");
         } else {
             ESP_LOGI(FNAME, "Try CAT5171 digital Poti");
             delete _poti;
-            _poti = new CAT5171(&i2c1, mute, unmute);
-            if (_poti->haveDevice() && _poti->begin()) {
+            _poti = new CAT5171(mute, unmute);
+            if (_poti->probe(i2c_bus) && _poti->begin()) {
                 ESP_LOGI(FNAME, "CAT5171 digital Poti found");
             } else {
                 ESP_LOGW(FNAME, "NO digital Poti found !");
