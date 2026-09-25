@@ -547,7 +547,7 @@ void IpsDisplay::initDisplay() {
             BATgauge = nullptr;
         }
     }
-    if ( !VCSTATgauge ) {
+    if ( !VCSTATgauge && gflags.isPro ) {
         // VCSTATgauge = new CruiseStatus(INNER_RIGHT_ALIGN - 6, 22);
     }
     if ( FLAP && flapbox_enable.get() ) {
@@ -957,10 +957,9 @@ void IpsDisplay::drawDisplay(){
 
     // Cruise mode or circling
     if( flags.mode_dirty ) {
-        if (gflags.isPro) {
-            if (VCSTATgauge) {
-                VCSTATgauge->draw();
-            }
+        // todo causes a little hick-up on the vario indicator
+        if (VCSTATgauge) {
+            VCSTATgauge->draw();
         } else {
             MAINgauge->forceRedrawMode();
         }

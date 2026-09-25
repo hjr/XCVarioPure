@@ -119,7 +119,7 @@ void S2FBar::draw(mps_t s2fd, bool cruise)
         current._cruise_mode = 1;
     }
     else {
-        current._score = std::clamp(fast_iroundf(thermal_score.get() * 100), 0, 100);
+        current._score = std::clamp(fast_iroundf(thermal_score.get() * 100), 0, 99);
         current._cruise_mode = 0;
     }
 
