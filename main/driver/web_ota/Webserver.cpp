@@ -18,12 +18,8 @@ extern void send_config( httpd_req *req );
 extern int restore_config( int len, char *data );
 
 // file assets
-extern const uint8_t index_html_start[]             asm("_binary_index_html_start");
-extern const uint8_t index_html_end[]               asm("_binary_index_html_end");
 extern const uint8_t index_html_gz_start[]          asm("_binary_index_html_gz_start");
 extern const uint8_t index_html_gz_end[]            asm("_binary_index_html_gz_end");
-extern const uint8_t milligram_min_css_start[]      asm("_binary_milligram_min_css_start");
-extern const uint8_t milligram_min_css_end[]        asm("_binary_milligram_min_css_end");
 extern const uint8_t milligram_min_css_gz_start[]   asm("_binary_milligram_min_css_gz_start");
 extern const uint8_t milligram_min_css_gz_end[]     asm("_binary_milligram_min_css_gz_end");
 
@@ -175,12 +171,8 @@ esp_err_t GET_index_html_handler(httpd_req_t* req) {
 
     httpd_resp_set_type(req, "text/html");
 
-#if CONFIG_WEBSERVER_USE_GZIP
     httpd_resp_set_hdr(req, "Content-Encoding", "gzip");
     httpd_resp_send(req, (const char*)index_html_gz_start, index_html_gz_end - index_html_gz_start);
-#else
-    httpd_resp_send(req, (const char*)index_html_start, index_html_end - index_html_start);
-#endif
 
     return ESP_OK;
 }
@@ -192,12 +184,8 @@ esp_err_t GET_milligram_min_css_handler(httpd_req_t *req)
 
 	httpd_resp_set_type(req, "text/css");
 
-#if CONFIG_WEBSERVER_USE_GZIP 
     httpd_resp_set_hdr(req, "Content-Encoding", "gzip");
 	httpd_resp_send(req, (const char *)milligram_min_css_gz_start, milligram_min_css_gz_end - milligram_min_css_gz_start);
-#else
-	httpd_resp_send(req, (const char *)milligram_min_css_start, milligram_min_css_end - milligram_min_css_start);
-#endif
 
 	return ESP_OK;
 }
