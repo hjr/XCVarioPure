@@ -182,7 +182,7 @@ public:
         if constexpr (std::is_same_v<T, float>) { // only for float types
             if (_nvsvar) {
                 float fval = _history.getHead();
-                if ( _filter && !std::isnan(fval) ) {
+                if ( _filter && std::isfinite(fval) ) {
                     fval = _filter->filter(fval);
                 }
                 _nvsvar->set(fval);
