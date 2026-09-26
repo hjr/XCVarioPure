@@ -15,7 +15,6 @@
 #include "protocol/NMEA.h"
 #include "Flap.h"
 #include "setup/SetupNG.h"
-#include "sensor.h"
 #include "logdefnone.h"
 
 #include <cmath>
