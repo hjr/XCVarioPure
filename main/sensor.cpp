@@ -496,7 +496,7 @@ void system_startup(void *args){
     // Design the pure
     gflags.isPro = false;
 
-    // For an release build: Set inaccessible but used debug setup variable to their default
+    // For an release build: Set inaccessible but used debug setup variable set to their default
 #ifndef DEBUG_AND_TEST
     rot_default.set(rot_default.getDefault(), false, false);
     display_variant.set(DISPLAY_WHITE_ON_BLACK, false, false);
@@ -506,6 +506,7 @@ void system_startup(void *args){
     ahrs_dynamic_factor.set(ahrs_dynamic_factor.getDefault(), false, false);
     gyro_gating.set(gyro_gating.getDefault(), false, false);
     imu_reference.set(imu_reference.getDefault(), false, false);
+    core_climb_period.set(core_climb_period.getDefault(), false, false);
 #endif
 
     // Check on sensorless Vario

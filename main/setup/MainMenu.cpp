@@ -311,25 +311,24 @@ void vario_menu_create_damping(SetupMenu *top) {
 	top->addEntry(vdav);
 }
 
-static void vario_menu_create_meanclimb(SetupMenu *top) {
-	SetupMenuValFloat *vccm = new SetupMenuValFloat("Minimum climb", "", nullptr, &core_climb_min, RST_NONE, false);
-	vccm->setHelp("Minimum climb rate that counts for arithmetic mean climb value");
-	top->addEntry(vccm);
+static void vario_menu_create_meanclimb(SetupMenu* top) {
+    SetupMenuValFloat* vccm = new SetupMenuValFloat("Minimum climb", "", nullptr, &core_climb_min, RST_NONE, false);
+    vccm->setHelp("Minimum climb rate that goes into the statistics");
+    top->addEntry(vccm);
 
-	SetupMenuValFloat *vcch = new SetupMenuValFloat("Duration", "min", nullptr, &core_climb_history, RST_NONE, false);
-	vcch->setHelp(
-			"Duration in minutes over which mean climb rate is computed, default is last 3 thermals or 45 min");
-	top->addEntry(vcch);
+    SetupMenuValFloat* vcch = new SetupMenuValFloat("Avg. Period", "min", nullptr, &core_climb_history, RST_NONE, false);
+    vcch->setHelp("Duration in minutes over which mean climb rate is computed: Default: last 3 thermals or 45 min");
+    top->addEntry(vcch);
 
-	SetupMenuValFloat *vcp = new SetupMenuValFloat("Cycle", "sec", nullptr, &core_climb_period, RST_NONE, false);
-	vcp->setHelp(
-			"Cycle: number of seconds when mean climb value is recalculated, default is every 60 seconds");
-	top->addEntry(vcp);
+#ifdef DEBUG_AND_TEST
+    SetupMenuValFloat* vcp = new SetupMenuValFloat("Duty Cycle", "sec", nullptr, &core_climb_period, RST_NONE, false);
+    vcp->setHelp("Cycle: number of seconds when mean climb value is recalculated, default is every 60 seconds");
+    top->addEntry(vcp);
+#endif
 
-	SetupMenuValFloat *vcmc = new SetupMenuValFloat("Major Change", "m/s", nullptr, &mean_climb_major_change, RST_NONE, false);
-	vcmc->setHelp(
-			"Change in mean climb during last cycle (minute), that results in a major change indication (with arrow symbol)");
-	top->addEntry(vcmc);
+    SetupMenuValFloat* vcmc = new SetupMenuValFloat("Major Change", "m/s", nullptr, &mean_climb_major_change, RST_NONE, false);
+    vcmc->setHelp("Change in mean climb during the last minute, that results in a green/red indication color");
+    top->addEntry(vcmc);
 }
 
 static void vario_menu_create_s2f(SetupMenu *top) {
@@ -449,8 +448,8 @@ static void vario_menu_create(SetupMenu *vae) {
 	SetupMenu *vdamp = new SetupMenu("Vario Damping", vario_menu_create_damping);
 	vae->addEntry(vdamp);
 
-	SetupMenu *meanclimb = new SetupMenu("AVG Climb", vario_menu_create_meanclimb);
-	meanclimb->setHelp("Parameter for Average Climb (MC recommendation) displayed by green/red dot");
+	SetupMenu *meanclimb = new SetupMenu("Climb Stats", vario_menu_create_meanclimb);
+	meanclimb->setHelp("Parameter for Climb Statistics, displayed by green/red dot");
 	vae->addEntry(meanclimb);
 
     SetupMenu *elco = new SetupMenu("TE Compensation", vario_menu_create_tek);
