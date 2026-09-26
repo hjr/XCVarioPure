@@ -74,10 +74,10 @@ ThermalAssist::ThermalAssist(PolarGauge &g) :
     _gauge(g),
     _glider_on_top(true),
     _confidence(LowPassFilterT<float>::alphaFromTau(2.0, 0.1f)),
-    _th_norm(LowPassFilterT<float>::alphaFromTau(vario_av_delay.get(), .5f))
+    _th_norm(LowPassFilterT<float>::alphaFromTau(vario_av_delay.get() * 2, .5f))
 {
     _glider_on_top = thermal_assist.get() != 2;
-    _th_norm.reset(std::min(1.f, MC.get()));
+    _th_norm.reset(std::max(1.f, MC.get()));
 }
 
 // th_strength normalized to 0 .. 1
@@ -187,24 +187,43 @@ Point ThermalAssist::getThermalCG() const {
 }
 
 
-void ThermalAssist::draw() {
-    // get the peak and min thermals
-    float th_min = thermals[0].strength;
-    float th_max = th_min;
-    for ( int i = 1; i < CA_NUM_DIRS; i++) {
-        float tmp = thermals[i].strength;
-        if ( tmp > th_max) {
-            th_max = tmp;
+float ThermalAssist::getTop8Norm() const {
+    float top[8] = {};
+    int n = 0;
+
+    for (const Thermal &x : thermals) {
+        if (n < 8) {
+            top[n++] = x.strength;
+            continue;
         }
-        if ( tmp < th_min) {
-            th_min = tmp;
+
+        // smalles of the top 8
+        int minIdx = 0;
+        for (int i = 1; i < 8; ++i) {
+            if (top[i] < top[minIdx]) {
+                minIdx = i;
+            }
+        }
+
+        if (x.strength > top[minIdx]) {
+            top[minIdx] = x.strength;
         }
     }
-    // calc peak norm
-    th_min = std::max(th_min - 0.2f, .0f);
-    _th_norm.filter(std::max(th_max - th_min, 1.f));
+    float sum = 0;
+    for (int i = 0; i < 8; ++i) {
+        sum += top[i];
+    }
 
-    ESP_LOGI(FNAME,"TA draw, peak norm: %.2f, %.2f, %.2f", th_min, th_max, _th_norm.get());
+    return sum * 0.125f;
+}
+
+void ThermalAssist::draw() {
+    // calculate a thermals norm
+    float th_top = std::min(getTop8Norm(), 3.f); // max. norm to 3 m/s
+    float th_min = std::max(th_top - 3.0f, .0f);
+    _th_norm.filter(std::max(th_top - th_min, 1.f));
+
+    // ESP_LOGI(FNAME,"TA draw, peak norm: %.2f, %.2f, %.2f", th_min, th_top, _th_norm.get());
     for (int i = 0; i < CA_NUM_DIRS; i++) {
         int d = (i + _idir) % CA_NUM_DIRS;
         float ths = std::min((thermals[d].getStrength() - th_min) / _th_norm.get(), 1.f); // normalized strength 0..1
@@ -224,15 +243,14 @@ void ThermalAssist::draw() {
 // }
 
 
-// 2 Hz called from AHRS / heading sensor
-// > tick : a 10 Hz counter
+// 10 Hz called from AHRS / heading sensor
 void ThermalAssist::checkHeading(rad_t vheading, rad_t omega, rad_t bank) {
 
     // Combined fidelity on "this is thermaling"
     // 1. turn rate confidence
     float c_turn = std::clamp((fabsf(omega) - Units::deg_to_rad(2.0f)) / Units::deg_to_rad(6.0f), 0.0f, 1.0f);
     // 2. bank angle confidence
-    float c_bank = std::clamp((fabsf(bank)-Units::deg_to_rad(8.0f)) / Units::deg_to_rad(16.0f), 0.0f, 1.0f);
+    float c_bank = std::clamp((fabsf(bank) - Units::deg_to_rad(8.0f)) / Units::deg_to_rad(16.0f), 0.0f, 1.0f);
     // 3. steadiness/duration confidence
     _confidence.filter( (c_turn + c_bank) / 2.f );
     debugvar.set(_confidence.get());
@@ -251,25 +269,23 @@ void ThermalAssist::checkHeading(rad_t vheading, rad_t omega, rad_t bank) {
         ESP_LOGI(FNAME,"VHeading: %.1f, omega: %.1f, bank: %.1f, c_turn: %.2f, c_bank: %.2f, confidence: %.2f",
             Units::rad_to_deg(vheading), Units::rad_to_deg(omega), Units::rad_to_deg(bank), c_turn, c_bank, _confidence.get() );
 
-        if ( _confidence.get() > 0.7f && dt < 10000 ) {
+        mps_t te = 0.f;
+        if ( _confidence.get() > 0.7f && dt < 20000 ) { // 15° in max 20sec
 
-            ESP_LOGI(FNAME,"New thermal avg over %dsec", (int)dt / 1000);
-            mps_t te = te_vario.get(); // (alt - _te_alt) * 1000.f / dt;
-            thermals[_idir].set(te);
+            // ESP_LOGI(FNAME,"New thermal avg over %dsec", (int)dt / 1000);
+            te = te_vario.get(); // todo get average over the past dt time
             ESP_LOGI(FNAME,"New thermal at heading %.1f, TE: %.2f", Units::rad_to_deg(cur_heading), te );
             uint8_t new_c_dir = std::signbit(diff) ? (uint8_t)circdir_t::circlLeft : (uint8_t)circdir_t::circlRight;
             if ( new_c_dir != _cdir ) {
                 ESP_LOGI(FNAME,"ThermalAssist checkHeading, circling direction changed to %s", new_c_dir == (uint8_t)circdir_t::circlLeft ? "left" : "right");
-
             }
             _cdir = new_c_dir;
         }
         else {
-            _th_norm.filter(std::min(1.f, MC.get()));
-            ESP_LOGI(FNAME,"ThermalAssist checkHeading, no thermaling detected, reset peak value");
-            thermals[_idir].set(0.f);
+            _th_norm.filter(std::max(1.f, MC.get()));
+            ESP_LOGI(FNAME,"ThermalAssist checkHeading, no thermaling detected, reset peak value %.2f, dt: %d", _confidence.get(), (int)dt);
         }
-
+        thermals[_idir].set(te);
     }
 }
 
