@@ -178,7 +178,7 @@ bool SetupNG<int>::inLimits() const {
 template <typename T>
 bool SetupNG<T>::set( T aval, bool dosync, bool doAct ) {
     if constexpr (std::is_same_v<T, float>) {
-        flags._valid = !std::isnan(aval);
+        flags._valid = std::isfinite(aval);
     } else {
         flags._valid = true;
     }

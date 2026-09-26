@@ -24,26 +24,52 @@
 
 
 
-
-static float decodeNMEADegMin(const char* degmin, char hemi)
+static bool decodeNMEADegMin(const char* degmin, char hemi, float &res)
 {
-    if (!degmin || !*degmin)
-        return NAN;
+    if (!degmin || !*degmin) {
+        return false;
+    }
 
-    float v = std::strtof(degmin, nullptr);
+    char* end = nullptr;
+    errno = 0;
+    const float v = std::strtof(degmin, &end);
+
+    // Keine Zahl, Überlauf oder zusätzlicher Müll
+    if (end == degmin || errno == ERANGE || !std::isfinite(v)) {
+        return false;
+    }
 
     int deg = static_cast<int>(v / 100.0f);
     float min = v - deg * 100.0f;
 
+    // Minuten müssen [0, 60) sein
+    if (min < 0.0f || min >= 60.0f) {
+        return false;
+    }
+
+    // NMEA: Latitude max. 90°, Longitude max. 180°
+    const bool latitude = (hemi == 'N' || hemi == 'S');
+    const bool longitude = (hemi == 'E' || hemi == 'W');
+
+    if (!latitude && !longitude) {
+        return false;
+    }
+
+    const int maxDeg = latitude ? 90 : 180;
+
+    if (deg > maxDeg || (deg == maxDeg && min > 0.0f)) {
+        return false;
+    }
+
     float deg_dec = deg + min / 60.0f;
 
-    if (hemi == 'S' || hemi == 'W')
+    if (hemi == 'S' || hemi == 'W') {
         deg_dec = -deg_dec;
+    }
 
-    return deg_dec;
+    res = deg_dec;
+    return true;
 }
-
-
 
 // The GPS protocol parser.
 //
@@ -78,8 +104,9 @@ dl_action_t GpsMsg::parseGPRMC(NmeaPlugin *plg)
     const char *s = sm->_frame.c_str();
     int valid_time_scan = sscanf( s + word->at(0), "%02d%02d%02d", &t.tm_hour, &t.tm_min, &t.tm_sec );
     char warn = *(s + word->at(1));
-    float lat = decodeNMEADegMin( s + word->at(2), *(s + word->at(3)) );
-    float lon = decodeNMEADegMin( s + word->at(4), *(s + word->at(5)) );
+    float lat, lon;
+    bool fix_ok = decodeNMEADegMin( s + word->at(2), *(s + word->at(3)), lat )
+        && decodeNMEADegMin( s + word->at(4), *(s + word->at(5)), lon );
     float tmp;
     sscanf( s + word->at(6), "%f", &tmp );
     mps_t gndSpeed = Units::knots_to_mps(tmp);
@@ -93,7 +120,7 @@ dl_action_t GpsMsg::parseGPRMC(NmeaPlugin *plg)
     // ESP_LOGI(FNAME,"GP%s, warn:%c T:%s D:%s", gprmc+3, warn, time, date  );
 
     if ( warn == 'A' ) {
-        if (!std::isnan(lat) && !std::isnan(lon) && gpsSensor) {
+        if (fix_ok && gpsSensor) {
            // valid fix
            gpsSensor->inject(lat, lon, gndSpeed, gndCourse);
         }

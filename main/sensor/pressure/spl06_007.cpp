@@ -194,7 +194,6 @@ bool SPL06_007::doRead(pascal_t &val)
     }
     if ( ! get_raw(p_raw, t_rawptr) ) {
         ESP_LOGW(FNAME, "Sensor reading failed");
-        val = NAN;
         return false;
     }
     float praw_sc = p_raw / _scale_factor_p;

@@ -10,11 +10,18 @@
 #include "math/vector_3d.h"
 #include "logdefnone.h"
 
+#include <cmath>
 #include <algorithm>
 
 template <typename T>
 T LowPassFilterT<T>::filter(T input)
 {
+    if constexpr (std::is_same_v<T, float>) {
+        if (!std::isfinite(input)) {
+            return _last_output;
+        }
+    }
+
     _last_output = (input - _last_output) * _alpha + _last_output;
     return _last_output;
 }

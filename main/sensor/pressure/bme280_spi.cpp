@@ -189,7 +189,6 @@ bool BME280_SPI::doRead(pascal_t& val) {
     }
     if (loop == 100) {
         ESP_LOGE(FNAME, "Error reading temp BMP280 CS: %d !", _cs);
-        val = NAN;
         return false;
     }
 
