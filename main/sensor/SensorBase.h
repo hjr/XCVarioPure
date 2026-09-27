@@ -129,9 +129,7 @@ public:
         SensorBase(ums, pmult),
         _history((T*)buf, cap)
     {
-        if constexpr (std::is_same_v<T, float>) { // only for float types
-            _invalid = 0.f;
-        }
+        _invalid = T{};
     }
     virtual ~SensorTP() {
         if ( _nvsvar ) {
@@ -145,7 +143,7 @@ public:
         _filter = filter;
     }
     // read current value from sensor hardware
-    virtual bool doRead(T &val) = 0;
+    virtual bool doRead(T &val) { return false; };
     // optional: diagnostic info
     // virtual bool healthy() const { return true; }
 
@@ -162,7 +160,7 @@ public:
             // Publish on black board NVS variable if linked
             pushAndPublish(value, now_ms);
         } else {
-            // ESP_LOGE(FNAME, "Sensor %s read NAN", name());
+            // ESP_LOGE(FNAME, "Sensor %s read failed", name());
             timeoutValidity();
         }
 
@@ -196,13 +194,12 @@ public:
         publishNVS();
     }
     void timeoutValidity() {
-        _history.reset();
         if constexpr (std::is_same_v<T, float>) { // only for float types
             if (_nvsvar && _last_update_time_ms + _valid_time_ms < Clock::getMillis()) {
                 _nvsvar->setInvalid();
-                _processed = _invalid;
             }
         }
+        _processed = _invalid;
     }
 
     // get the integral over the las X milli seconds
