@@ -16,10 +16,9 @@
 #include <string>
 #include <queue>
 #include <vector>
-#include <memory>
 
 
-constexpr int MSG_POOL_SIZE = 12;
+constexpr int MSG_POOL_SIZE = 6;
 constexpr int PREALLOC_BUF_SIZE = 128;
 
 // One Message
