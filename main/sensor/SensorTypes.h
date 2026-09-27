@@ -18,6 +18,7 @@ enum SensorType : uint8_t {
     TE_PRESSURE,
     POSITION,
     ALTITUDE,
+    VIRTUAL,
     VARIOMETER,
     MAGNETO,
     ACC_INERTIAL,

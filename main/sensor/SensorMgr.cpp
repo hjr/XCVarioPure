@@ -12,7 +12,7 @@
 #include "logdef.h"
 
 #ifndef ALL_LOGS_DISABLED
-const char *idmemo[] = { "", "Tmp", "dP", "sP", "teP", "Pos", "Alt", "Var", "Mag", "Acc", "Gyr", "HUM", "FLP", "Bat" };
+const char *idmemo[] = { "", "Tmp", "dP", "sP", "teP", "Pos", "Alt", "Vrt", "Var", "Mag", "Acc", "Gyr", "HUM", "FLP", "Bat" };
 #endif
 
 // queue changes
