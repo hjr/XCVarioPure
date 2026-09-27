@@ -29,7 +29,7 @@ public:
     CruiseMode();
     bool getCMode() const { return _cmode; };
     bool isGross() const { return _vmode == MODE_BRUTTO; }
-    bool isNetto() const { return _vmode != MODE_BRUTTO; }
+    bool isNet() const { return _vmode != MODE_BRUTTO; }
     bool audioIsVario() const { return _audio_vario; }
     bool audioIsChopping() const { return _audio_chopping; }
     int16_t getVMode() const { return _vmode; }

@@ -49,7 +49,7 @@ void CruiseStatus::draw() {
     }
 
     // write netto mode in case set
-    if (CRMOD.isNetto()) {
+    if (CRMOD.isNet()) {
         MYUCG->setColor(COLOR_WGREY);
     } else {
         MYUCG->setColor(COLOR_BLACK);

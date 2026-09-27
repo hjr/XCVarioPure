@@ -213,13 +213,6 @@ mps_t S2F::getMinsinkSpeed() {
     return _min_sink_speed * std::sqrtf(std::sqrtf(getLoadFactor()));
 }
 
-mps_t S2F::getCirclingSink(mps_t v) {
-    if (v > _stall_speed * 0.6)
-        return _circling_sink;
-    else
-        return 0;
-}
-
 // v : [m/s]
 float S2F::getCw( mps_t v ) {
 	float cw = 0;

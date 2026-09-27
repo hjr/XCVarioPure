@@ -8,7 +8,6 @@
 
 #include "SeeYouMsg.h"
 #include "protocol/nmea_util.h"
-#include "driver/time/Clock.h"
 #include "comm/DataLink.h"
 #include "comm/Messages.h"
 #include "setup/SetupNG.h"
@@ -18,6 +17,7 @@
 #include "math/Units.h"
 #include "logdefnone.h"
 
+#include <sys/time.h>
 #include <string_view>
 
 // The Naviter/SeeYou protocol parser.

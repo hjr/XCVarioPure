@@ -32,7 +32,7 @@ public:
 	mps_t getMinsink();
 	mps_t getMinsinkSpeed();
 	mps_t getStaticMinsinkSpeed() { return _min_sink_speed; };
-	mps_t getCirclingSink(mps_t v);
+	mps_t getCirclingSink() const { return _circling_sink; }
 	float getCw( mps_t v );
 	static float getLoadFactor();
     int getMyGliderIdx() const { return _glider_index; }
