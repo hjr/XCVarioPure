@@ -8,6 +8,7 @@
 
 #include "ThermalAssist.h"
 
+#include "sensor/VarioFilter.h"
 #include "math/Units.h"
 #include "screen/element/PolarGauge.h"
 #include "driver/time/Clock.h"
@@ -188,18 +189,19 @@ Point ThermalAssist::getThermalCG() const {
 
 
 float ThermalAssist::getTop8Norm() const {
-    float top[8] = {};
+    constexpr int TOP_N = 6;
+    float top[TOP_N] = {};
     int n = 0;
 
     for (const Thermal &x : thermals) {
-        if (n < 8) {
+        if (n < TOP_N) {
             top[n++] = x.strength;
             continue;
         }
 
-        // smalles of the top 8
+        // smalles of the top TOP_N
         int minIdx = 0;
-        for (int i = 1; i < 8; ++i) {
+        for (int i = 1; i < TOP_N; ++i) {
             if (top[i] < top[minIdx]) {
                 minIdx = i;
             }
@@ -210,11 +212,11 @@ float ThermalAssist::getTop8Norm() const {
         }
     }
     float sum = 0;
-    for (int i = 0; i < 8; ++i) {
+    for (int i = 0; i < TOP_N; ++i) {
         sum += top[i];
     }
 
-    return sum * 0.125f;
+    return sum / TOP_N;
 }
 
 void ThermalAssist::draw() {
@@ -253,7 +255,6 @@ void ThermalAssist::checkHeading(rad_t vheading, rad_t omega, rad_t bank) {
     float c_bank = std::clamp((fabsf(bank) - Units::deg_to_rad(8.0f)) / Units::deg_to_rad(16.0f), 0.0f, 1.0f);
     // 3. steadiness/duration confidence
     _confidence.filter( (c_turn + c_bank) / 2.f );
-    debugvar.set(_confidence.get());
 
     // integrate footing/heading, create a new thermal when the heading has changed by 15° or more
     rad_t diff = Vector::angleDiff( vheading, cur_heading );
@@ -272,9 +273,8 @@ void ThermalAssist::checkHeading(rad_t vheading, rad_t omega, rad_t bank) {
         mps_t te = 0.f;
         if ( _confidence.get() > 0.7f && dt < 20000 ) { // 15° in max 20sec
 
-            // ESP_LOGI(FNAME,"New thermal avg over %dsec", (int)dt / 1000);
-            te = te_vario.get(); // todo get average over the past dt time
-            ESP_LOGI(FNAME,"New thermal at heading %.1f, TE: %.2f", Units::rad_to_deg(cur_heading), te );
+            te = varioSensor->getAVG(dt);
+            ESP_LOGI(FNAME,"New thermal at heading %.1f, TE: %.2f, %dmsec", Units::rad_to_deg(cur_heading), te, (int)dt );
             uint8_t new_c_dir = std::signbit(diff) ? (uint8_t)circdir_t::circlLeft : (uint8_t)circdir_t::circlRight;
             if ( new_c_dir != _cdir ) {
                 ESP_LOGI(FNAME,"ThermalAssist checkHeading, circling direction changed to %s", new_c_dir == (uint8_t)circdir_t::circlLeft ? "left" : "right");

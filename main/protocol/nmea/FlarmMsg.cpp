@@ -246,7 +246,7 @@ dl_action_t FlarmMsg::parsePFLAX(NmeaPlugin *plg)
                 }
             }
             // always prepare vario for disruptive jump
-            bmpVario.prepareForSimJump();
+            varioSensor->prepareForSimJump();
         }
     }
 

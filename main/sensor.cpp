@@ -373,7 +373,7 @@ void readSensors(void *pvParameters)
         }
 
         // audio update
-        AUDIO->updateTone(bmpVario.gotPositive());
+        AUDIO->updateTone(varioSensor->gotPositive());
 
         // UI update, to not flood the UI queue with a binary hand shake
         if ( ui_update_done ) {
@@ -1030,9 +1030,10 @@ void system_startup(void *args){
     }
     
     // TE vario "sensor" always needed, but last in line
+    varioSensor = new VarioFilter();
     if ( (baroSensor && teSensor && asSensor) || SetupCommon::isClient() ) {
-        bmpVario.setup();
-        SensorRegistry::registerSensor(&bmpVario);
+        varioSensor->setup();
+        SensorRegistry::registerSensor(varioSensor);
     }
 
     // apply a none default alt_select

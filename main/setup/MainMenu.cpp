@@ -101,7 +101,7 @@ int compass_ena(SetupMenuSelect *p) {
 }
 
 static int vario_setup(SetupMenuValFloat* p) {
-    bmpVario.configChange();
+    varioSensor->setup();
     return 0;
 }
 

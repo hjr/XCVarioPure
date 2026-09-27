@@ -32,6 +32,7 @@
 #include "math/Units.h"
 #include "Atmosphere.h"
 #include "Flap.h"
+#include "S2F.h"
 #include "Flarm.h"
 #include "setup/CruiseMode.h"
 #include "wind/Wind.h"
@@ -837,21 +838,9 @@ void IpsDisplay::drawDisplay(){
     }
 	tick++;
 
-	// todo integrate better into screen element
-    mps_t te_ms = CRMOD.isNetto() ? te_netto.get() : te_vario.get();
-    mps_t polar_sink_ms = bmpVario.getPolarSink();
-    mps_t te_avg_ms = bmpVario.getAvgVario();
-	if ( CRMOD.isNetto() ) {
-		te_avg_ms -= polar_sink_ms; // average
-	}
-	if ( CRMOD.getVMode() == CruiseMode::MODE_REL_NETTO ) { // Super Netto, considering circling sink
-		te_ms += Speed2Fly.getCirclingSink( ias.get() );
-		te_avg_ms += Speed2Fly.getCirclingSink( ias.get() );
-	}
-
     // average Climb
     if (!(tick % 2)) {
-        MAINgauge->drawFigure(te_avg_ms);
+        MAINgauge->drawFigure(varioSensor->getAvgVario());
     }
 
     // S2F bar
@@ -920,9 +909,9 @@ void IpsDisplay::drawDisplay(){
     }
 
     // Vario indicator
-    MAINgauge->draw(te_ms);
+    MAINgauge->draw(CRMOD.isNet() ? te_netto.get() : te_vario.get());
     if (gflags.isPro && CRMOD.isGross()) {
-        MAINgauge->drawPolarSink(polar_sink_ms);
+        MAINgauge->drawPolarSink(varioSensor->getPolarSink());
     }
 
     // Battery

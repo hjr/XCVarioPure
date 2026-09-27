@@ -17,6 +17,7 @@
 #include "wind/Wind.h"
 #include "driver/audio/ESPAudio.h"
 #include "Flap.h"
+#include "S2F.h"
 #include "comm/DeviceMgr.h"
 #include "comm/CanBus.h"
 #include "comm/Configuration.h"
@@ -330,7 +331,7 @@ static void calc_speeds() {
 }
 
 static void feed_te_alt() {
-    bmpVario.pushToHistory(te_alt.get(), Clock::getMillis());
+    tecompSensor->pushToHistory(te_alt.get(), Clock::getMillis());
 }
 
 void change_volume() {
