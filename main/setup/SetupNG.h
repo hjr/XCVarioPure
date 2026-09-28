@@ -237,7 +237,9 @@ extern SetupNG<rad_t>  		slip_angle;
 extern SetupNG<float>  		battery_voltage;
 extern SetupNG<float>  		debugvar;
 extern SetupNG<float>  		thermal_score;
-
+extern SetupNG<vector_f>  	imu_acc;
+extern SetupNG<vector_f>  	imu_gyro;
+    
 extern SetupNG<int>  		xcv_alive;
 extern SetupNG<int>  		mags_alive;
 extern SetupNG<int>  		flarm_alive;

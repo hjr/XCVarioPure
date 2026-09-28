@@ -470,7 +470,9 @@ SetupNG<rad_t>  		slip_angle( "SLANGLE", 0.0, false, SYNC_FROM_MASTER, VOLATILE 
 SetupNG<float>  		battery_voltage( "BATV", 0.0, false, SYNC_FROM_MASTER, VOLATILE );
 SetupNG<float>  		debugvar( "DEBUG", 0.0, false, SYNC_NONE, VOLATILE );
 SetupNG<float>  		thermal_score( "THSCORE", 0.0, false, SYNC_NONE, VOLATILE );
-
+SetupNG<vector_f>  		imu_acc( "ACCEL", {}, false, SYNC_FROM_MASTER, VOLATILE );
+SetupNG<vector_f>  		imu_gyro( "GYRO", {}, false, SYNC_FROM_MASTER, VOLATILE );
+    
 SetupNG<int>  			xcv_alive( "AL_XCV", ALIVE_NONE, false, SYNC_NONE, VOLATILE );
 SetupNG<int>  			mags_alive( "AL_MAGS", ALIVE_NONE, false, SYNC_NONE, VOLATILE );
 SetupNG<int>  			flarm_alive( "AL_FLARM", ALIVE_NONE, false, SYNC_NONE, VOLATILE );
