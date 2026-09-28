@@ -43,7 +43,7 @@
 #include "Colors.h"
 #include "AdaptUGC.h"
 #include "sensor.h"
-#include "test/LeakTest.h"
+#include "sensor/LeakTest.h"
 #include "logdef.h"
 
 #include "comm/DeviceMgr.h"
