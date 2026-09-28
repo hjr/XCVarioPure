@@ -77,6 +77,8 @@ char SetupNG<T>::typeName(void) const {
         return 'A';
     else if constexpr (std::is_same_v<T, DeviceNVS>)
         return 'D';
+    else if constexpr (std::is_same_v<T, vector_f>)
+        return 'V';
     else
         return 'U';
 }
@@ -104,6 +106,9 @@ std::string SetupNG<T>::getValueAsStr() const {
         else if constexpr (std::is_same_v<T, DeviceNVS>) {
             str = std::to_string(_value.target.raw) + '/' +std::to_string(_value.setup.data) +
                 '/' +std::to_string(_value.bin_sp) + '/' +std::to_string(_value.nmea_sp);
+        }
+        else if constexpr (std::is_same_v<T, vector_f>) {
+            str = std::to_string(_value.x) + '/' + std::to_string(_value.y) + '/' + std::to_string(_value.z);
         }
     }
     return str;
@@ -136,6 +141,9 @@ void SetupNG<T>::setValueFromStr( const char * str ) {
             if (sscanf(str ,"%d/%d/%hd/%hd", (unsigned*)&t, (unsigned*)&s, &bp, &np) == 4) {
                 _value = DeviceNVS(t, s, bp, np);
             }
+        }
+        else if constexpr (std::is_same_v<T, vector_f>) {
+            sscanf( str,"%f/%f/%f", &_value.x, &_value.y, &_value.z );
         }
         setDirty();
     }
@@ -226,6 +234,7 @@ template class SetupNG<t_tenchar_id>;
 template class SetupNG<axes_i16_abi>;
 template class SetupNG<bitfield_compass>;
 template class SetupNG<DeviceNVS>;
+template class SetupNG<vector_f>;
 
 
 ////////////////////////////////////////////////////////////////////////////

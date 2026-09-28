@@ -70,6 +70,9 @@ bool XCVSyncMsg::sendItem(const char *key, char type, void *value, int len)
         sprintf(buf, "%.7f", *(float *)(value));
     } else if (type == 'I') {
         sprintf(buf, "%d", *(int *)(value));
+    } else if (type == 'V') {
+        vector_f *v = reinterpret_cast<vector_f *>(value);
+        sprintf(buf, "%.7f,%.7f,%.7f", v->x, v->y, v->z);
     }
     msg->buffer += buf;
     msg->buffer += "*" + NMEA::CheckSum(msg->buffer.c_str()) + "\r\n";
@@ -112,6 +115,12 @@ dl_action_t XCVSyncMsg::parseExcl_xsX(NmeaPlugin *plg)
         else if( type == 'I' ) {
             SetupNG<int> *mi = static_cast<SetupNG<int> *>(item);
             mi->set( (int)val, false );
+        }
+        else if( type == 'V' ) {
+            SetupNG<vector_f> *mi = static_cast<SetupNG<vector_f> *>(item);
+            vector_f v;
+            sscanf(sm->_frame.c_str() + word->at(2), "%f,%f,%f", &v.x, &v.y, &v.z);
+            mi->set( v, false );
         }
 
         // Once

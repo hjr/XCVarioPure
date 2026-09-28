@@ -36,6 +36,7 @@ class vector_3d {
     vector_3d<std::common_type_t<T, S>> operator+(S s) const;
     vector_3d<T>& operator*=(const T s2);
     //	vector_3d<T> operator*(const T s2) const;
+    bool operator==(const vector_3d<T>& v2) const { return x == v2.x && y == v2.y && z == v2.z; } // just a binary comparison (!!)
     template <typename S>
     vector_3d<std::common_type_t<T, S>> operator*(S s) const;
     vector_3d<T>& operator/=(const T s2);
