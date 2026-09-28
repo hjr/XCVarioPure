@@ -118,7 +118,7 @@ protected:
     uint16_t _latency_ms;           ///< Sensor conversion/acquisition latency
     uint32_t _last_update_time_ms;  ///< Time the update got registered
     uint32_t _valid_time_ms;        ///< Time interval the reading is considered valid and might be used
-    SensorId _id; /// SensorId as integer
+    SensorId _id;                   ///< SensorId
 };
 
 template <typename T>
@@ -136,7 +136,7 @@ public:
             _nvsvar->setInvalid();
         }
     }
-    void setNVSVar( SetupNG<float> *nvsvar ) {
+    void setNVSVar( SetupNG<T> *nvsvar ) {
         _nvsvar = nvsvar;
     }
     void setFilter( FilterItf<T>* filter ) {
@@ -178,8 +178,8 @@ public:
     }
     // Publish on black board NVS variable
     void publishNVS() {
-        if constexpr (std::is_same_v<T, float>) { // only for float types
-            if (_nvsvar) {
+        if (_nvsvar) {
+            if constexpr (std::is_same_v<T, float>) { // for float types
                 float fval = _history.getHead();
                 if ( _filter && std::isfinite(fval) ) {
                     fval = _filter->filter(fval);
@@ -187,6 +187,15 @@ public:
                 _nvsvar->set(fval);
                 _processed = fval;
             }
+            else if constexpr (std::is_same_v<T, vector_f>) { // for vector_f type
+                vector_f val = _history.getHead();
+                if ( _filter ) {
+                    val = _filter->filter(val);
+                }
+                _nvsvar->set(val);
+                _processed = val;
+            }
+
         }
     }
     inline void pushAndPublish(const T& value, uint32_t now_ms) {
@@ -409,7 +418,7 @@ protected:
 
 
     FixedSensorHistory<T> _history;
-    SetupNG<float> *_nvsvar = nullptr; ///< Optional link to NVS variable for sync etc.
+    SetupNG<T>*     _nvsvar = nullptr; ///< Optional link to NVS variable for sync etc.
     FilterItf<T>*   _filter = nullptr; ///< Optional filter plugin, ownership not handled here
     T               _invalid = T{};    ///< Invalid value representation
     T               _processed = T{};  ///< Last valid value as published on the black board
