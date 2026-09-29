@@ -894,7 +894,7 @@ static void system_menu_create_hardware(SetupMenu *top) { // dynamic!
         }
 
         SetupMenu *bat = new SetupMenu("Battery Meter", system_menu_create_battery);
-        bat->setHelp("Adjust voltage thresholds for battery state indication");
+        bat->setHelp("Volt meter & battery state indication");
         top->addEntry(bat);
     }
 }
