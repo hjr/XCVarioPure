@@ -21,6 +21,7 @@ class TEcompFilter final : public SensorTP<meter_t> {
     bool setup() override { return true; }
 
     bool doRead(meter_t& val) override;
+    void postProcess() override;
 
    private:
     LowPassFilterT<float> _tealt_lpf;

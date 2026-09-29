@@ -40,16 +40,12 @@ extern global_flags gflags;
 extern CANbus *CAN;
 extern SerialLine *S1,*S2;
 extern i2c_master_bus_handle_t i2c_bus;
-
 extern WatchDog_C *uiMonitor;
-
 extern std::string logged_tests;
-
 extern meter_t alt_external;
-
 extern SemaphoreHandle_t spiMutex;
-
 extern vector_f gravity_vector;
+extern TaskHandle_t ReadSensorsLoop;
 
 inline void delay(uint32_t ms)
 {

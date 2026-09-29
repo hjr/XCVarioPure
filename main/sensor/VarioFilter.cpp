@@ -33,10 +33,11 @@ constexpr size_t TEALTSIZE = 20000 / DUTY_CYCLE_MS;
 static __attribute__((aligned(4))) meter_t tealt_buffer[ TEALTSIZE + 1 ]; // internal te altitude trace
 
 //
-// the doRead portion of the variometer
+// The doRead portion of the variometer (-> only on master).
+// On a client do the postproc only instead and fetch the te_alt from the master.
 //
 TEcompFilter::TEcompFilter() :
-    SensorTP<meter_t>(tealt_buffer, TEALTSIZE, DUTY_CYCLE_MS, 0),
+    SensorTP<meter_t>(tealt_buffer, TEALTSIZE, DUTY_CYCLE_MS, SetupCommon::isMaster()?0:1),
     _tealt_lpf(0.25f)
 {
     _id = SensorId(SensorType::VIRTUAL, 9);
@@ -44,9 +45,9 @@ TEcompFilter::TEcompFilter() :
         _id.flags |= SensorId::SENSOR_LOCAL;
         // mark as essential sensor to be able to simulate
         _id.flags |= SensorId::SENSOR_ESSENTIAL;
+        setNVSVar(&te_alt);
+        setFilter(&_tealt_lpf);
     }
-    setNVSVar(&te_alt);
-    setFilter(&_tealt_lpf);
     meter_t alt = altitude_isa.get();
     _tealt_lpf.reset(alt);
 }
@@ -80,7 +81,14 @@ bool TEcompFilter::doRead(meter_t& val) {
     return true;
 }
 
+void TEcompFilter::postProcess()
+{
+    pushToHistory(te_alt.get(), Clock::getMillis());
+}
 
+//
+// Variometer Kalman Filter
+//
 struct VarioKF {
     // State
     meter_t h;  // altitude [m]
@@ -172,12 +180,10 @@ VarioFilter::VarioFilter() :
     _Goptimal(15.f, DUTY_CYCLE_MS / 1000.f),
     _avg_vario(LowPassFilterT<float>::alphaFromTau(1.f, 0.1f))
 {
-    _id = SensorId(SensorType::VARIOMETER, 9);
+    _id = SensorId(SensorType::VARIOMETER, 10);
     assert(tecompSensor == nullptr);
     tecompSensor = new TEcompFilter();
-    if(SetupCommon::isMaster()) {
-        SensorRegistry::registerSensor(tecompSensor); // doRead only on master device
-    }
+    SensorRegistry::registerSensor(tecompSensor);
     _prepare_sim_jump = 40; // preparation for a disruptive jump to the ground level
 }
 // ~VarioFilter() {} .. never going to be deleted
@@ -188,7 +194,6 @@ bool VarioFilter::setup() {
     vkf.setTau(vario_delay.get()); // KF
     _prev_time = Clock::getMillis();
     startRunningAvg(vario_av_delay.get() * 1000);
-    // _lpf.setTau(vario_delay.get(), 0.1f); // 10 Hz
     _Gact.setTau(vario_av_delay.get()); // same integration time for the climb score
     _Goptimal.setTau(vario_av_delay.get());
     return true;

@@ -339,8 +339,8 @@ static void calc_speeds() {
     }
 }
 
-static void feed_te_alt() {
-    tecompSensor->pushToHistory(te_alt.get(), Clock::getMillis());
+static void kick_client_loop() {
+    xTaskNotifyGive(ReadSensorsLoop);
 }
 
 void change_volume() {
@@ -463,7 +463,7 @@ SetupNG<mps_t>  		ias( "IASV", 0.0, false, SYNC_NONE, VOLATILE); // derived from
 SetupNG<mps_t>  		tas( "TASV", 0.0, false, SYNC_NONE, VOLATILE ); // derived from ias + OAT + altitude in calc_speeds()
 SetupNG<mps_t>  		gnd_speed( "GNDV", -1.0, false, SYNC_NONE, VOLATILE );
 SetupNG<rad_t>  		gnd_course( "GNDC", -10.0, false, SYNC_NONE, VOLATILE );
-SetupNG<meter_t>  		te_alt( "TEALT", 0.0, false, SYNC_FROM_MASTER, VOLATILE, feed_te_alt );
+SetupNG<meter_t>  		te_alt( "TEALT", 0.0, false, SYNC_FROM_MASTER, VOLATILE, kick_client_loop );
 SetupNG<mps_t>  		te_vario( "TEVA", 0.0, false, SYNC_NONE, VOLATILE ); // derived from te_alt in VarioFilter
 SetupNG<mps_t>  		te_netto( "TENET", 0.0, false, SYNC_NONE, VOLATILE ); // derived from te_alt in VarioFilter
 SetupNG<rad_t>  		slip_angle( "SLANGLE", 0.0, false, SYNC_FROM_MASTER, VOLATILE );

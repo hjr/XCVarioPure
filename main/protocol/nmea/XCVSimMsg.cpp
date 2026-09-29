@@ -22,6 +22,7 @@
 #include "sensor/mag/MagVSensor.h"
 #include "sensor/adc/FlapSens.h"
 #include "math/Trigonometry.h"
+#include "sensor.h"
 #include "logdefnone.h"
 
 #include <cstring>
@@ -144,6 +145,7 @@ dl_action_t XCVSimMsg::parse_Sens(NmeaPlugin *plg)
         vtmp.z = atof(sm->_frame.c_str() + word->at(14));
         if ( magSensor ) magSensor->pushAndPublish(vtmp, time);
     }
+    xTaskNotifyGive(ReadSensorsLoop);
 
     return NOACTION; // never forward the simulation
 }

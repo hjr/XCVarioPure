@@ -73,7 +73,8 @@
 #include <cstring>
 
 
-SemaphoreHandle_t spiMutex=NULL;
+TaskHandle_t ReadSensorsLoop = nullptr;
+SemaphoreHandle_t spiMutex = nullptr;
 
 AdaptUGC *MYUCG = 0;  // ( SPI_DC, CS_Display, RESET_Display );
 WatchDog_C *uiMonitor = nullptr;
@@ -338,7 +339,12 @@ void readSensors(void *pvParameters)
 #endif
 
         esp_task_wdt_reset();
-        xTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(100));
+        if (SetupCommon::isMaster() && !gflags.inSimulationMode) {
+            xTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(100));
+        } else {
+            ulTaskNotifyTake(pdTRUE, 0);  // delete pending notifications
+            ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(150)); // get in synch with the master loop, or sim
+        }
     }
 }
 
@@ -966,7 +972,7 @@ void system_startup(void *args){
     // }
 
     // enter normal operation
-    xTaskCreate(&readSensors, "readSensors", 5120, NULL, 12, NULL);
+    xTaskCreate(&readSensors, "readSensors", 5120, NULL, 12, &ReadSensorsLoop);
 
     CRMOD.updateCache();  // correct initialization
     AUDIO->initVarioVoice();
