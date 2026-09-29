@@ -42,11 +42,12 @@ bool floatEqualFastAbs(float a, float b, float tol)
 }
 
 
-// O() := 1360c
+// O() := 1360c compared to std::floorf performance with 3170c
 float fast_floorf(float x) {
     int i = (int)x;  // truncates toward 0
     return (x < 0.0f && x != (float)i) ? (float)(i - 1) : (float)i;
 }
+// O() := 920c compared to std::ceilf performance with 3170c
 float fast_ceilf(float x) {
     int i = (int)x;
     i += (x > (float)i);

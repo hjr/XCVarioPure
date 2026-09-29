@@ -988,20 +988,21 @@ void system_startup(void *args){
 // #include <xtensa/core-macros.h>  // for XTHAL_GET_CCOUNT
 
 // uint32_t IRAM_ATTR cycle_count() {
-// 	float a, b = rand() % 400 - 200;
-// 	int idx = b*2;
-// 	a = deg2rad(b);
-// 	int16_t b1 = 50;
+//     float b = rand() % 400 - 200;
+//     b += My_PIf;
 //     uint32_t start = XTHAL_GET_CCOUNT();
 //     // asm volatile("add a4, a1, a2");
-// 	idx = ((std::signbit(idx) ? -1 : 1));
-// 	// b1 = fast_iroundf(b);
-// 	uint32_t end = XTHAL_GET_CCOUNT();
-// 	// for(b=0.; b<400.; b+=My_PIf)
-// 	ESP_LOGI(FNAME,"CMP %f %d", b, b1);
+//     b = fast_ceilf(b);
+//     uint32_t end = XTHAL_GET_CCOUNT();
+//     ESP_LOGI(FNAME, "CMP fff %f %u", b, (unsigned)(end - start));
+
+//     b += My_PIf;
+//     start = XTHAL_GET_CCOUNT();
+//     b = std::ceilf(b);
+//     end = XTHAL_GET_CCOUNT();
+//     ESP_LOGI(FNAME, "CMP _ff %f %u", b, (unsigned)(end - start));
 //     return end - start;
 // }
-
 
 extern "C" void  app_main(void)
 {
@@ -1036,7 +1037,9 @@ extern "C" void  app_main(void)
         }
     }
 
-    // ESP_LOGI(FNAME,"Measure add %ucount", (unsigned int)cycle_count());
+    // for ( int i = 0; i<3; i++) {
+    //    ESP_LOGI(FNAME,"Measure add %ucount", (unsigned int)cycle_count());
+    // }
 
     // Instance to a simple esp timer based clock
     [[maybe_unused]] Clock* MY_CLOCK = new Clock();  // no need for delete, lives all time, only static methods used
