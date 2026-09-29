@@ -21,6 +21,7 @@
 #include "sensor/adc/FlapSens.h"
 #include "screen/MessageBox.h"
 #include "comm/DeviceMgr.h"
+#include "comm/OneWireBus.h"
 #include "setup/SetupNG.h"
 
 #include "logdefnone.h"
@@ -220,11 +221,8 @@ dl_action_t FlarmMsg::parsePFLAX(NmeaPlugin *plg)
             if ( SetupCommon::isMaster() && !gflags.inSimulationMode ) {
                 // XCV extension to switch to simulation mode
                 ESP_LOGI(FNAME,"enter SIMULATION MODE");
-                // replace the temp sensor with a virtual one
-                DEVMAN->removeDevice(TEMPSENS_DEV); // destroy OW connectivity
-                while (oatSensor) vTaskDelay(pdMS_TO_TICKS(10));
-                SensorBase *temp = new TempVSensor();
-                SensorRegistry::registerSensor(temp);
+                // pretend being deleted, dissociate from the read loop
+                OneWIRE->notifySensorDelete(oatSensor);
                 // a flap sensor as a plain buffer
                 if (flapSensor) {
                     flapSensor->enterSimMode();

@@ -276,7 +276,7 @@ void readSensors(void *pvParameters)
 		}
 
 
-        if (OneWIRE) {
+        if (OneWIRE) { // todo might fit into sensor management framework
             // read one wire sensors
             OneWIRE->groupUpdate(Clock::getMillis());
         }
