@@ -290,7 +290,9 @@ bool Flap::sensorToLeverPosition(int val, float &wkf) const
                 }
             }
         }
-        wkf = std::clamp(wki + (float)(val - flevel[wki].sensval) / flevel[wki].sens_delta, 0.f, (float)wkmax);
+        wkf = wki + (float)(val - flevel[wki].sensval) / flevel[wki].sens_delta; // map
+        wkf = std::clamp(wkf, 0.f, (float)wkmax); // clamp
+        wkf = (int)(wkf * 10.0f + 0.5f) * 0.1f; // round
         // ESP_LOGI(FNAME,"getLeverPos(%d): wk: %d, cal %d, delta %d, frac: %1.2f ", val, wki, flevel[wki].sensval, flevel[wki].sens_delta, (float)(val - flevel[wki].sensval) / flevel[wki].sens_delta);
         return true;
     }
