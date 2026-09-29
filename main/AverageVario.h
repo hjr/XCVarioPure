@@ -11,7 +11,7 @@ class AverageVario{
 	~AverageVario() {};
 public:
 	static void newSample( mps_t te );
-	static void begin();
+	static void reset();
 	static void recalcAvgClimb();
 
 private:

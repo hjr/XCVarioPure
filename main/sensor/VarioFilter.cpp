@@ -252,5 +252,9 @@ void VarioFilter::postProcess() {
         pushToHistory(te_net, now);
     }
     _avg_vario.filter(getRunningAvg());
+
+    // speed to fly update on current vario
+    s2f_ideal.set(Speed2Fly.calculate(te_netto.get(), !CRMOD.getCMode()));
+
     AverageVario::newSample(vkf.v); // longer term thermal average
 }

@@ -41,7 +41,6 @@
 // #include "wmm/geomag.h"
 #include "driver/web_ota/OTA.h"
 #include "driver/gpio/S2fSwitch.h"
-#include "AverageVario.h"
 
 #include "Flap.h"
 #include "wind/WindCalcTask.h"
@@ -105,95 +104,6 @@ global_flags gflags = {};
 const constexpr char passed_text[] = "PASSED\n";
 const constexpr char failed_text[] = "FAILED\n";
 const constexpr char notfound_text[] = "NOT FOUND\n";
-
-
-static void toyFeed(int count) // Called at 5Hz from clientLoop or sensorloop
-{
-    if (ToyNmeaPrtcl)
-    {
-        if (ahrs_rpyl_dataset.get())
-        {
-            ToyNmeaPrtcl->sendXcvRPYL();
-            ToyNmeaPrtcl->sendXcvAPENV1();
-        }
-        if (ahrs_raw_data.get()) {
-            ToyNmeaPrtcl->sendXcvAhrsRaw();
-        }
-
-        switch (ToyNmeaPrtcl->getProtocolId())
-        {
-        case BORGELT_P:
-            ToyNmeaPrtcl->sendBorgelt();
-            ToyNmeaPrtcl->sendXcvGeneric();
-            break;
-        case OPENVARIO_P:
-            ToyNmeaPrtcl->sendOpenVario();
-            break;
-        case CAMBRIDGE_P:
-            ToyNmeaPrtcl->sendCambridge();
-            break;
-        case XCVARIO_P:
-            ToyNmeaPrtcl->sendStdXCVario();
-            break;
-        case SEEYOU_P:
-            if ( !(count%5) ) ToyNmeaPrtcl->sendLK8EX1();
-            break;
-        default:
-            ESP_LOGE(FNAME, "Protocol %d not supported error", ToyNmeaPrtcl->getProtocolId());
-        }
-
-        // Some extra NMEA sentences
-        if( !(count%5) ) {
-            if ( compass_nmea_hdm.get() ) {
-                ToyNmeaPrtcl->sendXCVNmeaHDM();
-            }
-            if ( compass_nmea_hdt.get() ) {
-                ToyNmeaPrtcl->sendXCVNmeaHDT();
-            }
-        }
-    }
-}
-
-static void sensFeed(const NmeaPrtcl* prtcl) // called with full 10Hz rate from sensor loop
-{
-    kelvin_t temp = OAT.get();
-    if (!OAT.getValid()) {
-        temp = Units::isa_temperature(altitude.get());
-        // ESP_LOGW(FNAME,"T invalid, using 15 deg");
-    }
-
-    char log[ProtocolItf::MAX_LEN];
-    sprintf(log, "$SENS,");
-    int pos = strlen(log);
-
-    int daymillis = Clock::getMillisMidnightUTC();
-    int delta = (gpsSensor) ? Clock::getMillis() - gpsSensor->getLastUpdateTimeMs() : 0;
-    if (delta < 0) {
-        delta += 1000;
-    }
-
-    if ( !baroSensor || !teSensor || !asSensor ) { return; }
-
-    sprintf(log + pos, "%d.%03d,%d,%.3f,%.3f,%.3f,%.2f", daymillis / 1000, daymillis % 1000, delta, 
-            baroSensor->getHead()/100.f, teSensor->getHead()/100.f, asSensor->getHead(), Units::K_to_C(temp));
-    pos = strlen(log);
-    if (accSensor && gyroSensor) {
-        vector_f acc = accSensor->getRef();
-        vector_f gyro_deg = gyroSensor->getRef() * rad2deg(1.f);
-        sprintf(log + pos, ",%.4f,%.4f,%.4f,%.4f,%.4f,%.4f", acc.x, acc.y, acc.z, gyro_deg.x, gyro_deg.y, gyro_deg.z);
-    } else {
-        sprintf(log + pos, ",,,,,,");
-    }
-    if (magSensor) {
-        pos = strlen(log);
-        const vector_f &mag = *magSensor->getHeadPtr();
-        sprintf(log + pos, ",%.4f,%.4f,%.4f", mag.x, mag.y, mag.z);
-    }
-    pos = strlen(log);
-    sprintf(log + pos, "\r\n");
-
-    prtcl->sendXCV(log);
-}
 
 // 5 Hz call
 static void checkWarnings()
@@ -305,31 +215,30 @@ void readSensors(void *pvParameters)
             }
         }
 
-        // the SENS logging
-        if (logging.get() == LOGG_RAW_SENSOR_DATA && SetupCommon::isMaster()) {
-            const NmeaPrtcl* prtcl = DEVMAN->getNMEA(NAVI_DEV);  // Todo preliminary solution ..
-            if (prtcl) {
-                sensFeed(prtcl);
+        // logging && toy feed
+        if ( ToyNmeaPrtcl ) {
+            if (logging.get() == LOGG_RAW_SENSOR_DATA && SetupCommon::isMaster()) {
+                CalkTaskJob job(CalkTaskJob::CALK_TASK_SEND_SENS);
+                xQueueSend(BackgroundTaskQueue, &job, 0);
+            }
+            // 5Hz events
+            if ( !(count % 2) ) {
+                CalkTaskJob job(CalkTaskJob::CALK_TASK_TOY_FEED);
+                xQueueSend(BackgroundTaskQueue, &job, 0);
             }
         }
 
+        // todo convert to a sensor and reimplement
         // low rate update of long term climb average
         if ( ! (count % (((int)core_climb_period.get()) * 10)) ) {
-            AverageVario::recalcAvgClimb();
+            CalkTaskJob job(CalkTaskJob::CALK_TASK_THERMAL_STATS);
+            xQueueSend(BackgroundTaskQueue, &job, 0);
         }
-
-        // Need to be done for client and main vario
-        s2f_ideal.set(Speed2Fly.calculate(te_netto.get(), !CRMOD.getCMode()));
 
         // 2Hz tasks
         if ( !(count % 5) ) {
             // Check on warnings
             checkWarnings();
-        }
-
-        // 5Hz events
-        if ( !(count % 2) ) {
-            toyFeed(count); // Navi data stream
         }
 
         // Check on new clients connecting
@@ -491,7 +400,6 @@ void system_startup(void *args){
 
     // Initialize the glider polar data and Speed2Fly calculation
     Speed2Fly.begin();
-	AverageVario::begin();
 
     // Design the pure
     gflags.isPro = false;

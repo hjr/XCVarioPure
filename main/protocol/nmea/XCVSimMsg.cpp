@@ -8,14 +8,17 @@
 
 #include "XCVSimMsg.h"
 
+#include "protocol/NMEA.h"
 #include "protocol/nmea_util.h"
 #include "driver/time/Clock.h"
 #include "comm/Messages.h"
+#include "comm/DataLink.h"
 #include "sensor/pressure/PressureSensor.h"
 #include "sensor/press_diff/AirspeedSensor.h"
 #include "sensor/temp/TempVSensor.h"
 #include "sensor/imu/AccMPU6050.h"
 #include "sensor/imu/GyroMPU6050.h"
+#include "sensor/gps/GpsVSensor.h"
 #include "sensor/mag/MagVSensor.h"
 #include "sensor/adc/FlapSens.h"
 #include "math/Trigonometry.h"
@@ -36,12 +39,60 @@ XCVSimMsg::XCVSimMsg(NmeaPrtcl &nr) :
 // The Sens transmitter routine
 //
 
-// bool XCVSimMsg::sendSens()
-// {
-//     // Message* msg = _nmeaRef.newMessage();
-//     // ...
-//     // return DEV::Send(msg);
-// }
+void NmeaPrtcl::sendSens()
+{
+    // called with full 10Hz rate from sensor loop
+    if ( _dl.isBinActive() || !baroSensor || !teSensor || !asSensor ) {
+        // no NMEA output in binary mode
+        return;
+    }
+
+    Message* msg = newMessage();
+
+    // msg->buffer = "!xcv,crew-weight," + std::to_string((int)(w+0.5));
+    // msg->buffer += "*" + NMEA::CheckSum(msg->buffer.c_str()) + "\r\n";
+
+    kelvin_t temp = OAT.get();
+    if (!OAT.getValid()) {
+        temp = Units::isa_temperature(altitude.get());
+        // ESP_LOGW(FNAME,"T invalid, using 15 deg");
+    }
+
+    // char log[ProtocolItf::MAX_LEN];
+    char tmp[60];
+    msg->buffer = "$SENS,";
+    // int pos = strlen(log);
+
+    // time stamp
+    int daymillis = Clock::getMillisMidnightUTC();
+    int delta = (gpsSensor) ? Clock::getMillis() - gpsSensor->getLastUpdateTimeMs() : 0;
+    if (delta < 0) {
+        delta += 1000;
+    }
+    sprintf(tmp, "%d.%03d,%d,", daymillis / 1000, daymillis % 1000, delta);
+    msg->buffer += tmp;
+
+    // pressure sensors and temp
+    sprintf(tmp, "%.3f,%.3f,%.3f,%.2f", baroSensor->getHead()/100.f, teSensor->getHead()/100.f, asSensor->getHead(), Units::K_to_C(temp));
+    msg->buffer += tmp;
+
+    // optional IMU data
+    if (accSensor && gyroSensor) {
+        const vector_f& acc = accSensor->getRef();
+        vector_f gyro_deg = gyroSensor->getRef() * rad2deg(1.f);
+        sprintf(tmp, ",%.4f,%.4f,%.4f,%.4f,%.4f,%.4f", acc.x, acc.y, acc.z, gyro_deg.x, gyro_deg.y, gyro_deg.z);
+        msg->buffer += tmp;
+    } else {
+        msg->buffer += ",,,,,,";
+    }
+    if (magSensor) {
+        const vector_f& mag = magSensor->getRef();
+        sprintf(tmp, ",%.4f,%.4f,%.4f", mag.x, mag.y, mag.z);
+        msg->buffer += tmp;
+    }
+    msg->buffer += "\r\n";
+    DEV::Send(msg);
+}
 
 //
 // Sens receiver routines

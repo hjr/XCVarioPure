@@ -143,6 +143,8 @@ public:
     void sendXCVNmeaHDT();
     void sendXCVNmeaMWV(float angle, mps_t speed);
     void sendXCV(const char *str) const;
+    // internal XCVario
+    void sendSens();
 
     // MagSens transmitter
     bool sendHello();

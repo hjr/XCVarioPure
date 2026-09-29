@@ -5,16 +5,16 @@
 #include "logdefnone.h"
 
 
-mps_t AverageVario::averageClimbSec;
-mps_t AverageVario::averageClimb;
+mps_t AverageVario::averageClimbSec = .0f;
+mps_t AverageVario::averageClimb = .0f;
 std::array<mps_t, 10> AverageVario::avClimb100MSec;
 std::array<mps_t, 60> AverageVario::avClimbSec;
 std::list<mps_t> AverageVario::avClimbMin;
-int AverageVario::avindex100MSec;
-int AverageVario::avindexSec;
-int AverageVario::samples;
+int AverageVario::avindex100MSec = 0;
+int AverageVario::avindexSec = 0;
+int AverageVario::samples = 0;
 
-void AverageVario::begin(){
+void AverageVario::reset() {
 	samples = 0;
 	averageClimb = 0.0;
 	averageClimbSec = 0.0;

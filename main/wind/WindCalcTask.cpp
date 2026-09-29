@@ -9,6 +9,8 @@
 #include "WindCalcTask.h"
 #include "CircleWind.h"
 #include "StraightWind.h"
+#include "protocol/NMEA.h"
+#include "AverageVario.h"
 #include "setup/SetupCommon.h"
 #include "setup/SetupNG.h"
 #include "logdefnone.h"
@@ -26,7 +28,7 @@ constexpr int CALC_MQ_SIZE = 5;
 static void wind_calc_task(void *arg)
 {
     QueueHandle_t queue = (QueueHandle_t)arg;
-    CalkTaskJob job(0);
+    CalkTaskJob job(CalkTaskJob::CALK_TASK_NONE);
     TickType_t timeout = pdMS_TO_TICKS(1100);
 
     while (true)
@@ -56,6 +58,62 @@ static void wind_calc_task(void *arg)
                     circleWind->newConstellation(job.getDetail());
                 }
                 break;
+            case CalkTaskJob::CALK_TASK_SEND_SENS:
+                if ( ToyNmeaPrtcl ) {
+                    ToyNmeaPrtcl->sendSens();
+                }
+                break;
+            case CalkTaskJob::CALK_TASK_THERMAL_STATS:
+                AverageVario::recalcAvgClimb();
+                break;
+            case CalkTaskJob::CALK_TASK_TOY_FEED:
+            {
+                static uint8_t count = 0;
+                if ( ToyNmeaPrtcl ) {
+
+                    if (ahrs_rpyl_dataset.get())
+                    {
+                        ToyNmeaPrtcl->sendXcvRPYL();
+                        ToyNmeaPrtcl->sendXcvAPENV1();
+                    }
+                    if (ahrs_raw_data.get()) {
+                        ToyNmeaPrtcl->sendXcvAhrsRaw();
+                    }
+
+                    switch (ToyNmeaPrtcl->getProtocolId())
+                    {
+                    case BORGELT_P:
+                        ToyNmeaPrtcl->sendBorgelt();
+                        ToyNmeaPrtcl->sendXcvGeneric();
+                        break;
+                    case OPENVARIO_P:
+                        ToyNmeaPrtcl->sendOpenVario();
+                        break;
+                    case CAMBRIDGE_P:
+                        ToyNmeaPrtcl->sendCambridge();
+                        break;
+                    case XCVARIO_P:
+                        ToyNmeaPrtcl->sendStdXCVario();
+                        break;
+                    case SEEYOU_P:
+                        if ( !(count%5) ) ToyNmeaPrtcl->sendLK8EX1();
+                        break;
+                    default:
+                        ESP_LOGE(FNAME, "Protocol %d not supported error", ToyNmeaPrtcl->getProtocolId());
+                    }
+
+                    // Some extra NMEA sentences
+                    if( !(++count%5) ) {
+                        if ( compass_nmea_hdm.get() ) {
+                            ToyNmeaPrtcl->sendXCVNmeaHDM();
+                        }
+                        if ( compass_nmea_hdt.get() ) {
+                            ToyNmeaPrtcl->sendXCVNmeaHDT();
+                        }
+                    }
+                }
+                break;
+            }
             default:
                 ESP_LOGE(FNAME, "Unknown job type %d", job.getJobTyp() );
                 break;
