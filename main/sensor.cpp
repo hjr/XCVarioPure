@@ -217,7 +217,7 @@ void readSensors(void *pvParameters)
         }
 
         // logging && toy feed
-        if ( ToyNmeaPrtcl ) {
+        if (ToyNmeaPrtcl) {
             if (logging.get() == LOGG_RAW_SENSOR_DATA && SetupCommon::isMaster()) {
                 CalkTaskJob job(CalkTaskJob::CALK_TASK_SEND_SENS);
                 xQueueSend(BackgroundTaskQueue, &job, 0);

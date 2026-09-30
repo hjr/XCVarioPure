@@ -124,7 +124,7 @@ dl_action_t GpsMsg::parseGPRMC(NmeaPlugin *plg)
            // valid fix
            gpsSensor->inject(lat, lon, gndSpeed, gndCourse);
         }
-        if ( BackgroundTaskQueue ) {
+        if ( circleWind && BackgroundTaskQueue ) {
             ESP_LOGD(FNAME,"Track: %3.2f, GPRMC: %s", gndCourse, sm->_frame.c_str() );
             circleWind->setNewSample(Vector(gndCourse, gndSpeed));
 

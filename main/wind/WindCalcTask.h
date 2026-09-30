@@ -42,10 +42,6 @@ public:
 
     // API
     static void createWindResources();
-    QueueHandle_t getQueue() { return _queue; }
-
-private:
-    QueueHandle_t _queue = 0;
 };
 
 extern WindCalcTask *CalcTask;

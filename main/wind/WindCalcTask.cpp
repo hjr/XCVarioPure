@@ -22,24 +22,24 @@
 QueueHandle_t BackgroundTaskQueue = nullptr;
 WindCalcTask *CalcTask = nullptr;
 
-constexpr int CALC_MQ_SIZE = 5;
+constexpr int CALC_MQ_SIZE = 10;
 
 // background task to calculate wind with lowest prio
 static void wind_calc_task(void *arg)
 {
-    QueueHandle_t queue = (QueueHandle_t)arg;
+    BackgroundTaskQueue = xQueueCreate( CALC_MQ_SIZE, sizeof(CalkTaskJob) );
+    ESP_LOGI(FNAME, "Background task queue created %p", BackgroundTaskQueue);
     CalkTaskJob job(CalkTaskJob::CALK_TASK_NONE);
-    TickType_t timeout = pdMS_TO_TICKS(1100);
+    TickType_t timeout = pdMS_TO_TICKS(3000);
 
     while (true)
     {
-        // sleep until the queue gives us something to do, or we have to do a retry
-        bool new_job = xQueueReceive(queue, &job, timeout) == pdTRUE;
-
-        if ( new_job ) {
+        // sleep until the queue gives us something to do, or we have to handle the time-out
+        if ( xQueueReceive(BackgroundTaskQueue, &job, timeout) == pdTRUE ) {
             if (job.raw == 0) {
-                break;
-            } // termination signal
+                break; // termination signal
+            }
+
             ESP_LOGI(FNAME, "job type %x", (unsigned)job.getJobTyp() );
 
             switch(job.getJobTyp()) {
@@ -131,7 +131,9 @@ static void wind_calc_task(void *arg)
             // if ( straightWind ) { straightWind->tick(); }
         }
     }
-    vQueueDelete(queue);
+    vQueueDelete(BackgroundTaskQueue);
+    BackgroundTaskQueue = nullptr;
+    ESP_LOGW(FNAME, "Background task exiting");
     vTaskDelete(NULL);
 }
 
@@ -139,14 +141,13 @@ static void wind_calc_task(void *arg)
 // more or less just a guard to the background task
 WindCalcTask::WindCalcTask()
 {
-    _queue = xQueueCreate( CALC_MQ_SIZE, sizeof(CalkTaskJob) );
-    xTaskCreate(wind_calc_task, "background", 4000, _queue, 1, nullptr); // least priority
+    xTaskCreate(wind_calc_task, "background", 4000, NULL, 1, nullptr); // least priority
 }
 
 
 WindCalcTask::~WindCalcTask()
 {
-    xQueueSend( _queue, nullptr, 0 ); // stop task
+    xQueueSend( BackgroundTaskQueue, nullptr, 0 ); // stop task
 }
 
 void WindCalcTask::createWindResources()
@@ -179,18 +180,11 @@ void WindCalcTask::createWindResources()
             circleWind = nullptr;
             delete tmp;
         }
-
-        // wind calculation
-        if ( ! CalcTask && (circleWind || straightWind) ) {
-            CalcTask = new WindCalcTask();
-            BackgroundTaskQueue = CalcTask->getQueue();
-        }
-        else if ( CalcTask && ! (circleWind || straightWind) ) {
-            BackgroundTaskQueue = nullptr;
-            // WindCalcTask *tmp = CalcTask;
-            // CalcTask = nullptr;
-            // delete tmp;
-        }
-
     }
+
+    // always need the background task
+    if ( ! CalcTask ) {
+        CalcTask = new WindCalcTask();
+    }
+
 }
