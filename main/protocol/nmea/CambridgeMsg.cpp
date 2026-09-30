@@ -58,7 +58,7 @@ dl_action_t CambridgeMsg::parseExcl_g(NmeaPlugin *plg)
 }
 
 const ParserEntry CambridgeMsg::_pt[] = {
-    {Key("g"), CambridgeMsg::parseExcl_g},
+    {Key("g"), ParserInfo(CambridgeMsg::parseExcl_g)},
     {}
 };
 

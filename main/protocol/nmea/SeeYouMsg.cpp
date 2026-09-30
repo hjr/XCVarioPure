@@ -76,7 +76,7 @@ dl_action_t SeeYouMsg::gen_query(NmeaPlugin *plg)
 }
 
 const ParserEntry SeeYouMsg::_pt[] = {
-    { Key("LXV0"), SeeYouMsg::gen_query },
+    { Key("LXV0"), ParserInfo(SeeYouMsg::gen_query) },
     {}
 };
 

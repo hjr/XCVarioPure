@@ -253,9 +253,9 @@ dl_action_t FlarmMsg::parsePFLAX(NmeaPlugin *plg)
 
 
 const ParserEntry FlarmMsg::_pt[] = {
-    { Key("FLAA"), FlarmMsg::parsePFLAA },
-    { Key("FLAE"), FlarmMsg::parsePFLAE },
-    { Key("FLAU"), FlarmMsg::parsePFLAU },
-    { Key("FLAX"), FlarmMsg::parsePFLAX },
+    { Key("FLAA"), ParserInfo(FlarmMsg::parsePFLAA) },
+    { Key("FLAE"), ParserInfo(FlarmMsg::parsePFLAE) },
+    { Key("FLAU"), ParserInfo(FlarmMsg::parsePFLAU) },
+    { Key("FLAX"), ParserInfo(FlarmMsg::parsePFLAX) },
     {}
 };

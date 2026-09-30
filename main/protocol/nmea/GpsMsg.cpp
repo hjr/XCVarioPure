@@ -206,7 +206,7 @@ dl_action_t GpsMsg::parseGPGGA(NmeaPlugin *plg)
 }
 
 const ParserEntry GpsMsg::_pt[] = {
-    { Key("PRMC"), GpsMsg::parseGPRMC },
-    { Key("PGGA"), GpsMsg::parseGPGGA },
+    { Key("PRMC"), ParserInfo(GpsMsg::parseGPRMC) },
+    { Key("PGGA"), ParserInfo(GpsMsg::parseGPGGA) },
     {}
 };

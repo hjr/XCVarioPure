@@ -33,6 +33,6 @@ dl_action_t FlarmHostMsg::parsePFLAX(NmeaPlugin *plg)
 }
 
 const ParserEntry FlarmHostMsg::_pt[] = {
-    { Key("FLAX"), FlarmHostMsg::parsePFLAX },
+    { Key("FLAX"), ParserInfo(FlarmHostMsg::parsePFLAX) },
     {}
 };

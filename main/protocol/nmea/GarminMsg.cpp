@@ -44,7 +44,7 @@ dl_action_t GarminMsg::parsePGRMZ(NmeaPlugin *plg)
 
 
 const ParserEntry GarminMsg::_pt[] = {
-    { Key("GRMZ"), GarminMsg::parsePGRMZ },
+    { Key("GRMZ"), ParserInfo(GarminMsg::parsePGRMZ) },
     {}
 };
 

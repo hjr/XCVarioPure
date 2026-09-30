@@ -12,7 +12,6 @@
 #include "math/Units.h"
 
 #include <cstdint>
-#include <functional>
 #include <string>
 #include <vector>
 #include <map>
@@ -24,7 +23,7 @@ union Key {
     char str[4];
     uint32_t value;
 
-    static inline bool isNotAsciiLetter(char c) {
+    static inline constexpr bool isNotAsciiLetter(char c) {
         return (unsigned)(c - 'A') > ('Z' - 'A') && (unsigned)(c - 'a') > ('z' - 'a');
     }
 
@@ -58,15 +57,24 @@ union Key {
     bool operator<(const Key& other) const {
         return value < other.value;
     }
+    bool operator!=(const Key& other) const { return value != other.value; }
 };
 
 // message table
 class NmeaPrtcl;
 class NmeaPlugin;
-using NmeaMessageParser = std::function<dl_action_t(NmeaPlugin*)>;
-typedef std::pair<Key, NmeaMessageParser> ParserEntry; // use const to reside in flash memory
-typedef std::pair<NmeaMessageParser, NmeaPlugin*> MapValue;
-typedef std::map<Key, MapValue> ParserMap;
+using NmeaMessageParser = dl_action_t (*)(NmeaPlugin*);
+enum class MessageFormat : uint8_t { Nmea, Binary };
+struct ParserInfo {
+    NmeaMessageParser parser;
+    MessageFormat format;
+    NmeaPlugin* plugin = nullptr;
+    ParserInfo() = default;
+    constexpr ParserInfo(NmeaMessageParser p, MessageFormat f=MessageFormat::Nmea) : parser(p), format(f) {}
+};
+typedef std::pair<Key, ParserInfo> ParserEntry; // use const to compile it into flash memory
+// typedef std::pair<NmeaMessageParser, NmeaPlugin*> MapValue;
+typedef std::map<Key, ParserInfo> ParserMap;
 
 // nmea message extension
 class NmeaPlugin
@@ -170,11 +178,12 @@ private:
     const ProtocolType _ptyp;   // a protocol id different per instance
     ParserMap _parsmap;
     std::vector<NmeaPlugin*> _plugs;
-    Key      _mkey;     // identified message key
-    MapValue _parser;   // found parser, incl. parameter for the parser
+    Key        _mkey;   // identified message key
+    ParserInfo _parser; // found parser, incl. parameter for the parser
+    uint8_t    _binary_length;
     inline void nmeaIncrCRC(int &crc, const char c) {crc ^= c;}
     AliveMonitor *_alive = nullptr; // alive monitor for the protocol
-    char _crc_buf[3]; // crc character buffer
+    char _crc_buf[3];   // crc character buffer
 };
 
 extern NmeaPrtcl *ToyNmeaPrtcl;

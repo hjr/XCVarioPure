@@ -93,9 +93,9 @@ dl_action_t MagSensMsg::streamData(NmeaPlugin *plg)
 
 // NMEA plugin table
 const ParserEntry MagSensMsg::_pt[] = {
-    { Key("PMSV"), MagSensMsg::magsensVersion },
-    { Key("PMSC"), MagSensMsg::magsensConfirmation },
-    { Key("PMMD"), MagSensMsg::streamData },
+    { Key("PMSV"), ParserInfo(MagSensMsg::magsensVersion) },
+    { Key("PMSC"), ParserInfo(MagSensMsg::magsensConfirmation) },
+    { Key("PMMD"), ParserInfo(MagSensMsg::streamData) },
     {}
 };
 

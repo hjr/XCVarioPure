@@ -50,9 +50,6 @@ void NmeaPrtcl::sendSens()
 
     Message* msg = newMessage();
 
-    // msg->buffer = "!xcv,crew-weight," + std::to_string((int)(w+0.5));
-    // msg->buffer += "*" + NMEA::CheckSum(msg->buffer.c_str()) + "\r\n";
-
     kelvin_t temp = OAT.get();
     if (!OAT.getValid()) {
         temp = Units::isa_temperature(altitude.get());
@@ -192,7 +189,7 @@ dl_action_t XCVSimMsg::parseExcl_XCV(NmeaPlugin *plg)
 }
 
 const ParserEntry XCVSimMsg::_pt[] = {
-    {Key("SENS"), XCVSimMsg::parse_Sens},
-    {Key("XCV"), XCVSimMsg::parseExcl_XCV},
+    {Key("SENS"), ParserInfo(XCVSimMsg::parse_Sens)},
+    {Key("XCV"), ParserInfo(XCVSimMsg::parseExcl_XCV)},
     {}
 };

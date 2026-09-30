@@ -169,11 +169,11 @@ dl_action_t JumboCmdMsg::event(NmeaPlugin *plg)
 
 // NMEA plugin table
 const ParserEntry JumboCmdMsg::_pt[] = {
-    { Key("JPRP"), JumboCmdMsg::connected },
-    { Key("JPRC"), JumboCmdMsg::config },
-    { Key("JPRI"), JumboCmdMsg::info },
-    { Key("JPJA"), JumboCmdMsg::alive },
-    { Key("JPJE"), JumboCmdMsg::event },
+    { Key("JPRP"), ParserInfo(JumboCmdMsg::connected) },
+    { Key("JPRC"), ParserInfo(JumboCmdMsg::config) },
+    { Key("JPRI"), ParserInfo(JumboCmdMsg::info) },
+    { Key("JPJA"), ParserInfo(JumboCmdMsg::alive) },
+    { Key("JPJE"), ParserInfo(JumboCmdMsg::event) },
     {}
 };
 

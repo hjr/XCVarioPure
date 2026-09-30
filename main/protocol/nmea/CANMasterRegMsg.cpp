@@ -163,6 +163,6 @@ dl_action_t CANMasterRegMsg::registration_query(NmeaPlugin *plg)
 
 
 const ParserEntry CANMasterRegMsg::_pt[] = {
-    { Key("PREG"), CANMasterRegMsg::registration_query },
+    { Key("PREG"), ParserInfo(CANMasterRegMsg::registration_query) },
     {}
 };

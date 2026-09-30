@@ -41,7 +41,6 @@ FOR A PARTICULAR PURPOSE.
 #include <vector>
 #include <limits>
 #include <algorithm>
-#include <functional>
 #include <iostream>
 
 namespace MATH{

@@ -164,10 +164,11 @@ dl_action_t XCVSyncMsg::parse_caps(NmeaPlugin *plg)
 }
 
 const ParserEntry XCVSyncMsg::_pt[] = {
-    {Key("xsA"), XCVSyncMsg::parseExcl_xsX},
-    {Key("xsC"), XCVSyncMsg::parseExcl_xsX},
-    {Key("xsM"), XCVSyncMsg::parseExcl_xsX},
-    {Key("xsSI"), XCVSyncMsg::parseExcl_xsSyncInit},
-    {Key("PCAP"), XCVSyncMsg::parse_caps},
+    {Key("xcvB"), ParserInfo(XCVSyncMsg::parseExcl_xcvX, MessageFormat::Binary)},
+    {Key("xcvI"), ParserInfo(XCVSyncMsg::parseExcl_xcvX, MessageFormat::Binary)},
+    {Key("xcvF"), ParserInfo(XCVSyncMsg::parseExcl_xcvX, MessageFormat::Binary)},
+    {Key("xcvV"), ParserInfo(XCVSyncMsg::parseExcl_xcvX, MessageFormat::Binary)},
+    {Key("xcvR"), ParserInfo(XCVSyncMsg::parseExcl_xcvRequest)},
+    {Key("PCAP"), ParserInfo(XCVSyncMsg::parse_caps)},
     {}
 };

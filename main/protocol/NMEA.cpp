@@ -57,11 +57,12 @@ void NmeaPrtcl::addPlugin(NmeaPlugin *pm)
     }
     _plugs.push_back(pm);
     // copy the parser table
-    for (const ParserEntry* entry = pm->getPT(); entry->second != nullptr; ++entry) {
+    for (const ParserEntry* entry = pm->getPT(); entry->first != Key{}; ++entry) {
         Key key = entry->first;
-        NmeaMessageParser value = entry->second;
+        ParserInfo value = entry->second;
+        value.plugin = pm; // set parser arg to belonging plugin
         if ( _parsmap.find(key) == _parsmap.end() ) { // do not overwrite entries
-            _parsmap[key] = MapValue(value, pm);
+            _parsmap[key] = value;
             ESP_LOGI(FNAME, "copy parser for %s", key.toString().c_str());
         }
     }
@@ -80,7 +81,7 @@ void NmeaPrtcl::removeProtocol(ProtocolType p)
     if ( pm ) {
         // remove the parser table entries
         for (auto it = _parsmap.begin(); it != _parsmap.end(); ) {
-            if (it->second.second == pm) {
+            if (it->second.plugin == pm) {
                 it = _parsmap.erase(it);  // erase returns the next valid iterator
             } else {
                 it++;
@@ -127,14 +128,18 @@ dl_control_t NmeaPrtcl::nextBytes(const char* c, int len)
     case HEADER:
         nmeaIncrCRC(_sm._crc, *c);
         if ( _mkey.shiftIn(*c) ) {
+            _sm._state = PAYLOAD;
+            _sm._header_len = pos+1;
+            _sm._word_start.push_back(pos+1);
             auto it = _parsmap.find(_mkey);
             if ( it != _parsmap.end() ) {
                 _parser = it->second;
+                if (_parser.format == MessageFormat::Binary) {
+                    _sm._state = BINPAYLOAD_TYP;
+                    _binary_length = 0;
+                }
             }
-            _sm._header_len = pos+1;
-            _sm._word_start.push_back(pos+1);
-            _sm._state = PAYLOAD;
-            ESP_LOGD(FNAME, "Msg HEADER, %s", _mkey.toString().c_str());
+            ESP_LOGW(FNAME, "Msg HEADER, %s", _mkey.toString().c_str());
             break;
         }
         if (pos > 6) {
@@ -157,6 +162,27 @@ dl_control_t NmeaPrtcl::nextBytes(const char* c, int len)
             }
         }
         ESP_LOGD(FNAME, "Msg PAYLOAD");
+        nmeaIncrCRC(_sm._crc, *c);
+        break;
+    case BINPAYLOAD_TYP:
+        nmeaIncrCRC(_sm._crc, *c);
+        if ( *c == ',' ) {
+            _sm._word_start.push_back(pos+1); // last word start for binary telegramm
+            _sm._state = BINPAYLOAD_LEN;
+        }
+        break;
+    case BINPAYLOAD_LEN:
+        nmeaIncrCRC(_sm._crc, *c);
+        _binary_length = static_cast<int>(*c);
+        ESP_LOGI(FNAME, "Msg bin length %d", _binary_length);
+        _sm._state = BINPAYLOAD_DATA;
+        break;
+    case BINPAYLOAD_DATA:
+        if ( _binary_length == 0 ) {
+            _sm._state = PAYLOAD; // return to normal payload parsing after binary data is consumed
+            break;
+        }
+        _binary_length--;
         nmeaIncrCRC(_sm._crc, *c);
         break;
     case CHECK_CRC1:
@@ -187,9 +213,9 @@ dl_control_t NmeaPrtcl::nextBytes(const char* c, int len)
         _sm._state = START_TOKEN; // restart parsing
         ESP_LOGI(FNAME, "Msg complete %s", _mkey.toString().c_str());
         ret.act = _default_action;
-        if ( _parser.first ) {
-            ret.act = (_parser.first)(_parser.second);
-            ret.did = _parser.second->getRouteId();
+        if ( _parser.parser ) {
+            ret.act = (_parser.parser)(_parser.plugin);
+            ret.did = _parser.plugin->getRouteId();
         }
         if ( _alive) {
             _alive->keepAlive();

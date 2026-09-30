@@ -149,8 +149,8 @@ dl_action_t CANClientQueryMsg::rejected(NmeaPlugin *plg)
 }
 
 const ParserEntry CANClientQueryMsg::_pt[] = {
-    { Key("MACC"), CANClientQueryMsg::registration },
-    { Key("MLOR"), CANClientQueryMsg::restart_query },
-    { Key("MNAC"), CANClientQueryMsg::rejected },
+    { Key("MACC"), ParserInfo(CANClientQueryMsg::registration) },
+    { Key("MLOR"), ParserInfo(CANClientQueryMsg::restart_query) },
+    { Key("MNAC"), ParserInfo(CANClientQueryMsg::rejected) },
     {}
 };

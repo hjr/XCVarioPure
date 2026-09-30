@@ -72,7 +72,7 @@ dl_action_t XCVarioMsg::parseExcl_xcs(NmeaPlugin *plg)
 }
 
 const ParserEntry XCVarioMsg::_pt[] = {
-    {Key("xcs"), XCVarioMsg::parseExcl_xcs},
+    {Key("xcs"), ParserInfo(XCVarioMsg::parseExcl_xcs)},
     {}
 };
 

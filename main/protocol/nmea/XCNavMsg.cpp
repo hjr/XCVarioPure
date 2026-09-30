@@ -114,6 +114,6 @@ dl_action_t XCNavMsg::parseDollar_g(NmeaPlugin *plg)
 }
 
 const ParserEntry XCNavMsg::_pt[] = {
-    {Key("g"), XCNavMsg::parseDollar_g},
+    {Key("g"), ParserInfo(XCNavMsg::parseDollar_g)},
     {}
 };
