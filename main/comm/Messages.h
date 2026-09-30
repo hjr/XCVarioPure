@@ -26,6 +26,7 @@ class Message
 {
 public:
     Message() { buffer.reserve(PREALLOC_BUF_SIZE); }
+    void appendCheckSum();
     std::string hexDump(int upto=0) const;
     bool busy = false;
     DeviceId target_id = DeviceId::NO_DEVICE;

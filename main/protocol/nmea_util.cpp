@@ -11,7 +11,11 @@
 #include <cstdlib>
 #include <string>
 
+
 namespace NMEA {
+
+const char hex[] = "0123456789abcdef";
+
 
 // Calculate the checksum and output it as an int
 // is required as HEX in the NMEA data set
@@ -96,8 +100,6 @@ void ensureTermination(std::string& str)
 
 std::string hexDump(const char *buffer, int len)
 {
-    static constexpr char hex[] = "0123456789abcdef";
-
     std::string result;
     result.resize(2 * len);
 

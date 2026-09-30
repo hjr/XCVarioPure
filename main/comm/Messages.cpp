@@ -16,6 +16,25 @@ std::string Message::hexDump(int upto) const
     return NMEA::hexDump(buffer.data(), upto);
 }
 
+void Message::appendCheckSum()
+{
+    uint8_t crc = 0;
+
+    for (char c : buffer) {
+        if (c != '$' && c != '!')
+            crc ^= static_cast<uint8_t>(c);
+    }
+
+    buffer.push_back('*');
+    buffer.push_back(NMEA::hex[crc >> 4]);
+    buffer.push_back(NMEA::hex[crc & 0x0f]);
+    buffer += "\r\n";
+}
+
+
+//
+// the message pool
+//
 MessagePool::MessagePool()
 {
     // Preallocate the desired number of messages
