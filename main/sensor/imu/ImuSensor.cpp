@@ -24,6 +24,8 @@
 #include <algorithm> // for std::clamp
 #include <cmath>
 
+MpuImu *imuSensor = nullptr;
+
 static const std::string_view TYPES[] = {"UNKNOWN", "MPU6050", "MPU6500", "ICM20602", "ICM20689"};
 
 // for heat control, optimized by for fast swing in, stable operation and low gap to target
@@ -38,8 +40,9 @@ struct PIController {
         float u = Kp * e + I;
 
         // anti-windup and add integrator when not oversteerd and close
-        if ((u > 0.0f && u < 1.0f) && (fabs(e) < 4.0f))
+        if ((u > 0.0f && u < 1.0f) && (fabs(e) < 4.0f)) {
             I += e*Ki;
+        }
         I = std::clamp(I, -1.0f, 1.0f);
         float pwm=std::clamp(u, 0.0f, 1.0f);
 
@@ -61,6 +64,7 @@ MpuImu::~MpuImu() {
         delete _pictrl;
     }
     delete &_MPUdev;
+    imuSensor = nullptr;
 }
 
 const char *MpuImu::name() const {
@@ -372,8 +376,10 @@ void MpuImu::calculateFactoryReference(vector_f *corr_samp, int nr) {
 }
 
 void MpuImu::restoreAccelOffset() const {
-    axes_i16_abi tmp = accl_bias.get(); 
-    accSensor->getMpu().setAccelOffset(mpud::raw_axes_t(tmp.x, tmp.y, tmp.z));
+    axes_i16_abi tmp = accl_bias.get();
+    if (imuSensor) {
+        imuSensor->setAccelOffset(mpud::raw_axes_t(tmp.x, tmp.y, tmp.z));
+    }
 }
 
 

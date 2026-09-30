@@ -21,7 +21,7 @@ extern GyroMPU6050 *gyroSensor;
 class GyroMPU6050 final : public SensorTP<vector_f>
 {
 public:
-    GyroMPU6050(MpuImu &mmpu);
+    GyroMPU6050();
     virtual ~GyroMPU6050();
 
     static constexpr float GYRO_THRESHOLD = Units::deg_to_rad(0.2f); // thresholds (VQF-typical)
@@ -42,7 +42,6 @@ public:
 
 private:
     void pushBias(vector_f& bias);
-    MpuImu& _my_mpu;
     const float _scale;
     // low-pass filter for gyro y-axis to get dw/dt
     LowPassFilterT<float> _gyro_lpf_dwydt; // to compensate the accelerometer mounting position in front of CG

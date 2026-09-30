@@ -15,7 +15,6 @@
 #include "setup/SetupNG.h"
 
 #include <mpu/types.hpp>
-
 #include <driver/i2c_master.h>
 
 #include <cstdint>
@@ -27,7 +26,7 @@ enum class ImuType : uint8_t {UNKNOWN, MPU6050, MPU6500, ICM20602, ICM20689};
 enum class temp_status_t : uint8_t { MPU_T_UNKNOWN, MPU_T_LOCKED, MPU_T_LOW, MPU_T_HIGH };
 
 
-class MpuImu
+class MpuImu final
 {
 public:
     MpuImu();
@@ -93,3 +92,4 @@ private:
     constexpr static mpud::gyro_fs_t GYRO_SCALE = mpud::GYRO_FS_250DPS;
 };
 
+extern MpuImu *imuSensor;

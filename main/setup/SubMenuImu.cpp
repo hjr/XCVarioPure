@@ -80,12 +80,12 @@ static void doImuCalibration(SetupMenuSelect* p) {
     p->menuPrintLn("Wait for the Chimes, ", nlidx++);
     p->menuPrintLn("abort with button.", nlidx);
 
-    accSensor->getMpu().resetCalibProgress();
+    imuSensor->resetCalibProgress();
     // load the default reference to the IMU
-    Quaternion backup = accSensor->getMpu().getRefRot();
-    accSensor->getMpu().applyImuReference(0, MpuImu::getDefaultImuReference());
+    Quaternion backup = imuSensor->getRefRot();
+    imuSensor->applyImuReference(0, MpuImu::getDefaultImuReference());
     // reset lever arm
-    accSensor->getMpu().setLeverArm(0.f);
+    imuSensor->setLeverArm(0.f);
 
     // double check that the gyro bias is set ok, otherwise the result would be useless
     vector_f gyro;
@@ -169,13 +169,13 @@ static void doImuCalibration(SetupMenuSelect* p) {
             // compensate bias to get actual movement integral
             gyro_integral -= gyroSensor->getBias() * (float)((stop_time - start_time) / 100.f); // 10 Hz
             // sample the accel for the bob vector
-            ret = accSensor->getMpu().getAccelSamplesAndCalib(gyro_integral, angle, ground_angle);
+            ret = imuSensor->getAccelSamplesAndCalib(gyro_integral, angle, ground_angle);
             if (i<2 || ret == 4) AUDIO->startSound(AUDIO_TADDA_SHORT | PRIO_SND_MASK, false, 100);
         }
     }
 
     // set lever arm again
-    accSensor->getMpu().setLeverArm(imu_leverarm.get());
+    imuSensor->setLeverArm(imu_leverarm.get());
 
     if (ret < 4 || abort) {
         p->clear();
@@ -188,7 +188,7 @@ static void doImuCalibration(SetupMenuSelect* p) {
             p->menuPrintLn("The movement covered", nlidx++);
             p->menuPrintLn("too small an angle.", nlidx++);
         }
-        accSensor->getMpu().setRefRot(backup);
+        imuSensor->setRefRot(backup);
         p->menuPrintLn("press button to return", 8, 1);
         while (!Rotary->readSwitch(100))
             ;
@@ -219,7 +219,7 @@ static void factoryAccCalibration(SetupMenuSelect* p, bool check_only=false) {
     bool abort = false;
     int n_stable = 0;
     while( n_stable < 25 ){  // 5 seconds locked MPU temp
-    	if( accSensor->getMpu().getTempStatus() == temp_status_t::MPU_T_LOCKED ){
+    	if( imuSensor->getTempStatus() == temp_status_t::MPU_T_LOCKED ){
     		ESP_LOGI(FNAME, "Locked");
     		n_stable++;
     	}
@@ -241,9 +241,9 @@ static void factoryAccCalibration(SetupMenuSelect* p, bool check_only=false) {
     }
     // the whole calibration is done in the device frame reference, alias default glider frame
     // reset lever arm
-    accSensor->getMpu().setLeverArm(0.f);
+    imuSensor->setLeverArm(0.f);
     // ensure no reference rotation set, no GAA
-    accSensor->getMpu().applyImuReference(0, MpuImu::getDefaultImuReference(false));
+    imuSensor->applyImuReference(0, MpuImu::getDefaultImuReference(false));
     // need to reset the acc bias, because this is the only way we can really measure it
     if ( ! check_only ) { accSensor->resetBias(); }
 
@@ -289,12 +289,12 @@ static void factoryAccCalibration(SetupMenuSelect* p, bool check_only=false) {
         if ( ! abort && pos == 6 ) {
             p->menuPrintLn("Too simillar samples", nlidx++);
         }
-        accSensor->getMpu().restoreAccelOffset();
+        imuSensor->restoreAccelOffset();
     }
     else {
         // calculate bias from samples and push to sensor
         float res0, res;
-        vector_f bias = accSensor->getMpu().extractAccBias(samples, 6, &res0, &res);
+        vector_f bias = imuSensor->extractAccBias(samples, 6, &res0, &res);
         if ( check_only ) {
             ESP_LOGI(FNAME, "Acc bias check: %f/%f/%f", bias.x, bias.y, bias.z);
         }
@@ -305,9 +305,9 @@ static void factoryAccCalibration(SetupMenuSelect* p, bool check_only=false) {
             for (int i = 0; i < 6; i++) {
                samples[i] = samples[i] - bias; // correct samples with the extracted bias
             }
-            accSensor->getMpu().calculateFactoryReference(samples, 6);
+            imuSensor->calculateFactoryReference(samples, 6);
             // and apply the new factory reference, so that the user can directly see the effect of the calibration
-            accSensor->getMpu().applyImuReference(0, MpuImu::getDefaultImuReference());
+            imuSensor->applyImuReference(0, MpuImu::getDefaultImuReference());
             // set menu help to show the quality of the result
             imu_menu_help = "RMS Before: " + std::to_string(res0) + "\n";
             axes_i16_abi tmp = accl_bias.get();
@@ -325,7 +325,7 @@ static void factoryAccCalibration(SetupMenuSelect* p, bool check_only=false) {
     }
 
     // restore IMU setup
-    accSensor->getMpu().setLeverArm(imu_leverarm.get());
+    imuSensor->setLeverArm(imu_leverarm.get());
 
     p->menuPrintLn("press button to return", 8, 1);
     while (!Rotary->readSwitch(100)) ;
@@ -343,7 +343,7 @@ int imu_calib(SetupMenuSelect* p) {
             break;
         case 2:
             // reset to default
-            accSensor->getMpu().resetImuReference();
+            imuSensor->resetImuReference();
             break;
         case 3:
             // factory acc calib
@@ -354,11 +354,11 @@ int imu_calib(SetupMenuSelect* p) {
             break;
         case 4:
             // set Gyro bias to zero
-            accSensor->getMpu().zeroGyroBias();
+            imuSensor->zeroGyroBias();
             break;
         case 5:
             // set Acc bias to zero
-            accSensor->getMpu().zeroAccBias();
+            imuSensor->zeroAccBias();
             break;
         default:
             break;
@@ -379,7 +379,7 @@ static int imu_status_action(SetupMenuDisplay *p, int mode) {
             // exit by press;
             break;
         }
-        if (accSensor->getMpu().hasHeatCtlr()) {
+        if (imuSensor->hasHeatCtlr()) {
             const char* tstat;
             switch (accSensor->getTempStatus()) {
             case temp_status_t::MPU_T_LOCKED:
@@ -396,7 +396,7 @@ static int imu_status_action(SetupMenuDisplay *p, int mode) {
                 tstat = "Unknown";
                 break;
             }
-            snprintf(buf, sizeof(buf), "  Heating %.1f°: %s    ", accSensor->getMpu().getTemperature(), tstat);
+            snprintf(buf, sizeof(buf), "  Heating %.1f°: %s    ", imuSensor->getTemperature(), tstat);
         } else {
             snprintf(buf, sizeof(buf), "No Heating");
         }
@@ -521,6 +521,7 @@ void system_menu_create_hardware_ahrs_parameter(SetupMenu *top) {
 }
 
 void system_menu_create_hardware_imu(SetupMenu *top) {
+    if ( imuSensor ) {
 #ifdef DEBUG_AND_TEST
         SetupMenuSelect* imu_calib_collect = new SetupMenuSelect("IMU Reference", RST_NONE, imu_calib);
         imu_calib_collect->setHelp("Calibrate IMU to glider reference. Run the procedure by selecting Start.");
@@ -532,22 +533,23 @@ void system_menu_create_hardware_imu(SetupMenu *top) {
         top->addEntry(imu_calib_collect);
 #endif
 
-    if ( gflags.expert ) {
-        SetupMenuSelect* gyro_reset = new SetupMenuSelect("Gyro Zero", RST_NONE, imu_calib);
-        gyro_reset->setHelp("Reset gyro bias to zero");
-        gyro_reset->addEntry("Cancel", 0);
-        gyro_reset->addEntry("Gyro Reset", 4);
-        top->addEntry(gyro_reset);
+        if ( gflags.expert ) {
+            SetupMenuSelect* gyro_reset = new SetupMenuSelect("Gyro Zero", RST_NONE, imu_calib);
+            gyro_reset->setHelp("Reset gyro bias to zero");
+            gyro_reset->addEntry("Cancel", 0);
+            gyro_reset->addEntry("Gyro Reset", 4);
+            top->addEntry(gyro_reset);
 
-        SetupMenuDisplay* imus = new SetupMenuDisplay("Imu Status", imu_status_action);
-        top->addEntry(imus);
-    }
+            SetupMenuDisplay* imus = new SetupMenuDisplay("Imu Status", imu_status_action);
+            top->addEntry(imus);
+        }
 
-    if ( accSensor->getMpu().hasHeatCtlr() ) {
-        SetupMenuValFloat* tcontrol = new SetupMenuValFloat("Temp Control", "°C", nullptr, &mpu_temperature, RST_NONE, false);
-        tcontrol->setPrecision(0);
-        tcontrol->setHelp("Target temperature of AHRS sensor temp-controler");
-        top->addEntry(tcontrol);
+        if ( imuSensor->hasHeatCtlr() ) {
+            SetupMenuValFloat* tcontrol = new SetupMenuValFloat("Temp Control", "°C", nullptr, &mpu_temperature, RST_NONE, false);
+            tcontrol->setPrecision(0);
+            tcontrol->setHelp("Target temperature of AHRS sensor temp-controler");
+            top->addEntry(tcontrol);
+        }
     }
 
 	SetupMenuSelect *rpyl = new SetupMenuSelect("AHRS RPYL", RST_NONE, nullptr, &ahrs_rpyl_dataset);
@@ -561,9 +563,11 @@ void system_menu_create_hardware_imu(SetupMenu *top) {
 	araw->mkEnable();
 
 #ifdef DEBUG_AND_TEST
-	SetupMenu *ahrspa = new SetupMenu("Parameters", system_menu_create_hardware_ahrs_parameter);
-	ahrspa->setHelp("AHRS constants such as gyro trust and filtering");
-	top->addEntry(ahrspa);
+    if ( imuSensor ) {
+        SetupMenu *ahrspa = new SetupMenu("Parameters", system_menu_create_hardware_ahrs_parameter);
+        ahrspa->setHelp("AHRS constants such as gyro trust and filtering");
+        top->addEntry(ahrspa);
+    }
 #endif
 }
 

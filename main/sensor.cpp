@@ -616,6 +616,10 @@ void system_startup(void *args){
 
     boot_screen->finish(0);
 
+    // create IMU sensor in any case
+    accSensor = new AccMPU6050();
+    gyroSensor = new GyroMPU6050();
+
     if (accSensor) {
         // ok a MPU got probed already
         // add AHRS to my caps
@@ -979,7 +983,7 @@ void system_startup(void *args){
 
     // a final check if the IMU got calibrated
 #ifdef DEBUG_AND_TEST
-    if ( accSensor && (imu_reference.get() == Quaternion()) ) {
+    if ( imuSensor && (imu_reference.get() == Quaternion()) ) {
         MBOX->pushMessage(2, "Pls. calibrate AHRS for best variometer performance");
     }
 #endif
@@ -1070,16 +1074,14 @@ extern "C" void  app_main(void)
     ESP_ERROR_CHECK(i2c_new_master_bus(&config, &i2c_bus));
 
     // probe on IMU
-    MpuImu *imu = new MpuImu();
-    if (imu->probe(i2c_bus)) {
-        accSensor = new AccMPU6050(*imu);
-        gyroSensor = new GyroMPU6050(*imu);
-        if (imu->getImuType() == ImuType::MPU6050) {
+    imuSensor = new MpuImu();
+    if (imuSensor->probe(i2c_bus)) {
+        if (imuSensor->getImuType() == ImuType::MPU6050) {
             if (hardwareRevision.get() < XCVARIO_21) {
                 hardwareRevision.set(XCVARIO_21);  // there is MPU6050 gyro and acceleration sensor, at least we got an XCV-21
                 ESP_LOGI(FNAME, "MPU6050 detected -> hardwareRevision (XCV-21)");
             }
-        } else if (imu->getImuType() == ImuType::ICM20602) {
+        } else if (imuSensor->getImuType() == ImuType::ICM20602) {
             if (hardwareRevision.get() < XCVARIO_25) {
                 hardwareRevision.set(XCVARIO_25);  // there is ICM20602 gyro and acceleration sensor, at least we got an XCV-25
                 ESP_LOGI(FNAME, "ICM20602 detected -> hardwareRevision (XCV-25)");
@@ -1087,12 +1089,14 @@ extern "C" void  app_main(void)
         }
         if ( gflags.first_pure_run ) {
             // Set the IMU reference to default, because Pure is now on "NED"
-            imu->resetImuReference();
+            imuSensor->resetImuReference();
+        }
+        if (SetupCommon::isClient()) {
+            delete imuSensor;
         }
     } else {
         ESP_LOGI(FNAME, "No MPU6050/ICM20602 detected");
-        delete imu;
-        imu = nullptr;
+        delete imuSensor;
     }
 
     // Init ui and screen UiEventLoop task recources

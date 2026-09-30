@@ -29,9 +29,8 @@ constexpr int DUTY_CYCLE_MS = 100; // 10Hz
 constexpr size_t HSIZE = SENSOR_HISTORY_DURATION_MS / DUTY_CYCLE_MS;
 static __attribute__((aligned(4))) vector_f acc_buffer[ HSIZE + 1 ];
 
-AccMPU6050::AccMPU6050(MpuImu &mmpu) : 
+AccMPU6050::AccMPU6050() : 
     SensorTP<vector_f>(acc_buffer, HSIZE, DUTY_CYCLE_MS, 1),
-    _my_mpu(mmpu),
     _lpf_accel(LowPassFilterT<vector_f>::alphaFromTau(0.3, DUTY_CYCLE_MS / 1000.f)),
     _lpf_slip_angle(LowPassFilterT<float>::alphaFromTau(0.3, DUTY_CYCLE_MS / 1000.f))
 {
@@ -41,18 +40,21 @@ AccMPU6050::AccMPU6050(MpuImu &mmpu) :
     pushAndPublish(vector_f(1,0,0), 0);
 
     // accelerometer filter init.
+    setFilter(&_lpf_accel);
     _lpf_accel.reset({0.f,0.f,1.f});
 }
 AccMPU6050::~AccMPU6050() {
     accSensor = nullptr;
 }
 
+const char *AccMPU6050::name() const { return imuSensor ? imuSensor->name() : "vMPU"; }
+
 bool AccMPU6050::doRead(vector_f& val) {
 
     // Get new accelerometer values from MPU6050
     mpud::raw_axes_t imuRaw;
     // fetch raw data from the registers
-    if (_my_mpu.acceleration(&imuRaw) == ESP_OK) {
+    if (imuSensor->acceleration(&imuRaw) == ESP_OK) {
         // raw data to gravity
         vector_f tmp_ned = vector_f::make_vector(imuRaw.x, imuRaw.y, imuRaw.z, mpud::accelResolution(MpuImu::ACCEL_SCALE));
         // ESP_LOGI(FNAME, "accraw\tX:%d Y:%d Z:%d", imuRaw.x, imuRaw.y, imuRaw.z);
@@ -64,7 +66,7 @@ bool AccMPU6050::doRead(vector_f& val) {
             ESP_LOGE(FNAME, "accelaration change > 5 g in 0.1 sec");
             // return false;
         }
-        val = _my_mpu.rotate(tmp_ned);
+        val = imuSensor->rotate(tmp_ned);
         // ESP_LOGI(FNAME, "val X:%f Y:%f Z:%f", val.x, val.y, val.z);
         return true;
     }
@@ -85,7 +87,7 @@ float AccMPU6050::getVerticalAcceleration() {
 // compensate for this bias
 void AccMPU6050::pushBias(const vector_f& bias) {
     // rotate back into sensor frame
-    vector_f bias_sensor = _my_mpu._ref_rot.get_conjugate().rotate(bias);
+    vector_f bias_sensor = imuSensor->_ref_rot.get_conjugate().rotate(bias);
     ESP_LOGI(FNAME, "backrot: %f/%f/%f", bias_sensor.x, bias_sensor.y, bias_sensor.z);
 
     ESP_LOGI(FNAME, "Mpu scale: %d", mpud::accelSensitivity(MpuImu::ACCEL_SCALE));
@@ -98,7 +100,7 @@ void AccMPU6050::pushBias(const vector_f& bias) {
     mpud::raw_axes_t raw_bias(bias_sensor.x, bias_sensor.y, bias_sensor.z);
     ESP_LOGI(FNAME, "raw  bias: %d,%d,%d", raw_bias.x, raw_bias.y, raw_bias.z);
     // Reprogam MPU bias (acc bias never incremental)
-    _my_mpu._MPUdev.setAccelOffset(raw_bias);
+    imuSensor->_MPUdev.setAccelOffset(raw_bias);
     // save to nvs
     accl_bias.set(axes_i16_abi(raw_bias.x, raw_bias.y, raw_bias.z), false);
 }
@@ -125,9 +127,11 @@ static void update_fused_vector(vector_f& fused, float gyro_trust, vector_f& pet
 
 
 void AccMPU6050::postProcess() {
-    static int count = 0;
-    if ( _my_mpu.hasHeatCtlr() && ! (++count%10) ) { // every second
-        _my_mpu.temp_control(); // Call temp regulation
+    if (imuSensor) {
+        static int count = 0;
+        if ( imuSensor->hasHeatCtlr() && ! (++count%10) ) { // every second
+            imuSensor->temp_control(); // Call temp regulation
+        }
     }
     
     // AHRS code
@@ -136,11 +140,11 @@ void AccMPU6050::postProcess() {
     float gravity_trust = 1;
     const vector_f& accel = *getHeadPtr();
 
-    _processed = _lpf_accel.filter(accel); // todo track and subtraced soft bias
-    _processed.z -= gyroSensor->getAxD() * _my_mpu.getLeverArm(); // compensate the accelerometer mounting position in front of CG
+    // todo track and subtraced soft bias
+    // todo _processed.z -= gyroSensor->getAxD() * imuSensor.getLeverArm(); // compensate the accelerometer mounting position in front of CG
     const vector_f& gyro = gyroSensor->getRef();
-    // ESP_LOGI( FNAME, " Accel: %.3f,%.3f,%.3f Gyro: %.3f,%.4f,%.4f dt: %.4f", accel.x, accel.y, accel.z, gyro.x, gyro.y, gyro.z, dt );
-    // ESP_LOGI( FNAME, " Accel: %.3f,%.3f,%.3f dt: %.4f TS:%d", accel.x, accel.y, accel.z, dt, _my_mpu.getTempStatus() );
+    ESP_LOGI( FNAME, " Accel: %.3f,%.3f,%.3f Gyro: %.3f,%.4f,%.4f dt: %.4f", accel.x, accel.y, accel.z, gyro.x, gyro.y, gyro.z, dt );
+    // ESP_LOGI( FNAME, " Accel: %.3f,%.3f,%.3f dt: %.4f TS:%d", accel.x, accel.y, accel.z, dt, imuSensor?imuSensor->getTempStatus():temp_status_t::MPU_T_UNKNOWN);
 
     // create a gyro base rotation delta
     d_gyro = Quaternion::fromGyro(gyro, dt);
@@ -217,7 +221,9 @@ void AccMPU6050::postProcess() {
     }
 
     // calm status
-    detectRest();
+    if (imuSensor) {
+        detectRest();
+    }
 }
 
 // rest - detection
@@ -251,8 +257,4 @@ void AccMPU6050::resetRest() {
 // {
 // 	return atan2f(-accel.x, accel.z); // neglecting accel.y, because of minor influence on pitch and more noise
 // }
-
-float AccMPU6050::getGyroFooting() const {
-    return circle_footing;
-}
 

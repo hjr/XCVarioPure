@@ -13,9 +13,9 @@
 #include "sensor/gps/GpsVSensor.h"
 #include "sensor/SensorMgr.h"
 #include "setup/SetupNG.h"
-#include "logdef.h"
+#include "logdefnone.h"
 
-#include "mpu/math.hpp"
+#include <mpu/math.hpp>
 
 GyroMPU6050 *gyroSensor = nullptr;
 
@@ -24,9 +24,8 @@ constexpr int DUTY_CYCLE_MS = 100; // 10Hz
 constexpr size_t HSIZE = SENSOR_HISTORY_DURATION_MS / DUTY_CYCLE_MS;
 static __attribute__((aligned(4))) vector_f gyro_buffer[ HSIZE + 1 ];
 
-GyroMPU6050::GyroMPU6050(MpuImu &mmpu) :
+GyroMPU6050::GyroMPU6050() :
     SensorTP<vector_f>(gyro_buffer, HSIZE, DUTY_CYCLE_MS, 1),
-    _my_mpu(mmpu),
     _scale(Units::deg_to_rad(mpud::math::gyroResolution(MpuImu::GYRO_SCALE))), // scale factor for raw gyro data to rad/s
     _gyro_lpf_dwydt(LowPassFilterT<float>::alphaFromTau(0.3333, DUTY_CYCLE_MS / 1000.f)),
     _gps_omega_lpf(0.3)
@@ -39,12 +38,12 @@ GyroMPU6050::~GyroMPU6050() {
     gyroSensor = nullptr;
 }
 
-const char *GyroMPU6050::name() const { return _my_mpu.name(); }
+const char *GyroMPU6050::name() const { return imuSensor ? imuSensor->name() : "vMPU";}
 
 bool GyroMPU6050::doRead(vector_f& val) {
     // Get new gyro values from MPU6050
     mpud::raw_axes_t imuRaw;
-    if (_my_mpu.rotation(&imuRaw) == ESP_OK) {
+    if (imuSensor->rotation(&imuRaw) == ESP_OK) {
         // raw data to rad/s
         vector_f tmpvec = vector_f::make_vector(imuRaw.x, imuRaw.y, imuRaw.z, _scale);
 
@@ -61,7 +60,7 @@ bool GyroMPU6050::doRead(vector_f& val) {
         // tmpvec.y = abs(tmpvec.y) < gate ? 0.0 : tmpvec.y;
         // tmpvec.z = abs(tmpvec.z) < gate ? 0.0 : tmpvec.z;
         // into glider reference system
-        val = _my_mpu.rotate(tmpvec) - _bias_estimator.getRef();
+        val = imuSensor->rotate(tmpvec) - _bias_estimator.getRef();
         // ESP_LOGI(FNAME, "gyro raw: %d/%d/%d scaled: %f/%f/%f", imuRaw.x, imuRaw.y, imuRaw.z, val.x, val.y, val.z);
         _gyro_lpf_dwydt.filter((val.y - getHeadPtr()->y) / getDutyCycleS()); // diverenciate and filter to get dwy/dt for accelerometer compensation
         return true;
@@ -82,6 +81,8 @@ void GyroMPU6050::postProcess() {
     _processed.x = abs(_processed.x) < gate ? 0.0 : _processed.x;
     _processed.y = abs(_processed.y) < gate ? 0.0 : _processed.y;
     _processed.z = abs(_processed.z) < gate ? 0.0 : _processed.z;
+
+    // rest and bias estimation
     float omegalp;
     if ( gpsSensor ) {
         // preferable use the GPS based omega
@@ -138,13 +139,15 @@ bool GyroMPU6050::detectRest() {
 
 void GyroMPU6050::saveBias() {
     vector_f bias = _bias_estimator.get();
-    pushBias(bias);
+    if (imuSensor) {
+        pushBias(bias);
+    }
 }
 
 void GyroMPU6050::pushBias(vector_f& bias) {
     // rotate back into sensor frame
     // ESP_LOGI(FNAME, "-> bias: %f/%f/%f", bias.x, bias.y, bias.z);
-    vector_f bias_sensor = _my_mpu._ref_rot.get_conjugate().rotate(bias);
+    vector_f bias_sensor = imuSensor->_ref_rot.get_conjugate().rotate(bias);
     ESP_LOGI(FNAME, "backrot: %f/%f/%f", bias_sensor.x, bias_sensor.y, bias_sensor.z);
 
     // to raw units and scale to 1000 dps
@@ -154,13 +157,13 @@ void GyroMPU6050::pushBias(vector_f& bias) {
     ESP_LOGI(FNAME, "measured: %d/%d/%d", measured.x, measured.y, measured.z);
 
     // subtract the new bias from the current bias to get the new offset
-    mpud::raw_axes_t current_bias = _my_mpu.getGyroOffset();
+    mpud::raw_axes_t current_bias = imuSensor->getGyroOffset();
     ESP_LOGI(FNAME, "current gyro bias: %d/%d/%d", current_bias.x, current_bias.y, current_bias.z);
     // ESP_LOGI(FNAME, "delta gyro bias: %d/%d/%d", bias_delta.x, bias_delta.y, bias_delta.z);
     mpud::raw_axes_t new_bias = current_bias;
     new_bias -= measured;
     ESP_LOGI(FNAME, "new gyro bias: %d/%d/%d", new_bias.x, new_bias.y, new_bias.z);
-    _my_mpu.setGyroOffset(new_bias);
+    imuSensor->setGyroOffset(new_bias);
     // save to nvs
     gyro_bias.set(axes_i16_abi(new_bias.x, new_bias.y, new_bias.z), false);
 }
