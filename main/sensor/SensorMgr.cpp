@@ -206,7 +206,7 @@ void SensorRegistry::goSimMode()
 {
     ESP_LOGW(FNAME, "SensorRegistry entering SIMULATION MODE");
     for (SensorEntry* e = all_sensors.data(); e != end(); ++e) {
-        if (e->isActive() && !e->id.isEssentialSensor()) {
+        if (!e->id.isEssentialSensor()) {
             e->id.flags = e->id.flags & ~SensorId::SENSOR_LOCAL; // no further sensor reading
         }
     }
@@ -221,7 +221,7 @@ SensorEntry* SensorRegistry::find(SensorType typ) {
 
 #ifdef DEBUG_AND_TEST
 void SensorRegistry::dump() {
-    ESP_LOGI(FNAME, "Dumping registered sensors:");
+    ESP_LOGI(FNAME, "Dumping registered sensors: %d", numSensors);
     int i = 1;
     for (const auto& e : all_sensors) {
         if (e.isActive()) {

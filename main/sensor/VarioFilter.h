@@ -16,12 +16,13 @@
 class TEcompFilter final : public SensorTP<meter_t> {
    public:
     TEcompFilter();
+    ~TEcompFilter() = default;
+    
     const char* name() const override { return "TeComp"; }
     bool probe() override { return true; }
     bool setup() override { return true; }
 
     bool doRead(meter_t& val) override;
-    void postProcess() override;
 
    private:
     LowPassFilterT<float> _tealt_lpf;
@@ -35,6 +36,8 @@ class TEcompFilter final : public SensorTP<meter_t> {
 class VarioFilter final : public SensorTP<mps_t> {
    public:
     VarioFilter();
+    ~VarioFilter() = default;
+    
     const char* name() const override { return "Vario"; }
     bool probe() override { return true; }
     bool setup() override;

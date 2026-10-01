@@ -20,7 +20,7 @@ public:
     AirspeedSensor();
     virtual ~AirspeedSensor();
 
-    static AirspeedSensor *autoSetup();
+    static AirspeedSensor *probeAll();
 
     bool setup() override;
     bool doRead(pascal_t &val) override;

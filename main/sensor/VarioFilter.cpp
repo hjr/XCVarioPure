@@ -37,17 +37,15 @@ static __attribute__((aligned(4))) meter_t tealt_buffer[ TEALTSIZE + 1 ]; // int
 // On a client do the postproc only instead and fetch the te_alt from the master.
 //
 TEcompFilter::TEcompFilter() :
-    SensorTP<meter_t>(tealt_buffer, TEALTSIZE, DUTY_CYCLE_MS, SetupCommon::isMaster()?0:1),
+    SensorTP<meter_t>(tealt_buffer, TEALTSIZE, DUTY_CYCLE_MS, 0),
     _tealt_lpf(0.25f)
 {
     _id = SensorId(SensorType::VIRTUAL, 9);
-    if (SetupCommon::isMaster()) {
-        _id.flags |= SensorId::SENSOR_LOCAL;
-        // mark as essential sensor to be able to simulate
-        _id.flags |= SensorId::SENSOR_ESSENTIAL;
-        setNVSVar(&te_alt);
-        setFilter(&_tealt_lpf);
-    }
+    _id.flags |= SensorId::SENSOR_LOCAL;
+    // mark as essential sensor to be able to simulate
+    _id.flags |= SensorId::SENSOR_ESSENTIAL;
+    setNVSVar(&te_alt);
+    setFilter(&_tealt_lpf);
     meter_t alt = altitude_isa.get();
     _tealt_lpf.reset(alt);
 }
@@ -79,11 +77,6 @@ bool TEcompFilter::doRead(meter_t& val) {
 
     val = curr_altitude; // meter
     return true;
-}
-
-void TEcompFilter::postProcess()
-{
-    pushToHistory(te_alt.get(), Clock::getMillis());
 }
 
 //
@@ -186,7 +179,6 @@ VarioFilter::VarioFilter() :
     SensorRegistry::registerSensor(tecompSensor);
     _prepare_sim_jump = 40; // preparation for a disruptive jump to the ground level
 }
-// ~VarioFilter() {} .. never going to be deleted
 
 bool VarioFilter::setup() {
     ESP_LOGI(FNAME, "VarioFilter setup as %s sensor with alt %f", _id.isLocalSensor() ? "local" : "remote", altitude.get());

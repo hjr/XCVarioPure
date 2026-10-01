@@ -312,7 +312,7 @@ void change_cruise() {
     AUDIO->updateAudioMode();
 }
 
-static void calc_altis() {
+static void calc_alt_isa() {
 	altitude.set( Units::calcAltitude(QNH.get(), statp.get()) );
 	altitude_isa.set( Units::calcAltitudeISA(statp.get()) );
 }
@@ -385,9 +385,15 @@ static void propagate_caps()
     }
 }
 
+static void adjust_gaa() {
+    if (imuSensor) {
+        imuSensor->applyImuReference(glider_ground_aa.get(), MpuImu::getDefaultImuReference());
+    }
+}
+
 static void set_imu_leverarm() {
-    if (accSensor) {
-        accSensor->getMpu().setLeverArm(imu_leverarm.get());
+    if (imuSensor) {
+        imuSensor->setLeverArm(imu_leverarm.get());
     }
 }
 
@@ -455,23 +461,21 @@ SetupNG<rad_t>  		heading_tru( "HDT", .0f, false, SYNC_FROM_MASTER, VOLATILE );
 SetupNG<rad_t>  		heading_wca( "WCA", .0f, false, SYNC_FROM_MASTER, VOLATILE );
 SetupNG<mps_t>  		average_climb( "AVCL", 0.0, false, SYNC_NONE, VOLATILE );
 SetupNG<float>  		flap_pos( "FLPS", 0.0, false, SYNC_BIDIR, VOLATILE );
-SetupNG<pascal_t>  		statp( "STAT", 0.0, false, SYNC_FROM_MASTER, VOLATILE, calc_altis );
-SetupNG<pascal_t>  		dynp( "DYNP", 0.0, false, SYNC_FROM_MASTER, VOLATILE, calc_speeds );
+SetupNG<pascal_t>  		statp( "STAT", 0.0, false, SYNC_NONE, VOLATILE, calc_alt_isa );
+SetupNG<pascal_t>  		dynp( "DYNP", 0.0, false, SYNC_NONE, VOLATILE, calc_speeds );
 SetupNG<meter_t>  		altitude( "ALTI", 0.0, false, SYNC_NONE, VOLATILE ); // derived from statp
 SetupNG<meter_t>  		altitude_isa( "ALT_ISA", 0.0, false, SYNC_NONE, VOLATILE ); // derived from statp
 SetupNG<mps_t>  		ias( "IASV", 0.0, false, SYNC_NONE, VOLATILE); // derived from dynp in calc_speeds()
 SetupNG<mps_t>  		tas( "TASV", 0.0, false, SYNC_NONE, VOLATILE ); // derived from ias + OAT + altitude in calc_speeds()
 SetupNG<mps_t>  		gnd_speed( "GNDV", -1.0, false, SYNC_NONE, VOLATILE );
 SetupNG<rad_t>  		gnd_course( "GNDC", -10.0, false, SYNC_NONE, VOLATILE );
-SetupNG<meter_t>  		te_alt( "TEALT", 0.0, false, SYNC_FROM_MASTER, VOLATILE, kick_client_loop );
+SetupNG<meter_t>  		te_alt( "TEALT", 0.0, false, SYNC_NONE, VOLATILE, kick_client_loop );
 SetupNG<mps_t>  		te_vario( "TEVA", 0.0, false, SYNC_NONE, VOLATILE ); // derived from te_alt in VarioFilter
 SetupNG<mps_t>  		te_netto( "TENET", 0.0, false, SYNC_NONE, VOLATILE ); // derived from te_alt in VarioFilter
 SetupNG<rad_t>  		slip_angle( "SLANGLE", 0.0, false, SYNC_FROM_MASTER, VOLATILE );
 SetupNG<float>  		battery_voltage( "BATV", 0.0, false, SYNC_FROM_MASTER, VOLATILE );
 SetupNG<float>  		debugvar( "DEBUG", 0.0, false, SYNC_NONE, VOLATILE );
 SetupNG<float>  		thermal_score( "THSCORE", 0.0, false, SYNC_NONE, VOLATILE );
-SetupNG<vector_f>  		imu_acc( "ACCEL", {}, false, SYNC_FROM_MASTER, VOLATILE );
-SetupNG<vector_f>  		imu_gyro( "GYRO", {}, false, SYNC_FROM_MASTER, VOLATILE );
     
 SetupNG<int>  			xcv_alive( "AL_XCV", ALIVE_NONE, false, SYNC_NONE, VOLATILE );
 SetupNG<int>  			mags_alive( "AL_MAGS", ALIVE_NONE, false, SYNC_NONE, VOLATILE );

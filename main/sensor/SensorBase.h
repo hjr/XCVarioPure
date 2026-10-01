@@ -178,24 +178,21 @@ public:
     }
     // Publish on black board NVS variable
     void publishNVS() {
-        if (_nvsvar) {
-            if constexpr (std::is_same_v<T, float>) { // for float types
-                float fval = _history.getHead();
-                if ( _filter && std::isfinite(fval) ) {
-                    fval = _filter->filter(fval);
-                }
-                _nvsvar->set(fval);
-                _processed = fval;
+        if constexpr (std::is_same_v<T, float>) { // for float types
+            float fval = _history.getHead();
+            if ( _filter && std::isfinite(fval) ) {
+                fval = _filter->filter(fval);
             }
-            else if constexpr (std::is_same_v<T, vector_f>) { // for vector_f type
-                vector_f val = _history.getHead();
-                if ( _filter ) {
-                    val = _filter->filter(val);
-                }
-                _nvsvar->set(val);
-                _processed = val;
+            if (_nvsvar) _nvsvar->set(fval);
+            _processed = fval;
+        }
+        else if constexpr (std::is_same_v<T, vector_f>) { // for vector_f type
+            vector_f val = _history.getHead();
+            if ( _filter ) {
+                val = _filter->filter(val);
             }
-
+            if (_nvsvar) _nvsvar->set(val);
+            _processed = val;
         }
     }
     inline void pushAndPublish(const T& value, uint32_t now_ms) {

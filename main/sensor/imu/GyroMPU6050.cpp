@@ -30,7 +30,11 @@ GyroMPU6050::GyroMPU6050() :
     _gyro_lpf_dwydt(LowPassFilterT<float>::alphaFromTau(0.3333, DUTY_CYCLE_MS / 1000.f)),
     _gps_omega_lpf(0.3)
 {
-    _id = SensorId(SensorType::GYRO_INERTIAL, SensorId::SENSOR_LOCAL | 0);
+    _id = SensorId(SensorType::GYRO_INERTIAL, 0);
+    if (imuSensor) {
+        _id.flags |= SensorId::SENSOR_LOCAL;
+    }
+
     // push a single previous value
     pushAndPublish(vector_f(0,0,0), 0);
 }

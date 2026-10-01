@@ -77,7 +77,7 @@ static PressureSensor* factory(PressureSensor::PSens_Type type, SensorType t)
     return ret;
 }
 
-PressureSensor* PressureSensor::autoSetup(SensorType typ) {
+PressureSensor* PressureSensor::probeAll(SensorType typ) {
     PressureSensor* p_sens = nullptr;
     // Probe any kind of ever known sensors
     for ( PSens_Type pst = SPL06_007; pst < PS_MAX_TYPES; pst = static_cast<PSens_Type>(pst + 1) ) {

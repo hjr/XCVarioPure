@@ -5,7 +5,9 @@
 #include "imu/ImuSensor.h"
 #include "sensor/adc/BatteryVoltage.h"
 #include "sensor/pressure/PressureSensor.h"
+#include "sensor/pressure/PSclient.h"
 #include "sensor/press_diff/AirspeedSensor.h"
+#include "sensor/press_diff/ASclient.h"
 #include "sensor/imu/AccMPU6050.h"
 #include "sensor/imu/GyroMPU6050.h"
 #include "sensor/SensorMgr.h"
@@ -628,50 +630,33 @@ void system_startup(void *args){
     accSensor = new AccMPU6050();
     gyroSensor = new GyroMPU6050();
 
-    if (accSensor) {
-        // ok a MPU got probed already
-        // add AHRS to my caps
-        XcvCaps::addToMine(XcvCaps::AHRS_CAP);
-        float accel = .0f;
-        ESP_LOGI(FNAME, "MPU setup");
-        if (accSensor->getMpu().setup()) { // after CAN bus self test !
-            vector_f accelG, sum;
-            int samples = 0;
-            vTaskDelay(pdMS_TO_TICKS(200));
-            for (auto i = 0; i < 10; i++) {
-                bool ok = accSensor->doRead(accelG);  // fetch G data
-                if (!ok) {
-                    ESP_LOGE(FNAME, "AHRS acceleration I2C read error");
-                    continue;
-                }
-                samples++;
-                sum += accelG;
-                vTaskDelay(pdMS_TO_TICKS(10));
+    // Configure imu only on master XCVario
+    if (SetupCommon::isMaster() ) {
+        if (imuSensor) {
+            // ok a MPU got probed already (after CAN bus self test we know the HW rev)
+            // add AHRS to my caps
+            XcvCaps::addToMine(XcvCaps::AHRS_CAP);
+            float accelGnorm = .0f;
+            vTaskDelay(pdMS_TO_TICKS(20));
+            ESP_LOGI(FNAME, "MPU setup");
+            if (imuSensor->setup()) {
+                vector_f accelG = accSensor->selftest();
+                accelGnorm = accelG.get_norm();
             }
-            sum /= samples;
-            accel = sum.get_norm();
+            char imu_g_str[10];
+            sprintf(imu_g_str, "%.2f", accelGnorm);
+            logged_tests += "IMU " + std::string(imuSensor->name()) + " (" + std::string(imu_g_str) + "g): ";
+            if (accelGnorm > 0.95 && accelGnorm < 1.05) {
+                logged_tests += passed_text;
+            } else {
+                logged_tests += failed_text;
+                ESP_LOGE(FNAME, "MPU g avg: %.2f", accelGnorm);
+                selftestPassed = false;
+            }
         }
-        char ahrs[10];
-        sprintf(ahrs, "%.2f", accel);
-        logged_tests += "IMU AHRS (" + std::string(ahrs) + "g): ";
-        if (accel > 0.95 && accel < 1.05) {
-            logged_tests += passed_text;
-        } else {
-            logged_tests += failed_text;
-            ESP_LOGE(FNAME, "MPU g avg: %.2f", accel);
-            selftestPassed = false;
-        }
-        // register IMU sensors always, even on client XCVario
-        SensorRegistry::registerSensor(gyroSensor); // giro sensor first to have the cg correction immidiately available for the acc sensor
-        SensorRegistry::registerSensor(accSensor);
-    }
 
-
-    if ( SetupCommon::isMaster() )
-    {
-        // Configure sensors only on master XCVario
         // Configure airspeed sensor
-        asSensor = AirspeedSensor::autoSetup();
+        asSensor = AirspeedSensor::probeAll();
         logged_tests += "AS " + std::string(asSensor->name()) +  " offset: ";
         if (asSensor)
         {
@@ -703,20 +688,20 @@ void system_startup(void *args){
                 logged_tests += passed_text;
                 boot_screen->finish(1);
             }
-            SensorRegistry::registerSensor(asSensor);
         }
         else
         {
-            ESP_LOGE(FNAME, "Error with air speed pressure sensor, no working sensor found!");
+            ESP_LOGE(FNAME, "Error initializing air speed pressure sensor, no working sensor found!");
             MBOX->pushMessage(2, "AS Sensor: NOT FOUND");
             logged_tests += notfound_text;
             selftestPassed = false;
         }
 
+
         // Configure pressure sensors
         ESP_LOGI(FNAME, "Absolute pressure sensors init, detect type of sensor type..");
         logged_tests += "Baro Sensor: ";
-        baroSensor = PressureSensor::autoSetup(SensorType::STATIC_PRESSURE);
+        baroSensor = PressureSensor::probeAll(SensorType::STATIC_PRESSURE);
         bool batest = false;
         celsius_t ba_t, te_t;
         pascal_t ba_p, te_p;
@@ -731,7 +716,6 @@ void system_startup(void *args){
                 logged_tests += passed_text;
                 batest = true;
             }
-            SensorRegistry::registerSensor(baroSensor);
         }
         else {
             ESP_LOGE(FNAME, "Error with barometric pressure sensor, no working sensor found!");
@@ -741,7 +725,7 @@ void system_startup(void *args){
         }
 
         logged_tests += "TE Sensor: ";
-        teSensor = PressureSensor::autoSetup(SensorType::TE_PRESSURE);
+        teSensor = PressureSensor::probeAll(SensorType::TE_PRESSURE);
         bool tetest = false;
         if (teSensor) {
             if (!teSensor->selfTest(te_t, te_p)) {
@@ -754,7 +738,6 @@ void system_startup(void *args){
                 tetest = true;
             }
             printf("TE Sensor test: T=%f P=%f\n", te_t, te_p);
-            SensorRegistry::registerSensor(teSensor);
         }
         else {
             ESP_LOGE(FNAME, "Error with TE pressure sensor, no working sensor found!");
@@ -812,9 +795,29 @@ void system_startup(void *args){
         }
     }
     else {
+        // client setup
         boot_screen->finish(1);
+        asSensor = new ASclient();
         boot_screen->finish(2);
+        baroSensor = new PSclient(SensorType::STATIC_PRESSURE);
+        teSensor = new PSclient(SensorType::TE_PRESSURE);
     }
+
+    // register IMU sensors always, even on client XCVario
+    if (accSensor && gyroSensor) {
+        SensorRegistry::registerSensor(gyroSensor);
+        SensorRegistry::registerSensor(accSensor);
+    }
+    if (asSensor) {
+        SensorRegistry::registerSensor(asSensor);
+    }
+    if (baroSensor) {
+        SensorRegistry::registerSensor(baroSensor);
+    }
+    if (teSensor) {
+        SensorRegistry::registerSensor(teSensor);
+    }
+
 
     AUDIO->applySetup();
     if (audio_mute_gen.get() != AUDIO_OFF) {
@@ -932,8 +935,10 @@ void system_startup(void *args){
             bool already_connected = false;
             Device* dev = DEVMAN->getDevice(XCVARIOFIRST_DEV);
             if (dev) {
+                // device exists
                 NmeaPlugin* plg = dev->_link->getNmeaPlugin(XCVSYNC_P);
                 if (plg) {
+                    // and initial sync got kicked
                     already_connected = static_cast<XCVSyncMsg*>(plg)->syncStarted();
                 }
             }
@@ -1001,16 +1006,16 @@ void system_startup(void *args){
 
 // uint32_t IRAM_ATTR cycle_count() {
 //     float b = rand() % 400 - 200;
+//     float a = 10.f;
 //     b += My_PIf;
 //     uint32_t start = XTHAL_GET_CCOUNT();
 //     // asm volatile("add a4, a1, a2");
-//     b = fast_ceilf(b);
+//     b = fast_roundf(b);
 //     uint32_t end = XTHAL_GET_CCOUNT();
 //     ESP_LOGI(FNAME, "CMP fff %f %u", b, (unsigned)(end - start));
-
 //     b += My_PIf;
 //     start = XTHAL_GET_CCOUNT();
-//     b = std::ceilf(b);
+//     b = std::roundf(b * a) / a;
 //     end = XTHAL_GET_CCOUNT();
 //     ESP_LOGI(FNAME, "CMP _ff %f %u", b, (unsigned)(end - start));
 //     return end - start;

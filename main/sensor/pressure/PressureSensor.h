@@ -24,7 +24,7 @@ class PressureSensor : public SensorTP<pascal_t>
     meter_t readAltitude(pascal_t qnh, bool& success);
     meter_t readAltitudeISA(bool& success);
 
-    static PressureSensor* autoSetup(SensorType typ);
+    static PressureSensor* probeAll(SensorType typ);
 };
 
 extern PressureSensor *baroSensor;

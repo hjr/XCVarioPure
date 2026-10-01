@@ -71,7 +71,7 @@ static AirspeedSensor* factory(AirspeedSensor::ASens_Type type)
     return tmp;
 }
 
-AirspeedSensor* AirspeedSensor::autoSetup()
+AirspeedSensor* AirspeedSensor::probeAll()
 {
     ESP_LOGI(FNAME, "Airspeed sensor init..  nvs configured: %d", airspeed_sensor.get());
     AirspeedSensor *as_sens = nullptr;

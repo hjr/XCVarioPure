@@ -34,14 +34,17 @@ AccMPU6050::AccMPU6050() :
     _lpf_accel(LowPassFilterT<vector_f>::alphaFromTau(0.3, DUTY_CYCLE_MS / 1000.f)),
     _lpf_slip_angle(LowPassFilterT<float>::alphaFromTau(0.3, DUTY_CYCLE_MS / 1000.f))
 {
-    _id = SensorId(SensorType::ACC_INERTIAL, SensorId::SENSOR_LOCAL | 1);
-
-    // push a single previous value
-    pushAndPublish(vector_f(1,0,0), 0);
+    _id = SensorId(SensorType::ACC_INERTIAL, 1);
+    if (imuSensor) {
+        _id.flags |= SensorId::SENSOR_LOCAL;
+    }
 
     // accelerometer filter init.
     setFilter(&_lpf_accel);
     _lpf_accel.reset({0.f,0.f,1.f});
+
+    // push a single previous value
+    pushAndPublish(vector_f(1,0,0), 0);
 }
 AccMPU6050::~AccMPU6050() {
     accSensor = nullptr;

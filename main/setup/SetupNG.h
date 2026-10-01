@@ -144,7 +144,7 @@ class SetupNG : public SetupCommon {
     void setValueFromStr(const char* str) override;
 
     void* getPtr() override { return &_value; }
-    int getSize() override { return sizeof(_value); }
+    constexpr int getSize() override { return sizeof(T); }
     bool isDefault() override { return _default == _value; }
     bool inLimits() const override;  // check on nan for <float>
 
@@ -237,8 +237,6 @@ extern SetupNG<rad_t>  		slip_angle;
 extern SetupNG<float>  		battery_voltage;
 extern SetupNG<float>  		debugvar;
 extern SetupNG<float>  		thermal_score;
-extern SetupNG<vector_f>  	imu_acc;
-extern SetupNG<vector_f>  	imu_gyro;
     
 extern SetupNG<int>  		xcv_alive;
 extern SetupNG<int>  		mags_alive;
