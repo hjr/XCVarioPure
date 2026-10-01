@@ -10,6 +10,11 @@
 
 #include "protocol/nmea_util.h"
 #include "comm/Messages.h"
+#include "driver/time/Clock.h"
+#include "sensor/pressure/PressureSensor.h"
+#include "sensor/press_diff/AirspeedSensor.h"
+#include "sensor/imu/AccMPU6050.h"
+#include "sensor/imu/GyroMPU6050.h"
 #include "setup/SetupNG.h"
 #include "sensor.h"
 
@@ -43,39 +48,27 @@ XCVSyncMsg::~XCVSyncMsg()
 
 bool XCVSyncMsg::sendInitSyncRequest()
 {
-    // a XCV Scondary will send this message to the master to initialize the sync
+    // a XCV Secondary sends this message to the master to initialize the sync
     Message* msg = _nmeaRef.newMessage();
     _kick_sync = false; // only once
-    msg->buffer.assign("!xsSI,nit\r\n");
+    msg->buffer.assign("!xcvR,Init\r\n");
     return DEV::Send(msg);
 }
 
-bool XCVSyncMsg::sendItem(const char *key, char type, void *value, int len)
+bool XCVSyncMsg::sendItem(const char *key, char type, void *value, uint8_t len)
 {
     Message* msg = _nmeaRef.newMessage();
 
     ESP_LOGD(FNAME,"sendItem: %s", key );
-    char sender = _is_master ? 'M' : 'C';
 
-    ESP_LOGD(FNAME,"sender: %c", sender );
-    msg->buffer =  "!xs";
-    msg->buffer.push_back(sender);
+    msg->buffer =  "!xcv";
+    msg->buffer.push_back(type);
     msg->buffer.push_back(',');
     msg->buffer += key;
     msg->buffer.push_back(',');
-    msg->buffer.push_back(type);
-    msg->buffer.push_back(',');
-    char buf[40];
-    if (type == 'F') {
-        sprintf(buf, "%.7f", *(float *)(value));
-    } else if (type == 'I') {
-        sprintf(buf, "%d", *(int *)(value));
-    } else if (type == 'V') {
-        vector_f *v = reinterpret_cast<vector_f *>(value);
-        sprintf(buf, "%.7f,%.7f,%.7f", v->x, v->y, v->z);
-    }
-    msg->buffer += buf;
-    msg->buffer += "*" + NMEA::CheckSum(msg->buffer.c_str()) + "\r\n";
+    msg->buffer.push_back(len);
+    msg->buffer.append(reinterpret_cast<const char*>(value), len);
+    msg->appendCheckSum();
     return DEV::Send(msg);
 }
 
@@ -86,60 +79,124 @@ bool XCVSyncMsg::sendCAPs(int caps)
     ESP_LOGI(FNAME,"sendCAPs: %x", caps );
     msg->buffer = "$PJPCAP, ";
     msg->buffer += std::to_string(caps);
-    msg->buffer += "*" + NMEA::CheckSum(msg->buffer.c_str()) + "\r\n";
+    msg->appendCheckSum();
     return DEV::Send(msg);
+}
+
+void XCVSyncMsg::sendSensors()
+{
+    // called with full 10Hz rate from sensor loop
+    Message* msg = _nmeaRef.newMessage();
+
+    kelvin_t temp = OAT.get();
+    if (!OAT.getValid()) {
+        temp = Units::isa_temperature(altitude.get());
+        // ESP_LOGW(FNAME,"T invalid, using 15 deg");
+    }
+
+    msg->buffer =  "!xcvB,S,";
+    // send by default: time, baro, diff, te_alt, accel, gyro -> 1 + 3 * 4 + 2 * 12;
+    uint8_t len = 37;
+    msg->buffer.push_back(len);
+    // int now = Clock::getMillis();
+    // msg->buffer.append(reinterpret_cast<const char*>(&now), 4);
+    msg->buffer.append(reinterpret_cast<const char*>(baroSensor->getHeadPtr()), 4);
+    msg->buffer.append(reinterpret_cast<const char*>(teSensor->getHeadPtr()), 4);
+    msg->buffer.append(reinterpret_cast<const char*>(asSensor->getHeadPtr()), 4);
+    if (imuSensor) {
+        msg->buffer.append(reinterpret_cast<const char*>(accSensor->getHeadPtr()), 12);
+        msg->buffer.append(reinterpret_cast<const char*>(gyroSensor->getHeadPtr()), 12);
+    } else {
+        vector_f dummy;
+        msg->buffer.append(reinterpret_cast<const char*>(&dummy), 12);
+        msg->buffer.append(reinterpret_cast<const char*>(&dummy), 12);
+    }
+    msg->appendCheckSum();
+    DEV::Send(msg);
 }
 
 //
 // sync receiver routines
 //
 
-dl_action_t XCVSyncMsg::parseExcl_xsX(NmeaPlugin *plg)
+dl_action_t XCVSyncMsg::parseExcl_xcvX(NmeaPlugin *plg)
 {
+    // example: !xcvX,key,<length byte><binary value>*CRC\r\n
     ProtocolState *sm = plg->getNMEA().getSM();
     const std::vector<int> *word = &sm->_word_start;
 
-    ESP_LOGD(FNAME,"parseXS %s", sm->_frame.c_str() );
-    [[maybe_unused]] char sender_role = sm->_frame[3]; // Master | Client
+    ESP_LOGD(FNAME,"parse xcvX %s p0 %d", sm->_frame.c_str(), word->at(0));
+    char type = sm->_frame[4];
     int pos = word->at(0);
     std::string key = NMEA::extractWord(sm->_frame, pos);
-    char type = sm->_frame[word->at(1)];
-    float val = atof(sm->_frame.c_str() + word->at(2));
-    ESP_LOGD(FNAME,"parsed NMEA: role=%c type=%c key=%s val=%f vali=%d", sender_role, type , key.c_str(), val, (int)val );
-    SetupCommon *item = SetupCommon::getMember(key.c_str());
-    if ( item ) {
-        if( type == 'F' ) {
-            SetupNG<float> *mi = static_cast<SetupNG<float> *>(item);
-            mi->set( val, false );
-        }
-        else if( type == 'I' ) {
-            SetupNG<int> *mi = static_cast<SetupNG<int> *>(item);
-            mi->set( (int)val, false );
-        }
-        else if( type == 'V' ) {
-            SetupNG<vector_f> *mi = static_cast<SetupNG<vector_f> *>(item);
-            vector_f v;
-            sscanf(sm->_frame.c_str() + word->at(2), "%f,%f,%f", &v.x, &v.y, &v.z);
-            mi->set( v, false );
-        }
+    const uint8_t* valptr = reinterpret_cast<const uint8_t*>(sm->_frame.c_str()) + word->at(1);
+    ESP_LOGI(FNAME,"parsed NMEA: type=%c key=%s len=%d", type , key.c_str(), (int)*valptr);
+    if ( type != 'B' ) {
+        valptr += 1; // skip the length byte
+        SetupCommon *item = SetupCommon::getMember(key.c_str());
+        if ( item ) {
+            if( type == 'F' ) {
+                SetupNG<float> *mi = static_cast<SetupNG<float> *>(item);
+                mi->set( *reinterpret_cast<const float*>(valptr), false );
+            }
+            else if( type == 'I' ) {
+                SetupNG<int> *mi = static_cast<SetupNG<int> *>(item);
+                mi->set( *reinterpret_cast<const int*>(valptr), false );
+            }
+            else if( type == 'V' ) {
+                SetupNG<vector_f> *mi = static_cast<SetupNG<vector_f> *>(item);
+                mi->set( *reinterpret_cast<const vector_f*>(valptr), false );
+            }
 
-        // Once
-        if ( static_cast<XCVSyncMsg*>(plg)->isSyncInitPending() ) {
-            static_cast<XCVSyncMsg*>(plg)->sendInitSyncRequest();
+            // Once
+            if ( static_cast<XCVSyncMsg*>(plg)->isSyncInitPending() ) {
+                static_cast<XCVSyncMsg*>(plg)->sendInitSyncRequest();
+            }
+        }
+        else {
+            ESP_LOGW(FNAME,"Setup item with key %s not found", key.c_str() );
         }
     }
     else {
-        ESP_LOGW(FNAME,"Setup item with key %s not found", key.c_str() );
+        uint8_t len = *valptr++;
+        if ( len != 37 ) return NOACTION;
+        int now = Clock::getMillis();
+        // do some clever check on the masters time 
+        // int time = *(reinterpret_cast<const int*>(valptr));
+        // valptr += sizeof(int);
+        float tmp = *(reinterpret_cast<const float*>(valptr));
+        baroSensor->pushAndPublish(tmp, now);
+        valptr += sizeof(float);
+        tmp = *(reinterpret_cast<const float*>(valptr));
+        teSensor->pushAndPublish(tmp, now);
+        valptr += sizeof(float);
+        tmp = *(reinterpret_cast<const float*>(valptr));
+        asSensor->pushAndPublish(tmp, now);
+        valptr += sizeof(float);
+        vector_f vtmp;
+        vtmp = *(reinterpret_cast<const vector_f*>(valptr));
+        if ( accSensor ) accSensor->pushAndPublish(vtmp, now);
+        valptr += sizeof(vector_f);
+        vtmp = *(reinterpret_cast<const vector_f*>(valptr));
+        if ( gyroSensor ) gyroSensor->pushAndPublish(vtmp, now);
+        valptr += sizeof(vector_f);
+        xTaskNotifyGive(ReadSensorsLoop); // kick the sensor loop
     }
 
     return NOACTION; // never forward the XCV internal blabla
 }
 
-dl_action_t XCVSyncMsg::parseExcl_xsSyncInit(NmeaPlugin *plg)
+dl_action_t XCVSyncMsg::parseExcl_xcvRequest(NmeaPlugin *plg)
 {
-    if ( static_cast<XCVSyncMsg*>(plg)->isMaster() ) {
-        ESP_LOGI(FNAME, "Master received xsSyncInit request from client");
-        startClientSync();
+    ProtocolState *sm = plg->getNMEA().getSM();
+    const std::vector<int> *word = &sm->_word_start;
+    const char *s = sm->_frame.c_str();
+    const char *key = s + word->at(0);
+    if ( strncmp(key, "Init", 4) == 0) {
+        if ( static_cast<XCVSyncMsg*>(plg)->isMaster() ) {
+            ESP_LOGI(FNAME, "Master received SyncInit request from client");
+            startClientSync();
+        }
     }
     return NOACTION;
 }

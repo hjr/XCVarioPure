@@ -24,16 +24,17 @@ public:
 public:
     // only needed from SetupNG
     bool sendInitSyncRequest();
-    bool sendItem(const char *key, char type, void *value, int len);
+    bool sendItem(const char *key, char type, void *value, uint8_t len);
     bool sendCAPs(int caps);
+    void sendSensors();
 
 private:
-    bool _is_master;
-    bool _kick_sync; // a once to flip variable
+    uint8_t _is_master :1;
+    uint8_t _kick_sync :1; // a once to flip variable
 
     // Received messages
-    static dl_action_t parseExcl_xsX(NmeaPlugin *plg);
-    static dl_action_t parseExcl_xsSyncInit(NmeaPlugin *plg);
+    static dl_action_t parseExcl_xcvX(NmeaPlugin *plg);
+    static dl_action_t parseExcl_xcvRequest(NmeaPlugin *plg);
     static dl_action_t parse_caps(NmeaPlugin *plg);
     
     static const ParserEntry _pt[];

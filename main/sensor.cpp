@@ -83,8 +83,8 @@ WatchDog_C *uiMonitor = nullptr;
 i2c_master_bus_handle_t i2c_bus;
 
 // Magnetic sensor / compass
-SerialLine *S1 = NULL;
-SerialLine *S2 = NULL;
+SerialLine *S1 = nullptr;
+SerialLine *S2 = nullptr;
 
 // boot log
 std::string logged_tests;
@@ -191,6 +191,7 @@ void readSensors(void *pvParameters)
 #endif
 
     // create the sensor change queue
+    // before this moment changes are effective directly, but this would race with the sensor loop
     SensorRegistry::createQueue();
 
     while (1) {
@@ -201,6 +202,7 @@ void readSensors(void *pvParameters)
         sparse_time = Clock::getMillis();
 
         // read all sensors
+        // ESP_LOGI(FNAME, "readSensors: sparse_time=%u", sparse_time);
         for (SensorEntry *e = SensorRegistry::begin(); e != SensorRegistry::end(); ++e)
         {
             if ( e->id.isLocalSensor() && !(count%e->dutycycle) ) {
@@ -214,6 +216,12 @@ void readSensors(void *pvParameters)
             if ( e->postproccycle && !(count%e->postproccycle) ) {
                 e->sensor->postProcess();
             }
+        }
+
+        // feed the client device
+        XCVSyncMsg *syncProto = SetupCommon::getSyncProto();
+        if (SetupCommon::isMaster() && syncProto) {
+            syncProto->sendSensors();
         }
 
         // logging && toy feed

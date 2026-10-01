@@ -72,7 +72,7 @@ char SetupNG<T>::typeName(void) const {
     else if constexpr (std::is_same_v<T, Quaternion>)
         return 'Q';
     else if constexpr (std::is_same_v<T, bitfield_compass>)
-        return 'B';
+        return 'C';
     else if constexpr (std::is_same_v<T, axes_i16_abi>)
         return 'A';
     else if constexpr (std::is_same_v<T, DeviceNVS>)
