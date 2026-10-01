@@ -49,6 +49,29 @@ AccMPU6050::~AccMPU6050() {
 
 const char *AccMPU6050::name() const { return imuSensor ? imuSensor->name() : "vMPU"; }
 
+// a quick ten samples self-test of the accelerometer
+vector_f AccMPU6050::selftest() const
+{
+    vector_f result, tmp;
+    int samples = 0;
+    for (auto i = 0; i < 20; i++) {
+        accSensor->doRead(tmp); // drop the swing-in samples 
+        vTaskDelay(pdMS_TO_TICKS(1));
+    }
+    for (auto i = 0; i < 10; i++) {
+        if (!accSensor->doRead(tmp)) {
+            ESP_LOGE(FNAME, "AHRS acceleration I2C read error");
+            continue;
+        }
+        samples++;
+        result += tmp;
+        ESP_LOGI(FNAME, "Sample %d: %f/%f/%f", i, tmp.x, tmp.y, tmp.z);
+        vTaskDelay(pdMS_TO_TICKS(1));
+    }
+    result /= samples;
+    return result;
+}
+
 bool AccMPU6050::doRead(vector_f& val) {
 
     // Get new accelerometer values from MPU6050
@@ -143,7 +166,7 @@ void AccMPU6050::postProcess() {
     // todo track and subtraced soft bias
     // todo _processed.z -= gyroSensor->getAxD() * imuSensor.getLeverArm(); // compensate the accelerometer mounting position in front of CG
     const vector_f& gyro = gyroSensor->getRef();
-    ESP_LOGI( FNAME, " Accel: %.3f,%.3f,%.3f Gyro: %.3f,%.4f,%.4f dt: %.4f", accel.x, accel.y, accel.z, gyro.x, gyro.y, gyro.z, dt );
+    // ESP_LOGI( FNAME, " Accel: %.3f,%.3f,%.3f Gyro: %.3f,%.4f,%.4f dt: %.4f", accel.x, accel.y, accel.z, gyro.x, gyro.y, gyro.z, dt );
     // ESP_LOGI( FNAME, " Accel: %.3f,%.3f,%.3f dt: %.4f TS:%d", accel.x, accel.y, accel.z, dt, imuSensor?imuSensor->getTempStatus():temp_status_t::MPU_T_UNKNOWN);
 
     // create a gyro base rotation delta

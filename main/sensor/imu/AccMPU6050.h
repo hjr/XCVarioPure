@@ -26,8 +26,9 @@ public:
     static constexpr float ACCEL_THRESHOLD2 = ACCEL_THRESHOLD * ACCEL_THRESHOLD;
 
     const char *name() const override;
-    bool probe() override { return false; } // probe is done in MpuImu;
-    bool setup() override { return false; } // setup is done in MpuImu;
+    bool probe() override { return false; } // probe is done in MpuImu
+    bool setup() override { return false; } // setup is done in MpuImu
+    vector_f selftest() const;
     bool doRead(vector_f& val) override;
     void postProcess() override;
     bool detectRest();
@@ -50,7 +51,7 @@ public:
 
 
 private:
-    // static constexpr float ACCEL_SCALE = 4096.0f; // LSB/g for ±8g
+    // virtually it has an aggregate MpuImu* imuSensor; // but this is global
     // AHRS variables
     rad_t fused_mag_heading = 0;
     rad_t filtered_mag_heading = 0;
