@@ -200,7 +200,10 @@ void ScreenRoot::press()
     ESP_LOGI(FNAME,"root press active_srceen %d (0x%x)", active_screen, (unsigned)all_screens);
 
     // a press always terminates the in page quick setup
-    _page_setup = false;
+    if ( _page_setup ) {
+        if (active_screen == SCREEN_HORIZON) HorizonPage::HORIZON()->leave();
+        _page_setup = false;
+    }
 
     // cycle through screens, incl. setup
     ESP_LOGI(FNAME, "Cycle screen from %d (%d)", current_screen, gflags.inSetup);

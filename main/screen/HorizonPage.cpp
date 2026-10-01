@@ -49,15 +49,13 @@ HorizonPage::HorizonPage()
     horizon_box[2] = {(int16_t)(left+BOX_SIZE), top};
     horizon_box[3] = {left, top};
     _DIRTY = true;
-    // pick up once the nvs value
-    _gaa = glider_ground_aa.get();
 }
 
 void HorizonPage::rot(int count)
 {
     // adjust the GAA and thus the horizon pitch
-    _gaa = std::clamp(_gaa + count, glider_ground_aa.getMin(), glider_ground_aa.getMax());
-    accSensor->getMpu().applyImuReference(_gaa, MpuImu::getDefaultImuReference());
+    degree_t gaa = std::clamp(glider_ground_aa.get() + count, glider_ground_aa.getMin(), glider_ground_aa.getMax());
+    glider_ground_aa.set( gaa);
     _show_adjustment = 50;
 }
 
@@ -226,7 +224,7 @@ void HorizonPage::draw( Quaternion q )
         // show GAA adjustment for a few seconds
         MYUCG->setFont(ucg_font_fub14_hr, true);
         char buf[30];
-        snprintf(buf, sizeof(buf), "% 2.0f°  ", _gaa);
+        snprintf(buf, sizeof(buf), "% 2.0f°  ", glider_ground_aa.get());
         int16_t ypos = std::min((DISPLAY_H + BOX_SIZE) / 2 + 25, DISPLAY_H - 10);
         MYUCG->setPrintPos((DISPLAY_W - BOX_SIZE) / 2, ypos);
         MYUCG->setColor(COLOR_LBBLUE);
@@ -235,8 +233,6 @@ void HorizonPage::draw( Quaternion q )
         MYUCG->print(buf);
         _show_adjustment--;
         if ( _show_adjustment == 0 ) {
-            // save to nvs
-            glider_ground_aa.set(_gaa);
             _DIRTY = true;
             MenuRoot->inPageSetupDone();
         }
@@ -329,4 +325,9 @@ void HorizonPage::draw( Quaternion q )
     MYUCG->setColor(COLOR_BLUE);
     MYUCG->drawDisc( p.x, p.y, 7, UCG_DRAW_ALL);
 #endif
+}
+
+
+void HorizonPage::leave() {
+    _show_adjustment = 0; // reset the show adjustment flag when leaving the page
 }
