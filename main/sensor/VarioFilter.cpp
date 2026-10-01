@@ -92,6 +92,7 @@ struct VarioKF {
 
     // Noise
     float R;     // measurement noise
+    static constexpr float REF_NOISE = 0.3f * 0.3f;; // reference measurement noise (baro ~30cm RMS)
     float sigma_a;
 
     void reset(meter_t h0) {
@@ -102,7 +103,7 @@ struct VarioKF {
         P11 = 0.001f;
         P01 = P10 = 0.0f;
 
-        R = 0.3f * 0.3f;    // baro ~30cm RMS
+        R = REF_NOISE;
         setTau(vario_delay.get());
    }
     void setTau(float tau) {
@@ -208,8 +209,7 @@ void VarioFilter::postProcess() {
         ESP_LOGW(FNAME, "VarioFilter SIM: large pred_err %f, re-init KF", pred_err);
         return;
     }
-    vkf.R = 0.25 * (1 + fabsf(pred_err));
-    vkf.R = std::clamp(vkf.R, 0.05f, 1.0f);
+    vkf.R = VarioKF::REF_NOISE * (1 + std::sqrtf(fabsf(pred_err)));
 
     vkf.update(tealt_head);
     te_vario.set(vkf.v);
