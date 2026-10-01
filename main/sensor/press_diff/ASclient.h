@@ -8,28 +8,22 @@
 
 #pragma once
 
-
-#include "AsSensI2c.h"
+#include "AirspeedSensor.h"
 
 #include <cstdint>
 
-class MS4525DO final : public AsSensI2c
+class ASclient final : public AirspeedSensor
 {
 public:
-    // instance methods
-    MS4525DO();
-    virtual ~MS4525DO() = default;
+    ASclient() : AirspeedSensor() {};
 
-    const char *name() const override;
-    bool probe() override;
-    void changeConfig() override;
+    const char *name() const override { return "ASclient"; }
+    bool probe() override { return true; }
+    bool setup() override { return true; }
+    void changeConfig() override {}
 
 protected:
-    bool offsetPlausible(int32_t offset) override;
-    int getMaxACOffset() override;
-
-private:
-    static bool isAbpmrr();
-    float getTemperature(); // returns temperature of last measurement
-    uint16_t t_dat; // 11 bit temperature data
+    bool fetch_pressure(int32_t &p, uint16_t &t) override { return false; }
+    bool offsetPlausible(int32_t offset) override { return false; }
+    int  getMaxACOffset() override { return 0; }
 };

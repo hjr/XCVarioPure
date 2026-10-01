@@ -14,7 +14,7 @@
 
 
 SPL06_007::SPL06_007(SensorType typ) :
-    PressureSensor(SensorId(typ, SensorId::SENSOR_LOCAL | 4)),
+    PressureSensor(SensorId(typ, 4)),
     _address( (typ == SensorType::STATIC_PRESSURE) ? SPL06_007_BARO : SPL06_007_TE )
 {
 }

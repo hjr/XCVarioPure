@@ -31,6 +31,9 @@ PressureSensor::PressureSensor(SensorId id) :
     SensorTP<pascal_t>((id.type == SensorType::STATIC_PRESSURE) ? pstat_buffer : te_buffer, HSIZE, DUTY_CYCLE_MS, 0)
 {
     _id = id;
+    if ( SetupCommon::isMaster() ) {
+        _id.flags |= SensorId::SENSOR_LOCAL;
+    }
     if (id.type == SensorType::STATIC_PRESSURE) {
         _valid_time_ms = 3000; // 3 seconds for the barometric altimeter
         setNVSVar(&statp);
