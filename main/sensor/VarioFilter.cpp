@@ -195,14 +195,10 @@ bool VarioFilter::setup() {
 // Kalman Filter based vario filter
 void VarioFilter::postProcess() {
     uint32_t now = Clock::getMillis();
-    second_t dt = 0.1f;
-    if (now - _prev_time > 200) {
-        dt = (now - _prev_time) / 1000.0f;
-        ESP_LOGI(FNAME, "VKF: init timing: %f", dt);
-    }
+    const second_t dt = (now - _prev_time) / 1000.0f;
+    _prev_time = now;
 
     vkf.predict(dt);
-    _prev_time = now;
     meter_t tealt_head = tecompSensor->getHead();
     meter_t pred_err = tealt_head - vkf.h;
     if (fabsf(pred_err) > 60.0f && _prepare_sim_jump) {
