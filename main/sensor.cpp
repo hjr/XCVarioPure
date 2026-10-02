@@ -657,9 +657,9 @@ void system_startup(void *args){
 
         // Configure airspeed sensor
         asSensor = AirspeedSensor::probeAll();
-        logged_tests += "AS " + std::string(asSensor->name()) +  " offset: ";
         if (asSensor)
         {
+            logged_tests += "AS " + std::string(asSensor->name()) +  " offset: ";
             printf("AS Speed sensor type %s\n", asSensor->name());
             bool as_ok = asSensor->setup();
 
