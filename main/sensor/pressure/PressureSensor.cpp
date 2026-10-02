@@ -82,14 +82,16 @@ PressureSensor* PressureSensor::probeAll(SensorType typ) {
     // Probe any kind of ever known sensors
     for ( PSens_Type pst = SPL06_007; pst < PS_MAX_TYPES; pst = static_cast<PSens_Type>(pst + 1) ) {
         p_sens = factory(pst, typ);
-        if ( p_sens && p_sens->probe() ) {
-            ESP_LOGI(FNAME, "Found %s as sensor %d", p_sens->name(), typ);
-            p_sens->setup();
-            break;
-        }
-        else {
-            delete p_sens;
-            p_sens = nullptr;
+        if ( p_sens ) {
+            if (p_sens->probe() ) {
+                ESP_LOGI(FNAME, "Found %s as sensor %d", p_sens->name(), id);
+                p_sens->setup();
+                break;
+            }
+            else {
+                delete p_sens;
+                p_sens = nullptr;
+            }
         }
         vTaskDelay(20 / portTICK_PERIOD_MS);
     }
