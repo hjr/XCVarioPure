@@ -72,9 +72,11 @@ AirspeedSensor* AirspeedSensor::autoSetup()
 
         // there is a configured sensor
         ESP_LOGI(FNAME, "There is valid config for airspeed sensor: check this one first...");
-        if (!as_sens->probe()) {
-            delete as_sens;
-            as_sens = nullptr;
+        if (as_sens) {
+            if (!as_sens->probe()) {
+                delete as_sens;
+                as_sens = nullptr;
+            }
         }
     }
 
@@ -86,14 +88,16 @@ AirspeedSensor* AirspeedSensor::autoSetup()
         for ( ASens_Type t = ABPMRR; t < MAX_TYPES; t = static_cast<ASens_Type>(t + 1) ) {
             as_sens = factory(t);
             ESP_LOGI(FNAME, "Try %s", as_sens->name());
-            if ( as_sens && as_sens->probe() ) {
-                airspeed_sensor.set( t );
-                break;
-            }
-            else {
-                ESP_LOGI(FNAME, "Sensor not found");
-                delete as_sens;
-                as_sens = nullptr;
+            if (as_sens) {
+                if (as_sens->probe() ) {
+                    airspeed_sensor.set( t );
+                    break;
+                }
+                else {
+                    ESP_LOGI(FNAME, "Sensor not found");
+                    delete as_sens;
+                    as_sens = nullptr;
+                }
             }
             vTaskDelay(pdMS_TO_TICKS(100));
         }

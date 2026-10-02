@@ -736,9 +736,9 @@ void system_startup(void *args){
         // Configure sensors only on master XCVario
         // Configure airspeed sensor
         asSensor = AirspeedSensor::autoSetup();
-        logged_tests += "AS " + std::string(asSensor->name()) +  " offset: ";
         if (asSensor)
         {
+            logged_tests += "AS " + std::string(asSensor->name()) +  " offset: ";
             printf("AS Speed sensor type %s\n", asSensor->name());
             bool as_ok = asSensor->setup();
 
