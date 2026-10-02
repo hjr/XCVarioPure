@@ -269,8 +269,9 @@ static int exitFactoryMenu(SetupMenuSelect* p){
     if (p->getSelect() == 1) {
 #ifndef DEBUG_AND_TEST
         // check if factory tasks are done
+        // Airspeed Sensor is here a prerequisite, if not present it is assumed removed from PCB
         axes_i16_abi accbias = accl_bias.get();
-        if ( factory_volt_adjust.get() == 0.f ) {
+        if ( asSensor && factory_volt_adjust.get() == 0.f ) {
             // not done, show warning
             p->menuPrintLn("Bat. volt. adjust not done.", 9, 5);
             p->setSelect(0);
@@ -280,14 +281,14 @@ static int exitFactoryMenu(SetupMenuSelect* p){
             p->menuPrintLn("Accel. bias not done.", 9, 5);
             p->setSelect(0);
         }
-        else if (leak_test_loss.get() > LeakTest::LEAK_TEST_MAX_LOSS
-                || leak_test_loss.get() == 0.f) {
+        else if ( asSensor && 
+            (leak_test_loss.get() > LeakTest::LEAK_TEST_MAX_LOSS || leak_test_loss.get() == 0.f)) {
             // not done, show warning
             p->menuPrintLn("Leak test not passed.", 9, 5);
             p->setSelect(0);
         }
-        p->menuPrintLn("Pls. confirm", 10, 5);
         if ( p->getSelect() == 0 ) {
+            p->menuPrintLn("Pls. confirm", 10, 5);
             while (!Rotary->readSwitch(100)) ;
         }
         else
