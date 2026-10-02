@@ -487,7 +487,7 @@ SetupNG<float>  		deadband_neg("DEADBAND_NEG" , -0.3, true, SYNC_BIDIR, PERSISTE
 SetupNG<float>  		wifi_max_power( "WIFI_MP" , 50, true, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(10.0, 100.0, 5.0));
 SetupNG<int>  			factory_reset( "FACTORY_RES" , 0, true ); // factory reset flag
 SetupNG<int>  			normal_setup( "FACTMENU" , 0, false, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, nullptr, true ); // 0: factory factory menu 1: normal setup menu
-SetupNG<int>  			alt_select( "ALT_SELECT" , ALT_BARO_SENSOR );
+SetupNG<int>  			alt_select( "ALT_SELECT" , ALT_BARO_SENSOR, true, SYNC_BIDIR );
 SetupNG<int>  			fl_auto_transition( "FL_AUTO" , 0 );
 SetupNG<int>  			alt_display_mode( "ALT_DISP_MODE" , Altimeter::MODE_QNH );
 SetupNG<float>  		transition_alt( "TRANS_ALT", 50, true, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(0, 400, 10)); // Transition Altitude
