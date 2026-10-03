@@ -474,11 +474,11 @@ void system_startup(void *args){
     MenuRoot = new ScreenRoot(Display); // the root setup menu, screens still disabled
     {
         // print the firmware and hardware revision first
-        std::string ver("Rev: ");
-        ver += FW_VERSION;
+        std::string ver("XCV-");
         char hw[24];
-        sprintf( hw,", XCV-%d", hardwareRevision.get()+18);  // plus 18, e.g. 2 = XCV-20
+        sprintf( hw,"%d/", hardwareRevision.get()+18);  // plus 18, e.g. 2 = XCV-20
         ver += hw;
+        ver += FW_VERSION;
         logged_tests.assign(ver);
         logged_tests += "\n";
     }
