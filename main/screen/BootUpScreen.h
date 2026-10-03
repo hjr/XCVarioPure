@@ -12,6 +12,8 @@
 
 #include <cstdint>
 
+class SetupMenuDisplay;
+
 // draw a startup XCV logo
 // precondition:
 // - ucg adapter for the connected display
@@ -23,11 +25,10 @@ public:
     static constexpr int16_t DIVIDER = 4;
 
     static BootUpScreen *create();
-    static void terminate();
-    static bool isActive() { return inst != nullptr; }
+    ~BootUpScreen();
+    // static bool isActive() { return inst != nullptr; }
 
-    // this will fill the logo completely
-    void finish(int16_t part);
+    // update hook for the draw display context
     static void draw();
 
     // Clock tick callback
@@ -35,11 +36,11 @@ public:
 
 private:
     BootUpScreen();
-    ~BootUpScreen();
     static BootUpScreen *inst;
     void animate();
 
     int16_t x_offset;
     int16_t y_offset;
     float _fadein = 0.f;
+    SetupMenuDisplay *_boot_log = nullptr;
 };

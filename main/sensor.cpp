@@ -508,7 +508,7 @@ void system_startup(void *args){
         //     DEVMAN->addDevice(MAGSENS_DEV, MAGSENSBIN_P, MagSensBin::LEGACY_MAGSTREAM_ID, 0, CAN_BUS); // fixme
         // }
 
-        BootUpScreen::terminate(); // screen now belongs to OTA
+        delete boot_screen; // screen now belongs to OTA
         MBOX->resume();
         Rotary->begin(); // Start rotary to allow aborting by user input.
         MenuRoot->begin(new OTA(choice==1));
@@ -624,8 +624,6 @@ void system_startup(void *args){
         MBOX->pushMessage(1, wireless_id.c_str());
     }
 
-    boot_screen->finish(0);
-
     // create IMU sensor in any case
     accSensor = new AccMPU6050();
     gyroSensor = new GyroMPU6050();
@@ -686,7 +684,6 @@ void system_startup(void *args){
             else
             {
                 logged_tests += passed_text;
-                boot_screen->finish(1);
             }
         }
         else
@@ -746,7 +743,6 @@ void system_startup(void *args){
             selftestPassed = false;
         }
         if (tetest && batest) {
-            boot_screen->finish(2);
 
             ESP_LOGI(FNAME, "Both absolute pressure sensor TESTs SUCCEEDED, now test deltas");
             logged_tests += "TE/Baro Sens. T d. <4'C: ";
@@ -796,9 +792,7 @@ void system_startup(void *args){
     }
     else {
         // client setup
-        boot_screen->finish(1);
         asSensor = new ASclient();
-        boot_screen->finish(2);
         baroSensor = new PSclient(SensorType::STATIC_PRESSURE);
         teSensor = new PSclient(SensorType::TE_PRESSURE);
     }
@@ -877,13 +871,12 @@ void system_startup(void *args){
         MBOX->pushMessage(2, "Selftest FAILED", ScreenMsg::CONFIRM);
     } else {
         printf("\n*****  Selftest PASSED  ********\n\n");
-        boot_screen->finish(3);  // signal self tests passed
     }
 
     // present the boot logo vor a sec and go on
     vTaskDelay(pdMS_TO_TICKS(1000));
     MBOX->resume(); // created in paused mode
-    BootUpScreen::terminate();
+    delete boot_screen;
 
 
     // Check if the factory procedure is completed, otherwise anoi with the factory menu

@@ -29,11 +29,11 @@ public:
     SetupMenuDisplay() = delete;
     virtual ~SetupMenuDisplay() = default;
 
-    /**
-     * Make a class derive and overload this method with your own display method
-     * or handle all display stuff in your callback function action.
-     */
+    // Display the menu item, optionally with a mode parameter
     void display(int mode = 0) override;
+    // In case some additional display logic is needed
+    void setUserAttr(int attr) { _user_attr = attr; }
+    int getUserAttr() const { return _user_attr; }
 
     const char *value() const override { return nullptr; }
     void rot(int count) override {}
@@ -43,4 +43,5 @@ public:
 private:
     // User's callback function
     int (*_action)(SetupMenuDisplay *p, int mode);
+    int _user_attr = 0;
 };

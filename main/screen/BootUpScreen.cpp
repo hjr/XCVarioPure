@@ -14,8 +14,8 @@
 #include "driver/time/Clock.h"
 #include "setup/ShowBootMsg.h"
 #include "setup/SetupMenuDisplay.h"
+#include "setup/SetupNG.h"
 #include "AdaptUGC.h"
-#include "sensor.h"
 
 #include <esp_random.h>
 
@@ -81,29 +81,31 @@ BootUpScreen::BootUpScreen() :
 
     MYUCG->setColor(COLOR_WHITE);
 
-    if ( gflags.schedule_reboot ) {
-        // factory first boot, do not show the logo animation
-        return;
+    if ( normal_setup.get() == 0 ) {
+        // do not show the logo animation in factory mode
+        _boot_log = new SetupMenuDisplay("", show_boot_log);
+        _boot_log->display(1); // Incremental mode
     }
-
-    // paint logo
-    MYUCG->startBuffering(x_offset, y_offset, LOGO_WIDTH+1, LOGO_HEIGHT+1);
-    for (int16_t y = 0; y < LOGO_HEIGHT; y++) {
-        for (int16_t x = 0; x < LOGO_WIDTH; x++) {
-            int byte = logo_bitmap[y*BYTE_PER_LINE + x/4];
-            int pix = (byte >> (6 - (x % 4) * 2)) & 0x03; // 2 bit per pixel
-            ucg_color_t c = logo_palette[pix];
-            if (x<=10 && y<=8 && pix!=0) {
-                // extra pointer color for the "indicator" corner
-                c = {COLOR_ORANGE};
-                if ( pix < 3 ) {
-                    c.fadeTo(c, logo_palette[pix].r / 255.f);
+    else {
+        // paint logo
+        MYUCG->startBuffering(x_offset, y_offset, LOGO_WIDTH+1, LOGO_HEIGHT+1);
+        for (int16_t y = 0; y < LOGO_HEIGHT; y++) {
+            for (int16_t x = 0; x < LOGO_WIDTH; x++) {
+                int byte = logo_bitmap[y*BYTE_PER_LINE + x/4];
+                int pix = (byte >> (6 - (x % 4) * 2)) & 0x03; // 2 bit per pixel
+                ucg_color_t c = logo_palette[pix];
+                if (x<=10 && y<=8 && pix!=0) {
+                    // extra pointer color for the "indicator" corner
+                    c = {COLOR_ORANGE};
+                    if ( pix < 3 ) {
+                        c.fadeTo(c, logo_palette[pix].r / 255.f);
+                    }
                 }
+                MYUCG->drawPixelColor(x + x_offset, y + y_offset, c);
             }
-            MYUCG->drawPixelColor(x + x_offset, y + y_offset, c);
         }
+        MYUCG->finishBuffering();
     }
-    MYUCG->finishBuffering();
 
     Clock::start(this);
 }
@@ -116,27 +118,13 @@ BootUpScreen *BootUpScreen::create()
     return inst;
 }
 
-void BootUpScreen::terminate()
-{
-    if ( inst ) {
-        BootUpScreen *tmp = inst;
-        inst = nullptr;
-        delete tmp;
-    }
-}
-
 BootUpScreen::~BootUpScreen()
 {
+    inst = nullptr;
     Clock::stop(this);
-}
-
-// not much meaning left here
-void BootUpScreen::finish(int16_t part)
-{
-    if ( gflags.schedule_reboot ) {
-        SetupMenuDisplay bm("", show_boot_log);
-        bm.display(part+1); // factory only case .. no display synch here
-        return;
+    if (_boot_log) {
+        vTaskDelay(pdMS_TO_TICKS(1000));
+        delete _boot_log;
     }
 }
 
@@ -149,6 +137,11 @@ void BootUpScreen::draw()
 
 void BootUpScreen::animate()
 {
+    if ( _boot_log ) {
+        _boot_log->display(1);
+        return; // no logo, just log lines
+    }
+
     ucg_color_t c;
     _fadein += 0.1f;
     if (_fadein <= 1.f) {
@@ -160,7 +153,6 @@ void BootUpScreen::animate()
         MYUCG->setColor(COLOR_WHITE);
     }
 }
-
 
 bool BootUpScreen::tick()
 {
