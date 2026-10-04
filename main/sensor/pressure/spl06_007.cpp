@@ -29,7 +29,7 @@ SPL06_007::~SPL06_007()
 
 bool SPL06_007::probe()
 {
-    if ( i2c_master_probe(i2c_bus, _address, 200) != ESP_OK ) {
+    if ( i2c_master_probe(i2c_bus, _address, 10) != ESP_OK ) {
         ESP_LOGE(FNAME, "I2C probe FAIL");
         return false;
     }

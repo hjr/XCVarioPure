@@ -14,7 +14,7 @@
 #include "../SensorMgr.h"
 #include "setup/SetupNG.h"
 #include "math/Floats.h"
-#include "logdef.h"
+#include "logdefnone.h"
 
 #include <freertos/FreeRTOS.h>
 
@@ -84,7 +84,7 @@ PressureSensor* PressureSensor::probeAll(SensorType typ) {
         p_sens = factory(pst, typ);
         if ( p_sens ) {
             if (p_sens->probe() ) {
-                ESP_LOGI(FNAME, "Found %s as sensor %d", p_sens->name(), id);
+                ESP_LOGI(FNAME, "Found %s as sensor %d", p_sens->name(), typ);
                 p_sens->setup();
                 break;
             }
@@ -97,7 +97,7 @@ PressureSensor* PressureSensor::probeAll(SensorType typ) {
     }
 
     if ( ! p_sens ) {
-        ESP_LOGW(FNAME, "Sensor not found for id %d", typ);
+        ESP_LOGW(FNAME, "Sensor not found for type %d", typ);
     }
 
     return p_sens;
