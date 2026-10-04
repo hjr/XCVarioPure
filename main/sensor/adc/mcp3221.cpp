@@ -1,7 +1,7 @@
 
 #include "mcp3221.h"
 
-#include "logdef.h"
+#include "logdefnone.h"
 
 #include <driver/i2c_master.h>
 
@@ -26,6 +26,11 @@ MCP3221::~MCP3221()
 // scan bus for I2C address
 bool MCP3221::probe(i2c_master_bus_handle_t bus)
 {
+    if ( i2c_master_probe(bus, MCP3221_CONVERSE, 10) != ESP_OK ) {
+        ESP_LOGI(FNAME, "Could not probe a MCP3221 device");
+        return false;
+    }
+
     ESP_LOGI(FNAME, "MCP3221 probe");
     i2c_device_config_t cfg = {
         .dev_addr_length = I2C_ADDR_BIT_LEN_7,

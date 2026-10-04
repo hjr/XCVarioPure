@@ -10,7 +10,7 @@
 
 #include "../adc/mcp3221.h"
 #include "sensor.h"
-#include "logdef.h"
+#include "logdefnone.h"
 
 #include <driver/i2c_master.h>
 
