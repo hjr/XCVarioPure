@@ -697,12 +697,13 @@ void system_startup(void *args){
 
         // Configure pressure sensors
         ESP_LOGI(FNAME, "Absolute pressure sensors init, detect type of sensor type..");
-        logged_tests += "Baro Sensor: ";
+        logged_tests += "Baro ";
         baroSensor = PressureSensor::probeAll(SensorType::STATIC_PRESSURE);
         bool batest = false;
         celsius_t ba_t, te_t;
         pascal_t ba_p, te_p;
         if (baroSensor) {
+            logged_tests += std::string(baroSensor->name()) + ": ";
             if (!baroSensor->selfTest(ba_t, ba_p)) {
                 ESP_LOGE(FNAME, "HW Error: Self test Barometric Pressure Sensor failed!");
                 MBOX->pushMessage(2, "Baro Sensor: NOT FOUND");
@@ -721,10 +722,11 @@ void system_startup(void *args){
             selftestPassed = false;
         }
 
-        logged_tests += "TE Sensor: ";
+        logged_tests += "TE ";
         teSensor = PressureSensor::probeAll(SensorType::TE_PRESSURE);
         bool tetest = false;
         if (teSensor) {
+            logged_tests += std::string(teSensor->name()) + ": ";
             if (!teSensor->selfTest(te_t, te_p)) {
                 ESP_LOGE(FNAME, "HW Error: Self test TE Pressure Sensor failed!");
                 MBOX->pushMessage(2, "TE Sensor: NOT FOUND");
@@ -745,7 +747,7 @@ void system_startup(void *args){
         if (tetest && batest) {
 
             ESP_LOGI(FNAME, "Both absolute pressure sensor TESTs SUCCEEDED, now test deltas");
-            logged_tests += "TE/Baro Sens. T d. <4'C: ";
+            logged_tests += "TE/Baro TempD. <4'C: ";
             if ((abs(ba_t - te_t) > 400.0) && !airborne.get()) {  // each sensor has deviations, and new PCB has more heat sources
                 selftestPassed = false;
                 MBOX->pushMessage(1, "TE/Baro Temp: Unequal");
@@ -759,7 +761,7 @@ void system_startup(void *args){
                 delta += Units::hpa_to_pa(1.8);    // plus 1.5 Pa per Kelvin, for 60K T range = 90 Pa or 0.9 hPa per Sensor, 
                                                         // for both there is 2.5 plus 1.8 hPa to consider
             }
-            logged_tests += "TE/Baro Sens. P d. <2hPa: ";
+            logged_tests += "TE/Baro PressD. <2hPa: ";
             printf("AbsP sensor data test D: %f hPa\n", Units::pa_to_hpa(abs(ba_p - te_p)));
             if ((abs(ba_p - te_p) > delta) && !airborne.get()) {
                 selftestPassed = false;
