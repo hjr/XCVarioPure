@@ -399,13 +399,6 @@ static void vario_menu_create_s2f(SetupMenu *top) {
 }
 
 static void vario_menu_create_tek(SetupMenu *top) {
-    if ( SetupCommon::isClient() ) {
-        // hint that this will affect the master
-        SetupMenuSelect* text = new SetupMenuSelect("applies all to Master");
-        text->lock();
-        top->addEntry(text);
-    }
-
     SetupMenuSelect* enac = new SetupMenuSelect("Method", RST_NONE, nullptr, &te_comp_enable);
     enac->setHelp("Probe or electronic TE compensation");
     enac->addEntry("Probe");
@@ -469,6 +462,12 @@ static void vario_menu_create(SetupMenu *vae) {
 	vae->addEntry(meanclimb);
 
     SetupMenu *elco = new SetupMenu("TE Compensation", vario_menu_create_tek);
+    if ( SetupCommon::isClient() ) {
+        // hint that this will affect the master
+        elco->setHelp("TE compensation method (applies to the Master)");
+    } else {
+        elco->setHelp("TE compensation method");
+    }
     vae->addEntry(elco);
 }
 
