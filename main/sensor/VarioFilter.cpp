@@ -44,9 +44,7 @@ TEcompFilter::TEcompFilter() :
     _id.flags |= SensorId::SENSOR_LOCAL;
     // mark as essential sensor to be able to simulate
     _id.flags |= SensorId::SENSOR_ESSENTIAL;
-    setFilter(&_tealt_lpf);
-    meter_t alt = altitude_isa.get();
-    _tealt_lpf.reset(alt);
+    _tealt_lpf.reset(altitude_isa.get());
 }
 
 // extract from real existing sensors according to the selected TE compensation method
@@ -60,6 +58,7 @@ bool TEcompFilter::doRead(meter_t& val) {
         if (!altitude_isa.getValid() || std::isnan(curr_altitude)) {
             curr_altitude = getHead();  // ignore readout when failed
         }
+        curr_altitude = _tealt_lpf.filter(curr_altitude); // same filter as for air speed (todo -> synch on tube length)
         mps_t ta_speed = tas.get();  // m/s
         curr_altitude += ((ta_speed * ta_speed) / (2.f * Units::g0)) * te_comp_adjust.get() / 100.0f; // Ekin ~ h = v²/2g  * adjust
         // method 2
