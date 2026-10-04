@@ -44,7 +44,7 @@ class VarioFilter final : public SensorTP<mps_t> {
 
     void postProcess() override;
 
-    void prepareForSimJump() { _prepare_sim_jump = 40; } // prepare for a disruptive jump in altitude in simulation mode
+    void prepareForSimJump() { _prepare_jump = 40; } // prepare for a disruptive jump in altitude in simulation mode
     mps_t getAvgVario() const { return _avg_vario.get(); }
     float getPolarSink() const { return _polar_sink; }
     bool gotPositive() const { return _got_positive; }
@@ -57,7 +57,7 @@ class VarioFilter final : public SensorTP<mps_t> {
     uint32_t _prev_time = 0;
     LowPassFilterT<mps_t> _avg_vario;
     mps_t _polar_sink = 0.f;
-    int8_t _prepare_sim_jump = 0;
+    int8_t _prepare_jump = 0;
     int8_t _got_positive : 1 = 0;
 };
 

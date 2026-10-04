@@ -177,7 +177,7 @@ VarioFilter::VarioFilter() :
     assert(tecompSensor == nullptr);
     tecompSensor = new TEcompFilter();
     SensorRegistry::registerSensor(tecompSensor);
-    _prepare_sim_jump = 40; // preparation for a disruptive jump to the ground level
+    _prepare_jump = 80; // preparation for a disruptive jump to the ground level
 }
 
 bool VarioFilter::setup() {
@@ -201,10 +201,10 @@ void VarioFilter::postProcess() {
     vkf.predict(dt);
     meter_t tealt_head = tecompSensor->getHead();
     meter_t pred_err = tealt_head - vkf.h;
-    if (fabsf(pred_err) > 60.0f && _prepare_sim_jump) {
+    if (fabsf(pred_err) > 60.0f && _prepare_jump) {
         // just re-/started sim mode, expect a time and height disruption, prepare KF for it
         vkf.reset(tealt_head);
-        if (_prepare_sim_jump > 0) _prepare_sim_jump--;
+        if (_prepare_jump > 0) _prepare_jump--;
         ESP_LOGW(FNAME, "VarioFilter SIM: large pred_err %f, re-init KF", pred_err);
         return;
     }
