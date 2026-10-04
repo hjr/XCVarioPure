@@ -44,7 +44,6 @@ TEcompFilter::TEcompFilter() :
     _id.flags |= SensorId::SENSOR_LOCAL;
     // mark as essential sensor to be able to simulate
     _id.flags |= SensorId::SENSOR_ESSENTIAL;
-    setNVSVar(&te_alt);
     setFilter(&_tealt_lpf);
     meter_t alt = altitude_isa.get();
     _tealt_lpf.reset(alt);

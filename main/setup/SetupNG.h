@@ -230,7 +230,6 @@ extern SetupNG<mps_t>       ias;
 extern SetupNG<mps_t>  		tas;
 extern SetupNG<mps_t>  		gnd_speed;
 extern SetupNG<rad_t>  		gnd_course;
-extern SetupNG<meter_t>  	te_alt;
 extern SetupNG<mps_t>  		te_vario;
 extern SetupNG<mps_t>  		te_netto;
 extern SetupNG<rad_t>  		slip_angle;
