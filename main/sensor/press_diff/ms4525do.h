@@ -17,7 +17,7 @@ class MS4525DO final : public AsSensI2c
 {
 public:
     // instance methods
-    MS4525DO();
+    MS4525DO(bool is_abpmrr = false);
     virtual ~MS4525DO() = default;
 
     const char *name() const override;
@@ -29,7 +29,7 @@ protected:
     int getMaxACOffset() override;
 
 private:
-    static bool isAbpmrr();
+    uint8_t _is_abpmrr :1;
     float getTemperature(); // returns temperature of last measurement
     uint16_t t_dat; // 11 bit temperature data
 };

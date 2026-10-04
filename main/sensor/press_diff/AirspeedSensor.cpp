@@ -50,7 +50,7 @@ static AirspeedSensor* factory(AirspeedSensor::ASens_Type type)
     AirspeedSensor* tmp = nullptr;
     switch (type) {
     case AirspeedSensor::ABPMRR:
-        tmp = new MS4525DO(); // Only the multiplier has different sign, alias swapped tubes
+        tmp = new MS4525DO(true); // Only the multiplier has different sign, alias swapped tubes
         break;
     case AirspeedSensor::TE4525:
         tmp = new MS4525DO();
@@ -99,6 +99,7 @@ AirspeedSensor* AirspeedSensor::probeAll()
             if (as_sens) {
                 if (as_sens->probe() ) {
                     airspeed_sensor.set( t );
+                    ESP_LOGI(FNAME, "Sensor %s found, set typ %d", as_sens->name(), t);
                     break;
                 }
                 else {

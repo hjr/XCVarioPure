@@ -37,13 +37,13 @@ const int16_t MS4525Span = MS4525FullScaleCounts - MS4525MinScaleCounts;
 // MS4525D sensor differential pressure
 // const int16_t MS4525ZeroCounts = (MS4525MinScaleCounts + MS4525FullScaleCounts) / 2;
 
-MS4525DO::MS4525DO() : AsSensI2c()
+MS4525DO::MS4525DO(bool is_abpmrr) : AsSensI2c(), _is_abpmrr(is_abpmrr)
 {
     changeConfig();
 }
 
 const char *MS4525DO::name() const {
-    if (isAbpmrr()) {
+    if (_is_abpmrr) {
         return "ABPMRR";
     }
     else {
@@ -65,21 +65,14 @@ bool MS4525DO::probe()
 
 void MS4525DO::changeConfig()
 {
-    setMultiplier((2.f * 6894.76 / MS4525Span) * ((100.0 + speedcal.get()) / 100.0) * (isAbpmrr() ? 1.0f : -1.0f));
+    setMultiplier((2.f * 6894.76 / MS4525Span) * ((100.0 + speedcal.get()) / 100.0) * (_is_abpmrr ? 1.0f : -1.0f));
     ESP_LOGI(FNAME, "changeConfig, speed multiplier %f, speed cal: %f", getMultiplier(), speedcal.get());
-}
-
-
-bool MS4525DO::isAbpmrr()
-{
-    // This translates the airspeed sensor type into a bool
-    return airspeed_sensor.get() == AirspeedSensor::ABPMRR;
 }
 
 bool MS4525DO::offsetPlausible(int32_t offset)
 {
     ESP_LOGI(FNAME, "offsetPlausible (%ld)", offset);
-    if ( isAbpmrr() ) { // typical offset measured 8192, the sensor is temperature compemsated and highly stable +-2.4% are plausible
+    if ( _is_abpmrr ) { // typical offset measured 8192, the sensor is temperature compemsated and highly stable +-2.4% are plausible
         constexpr int lower_val = 8192 - 200;
         constexpr int upper_val = 8192 + 200;
         return (offset > lower_val) && (offset < upper_val);
