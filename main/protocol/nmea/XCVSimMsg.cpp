@@ -142,7 +142,7 @@ dl_action_t XCVSimMsg::parse_Sens(NmeaPlugin *plg)
         vtmp.z = atof(sm->_frame.c_str() + word->at(14));
         if ( magSensor ) magSensor->pushAndPublish(vtmp, time);
     }
-    xTaskNotifyGive(ReadSensorsLoop);
+    if (ReadSensorsLoop) xTaskNotifyGive(ReadSensorsLoop);
 
     return NOACTION; // never forward the simulation
 }

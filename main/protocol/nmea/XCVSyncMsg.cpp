@@ -180,7 +180,7 @@ dl_action_t XCVSyncMsg::parseExcl_xcvX(NmeaPlugin *plg)
         vtmp = *(reinterpret_cast<const vector_f*>(valptr));
         if ( gyroSensor ) gyroSensor->pushAndPublish(vtmp, now);
         valptr += sizeof(vector_f);
-        xTaskNotifyGive(ReadSensorsLoop); // kick the sensor loop
+        if (ReadSensorsLoop) xTaskNotifyGive(ReadSensorsLoop); // kick the sensor loop
     }
 
     return NOACTION; // never forward the XCV internal blabla
