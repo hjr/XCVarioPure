@@ -407,10 +407,6 @@ static void ch_airborne_state() {
     if (airborne.get()) {
         // take-off triggered
         ESP_LOGI(FNAME, "take-off detected");
-        if (logged_tests.find("FAILED") == std::string::npos) {
-            logged_tests.clear();
-            logged_tests.shrink_to_fit();
-        }
         if (gyroSensor && !gflags.inSimulationMode) {
              gyroSensor->saveBias();
         }

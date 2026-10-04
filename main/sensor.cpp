@@ -877,6 +877,7 @@ void system_startup(void *args){
     vTaskDelay(pdMS_TO_TICKS(1000));
     MBOX->resume(); // created in paused mode
     delete boot_screen;
+    logged_tests.shrink_to_fit();
 
 
     // Check if the factory procedure is completed, otherwise anoi with the factory menu
