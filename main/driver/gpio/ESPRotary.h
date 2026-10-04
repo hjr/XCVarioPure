@@ -1,6 +1,6 @@
 /////////////////////////////////////////////////////////////////
 /*
-  Library for reading rotary encoder values using Observer Pattern, and GPIO Interrups
+  Library for reading rotary encoder values using a Receiver Stack, and GPIO Interrups
 */
 
 #pragma once

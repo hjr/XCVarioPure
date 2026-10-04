@@ -1,3 +1,10 @@
+/***********************************************************
+ ***   THIS DOCUMENT CONTAINS PROPRIETARY INFORMATION.   ***
+ ***    IT IS THE EXCLUSIVE CONFIDENTIAL PROPERTY OF     ***
+ ***     Rohs Engineering Design AND ITS AFFILIATES.     ***
+ ***                                                     ***
+ ***       Copyright (C) Rohs Engineering Design         ***
+ ***********************************************************/
 
 #include "driver/gpio/ESPRotary.h"
 
@@ -97,7 +104,7 @@ static bool IRAM_ATTR pcnt_event_handler(pcnt_unit_handle_t unit, const pcnt_wat
 	return high_task_wakeup;
 }
 
-// Observer registration
+// Receiver registration
 void RotaryReceiver::attach() {
     ESP_LOGI(FNAME, "Attach obs: %p", this);
     std::lock_guard<SemaphoreMutex> lock(stack_mutex);

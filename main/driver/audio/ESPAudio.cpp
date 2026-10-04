@@ -953,10 +953,12 @@ void pin_audio_irq(void *arg) {
 
 bool Audio::startAudio(int16_t ch)
 {
+    // todo s2f switch init could go to main init sequence
     ESP_LOGI(FNAME, "start Audio");
     if (!S2FSWITCH) {
         S2FSWITCH = new S2fSwitch(GPIO_NUM_12);
     }
+
     // amplifier on GPIO19
     gpio_set_direction(GPIO_NUM_19, GPIO_MODE_OUTPUT ); // use pullup 1 == SOUND 0 == SILENCE
     mute();
