@@ -50,6 +50,6 @@ namespace XcvCaps
     // some queries to check on capabilities
     bool isMyCap(int cap);
     bool isPeerCap(int cap);
-    inline bool haveCap(int cap) { return (isMyCap(cap) || isPeerCap(cap)); }
+    bool haveCap(int cap);
 };
 

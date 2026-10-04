@@ -66,7 +66,7 @@ void FlarmScreen::display(int mode)
 
     ESP_LOGI(FNAME, "flarm_screen mode %d", mode);
     // calc horizon line
-    Quaternion attq = accSensor->getAHRSQuaternion();
+    Quaternion attq = accSensor ? accSensor->getAHRSQuaternion() : Quaternion();
     Line l( attq, true);
     Point above[6], below[6];
     int na, nb;
@@ -138,7 +138,7 @@ void FlarmScreen::display(int mode)
     }
     MYUCG->drawDisc( p.x, p.y, size, UCG_DRAW_ALL);
     // Embedd a little glider symbol
-    float roll = -accSensor->getRoll();
+    float roll = accSensor ? -accSensor->getRoll() : 0.f;
     if ( bearingVec.x > 0.f ) {
         MYUCG->setColor(COLOR_WHITE);
         // fuselage as disc

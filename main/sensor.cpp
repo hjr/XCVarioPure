@@ -799,10 +799,17 @@ void system_startup(void *args){
         teSensor = new PSclient(SensorType::TE_PRESSURE);
     }
 
-    // register IMU sensors always, even on client XCVario
-    if (accSensor && gyroSensor) {
+    // register IMU sensors, also on the client XCVario
+    if (accSensor && gyroSensor && (imuSensor || SetupCommon::isClient())) {
         SensorRegistry::registerSensor(gyroSensor);
         SensorRegistry::registerSensor(accSensor);
+    }
+    else {
+        // Prepare for missing IMU sensors
+        screen_gmeter.set(SCREEN_OFF);
+        screen_horizon.set(SCREEN_OFF);
+        delete accSensor;
+        delete gyroSensor;
     }
     if (asSensor) {
         SensorRegistry::registerSensor(asSensor);

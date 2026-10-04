@@ -101,3 +101,6 @@ bool XcvCaps::isMyCap(int cap) {
 bool XcvCaps::isPeerCap(int cap) {
     return peer_caps.get() & cap;
 }
+bool XcvCaps::haveCap(int cap) {
+    return (my_caps.get() & cap || peer_caps.get() & cap);
+}

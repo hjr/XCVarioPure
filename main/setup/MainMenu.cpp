@@ -291,7 +291,7 @@ static int exitFactoryMenu(SetupMenuSelect* p){
             p->menuPrintLn("Bat. volt. adjust not done.", 9, 5);
             p->setSelect(0);
         }
-        else if ( accSensor && (accbias == axes_i16_abi()) ) {
+        else if ( imuSensor && (accbias == axes_i16_abi()) ) {
             // not done, show warning
             p->menuPrintLn("Accel. bias not done.", 9, 5);
             p->setSelect(0);
@@ -365,7 +365,9 @@ static void vario_menu_create_s2f(SetupMenu *top) {
 	if ( FLAP ) {
 		s2fmod->addEntry("AutoFlap", AM_FLAP); // not dynamic, exit setup to change
 	}
-	s2fmod->addEntry("AutoTurn", AM_AHRS);
+    if ( XcvCaps::haveCap(XcvCaps::AHRS_CAP) ) {
+        s2fmod->addEntry("AutoTurn", AM_AHRS);
+    }
 	s2fmod->addEntry("Vario fix", AM_VARIO);
 	s2fmod->addEntry("Cruise fix", AM_S2F);
 	top->addEntry(s2fmod);
@@ -389,10 +391,11 @@ static void vario_menu_create_s2f(SetupMenu *top) {
 		s2f_flap->setHelp("Precise flap position for the AutoFlap S2F switch");
 	}
 
-	SetupMenuValFloat *s2f_gyro = new SetupMenuValFloat("AutoTurn Rate", "°/s", nullptr, &s2f_gyro_deg, RST_NONE, false);
-	top->addEntry(s2f_gyro);
-	s2f_gyro->setHelp("Turnrate for the AutoTurnrate switch");
-
+    if ( XcvCaps::haveCap(XcvCaps::AHRS_CAP) ) {
+        SetupMenuValFloat *s2f_gyro = new SetupMenuValFloat("AutoTurn Rate", "°/s", nullptr, &s2f_gyro_deg, RST_NONE, false);
+        top->addEntry(s2f_gyro);
+        s2f_gyro->setHelp("Turnrate for the AutoTurnrate switch");
+    }
 	SetupMenuValFloat *s2flag = new SetupMenuValFloat("Switch Lag", "sec", s2fModeChangeF, &s2f_auto_lag, RST_NONE, false);
 	s2flag->setHelp("Lag to delay the auto switch event (2-20sec)");
 	top->addEntry(s2flag);
@@ -661,7 +664,7 @@ static void options_menu_create_screens(SetupMenu *top) { // dynamic!
 		top->addEntry(vario);
 
 		SetupMenu *gload = new SetupMenu("G-Meter", screens_menu_create_gload);
-        if ( !accSensor ) {
+        if ( !imuSensor ) {
             gload->lock();
             gload->setBuzzword("n/a");
         }
@@ -669,7 +672,7 @@ static void options_menu_create_screens(SetupMenu *top) { // dynamic!
 
         SetupMenuSelect *horizon = new SetupMenuSelect("Horizon", RST_NONE, set_parent_dirty, &screen_horizon);
         horizon->mkEnable();
-        if ( !accSensor ) {
+        if ( !imuSensor ) {
             horizon->lock();
         }
         top->addEntry(horizon);
@@ -903,7 +906,7 @@ static void system_menu_create_hardware(SetupMenu *top) { // dynamic!
             top->addEntry(velocity);
         }
 
-        if (accSensor) {
+        if (accSensor) { // could be a client
             SetupMenu* ahrs = new SetupMenu("IMU & AHRS", system_menu_create_hardware_imu);
             top->addEntry(ahrs);
         }
@@ -1111,7 +1114,7 @@ SetupMenu* SetupMenu::createFactorySetup() {
     test->addEntry("Sensors");
     setup->addEntry(test);
 
-    if( accSensor ){
+    if ( imuSensor ) {
     	SetupMenuSelect* bias_zero = new SetupMenuSelect("IMU Biases", RST_NONE, imu_calib);
     	bias_zero->addEntry("Cancel");
     	bias_zero->addEntry("Acc Calib.", 3);
