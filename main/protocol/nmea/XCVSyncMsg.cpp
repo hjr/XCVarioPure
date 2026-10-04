@@ -88,14 +88,8 @@ void XCVSyncMsg::sendSensors()
     // called with full 10Hz rate from sensor loop
     Message* msg = _nmeaRef.newMessage();
 
-    kelvin_t temp = OAT.get();
-    if (!OAT.getValid()) {
-        temp = Units::isa_temperature(altitude.get());
-        // ESP_LOGW(FNAME,"T invalid, using 15 deg");
-    }
-
     msg->buffer =  "!xcvB,S,";
-    // send by default: time, baro, diff, te_alt, accel, gyro -> 1 + 3 * 4 + 2 * 12;
+    // send by default: (time,) baro, TEp, diff, accel, gyro -> 1 + 3 * 4 + 2 * 12;
     uint8_t len = 37;
     msg->buffer.push_back(len);
     // int now = Clock::getMillis();
