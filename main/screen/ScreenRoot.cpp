@@ -37,7 +37,6 @@ ScreenRoot::ScreenRoot(IpsDisplay *display) :
     // set statics once
     _display = display;
     MenuEntry::grabDisplaySize();
-    current_menu = this;
     ESP_LOGI(FNAME,"Init root menu");
     attach();
     if ( rot_default.get() == 0) {
@@ -85,45 +84,39 @@ void ScreenRoot::begin(MenuEntry *setup)
 {
     ESP_LOGI(FNAME,"SetupMenu %s", _title.c_str());
     // root will always own only one child
-    if ( ! _childs.empty() ) {
-        ESP_LOGW(FNAME,"Found root menu not empty");
-    }
-    current_menu = this;
+    bool start_setup =  _childs.empty();
 
     // Given setup might be for QNH, or voltage adjustment
     if ( setup ) {
         addEntry(setup);
     } else {
         addEntry(SetupMenu::createTopSetup());
-        if ( airborne.get() ) {
+        if ( airborne.get()) {
             // exit setup after timeout w/o user activity
+            ESP_LOGI(FNAME,"Starting UI monitor for auto-exit after timeout %d", airborne.get());
             _ui_mon_wd.start(16000); // 16 seconds
             uiMonitor = &_ui_mon_wd;
         }
     }
 
-    // Todo setup able to recurse
-    if ( ! gflags.inSetup ) {
-        gflags.inSetup = true;
+    if ( start_setup ) {
         _childs.front()->enter();
     }
     SetupMenu::initGearWarning(); // Huh fixme
 }
 
-void ScreenRoot::pushTop(MenuEntry *menu)
+void ScreenRoot::pushTop(MenuEntry *setup)
 {
-    ESP_LOGI(FNAME,"Push Menu on top %s", menu->getTitle());
-    gflags.inSetup = true;
+    ESP_LOGI(FNAME,"Push Menu on top %s", setup->getTitle());
 
-    MenuEntry *sel = getSelected(); // may return a nullptr
+    MenuEntry *sel = getCurrent(); // may return a nullptr
     if ( sel && sel->isLeaf() ) {
-        ESP_LOGW(FNAME,"Cannot push menu on leaf");
         sel->exit();
     }
-    SetupMenu *parent = current_menu ? current_menu : this;
-    menu->regParent(parent);
-    ESP_LOGW(FNAME,"Push flarm screen hooked");
-    menu->enter();
+    SetupMenu *cm = MenuEntry::getCurrentMenu();
+    SetupMenu *hook_to = cm ? cm : this;
+    setup->regParent(hook_to);
+    setup->enter();
 }
 
 void ScreenRoot::exit(int levels)
@@ -140,8 +133,7 @@ void ScreenRoot::exit(int levels)
     free_ota_menu();
 
     // current menu status
-    current = nullptr; // no current item any more
-    // current_menu = this; // root is current menu again, set implicitely from the child exit() calls
+    MenuEntry::current = nullptr; // no current item any more
 
     if (_restart) {
         reBoot();
@@ -159,7 +151,6 @@ void ScreenRoot::exit(int levels)
     }
     else {
         screens_init = INIT_DISPLAY_NULL; // set screen dirty
-        gflags.inSetup = false;
         if ( rot_default.get() == 0) {
             setRotDynamic(2.5f); // only for volume control
         }
@@ -206,7 +197,7 @@ void ScreenRoot::press()
     }
 
     // cycle through screens, incl. setup
-    ESP_LOGI(FNAME, "Cycle screen from %d (%d)", current_screen, gflags.inSetup);
+    ESP_LOGI(FNAME, "Cycle screen from %d (%d)", current_screen, inSetup());
     do {
         if (active_screen < SCREEN_LIST_END) {
             active_screen <<= 1; // next screen
@@ -233,7 +224,7 @@ void ScreenRoot::press()
 void ScreenRoot::longPress()
 {
     // enter setup from any screen
-    if (!gflags.inSetup) {
+    if (!inSetup()) {
         // check for any quick "in-page" setup option
         if ( active_screen == SCREEN_HORIZON ) {
             // quick access to horizon ground angle adjustment

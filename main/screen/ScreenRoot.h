@@ -17,7 +17,6 @@ enum ScreenTypes // bit field
     SCREEN_VARIO = 1,
     SCREEN_GMETER = 2,
     SCREEN_HORIZON = 4,
-    SCREEN_FLARM = 8,
     SCREEN_SETUP_MENU = 16,
     SCREEN_LIST_END = 32
 }; // all regular screens
@@ -41,6 +40,7 @@ public:
     void begin(MenuEntry *setup=nullptr); // enter setup from outside, or schedule the next one
     void pushTop(MenuEntry *menu); // push menu on top, e.g. the flarm traffic display
     void exit(int levels=0) override;
+    bool inSetup() const { return MenuEntry::current != nullptr; }
     int getActiveScreen() const  { return active_screen; }
     void inPageSetupDone() { _page_setup = false; }
     // interaction

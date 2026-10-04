@@ -33,10 +33,10 @@ constexpr uint8_t RESTART_WIFI_CHANGE = 0x02; // because of WIFI change
 constexpr int MAX_HELP_LINES = 6;
 constexpr const int16_t LINE_HEIGHT = 25;
 
+// forwards
 class PressureSensor;
 class SetupMenu;
 class ScreenRoot;
-
 
 class MenuEntry : public RotaryReceiver
 {
@@ -48,7 +48,7 @@ public:
 
 	static void grabDisplaySize();
 
-	// from Observer
+	// from RotaryReceiver
 	void release() override {} // not used
 	void escape() override;
 
@@ -57,7 +57,7 @@ public:
 	virtual void exit(int ups=1);
 	virtual void display( int mode=0 ) = 0;
 	virtual void refresh() {} // reread temp values coping with side efects on refreshing the display
-	virtual bool isLeaf() const { return true; }
+	virtual constexpr bool isLeaf() const { return true; }
 	virtual const char* value() const = 0; // content as string
     virtual int16_t firstHelpLine() const { return maxLines() / 2; };
 
@@ -73,7 +73,8 @@ public:
 	SetupMenu* getParent() const { return _parent; }
 	void regParent(SetupMenu* p);
 	bool isFirstLevel() const;
-	MenuEntry *getSelected() const { return current; }
+    static MenuEntry *getCurrent() { return current; }
+    static SetupMenu *getCurrentMenu();
 	void setHelp( const char *txt );
     bool hasHelp() const { return helptext != nullptr; }
 	void doHighlight(int sel) const;
@@ -95,13 +96,13 @@ public:
 	void scheduleReboot(uint8_t r = 0x80) { _restart |= r; }
 	void unscheduleReboot(uint8_t r) { _restart &= ~r; }
 	static void reBoot(int s=1);
-    static uint16_t maxLines() { return dheight / LINE_HEIGHT; }    
+    static uint16_t maxLines() { return dheight / LINE_HEIGHT; }
 
 public:
 	static int16_t dwidth;
 	static int16_t dheight;
 
-private:
+  private:
     static uint8_t _restart; // restart bit field. 0x80 = scheduled, 0x01 = because of BT change, 0x02 = because of WIFI change
 
 protected:
@@ -114,6 +115,7 @@ protected:
   private:
     const char* helptext = nullptr;
     uint8_t _help_line_start[MAX_HELP_LINES];
-    static MenuEntry* current; // the currently selected menu entry, may be a menu or a leaf, but always a child of the current_menu
-    static SetupMenu* current_menu; // a parent is always of class menu, but not necessarily the current menu
+    
+  protected:
+    static MenuEntry* current; // the currently selected menu entry, may be a menu or a leaf
 };

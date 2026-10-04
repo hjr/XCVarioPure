@@ -13,6 +13,7 @@
 #include "setup/SetupNG.h"
 #include "setup/SetupMenuSelect.h"
 #include "setup/SetupMenuValFloat.h"
+#include "screen/ScreenRoot.h"
 #include "logdefnone.h"
 
 #include <algorithm>
@@ -57,7 +58,7 @@ void SetupMenu::enter()
 {
     if (isLocked()) { return; }
 
-	ESP_LOGI(FNAME,"enter inSet %d, mptr: %p", gflags.inSetup, populateMenu );
+	ESP_LOGI(FNAME,"enter inSet %d, mptr: %p", MenuRoot->inSetup(), populateMenu );
 	if ((_childs.empty() || dyn_content) && populateMenu) {
 		(populateMenu)(this); // callback needs to be designed for this !!!
 		ESP_LOGI(FNAME,"created childs %d", _childs.size());
@@ -243,9 +244,9 @@ void SetupMenu::rot(int count)
 
 void SetupMenu::press()
 {
-	ESP_LOGI(FNAME,"press() inSet %d highl: %d", gflags.inSetup, highlight );
+	ESP_LOGI(FNAME,"press() inSet %d highl: %d", MenuRoot->inSetup(), highlight );
 	if (highlight == -1) {
-        if (normal_setup.get()) { // lock factory menu
+        if (normal_setup.get()) { // normal menu, or factory jail
             exit();
         }
 	} else {

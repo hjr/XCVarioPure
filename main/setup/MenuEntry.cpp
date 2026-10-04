@@ -16,9 +16,9 @@
 #include <cstdint>
 
 extern AdaptUGC *MYUCG;
+extern MenuEntry *MenuRoot;
 
 MenuEntry* MenuEntry::current = nullptr;
-SetupMenu* MenuEntry::current_menu = nullptr;
 uint8_t MenuEntry::_restart = 0;
 int16_t MenuEntry::cur_indent;
 int16_t MenuEntry::cur_row;
@@ -108,7 +108,6 @@ void MenuEntry::enter() {
         return;
     }
     current = this;
-    if ( ! isLeaf() ) { current_menu = static_cast<SetupMenu*>(this); }
 
     // enter a level of setup menu
     attach();  // set rotary focus
@@ -122,7 +121,7 @@ void MenuEntry::enter() {
         }
     }
     display();
-    ESP_LOGI(FNAME,"MenuEntry enter %p %p", this, current_menu );
+    ESP_LOGI(FNAME,"MenuEntry %p enter %p", this, getCurrentMenu() );
 }
 
 void MenuEntry::exit(int ups) {
@@ -130,25 +129,31 @@ void MenuEntry::exit(int ups) {
     if (ups != 0 && _parent != 0) {
         detach();
         current = _parent;
-        current_menu = _parent;
-        current->exit(--ups);
-        return;
+        current->exit(--ups); // display parent
+        return; // stop further execution after recursive exit
     }
     display();
-    ESP_LOGI(FNAME, "MenuEntry enter %p %p", this, current_menu);
+    ESP_LOGI(FNAME, "MenuEntry exit %p to %p", this, current);
 }
 
 void MenuEntry::regParent(SetupMenu *p)
 {
-	if ( _parent == nullptr ) {
-		_parent = p;
-	}
+    assert( _parent == nullptr );
+    _parent = p;
 }
 
 bool MenuEntry::isFirstLevel() const
 {
     // parent is root
-    return  _parent->_parent == nullptr;
+    return  _parent == MenuRoot;
+}
+
+SetupMenu *MenuEntry::getCurrentMenu()
+{
+    if (current) {
+        return current->isLeaf() ? current->getParent() : static_cast<SetupMenu*>(current);
+    }
+    return nullptr;
 }
 
 void MenuEntry::setHelp( const char *txt )
@@ -256,7 +261,10 @@ void MenuEntry::focusPosLn(const char *str, int16_t pos, bool mode) const
 // how many lines the help text will allocate
 bool MenuEntry::canInline() const
 {
-    return current_menu->freeBottomLines() >= nrOfHelpLines() && !isFirstLevel() && !bits._never_inline;
+    if ( isLeaf() ) {
+        return _parent->freeBottomLines() >= nrOfHelpLines() && !isFirstLevel() && !bits._never_inline;
+    }
+    return false;
 }
 
 int MenuEntry::nrOfHelpLines() const
@@ -280,7 +288,7 @@ bool MenuEntry::showHelp(bool inln)
         int needed_ln = nrOfHelpLines();
         int16_t first_hln = firstHelpLine();
         if (inln) {
-            first_hln = current_menu->firstHelpLine();
+            first_hln = MenuEntry::getCurrentMenu()->firstHelpLine();
         }
         if ( needed_ln > maxLines() - first_hln) {
             ret = false;

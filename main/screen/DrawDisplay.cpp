@@ -15,21 +15,15 @@
 #include "BootUpScreen.h"
 #include "FlarmScreen.h"
 #include "HorizonPage.h"
-#include "screen/element/ThermalAssist.h"
 
 #include "setup/SensorTest.h"
 #include "setup/SetupMenuValFloat.h"
-#include "setup/SetupMenuSelect.h"
-#include "setup/SetupMenuDisplay.h"
 #include "setup/SetupMenu.h"
 #include "setup/SubMenuGlider.h"
-#include "setup/SetupNG.h"
 #include "setup/CruiseMode.h"
 #include "driver/gpio/ESPRotary.h"
 #include "sensor/imu/AccMPU6050.h"
-#include "driver/audio/ESPAudio.h"
 #include "Flarm.h"
-#include "S2F.h"
 #include "sensor.h"
 #include "driver/time/WatchDog.h"
 #include "logdefnone.h"
@@ -85,7 +79,7 @@ void UiEventLoop(void *arg)
             else if (event.isScreenEvent()) {
                 // ESP_LOGI(FNAME, "Screen event %d", detail);
                 if (detail == ScreenEvent::MAIN_SCREEN) {
-                    if (!gflags.inSetup) {
+                    if (!MenuRoot->inSetup()) {
                         switch (MenuRoot->getActiveScreen()) {
                             case SCREEN_VARIO:
                                 Display->drawDisplay();
