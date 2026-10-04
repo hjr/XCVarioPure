@@ -31,6 +31,10 @@ bool S2fSwitch::tick()
     // called every 10msec
     bool buttonRead = gpio_get_level(_sw) == _active_level; // gpio level 1 -- not pressed (open pull-up)
 
+    // if ( _lastButtonRead != buttonRead ) {
+    //     ESP_LOGI(FNAME, "crswitch %d", buttonRead);
+    // }
+
     _debounce = (buttonRead == _lastButtonRead) ? (_debounce + 1) : 0;
     _lastButtonRead = buttonRead;
 
@@ -137,6 +141,12 @@ void S2fSwitch::updateSwitchSetup()
         auto_plug = nullptr; // alias "external", event propagation is intrinsic
         break;
     }
+}
+
+// 0/false ~ open, 1/true ~ closed
+bool S2fSwitch::getRawState()
+{
+    return _active_level ^ _state;
 }
 
 //////////////

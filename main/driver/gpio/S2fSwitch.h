@@ -20,6 +20,7 @@ public:
     S2fSwitch(gpio_num_t sw);
     virtual ~S2fSwitch();
     void updateSwitchSetup();
+    bool getRawState();
     void checkCruiseMode();
     bool tick() override; // polling the switch
 

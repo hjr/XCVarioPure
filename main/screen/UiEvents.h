@@ -57,7 +57,9 @@ struct ScreenEvent
         POLAR_CONFIG,
         QNH_ADJUST,
         BALLAST_CONFIRM,
-        FACTORY_CONFIG };
+        FACTORY_CONFIG,
+        SENSOR_TEST
+    };
 
     uint32_t raw;
     ScreenEvent() = delete;

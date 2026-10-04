@@ -35,6 +35,10 @@ void SetupMenuDisplay::display(int mode) {
     if (_action != nullptr) {
         ESP_LOGI(FNAME, "SetupMenuDisplay::display mode %d", mode);
         MYUCG->setFont(ucg_font_fub14_hr, true);
+        if ( _title.size() != 0 ) {
+            menuPrintLn("  <", 0);
+            menuPrintLn(_title.c_str(), 0, 30);
+        }
         // Call user's callback
         (*_action)(this, mode);
     }

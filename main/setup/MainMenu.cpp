@@ -17,8 +17,10 @@
 #include "setup/SubMenuOTA.h"
 #include "setup/ShowBootMsg.h"
 #include "setup/ShowFlightInfo.h"
+#include "screen/ScreenRoot.h"
 #include "screen/element/MultiGauge.h"
 #include "screen/element/ThermalAssist.h"
+#include "setup/SensorTest.h"
 #include "sensor/VarioFilter.h"
 #include "S2F.h"
 #include "Flarm.h"
@@ -151,6 +153,19 @@ int do_display_test(SetupAction* p) {
     MYUCG->drawBox(0, 0, DISPLAY_W, DISPLAY_H);
     while (!Rotary->readSwitch(300)) {
         ESP_LOGI(FNAME, "Wait for key press");
+    }
+    return 0;
+}
+
+int do_factory_test(SetupMenuSelect* p) {
+    switch ( p->getSelect() ) {
+        case 0:
+            do_display_test(nullptr);
+            break;
+        case 1:
+            MenuRoot->pushTop(SensorTest::create());
+            return 1; // signal the hijack
+            break;
     }
     return 0;
 }
@@ -1092,8 +1107,10 @@ SetupMenu* SetupMenu::createFactorySetup() {
     SetupMenuValFloat *met_adj = SetupMenu::createVoltmeterAdjustMenu();
     setup->addEntry(met_adj);
 
-    SetupAction *dtest = new SetupAction("Display Test", do_display_test, 0);
-    setup->addEntry(dtest);
+    SetupMenuSelect *test = new SetupMenuSelect("Test", RST_NONE, do_factory_test);
+    test->addEntry("Display");
+    test->addEntry("Sensors");
+    setup->addEntry(test);
 
     if( accSensor ){
     	SetupMenuSelect* bias_zero = new SetupMenuSelect("IMU Biases", RST_NONE, imu_calib);
