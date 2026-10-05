@@ -848,6 +848,7 @@ void IpsDisplay::drawDisplay(){
         // static float s=0; // check the bar code
         // s2fd = sin(s) * 42.;
         // s+=0.04;
+        if ( flags.mode_dirty ) S2FBARgauge->forceRedraw();
         S2FBARgauge->draw(Speed2Fly.getDelta(), CRMOD.getCMode());
     }
 
