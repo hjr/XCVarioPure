@@ -166,6 +166,14 @@ int do_factory_test(SetupMenuSelect* p) {
             MenuRoot->pushTop(SensorTest::create());
             return 1; // signal the hijack
             break;
+        case 2:
+            airspeed_sensor.set(AirspeedSensor::ABPMRR);
+            tube_swap(nullptr);
+            break;
+        case 3:
+            airspeed_sensor.set(AirspeedSensor::TE4525);
+            tube_swap(nullptr);
+            break;
     }
     return 0;
 }
@@ -520,14 +528,6 @@ static void system_menu_create_airspeed(SetupMenu *top) {
     if ( airborne.get() ) {
         asze->setHelp("Disabled while flying");
         asze->lock();
-    }
-    if ( airspeed_sensor.get() == AirspeedSensor::ABPMRR || airspeed_sensor.get() == AirspeedSensor::TE4525 ) {
-        // offer the option to switch in-between them, call it swapped tubes
-        SetupMenuSelect* asswap = new SetupMenuSelect("Swapped Tubes", RST_NONE, tube_swap, &airspeed_sensor);
-        top->addEntry(asswap);
-        asswap->setHelp("Some airspeed sensors have pressure tubes swapped, resulting in no IAS indication.");
-        asswap->addEntry("Straight", AirspeedSensor::ABPMRR);
-        asswap->addEntry("Swapped", AirspeedSensor::TE4525);
     }
 }
 
@@ -1109,9 +1109,13 @@ SetupMenu* SetupMenu::createFactorySetup() {
     SetupMenuValFloat *met_adj = SetupMenu::createVoltmeterAdjustMenu();
     setup->addEntry(met_adj);
 
-    SetupMenuSelect *test = new SetupMenuSelect("Test", RST_NONE, do_factory_test);
+    SetupMenuSelect *test = new SetupMenuSelect("CheckIt", RST_NONE, do_factory_test);
     test->addEntry("Display");
     test->addEntry("Sensors");
+    if ( airspeed_sensor.get() == AirspeedSensor::ABPMRR || airspeed_sensor.get() == AirspeedSensor::TE4525 ) {
+        test->addEntry("Select ABPMRR");
+        test->addEntry("Select TE4525");
+    }
     setup->addEntry(test);
 
     if ( imuSensor ) {

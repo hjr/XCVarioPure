@@ -654,7 +654,7 @@ void system_startup(void *args){
         }
 
         // Configure airspeed sensor
-        asSensor = AirspeedSensor::probeAll();
+        asSensor = AirspeedSensor::probeAll(); // -> sets airspeed_sensor
         if (asSensor)
         {
             logged_tests += "AS " + std::string(asSensor->name()) +  " offset: ";
@@ -891,8 +891,8 @@ void system_startup(void *args){
 
     // Check if the factory procedure is completed, otherwise anoi with the factory menu
     if ( normal_setup.get() == 0 ) {
-        // normal boot, schedule the factory menu as a very first thing todo
-        int screenEvent = ScreenEvent(ScreenEvent::FACTORY_CONFIG).raw;
+        // factory boot: schedule the factory menu as a very first thing todo
+        const int screenEvent = ScreenEvent(ScreenEvent::FACTORY_CONFIG).raw;
         xQueueSend(uiEventQueue, &screenEvent, 0);
     }
 

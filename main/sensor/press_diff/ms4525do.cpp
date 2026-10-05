@@ -65,6 +65,7 @@ bool MS4525DO::probe()
 
 void MS4525DO::changeConfig()
 {
+    _is_abpmrr = airspeed_sensor.get() == AirspeedSensor::ABPMRR;
     setMultiplier((2.f * 6894.76 / MS4525Span) * ((100.0 + speedcal.get()) / 100.0) * (_is_abpmrr ? 1.0f : -1.0f));
     ESP_LOGI(FNAME, "changeConfig, speed multiplier %f, speed cal: %f", getMultiplier(), speedcal.get());
 }
