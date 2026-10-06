@@ -171,9 +171,13 @@ public:
     void pushToHistory(const T& value, uint32_t now_ms) {
         _last_update_time_ms = now_ms;
         _history.push(value);
-        if (_running_avg_count > 0) {
+        if (_running_avg_count >= 0) {
             _running_avg_sum += value;
-            _running_avg_sum -= _history[_running_avg_count];
+            if (_running_avg_count < _running_avg_span) {
+                _running_avg_count++; // building up the running average count
+            } else {
+                _running_avg_sum -= _history[_running_avg_span];
+            }
         }
     }
     // Publish on black board NVS variable
@@ -265,20 +269,22 @@ public:
         if (interval_ms <= 0 || interval_ms > getCapacityMS()) {
             return false; // invalid interval
         }
-        _running_avg_count = interval_ms / _update_interval_ms;
+        _running_avg_span = interval_ms / _update_interval_ms;
         _running_avg_sum = T{};
-        for (int i = 0; i < _running_avg_count; ++i) {
-            _running_avg_sum += _history[i];
-        }
+        _running_avg_count = 0;
         return true;
     }
     T getRunningAvg() const {
-        if (_running_avg_count == 0) {
+        if (_running_avg_count <= 0) {
             return T{};
         }
         return _running_avg_sum / (float)_running_avg_count;
     }
     void stopRunningAvg() {
+        _running_avg_count = -1;
+        _running_avg_sum = T{};
+    }
+    void restartRunningAvg() {
         _running_avg_count = 0;
         _running_avg_sum = T{};
     }
@@ -420,7 +426,8 @@ protected:
     T               _invalid = T{};    ///< Invalid value representation
     T               _processed = T{};  ///< Last valid value as published on the black board
     // a running (fast) average
-    int             _running_avg_count = 0;
+    int16_t         _running_avg_count = -1;
+    int16_t         _running_avg_span = 0;
     T               _running_avg_sum = T{};
 };
 
