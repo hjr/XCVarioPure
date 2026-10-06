@@ -89,9 +89,9 @@ struct VarioKF {
     float P00, P01, P10, P11;
 
     // Noise
-    float R;     // measurement noise
-    static constexpr float REF_NOISE = 0.3f * 0.3f;; // reference measurement noise (baro ~30cm RMS)
-    float sigma_a;
+    float R;    // measurement noise
+    static constexpr float REF_NOISE = 0.3f * 0.3f; // reference measurement noise (baro ~30cm RMS)
+    float q;    // acceleration noise spectral density
 
     void reset(meter_t h0) {
         h = h0;
@@ -102,10 +102,10 @@ struct VarioKF {
         P01 = P10 = 0.0f;
 
         R = REF_NOISE;
-        setTau(vario_delay.get());
-   }
-    void setTau(float tau) {
-        sigma_a = sqrtf(2.0f / tau);
+        q = REF_NOISE;
+    }
+    void setQ(float tau) {
+        q = 2.0f / tau;
     }
 
     void predict(second_t dt) {
@@ -116,7 +116,6 @@ struct VarioKF {
         float dt2 = dt * dt;
         float dt3 = dt2 * dt;
         float dt4 = dt2 * dt2;
-        float q = sigma_a * sigma_a;
 
         float Q00 = q * dt4 * 0.25f;
         float Q01 = q * dt3 * 0.5f;
@@ -170,20 +169,32 @@ VarioFilter::VarioFilter() :
     SensorTP<float>(vario_buffer, HSIZE, DUTY_CYCLE_MS, 1),
     _Gact(15.f, DUTY_CYCLE_MS / 1000.f),
     _Goptimal(15.f, DUTY_CYCLE_MS / 1000.f),
+    _vario_lpf(LowPassFilterT<float>::alphaFromTau(4.f, 0.1f)),
     _avg_vario(LowPassFilterT<float>::alphaFromTau(1.f, 0.1f))
 {
-    _id = SensorId(SensorType::VARIOMETER, 10);
+    _id = SensorId(SensorType::VARIOMETER, 10); // prio right after the te_alt doRead filter
+
+    // the post process organizing it's own NVS variable and filter
+    setNVSVar(&te_vario);
+    setFilter(&_vario_lpf);
+
     assert(tecompSensor == nullptr);
     tecompSensor = new TEcompFilter();
     SensorRegistry::registerSensor(tecompSensor);
-    _prepare_jump = 80; // preparation for a disruptive jump to the ground level
+
+    // preparation for a disruptive jump to the ground level
+    _prepare_jump = 80;
+    _prev_time = Clock::getMillis();
 }
 
 bool VarioFilter::setup() {
     ESP_LOGI(FNAME, "VarioFilter setup as %s sensor with alt %f", _id.isLocalSensor() ? "local" : "remote", altitude.get());
     // vario needle damping
-    vkf.setTau(vario_delay.get()); // KF
-    _prev_time = Clock::getMillis();
+    // _vario_lpf.setAlpha(1.f); // KF
+    _vario_lpf.setTau(vario_delay.get()/2, .1f); // KF
+    vkf.setQ(vario_delay.get());
+
+    // set averager time span
     startRunningAvg(vario_av_delay.get() * 1000);
     _Gact.setTau(vario_av_delay.get()); // same integration time for the climb score
     _Goptimal.setTau(vario_av_delay.get());
@@ -207,10 +218,10 @@ void VarioFilter::postProcess() {
         ESP_LOGW(FNAME, "VarioFilter SIM: large pred_err %f, re-init KF", pred_err);
         return;
     }
-    vkf.R = VarioKF::REF_NOISE * (1 + std::sqrtf(fabsf(pred_err)));
+    // vkf.R = VarioKF::REF_NOISE * (1 + std::sqrtf(fabsf(pred_err)));
 
     vkf.update(tealt_head);
-    te_vario.set(vkf.v);
+
     _polar_sink = Speed2Fly.getSink(ias.get());
     mps_t te_net = vkf.v - _polar_sink;
 
@@ -237,15 +248,19 @@ void VarioFilter::postProcess() {
     }
     te_netto.set(te_net);
 
+    if ( CRMOD.getChanged() ) {
+        restartRunningAvg(); // restart the running average when the cruise mode changes, avoid smeared data
+        ESP_LOGI(FNAME, "Cruise mode changed, restarting running average");
+    }
     if (CRMOD.isGross()) {
-        pushToHistory(vkf.v, now);
+        pushAndPublish(vkf.v, now);
     } else {
-        pushToHistory(te_net, now);
+        pushAndPublish(te_net, now);
     }
     _avg_vario.filter(getRunningAvg());
 
     // speed to fly update on current vario
-    s2f_ideal.set(Speed2Fly.calculate(te_netto.get(), !CRMOD.getCMode()));
+    s2f_ideal.set(Speed2Fly.calculate(te_net, !CRMOD.getCMode()));
 
     AverageVario::newSample(vkf.v); // longer term thermal average
 }

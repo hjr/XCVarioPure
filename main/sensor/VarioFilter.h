@@ -55,6 +55,7 @@ class VarioFilter final : public SensorTP<mps_t> {
     LeakyIntegratorT<float> _Gact;
     LeakyIntegratorT<float> _Goptimal;
     uint32_t _prev_time = 0;
+    LowPassFilterT<mps_t> _vario_lpf;
     LowPassFilterT<mps_t> _avg_vario;
     mps_t _polar_sink = 0.f;
     int8_t _prepare_jump = 0;
