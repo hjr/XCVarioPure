@@ -21,14 +21,14 @@
 PressureSensor *baroSensor = nullptr;
 PressureSensor *teSensor = nullptr;
 
-constexpr int SENSOR_HISTORY_DURATION_MS = 10000;  // 10 seconds for pressure sensors
+constexpr int SENSOR_HISTORY_DURATION_MS = 12000;  // 12 seconds for pressure sensors
 constexpr int DUTY_CYCLE_MS = 100; // 100ms cycle time for pressure sensors
 constexpr size_t HSIZE = SENSOR_HISTORY_DURATION_MS / DUTY_CYCLE_MS;
 static __attribute__((aligned(4))) pascal_t pstat_buffer[ HSIZE + 1 ];
 static __attribute__((aligned(4))) pascal_t te_buffer[ HSIZE + 1 ];
 
 PressureSensor::PressureSensor(SensorId id) :
-    SensorTP<pascal_t>((id.type == SensorType::STATIC_PRESSURE) ? pstat_buffer : te_buffer, HSIZE, DUTY_CYCLE_MS, 0)
+    SensorTP<pascal_t>((id.type == SensorType::STATIC_PRESSURE) ? pstat_buffer : te_buffer, HSIZE, DUTY_CYCLE_MS, 100)
 {
     _id = id;
     if ( SetupCommon::isMaster() ) {
@@ -47,6 +47,11 @@ PressureSensor::~PressureSensor() {
         teSensor = nullptr;
     }
 }
+
+// void PressureSensor::postProcess() {
+//     // dump sigma
+//     ESP_LOGI(FNAME, "PressureSensor sigma: %.3f", std::sqrtf(getVariance(10000)));
+// }
 
 meter_t PressureSensor::readAltitude(pascal_t qnh, bool& success) {
     success = getHeadValid();

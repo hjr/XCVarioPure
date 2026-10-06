@@ -18,6 +18,7 @@ class PressureSensor : public SensorTP<pascal_t>
 
     PressureSensor(SensorId id);
     virtual ~PressureSensor();
+    // void postProcess() override;
 
     virtual bool selfTest(celsius_t& t, pascal_t& p) = 0;
     virtual celsius_t readTemperature(bool& success) = 0;
