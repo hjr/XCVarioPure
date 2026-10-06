@@ -25,9 +25,10 @@
 class CruiseMode
 {
 public:
-    using VarioModeBits = enum { MODE_BRUTTO=0, MODE_NORMAL_NETTO=1, MODE_REL_NETTO=3 }; // vario mode bits
+    using VarioModeBits = enum : uint8_t { MODE_BRUTTO=0, MODE_NORMAL_NETTO=1, MODE_REL_NETTO=3 }; // vario mode bits
     CruiseMode();
     bool getCMode() const { return _cmode; };
+    bool getChanged() const { return _cm_changed; }
     bool isGross() const { return _vmode == MODE_BRUTTO; }
     bool isNet() const { return _vmode != MODE_BRUTTO; }
     bool audioIsVario() const { return _audio_vario; }
@@ -39,13 +40,16 @@ public:
     void lockTo(bool cruise);
     void unlockCMode() { _lock = false; }
     void updateCache();
+    void promoteChange(); // call only once per sensor loop cycle
 
 private:
-    bool _cmode = false; // cached cruise mode
-    bool _audio_vario = true; // cached audio mode; true == vario mode, false == s2f mode
-    bool _audio_chopping = true; // true for chopping mode (silent or dual)
-    int16_t _vmode = 0; // cached vario mode
-    bool _lock = false; // lock the cruise mode
+    uint8_t _vmode = 0; // cached vario mode
+    uint8_t _cmode :1 = false; // cached cruise mode
+    uint8_t _pending_change :1 = false; // to synch with sensor loop
+    uint8_t _cm_changed :1 = false; // changed in this sensor loop cycle
+    uint8_t _audio_vario :1 = true; // cached audio mode; true == vario mode, false == s2f mode
+    uint8_t _audio_chopping :1 = true; // true for chopping mode (silent or dual)
+    uint8_t _lock :1 = false; // lock the cruise mode
 };
 
 

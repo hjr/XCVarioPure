@@ -200,6 +200,8 @@ void readSensors(void *pvParameters)
         TickType_t xLastWakeTime = xTaskGetTickCount();
         count++;  // 10x per second
 
+        CRMOD.promoteChange(); // sync CRMOD change
+
         // pick the time
         sparse_time = Clock::getMillis();
 

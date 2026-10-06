@@ -23,6 +23,7 @@ void CruiseMode::setCMode(bool cruise)
     if ( ! _lock ) {
         if ( cruise != _cmode ) {
             cruise_mode.set(cruise);
+            _cm_changed = true;
         }
     }
 }
@@ -57,4 +58,14 @@ void CruiseMode::updateCache()
     // breaks can be filled with silence or with dual tone
     _audio_chopping = (_audio_vario && (chopping_mode.get() & VARIO_CHOP) ) ||
             (!_audio_vario && (chopping_mode.get() & S2F_CHOP) );
+}
+
+// call in context that should go in synch with the pending cruise mode change
+void CruiseMode::promoteChange()
+{
+    _cm_changed = false;
+    if (_pending_change) {
+        _cm_changed = true;
+        _pending_change = false;
+    }
 }
