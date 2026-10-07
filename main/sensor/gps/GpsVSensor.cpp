@@ -61,13 +61,11 @@ void GpsVSensor::inject(float lat, float lon, mps_t gndSpeed, rad_t gndCourse)
 }
 
 void GpsVSensor::setExternalAltitude(float alt) {
-    vector_f *last = getHeadPtr();
-    if (last) {
-        if (last->z == 0.f && (_last_update_time_ms + _update_interval_ms/2) > Clock::getMillis()) {
-            last->z = alt;
-        } else {
-            _alt = alt; // for next injection
-        }
+    vector_f &last = getHead();
+    if (last.z == 0.f && (_last_update_time_ms + _update_interval_ms/2) > Clock::getMillis()) {
+        last.z = alt;
+    } else {
+        _alt = alt; // for next injection
     }
 }
 

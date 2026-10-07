@@ -52,7 +52,7 @@ bool GyroMPU6050::doRead(vector_f& val) {
         vector_f tmpvec = vector_f::make_vector(imuRaw.x, imuRaw.y, imuRaw.z, _scale);
 
         // Check on irrational changes
-        if ((tmpvec - *getHeadPtr()).get_norm2() > Units::deg_to_rad(30000.f)) {
+        if ((tmpvec - getHead()).get_norm2() > Units::deg_to_rad(30000.f)) {
             ESP_LOGE(FNAME, "gyro angle >300 deg/s in 0.1 sec");
             // return false;
         }
@@ -66,7 +66,7 @@ bool GyroMPU6050::doRead(vector_f& val) {
         // into glider reference system
         val = imuSensor->rotate(tmpvec) - _bias_estimator.getRef();
         // ESP_LOGI(FNAME, "gyro raw: %d/%d/%d scaled: %f/%f/%f", imuRaw.x, imuRaw.y, imuRaw.z, val.x, val.y, val.z);
-        _gyro_lpf_dwydt.filter((val.y - getHeadPtr()->y) / getDutyCycleS()); // diverenciate and filter to get dwy/dt for accelerometer compensation
+        _gyro_lpf_dwydt.filter((val.y - getHead().y) / getDutyCycleS()); // diverenciate and filter to get dwy/dt for accelerometer compensation
         return true;
     }
 

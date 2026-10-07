@@ -94,12 +94,12 @@ void XCVSyncMsg::sendSensors()
     msg->buffer.push_back(len);
     // int now = Clock::getMillis();
     // msg->buffer.append(reinterpret_cast<const char*>(&now), 4);
-    msg->buffer.append(reinterpret_cast<const char*>(baroSensor->getHeadPtr()), 4);
-    msg->buffer.append(reinterpret_cast<const char*>(teSensor->getHeadPtr()), 4);
-    msg->buffer.append(reinterpret_cast<const char*>(asSensor->getHeadPtr()), 4);
+    msg->buffer.append(reinterpret_cast<const char*>(&baroSensor->getHead()), 4);
+    msg->buffer.append(reinterpret_cast<const char*>(&teSensor->getHead()), 4);
+    msg->buffer.append(reinterpret_cast<const char*>(&asSensor->getHead()), 4);
     if (imuSensor) {
-        msg->buffer.append(reinterpret_cast<const char*>(accSensor->getHeadPtr()), 12);
-        msg->buffer.append(reinterpret_cast<const char*>(gyroSensor->getHeadPtr()), 12);
+        msg->buffer.append(reinterpret_cast<const char*>(&accSensor->getHead()), 12);
+        msg->buffer.append(reinterpret_cast<const char*>(&gyroSensor->getHead()), 12);
     } else {
         vector_f dummy;
         msg->buffer.append(reinterpret_cast<const char*>(&dummy), 12);

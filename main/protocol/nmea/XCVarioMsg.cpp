@@ -128,7 +128,7 @@ void NmeaPrtcl::sendStdXCVario()
     // optional IMU additions
     if (accSensor)
     {
-        vector_f acc = accSensor->getHead();
+        const vector_f& acc = accSensor->getHead();
         std::sprintf(str, ",%3.1f", accSensor->getRollDeg());
         msg->buffer += str;
         std::sprintf(str, ",%3.1f", accSensor->getPitchDeg());

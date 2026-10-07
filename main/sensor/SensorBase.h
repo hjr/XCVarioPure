@@ -59,7 +59,10 @@ public:
     int level() const {
         return _full ? _capacity : _head;
     }
-    T getHead() const {
+    inline const T& getHead() const {
+        return _buffer[_head];
+    }
+    inline T& getHead() {
         return _buffer[_head];
     }
     T* getHeadPtr() const {
@@ -72,13 +75,15 @@ public:
         _head = 0;
         _full = false;
     }
-    T operator[] (int index) const { // Always count from head backwards
+    const T& operator[] (int index) const { // Always count from head backwards
         return _buffer[wrap_back(index)];
     }
     
 private:
     inline int wrap_back(int offset) const {
-        return (_head + _capacity - (offset % _capacity)) % _capacity;
+        assert(offset >= 0 && offset < _capacity);
+        return (_head + _capacity - offset) % _capacity;
+        // return (_head + _capacity - (offset % _capacity)) % _capacity;
     }
     int    _capacity;       ///< Maximum number of entries in the buffer
     int    _head;           ///< Index of the next write position (also count when full)
@@ -351,25 +356,29 @@ public:
     }
 
     // Get latest reading directly.
-    T getHead() const {
+    const T& getHead() const {
         return _history.getHead();
     }
-    T getIdx(int i) const {
+    T& getHead() {
+        return _history.getHead();
+    }
+    const T& getIdx(int i) const {
         return _history[i];
     }
-    T get(int ms_back) const {
+    const T& get(int ms_back) const {
         int count = getCount(ms_back);
         return _history[count];
     }
-    T getHeadFiltered() const {
-        if ( _filter ) {
-            return _filter->get();
-        }
-        return _history.getHead();
+    T getDiffOver(int ms_back) const {
+        int count = getCount(ms_back);
+        return *_history.getHeadPtr() - _history[count];
     }
-    T* getHeadPtr() const {
-        return _history.getHeadPtr();
+    T getDiffAt(int ms_back) const {
+        int count = getCount(ms_back);
+        return _history[count] - _history[count + 1];
     }
+
+    // Check attributes on contents
     bool getHeadValid() const {
         return _history.level() > 0 && (_last_update_time_ms + _valid_time_ms > Clock::getMillis());
     }

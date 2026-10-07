@@ -87,7 +87,7 @@ bool AccMPU6050::doRead(vector_f& val) {
         // ESP_LOGI(FNAME, "tmpvec\tX:%f Y:%f Z:%f", tmp_ned.x, tmp_ned.y, tmp_ned.z);
 
         // Check on irrational changes
-        if ((tmp_ned - *getHeadPtr()).get_norm2() > 25.f) {
+        if ((tmp_ned - getHead()).get_norm2() > 25.f) {
             // vector_f d(tmpvec-prev_accel);
             ESP_LOGE(FNAME, "accelaration change > 5 g in 0.1 sec");
             // return false;
@@ -164,7 +164,7 @@ void AccMPU6050::postProcess() {
     constexpr const float dt = 0.1f; // seconds, a reasonable assumption
 
     float gravity_trust = 1;
-    const vector_f& accel = *getHeadPtr();
+    const vector_f& accel = getHead();
 
     // todo track and subtraced soft bias
     // todo _processed.z -= gyroSensor->getAxD() * imuSensor.getLeverArm(); // compensate the accelerometer mounting position in front of CG
@@ -256,12 +256,12 @@ void AccMPU6050::postProcess() {
 bool AccMPU6050::detectRest() {
     // accel variance
     vector_f accVar = getVariance(1000);
-    const vector_f* accel = getHeadPtr();
+    const vector_f& accel = getHead();
     
     // ESP_LOGI(FNAME, "rest detection: accVar=(%f, %f, %f) n2=%f < %f", accVar.x, accVar.y, accVar.z, accVar.get_norm2(), ACCVAR_THRESHOLD2);
-    // ESP_LOGI(FNAME, "rest detection: accel=(%f, %f, %f) n2=%f < %f", accel->x, accel->y, accel->z, accel->get_norm()-1., ACCEL_THRESHOLD);
+    // ESP_LOGI(FNAME, "rest detection: accel=(%f, %f, %f) n2=%f < %f", accel.x, accel.y, accel.z, accel.get_norm()-1., ACCEL_THRESHOLD);
     
-    if (accVar.get_norm2() < ACCVAR_THRESHOLD2 && std::fabsf(accel->get_norm() - 1.f) < ACCEL_THRESHOLD) {
+    if (accVar.get_norm2() < ACCVAR_THRESHOLD2 && std::fabsf(accel.get_norm() - 1.f) < ACCEL_THRESHOLD) {
          // min. 3 sec below threshold, consider as rest
         _restTimer += getDutyCycle();
         if ( _restTimer > 3000) {

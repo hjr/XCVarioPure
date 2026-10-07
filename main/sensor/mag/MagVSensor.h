@@ -25,7 +25,7 @@ public:
     const char* name() const override { return "MAG"; }
     bool probe() override { return true; }
     bool setup() override;
-    bool doRead(vector_f& val) override { return false; } // not used
+    bool doRead(vector_f& val) override { return false; } // external sensor, not used
     void postProcess() override;
 
     // Injection API
