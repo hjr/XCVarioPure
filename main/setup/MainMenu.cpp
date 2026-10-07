@@ -473,12 +473,7 @@ static void vario_menu_create(SetupMenu *vae) {
 	vae->addEntry(meanclimb);
 
     SetupMenu *elco = new SetupMenu("TE Compensation", vario_menu_create_tek);
-    if ( SetupCommon::isClient() ) {
-        // hint that this will affect the master
-        elco->setHelp("TE compensation method (applies to the Master)");
-    } else {
-        elco->setHelp("TE compensation method");
-    }
+    elco->setHelp("TE compensation method");
     vae->addEntry(elco);
 }
 
