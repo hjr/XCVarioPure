@@ -4,6 +4,7 @@ file(GLOB SUB_SRCS "*.cpp" "adc/*.cpp" "gps/*.cpp" "imu/*.cpp" "mag/*.cpp" "pres
 set_source_files_properties(
     imu/AccMPU6050.cpp
     SensorBase.cpp
+    VarioFilter.cpp
     PROPERTIES COMPILE_OPTIONS "-O2"
 )
 
