@@ -189,7 +189,7 @@ Point ThermalAssist::getThermalCG() const {
 
 
 float ThermalAssist::getTop8Norm() const {
-    constexpr int TOP_N = 6;
+    constexpr int TOP_N = 5;
     float top[TOP_N] = {};
     int n = 0;
 
@@ -221,7 +221,7 @@ float ThermalAssist::getTop8Norm() const {
 
 void ThermalAssist::draw() {
     // calculate a thermals norm
-    float th_top = std::min(getTop8Norm(), 3.f); // max. norm to 3 m/s
+    float th_top = std::min(getTop8Norm(), MC.get() + 2.f); // max. norm according to MC
     float th_min = std::max(th_top - 3.0f, .0f);
     _th_norm.filter(std::max(th_top - th_min, 1.f));
 
