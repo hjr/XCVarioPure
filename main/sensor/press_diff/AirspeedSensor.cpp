@@ -16,7 +16,7 @@
 #include "setup/SetupNG.h"
 #include "S2F.h"
 #include "math/Floats.h"
-#include "logdef.h"
+#include "logdefnone.h"
 
 #include <freertos/FreeRTOS.h>
 
@@ -178,6 +178,9 @@ void AirspeedSensor::postProcess()
         _restTimer = 0;
         _isResting = false;
     }
+    // if ( !(_counter % 10) ) {
+    //     ESP_LOGI(FNAME, "AirSpeed Sensor sigma: %.3f", std::sqrtf(getVariance(10000)));
+    // }
     
     if ( _isResting != rest_old) {
         ESP_LOGI(FNAME, "rest state changed: %c -> %c", rest_old ? 'R' : 'F', _isResting ? 'R' : 'F');
