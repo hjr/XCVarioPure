@@ -17,6 +17,8 @@ IS_ENU = False;
 # Nur diese Sätze weiterleiten (PXCV ignorieren)
 ALLOWED_PREFIXES = {"$GPGGA", "$GPGSA", "$GPRMC", "$PGRMZ", "$PFLAU", "$PFLAA", "$PFLAL", "$SENS", "!XCV"}
 #ALLOWED_PREFIXES = {"$GPGGA", "$GPGSA", "$GPRMC", "$GPRMZ", "$PFLAU", "$PFLAA", "$PFLAL"}
+lock = threading.Lock()
+seek_generation = 0
 
 # --- Erstes .nmea File finden ---
 def find_first_nmea_file(flight):
@@ -167,6 +169,7 @@ def playback_worker():
 
         with lock:
             # Wichtig: Index-Inkrement nur hier unter Lock
+            generation = seek_generation
             current_index += idx_inc
             idx = current_index
             if speed != playback_speed:
@@ -185,9 +188,14 @@ def playback_worker():
                 last_time = now
                 ser.write(("$PFLAX,S," + str(speed) + "\r\n").encode("ascii"))
             delta = now - last_time
-            playback_time += delta * speed
+            with lock:
+                playback_time += delta * speed
             last_time = now
             while playback_time >= timestamp:
+                with lock:
+                    if generation != seek_generation:
+                        idx_inc = 0
+                        break
                 if not flight_data[idx]['line'].startswith("$SENS") or num_sens < max_sens:
                     ser.write((flight_data[idx]['line'] + "\r\n").encode("ascii", errors="ignore"))
                     #print(now, playback_time, ": ", flight_data[idx]['line'])
@@ -283,8 +291,9 @@ def setup_plot():
 
     # --- Neue Sprung-Routine ---
     def jump_by_seconds(seconds):
-        global current_index, playback_time
+        global current_index, playback_time, seek_generation
 
+        new_idx = 0
         target_time = playback_time + seconds
         if target_time < flight_data[0]['timestamp']:
             target_time = flight_data[0]['timestamp']
@@ -294,11 +303,20 @@ def setup_plot():
         # Finde nächsten Index >= target_time
         for i in range(0, len(flight_data)):
             if flight_data[i]['timestamp'] >= target_time and flight_data[i]['line'].startswith("$GPRMC"):
-                current_index = i
+                new_idx = i
                 break
         else:
-            current_index = len(flight_data) - 1
+            new_idx = len(flight_data) - 1
+        current_index = new_idx
         playback_time = flight_data[current_index]['timestamp']
+        seek_generation += 1
+        print(f"Sprung zu Index {current_index}, Zeit {playback_time:.3f}s")
+    def jump_to_index(idx):
+        global current_index, playback_time, seek_generation
+
+        current_index = idx
+        playback_time = flight_data[current_index]['timestamp']
+        seek_generation += 1
         print(f"Sprung zu Index {current_index}, Zeit {playback_time:.3f}s")
 
     def on_key(event):
@@ -323,9 +341,9 @@ def setup_plot():
             elif event.key == 'down':
                 jump_by_seconds(-60)
             elif event.key == 'home':
-                current_index = 0
+                jump_to_index(0)
             elif event.key == 'end':
-                current_index = len(flight_data) - 1
+                jump_to_index(len(flight_data) - 1)
             elif event.key == 'q':
                 plt.close()
                 return
@@ -338,10 +356,10 @@ def setup_plot():
         # Sofort-Update erzwingen, wenn Index geändert
         if changed:
             # Manuelles Update des Plots
-            fig.canvas.draw_idle()
-            fig.canvas.flush_events()
+            #fig.canvas.draw_idle()
+            #fig.canvas.flush_events()
             # Oder noch direkter:
-            #update(None)  # Ruft deine update-Funktion einmal manuell auf
+            update(None)  # Ruft deine update-Funktion einmal manuell auf
 
     fig.canvas.mpl_connect('key_press_event', on_key)
     print("\n=== STEUERUNG ===")
