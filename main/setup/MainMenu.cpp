@@ -659,7 +659,7 @@ static void options_menu_create_screens(SetupMenu *top) { // dynamic!
 		top->addEntry(vario);
 
 		SetupMenu *gload = new SetupMenu("G-Meter", screens_menu_create_gload);
-        if ( !imuSensor ) {
+        if ( !accSensor ) {
             gload->lock();
             gload->setBuzzword("n/a");
         }
@@ -667,7 +667,7 @@ static void options_menu_create_screens(SetupMenu *top) { // dynamic!
 
         SetupMenuSelect *horizon = new SetupMenuSelect("Horizon", RST_NONE, set_parent_dirty, &screen_horizon);
         horizon->mkEnable();
-        if ( !imuSensor ) {
+        if ( !accSensor ) {
             horizon->lock();
         }
         top->addEntry(horizon);
