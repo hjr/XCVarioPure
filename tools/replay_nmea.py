@@ -15,7 +15,7 @@ WO_GPS = False
 IS_ENU = False;
 
 # Nur diese Sätze weiterleiten (PXCV ignorieren)
-ALLOWED_PREFIXES = {"$GPGGA", "$GPGSA", "$GPRMC", "$PGRMZ", "$PFLAU", "$PFLAA", "$PFLAL", "$SENS"}
+ALLOWED_PREFIXES = {"$GPGGA", "$GPGSA", "$GPRMC", "$PGRMZ", "$PFLAU", "$PFLAA", "$PFLAL", "$SENS", "!XCV"}
 #ALLOWED_PREFIXES = {"$GPGGA", "$GPGSA", "$GPRMC", "$GPRMZ", "$PFLAU", "$PFLAA", "$PFLAL"}
 
 # --- Erstes .nmea File finden ---
@@ -65,10 +65,10 @@ def load_flight_data(filepath):
     with open(filepath, "r", errors="ignore") as f:
         for raw_line in f:
             line = raw_line.rstrip("\r\n")  # Nur Zeilenende entfernen, keine weiteren strip()
-            if not line or not line.startswith('$'):
+            if not line or not (line.startswith('$') or line.startswith('!')):
                 continue
 
-            index = line.rfind('$')
+            index = max(line.rfind('$'), line.rfind('!'))
             if index > 0:
                 line = line[index:]
                 print(line)
