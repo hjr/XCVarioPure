@@ -62,12 +62,12 @@ void NmeaPrtcl::sendSens()
     // int pos = strlen(log);
 
     // time stamp
-    int daymillis = Clock::getMillisMidnightUTC();
-    int delta = (gpsSensor) ? Clock::getMillis() - gpsSensor->getLastUpdateTimeMs() : 0;
+    int millis = Clock::getMillis();
+    int delta = (gpsSensor) ? millis - gpsSensor->getLastUpdateTimeMs() : 0;
     if (delta < 0) {
         delta += 1000;
     }
-    sprintf(tmp, "%d.%03d,%d,", daymillis / 1000, daymillis % 1000, delta);
+    sprintf(tmp, "%d.%03d,%d,", millis / 1000, millis % 1000, delta);
     msg->buffer += tmp;
 
     // pressure sensors and temp
