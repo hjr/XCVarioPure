@@ -26,6 +26,8 @@ class AnalogInput : public SensorTP<float> {
 
    private:
     adc_channel_t _adc_ch;
-    static adc_oneshot_unit_handle_t _adc_handle;
+    static adc_oneshot_unit_handle_t _unit1_handle;
+    static adc_oneshot_unit_handle_t _unit2_handle;
+    adc_oneshot_unit_handle_t _unit_handle = nullptr;
     adc_cali_handle_t _adc_cali = nullptr;
 };

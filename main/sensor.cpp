@@ -4,6 +4,7 @@
 #include "ESP32NVS.h"
 #include "imu/ImuSensor.h"
 #include "sensor/adc/BatteryVoltage.h"
+#include "sensor/adc/FlapSens.h"
 #include "sensor/pressure/PressureSensor.h"
 #include "sensor/pressure/PSclient.h"
 #include "sensor/press_diff/AirspeedSensor.h"
@@ -577,7 +578,7 @@ void system_startup(void *args){
             ESP_LOGI(FNAME, "Found old FLAP_SENS var: %d", fval);
             SetupCommon::eraseEntry("FLAP_SENS");
             if (fval != 0) {
-                DEVMAN->addDevice(FLAP_SENS_DEV, NO_ONE, 0, 0, GPIO_PIN, true);
+                DEVMAN->addDevice(FLAP_SENS_DEV, NO_ONE, FlapSens::UNIT1_CHANNEL6, 0, S2_PIN6, true);
             }
         }
     }

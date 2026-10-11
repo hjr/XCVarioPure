@@ -17,6 +17,7 @@
 #include "BTnus.h"
 #include "OneWireBus.h"
 #include "SerialLine.h"
+#include "GpioDummy.h"
 #include "protocol/ProtocolItf.h"
 #include "protocol/NMEA.h"
 #include "protocol/MagSensBin.h"
@@ -117,7 +118,7 @@ constexpr std::pair<DeviceId, DeviceAttributes> DEVATTR[] = {
     {DeviceId::FLARM_DEV,  {"", {{S2_RS232}}, {{FLARM_P, FLARMBIN_P}, 2}, 0, 0, nullptr}},
     {DeviceId::FLARM_DEV,  {"", {{BT_SPP}}, {{FLARM_P}, 1}, 0, 0, nullptr}},
     // {DeviceId::FLARM_DEV,  {"", {{XCVPROXY}}, {{FLARM_P, FLARMBIN_P}, 2}, 0, 0, nullptr}},
-    {DeviceId::FLAP_SENS_DEV,  {"FlapSens", {{GPIO_PIN}}, {{NO_ONE}, 0}, 0, IS_SEL, &flp_sens_devsetup}},
+    {DeviceId::FLAP_SENS_DEV,  {"FlapSens", {{S2_PIN6}}, {{NO_ONE}, 0}, FlapSens::UNIT1_CHANNEL6, IS_SEL, &flp_sens_devsetup}}, // ADC unit and ADC channel # as port
     {DeviceId::JUMBO_DEV,  {"jumbo putzi", {{CAN_BUS}}, {{JUMBOCMD_P}, 1} , 0, 0, nullptr}}, // auto reg
     {DeviceId::XCVARIOFIRST_DEV, {"Master XCV", {{S2_RS232}}, {{XCVSYNC_P}, 1}, 0, IS_SEL|SECOND_ONLY, &master_devsetup}},
     {DeviceId::XCVARIOSECOND_DEV, {"Second XCV", {{S2_RS232}}, {{XCVSYNC_P}, 1}, 0, IS_SEL|MASTER_ONLY, &second_devsetup}},
@@ -190,7 +191,7 @@ constexpr std::pair<InterfaceId, std::string_view> INTFCS[] = {
     {OW_BUS, "OneWire bus"},
     {S1_RS232, "S1 serial"},
     {S2_RS232, "S2 serial"},
-    {GPIO_PIN, "Pin I/O"},
+    {S2_PIN6, "S2 pin 6"},
     {WIFI_APSTA, "Wifi"},
     {BT_SPP, "BT serial"},
     {BT_LE, "BT low energy"}
@@ -247,29 +248,14 @@ std::string_view DeviceManager::getPrtclName(ProtocolType pid) {
     return "";
 }
 
-// a dummy interface
-template<const char* Id, InterfaceId IdVal>
-class DmyItf final : public InterfaceCtrl
-{
-public:
-    DmyItf() : InterfaceCtrl(true, false) {}
-
-    InterfaceId getId() const override { return IdVal; }
-    const char* getStringId() const override { return Id; }
-
-    void ConfigureIntf(int) override {}
-
-    int Send(const char*, int&, int = 0) override
-    {
-        return 0;
-    }
-};
-
-static constexpr char NUL_ID[]  = "NUL";
-static constexpr char GPIO_ID[] = "GPIO";
+// dummy interface as a placeholder interface
+const char NUL_ID[]  = "NUL";
 static DmyItf<NUL_ID, NO_PHY>  dummy_itf;
-InterfaceCtrl *GpioDummy = nullptr;
 
+// the S2 pin 6 analog signal interface
+InterfaceCtrl *S2_6_Signal = nullptr;
+
+// target for the Data Monitor
 static ItfTarget monitor_target = {};
 
 static int tt_snd(Message *msg)
@@ -462,12 +448,12 @@ Device* DeviceManager::addDevice(DeviceId did, ProtocolType proto, int listen_po
         }
         itf = OneWIRE;
     }
-    else if ( iid == GPIO_PIN ) {
-        ESP_LOGI(FNAME, "GPIO interface selected");
-        if ( !GpioDummy ) {
-            GpioDummy = new DmyItf<GPIO_ID, GPIO_PIN>();
+    else if ( iid == S2_PIN6 ) {
+        ESP_LOGI(FNAME, "Analog signal interface selected");
+        if ( !S2_6_Signal ) {
+            S2_6_Signal = new AnalogSignal();
         }
-        itf = GpioDummy;
+        itf = S2_6_Signal;
     }
     // else // NO_PHY is just the hint to take the same interface
 
@@ -492,7 +478,6 @@ Device* DeviceManager::addDevice(DeviceId did, ProtocolType proto, int listen_po
             dev->_link->incrDeviceCount();
 
             // for some devices we need to create some gears to process the data stream
-            // Do not straight register the sensors, because sequence matters a lot.
             if ( did == MAGLEG_DEV || did == MAGSENS_DEV ) {
                 dev->_sensor = MagVSensor::createMagVSensor();
             }
@@ -507,7 +492,8 @@ Device* DeviceManager::addDevice(DeviceId did, ProtocolType proto, int listen_po
                 dev->_sensor = OneWIRE->probeAndSetup(DS18B20MODEL); // DS18B20
             }
             else if ( did == FLAP_SENS_DEV ) {
-                dev->_sensor = FlapSens::create();
+                dev->_sensor = FlapSens::create(listen_port);
+                dev->_protos = {(uint8_t)listen_port};
             }
             
             if ( ! dev->_sensor ) {
@@ -517,6 +503,7 @@ Device* DeviceManager::addDevice(DeviceId did, ProtocolType proto, int listen_po
             }
         }
         if ( dev->_sensor ) {
+            // Do straight register the sensors, sequence is organized by their priority id
             SensorRegistry::registerSensor(dev->_sensor);
         }
         // update the capability list
@@ -658,7 +645,7 @@ uint8_t DeviceManager::removeDevice(DeviceId did, bool nvsave)
             else if ( itf == OneWIRE ) {
                 ESP_LOGI(FNAME, "keeping OneWire");
             }
-            else if ( itf == GpioDummy ) {
+            else if ( itf == S2_6_Signal ) {
                 ESP_LOGI(FNAME, "keeping GpioDummy");
             }
         }
@@ -1068,7 +1055,11 @@ DeviceNVS Device::getNvsData() const
     DeviceNVS entry;
     if ( ! _link ) {
         // a simple sensor only device
-        entry.target = RoutingTarget(_id, _itf->getId(), 0);
+        uint8_t port = 0;
+        if (!_protos.empty()) {
+            port = *(_protos.begin());
+        }
+        entry.target = RoutingTarget(_id, _itf->getId(), port);
         entry.setup.flags = 1; // now a valid entry
         return entry;
     }

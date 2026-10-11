@@ -53,13 +53,13 @@ static int getFlvEnumFromProto(ProtocolType ptyp)
 //
 // Device special menus
 //
-static SetupMenu::SetupMenuCreator_t get_itf_menu_creator(DeviceId did)
+static SetupMenu::SetupMenuCreator_t get_dev_menu_creator(DeviceId did)
 {
     if ( did == MAGLEG_DEV ) {
-        return options_menu_create_compass_dev;
+        return create_menu_compass_dev;
     }
     else if ( did == FLAP_SENS_DEV ) {
-        return options_menu_create_flap_dev;
+        return create_menu_flap_dev;
     }
     return nullptr;
 }
@@ -94,7 +94,7 @@ static SetupMenu::SetupMenuCreator_t get_itf_menu_creator(InterfaceId iid)
     else if ( iid == OW_BUS ) {
         return connected_devices_menu_create_empty_conf;
     }
-    else if ( iid == GPIO_PIN ) {
+    else if ( iid == S2_PIN6 ) {
         return connected_devices_menu_create_empty_conf;
     }
     return nullptr;
@@ -523,7 +523,7 @@ static void connected_devices_menu_device(SetupMenu *top) // dynamic!
         top->setDynContent();
 
         // the device special
-        SetupMenu::SetupMenuCreator_t smc = get_itf_menu_creator(did);
+        SetupMenu::SetupMenuCreator_t smc = get_dev_menu_creator(did);
         if ( smc ) {
             // add it straight into this menu
             (*smc)(top);

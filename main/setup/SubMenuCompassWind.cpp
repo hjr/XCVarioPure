@@ -219,7 +219,7 @@ int windResourcesAction(SetupMenuSelect *p) {
 // 	}
 // }
 
-void options_menu_create_compass_dev(SetupMenu *top) {
+void create_menu_compass_dev(SetupMenu *top) {
 	// SetupMenuSelect *compSensorCal = new SetupMenuSelect("MagSens Calib.", RST_NONE, compassSensorCalibrateAction);
 	// compSensorCal->addEntry("Cancel");
 	// compSensorCal->addEntry("Start");

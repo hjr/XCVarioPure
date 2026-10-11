@@ -21,8 +21,9 @@ constexpr int DUTY_CYCLE_MS = 200; // 200ms cycle time for adc
 constexpr size_t HSIZE = SENSOR_HISTORY_DURATION_MS / DUTY_CYCLE_MS;
 static __attribute__((aligned(4))) float  flps_buffer[ HSIZE + 1 ];
 
-FlapSens::FlapSens() :
+FlapSens::FlapSens(uint8_t port) :
     AnalogInput(flps_buffer, HSIZE, DUTY_CYCLE_MS, 1),
+    _port{static_cast<ADC_PORT>(port)},
     _alp_filter{0.08f, 0.5f}
 {
     _id = SensorId(SensorType::FLAP_POSITION, SensorId::SENSOR_LOCAL | 15);
@@ -33,11 +34,11 @@ FlapSens::~FlapSens() {
     flapSensor = nullptr;
 }
 
-FlapSens* FlapSens::create() {
+FlapSens* FlapSens::create(uint8_t port) {
     if (!flapSensor) {
-        flapSensor = new FlapSens();
+        flapSensor = new FlapSens(port);
         flapSensor->setup();
-        ESP_LOGI(FNAME, "Flap sensor configured");
+        ESP_LOGI(FNAME, "Flap sensor configured on port %d", static_cast<int>(port));
 
         flapSensor->pushAndPublish(0.f, Clock::getMillis());
 #ifdef DEBUG_AND_TEST
@@ -55,11 +56,27 @@ FlapSens* FlapSens::create() {
         }
 #endif
     }
+    else {
+        flapSensor->setup();
+    }
     return flapSensor;
 }
 
 bool FlapSens::setup() {
-    begin(ADC_ATTEN_DB_0, ADC_UNIT_1, ADC_CHANNEL_6, false);
+    switch (_port) {
+        case UNIT1_CHANNEL6:
+            begin(ADC_ATTEN_DB_0, ADC_UNIT_1, ADC_CHANNEL_6, false);
+            break;
+        case UNIT2_CHANNEL2:
+            begin(ADC_ATTEN_DB_0, ADC_UNIT_2, ADC_CHANNEL_2, false);
+            break;
+        case UNIT2_CHANNEL9:
+            begin(ADC_ATTEN_DB_0, ADC_UNIT_2, ADC_CHANNEL_9, false);
+            break;
+        default:
+            ESP_LOGW(FNAME, "Invalid port for FlapSens: %d", static_cast<int>(_port));
+            return false;
+    }
     return true;
 }
 
@@ -71,7 +88,7 @@ void FlapSens::postProcess() {
         ESP_LOGW(FNAME, "negative flap sensor reading: %f", wkraw);
         return;
     }
-    ESP_LOGI(FNAME,"flap sensor = %f", wkraw );
+    // ESP_LOGI(FNAME,"flap sensor = %f", wkraw );
     int raw_filtered = fast_iroundf(_alp_filter.filter(wkraw));
 
     if (FLAP) {
@@ -85,6 +102,14 @@ void FlapSens::postProcess() {
         }
     }
 }
+
+void FlapSens::changePort(uint8_t p) {
+    if (_port != p) {
+        _port = static_cast<ADC_PORT>(p);
+        setup();
+    }
+}
+
 
 void FlapSens::enterSimMode()
 {

@@ -7,7 +7,6 @@
  ***********************************************************/
 
 #include "AnalogInput.h"
-#include "sensor/SensorMgr.h"
 #include "logdefnone.h"
 
 #include <esp_adc/adc_cali.h>
@@ -24,7 +23,8 @@
 
 constexpr const unsigned DEFAULT_VREF = 1100;
 
-adc_oneshot_unit_handle_t AnalogInput::_adc_handle = nullptr;
+adc_oneshot_unit_handle_t AnalogInput::_unit1_handle = nullptr;
+adc_oneshot_unit_handle_t AnalogInput::_unit2_handle = nullptr;
 
 AnalogInput::AnalogInput(void *buf, size_t cap, uint32_t ums, int pm) :
     SensorTP<float>(buf, cap, ums, pm),
@@ -51,21 +51,36 @@ void AnalogInput::begin(adc_atten_t attenuation, adc_unit_t unit, adc_channel_t 
 {
     ESP_LOGI(FNAME, "begin() unit: %d ch:%d cal:%d att: %d", unit, ch, calibration, attenuation);
 
-    if (!_adc_handle) {
-        adc_oneshot_unit_init_cfg_t init_config = {
-            .unit_id = unit,
-            .clk_src = (adc_oneshot_clk_src_t)0,
-            .ulp_mode = ADC_ULP_MODE_DISABLE,
-        };
-        ESP_ERROR_CHECK(adc_oneshot_new_unit(&init_config, &_adc_handle));
+    if (unit == ADC_UNIT_1) {
+        if (!_unit1_handle) {
+            adc_oneshot_unit_init_cfg_t init_config = {
+                .unit_id = ADC_UNIT_1,
+                .clk_src = (adc_oneshot_clk_src_t)0,
+                .ulp_mode = ADC_ULP_MODE_DISABLE,
+            };
+            ESP_ERROR_CHECK(adc_oneshot_new_unit(&init_config, &_unit1_handle));
+        }
+        _unit_handle = _unit1_handle;
+    } else if (unit == ADC_UNIT_2) {
+        if (!_unit2_handle) {
+            adc_oneshot_unit_init_cfg_t init_config = {
+                .unit_id = ADC_UNIT_2,
+                .clk_src = (adc_oneshot_clk_src_t)0,
+                .ulp_mode = ADC_ULP_MODE_DISABLE,
+            };
+            ESP_ERROR_CHECK(adc_oneshot_new_unit(&init_config, &_unit2_handle));
+        }
+        _unit_handle = _unit2_handle;
     }
+
+    assert(_unit_handle != nullptr);
 
     adc_oneshot_chan_cfg_t config = {
         .atten = attenuation,
         .bitwidth = ADC_BITWIDTH_12,
     };
     _adc_ch = ch;
-    ESP_ERROR_CHECK(adc_oneshot_config_channel(_adc_handle, _adc_ch, &config));
+    ESP_ERROR_CHECK(adc_oneshot_config_channel(_unit_handle, _adc_ch, &config));
 
     if (calibration) {
         adc_cali_line_fitting_config_t cali_config = {
@@ -80,6 +95,7 @@ void AnalogInput::begin(adc_atten_t attenuation, adc_unit_t unit, adc_channel_t 
         }
         adc_cali_create_scheme_line_fitting(&cali_config, &_adc_cali);
     }
+    ESP_LOGI(FNAME, "ADC begin unit %d / %d", unit+1, ch);
 }
 
 bool AnalogInput::doRead(float& val) {
@@ -88,7 +104,7 @@ bool AnalogInput::doRead(float& val) {
     esp_err_t err = ESP_OK;
     for (int i = 0; i < BATCH; i++) {
         int rawadc = 0;
-        err = adc_oneshot_read(_adc_handle, _adc_ch, &rawadc);
+        err = adc_oneshot_read(_unit_handle, _adc_ch, &rawadc);
         if ( err != ESP_OK ) { break; }
         adc += rawadc;
     }

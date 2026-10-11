@@ -28,7 +28,7 @@ typedef enum {
     BT_SPP,
     BT_LE,
     OW_BUS,
-    GPIO_PIN,
+    S2_PIN6,
     XCVPROXY // todo not yet implemented
 } InterfaceId;
 

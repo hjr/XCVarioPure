@@ -9,6 +9,8 @@
 #include "SubMenuFlap.h"
 
 #include "Flap.h"
+#include "comm/DeviceMgr.h"
+#include "comm/WifiApSta.h"
 #include "sensor/adc/FlapSens.h"
 #include "Atmosphere.h"
 #include "setup/SetupNG.h"
@@ -118,7 +120,25 @@ static int flap_cal_act(SetupMenuSelect *p)
     return 0;
 }
 
-void options_menu_create_flap_dev(SetupMenu *wkm)
+static int flap_adc_act(SetupMenuSelect *p)
+{
+    ESP_LOGI(FNAME, "ADC channel selected: %d", p->getSelect());
+
+    assert(flapSensor);
+    flapSensor->changePort(p->getSelect());
+
+    Device *flapdev = DEVMAN->getDevice(DeviceId::FLAP_SENS_DEV);
+    assert(flapdev);
+    flapdev->_protos = {(uint8_t)p->getSelect()};
+    const DeviceAttributes &da = DEVMAN->getDevAttr(DeviceId::FLAP_SENS_DEV);
+    if (da.nvsetup) {
+        // save it to nvs
+        da.nvsetup->set(flapdev->getNvsData(), false, false);
+    }
+    return 0;
+}
+
+void create_menu_flap_dev(SetupMenu *wkm)
 {
     SetupAction *wkes = new SetupAction("Check Sensor", select_flap_sens_check, 0);
     wkes->setHelp("Check raw sensor readings");
@@ -129,6 +149,21 @@ void options_menu_create_flap_dev(SetupMenu *wkm)
     wkcal->addEntry("Start");
     wkcal->setHelp("Calibrate the flap sensor to the configured levels. (Press button to proceed)");
     wkm->addEntry(wkcal);
+
+    if (hardwareRevision.get() == XCVARIO_21) {
+        SetupMenuSelect *adcport = new SetupMenuSelect("ADC Channel", RST_NONE, flap_adc_act);
+        adcport->addEntry("ADC IO-34");
+        if ( !WIFI ) {
+            adcport->addEntry("ADC IO-2");
+            adcport->addEntry("ADC IO-26");
+            adcport->setHelp("Mind: IO-2 and IO-26 are not operable when WiFi is enabled");
+        }
+        else {
+            adcport->setHelp("Map the ADC channel for the flap sensor");
+        }
+        adcport->setSelect(flapSensor->getPort());
+        wkm->addEntry(adcport);
+    }
 }
 
 
