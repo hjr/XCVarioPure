@@ -38,7 +38,7 @@ void SensorTP<T>::dump(int interval_ms) const {
     ESP_LOGI(FNAME, "Dumping last %d ms, count=%d", interval_ms, count);
     for (int i = 0; i < count; ++i) {
         if constexpr (std::is_same_v<T, float>) {
-            float val = _history[i];
+            [[maybe_unused]] float val = _history[i];
             ESP_LOGI(FNAME, "  [%03d]: %f", i, val);
         }
         else if constexpr (std::is_same_v<T, vector_f>) {

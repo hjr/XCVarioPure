@@ -822,9 +822,11 @@ void DeviceManager::reserectFromNvs()
     ESP_LOGI(FNAME, "Reserected %d dev entries from NVS", nr_set_up);
 }
 
+// called when at boot time no devices are stored in nvs
 void DeviceManager::introduceDevices()
 {
-    // A very first start w/ devices. Add a Flarm automatically
+    // A very first start of pure. 
+    // Add a Flarm automatically.
     // Check if there is a legacy history on the device
     // S1
     int val;
@@ -842,11 +844,9 @@ void DeviceManager::introduceDevices()
         S1->ConfigureIntf(SM_FLARM); // load flarm serial default profile
         dev = DEVMAN->addDevice(FLARM_DEV, FLARM_P, 0, 0, S1_RS232, true);
         DEVMAN->addDevice(FLARM_DEV, FLARMBIN_P, 0, 0, NO_PHY, true);
+        if ( dev ) { flarm_devsetup.set(dev->getNvsData()); } // save it to nvs
     }
-    if ( dev ) {
-        // save it to nvs
-        flarm_devsetup.set(dev->getNvsData());
-    }
+    
     // S2
     bool setup_navi = true;
      if ( SetupCommon::getOldInt("SERIAL1_SPEED", val) ) {

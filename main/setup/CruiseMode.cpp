@@ -42,11 +42,11 @@ void CruiseMode::updateCache()
     ESP_LOGI(FNAME, "update cruise mode: %d", _cmode);
 
     // set the vario mode cache
-    if (vario_mode.get() == VARIO_NETTO || (_cmode && (vario_mode.get() == CRUISE_ONLY_NETTO))) {
-        if (netto_mode.get() == NETTO_NORMAL) {
+    if (vario_mode.get() == static_cast<int>(e_vario_mode::VARIO_NETTO) || (_cmode && (vario_mode.get() == static_cast<int>(e_vario_mode::CRUISE_ONLY_NETTO)))) {
+        if (netto_mode.get() == static_cast<int>(e_netto_mode::NETTO_NORMAL)) {
             _vmode = MODE_NORMAL_NETTO;
-        } else { // Super Netto
-            _vmode = MODE_REL_NETTO;
+        } else {
+            _vmode = MODE_REL_NETTO; // Super Netto
         }
     } else {
         _vmode = MODE_BRUTTO;

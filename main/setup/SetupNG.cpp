@@ -29,6 +29,7 @@
 #include "screen/element/Altimeter.h"
 #include "screen/element/MultiGauge.h"
 #include "sensor/press_diff/AirspeedSensor.h"
+#include "sensor/mag/Compass.h"
 #include "Atmosphere.h"
 #include "sensor/imu/ImuSensor.h"
 #include "sensor/imu/GyroMPU6050.h"
@@ -338,9 +339,6 @@ static void calc_speeds() {
     }
 }
 
-static void kick_client_loop() {
-    xTaskNotifyGive(ReadSensorsLoop);
-}
 
 void change_volume() {
 	float vol = audio_volume.get();

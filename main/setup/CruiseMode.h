@@ -25,6 +25,7 @@
 class CruiseMode
 {
 public:
+    using CruiseAudio = enum : uint8_t { AUDIO_S2F, AUDIO_VARIO };
     using VarioModeBits = enum : uint8_t { MODE_BRUTTO=0, MODE_NORMAL_NETTO=1, MODE_REL_NETTO=3 }; // vario mode bits
     CruiseMode();
     bool getCMode() const { return _cmode; };

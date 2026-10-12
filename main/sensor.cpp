@@ -1050,7 +1050,7 @@ extern "C" void  app_main(void)
     Units::setAll();  // set all units according to setup
 
     if ( gflags.first_pure_run ) {
-        ESP_LOGI(FNAME, "First Pro run, do some migration work");
+        ESP_LOGI(FNAME, "First pur run, do some migration work");
         int tmp;
         if ( SetupCommon::getOldInt("CANMOD", tmp) ) {
             if (tmp == 1) {

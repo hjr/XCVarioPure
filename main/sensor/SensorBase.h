@@ -11,6 +11,7 @@
 #include "SensorTypes.h"
 #include "setup/SetupNG.h"
 #include "Filters.h"
+#include "math/vector_3d_fwd.h"
 #include "driver/time/Clock.h"
 // #include "logdef.h"
 
