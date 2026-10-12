@@ -1,8 +1,7 @@
 
 #include "Webserver.h"
-#include "sdkconfig.h"
 #include "coredump_to_server.h"
-#include "setup/SetupNG.h"
+#include "setup/SetupCommon.h"
 #include "setup/MenuEntry.h"
 #include "comm/DeviceMgr.h"
 #include "protocol/NMEA.h"
@@ -13,9 +12,6 @@
 #include <cstdint>
 
 cWebserver* cWebserver::m_instance = nullptr;
-extern bool do_factory_reset();
-extern void send_config( httpd_req *req );
-extern int restore_config( int len, char *data );
 
 // file assets
 extern const uint8_t index_html_gz_start[]          asm("_binary_index_html_gz_start");
@@ -403,7 +399,7 @@ esp_err_t GET_backup_handler(httpd_req_t *req)
 	ESP_LOGI(FNAME, "Backup Requested");
 
 	httpd_resp_set_type(req, "text/html");
-    send_config(req);
+    SetupCommon::sendConfigChanges(req);
 	return ESP_OK;
 }
 
@@ -419,7 +415,7 @@ static esp_err_t POST_restore_handler(httpd_req_t *req)
     ESP_LOGI(FNAME, "Len %d", recv_len );
 	httpd_resp_set_type(req, "text/html");
 	buff[recv_len] = '\0';
-	int items = restore_config( recv_len, buff );
+	int items = SetupCommon::restoreConfigChanges( recv_len, buff );
 	if( items ){
 		char res[80];
 		sprintf(res,"%d config items restored successfully", items );
@@ -442,7 +438,7 @@ esp_err_t DELETE_reset_handler(httpd_req_t *req)
 
 	httpd_resp_set_type(req, "text/html");
 	httpd_resp_send(req, "Okay", 5 );
-	SetupCommon::prepareFactoryReset();
+	SetupCommon::factoryReset(FACTORY_RST);
 	MenuEntry::reBoot(3);
 
 	return ESP_OK;

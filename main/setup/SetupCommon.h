@@ -15,8 +15,14 @@ class XCVSyncMsg;
 
 struct httpd_req;
 
+// determines if data is reset to defaults on factory reset
+enum e_reset_t { RESET_NONE, FACTORY_RST, USER_RST }; // -> reset threshold
+// determines if data is synched from/to client. BIDIR means sync at commit from both sides
+enum e_sync_t { SYNC_NONE, SYNC_FROM_MASTER, SYNC_FROM_CLIENT, SYNC_BIDIR };
+enum class quantity_t : uint8_t { QUANT_NONE, QUANT_TEMPERATURE, QUANT_ALT, QUANT_HSPEED, QUANT_HSLEGACY, QUANT_VSPEED, QUANT_QNH, QUANT_MASS, QUANT_TIME };
+
 struct t_setup_flags {
-    bool _reset    : 1; // reset data on factory reset
+    uint8_t _reset : 2; // reset conditions: ==0: never (->use NVS to clear this one), >=FACTORY_RST: on factory reset, >=USER_RST: on user reset only
     bool _volatile : 1; // none nvs, run-time (black board) item only
     uint8_t _sync  : 2; // sync mode with client device
     uint8_t _quant : 3; // quantity
@@ -45,7 +51,7 @@ public:
 	bool write();
 	bool exists() const ;
 	bool commit();
-	bool mustReset() const { return flags._reset; }
+	int getReset() const { return flags._reset; }
 	const char* key() const { return _key.data(); }
 	bool sync();
 	inline bool getDirty() const { return flags._dirty; }
@@ -64,7 +70,7 @@ public:
 	static SetupCommon * getMember( const char * key );
 	static bool syncEntry( int entry );
 	static int numEntries();
-	static void giveConfigChanges( httpd_req *req, bool log_only=false );
+	static void sendConfigChanges(httpd_req *req);
 	static int restoreConfigChanges( int len, char *data );
 	static bool getOldFloat( const char * key, float &val );
 	static bool getOldInt( const char * key, int &val );
@@ -77,8 +83,8 @@ public:
 	static bool isClient();
     static bool isWired();
 	static bool haveWLAN();
-    static void commitDirty();
-    static void prepareFactoryReset();
+    static bool commitDirty();
+	static bool factoryReset(int resetThershold);
 
     // variables
 protected:
@@ -89,7 +95,6 @@ protected:
 
 private:
 	static XCVSyncMsg *syncProto;
-	static bool factoryReset();
 	static std::vector<SetupCommon *> instances;
 	static char _ID[18];
 	static char default_id[6];

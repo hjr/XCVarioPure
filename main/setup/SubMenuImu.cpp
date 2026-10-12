@@ -552,7 +552,7 @@ void system_menu_create_hardware_imu(SetupMenu *top) {
         }
     }
 
-	SetupMenuSelect *rpyl = new SetupMenuSelect("AHRS RPYL", RST_NONE, nullptr, &ahrs_rpyl_dataset);
+	SetupMenuSelect *rpyl = new SetupMenuSelect("AHRS RPYL", RST_NONE, nullptr, &ahrs_rpyl_nmea);
 	top->addEntry(rpyl);
 	rpyl->setHelp("Send LEVIL AHRS like $RPYL sentence for artifical horizon");
 	rpyl->mkEnable();

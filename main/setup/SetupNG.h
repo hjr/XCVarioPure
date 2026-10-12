@@ -62,7 +62,6 @@ enum class e_netto_mode : uint8_t { NETTO_NORMAL, NETTO_RELATIVE };
 typedef enum e_screen_mode { SCREEN_OFF, SCREEN_DYNAMIC, SCREEN_ON, SCREEN_PRIMARY } e_screen_mode_t;
 enum e_windanalyser_mode { WA_OFF=0, WA_STRAIGHT=1, WA_CIRCLING=2, WA_BOTH=3, WA_EXTERNAL=4 }; // do not change (bit-field)
 enum e_logging { LOGG_DISABLE, LOGG_WIND, LOGG_GYRO_MAG, LOGG_BOTH, LOGG_RAW_SENSOR_DATA }; // bit field (!)
-enum class quantity_t : uint8_t { QUANT_NONE, QUANT_TEMPERATURE, QUANT_ALT, QUANT_HSPEED, QUANT_HSLEGACY, QUANT_VSPEED, QUANT_QNH, QUANT_MASS, QUANT_TIME };
 enum temperature_unit_t { T_CELCIUS, T_FAHRENHEIT, T_KELVIN };
 enum class alt_unit_t : uint8_t { ALT_UNIT_METER, ALT_UNIT_FT, ALT_UNIT_FL };
 enum dst_unit_t { DST_UNIT_M, DST_UNIT_FT, DST_UNIT_MILES, DST_UNIT_NAUTICAL_MILES };
@@ -70,8 +69,6 @@ enum speed_unit_t { SPEED_UNIT_KMH, SPEED_UNIT_MPH, SPEED_UNIT_KNOTS };
 enum vario_unit_t { VARIO_UNIT_MS, VARIO_UNIT_FPM, VARIO_UNIT_KNOTS };
 enum qnh_unit_t { QNH_HPA, QNH_INHG };
 typedef enum e_compasss_sensor_type { CS_DISABLE=0, CS_I2C=1, CS_CAN=3 } e_compasss_sensor_type_t;
-typedef enum e_sync { SYNC_NONE, SYNC_FROM_MASTER, SYNC_FROM_CLIENT, SYNC_BIDIR } e_sync_t;       // determines if data is synched from/to client. BIDIR means sync at commit from both sides
-typedef enum e_reset { RESET_NO, RESET_YES } e_reset_t;   // determines if data is reset to defaults on factory reset
 enum e_volatility { VOLATILE, PERSISTENT };  // stored in RAM only, or additionally in FLASH
 enum e_altimeter_source { ALT_TE_SENSOR, ALT_BARO_SENSOR, ALT_EXTERNAL };
 typedef enum e_s2f_arrow_color { AC_WHITE_WHITE, AC_BLUE_BLUE, AC_GREEN_RED } e_s2f_arrow_color_t;
@@ -129,7 +126,7 @@ class SetupNG : public SetupCommon {
    public:
     SetupNG(const char* akey,
             T adefault,
-            bool reset = true,
+            uint8_t reset = USER_RST,
             e_sync_t sync = SYNC_NONE,
             e_volatility vol = PERSISTENT,
             void (*action)() = nullptr,
@@ -264,7 +261,6 @@ extern SetupNG<float>  		deadband;
 extern SetupNG<float>  		deadband_neg;
 
 extern SetupNG<float>  		wifi_max_power;
-extern SetupNG<int>  		factory_reset;
 extern SetupNG<int>  		normal_setup;
 extern SetupNG<int>  		alt_select;
 extern SetupNG<int>  		fl_auto_transition;
@@ -288,7 +284,6 @@ extern SetupNG<float>  		s2f_deadband_neg;
 extern SetupNG<float>  		s2f_delay;
 extern SetupNG<float>  		factory_volt_adjust;
 
-extern SetupNG<int>  		display_type;
 extern SetupNG<int>  		display_orientation;
 extern SetupNG<int>  		flapbox_enable;
 extern SetupNG<kmh_t>  		wk_speed_0;
@@ -318,14 +313,12 @@ extern SetupNG<int>  		software_update;
 extern SetupNG<t_tenchar_id> ota_ap;
 extern SetupNG<t_tenchar_id> ota_pwd;
 extern SetupNG<int>  		battery_display;
-extern SetupNG<int>		    log_level;
 extern SetupNG<float>		te_comp_adjust;
 extern SetupNG<int>		    te_comp_enable;
 extern SetupNG<int>		    rotary_inc;
 extern SetupNG<int>		    student_mode;
 extern SetupNG<float>		password;
-extern SetupNG<int>		    ahrs_rpyl_dataset;
-extern SetupNG<int>		    ahrs_autozero;
+extern SetupNG<int>		    ahrs_rpyl_nmea;
 extern SetupNG<float>		ahrs_gyro_factor;
 extern SetupNG<float>		ahrs_min_gyro_factor;
 extern SetupNG<float>		ahrs_dynamic_factor;

@@ -133,6 +133,7 @@ bool ESP32NVS::eraseAll(){
 		return false;
 	}
 	esp_err_t _err = nvs_erase_all(h);
+    _err |= nvs_commit(h);
 	if(_err != ESP_OK){
 		ret = false;
 	}
@@ -169,7 +170,7 @@ bool ESP32NVS::getBlob(const char * key, void *blob, size_t *length){
 	}
 	esp_err_t err = nvs_get_blob(h, key, blob, length);
 	if( err != ESP_OK ){
-		ESP_LOGW(FNAME,"get blob err=%s(%d) key=%s len=%d", nvsErr(err), err, key, (int)(length));
+		ESP_LOGW(FNAME,"get blob err=%s(%d) key=%s len=%d", nvsErr(err), err, key, *length);
 		ret = false;
 	}
 	close(h);

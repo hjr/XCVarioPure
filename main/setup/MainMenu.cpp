@@ -22,6 +22,7 @@
 #include "screen/element/ThermalAssist.h"
 #include "setup/SensorTest.h"
 #include "sensor/VarioFilter.h"
+#include "ESP32NVS.h"
 #include "S2F.h"
 #include "Flarm.h"
 #include "version.h"
@@ -68,17 +69,11 @@ static int caid_reference(SetupMenuSelect* p) {
     return 0;
 }
 
-static int factory_nvs_action(SetupMenuSelect* p) {
-    if (p->getValue() == 1) {
-        factory_reset.set( 1);
+static int user_nvs_action(SetupMenuSelect* p) {
+    if (p->getSelect() == 1) {
+        SetupCommon::factoryReset(USER_RST);
     }
-    else if (p->getValue() == 2) {
-        ESP_LOGI(FNAME, "Clearing NVS...");
-        ESP_ERROR_CHECK(nvs_flash_erase());
-        nvs_flash_init();
-        p->reBoot();
-    }
-    else if (p->getValue() == 3) {
+    else if (p->getSelect() == 2) {
         normal_setup.set(0);
     }
     return 0;
@@ -158,7 +153,7 @@ int do_display_test(SetupAction* p) {
 }
 
 int do_factory_test(SetupMenuSelect* p) {
-    switch ( p->getSelect() ) {
+    switch ( p->getValue() ) {
         case 0:
             do_display_test(nullptr);
             break;
@@ -173,6 +168,14 @@ int do_factory_test(SetupMenuSelect* p) {
         case 3:
             airspeed_sensor.set(AirspeedSensor::TE4525);
             tube_swap(nullptr);
+            break;
+        case 4:
+            SetupCommon::factoryReset(FACTORY_RST);
+            p->reBoot();
+            break;
+        case 5:
+            NVS.eraseAll();
+            p->reBoot();
             break;
     }
     return 0;
@@ -780,15 +783,12 @@ static void system_menu_create_software(SetupMenu *top) {
         top->addEntry(dis);
     }
 
-    SetupMenuSelect* fa = new SetupMenuSelect("Factory Reset", RST_IMMEDIATE, factory_nvs_action);
-    fa->setHelp("Reset all settings to factory defaults (metric system, 5 m/s vario range, etc.)");
+    SetupMenuSelect* fa = new SetupMenuSelect("My Settings", RST_IMMEDIATE, user_nvs_action);
+    fa->setHelp("Reset user customizing to working defaults");
     fa->addEntry("Cancel");
-    fa->addEntry("ResetAll");
-#ifdef DEBUG_AND_TEST
-    fa->addEntry("ClearNVS", 2);
-#endif
+    fa->addEntry("Reset");
     if (gflags.expert) {
-        fa->addEntry("Enter Factory Menu", 3);
+        fa->addEntry("Factory Menu");
     }
     top->addEntry(fa);
 
@@ -1017,10 +1017,10 @@ void setup_create_root(SetupMenu *top) {
 	}
 	// Student mode: Query password
 	if (student_mode.get()) {
-		SetupMenuValFloat *passw = new SetupMenuValFloat("Expert Password", "", nullptr, &password);
+		SetupMenuValFloat *passw = new SetupMenuValFloat("Setup Password", "", nullptr, &password);
 		passw->setPrecision(0);
 		passw->setHelp(
-				"To exit from student mode enter expert password and restart device after expert password has been set correctly");
+				"To exit from student mode enter setup password");
 		passw->setTerminateMenu();
 		top->addEntry(passw);
 	} else {
@@ -1105,12 +1105,14 @@ SetupMenu* SetupMenu::createFactorySetup() {
     setup->addEntry(met_adj);
 
     SetupMenuSelect *test = new SetupMenuSelect("CheckIt", RST_NONE, do_factory_test);
-    test->addEntry("Display");
-    test->addEntry("Sensors");
+    test->addEntry("Display", 0);
+    test->addEntry("Sensors", 1);
     if ( airspeed_sensor.get() == AirspeedSensor::ABPMRR || airspeed_sensor.get() == AirspeedSensor::TE4525 ) {
-        test->addEntry("Select ABPMRR");
-        test->addEntry("Select TE4525");
+        test->addEntry("Select ABPMRR", 2);
+        test->addEntry("Select TE4525", 3);
     }
+    test->addEntry("Factory Reset", 4);
+    test->addEntry("Clear NVS", 5);
     setup->addEntry(test);
 
     if ( imuSensor ) {

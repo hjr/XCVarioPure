@@ -71,7 +71,7 @@ static void wind_calc_task(void *arg)
                 static uint8_t count = 0;
                 if ( ToyNmeaPrtcl ) {
 
-                    if (ahrs_rpyl_dataset.get())
+                    if (ahrs_rpyl_nmea.get())
                     {
                         ToyNmeaPrtcl->sendXcvRPYL();
                         ToyNmeaPrtcl->sendXcvAPENV1();
