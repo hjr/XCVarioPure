@@ -199,7 +199,6 @@ extern SetupNG<second_t>  	vario_delay;
 extern SetupNG<second_t>  	vario_av_delay;
 extern SetupNG<mps_t>  		scale_range;
 extern SetupNG<int>			log_scale;
-extern SetupNG<float>  		ballast;
 extern SetupNG<kilogram_t>  ballast_kg;
 extern SetupNG<kilogram_t>	empty_weight;
 extern SetupNG<kilogram_t>	crew_weight;

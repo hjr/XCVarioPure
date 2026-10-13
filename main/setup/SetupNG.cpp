@@ -428,7 +428,6 @@ SetupNG<second_t>  		vario_delay( "VARIO_DELAY", 4.0, USER_RST, SYNC_NONE, PERSI
 SetupNG<second_t>  		vario_av_delay( "VARIO_AV_DELAY", 30.0, USER_RST, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(7.0, 50.0, 1)); // changed to 20 seconds (quasi standard) what equals to a half circle
 SetupNG<mps_t>  		scale_range( "VARIO_RANGE", 5.0, USER_RST, SYNC_NONE, PERSISTENT, change_audio, quantity_t::QUANT_VSPEED, LIMITS(3.0, 7.0, 1));
 SetupNG<int>			log_scale( "LOG_SCALE", 0, USER_RST);
-SetupNG<float>  		ballast( "BALLAST" , 0.0, 0, SYNC_NONE, VOLATILE, 0 );  // ballast increase from reference weight in %
 SetupNG<kilogram_t>  	ballast_kg( "BAL_KG" , 0.0, USER_RST, SYNC_BIDIR, PERSISTENT, change_bal_water, quantity_t::QUANT_MASS, LIMITS(0.0, 500, 1));
 SetupNG<kilogram_t>		empty_weight( "EMPTY_WGT", 361.2, FACTORY_RST, SYNC_BIDIR, PERSISTENT, change_empty_weight, quantity_t::QUANT_MASS, LIMITS(0, 1000, 1));
 SetupNG<kilogram_t>		crew_weight( "CREW_WGT", 80, USER_RST, SYNC_BIDIR, PERSISTENT, change_crew_weight, quantity_t::QUANT_MASS, LIMITS(0, 300, 1));

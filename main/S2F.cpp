@@ -22,8 +22,6 @@
 
 S2F Speed2Fly;
 
-float S2F::bal_percent = 0.f;
-
 void S2F::begin(){
 	_glider_index = Polars::findMyGlider(glider_type.get());
 	if( empty_weight.get() == 0 )
@@ -249,7 +247,7 @@ void S2F::recalculatePolar()
 	d = v2 - v3;
 	a1 = d == 0. ? 0. : (w2 - w3 - a2 * (v2 * v2 - v3 * v3)) / d;
 	a0 = w3 - a2 * v3 * v3 - a1 * v3;
-	const float loading_factor = std::sqrtf((myballast + 100.0) / 100.0);
+	const float loading_factor = std::sqrtf(myballast);
 	a0 = a0 * loading_factor;
 	a2 = a2 / loading_factor; // wingload  e.g. 100l @ 500 kg = 1.2 and G-Force
 	a0 = a0 * ((bugs.get() + 100.0) / 100.0);
@@ -263,9 +261,8 @@ void S2F::calculateOverweight()
 {
 	ESP_LOGI(FNAME,"S2F::calculateOverweight()" );
 	gross_weight.set( empty_weight.get() + crew_weight.get() + ballast_kg.get() );
-	myballast = ( ((100*gross_weight.get()) / (polar_wingload.get()*polar_wingarea.get())) - 100.0 );
-	ESP_LOGI(FNAME,"New ballast overweight: %.2f %%", myballast );
-	ballast.set( myballast );
+	myballast = gross_weight.get() / (polar_wingload.get()*polar_wingarea.get());
+	ESP_LOGI(FNAME,"New ballast overweight: x %.42f", myballast );
 }
 
 // minimum sink, circling sink, best circling speed
@@ -280,7 +277,7 @@ void S2F::recalcSinkNSpeeds() {
     _circling_speed = 1.2 * _min_sink_speed;
     _circling_sink = getSink(_circling_speed);
     // use user defined/confirmed stall speed
-    const float loading_factor = std::sqrtf((myballast + 100.0) / 100.0);
+    const float loading_factor = std::sqrtf(myballast);
     _stall_speed = Units::kmh_to_mps(polar_stall_speed.get()) * std::sqrtf(loading_factor);
 
     ESP_LOGI(FNAME, "Airspeed @ min Sink =%3.1f kmh", Units::mps_to_kmh(_min_sink_speed));
@@ -288,10 +285,6 @@ void S2F::recalcSinkNSpeeds() {
     ESP_LOGI(FNAME, "Circling Speed      =%3.1f kmh", Units::mps_to_kmh(_circling_speed));
     ESP_LOGI(FNAME, "Stall    Speed      =%2.3f km/h", polar_stall_speed.get());
     ESP_LOGI(FNAME, "Stall warn @        =%2.3f", Units::mps_to_kmh(_stall_speed));
-}
-
-float S2F::getBallastPercent() {
-    return bal_percent;
 }
 
 float S2F::getLoadFactor() {

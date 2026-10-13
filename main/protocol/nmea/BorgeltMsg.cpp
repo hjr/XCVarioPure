@@ -6,7 +6,8 @@
  ***       Copyright (C) Rohs Engineering Design         ***
  ***********************************************************/
 
-#include "BorgeltMsg.h"
+#include "S2F.h"
+#include "protocol/nmea/BorgeltMsg.h"
 #include "protocol/nmea_util.h"
 #include "comm/DataLink.h"
 #include "comm/Messages.h"
@@ -62,7 +63,7 @@ void NmeaPrtcl::sendBorgelt()
     msg->buffer += buffer;
     std::sprintf(buffer, ",%d", int(bugs.get()));
     msg->buffer += buffer;
-    std::sprintf(buffer, ",%1.2f", (ballast.get()+100.f)/100.f);
+    std::sprintf(buffer, ",%1.2f", Speed2Fly.getBallastFactor());
     msg->buffer += buffer;
     std::sprintf(buffer, ",%1d", !CRMOD.getCMode());
     msg->buffer += buffer;

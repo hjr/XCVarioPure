@@ -8,6 +8,7 @@
 
 #include "XCVarioMsg.h"
 
+#include "S2F.h"
 #include "math/Floats.h"
 #include "protocol/nmea_util.h"
 #include "comm/DataLink.h"
@@ -17,7 +18,6 @@
 #include "sensor/imu/AccMPU6050.h"
 #include "sensor/imu/GyroMPU6050.h"
 #include "math/Units.h"
-#include "sensor.h"
 
 #include "logdefnone.h"
 #include "math/vector_3d_fwd.h"
@@ -111,7 +111,7 @@ void NmeaPrtcl::sendStdXCVario()
     msg->buffer += ',';
     if (XCVarioMsg::getXcvProtocolVersion() <= 1)
     {
-        std::sprintf(str, "%1.3f", (ballast.get() + 100.f) / 100.f);
+        std::sprintf(str, "%1.3f", Speed2Fly.getBallastFactor());
         msg->buffer += str;
     }
     msg->buffer += ',' + std::to_string(!CRMOD.getCMode());

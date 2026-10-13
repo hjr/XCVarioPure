@@ -1,6 +1,7 @@
 
 #include "Flap.h"
 
+#include "S2F.h"
 #include "glider/Polars.h"
 #include "setup/SetupNG.h"
 #include "setup/Capability.h"
@@ -113,7 +114,7 @@ void Flap::prepLevels()
     {
         // adapt speeds to actual wingload
         for ( FlapLevel &fl : flevel ) {
-            fl.prep_speed = Units::kmh_to_mps(fl.nvs_speed) * std::sqrtf( (ballast.get()+100.0) / 100.0 );
+            fl.prep_speed = Units::kmh_to_mps(fl.nvs_speed) * std::sqrtf(Speed2Fly.getBallastFactor());
             ESP_LOGI( FNAME, "Adjusted flap speed %.1f", fl.prep_speed );
         }
 

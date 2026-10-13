@@ -36,19 +36,18 @@ public:
 	float getCw( mps_t v );
 	static float getLoadFactor();
     int getMyGliderIdx() const { return _glider_index; }
+    float getBallastFactor() const { return myballast; }
 	void test(void);
 
 private:
 	void recalculatePolar();
 	void calculateOverweight();
 	void recalcSinkNSpeeds();
-	static float getBallastPercent();
 	// float getVn( float v );
 	bool calcValidPolar();
 
     int _glider_index = 0;
-	float myballast = 1.f;
-	static float bal_percent;
+	float myballast = 1.f; // classical ballast definition (once as % over the ref weight) as plain factor
 	float a0=0, a1=0, a2=0;
 	float w0=0, w1=0, w2=0;
 	mps_t _min_sink_speed = 0.f;
