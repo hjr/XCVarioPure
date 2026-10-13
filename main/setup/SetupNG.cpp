@@ -409,7 +409,7 @@ static void ch_airborne_state() {
 //////////////////////////
 // configuration variables
 SetupNG<mps_t>          MC(  "MacCready", 0.5, USER_RST, SYNC_BIDIR, PERSISTENT, change_mc, quantity_t::QUANT_VSPEED, LIMITS(0.0, 9.9, 0.1) );
-SetupNG<pascal_t>  		QNH( "QNHpa", 101325., USER_RST, SYNC_BIDIR, PERSISTENT, changeQnh, quantity_t::QUANT_QNH, LIMITS(90000., 110000., 6.0) );
+SetupNG<pascal_t>  		QNH( "QNHpa", 101325., FACTORY_RST, SYNC_BIDIR, PERSISTENT, changeQnh, quantity_t::QUANT_QNH, LIMITS(90000., 110000., 6.0) );
 SetupNG<float> 			polar_wingload( "POLAR_WINGLOAD", 34.40, FACTORY_RST, SYNC_BIDIR, PERSISTENT, change_ballast, quantity_t::QUANT_NONE, LIMITS(10.0, 100.0, 0.1) );
 const limits_t polar_speed_limits = {0.0, 450.0, 1};
 SetupNG<kmh_t> 			polar_speed1( "POLAR_SPEED1",   80, FACTORY_RST, SYNC_BIDIR, PERSISTENT, change_polar, quantity_t::QUANT_NONE, &polar_speed_limits);
@@ -511,9 +511,9 @@ SetupNG<meter_t>  		airfield_elevation( "ELEVATION", NO_ELEVATION, FACTORY_RST, 
 SetupNG<float>  		s2f_deadband( "DEADBAND_S2F", 10.0, USER_RST, SYNC_BIDIR, PERSISTENT, nullptr, quantity_t::QUANT_HSLEGACY, LIMITS(.0, 25.0, 1));
 SetupNG<float>  		s2f_deadband_neg( "DB_S2F_NEG", -10.0, USER_RST, SYNC_BIDIR, PERSISTENT, nullptr, quantity_t::QUANT_HSLEGACY, LIMITS(-25.0, .0, 1));
 SetupNG<float>  		s2f_delay( "S2F_DELAY", 5.0, USER_RST, SYNC_BIDIR, PERSISTENT, nullptr, quantity_t::QUANT_TIME, LIMITS(2.0, 12.0, 0.5));
-SetupNG<float>  		factory_volt_adjust("FACT_VOLT_ADJ", 0.00815, FACTORY_RST, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(-25.0, 25.0, 0.01));
+SetupNG<float>  		factory_volt_adjust("FACT_VOLT_ADJ", 0.00815, RESET_NONE, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(-25.0, 25.0, 0.01));
 
-SetupNG<int>  			display_orientation("DISPLAY_ORIENT" , DISPLAY_NORMAL, USER_RST, SYNC_NONE, PERSISTENT, chg_display_orientation );
+SetupNG<int>  			display_orientation("DISPLAY_ORIENT" , DISPLAY_NORMAL, FACTORY_RST, SYNC_NONE, PERSISTENT, chg_display_orientation );
 SetupNG<int>  			flapbox_enable( "FLAP_ENABLE", 0, FACTORY_RST, SYNC_NONE, PERSISTENT, flap_act);
 SetupNG<kmh_t>  		wk_speed_0( "WK_SPD_0", 0, FACTORY_RST, SYNC_BIDIR, PERSISTENT, flap_update_act, quantity_t::QUANT_HSLEGACY, &polar_speed_limits);
 SetupNG<kmh_t>  		wk_speed_1( "WK_SPD_1", 0, FACTORY_RST, SYNC_BIDIR, PERSISTENT, flap_update_act, quantity_t::QUANT_HSLEGACY, &polar_speed_limits);
@@ -530,17 +530,17 @@ SetupNG<int>  			temperature_unit( "TEMP_UNIT", T_CELCIUS, FACTORY_RST );
 SetupNG<int>  			dst_unit( "DST_UNIT", DST_UNIT_M, FACTORY_RST );
 SetupNG<int>  			qnh_unit("QNH_UNIT", QNH_HPA, FACTORY_RST );
 SetupNG<int>  			rot_default( "ROTARY_DEFAULT", 0, USER_RST );
-SetupNG<int>  			serial1_speed( "SER1_SPEED", BAUD_19200, USER_RST, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(BAUD_2400, BAUD_115200, 1));
-SetupNG<int>  			serial1_pin_swap( "SER1_PINS", 0, USER_RST );
-SetupNG<int>  			serial1_ttl_signals( "SER1_TTL", RS232_TTL, USER_RST );
-SetupNG<int>  			serial1_tx_enable( "SER1_TX_ENA", 1, USER_RST );
-SetupNG<int>  			serial2_speed( "SER2_SPEED", BAUD_38400, USER_RST, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(BAUD_2400, BAUD_115200, 1));
-SetupNG<int>  			serial2_pin_swap( "SER2_PINS", 0, USER_RST );
-SetupNG<int>  			serial2_ttl_signals( "SER2_TTL", RS232_NORMAL, USER_RST );
-SetupNG<int>  			serial2_tx_enable( "SER2_TX_ENA", 1, USER_RST );
-SetupNG<int>  			software_update( "SOFTWARE_UPDATE", 0, USER_RST );
-SetupNG<t_tenchar_id>  	ota_ap( "OTA_AP",  t_tenchar_id(""), USER_RST);
-SetupNG<t_tenchar_id>  	ota_pwd( "OTA_PWD",  t_tenchar_id(""), USER_RST );
+SetupNG<int>  			serial1_speed( "SER1_SPEED", BAUD_19200, FACTORY_RST, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(BAUD_2400, BAUD_115200, 1));
+SetupNG<int>  			serial1_pin_swap( "SER1_PINS", 0, FACTORY_RST );
+SetupNG<int>  			serial1_ttl_signals( "SER1_TTL", RS232_TTL, FACTORY_RST );
+SetupNG<int>  			serial1_tx_enable( "SER1_TX_ENA", 1, FACTORY_RST );
+SetupNG<int>  			serial2_speed( "SER2_SPEED", BAUD_38400, FACTORY_RST, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(BAUD_2400, BAUD_115200, 1));
+SetupNG<int>  			serial2_pin_swap( "SER2_PINS", 0, FACTORY_RST );
+SetupNG<int>  			serial2_ttl_signals( "SER2_TTL", RS232_NORMAL, FACTORY_RST );
+SetupNG<int>  			serial2_tx_enable( "SER2_TX_ENA", 1, FACTORY_RST );
+SetupNG<int>  			software_update( "SOFTWARE_UPDATE", 0, FACTORY_RST );
+SetupNG<t_tenchar_id>  	ota_ap( "OTA_AP",  t_tenchar_id(""), FACTORY_RST);
+SetupNG<t_tenchar_id>  	ota_pwd( "OTA_PWD",  t_tenchar_id(""), FACTORY_RST );
 SetupNG<int>  			battery_display( "BAT_DISPLAY", Battery::BAT_NONE, FACTORY_RST );
 SetupNG<float>		    te_comp_adjust ( "ECOMP_ADJ", 92.f, USER_RST, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(80, 120, 0.1));
 SetupNG<int>		    te_comp_enable( "TECOMP_ENA", 0, USER_RST, SYNC_NONE, PERSISTENT );
@@ -553,7 +553,7 @@ SetupNG<float>		    ahrs_min_gyro_factor("AHRSLGYF", 20, USER_RST, SYNC_NONE, PE
 SetupNG<float>		    ahrs_dynamic_factor("AHRSGDYN", 5, USER_RST, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(0.5, 10, 0.1));
 SetupNG<dps_t>       	gyro_gating("GYRO_GAT", 0.5, USER_RST, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(0, 10, 0.1));
 SetupNG<int>		    s2f_switch_type("S2FHWSW", S2F_HW_SWITCH, FACTORY_RST );
-SetupNG<int>		    hardwareRevision("HWREV", HW_UNKNOWN, FACTORY_RST, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, nullptr, true);
+SetupNG<int>		    hardwareRevision("HWREV", HW_UNKNOWN, RESET_NONE, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, nullptr, true);
 // SetupNG<int>		    dummy("DUMMY", 0, false, SYNC_NONE, VOLATILE );
 SetupNG<int>		    wk_sens_pos_0("WK_SP_0", 0, FACTORY_RST );
 SetupNG<int>		    wk_sens_pos_1("WK_SP_1", 0, FACTORY_RST );
@@ -606,7 +606,7 @@ SetupNG<float> 			flap_takeoff("FLAPTOp", 0,  FACTORY_RST, SYNC_BIDIR, PERSISTEN
 SetupNG<int> 			audio_mute_sink( "AUDISS", 0, FACTORY_RST, SYNC_BIDIR, PERSISTENT, change_audio );
 SetupNG<int> 			audio_mute_gen( "AUDISG", AUDIO_ON, USER_RST, SYNC_NONE, PERSISTENT, change_audio );
 SetupNG<int>			vario_mode("VAMOD", (int)e_vario_mode::CRUISE_ONLY_NETTO, USER_RST, SYNC_NONE, PERSISTENT, change_cruise);  // switch to netto mode when cruising
-SetupNG<int>			airspeed_sensor("PTYPE", AirspeedSensor::NONE, FACTORY_RST, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, nullptr, true);
+SetupNG<int>			airspeed_sensor("PTYPE", AirspeedSensor::NONE, RESET_NONE, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, nullptr, true);
 SetupNG<int>			cruise_audio_mode("CAUDIO", 0, USER_RST );
 SetupNG<int>			netto_mode("NETMOD", (int)e_netto_mode::NETTO_RELATIVE, USER_RST, SYNC_NONE, PERSISTENT, change_cruise);  // regard polar sink
 SetupNG<kmh_t>			v_max("VMAX", 270, USER_RST, SYNC_BIDIR, PERSISTENT, nullptr, quantity_t::QUANT_HSLEGACY, &polar_speed_limits);
@@ -642,12 +642,12 @@ SetupNG<int> 			ahrs_raw_data("AHRSRAW", 0, USER_RST );
 
 SetupNG<degree_t>			glider_ground_aa("GLD_GND_AA", 5.0, USER_RST, SYNC_BIDIR, PERSISTENT, adjust_gaa, quantity_t::QUANT_NONE, LIMITS(-20, 20, 1));
 SetupNG<Quaternion>			imu_reference("IMU_REFERENCE", Quaternion(), USER_RST);
-SetupNG<Quaternion>			imu_facref("IMU_FACTORY", Quaternion(), FACTORY_RST);
+SetupNG<Quaternion>			imu_facref("IMU_FACTORY", Quaternion(), RESET_NONE);
 SetupNG<axes_i16_abi>		gyro_bias("GYRO_BIAS", {0, 0, 0}, USER_RST, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, nullptr, true);
-SetupNG<axes_i16_abi>		accl_bias("ACCL_BIAS_PUR", {0, 0, 0}, FACTORY_RST, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, nullptr, true); // never reset this factoy calibration
+SetupNG<axes_i16_abi>		accl_bias("ACCL_BIAS_PUR", {0, 0, 0}, RESET_NONE, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, nullptr, true); // never reset this factoy calibration
 SetupNG<celsius_t> 			mpu_temperature("MPUTEMP", 45.0, USER_RST, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(30, 60, 1)); // default for AHRS chip temperature (XCV 2023)
 SetupNG<meter_t> 			imu_leverarm("IMU_LEVER", 0.f, USER_RST, SYNC_NONE, PERSISTENT, set_imu_leverarm, quantity_t::QUANT_NONE, LIMITS(0, 3, .1));
-SetupNG<float>  			leak_test_loss("LEAK_TEST", 0.0, FACTORY_RST );
+SetupNG<float>  			leak_test_loss("LEAK_TEST", 0.0, RESET_NONE );
 // Master or Second device role
 SetupNG<int> 			xcv_role("XCVROLE", MASTER_ROLE, FACTORY_RST, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(MASTER_ROLE, SECOND_ROLE, 1));
 // Bitfield to exchange status on connected devices between master and second
