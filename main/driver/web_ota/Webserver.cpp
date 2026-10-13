@@ -30,63 +30,63 @@ static esp_err_t POST_restore_handler(httpd_req_t *req);
 static esp_err_t DELETE_reset_handler(httpd_req_t *req);
 static esp_err_t GET_coredump_handler(httpd_req_t *req);
 
-static const httpd_uri_t GET_index_html = {
+const httpd_uri_t GET_index_html = {
 	.uri = "/",
 	.method = HTTP_GET,
 	.handler = GET_index_html_handler,
 	.user_ctx = NULL
 };
 
-static const httpd_uri_t GET_milligram_min_css = {
+const httpd_uri_t GET_milligram_min_css = {
 	.uri = "/milligram.min.css",
 	.method = HTTP_GET,
 	.handler = GET_milligram_min_css_handler,
 	.user_ctx = NULL
 };
 
-static const httpd_uri_t GET_favicon_uri = {
+const httpd_uri_t GET_favicon_uri = {
     .uri       = "/favicon.ico",
     .method    = HTTP_GET,
     .handler   = GET_favicon_handler,
     .user_ctx  = NULL
 };
 
-static const httpd_uri_t GET_stats_json = {
+const httpd_uri_t GET_stats_json = {
 	.uri = "/status.json",
 	.method = HTTP_GET,
 	.handler = GET_status_json_handler,
 	.user_ctx = NULL
 };
 
-static const httpd_uri_t POST_update = {
+const httpd_uri_t POST_update = {
 	.uri = "/update",
 	.method = HTTP_POST,
 	.handler = POST_update_handler,
 	.user_ctx = NULL
 };
 
-static const httpd_uri_t GET_backup = {
+const httpd_uri_t GET_backup = {
 	.uri = "/backup",
 	.method = HTTP_GET,
 	.handler = GET_backup_handler,
 	.user_ctx = NULL
 };
 
-static const httpd_uri_t POST_restore = {
+const httpd_uri_t POST_restore = {
 	.uri = "/restore",
 	.method = HTTP_POST,
 	.handler = POST_restore_handler,
 	.user_ctx = NULL
 };
 
-static const httpd_uri_t DELETE_reset = {
+const httpd_uri_t DELETE_reset = {
 	.uri = "/reset",
 	.method = HTTP_DELETE,
 	.handler = DELETE_reset_handler,
 	.user_ctx = NULL
 };
 
-static const httpd_uri_t GET_coredump = {
+const httpd_uri_t GET_coredump = {
 	.uri = "/coredump",
 	.method = HTTP_GET,
 	.handler = GET_coredump_handler,

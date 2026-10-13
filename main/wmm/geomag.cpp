@@ -11,7 +11,7 @@
 
 // Test Data
 // Date(year) Height(km)  Lat(deg)  Lon(deg)  X(nT) Y(nT) Z(nT) H(nT) F(nT) I(deg)  D(deg)  GV(deg)
-static double test_data[][12] = {
+const double test_data[][12] = {
   {2020, 0, 80, 0, 6570.4, -146.3, 54606.0, 6572.0, 55000.1, 83.14, -1.28, -1.28},
   {2020, 0, 0, 120, 39624.3, 109.9, -10932.5, 39624.4, 41104.9, -15.42, 0.16, 0},
   {2020, 0, -80, 240, 5940.6, 15772.1, -52480.8, 16853.8, 55120.6, -72.2, 69.36, -50.64},
@@ -33,7 +33,7 @@ void WMM_Model::geomag_test()
   WMM_Model wmm(MAXORD, EPOCH, &(WMMCOF[0][0]));
 
   // Do tests
-  double *data = test_data[0];
+  const double *data = test_data[0];
   while ( data[0] != 0.0 ) {
     // Date(year) Height(km)  Lat(deg)  Lon(deg)  X(nT) Y(nT) Z(nT) H(nT) F(nT) I(deg)  D(deg)  GV(deg)
     float alt = data[1];

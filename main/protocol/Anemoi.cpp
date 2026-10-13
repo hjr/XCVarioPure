@@ -5,7 +5,7 @@
 
 // Anemoi protocol message id's and their message length
 static const char *ANEMOI_IDS = "ADMSWadw";
-static const int ANEMOI_LEN[] = {11, 13, 5, 5, 10, 11, 13, 10};
+const int ANEMOI_LEN[] = {11, 13, 5, 5, 10, 11, 13, 10};
 
 static uint8_t crc8ccitt(const void * data, size_t size);
 static void anemoiCRC(int &crc, const char c);

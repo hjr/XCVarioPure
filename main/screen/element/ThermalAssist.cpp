@@ -131,7 +131,7 @@ void ThermalAssist::drawGlider(int16_t cx, int16_t cy) {
     constexpr int16_t A = -3;
     constexpr int16_t B = 3;
     constexpr int16_t W = 8;
-    const int16_t triangle[3][6] = { { A, -W, A, W, B, 0}, {-A, -W, -B, 0, -A, W}, {-W, B, W, B, 0, A} }; // left, right, tail
+    static const int16_t triangle[3][6] = { { A, -W, A, W, B, 0}, {-A, -W, -B, 0, -A, W}, {-W, B, W, B, 0, A} }; // left, right, tail
 
     // select triangle for circling direction
     MYUCG->setColor(COLOR_WHITE);
