@@ -54,7 +54,7 @@ void NmeaPrtcl::sendBorgelt()
     char buffer[50];
     std::sprintf(buffer, "%03d", fast_iroundf(Units::pipe(tas.get(), Units::kts)));
     msg->buffer += buffer;
-    std::sprintf(buffer, ",%3.1f", Units::pipe(te_vario.get(), Units::kts));
+    std::sprintf(buffer, ",%3.1f", Units::pipe(te_gross.get(), Units::kts));
     msg->buffer += buffer;
     std::sprintf(buffer, ",%1.1f", Units::pipe(MC.get(), Units::kts));
     msg->buffer += buffer;

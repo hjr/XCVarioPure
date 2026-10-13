@@ -37,7 +37,7 @@ void NmeaPrtcl::sendOpenVario()
     msg->buffer += buffer;
     std::sprintf(buffer, ",Q,%0.1f", dynp.getValid() ? dynp.get() : 0.f); // dyn pressure in pascal
     msg->buffer += buffer;
-    std::sprintf(buffer, ",E,%0.1f", te_vario.get());
+    std::sprintf(buffer, ",E,%0.1f", te_gross.get());
     msg->buffer += buffer;
     if( OAT.getValid() ) {
         std::sprintf(buffer, ",T,%0.1f", Units::pipe(OAT.get(), Units::celsius));

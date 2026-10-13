@@ -103,7 +103,7 @@ void NmeaPrtcl::sendStdXCVario()
 
     msg->buffer = "$PXCV,";
     char str[50];
-    std::sprintf(str, "%3.1f", te_vario.get());
+    std::sprintf(str, "%3.1f", te_gross.get());
     msg->buffer += str;
     std::sprintf(str, ",%1.2f", MC.get());
     msg->buffer += str;
@@ -184,7 +184,7 @@ void NmeaPrtcl::sendXcvAPENV1()
     char str[50];
     std::sprintf(str, "%d,%d,0,0,0,%d", fast_iroundf(Units::pipe(ias.get(), Units::kmh)), 
                                         fast_iroundf(Units::pipe(altitude.get(), Units::foot)), 
-                                        fast_iroundf(Units::pipe(te_vario.get(), Units::hfpm)));
+                                        fast_iroundf(Units::pipe(te_gross.get(), Units::hfpm)));
     msg->buffer += str;
     msg->buffer += "*" + NMEA::CheckSum(msg->buffer.c_str()) + "\r\n";
     DEV::Send(msg);
@@ -287,7 +287,7 @@ void NmeaPrtcl::sendXcvGeneric()
     
     msg->buffer = "$PTAS1,";
     char str[50];
-    sprintf(str, "%d,0,%d,%d", fast_iroundf(Units::pipe(te_vario.get(), Units::kts)*10.f)+200, 
+    sprintf(str, "%d,0,%d,%d", fast_iroundf(Units::pipe(te_gross.get(), Units::kts)*10.f)+200, 
                                 fast_iroundf(Units::pipe(altitude_isa.get(), Units::foot))+2000, 
                                 fast_iroundf(Units::pipe(tas.get(), Units::kts)) );
     msg->buffer += str;

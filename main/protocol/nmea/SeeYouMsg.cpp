@@ -142,7 +142,7 @@ void NmeaPrtcl::sendSeeYouF()
     msg->buffer += tmp;
     std::sprintf(tmp, "%.1f,", accel.z);
     msg->buffer += tmp;
-    std::sprintf(tmp, "%.1f,", te_vario.get());
+    std::sprintf(tmp, "%.1f,", te_gross.get());
     msg->buffer += tmp;
     std::sprintf(tmp, "%.1f,", ias.get());
     msg->buffer += tmp;
@@ -204,7 +204,7 @@ void NmeaPrtcl::sendLK8EX1()
 
     std::sprintf(tmp, "%d,99999,", fast_iroundf(statp.get())); // Pa
     msg->buffer += tmp;
-    std::sprintf(tmp, "%d,", fast_iroundf(te_vario.get() * 100.)); // cm/sec
+    std::sprintf(tmp, "%d,", fast_iroundf(te_gross.get() * 100.)); // cm/sec
     msg->buffer += tmp;
     celsius_t temp = OAT.getValid() ? Units::pipe(OAT.get(), Units::celsius) : 0;
     std::sprintf(tmp, "%.1f,", temp);

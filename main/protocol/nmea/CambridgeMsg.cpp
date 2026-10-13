@@ -95,7 +95,7 @@ void NmeaPrtcl::sendCambridge()
     msg->buffer += buffer;
     std::sprintf(buffer, ",%d", int(tas.get() * 100.f)); // 1/100 m/s
     msg->buffer += buffer;
-    std::sprintf(buffer, ",%d", int((Units::pipe(te_vario.get(), Units::kts)*10.f)+200)); // 1/10 kts +200
+    std::sprintf(buffer, ",%d", int((Units::pipe(te_gross.get(), Units::kts)*10.f)+200)); // 1/10 kts +200
     msg->buffer += buffer;
     std::sprintf(buffer, ",0,0,%d", int(Units::pipe(MC.get(), Units::kts)*10)); // 1/10 kts
     msg->buffer += buffer;

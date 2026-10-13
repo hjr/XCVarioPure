@@ -910,7 +910,7 @@ void IpsDisplay::drawDisplay(){
     }
 
     // Vario indicator
-    MAINgauge->draw(CRMOD.isNet() ? te_netto.get() : te_vario.get());
+    MAINgauge->draw(te_vario.get());
     if (gflags.isPro && CRMOD.isGross()) {
         MAINgauge->drawPolarSink(varioSensor->getPolarSink());
     }

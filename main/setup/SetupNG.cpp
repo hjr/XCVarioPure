@@ -454,8 +454,9 @@ SetupNG<mps_t>  		ias( "IASV", 0.0, 0, SYNC_NONE, VOLATILE); // derived from dyn
 SetupNG<mps_t>  		tas( "TASV", 0.0, 0, SYNC_NONE, VOLATILE ); // derived from ias + OAT + altitude in calc_speeds()
 SetupNG<mps_t>  		gnd_speed( "GNDV", -1.0, 0, SYNC_NONE, VOLATILE );
 SetupNG<rad_t>  		gnd_course( "GNDC", -10.0, 0, SYNC_NONE, VOLATILE );
-SetupNG<mps_t>  		te_vario( "TEVA", 0.0, 0, SYNC_NONE, VOLATILE );
-SetupNG<mps_t>  		te_netto( "TENET", 0.0, 0, SYNC_NONE, VOLATILE );
+SetupNG<mps_t>  		te_vario( "TEVA", 0.0, 0, SYNC_NONE, VOLATILE ); // the vario needle
+SetupNG<mps_t>  		te_gross( "TEGR", 0.0, 0, SYNC_NONE, VOLATILE ); // always gross
+SetupNG<mps_t>  		te_netto( "TENET", 0.0, 0, SYNC_NONE, VOLATILE ); // always net
 SetupNG<rad_t>  		slip_angle( "SLANGLE", 0.0, 0, SYNC_FROM_MASTER, VOLATILE );
 SetupNG<float>  		battery_voltage( "BATV", 0.0, 0, SYNC_FROM_MASTER, VOLATILE );
 SetupNG<float>  		debugvar( "DEBUG", 0.0, 0, SYNC_NONE, VOLATILE );
