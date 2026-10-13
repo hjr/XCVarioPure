@@ -74,7 +74,7 @@ bool VarioFilter::setup() {
 void VarioFilter::postProcess()
 {
     static float _errorval = 1.6;
-    static mps_t _TEF = 0.f;
+    static mps_t te_gr = 0.f;
     int now = Clock::getMillis();
     const second_t dt = (now - _prev_time) / 1000.0f;
     _prev_time = now;
@@ -125,18 +125,18 @@ void VarioFilter::postProcess()
     lastAltitude = Altitude;
     mps_t TEAVG = _vario_lpf.filter(altDiff / dt);  // in m/s
     predictAlt = Altitude + (TEAVG * dt);
-    _TEF += ((TEAVG - _TEF)) / vario_delay.get();
-    _got_positive = _TEF > .0f && te_vario.get() < .0f;
+    te_gr += ((TEAVG - te_gr)) / vario_delay.get();
+    _got_positive = te_gr > .0f && te_vario.get() < .0f;
 
     _polar_sink = Speed2Fly.getSink(ias.get());
-    mps_t te_net = _TEF - _polar_sink;
+    mps_t te_ne = te_gr - _polar_sink;
 
     // calc the climb score
-    if ( te_net > 0.f && airborne.get()) {
+    if ( te_ne > 0.f && airborne.get()) {
         // achieved gross climb integral
-        _Gact.filter(std::max(_TEF, 0.f));
+        _Gact.filter(std::max(te_gr, 0.f));
         // Gmax​(N)=N−S(vopt​)); max. gross achievable integral with current load and net vario
-        _Goptimal.filter(std::max(te_net + Speed2Fly.getMinsink(), .1f));
+        _Goptimal.filter(std::max(te_ne + Speed2Fly.getMinsink(), .1f));
     }
     else {
         _Gact.filter(.0f);
@@ -147,26 +147,30 @@ void VarioFilter::postProcess()
     // ESP_LOGI(FNAME, "Varioscore TE: %.3f, sink: %.3f, Gact: %.3f, Gmax: %.3f, tp: %.3f", vkf.v, _polar_sink, _Gact.get(), _Goptimal.get(), tp);
     thermal_score.set(tp);
 
-    // Adjust te_net for Super Netto mode if applicable
+    // Adjust the net for Super Netto mode if applicable
     if (CRMOD.getVMode() == CruiseMode::MODE_REL_NETTO) {
         // Super Netto, considering circling sink
-        te_net += Speed2Fly.getCirclingSink();
+        _polar_sink += Speed2Fly.getCirclingSink();
     }
-    te_netto.set(te_net);
+    te_netto.set(te_ne);
 
     if ( CRMOD.getChanged() ) {
         restartRunningAvg(); // restart the running average when the cruise mode changes, avoid smeared data
         ESP_LOGI(FNAME, "Cruise mode changed, restarting running average");
     }
     if (CRMOD.isGross()) {
-        pushAndPublish(_TEF, now);
+        pushAndPublish(te_gr, now); // damp
+        te_gross.set(get());                // use damped value
+        te_netto.set(get() - _polar_sink);
     } else {
-        pushAndPublish(te_net, now);
+        pushAndPublish(te_ne, now);
+        te_gross.set(get() + _polar_sink);
+        te_netto.set(get());
     }
     _avg_vario.filter(getRunningAvg());
 
     // speed to fly update on current vario
-    s2f_ideal.set(Speed2Fly.calculate(te_net, !CRMOD.getCMode()));
+    s2f_ideal.set(Speed2Fly.calculate(te_ne, !CRMOD.getCMode()));
 
-    AverageVario::newSample(_TEF);
+    AverageVario::newSample(te_gr);
 }
