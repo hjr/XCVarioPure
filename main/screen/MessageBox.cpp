@@ -51,6 +51,15 @@ MessageBox::~MessageBox()
     _msg_list.clear();
 }
 
+void MessageBox::resume()
+{
+    _active = true;
+
+    if (!current && !_msg_list.empty()) {
+        Clock::start(this);
+    }
+}
+
 uint8_t MessageBox::pushMessage(int alert_level, const char *str, int to, bool confirm)
 {
     if (_msg_list.size() >= 10) {
@@ -195,7 +204,10 @@ bool MessageBox::draw()
             return true;
         }
     }
-    _msg_to--;
+
+    if (!current->wantsConfirmation()) {
+       _msg_to--;
+    }
 
     _start_scroll++;
     if ( current->alert_level != 4 ) {

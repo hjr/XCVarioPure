@@ -61,7 +61,7 @@ public:
     int16_t getBoxHeight() const { return MSG_BOX_HEIGHT; }
     // bool isVisible() const { return current != nullptr; }
     void pause() { _active = false; }
-    void resume() { _active = true; }
+    void resume();
 
     // Clock tick callback
     bool tick() override;
