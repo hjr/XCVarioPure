@@ -631,6 +631,10 @@ void system_startup(void *args){
     accSensor = new AccMPU6050();
     gyroSensor = new GyroMPU6050();
 
+    // created in paused mode, allow messages now
+    MBOX->resume();
+
+
     // Configure imu only on master XCVario
     if (SetupCommon::isMaster() ) {
         if (imuSensor) {
@@ -887,7 +891,6 @@ void system_startup(void *args){
 
     // present the boot logo vor a sec and go on
     vTaskDelay(pdMS_TO_TICKS(1000));
-    MBOX->resume(); // created in paused mode
     delete boot_screen;
     logged_tests.shrink_to_fit();
 
