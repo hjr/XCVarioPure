@@ -39,7 +39,7 @@
 #include "setup/SetupAction.h"
 #include "setup/SetupNG.h"
 #include "setup/Capability.h"
-#include "sensor/imu/AccMPU6050.h"
+#include "sensor/imu/Accelerometer.h"
 #include "sensor/pressure/PressureSensor.h"
 #include "sensor/press_diff/AirspeedSensor.h"
 #include "sensor/adc/BatteryVoltage.h"

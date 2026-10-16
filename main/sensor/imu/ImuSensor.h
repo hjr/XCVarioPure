@@ -19,8 +19,8 @@
 
 #include <cstdint>
 
-class AccMPU6050;
-class GyroMPU6050;
+class Accelerometer;
+class Gyroscope;
 struct PIController;
 enum class ImuType : uint8_t {UNKNOWN, MPU6050, MPU6500, ICM20602, ICM20689};
 enum class temp_status_t : uint8_t { MPU_T_UNKNOWN, MPU_T_LOCKED, MPU_T_LOW, MPU_T_HIGH };
@@ -55,8 +55,8 @@ public:
     inline Quaternion getRefRot() const { return _ref_rot; }
     void restoreAccelOffset() const; // restore accel offset from NVS
 
-    friend class AccMPU6050;
-    friend class GyroMPU6050;
+    friend class Accelerometer;
+    friend class Gyroscope;
 
 protected:
     ImuType getImuId();

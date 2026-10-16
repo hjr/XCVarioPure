@@ -13,7 +13,7 @@
 #include "vector.h"
 #include "math/vector_3d.h"
 #include "driver/time/Clock.h"
-#include "sensor/imu/AccMPU6050.h"
+#include "sensor/imu/Accelerometer.h"
 #include "driver/gpio/ESPRotary.h"
 #include "logdefnone.h"
 

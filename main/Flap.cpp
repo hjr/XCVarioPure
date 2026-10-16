@@ -5,7 +5,7 @@
 #include "glider/Polars.h"
 #include "setup/SetupNG.h"
 #include "setup/Capability.h"
-#include "sensor/imu/AccMPU6050.h"
+#include "sensor/imu/Accelerometer.h"
 #include "math/Floats.h"
 #include "logdefnone.h"
 

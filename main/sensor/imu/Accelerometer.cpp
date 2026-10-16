@@ -6,10 +6,10 @@
  ***       Copyright (C) Rohs Engineering Design         ***
  ***********************************************************/
 
-#include "AccMPU6050.h"
+#include "Accelerometer.h"
 
 #include "ImuSensor.h"
-#include "GyroMPU6050.h"
+#include "Gyroscope.h"
 #include "math/Units.h"
 #include "math/Trigonometry.h"
 #include "vector.h"
@@ -22,14 +22,14 @@
 #include <algorithm>
 #include <cmath>
 
-AccMPU6050 *accSensor = nullptr;
+Accelerometer *accSensor = nullptr;
 
 constexpr int SENSOR_HISTORY_DURATION_MS = 10000;  // 10 sec
 constexpr int DUTY_CYCLE_MS = 100; // 10Hz
 constexpr size_t HSIZE = SENSOR_HISTORY_DURATION_MS / DUTY_CYCLE_MS;
 static __attribute__((aligned(4))) vector_f acc_buffer[ HSIZE + 1 ];
 
-AccMPU6050::AccMPU6050() : 
+Accelerometer::Accelerometer() : 
     SensorTP<vector_f>(acc_buffer, HSIZE, DUTY_CYCLE_MS, 1),
     _lpf_accel(LowPassFilterT<vector_f>::alphaFromTau(0.3, DUTY_CYCLE_MS / 1000.f)),
     _lpf_slip_angle(LowPassFilterT<float>::alphaFromTau(0.3, DUTY_CYCLE_MS / 1000.f))
@@ -46,14 +46,14 @@ AccMPU6050::AccMPU6050() :
     // push a single previous value
     pushAndPublish(vector_f(1,0,0), 0);
 }
-AccMPU6050::~AccMPU6050() {
+Accelerometer::~Accelerometer() {
     accSensor = nullptr;
 }
 
-const char *AccMPU6050::name() const { return imuSensor ? imuSensor->name() : "vMPU"; }
+const char *Accelerometer::name() const { return imuSensor ? imuSensor->name() : "vMPU"; }
 
 // a quick ten samples self-test of the accelerometer
-vector_f AccMPU6050::selftest() const
+vector_f Accelerometer::selftest() const
 {
     vector_f result, tmp;
     int samples = 0;
@@ -75,7 +75,7 @@ vector_f AccMPU6050::selftest() const
     return result;
 }
 
-bool AccMPU6050::doRead(vector_f& val) {
+bool Accelerometer::doRead(vector_f& val) {
 
     // Get new accelerometer values from MPU6050
     mpud::raw_axes_t imuRaw;
@@ -101,7 +101,7 @@ bool AccMPU6050::doRead(vector_f& val) {
     return false;
 }
 
-float AccMPU6050::getVerticalAcceleration() {
+float Accelerometer::getVerticalAcceleration() {
     // orthonormal projection of the current accelerometer reading to the attitude vector
     // https://de.wikipedia.org/wiki/Orthogonalprojektion
     // lamda := (accel * att_vector) / norm(att_vector)^2 // att_vector is normalized
@@ -111,7 +111,7 @@ float AccMPU6050::getVerticalAcceleration() {
 }
 
 // compensate for this bias
-void AccMPU6050::pushBias(const vector_f& bias) {
+void Accelerometer::pushBias(const vector_f& bias) {
     // rotate back into sensor frame
     vector_f bias_sensor = imuSensor->_ref_rot.get_conjugate().rotate(bias);
     ESP_LOGI(FNAME, "backrot: %f/%f/%f", bias_sensor.x, bias_sensor.y, bias_sensor.z);
@@ -152,7 +152,7 @@ static void update_fused_vector(vector_f& fused, float gyro_trust, vector_f& pet
 }
 
 
-void AccMPU6050::postProcess() {
+void Accelerometer::postProcess() {
     if (imuSensor) {
         static int count = 0;
         if ( imuSensor->hasHeatCtlr() && ! (++count%10) ) { // every second
@@ -254,7 +254,7 @@ void AccMPU6050::postProcess() {
 }
 
 // rest - detection
-bool AccMPU6050::detectRest() {
+bool Accelerometer::detectRest() {
     // accel variance
     vector_f accVar = getVariance(1000);
     const vector_f& accel = getHead();
@@ -275,7 +275,7 @@ bool AccMPU6050::detectRest() {
     return _isResting;
 }
 
-void AccMPU6050::resetRest() {
+void Accelerometer::resetRest() {
     _restTimer = 0;
     _isResting = false;
 }

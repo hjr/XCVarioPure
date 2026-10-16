@@ -6,10 +6,10 @@
  ***       Copyright (C) Rohs Engineering Design         ***
  ***********************************************************/
 
-#include "GyroMPU6050.h"
+#include "Gyroscope.h"
 
 #include "ImuSensor.h"
-#include "AccMPU6050.h"
+#include "Accelerometer.h"
 #include "sensor/gps/GpsVSensor.h"
 #include "sensor/SensorMgr.h"
 #include "setup/SetupNG.h"
@@ -17,14 +17,14 @@
 
 #include <mpu/math.hpp>
 
-GyroMPU6050 *gyroSensor = nullptr;
+Gyroscope *gyroSensor = nullptr;
 
 constexpr int SENSOR_HISTORY_DURATION_MS = 10000;  // 10 sec
 constexpr int DUTY_CYCLE_MS = 100; // 10Hz
 constexpr size_t HSIZE = SENSOR_HISTORY_DURATION_MS / DUTY_CYCLE_MS;
 static __attribute__((aligned(4))) vector_f gyro_buffer[ HSIZE + 1 ];
 
-GyroMPU6050::GyroMPU6050() :
+Gyroscope::Gyroscope() :
     SensorTP<vector_f>(gyro_buffer, HSIZE, DUTY_CYCLE_MS, 1),
     _scale(Units::deg_to_rad(mpud::math::gyroResolution(MpuImu::GYRO_SCALE))), // scale factor for raw gyro data to rad/s
     _gyro_lpf_dwydt(LowPassFilterT<float>::alphaFromTau(0.3333, DUTY_CYCLE_MS / 1000.f)),
@@ -38,13 +38,13 @@ GyroMPU6050::GyroMPU6050() :
     // push a single previous value
     pushAndPublish(vector_f(0,0,0), 0);
 }
-GyroMPU6050::~GyroMPU6050() {
+Gyroscope::~Gyroscope() {
     gyroSensor = nullptr;
 }
 
-const char *GyroMPU6050::name() const { return imuSensor ? imuSensor->name() : "vMPU";}
+const char *Gyroscope::name() const { return imuSensor ? imuSensor->name() : "vMPU";}
 
-bool GyroMPU6050::doRead(vector_f& val) {
+bool Gyroscope::doRead(vector_f& val) {
     // Get new gyro values from MPU6050
     mpud::raw_axes_t imuRaw;
     if (imuSensor->rotation(&imuRaw) == ESP_OK) {
@@ -75,7 +75,7 @@ bool GyroMPU6050::doRead(vector_f& val) {
 }
 
 
-void GyroMPU6050::postProcess() {
+void Gyroscope::postProcess() {
     // calm status
     static bool rest_old = false;
     const vector_f& gyro = getHead();
@@ -108,14 +108,14 @@ void GyroMPU6050::postProcess() {
     }
 }
 
-void GyroMPU6050::resetRest() {
+void Gyroscope::resetRest() {
     _bias_estimator.reset();
     _restTimer = 0;
     _isResting = 0;
 }
 
 // rest - detection
-bool GyroMPU6050::detectRest() {
+bool Gyroscope::detectRest() {
     // gyro variance
     vector_f gyrVar = getVariance(1000);
     // ESP_LOGI(FNAME, "rest detection: gyrVar=(%f, %f, %f) processed=(%f, %f, %f)", gyrVar.x, gyrVar.y, gyrVar.z, _processed.x, _processed.y, _processed.z);
@@ -141,14 +141,14 @@ bool GyroMPU6050::detectRest() {
     return _isResting > 1;
 }
 
-void GyroMPU6050::saveBias() {
+void Gyroscope::saveBias() {
     vector_f bias = _bias_estimator.get();
     if (imuSensor) {
         pushBias(bias);
     }
 }
 
-void GyroMPU6050::pushBias(vector_f& bias) {
+void Gyroscope::pushBias(vector_f& bias) {
     // rotate back into sensor frame
     // ESP_LOGI(FNAME, "-> bias: %f/%f/%f", bias.x, bias.y, bias.z);
     vector_f bias_sensor = imuSensor->_ref_rot.get_conjugate().rotate(bias);

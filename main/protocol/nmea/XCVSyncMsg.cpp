@@ -13,8 +13,8 @@
 #include "driver/time/Clock.h"
 #include "sensor/pressure/PressureSensor.h"
 #include "sensor/press_diff/AirspeedSensor.h"
-#include "sensor/imu/AccMPU6050.h"
-#include "sensor/imu/GyroMPU6050.h"
+#include "sensor/imu/Accelerometer.h"
+#include "sensor/imu/Gyroscope.h"
 #include "setup/SetupNG.h"
 #include "sensor.h"
 

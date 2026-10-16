@@ -12,8 +12,8 @@
 #include "math/Trigonometry.h"
 #include "math/Floats.h"
 #include "setup/SetupNG.h"
-#include "GyroMPU6050.h"
-#include "AccMPU6050.h"
+#include "Gyroscope.h"
+#include "Accelerometer.h"
 #include "comm/CanBus.h"
 #include "simplex.h"
 #include "logdefnone.h"
@@ -243,7 +243,7 @@ int MpuImu::getAccelSamplesAndCalib(vector_f gyro_integral, rad_t& wing_angle, r
     }
 
     float var_norm2 = 2.;
-    while (var_norm2 > GyroMPU6050::GYRO_THRESHOLD2) {
+    while (var_norm2 > Gyroscope::GYRO_THRESHOLD2) {
         vTaskDelay(pdMS_TO_TICKS(200));
         var_norm2 = gyroSensor->getVariance(2000).get_norm2();
         ESP_LOGI(FNAME, "Waiting for calm to sample accel, var=%f", var_norm2);

@@ -22,7 +22,7 @@
 #include "setup/SubMenuGlider.h"
 #include "setup/CruiseMode.h"
 #include "driver/gpio/ESPRotary.h"
-#include "sensor/imu/AccMPU6050.h"
+#include "sensor/imu/Accelerometer.h"
 #include "Flarm.h"
 #include "sensor.h"
 #include "driver/time/WatchDog.h"

@@ -14,7 +14,7 @@
 #include "IpsDisplay.h"
 #include "DrawDisplay.h"
 #include "driver/audio/ESPAudio.h"
-#include "sensor/imu/AccMPU6050.h"
+#include "sensor/imu/Accelerometer.h"
 #include "sensor/gps/GpsVSensor.h"
 #include "Flarm.h"
 #include "vector.h"

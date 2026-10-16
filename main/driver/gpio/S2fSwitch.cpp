@@ -15,7 +15,7 @@
 #include "screen/DrawDisplay.h"
 #include "sensor.h"
 #include "Flap.h"
-#include "sensor/imu/AccMPU6050.h"
+#include "sensor/imu/Accelerometer.h"
 #include "logdefnone.h"
 
 // auto switch filters

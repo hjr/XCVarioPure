@@ -14,15 +14,15 @@
 
 
 class MpuImu;
-class GyroMPU6050;
+class Gyroscope;
 
-extern GyroMPU6050 *gyroSensor;
+extern Gyroscope *gyroSensor;
 
-class GyroMPU6050 final : public SensorTP<vector_f>
+class Gyroscope final : public SensorTP<vector_f>
 {
 public:
-    GyroMPU6050();
-    virtual ~GyroMPU6050();
+    Gyroscope();
+    virtual ~Gyroscope();
 
     static constexpr float GYRO_THRESHOLD = Units::deg_to_rad(0.2f); // thresholds (VQF-typical)
     static constexpr float GYRO_THRESHOLD2 = GYRO_THRESHOLD * GYRO_THRESHOLD; // squared for variance comparison

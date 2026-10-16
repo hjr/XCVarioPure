@@ -12,7 +12,7 @@
 #include "math/Floats.h"
 
 #include "ScreenRoot.h"
-#include "sensor/imu/AccMPU6050.h"
+#include "sensor/imu/Accelerometer.h"
 #include "sensor/gps/GpsVSensor.h"
 #include "setup/SetupNG.h"
 #include "AdaptUGC.h"

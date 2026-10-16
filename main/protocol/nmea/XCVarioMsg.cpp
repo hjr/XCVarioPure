@@ -15,8 +15,8 @@
 #include "comm/Messages.h"
 #include "setup/SetupNG.h"
 #include "setup/CruiseMode.h"
-#include "sensor/imu/AccMPU6050.h"
-#include "sensor/imu/GyroMPU6050.h"
+#include "sensor/imu/Accelerometer.h"
+#include "sensor/imu/Gyroscope.h"
 #include "math/Units.h"
 
 #include "logdefnone.h"

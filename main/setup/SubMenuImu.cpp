@@ -11,8 +11,8 @@
 #include "setup/SetupMenuValFloat.h"
 #include "setup/SetupMenuDisplay.h"
 #include "setup/SetupNG.h"
-#include "sensor/imu/AccMPU6050.h"
-#include "sensor/imu/GyroMPU6050.h"
+#include "sensor/imu/Accelerometer.h"
+#include "sensor/imu/Gyroscope.h"
 #include "sensor/gps/GpsVSensor.h"
 #include "driver/audio/ESPAudio.h"
 #include "Colors.h"
@@ -96,7 +96,7 @@ static void doImuCalibration(SetupMenuSelect* p) {
         gyro = gyroSensor->getAVG(1000) - gyroSensor->getBias();
         gnorm = gyro.get_norm();
         ESP_LOGI(FNAME, "gyro norm: %f, gcalm %d acalm %d", gnorm, gyroSensor->isResting(), accSensor->isResting());
-    } while ((gnorm > GyroMPU6050::GYRO_THRESHOLD || !gyroSensor->isResting()) && !abort);
+    } while ((gnorm > Gyroscope::GYRO_THRESHOLD || !gyroSensor->isResting()) && !abort);
 
     ESP_LOGI(FNAME, "gyro reading: (%f/%f/%f): %f < %f", gyro.x, gyro.y, gyro.z, gnorm, GyroMPU6050::GYRO_THRESHOLD);
 
@@ -181,7 +181,7 @@ static void doImuCalibration(SetupMenuSelect* p) {
         p->clear();
         p->menuPrintLn("... aborted ...", 2);
         nlidx = 4;
-        if ( gnorm > GyroMPU6050::GYRO_THRESHOLD ) {
+        if ( gnorm > Gyroscope::GYRO_THRESHOLD ) {
             p->menuPrintLn("IMU bias too high,", nlidx++);
             p->menuPrintLn("try a restart.", nlidx++);
         } else {

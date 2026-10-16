@@ -9,8 +9,8 @@
 #include "sensor/pressure/PSclient.h"
 #include "sensor/press_diff/AirspeedSensor.h"
 #include "sensor/press_diff/ASclient.h"
-#include "sensor/imu/AccMPU6050.h"
-#include "sensor/imu/GyroMPU6050.h"
+#include "sensor/imu/Accelerometer.h"
+#include "sensor/imu/Gyroscope.h"
 #include "sensor/SensorMgr.h"
 #include "sensor/VarioFilter.h"
 #include "sensor/gps/GpsVSensor.h"
@@ -628,8 +628,8 @@ void system_startup(void *args){
     }
 
     // create IMU sensor in any case
-    accSensor = new AccMPU6050();
-    gyroSensor = new GyroMPU6050();
+    accSensor = new Accelerometer();
+    gyroSensor = new Gyroscope();
 
     // created in paused mode, allow messages now
     MBOX->resume();

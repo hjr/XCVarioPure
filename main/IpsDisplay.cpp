@@ -23,7 +23,7 @@
 #include "screen/element/ThermalAssist.h"
 #include "screen/MessageBox.h"
 
-#include "sensor/imu/AccMPU6050.h"
+#include "sensor/imu/Accelerometer.h"
 #include "sensor/VarioFilter.h"
 #include "math/Trigonometry.h"
 #include "math/Floats.h"

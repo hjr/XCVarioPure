@@ -32,7 +32,7 @@
 #include "sensor/mag/Compass.h"
 #include "Atmosphere.h"
 #include "sensor/imu/ImuSensor.h"
-#include "sensor/imu/GyroMPU6050.h"
+#include "sensor/imu/Gyroscope.h"
 #include "logdefnone.h"
 
 #include <freertos/FreeRTOS.h>

@@ -15,11 +15,11 @@
 #include "math/Trigonometry.h"
 #include "math/Quaternion.h"
 
-class AccMPU6050 final : public SensorTP<vector_f>
+class Accelerometer final : public SensorTP<vector_f>
 {
 public:
-    AccMPU6050();
-    virtual ~AccMPU6050();
+    Accelerometer();
+    virtual ~Accelerometer();
 
     static constexpr float ACCVAR_THRESHOLD2 = Units::ms2_to_g(0.04f * 0.04f); // variance threshold for rest detection (VQF-typical)
     static constexpr float ACCEL_THRESHOLD = Units::ms2_to_g(1.5f); // thresholds (VQF-typical)
@@ -72,4 +72,4 @@ private:
     // vector_f _soft_bias; todo later
 };
 
-extern AccMPU6050 *accSensor;
+extern Accelerometer *accSensor;

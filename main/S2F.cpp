@@ -10,7 +10,7 @@
 #include "glider/Polars.h"
 #include "math/Floats.h"
 #include "math/Units.h"
-#include "sensor/imu/AccMPU6050.h"
+#include "sensor/imu/Accelerometer.h"
 #include "comm/DeviceMgr.h"
 #include "protocol/NMEA.h"
 #include "Flap.h"
