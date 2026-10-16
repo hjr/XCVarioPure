@@ -57,7 +57,7 @@ vector_f AccMPU6050::selftest() const
 {
     vector_f result, tmp;
     int samples = 0;
-    for (auto i = 0; i < 20; i++) {
+    for (auto i = 0; i < 50; i++) {
         accSensor->doRead(tmp); // drop the swing-in samples 
         vTaskDelay(pdMS_TO_TICKS(1));
     }
@@ -248,6 +248,7 @@ void AccMPU6050::postProcess() {
 
     // calm status
     if (imuSensor) {
+        // only needed if we have a real sensor
         detectRest();
     }
 }
