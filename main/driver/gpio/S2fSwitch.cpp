@@ -15,7 +15,7 @@
 #include "screen/DrawDisplay.h"
 #include "sensor.h"
 #include "Flap.h"
-#include "sensor/imu/Accelerometer.h"
+#include "sensor/imu/FlightAHRS.h"
 #include "logdefnone.h"
 
 // auto switch filters
@@ -173,7 +173,7 @@ bool Flap()
 bool Omega()
 {
     dps_t ref = s2f_gyro_deg.get();
-    if ( accSensor && abs(accSensor->getCircleOmegaENUDeg()) < ref)
+    if ( ahrsSensor && abs(ahrsSensor->getCircleOmegaENUDeg()) < ref)
     {
         return true;
     }

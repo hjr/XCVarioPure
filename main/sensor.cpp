@@ -11,6 +11,7 @@
 #include "sensor/press_diff/ASclient.h"
 #include "sensor/imu/Accelerometer.h"
 #include "sensor/imu/Gyroscope.h"
+#include "sensor/imu/FlightAHRS.h"
 #include "sensor/SensorMgr.h"
 #include "sensor/VarioFilter.h"
 #include "sensor/gps/GpsVSensor.h"
@@ -810,6 +811,9 @@ void system_startup(void *args){
     if (accSensor && gyroSensor && (imuSensor || SetupCommon::isClient())) {
         SensorRegistry::registerSensor(gyroSensor);
         SensorRegistry::registerSensor(accSensor);
+        // register the AHRS as postprocess only virtual sensor
+        ahrsSensor = new FlightAHRS();
+        SensorRegistry::registerSensor(ahrsSensor);
     }
     else {
         // Prepare for missing IMU sensors

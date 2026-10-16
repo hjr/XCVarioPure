@@ -14,10 +14,10 @@
 #include "IpsDisplay.h"
 #include "DrawDisplay.h"
 #include "driver/audio/ESPAudio.h"
-#include "sensor/imu/Accelerometer.h"
-#include "sensor/gps/GpsVSensor.h"
+#include "sensor/imu/FlightAHRS.h"
 #include "Flarm.h"
 #include "vector.h"
+#include "math/vector_3d.h"
 #include "math/Trigonometry.h"
 #include "math/Quaternion.h"
 #include "Atmosphere.h"
@@ -66,7 +66,7 @@ void FlarmScreen::display(int mode)
 
     ESP_LOGI(FNAME, "flarm_screen mode %d", mode);
     // calc horizon line
-    Quaternion attq = accSensor ? accSensor->getAHRSQuaternion() : Quaternion();
+    Quaternion attq = ahrsSensor ? ahrsSensor->getNav2Body() : Quaternion();
     Line l( attq, true);
     Point above[6], below[6];
     int na, nb;
@@ -138,7 +138,7 @@ void FlarmScreen::display(int mode)
     }
     MYUCG->drawDisc( p.x, p.y, size, UCG_DRAW_ALL);
     // Embedd a little glider symbol
-    float roll = accSensor ? -accSensor->getRoll() : 0.f;
+    float roll = ahrsSensor ? -ahrsSensor->getRoll() : 0.f;
     if ( bearingVec.x > 0.f ) {
         MYUCG->setColor(COLOR_WHITE);
         // fuselage as disc

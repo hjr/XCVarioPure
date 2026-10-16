@@ -9,12 +9,10 @@
 #include "MagVSensor.h"
 
 #include "math/Units.h"
-#include "sensor/SensorMgr.h"
 #include "vector.h"
 #include "math/vector_3d.h"
 #include "driver/time/Clock.h"
-#include "sensor/imu/Accelerometer.h"
-#include "driver/gpio/ESPRotary.h"
+#include "sensor/imu/FlightAHRS.h"
 #include "logdefnone.h"
 
 constexpr int SENSOR_HISTORY_DURATION_MS = 10000;  // 10 sec
@@ -66,10 +64,10 @@ void MagVSensor::postProcess()
     }
     const vector_f mv = getAVG(500); // avg over the last ca. 0.5sec
     ESP_LOGI(FNAME, "mag reading AVG(0.5s): (%.2f,%.2f,%.2f)", mv.x, mv.y, mv.z);
-    assert(accSensor);
-    vector_f d = accSensor->getAttVector().get_normalized();  // a down vector, relative to glider
+    assert(ahrsSensor);
+    vector_f d = ahrsSensor->get().get_normalized();  // a down vector, relative to glider
     _processed = mv - d * mv.dot(d); // a north vector
-    // vector_f north = accSensor->getAHRSQuaternion().conjugate().rotate(mv); // works but is more expensive than the above calculation
+    // vector_f north = ahrsSensor->getNav2Body().conjugate().rotate(mv); // works but is more expensive than the above calculation
     rad_t heading = Vector::polar(-_processed.y, _processed.x);  // the "-" translates into a ENU nav frame
     // ESP_LOGI(FNAME, "mag (%.2f,%.2f,%.2f) heading %.2f", _processed.x, _processed.y, _processed.z, Units::rad_to_deg(heading));
 

@@ -17,6 +17,7 @@
 #include "setup/CruiseMode.h"
 #include "sensor/imu/Accelerometer.h"
 #include "sensor/imu/Gyroscope.h"
+#include "sensor/imu/FlightAHRS.h"
 #include "math/Units.h"
 
 #include "logdefnone.h"
@@ -129,9 +130,9 @@ void NmeaPrtcl::sendStdXCVario()
     if (accSensor)
     {
         const vector_f& acc = accSensor->getHead();
-        std::sprintf(str, ",%3.1f", accSensor->getRollDeg());
+        std::sprintf(str, ",%3.1f", ahrsSensor->getRollDeg());
         msg->buffer += str;
-        std::sprintf(str, ",%3.1f", accSensor->getPitchDeg());
+        std::sprintf(str, ",%3.1f", ahrsSensor->getPitchDeg());
         msg->buffer += str;
         std::sprintf(str, ",%1.2f", acc.x);
         msg->buffer += str;
@@ -161,12 +162,13 @@ void NmeaPrtcl::sendXcvRPYL()
 
     // LEVIL_AHRS  $RPYL,Roll,Pitch,MagnHeading,SideSlip,YawRate,G,errorcode,
     assert(accSensor);
+    assert(ahrsSensor);
     msg->buffer = "$RPYL,";
     char str[50];
     sprintf(str, "%d,%d,%d,0,0,%d,0",
-            (int)fast_iroundf(accSensor->getRollDeg() * 10.f),
-            (int)fast_iroundf(accSensor->getPitchDeg() * 10.f),
-            (int)fast_iroundf(accSensor->getMagnHeadingDeg() * 10.f),
+            (int)fast_iroundf(ahrsSensor->getRollDeg() * 10.f),
+            (int)fast_iroundf(ahrsSensor->getPitchDeg() * 10.f),
+            (int)fast_iroundf(ahrsSensor->getMagnHeadingDeg() * 10.f),
             (int)fast_iroundf(accSensor->getGload() * 1000.f));
     msg->buffer += str;
     msg->buffer += "*" + NMEA::CheckSum(msg->buffer.c_str()) + "\r\n";

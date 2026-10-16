@@ -12,7 +12,7 @@
 #include "math/Floats.h"
 
 #include "ScreenRoot.h"
-#include "sensor/imu/Accelerometer.h"
+#include "sensor/imu/FlightAHRS.h"
 #include "sensor/gps/GpsVSensor.h"
 #include "setup/SetupNG.h"
 #include "AdaptUGC.h"
@@ -203,7 +203,7 @@ void HorizonPage::draw( Quaternion q )
         MYUCG->print("BANK");
         char buf[20];
         // --- bank value
-        int roll = fast_iroundf(accSensor->getRollDeg());
+        int roll = fast_iroundf(ahrsSensor->getRollDeg());
         MYUCG->setFont(ucg_font_fub20_hn, true);
         snprintf(buf, sizeof(buf), " % 4d", roll);
         int strWidth = MYUCG->getStrWidth(buf);

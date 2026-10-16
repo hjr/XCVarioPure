@@ -12,8 +12,6 @@
 #include "sensor/SensorBase.h"
 #include "math/Units.h"
 #include "math/vector_3d_fwd.h"
-#include "math/Trigonometry.h"
-#include "math/Quaternion.h"
 
 class Accelerometer final : public SensorTP<vector_f>
 {
@@ -36,14 +34,6 @@ public:
     void resetRest();
 
     temp_status_t getTempStatus() const { return imuSensor ? imuSensor->getTempStatus() : temp_status_t::MPU_T_UNKNOWN; }
-    inline degree_t getRollDeg() { return rad2deg(euler_rad.Roll()); }
-    inline rad_t getRoll() { return euler_rad.Roll(); }
-    inline degree_t getPitchDeg() { return rad2deg(euler_rad.Pitch()); }
-    inline degree_t getYawDeg() { return rad2deg(euler_rad.Yaw()); }
-    inline degree_t getMagnHeadingDeg() { return rad2deg(filtered_mag_heading); }
-    inline dps_t getCircleOmegaENUDeg() { return rad2deg(-circle_omega); }
-    inline Quaternion getAHRSQuaternion() { return att_quat; }
-    inline vector_f getAttVector() { return att_vector; }
     inline float getGload() const { return -getRef().z; }
     float getVerticalAcceleration();
     void resetBias() { if (imuSensor) imuSensor->setAccelOffset({}); }
@@ -52,20 +42,8 @@ public:
 
 private:
     // virtually it has an aggregate MpuImu* imuSensor; // but this is global
-    // AHRS variables
-    rad_t fused_mag_heading = 0;
-    rad_t filtered_mag_heading = 0;
-    vector_f petal = {0,0,0};
-    rps_t circle_omega = 0.f;
-    rad_t circle_footing = 0.f; // a relative heading (ENU) w/o north reference
-    Quaternion att_quat = Quaternion(); // a nav to body frame rotation! both NED frames!!
-    Quaternion d_gyro = Quaternion();
-    vector_f att_vector = {};
-    vector_f euler_rad = {};
     // g-load
     LowPassFilterT<vector_f> _lpf_accel;
-    // slip angle
-    LowPassFilterT<float> _lpf_slip_angle;
     // calm counter
     int _restTimer = 0; // milliseconds since last movement
     bool _isResting = false;

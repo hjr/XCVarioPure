@@ -13,8 +13,10 @@
 #include "setup/SetupNG.h"
 #include "sensor/imu/Accelerometer.h"
 #include "sensor/imu/Gyroscope.h"
+#include "sensor/imu/FlightAHRS.h"
 #include "sensor/gps/GpsVSensor.h"
 #include "driver/audio/ESPAudio.h"
+#include "math/Trigonometry.h"
 #include "Colors.h"
 #include "AdaptUGC.h"
 #include "sensor.h"
@@ -413,16 +415,16 @@ static int imu_status_action(SetupMenuDisplay *p, int mode) {
         snprintf(buf, sizeof(buf), "  %s (%.2f/%.2f/%.2f)  ", rest, rad2deg(tmp->x), rad2deg(tmp->y), rad2deg(tmp->z));
         p->menuPrintLn(buf, idx++);
         p->menuPrintLn("AHRS:", idx++);
-        snprintf(buf, sizeof(buf), "  Pitch %.1f° Roll: %.1f°   ", accSensor->getPitchDeg(), accSensor->getRollDeg());
+        snprintf(buf, sizeof(buf), "  Pitch %.1f° Roll: %.1f°   ", ahrsSensor->getPitchDeg(), ahrsSensor->getRollDeg());
         p->menuPrintLn(buf, idx++);
-        vector_f att = accSensor->getAttVector();
+        vector_f att = ahrsSensor->get();
         snprintf(buf, sizeof(buf), "  AttVec (%.2f/%.2f/%.2f)  ", att.x, att.y, att.z);
         p->menuPrintLn(buf, idx++);
         float ang = 0.f;
         if ( gpsSensor ) {
             ang = rad2deg(gpsSensor->getOmega());
         }
-        snprintf(buf, sizeof(buf), "  Omega %.2f/%.2f  ", accSensor->getCircleOmegaENUDeg(), ang);
+        snprintf(buf, sizeof(buf), "  Omega %.2f/%.2f  ", ahrsSensor->getCircleOmegaENUDeg(), ang);
         p->menuPrintLn(buf, idx++);
     }
     p->exit();

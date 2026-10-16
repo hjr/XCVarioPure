@@ -23,6 +23,7 @@
 #include "setup/CruiseMode.h"
 #include "driver/gpio/ESPRotary.h"
 #include "sensor/imu/Accelerometer.h"
+#include "sensor/imu/FlightAHRS.h"
 #include "Flarm.h"
 #include "sensor.h"
 #include "driver/time/WatchDog.h"
@@ -89,7 +90,8 @@ void UiEventLoop(void *arg)
                                 Display->drawLoadDisplay( accSensor->getGload() );
                                 break;
                             case SCREEN_HORIZON:
-                                HorizonPage::HORIZON()->draw( accSensor->getAHRSQuaternion() );
+                                assert(ahrsSensor);
+                                HorizonPage::HORIZON()->draw( ahrsSensor->getNav2Body() );
                                 break;
                         }
                     }
