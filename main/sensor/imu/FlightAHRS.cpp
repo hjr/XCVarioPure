@@ -148,3 +148,12 @@ void FlightAHRS::postProcess() {
     }
 
 }
+
+
+degree_t FlightAHRS::getRollDeg() const { return rad2deg(euler_rad.Roll()); }
+rad_t FlightAHRS::getRoll() const { return euler_rad.Roll(); }
+degree_t FlightAHRS::getPitchDeg() const { return rad2deg(euler_rad.Pitch()); }
+degree_t FlightAHRS::getYawDeg() const { return rad2deg(euler_rad.Yaw()); }
+degree_t FlightAHRS::getMagnHeadingDeg() const { return rad2deg(filtered_mag_heading); }
+dps_t FlightAHRS::getCircleOmegaENUDeg() const { return rad2deg(-circle_omega); }
+Quaternion FlightAHRS::getNav2Body() const { return att_quat; }

@@ -25,13 +25,13 @@ public:
     bool doRead(vector_f& val) override { return false; }
     void postProcess() override;
 
-    inline degree_t getRollDeg() { return rad2deg(euler_rad.Roll()); }
-    inline rad_t getRoll() { return euler_rad.Roll(); }
-    inline degree_t getPitchDeg() { return rad2deg(euler_rad.Pitch()); }
-    inline degree_t getYawDeg() { return rad2deg(euler_rad.Yaw()); }
-    inline degree_t getMagnHeadingDeg() { return rad2deg(filtered_mag_heading); }
-    inline dps_t getCircleOmegaENUDeg() { return rad2deg(-circle_omega); }
-    inline Quaternion getNav2Body() { return att_quat; }
+    degree_t getRollDeg() const;
+    rad_t getRoll() const;
+    degree_t getPitchDeg() const;
+    degree_t getYawDeg() const;
+    degree_t getMagnHeadingDeg() const;
+    dps_t getCircleOmegaENUDeg() const;
+    Quaternion getNav2Body() const;
 
 private:
     // AHRS variables
