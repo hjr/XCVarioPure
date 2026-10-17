@@ -58,8 +58,9 @@ bool AUDIO_PROFILE::isEqual(const AUDIO_PROFILE &ap) const
     if (!floatEqualFast(exponent, ap.exponent)) return false;
     return true;
 }
-constexpr int NUM_AUDIO_PRFLS = 7;
+constexpr int NUM_AUDIO_PRFLS = 8;
 const std::array<AUDIO_PROFILE, NUM_AUDIO_PRFLS> audio_prfls = {{ 
+    {"Pur",        489., 3.2, false, BOTH_CHOP, AUD_HARM_HIGH, .7 }, 
     {"XCVario",    500., 2.,  false, BOTH_CHOP, AUD_HARM_HIGH, 1. }, 
     {"eXtended",   500., 3.,  false, BOTH_CHOP, AUD_HARM_HIGH, 1.2 },
     {"Ilec",       500., 3.,  true,  BOTH_CHOP, AUD_HARM_MED,  1.2 },
@@ -94,7 +95,7 @@ static int applyAudioProfile(SetupMenuSelect *p)
         chopping_mode.set(ap.chopping);
         audio_harmonics.set(ap.harmonics);
         audio_factor.set(ap.exponent);
-        AUDIO->applySetup();
+        AUDIO->applySetup(profile_idx);
         p->getParent()->setDirty();
     }
     // custom profile - do nothing
@@ -124,7 +125,7 @@ int update_range_entry_s(SetupMenuSelect *p)
 }
 
 int audio_setup_enable(SetupMenuSelect *p) {
-    AUDIO->applySetup();
+    AUDIO->applySetup(-1);
     if ( p->getValue() == AUDIO_ON ) {
         AUDIO->startSound(AUDIO_CHECK_SOUND);
     }
@@ -193,6 +194,20 @@ void audio_menu_create_tonestyle(SetupMenu *top) { // dynamic!
         ESP_LOGI(FNAME,"set selection %d", selected_profile);
     }
 
+
+    // Pur profile cannnot be modified directly
+    SetupMenuValFloat *fm = static_cast<SetupMenuValFloat*>(top->getEntry(1));
+    if (profile_idx == 0) fm->lock(); else fm->unlock();
+    fm = static_cast<SetupMenuValFloat*>(top->getEntry(2));
+    if (profile_idx == 0) fm->lock(); else fm->unlock();
+    SetupMenuSelect *sm = static_cast<SetupMenuSelect*>(top->getEntry(3));
+    if (profile_idx == 0) sm->lock(); else sm->unlock();
+    sm = static_cast<SetupMenuSelect*>(top->getEntry(4));
+    if (profile_idx == 0) sm->lock(); else sm->unlock();
+    sm = static_cast<SetupMenuSelect*>(top->getEntry(5));
+    if (profile_idx == 0) sm->lock(); else sm->unlock();
+    fm = static_cast<SetupMenuValFloat*>(top->getEntry(6));
+    if (profile_idx == 0) fm->lock(); else fm->unlock();
 }
 
 void audio_menu_create_deadband(SetupMenu *top) {

@@ -346,7 +346,7 @@ void change_volume() {
 	ESP_LOGI(FNAME,"change_volume -> %f", vol );
 }
 static void change_audio() {
-    AUDIO->applySetup();
+    AUDIO->applySetup(-1);
 }
 
 
