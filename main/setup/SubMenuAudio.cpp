@@ -31,9 +31,6 @@ static std::string range0;
 static std::string range1;
 static std::string range2;
 
-static int8_t selected_profile;
-static std::string prfl_name;
-
 // audio profiles
 struct AUDIO_PROFILE
 {
@@ -77,17 +74,15 @@ static int getAudioProfile()
             break;
         }
     }
-    selected_profile = i;
-    prfl_name.assign(audio_prfls[i].getName());
-    ESP_LOGI(FNAME,"audio profile %d: %s", selected_profile, prfl_name.c_str() );
+    ESP_LOGI(FNAME,"audio profile %d: %s", i, audio_prfls[i].getName() );
     return i;
 }
 static int applyAudioProfile(SetupMenuSelect *p)
 {
     if ( p->getSelect() < NUM_AUDIO_PRFLS-1 ) {
-        selected_profile = p->getSelect();
+        int8_t profile_idx = p->getSelect();
         // apply profile
-        const AUDIO_PROFILE &ap = audio_prfls[selected_profile];
+        const AUDIO_PROFILE &ap = audio_prfls[profile_idx];
         center_freq.set(ap.center);
         tone_var.set(ap.maxvariation);
         dual_tone.set(ap.dual_tone ? 1 : 0);
@@ -137,9 +132,9 @@ static int show_vol_dflt(SetupMenuValFloat *p) {
 
 void audio_menu_create_tonestyle(SetupMenu *top) { // dynamic!
 
-    getAudioProfile();
+    int8_t profile_idx = getAudioProfile();
     // update buzzword
-    top->setBuzzword(prfl_name.c_str());
+    top->setBuzzword(audio_prfls[profile_idx].getName());
 
     if (top->getNrChilds() == 0)
     {
@@ -150,7 +145,6 @@ void audio_menu_create_tonestyle(SetupMenu *top) { // dynamic!
         for (const auto &p : audio_prfls) {
             prfl->addEntry(p.getName());
         }
-        prfl->setSelect(selected_profile);
         top->addEntry(prfl);
 
         SetupMenuValFloat *cf = new SetupMenuValFloat("CenterFreq", "Hz", set_parent_dirty, &center_freq);
@@ -186,13 +180,11 @@ void audio_menu_create_tonestyle(SetupMenu *top) { // dynamic!
         afac->setHelp("How the audio frequency responds to the climb rate: < 1 for logarithmic, and > 1 for exponential, response");
         top->addEntry(afac);
     }
-    else {
-        // update selected profile
-        SetupMenuSelect *prfl = static_cast<SetupMenuSelect*>(top->getEntry(0));
-        prfl->setSelect(selected_profile);
-        ESP_LOGI(FNAME,"set selection %d", selected_profile);
-    }
 
+    // update selected profile
+    SetupMenuSelect *prfl = static_cast<SetupMenuSelect*>(top->getEntry(0));
+    prfl->setSelect(profile_idx);
+    ESP_LOGI(FNAME,"set selection %d", profile_idx);
 }
 
 void audio_menu_create_deadband(SetupMenu *top) {
@@ -251,9 +243,9 @@ void audio_menu_create(SetupMenu *audio) {
         abnm->addEntry("Vario");
         audio->addEntry(abnm);
 
-        getAudioProfile();
+        int8_t pidx = getAudioProfile();
         SetupMenu *astyle = new SetupMenu("Tone Style", audio_menu_create_tonestyle);
-        astyle->setBuzzword(prfl_name.c_str());
+        astyle->setBuzzword(audio_prfls[pidx].getName());
         astyle->setHelp("Refine XCV audio by preset tone styles, or a customized parameter set");
         audio->addEntry(astyle);
 
@@ -272,6 +264,4 @@ void free_audio_menu()
     range1.shrink_to_fit();
     range2.clear();
     range2.shrink_to_fit();
-    prfl_name.clear();
-    prfl_name.shrink_to_fit();
 }
