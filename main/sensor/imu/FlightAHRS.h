@@ -10,7 +10,6 @@
 
 #include "sensor/SensorBase.h"
 #include "math/vector_3d.h"
-#include "math/Trigonometry.h"
 #include "math/Quaternion.h"
 
 class FlightAHRS final : public SensorTP<vector_f>
@@ -31,17 +30,16 @@ public:
     degree_t getYawDeg() const;
     degree_t getMagnHeadingDeg() const;
     dps_t getCircleOmegaENUDeg() const;
+    Quaternion getBody2Nav() const;
     Quaternion getNav2Body() const;
 
 private:
     // AHRS variables
     rad_t fused_mag_heading = 0;
     rad_t filtered_mag_heading = 0;
-    vector_f petal = {0,0,0};
     rps_t circle_omega = 0.f;
     rad_t _circle_footing = 0.f; // a relative heading (ENU) w/o north reference
-    Quaternion att_quat = Quaternion(); // a nav to body frame rotation! both NED frames!!
-    Quaternion d_gyro = Quaternion();
+    Quaternion att_quat = Quaternion(); // a body to nav frame rotation! both NED frames!!
     vector_f euler_rad = {};
     // slip angle
     LowPassFilterT<float> _lpf_slip_angle;

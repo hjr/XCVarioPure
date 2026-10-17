@@ -184,7 +184,7 @@ bool BoundingBox::isIn(Point p) const {
 Line::Line(const Quaternion &q, bool respect_mbox) { //, int16_t cx, int16_t cy) {
     const int16_t display_h = (respect_mbox ? (DISPLAY_H - MBOX->getBoxHeight()) : DISPLAY_H);
             // normal vector of the plane
-    vector_f up = q.rotate(vector_f(0, 0, 1)); // Earth-Up into body frame
+    vector_f up = q.rotate(vector_f(0, 0, -1)); // Earth-Up into body frame
     _nx = up.y;
     _ny = up.z;
     _d = std::clamp(-up.x, -0.7f, 0.7f) * 100; // projection scale to visible range

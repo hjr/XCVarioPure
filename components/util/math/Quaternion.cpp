@@ -193,24 +193,16 @@ vector_f Quaternion::toEulerRad() const
 {
     vector_f result;
 
-    // roll
-    result.x = -atan2f(2.f*(_w*_x + _y*_z),1.f - 2.f*(_x*_x + _y*_y));
-    if (result.x > 0) { result.x -= My_PIf; }
-    else { result.x += My_PIf; }
+    // Roll: positive = right wing down
+    result.x = std::atan2(2.f*(_w*_x + _y*_z),1.f - 2.f*(_x*_x + _y*_y));
 
-    // pitch
-    // result.y = (-(My_PIf)/2.f + 2.f* atan2f(std::sqrtf(1.f+ 2.f*(_w*_y - _x*_z)), std::sqrtf(1- 2*(_w*_y - _x*_z))));
-    float s = 2.f * (_w*_y - _x*_z);
-    s = std::clamp(s, -1.f, 1.f);
-    result.y = asinf(s);
-    // or asin(2*(a*c - d*b));
+    // Pitch: positive = nose up
+    float s = std::clamp(2.f * (_w*_y - _x*_z), -1.f, 1.f);
+    result.y = std::asin(s);
 
-    // yaw
+    // Yaw: positive = clockwise from north
     result.z = atan2f(2.f*(_w*_z + _x*_y), 1.f - 2.f*(_y*_y + _z*_z));
-    // if (_z==0)
-    //     result.z = 0.0f;
-    // else
-    //     result.z = atan2f(2.f*(_w*_z + _x*_y),1.f - 2.f*(_y*_y + _z*_z));
+
     return result;
 }
 
@@ -293,7 +285,8 @@ Quaternion Quaternion::fromRotationMatrix(const vector_f &X, const vector_f &Y)
 }
 
 // https://ahrs.readthedocs.io/en/latest/filters/aqua.html  Quaternion from Accelerometer
-// accel_par in m/(sec*sec)
+// accel_par in m/(sec*sec), or in g (gravitational acceleration units)
+// and NED convention (at rest: 0, 0, -1)
 Quaternion Quaternion::fromAccelerometer(const vector_f& accel_par)
 {
     // Normalize
@@ -302,19 +295,19 @@ Quaternion Quaternion::fromAccelerometer(const vector_f& accel_par)
     // ESP_LOGI(TAG,"ax=%.3f ay=%.3f az=%.3f", an.x, an.y, an.z);
 
     // There is a singularity at an.z == -1
-    if ( an.z < -1.0f ) {
-        float half_cos = std::sqrtf(0.5f*(1.0f - an.z));
+    if ( an.z < 0.f ) {
+        float half_cos = std::sqrt(0.5f*(1.0f - an.z));
         float temp = .5f / half_cos;
         Quaternion orientation( -an.y*temp, half_cos, 0.0, an.x*temp );
         //ESP_LOGI(TAG,"Quat: %.3f %.3f %.3f %.3f", orientation.a, orientation.b, orientation.c, orientation.d );
         return orientation;
-    } else {
-        float half_cos = std::sqrtf(0.5f*(1.0f + an.z));
-        float temp = .5f / half_cos;
-        Quaternion orientation( half_cos, -an.y*temp, an.x*temp, 0.0 );
-        //ESP_LOGI(TAG,"Quat: %.3f %.3f %.3f %.3f", orientation.a, orientation.b, orientation.c, orientation.d );
-        return orientation;
     }
+    
+    float half_cos = std::sqrt(0.5f*(1.0f + an.z));
+    float temp = .5f / half_cos;
+    Quaternion orientation( half_cos, -an.y*temp, an.x*temp, 0.0 );
+    //ESP_LOGI(TAG,"Quat: %.3f %.3f %.3f %.3f", orientation.a, orientation.b, orientation.c, orientation.d );
+    return orientation;
 }
 
 // omega in radians per second: dtime in seconds

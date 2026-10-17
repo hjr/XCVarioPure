@@ -13,7 +13,6 @@
 #include "math/Units.h"
 #include "math/Trigonometry.h"
 #include "vector.h"
-// #include "sensor/SensorMgr.h"
 #include "screen/element/ThermalAssist.h"
 #include "logdefnone.h"
 
@@ -74,7 +73,8 @@ void FlightAHRS::postProcess() {
     // ESP_LOGI( FNAME, " Accel: %.3f,%.3f,%.3f dt: %.4f TS:%d", accel.x, accel.y, accel.z, dt, imuSensor?imuSensor->getTempStatus():temp_status_t::MPU_T_UNKNOWN);
 
     // create a gyro base rotation delta
-    d_gyro = Quaternion::fromGyro(gyro, dt);
+    vector_f petal;
+    Quaternion d_gyro = Quaternion::fromGyro(gyro, dt);
     rad_t roll = 0, pitch = 0;
     if (airborne.get()) {
         float loadFactor = std::clamp(_processed.get_norm(), 0.f, 2.f);
@@ -104,14 +104,14 @@ void FlightAHRS::postProcess() {
     // ESP_LOGI( FNAME, " ax1:%f ay1:%f az1:%f Gx:%f Gy:%f GZ:%f dT:%f", petal.x, petal.y, petal.z, gyro.x, gyro.y, gyro.z, dt );
     update_fused_vector(_processed, gravity_trust, petal, d_gyro.get_conjugate());
     // ESP_LOGI(FNAME,"attv: %.3f %.3f %.3f ProjAccel: %f", _processed.x, _processed.y, _processed.z, accel.dot(_processed));
-    att_quat = Quaternion::fromAccelerometer(_processed);
+    att_quat = Quaternion::fromAccelerometer(_processed.get_negated()).get_conjugate();
     // vector_f img = att_quat.rotate(vector_f{0,0,1});
     // ESP_LOGI(FNAME,"attv: %.3f,%.3f,%.3f - %.3f,%.3f,%.3f", _processed.x, _processed.y, _processed.z, img.x, img.y, img.z);
     // ESP_LOGI(FNAME,"attq: %.3f %.3f %.3f %.3f", att_quat._x, att_quat._y, att_quat._z, att_quat._w );
     // ESP_LOGI(FNAME,"Circle Omega: %f", circle_omega );
-    euler_rad = att_quat.toEulerRad(); // AHRS gives a nav to body rotation, but we want body to nav, so invert the angles by multiplying with -1
+    euler_rad = att_quat.toEulerRad();
     // vector_f euler = euler_rad * rad2deg(1.f);
-    // ESP_LOGI(FNAME, "Euler R:%.1f P:%.1f OR:%.1f IMUP:%.1f", euler.Roll(), euler.Pitch(), rad2deg(roll), rad2deg(pitch));
+    // ESP_LOGI(FNAME, "Euler R:%.1f P:%.1f WR:%.1f IMUP:%.1f", euler.Roll(), euler.Pitch(), rad2deg(roll), rad2deg(pitch));
 
     rad_t gyro_heading_step = circle_omega * dt; // gyro heading change in this step (NED)
     _circle_footing = Vector::normalizePI2(_circle_footing + gyro_heading_step); // integrate gyro heading change to get the current circle footing
@@ -156,4 +156,5 @@ degree_t FlightAHRS::getPitchDeg() const { return rad2deg(euler_rad.Pitch()); }
 degree_t FlightAHRS::getYawDeg() const { return rad2deg(euler_rad.Yaw()); }
 degree_t FlightAHRS::getMagnHeadingDeg() const { return rad2deg(filtered_mag_heading); }
 dps_t FlightAHRS::getCircleOmegaENUDeg() const { return rad2deg(-circle_omega); }
-Quaternion FlightAHRS::getNav2Body() const { return att_quat; }
+Quaternion FlightAHRS::getBody2Nav() const { return att_quat; }
+Quaternion FlightAHRS::getNav2Body() const { return att_quat.get_conjugate(); }
