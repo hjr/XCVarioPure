@@ -57,12 +57,6 @@ bool Gyroscope::doRead(vector_f& val) {
             // return false;
         }
 
-        // // Gating ignores Gyro drift < 1 deg per second (default)
-        // float gate = gyro_gating.get();
-        // nogate_gyro = ref_rot * tmpvec;
-        // tmpvec.x = abs(tmpvec.x) < gate ? 0.0 : tmpvec.x;
-        // tmpvec.y = abs(tmpvec.y) < gate ? 0.0 : tmpvec.y;
-        // tmpvec.z = abs(tmpvec.z) < gate ? 0.0 : tmpvec.z;
         // into glider reference system
         val = imuSensor->rotate(tmpvec) - _bias_estimator.getRef();
         // ESP_LOGI(FNAME, "gyro raw: %d/%d/%d scaled: %f/%f/%f", imuRaw.x, imuRaw.y, imuRaw.z, val.x, val.y, val.z);
@@ -81,6 +75,7 @@ void Gyroscope::postProcess() {
     const vector_f& gyro = getHead();
 
     _processed = gyro - _bias_estimator.getRef(); // a corrected measurment
+    // Gating ignores Gyro drift < 0.5 deg per second (default)
     rps_t gate = Units::deg_to_rad(gyro_gating.get());
     _processed.x = abs(_processed.x) < gate ? 0.0 : _processed.x;
     _processed.y = abs(_processed.y) < gate ? 0.0 : _processed.y;

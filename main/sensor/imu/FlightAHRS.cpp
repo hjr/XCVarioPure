@@ -114,7 +114,7 @@ void FlightAHRS::postProcess() {
     // ESP_LOGI(FNAME, "Euler R:%.1f P:%.1f OR:%.1f IMUP:%.1f", euler.Roll(), euler.Pitch(), rad2deg(roll), rad2deg(pitch));
 
     rad_t gyro_heading_step = circle_omega * dt; // gyro heading change in this step (NED)
-    circle_footing = Vector::normalizePI2(circle_footing + gyro_heading_step); // integrate gyro heading change to get the current circle footing
+    _circle_footing = Vector::normalizePI2(_circle_footing + gyro_heading_step); // integrate gyro heading change to get the current circle footing
 
     // rad_t curh = 0;
     // if (theCompass && theCompass->cur_heading(&curh)) {
@@ -143,7 +143,7 @@ void FlightAHRS::postProcess() {
         // ESP_LOGI(FNAME,"AS: %f m/s, CURSL: %f°, SLIP: %f", tas.get(), -accel.y*K / (tas.get() * tas.get()), slip_angle.get() );
 
         if ( thrmAssist ) {
-            thrmAssist->checkHeading(circle_footing, circle_omega, euler_rad.Roll());
+            thrmAssist->checkHeading(_circle_footing, circle_omega, euler_rad.Roll());
         }
     }
 
