@@ -11,6 +11,7 @@
 #include "DrawDisplay.h"
 #include "HorizonPage.h"
 #include "UiEvents.h"
+#include "MessageBox.h"
 #include "setup/SubMenuAudio.h"
 #include "setup/SubMenuDevices.h"
 #include "setup/SubMenuFlap.h"
@@ -182,6 +183,22 @@ void ScreenRoot::rot(int count)
     else {
         // Volume
         AUDIO->setVolume(audio_volume.get() + count);
+
+        // One line of progressive ||| with the volume % in the middle
+        const int16_t bars_per_line = MBOX->getBoxWidth() / MBOX->getCharWidth('|') - 5; // % figure takes some extra space
+        const int16_t nr_bars = bars_per_line * (int)audio_volume.get() / 100;
+        std::string tmp;
+        for (int i = 0; i < bars_per_line; i++) {
+            if (i == bars_per_line / 2) {
+                char buf[8];
+                sprintf(buf, "%2d%%", (int)audio_volume.get());
+                tmp += buf;
+                i += 3;
+                continue;
+            }
+            tmp += (i < nr_bars) ? '|' : ' ';
+        }
+        MBOX->pushMessage(5, tmp.c_str(), 2);
     }
 }
 
