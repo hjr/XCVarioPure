@@ -26,6 +26,7 @@
 // 2: queued, stays for 20 seconds visible, orange line
 // 3: pushed to front in queue, stays for 30 seconds visible, red line
 // 4: directly mapped, until recalled, red line, red letters, flashing (only short messages)
+// 5...: Id'ed messages, preemping themselfes, not being queued, effectiv prio 1
 //
 // precondition:
 // - ucg adapter for the connected display
@@ -59,6 +60,8 @@ public:
     void keepMessage(uint8_t id, int to = 0);
     bool draw();
     int16_t getBoxHeight() const { return MSG_BOX_HEIGHT; }
+    int16_t getBoxWidth() const;
+    int16_t getCharWidth(char c) const;
     // bool isVisible() const { return current != nullptr; }
     void pause() { _active = false; }
     void resume();

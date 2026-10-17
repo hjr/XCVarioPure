@@ -29,7 +29,11 @@ constexpr int CLOCK_DIVIDER = 8;
 // - has a pseudo unique id to identify messages for confirmation (e.g. to confirm a landing, or a flarm alarm)
 ScreenMsg::ScreenMsg(int a, const char *str, int to) : alert_level(a), text(str), _time_out(to)
 {
-    _id = (rand() % 254) + 1; // generate a pseudo unique id != 0
+    if ( alert_level >= 5 ) {
+        _id = alert_level;
+    } else {
+        _id = (rand() % 254) + 1; // generate a pseudo unique id != 0
+    }
 }
 
 void MessageBox::createMessageBox()
@@ -60,6 +64,8 @@ void MessageBox::resume()
     }
 }
 
+// Push a new message onto the message box. Returns the message ID.
+// Message text gets copied into a new ScreenMsg instance
 uint8_t MessageBox::pushMessage(int alert_level, const char *str, int to, bool confirm)
 {
     if (_msg_list.size() >= 10) {
@@ -71,7 +77,10 @@ uint8_t MessageBox::pushMessage(int alert_level, const char *str, int to, bool c
     uint8_t ret = msg->_id;
     {
         std::lock_guard<SemaphoreMutex> lock(_list_mutex);
-        if ( alert_level >= 3 ) {
+        if ( alert_level >= 5 && !_msg_list.empty() && _msg_list.front()->_id == msg->_id) {
+            _msg_list.front() = std::move(msg); // replace the front message with the new one if IDs match
+        }
+        else if ( alert_level >= 3 ) {
             _msg_list.push_front(std::move(msg));
         }
         else {
@@ -79,7 +88,7 @@ uint8_t MessageBox::pushMessage(int alert_level, const char *str, int to, bool c
         }
     }
     
-    if ( alert_level == 4 ) {
+    if ( alert_level >= 4 ) {
         _msg_to = 0; // trigger immediate display
     }
     if ( ! current && _active ) {
@@ -144,7 +153,7 @@ bool MessageBox::nextMsg()
     }
 
     // prepare screen with a colored line on top
-    if ( current->alert_level == 1 ) {
+    if ( current->alert_level == 1 || current->alert_level >= 5 ) {
         MYUCG->setColor(COLOR_BLUE);
     }
     else if ( current->alert_level == 2 ) {
@@ -243,6 +252,17 @@ bool MessageBox::draw()
         }
     }
     return false;
+}
+
+int16_t MessageBox::getBoxWidth() const
+{
+    return MYUCG->getDisplayWidth();
+}
+
+int16_t MessageBox::getCharWidth(char c) const
+{
+    MYUCG->setFont(ucg_font_fub14_hr, true);
+    return MYUCG->getCharWidth(c);
 }
 
 bool MessageBox::tick()
