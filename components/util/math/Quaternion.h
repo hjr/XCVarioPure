@@ -40,6 +40,7 @@ public:
     Quaternion& conjugate();
     Quaternion get_conjugate() const;
     vector_f rotate(const vector_f& p) const;
+    vector_f rotateInv(const vector_f& p) const;
     // vector_d rotate(const vector_d& p) const;
     friend Quaternion slerp(Quaternion q1, Quaternion q2, double lambda);
     static Quaternion AlignVectors(const vector_f &start, const vector_f &dest);

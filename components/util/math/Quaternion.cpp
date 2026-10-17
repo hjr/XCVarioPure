@@ -157,6 +157,15 @@ vector_f Quaternion::rotate(const vector_f& vec) const
         + 2.0f * (a13 * vec.x + a23 * vec.y - a02 * vec.x + a01 * vec.y);
     return result;
 }
+vector_f Quaternion::rotateInv(const vector_f& vec) const
+{
+    vector_f u{-_x, -_y, -_z};
+    vector_f t = u.cross(vec);
+    t = {2.f * t.x, 2.f * t.y, 2.f * t.z};
+    vector_f c = u.cross(t);
+    return {vec.x + _w * t.x + c.x, vec.y + _w * t.y + c.y, vec.z + _w * t.z + c.z};
+}
+
 // vector_d Quaternion::rotate(const vector_d& vec) const
 // {
 //     double a00 = _w * _w;
