@@ -179,7 +179,7 @@ void AirspeedSensor::postProcess()
         _isResting = false;
     }
     // if ( !(_counter % 10) ) {
-    //     ESP_LOGI(FNAME, "AirSpeed Sensor sigma: %.3f", std::sqrtf(getVariance(10000)));
+    //     ESP_LOGI(FNAME, "AirSpeed Sensor sigma: %.3f", std::sqrt(getVariance(10000)));
     // }
     
     if ( _isResting != rest_old) {

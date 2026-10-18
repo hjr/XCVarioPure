@@ -86,12 +86,12 @@ void S2F::setPolar(int gldr_idx)
 	polar_wingload.set( p.wingload, true, false );
 	// set default min speed as estimated stall_speed * 1.05 )
 	// Vstall := sqrt( (2 * W/S * g) / ( rho * Clmax ) ) [m/s]
-	_stall_speed = std::sqrtf( ( 2.f * polar_wingload.get() * Units::g0) / (Units::rho0 * 1.4f ) ) * 1.05f;
+	_stall_speed = std::sqrt( ( 2.f * polar_wingload.get() * Units::g0) / (Units::rho0 * 1.4f ) ) * 1.05f;
 	polar_stall_speed.set(Units::mps_to_kmh(_stall_speed), true, false);
 	ESP_LOGI(FNAME,"Estimated stall speed: %.1f km/h", polar_stall_speed.get());
 	polar_max_ballast.set( p.max_ballast, true, false );
 	polar_wingarea.set( p.wingarea, true, false );
-	empty_weight.set( (p.wingload * p.wingarea) - 80.0, true, false ); // Calculate default for emtpy mass
+	empty_weight.set( (p.wingload * p.wingarea) - 80.0f, true, false ); // Calculate default for emtpy mass
 	ProtocolItf *prtcl = DEVMAN->getProtocol(NAVI_DEV, XCVARIO_P);
 	if ( prtcl ) {
 		(static_cast<NmeaPrtcl*>(prtcl))->sendXCVEmptyWeight(empty_weight.get());
@@ -178,7 +178,7 @@ mps_t S2F::calculate(mps_t netto_vario, bool circling)
         return _min_sink_speed;
     }
 
-    mps_t stf = std::clamp(std::sqrtf(arg), _min_sink_speed, Units::kmh_to_mps(v_max.get()));
+    mps_t stf = std::clamp(std::sqrt(arg), _min_sink_speed, Units::kmh_to_mps(v_max.get()));
     ESP_LOGI(FNAME, "S2F::calculate()  %.2f", Units::mps_to_kmh(stf));
 
     _s2f_delta = _lpf_delta.filter(stf - ias.get());
@@ -195,7 +195,7 @@ mps_t S2F::getSink( mps_t v_in ) {
 		return 0.0;
 	}
 	float n=getLoadFactor();
-	float sqn = std::sqrtf(n);
+	float sqn = std::sqrt(n);
 	mps_t s = a0*n*sqn + a1*v_in*n + a2*v_in*v_in*sqn;
 	// ESP_LOGI(FNAME,"S2F::sink() V:%0.1f sink:%2.2f G-Load:%1.2f", v_in, s, n );
 	return s;
@@ -203,12 +203,12 @@ mps_t S2F::getSink( mps_t v_in ) {
 
 // min sink at current load factor
 mps_t S2F::getMinsink() {
-    return _min_sink * std::sqrtf(getLoadFactor());
+    return _min_sink * std::sqrt(getLoadFactor());
 }
 
 // min sink speed at current load factor
 mps_t S2F::getMinsinkSpeed() {
-    return _min_sink_speed * std::sqrtf(std::sqrtf(getLoadFactor()));
+    return _min_sink_speed * std::sqrt(std::sqrt(getLoadFactor()));
 }
 
 // v : [m/s]
@@ -247,7 +247,7 @@ void S2F::recalculatePolar()
 	d = v2 - v3;
 	a1 = d == 0. ? 0. : (w2 - w3 - a2 * (v2 * v2 - v3 * v3)) / d;
 	a0 = w3 - a2 * v3 * v3 - a1 * v3;
-	const float loading_factor = std::sqrtf(myballast);
+	const float loading_factor = std::sqrt(myballast);
 	a0 = a0 * loading_factor;
 	a2 = a2 / loading_factor; // wingload  e.g. 100l @ 500 kg = 1.2 and G-Force
 	a0 = a0 * ((bugs.get() + 100.0) / 100.0);
@@ -277,8 +277,8 @@ void S2F::recalcSinkNSpeeds() {
     _circling_speed = 1.2 * _min_sink_speed;
     _circling_sink = getSink(_circling_speed);
     // use user defined/confirmed stall speed
-    const float loading_factor = std::sqrtf(myballast);
-    _stall_speed = Units::kmh_to_mps(polar_stall_speed.get()) * std::sqrtf(loading_factor);
+    const float loading_factor = std::sqrt(myballast);
+    _stall_speed = Units::kmh_to_mps(polar_stall_speed.get()) * std::sqrt(loading_factor);
 
     ESP_LOGI(FNAME, "Airspeed @ min Sink =%3.1f kmh", Units::mps_to_kmh(_min_sink_speed));
     ESP_LOGI(FNAME, "          min Sink  =%2.3f m/s", _min_sink);
@@ -300,7 +300,7 @@ float S2F::getLoadFactor() {
 
 // ??
 // float S2F::getVn(float v) {
-//     float Vn = v * std::sqrtf(getLoadFactor());
+//     float Vn = v * std::sqrt(getLoadFactor());
 //     if (Vn > _stall_speed) {
 //         return Vn;
 //     } else {

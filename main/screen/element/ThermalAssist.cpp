@@ -178,12 +178,12 @@ Point ThermalAssist::getThermalCG() const {
         sy += w * fast_sin_idx(i * 360/CA_NUM_DIRS*2);
     }
 
-    float magnitude = sqrtf(sx*sx + sy*sy);
+    float magnitude = std::sqrt(sx*sx + sy*sy);
     float eccentricity = magnitude / sum;  // 0.0 .. ~1.0
     float roundness = 1.0f - eccentricity;
 
 
-    // float angle = atan2f(sy, sx);
+    // float angle = std::atan2(sy, sx);
     return Point(sx, sy);
 }
 

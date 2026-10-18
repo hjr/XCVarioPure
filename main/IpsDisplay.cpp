@@ -189,7 +189,7 @@ Line::Line(const Quaternion &q, bool respect_mbox) { //, int16_t cx, int16_t cy)
     _ny = up.z;
     _d = std::clamp(-up.x, -0.7f, 0.7f) * 100; // projection scale to visible range
     _d += _nx * DISPLAY_W/2 + _ny * display_h/2; // offset to the middle of the screen
-    float norm = sqrtf(_nx*_nx + _ny*_ny);
+    float norm = std::sqrt(_nx*_nx + _ny*_ny);
     _nx /= norm;
     _ny /= norm;
     _d  /= norm;

@@ -122,8 +122,8 @@ static void checkWarnings()
         float acceleration = S2F::getLoadFactor();
 
         // accelerated and ballast(ed) stall speed
-        mps_t acc_stall = Speed2Fly.getStallSpeed() * std::sqrtf(acceleration);
-        if (ias.get() < acc_stall && ias.get() > acc_stall * 0.7 && airborne.get()) {
+        mps_t acc_stall = Speed2Fly.getStallSpeed() * std::sqrt(acceleration);
+        if (ias.get() < acc_stall && ias.get() > acc_stall * 0.7f && airborne.get()) {
             if (!stall_warning_active) {
                 MBOX->pushMessage(4, "! STALL !", 20); // 20 sec
             }

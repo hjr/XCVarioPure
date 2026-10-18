@@ -87,7 +87,7 @@ void GpsVSensor::postProcess() {
         float d = _prev_diff.dot(vec);
         float c = _prev_diff.cross(vec);
         constexpr float one_div_by_dt = 1.f / (DUTY_CYCLE_MS / 1000.f);
-        _omega = atan2f(c, d) * one_div_by_dt;
+        _omega = std::atan2(c, d) * one_div_by_dt;
         _prev_diff = vec;
     }
 

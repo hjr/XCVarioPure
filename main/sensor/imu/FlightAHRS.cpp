@@ -84,9 +84,9 @@ void FlightAHRS::postProcess() {
         // ESP_LOGI(FNAME,"attv: %.3f,%.3f,%.3f - omega %f", _processed.x, _processed.y, _processed.z, circle_omega);
         // tan(roll):= petal force/G = m w v / m g
         float tanw = circle_omega * tas.get() / Units::g0;
-        roll = atan(tanw);
+        roll = std::atan(tanw);
         // get pitch from accelerometer
-        pitch = atan2f(accel.x, -accel.z); // neglecting accel.y, because of minor influence on pitch and more noise
+        pitch = std::atan2(accel.x, -accel.z); // neglecting accel.y, because of minor influence on pitch and more noise
         // Virtual sum of forces (centrifugaland gravity), serving similar to the accel on the ground 
         // for this complementary filter
         petal.x = sin(pitch);              // Nose up (positive Y turn) results in positive X force

@@ -114,7 +114,7 @@ void Flap::prepLevels()
     {
         // adapt speeds to actual wingload
         for ( FlapLevel &fl : flevel ) {
-            fl.prep_speed = Units::kmh_to_mps(fl.nvs_speed) * std::sqrtf(Speed2Fly.getBallastFactor());
+            fl.prep_speed = Units::kmh_to_mps(fl.nvs_speed) * std::sqrt(Speed2Fly.getBallastFactor());
             ESP_LOGI( FNAME, "Adjusted flap speed %.1f", fl.prep_speed );
         }
 
@@ -185,7 +185,7 @@ float Flap::getOptimum(mps_t spd) const {
     if (g_force < 0.3) {
         g_force = 0.3; // Ignore meaningless values below 0.3g
     }
-    mps_t g_speed = spd / sqrtf(g_force); // reduce current speed, instead of increase switch points
+    mps_t g_speed = spd / std::sqrt(g_force); // reduce current speed, instead of increase switch points
     // ESP_LOGI(FNAME, "g force: %.1f, g corrected speed: %3.1f", g_force, g_speed);
 
     int wki = 0; // find the min speed flap index

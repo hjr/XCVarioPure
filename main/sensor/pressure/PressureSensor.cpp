@@ -50,7 +50,7 @@ PressureSensor::~PressureSensor() {
 
 // void PressureSensor::postProcess() {
 //     // dump sigma
-//     ESP_LOGI(FNAME, "PressureSensor sigma: %.3f", std::sqrtf(getVariance(10000)));
+//     ESP_LOGI(FNAME, "PressureSensor sigma: %.3f", std::sqrt(getVariance(10000)));
 // }
 
 meter_t PressureSensor::readAltitude(pascal_t qnh, bool& success) {

@@ -297,7 +297,7 @@ int MpuImu::getAccelSamplesAndCalib(vector_f gyro_integral, rad_t& wing_angle, r
         ESP_LOGI(FNAME, "wiggle_axes: %f,%f,%f", wiggle_axes.x, wiggle_axes.y, wiggle_axes.z);
         // the XY-plane represents the measured horizontal ground plane
         // calc the angle of the wggle axes wrt. the ground plane
-        ground_angle = atan2f(-wiggle_axes.z, sqrtf(wiggle_axes.x*wiggle_axes.x + wiggle_axes.y*wiggle_axes.y));
+        ground_angle = std::atan2(-wiggle_axes.z, std::sqrt(wiggle_axes.x*wiggle_axes.x + wiggle_axes.y*wiggle_axes.y));
         ESP_LOGI(FNAME, "level correction: %f degree", rad2deg(ground_angle));
         Quaternion level_correction = Quaternion(-ground_angle, vector_f(0., 1., 0.));
 

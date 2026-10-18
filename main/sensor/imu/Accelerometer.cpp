@@ -196,6 +196,6 @@ void Accelerometer::resetRest() {
 
 // rad_t AccMPU6050::PitchFromAccelRad()
 // {
-// 	return atan2f(-accel.x, accel.z); // neglecting accel.y, because of minor influence on pitch and more noise
+// 	return std::atan2(-accel.x, accel.z); // neglecting accel.y, because of minor influence on pitch and more noise
 // }
 

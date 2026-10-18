@@ -218,7 +218,7 @@ void StraightWind::calculateSpeedAndAngle( float angle1, mps_t speed1, float ang
 	float s2wca = speed2 * cos( wca );
 	float ang = tcrad + atan2( speed2 * sin( wca ), s2wca - speed1 );
 	// Cosinus sentence: c^2 = a^2 + b^2 − 2 * a * b * cos( α ) for wind speed in km/h
-	speed = sqrt( (speed2 * speed2) + (speed1 * speed1 ) - ( 2 * s2wca * speed1  ) );
+	speed = std::sqrt( (speed2 * speed2) + (speed1 * speed1 ) - ( 2 * s2wca * speed1  ) );
 	angle = Vector::normalizeDeg( rad2deg( ang ) );  // convert radian to degree
 	// ESP_LOGI(FNAME,"calcAngleSpeed( A1/S1=%3.1f°/%3.1f km/h  A2/S2=%3.1f°/%3.1f km/h): A/S: %3.2f°/%3.2f km/h", angle1, speed1, angle2, speed2, angle, speed  );
 }

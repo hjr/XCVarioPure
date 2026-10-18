@@ -100,7 +100,7 @@ WMM_Model::WMM_Model(int md, float epo, float* wmmcof)
           if (m > 0)
             {
               float flnmj = (float)((n-m+1)*j)/(float)(n+m);
-              *(snorm+n+m*13) = *(snorm+n+(m-1)*13)*sqrtf(flnmj);
+              *(snorm+n+m*13) = *(snorm+n+(m-1)*13)*std::sqrt(flnmj);
               j = 1;
               c[n][m-1] = *(snorm+n+m*13)*c[n][m-1];
               cd[n][m-1] = *(snorm+n+m*13)*cd[n][m-1];
@@ -149,28 +149,28 @@ bool WMM_Model::geomag(float alt, float glat, float glon, float time, float *bx,
   constexpr float c4 = a4 - b4;
   constexpr float dtr = M_PI/180.0;
   
-  float srlat = sinf(glat*dtr);
-  float crlat = cosf(glat*dtr);
+  float srlat = std::sin(glat*dtr);
+  float crlat = std::cos(glat*dtr);
   float srlat2 = srlat*srlat;
   float crlat2 = crlat*crlat;
 
 
   // CONVERT FROM GEODETIC COORDS. TO SPHERICAL COORDS.
-  float q = sqrtf(a2-c2*srlat2);
+  float q = std::sqrt(a2-c2*srlat2);
   float q1 = alt*q;
   float q2 = ((q1+a2)/(q1+b2))*((q1+a2)/(q1+b2));
-  float ct = srlat/sqrtf(q2*crlat2+srlat2);
-  float st = sqrtf(1.0-(ct*ct));
+  float ct = srlat/std::sqrt(q2*crlat2+srlat2);
+  float st = std::sqrt(1.0-(ct*ct));
   float r2 = (alt*alt)+2.0*q1+(a4-c4*srlat2)/(q*q);
-  float r = sqrtf(r2);
-  float d = sqrtf(a2*crlat2+b2*srlat2);
+  float r = std::sqrt(r2);
+  float d = std::sqrt(a2*crlat2+b2*srlat2);
   float ca = (alt+d)/r;
   float sa = c2*crlat*srlat/(r*d);
 
   sp[0] = 0.0;
   cp[0] = 1.0;
-  sp[1] = sinf(glon*dtr);
-  cp[1] = cosf(glon*dtr);
+  sp[1] = std::sin(glon*dtr);
+  cp[1] = std::cos(glon*dtr);
   for (int m=2; m<=maxord; m++)
   {
     sp[m] = sp[1]*cp[m-1]+cp[1]*sp[m-1];
@@ -247,10 +247,10 @@ bool WMM_Model::geomag(float alt, float glat, float glon, float time, float *bx,
 
   // COMPUTE DECLINATION (DEC), INCLINATION (DIP) AND
   // TOTAL INTENSITY (TI)
-  *bh = sqrtf((*bx * *bx)+(*by * *by));
-  *ti = sqrtf((*bh * *bh)+(*bz * *bz));
-  *dec = atan2f(*by,*bx)/dtr;
-  *dip = atan2f(*bz,*bh)/dtr;
+  *bh = std::sqrt((*bx * *bx)+(*by * *by));
+  *ti = std::sqrt((*bh * *bh)+(*bz * *bz));
+  *dec = std::atan2(*by,*bx)/dtr;
+  *dip = std::atan2(*bz,*bh)/dtr;
 
   // COMPUTE MAGNETIC GRID VARIATION IF THE CURRENT
   // GEODETIC POSITION IS IN THE ARCTIC OR ANTARCTIC
