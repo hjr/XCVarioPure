@@ -9,7 +9,7 @@
 #include <eglib/hal/four_wire_spi/esp32/esp32_ili9341.h>
 #include <driver/spi_master.h>
 
-#define FREQ_UGC_SPI 13111111  // *3 for SPI display clock, /2 for BMP pressure sensor clock
+#define FREQ_UGC_SPI 12000000  // *3 for SPI display clock, /2 for BMP pressure sensor clock
 
 static eglib_t myeglib;
 
@@ -49,7 +49,7 @@ static ili9341_config_t ili9341_config = {
 
 static esp32_hal_config_t esp32_ili9341_config = {
 		.spi_num = SPI3_HOST,
-		.freq = 	13111111*3,  // max 40 MHz
+		.freq =	FREQ_UGC_SPI,  // max 40 MHz
 		.dataMode = 0,
 		.bitOrder = 0,
 		.gpio_scl = SPI_SCLK,
@@ -148,6 +148,8 @@ void  AdaptUGC::begin() {
 	ESP_LOGI(FNAME, "eglib_Send() &eglib:%x  hal-driv:%x config:%x  clk:%.3f MHz\n", (unsigned int)eglib, (unsigned int)&esp32_ili9341, (unsigned int)&esp32_ili9341_config, (double)(esp32_ili9341_config.freq/1000000.0) );
 	eglib_Init( &myeglib, &esp32_ili9341, &esp32_ili9341_config, &ili9341, &ili9341_config );
 	setClipRange( 0, 0, ili9341_config.width, ili9341_config.height );
+	gpio_set_drive_capability( (gpio_num_t)SPI_SCLK, GPIO_DRIVE_CAP_0);
+        gpio_set_drive_capability( (gpio_num_t)SPI_MOSI, GPIO_DRIVE_CAP_0);
 }
 int16_t AdaptUGC::getDisplayWidth() const
 {
