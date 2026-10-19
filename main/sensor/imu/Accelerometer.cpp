@@ -41,10 +41,10 @@ Accelerometer::Accelerometer() :
 
     // accelerometer filter init.
     setFilter(&_lpf_accel);
-    _lpf_accel.reset({0.f,0.f,1.f});
+    _lpf_accel.reset({0.f,0.f,-1.f}); // typical rest
 
     // push a single previous value
-    pushAndPublish(vector_f(1,0,0), 0);
+    pushAndPublish({0.f,0.f,-1.f}, 0);
 }
 Accelerometer::~Accelerometer() {
     accSensor = nullptr;
