@@ -86,13 +86,13 @@ bool Accelerometer::doRead(vector_f& val) {
         // ESP_LOGI(FNAME, "accraw\tX:%d Y:%d Z:%d", imuRaw.x, imuRaw.y, imuRaw.z);
         // ESP_LOGI(FNAME, "tmpvec\tX:%f Y:%f Z:%f", tmp_ned.x, tmp_ned.y, tmp_ned.z);
 
+        val = imuSensor->rotate(tmp_ned);
         // Check on irrational changes
-        if ((tmp_ned - getHead()).get_norm2() > 25.f) {
+        if ((val - getHead()).get_norm2() > 25.f) {
             // vector_f d(tmpvec-prev_accel);
             ESP_LOGE(FNAME, "accelaration change > 5 g in 0.1 sec");
-            // return false;
+            return false;
         }
-        val = imuSensor->rotate(tmp_ned);
         // ESP_LOGI(FNAME, "val X:%f Y:%f Z:%f", val.x, val.y, val.z);
         return true;
     }
