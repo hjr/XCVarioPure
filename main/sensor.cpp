@@ -930,7 +930,7 @@ void system_startup(void *args){
             if (airfield_elev > NO_ELEVATION && alt_select.get() == ALT_BARO_SENSOR && baroSensor) {
                 pascal_t qnh_auto = Units::calcQNH(baroSensor->getAVG(300), airfield_elev);
                 QNH.set(qnh_auto);
-                ESP_LOGI(FNAME, "Auto QNH (direkt) = %4.2f hPa", qnh_auto);
+                ESP_LOGI(FNAME, "Auto QNH (direkt) = %4.2f hPa", Units::pa_to_hpa(qnh_auto));
             }
         }
         else {
