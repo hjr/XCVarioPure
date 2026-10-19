@@ -61,7 +61,7 @@ class ZeroOutGatingLPFilter : public LowPassFilterT<float>
 public:
     ZeroOutGatingLPFilter(float alpha, float threshold) : LowPassFilterT<float>(alpha), _threshold(threshold) {}
     void setThreshold(float threshold) { _threshold = threshold; }
-    float filter(float input) override;
+    float filter(float input) override; // output is always >= 0
 private:
     float _threshold;
 };
