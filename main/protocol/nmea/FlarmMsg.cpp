@@ -19,6 +19,7 @@
 #include "sensor/temp/TempVSensor.h"
 #include "sensor/VarioFilter.h"
 #include "sensor/adc/FlapSens.h"
+#include "sensor/imu/FlightAHRS.h"
 #include "screen/MessageBox.h"
 #include "comm/DeviceMgr.h"
 #include "comm/OneWireBus.h"
@@ -245,6 +246,10 @@ dl_action_t FlarmMsg::parsePFLAX(NmeaPlugin *plg)
             }
             // always prepare vario for disruptive jump
             varioSensor->prepareForSimJump();
+            // as well the AHRS filter
+            if (ahrsSensor) {
+                ahrsSensor->setup();
+            }
         }
     }
 
