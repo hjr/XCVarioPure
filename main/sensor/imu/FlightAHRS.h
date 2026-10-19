@@ -20,10 +20,11 @@ public:
 
     const char *name() const override { return "ahrs"; }
     bool probe() override { return false; }
-    bool setup() override { return false; }
+    bool setup() override;
     bool doRead(vector_f& val) override { return false; }
     void postProcess() override;
 
+    void startCalibration(int8_t duration = 50); // duration in cycles
     degree_t getRollDeg() const;
     rad_t getRoll() const;
     degree_t getPitchDeg() const;
@@ -43,6 +44,7 @@ private:
     vector_f euler_rad = {};
     // slip angle
     LowPassFilterT<float> _lpf_slip_angle;
+    int8_t _calibrating = 0; // calibration counter
 };
 
 extern FlightAHRS *ahrsSensor;

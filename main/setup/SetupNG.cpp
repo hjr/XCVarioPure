@@ -33,6 +33,7 @@
 #include "Atmosphere.h"
 #include "sensor/imu/ImuSensor.h"
 #include "sensor/imu/Gyroscope.h"
+#include "sensor/imu/FlightAHRS.h"
 #include "logdefnone.h"
 
 #include <freertos/FreeRTOS.h>
@@ -377,6 +378,7 @@ static void propagate_caps()
 static void adjust_gaa() {
     if (imuSensor) {
         imuSensor->applyImuReference(glider_ground_aa.get(), MpuImu::getDefaultImuReference());
+        ahrsSensor->startCalibration();
     }
 }
 

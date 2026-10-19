@@ -814,6 +814,7 @@ void system_startup(void *args){
         SensorRegistry::registerSensor(accSensor);
         // register the AHRS as postprocess only virtual sensor
         ahrsSensor = new FlightAHRS();
+        ahrsSensor->setup(); // needs airborne status
         SensorRegistry::registerSensor(ahrsSensor);
     }
     else {

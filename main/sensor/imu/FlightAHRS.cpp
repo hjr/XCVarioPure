@@ -36,6 +36,9 @@ FlightAHRS::~FlightAHRS() {
     ahrsSensor = nullptr;
 }
 
+bool FlightAHRS::setup() {
+    return false;
+}
 
 /////////////////////////////////////////
 // Post Processing and AHRS fusion code
@@ -149,6 +152,9 @@ void FlightAHRS::postProcess() {
 
 }
 
+void FlightAHRS::startCalibration(int8_t duration) {
+    _calibrating = duration;
+}
 
 degree_t FlightAHRS::getRollDeg() const { return rad2deg(euler_rad.Roll()); }
 rad_t FlightAHRS::getRoll() const { return euler_rad.Roll(); }
