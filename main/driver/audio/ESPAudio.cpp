@@ -785,15 +785,20 @@ Audio::~Audio()
 
 // call this to get current setting effective
 void Audio::applySetup(int idx) {
-    if ( idx == 0 ) {
+    if ( idx >= 0 && idx <= 1 ) {
         if ( !VKLAR ) {
             VKLAR = new VarioKlar();
             VKLAR->init();
             VKLAR->setPolar(polar_speed1.get(), polar_sink1.get(), polar_speed2.get(), polar_sink2.get(), polar_speed3.get(), polar_sink3.get());
             ESP_LOGI(FNAME, "VarioKlar initialized size %d", sizeof(VarioKlar));
         }
+        if ( idx == 0 ) {
+            VKLAR->setVoice(&VK_VOICE_KLAR);
+        } else if ( idx == 1 ) {
+            VKLAR->setVoice(&VK_VOICE_OPTCLASSIC);
+        }
     }
-    else if ( idx > 0 ) {
+    else if ( idx > 1 ) {
         VarioKlar *tmp = VKLAR;
         VKLAR = nullptr;
         vTaskDelay(pdMS_TO_TICKS(10));
