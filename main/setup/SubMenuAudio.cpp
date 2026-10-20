@@ -66,7 +66,7 @@ const std::array<AUDIO_PROFILE, NUM_AUDIO_PRFLS> audio_prfls = {{
     {"Borgelt",    500., 1.4, false, BOTH_CHOP, AUD_HARM_LOW, 0.8 },
     {"Custom",     500., 2.,  false, BOTH_CHOP, AUD_HARM_OFF, 1. } }};
 
-static int getAudioProfile()
+int getAudioProfile()
 {
     AUDIO_PROFILE ap = { "", center_freq.get(), tone_var.get(), dual_tone.get() != 0, chopping_mode.get(), audio_harmonics.get(), audio_factor.get() };
     int i = 0;
@@ -146,6 +146,7 @@ void audio_menu_create_tonestyle(SetupMenu *top) { // dynamic!
         for (const auto &p : audio_prfls) {
             prfl->addEntry(p.getName());
         }
+        prfl->setSelect(profile_idx);
         top->addEntry(prfl);
 
         SetupMenuValFloat *cf = new SetupMenuValFloat("CenterFreq", "Hz", set_parent_dirty, &center_freq);

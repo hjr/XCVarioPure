@@ -19,6 +19,7 @@
 #include "comm/OneWireBus.h"
 #include "setup/SetupNG.h"
 #include "setup/CruiseMode.h"
+#include "setup/SubMenuAudio.h"
 #include "driver/audio/ESPAudio.h"
 #include "driver/gpio/ESPRotary.h"
 #include "IpsDisplay.h"
@@ -835,7 +836,7 @@ void system_startup(void *args){
     }
 
 
-    AUDIO->applySetup(-1);
+    AUDIO->applySetup(getAudioProfile());
     if (audio_mute_gen.get() != AUDIO_OFF) {
         ESP_LOGI(FNAME, "Audio begin");
         logged_tests += "Audio & Poti test: ";
