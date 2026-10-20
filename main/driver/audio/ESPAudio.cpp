@@ -7,6 +7,7 @@
  ***********************************************************/
 
 #include "driver/audio/ESPAudio.h"
+#include "driver/audio/VarioKlar.h"
 
 #include "mcp4018.h"
 #include "cat5171.h"
@@ -305,6 +306,10 @@ static std::array<TONE, 3> vario_seq = {{ {0.}, {0.}, {0.} }};
 static std::array<TONE, 3> vario_extra = {{ {0.}, {0.}, {0.} }};
 static std::array<VOICECONF, 2> vario_vconf = {{ {0, 220}, {0, 21} }};
 const SOUND VarioSound = { vario_tim.data(), { vario_seq.data(), vario_extra.data(), nullptr, nullptr }, vario_vconf.data(), -1 };
+
+// Varioton "Klar": ersetzt die beiden Vario-Stimmen 0/1, solange VarioSound läuft, im Vario- und im Sollfahrt-Modus.
+// Überlagerungen (Stimmen 2/3) und alle Alarme bleiben unverändert.
+static VarioKlar* VKLAR = nullptr;      // ca. 1,4 kB RAM
 const SOUND NoSound = { no_tone_tim.data(), { silence_seq.data(), nullptr, nullptr, nullptr }, vario_vconf.data(), -1 };
 constexpr float HIGH_TONE_VAR = toneFactor(2); // major prime up
 
@@ -599,11 +604,17 @@ static bool IRAM_ATTR dacdma_done(dac_continuous_handle_t h, const dac_event_dat
     irq_counter++;
 #endif
 
+    // Klar übernimmt den Varioton, solange der Vario-Klang läuft
+    const bool klar = VKLAR && cmd.timeseq == vario_tim.data();
+    const int firstVoice = klar ? 2 : 0;
+
     // on the fly counting of active voices
     int numVoices = 0;
-    for (int j = 0; j < MAX_VOICES; j++) {
+    for (int j = firstVoice; j < MAX_VOICES; j++) {
         if ( vl[j].active ) numVoices++;
     }
+    const bool overlay = numVoices > 0;
+    if ( klar ) numVoices += 2; // zählt wie die bisherigen zwei Vario-Stimmen (gleiche Mischung mit Überlagerungen)
     if (cmd.counter < reload_count) {
         // reload the frequencies, making the variometer more responsive (even w/o sync to voice cycle)
         for (int j = 0; j < cmd.voicecount; j++) {
@@ -616,6 +627,10 @@ static bool IRAM_ATTR dacdma_done(dac_continuous_handle_t h, const dac_event_dat
     // multi tone
     // 1 or 2 channels, each 16 bit
     constexpr int INC_SHIFT = (DAC_MODE == DAC_CHANNEL_MODE_ALTER ? 2 : 1); // corresponding to INC
+    if ( klar ) {
+        // ganzer Puffer auf einmal (schnellster Weg), weitere Stimmen werden danach addiert
+        VKLAR->render(buf + 1, e->buf_size >> INC_SHIFT, 1 << INC_SHIFT);
+    }
     int i = 0;
     int z = (cmd.counter > 0 && cmd.counter < (e->buf_size>>INC_SHIFT)) ? 2 : 1; // divide loop
     int loop_end = (z==1) ? (e->buf_size>>INC_SHIFT) : cmd.counter;
@@ -629,12 +644,16 @@ static bool IRAM_ATTR dacdma_done(dac_continuous_handle_t h, const dac_event_dat
             // silent
             memset(buf+i, DAC_CENTER, (loop_end-i)<<INC_SHIFT);
         }
+        else if ( klar && !overlay ) {
+            i = loop_end; // nur Klar: steht schon fertig im Puffer
+        }
         else {
             // fuse all voices
             for (; i < loop_end; i++) {
-                int sum = 0;
+                // Klar liefert ±VarioKlar::DAC_AMPL; für die Mischung auf ±64 wie die übrigen Stimmen (Schieben, keine Division)
+                int sum = klar ? ((int)buf[(i<<INC_SHIFT)+1] - DAC_CENTER) >> (VarioKlar::DAC_AMPL > DAC_HLF_AMPL ? 1 : 0) : 0;
                 fade++;
-                for (int j = 0; j < MAX_VOICES; j++) {
+                for (int j = firstVoice; j < MAX_VOICES; j++) {
                     // all voices
                     VOICECMD& v = vl[j];
                     if (!v.active) continue; // a silent voice
@@ -765,7 +784,21 @@ Audio::~Audio()
 }
 
 // call this to get current setting effective
-void Audio::applySetup() {
+void Audio::applySetup(int idx) {
+    if ( idx == 0 ) {
+        if ( !VKLAR ) {
+            VKLAR = new VarioKlar();
+            VKLAR->init();
+            VKLAR->setPolar(polar_speed1.get(), polar_sink1.get(), polar_speed2.get(), polar_sink2.get(), polar_speed3.get(), polar_sink3.get());
+            ESP_LOGI(FNAME, "VarioKlar initialized size %d", sizeof(VarioKlar));
+        }
+    }
+    else if ( idx > 0 ) {
+        VarioKlar *tmp = VKLAR;
+        VKLAR = nullptr;
+        vTaskDelay(pdMS_TO_TICKS(10));
+        delete tmp;
+    }
     ESP_LOGI(FNAME, "Audio setup");
     if (audio_range.get() == AUDIO_RANGE_5_MS) {
         _range = 5.0;
@@ -1144,8 +1177,41 @@ void Audio::dactask()
                         audio_value = - Speed2Fly.getDelta() / Units::kmh_to_mps(10.f);
                         max = 5.0; // +/- 50km/h range, same audio as +/-5m/s
                     }
-                    audio_value = std::clamp( audio_value, -max, max );
-                    calculateFrequency(audio_value);
+                    if ( VKLAR ) {
+                        // Klar: Kurven bis -6 / +10 m/s (unabhängig vom Skalenbereich), Sollfahrt bis ±60 km/h
+                        const bool vario = CRMOD.audioIsVario();
+                        audio_value = vario ? std::clamp( audio_value, -6.f, 10.f ) : std::clamp( audio_value, -6.f, 6.f );
+                        static int64_t last_us = 0;
+                        const int64_t now = esp_timer_get_time();
+                        const float dt = last_us ? (now - last_us) * 1e-6f : 0.1f;
+                        last_us = now;
+                        // Sollfahrt: Chopping an = piepst wie Steigen, aus = durchgehend mit ruhigem Doppelpieps.
+                        // Die Sollfahrt-Totzone (still bis ±5 km/h, Pause beim Seitenwechsel) steckt in Klar,
+                        // die Totzone aus dem Setup gilt nur im Vario-Modus (dort auch "Sinkton stumm").
+                        const VarioKlar::Mode mode = vario ? VarioKlar::Mode::Vario
+                            : (CRMOD.audioIsChopping() ? VarioKlar::Mode::S2fBeep : VarioKlar::Mode::S2fCont);
+                        const bool on = volumeadjust > 0 || ((!vario || !inDeadBand(audio_value)) && speaker_volume >= 1.0f);
+                        if ( volumeadjust > 0 ) { volumeadjust--; }
+                        // Polare geändert? (Setup, Flugzeugwahl) -> Fahrt-Eckwerte neu, ein Vergleich alle 5 s genügt
+                        static int polar_cnt = 0;
+                        if ( ++polar_cnt >= 50 ) {
+                            polar_cnt = 0;
+                            static float pol[6] = {};
+                            const float p[6] = { polar_speed1.get(), polar_sink1.get(), polar_speed2.get(), polar_sink2.get(), polar_speed3.get(), polar_sink3.get() };
+                            if ( std::memcmp(p, pol, sizeof(p)) != 0 ) { std::memcpy(pol, p, sizeof(p)); VKLAR->setPolar(p[0], p[1], p[2], p[3], p[4], p[5]); }
+                        }
+                        // Ruhezone: nur im Vario-/Kreisflugmodus. te_netto = TE minus Eigensinken (Polare, Ballast,
+                        // Mücken und Lastvielfaches aus S2F::getSink()), wird im VarioFilter alle 100 ms gesetzt.
+                        // ias ist in m/s (mps_t), Klar rechnet in km/h.
+                        const bool calm = !CRMOD.getCMode();
+                        VKLAR->update(audio_value, dt, on, mode, te_netto.get(), calm, ias.get() * 3.6f);
+                        if ( on ) { unmute(); }
+                        else if ( VKLAR->silent() && !current_dmacmd->voice[2].active && current_dmacmd->repcount == -1 ) { mute(); }
+                    }
+                    else {
+                        audio_value = std::clamp( audio_value, -max, max );
+                        calculateFrequency(audio_value);
+                    }
                 }
             }
             else if ( event.cmd == VLOAD_DONE ) {

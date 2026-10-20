@@ -50,7 +50,7 @@ public:
     Audio();
     virtual ~Audio();
 
-    void applySetup();                          // incorporate setup changes
+    void applySetup(int idx);                   // incorporate setup changes
     void initVarioVoice();                      // start vario sound for the very first time
     bool isUp() const { return _dac_chan != nullptr; }
     bool isPotiUp() const { return _poti != nullptr; }
