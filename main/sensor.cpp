@@ -835,7 +835,7 @@ void system_startup(void *args){
     }
 
 
-    AUDIO->applySetup();
+    AUDIO->applySetup(-1);
     if (audio_mute_gen.get() != AUDIO_OFF) {
         ESP_LOGI(FNAME, "Audio begin");
         logged_tests += "Audio & Poti test: ";
