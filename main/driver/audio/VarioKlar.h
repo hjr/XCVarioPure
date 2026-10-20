@@ -1,4 +1,7 @@
-// VarioKlar - sparsamer Varioton "Klar" für den XCVario (ESP32, 8-Bit-DAC), Fassung 2 (Stand 16.10.2026)
+// VarioKlar - sparsamer Varioton für den XCVario (ESP32, 8-Bit-DAC), Fassung 3 (Stand 19.10.2026)
+//
+// Fassung 3: mehrere Töne (VkVoice) mit derselben Logik. "Klar" (Ton aus Fassung 2, unveränderte Tabellen) und
+// "OptClassic" (weich und klassisch). Umschalten mit setVoice(), auch im Betrieb.
 //
 // Ein Tonerzeuger für Vario und Sollfahrt:
 //  - Vario: Klar-Kurven bis +10 m/s, Atem beim Sinken, Ruhezone um Netto 0, "Gleichstand leiser".
@@ -14,7 +17,8 @@
 //              lesung mit linearer Interpolation, Hüllkurvenrampe. Alle 64 Abtastwerte (~1 ms) rechnet
 //              chunk() Hüllkurve, Doppelpieps-Lücke, Tonhöhengleiten, Trend und Lautstärken neu.
 //
-// Speicher: ca. 1,3 kB RAM (2 Wellenformen à 514 Byte + Zustand), ca. 7 kB Flash (Tabellen).
+// Speicher: ca. 1,8 kB RAM (2 Wellenformen à 514 Byte + Zustand + Interrupt-Tabellen), Flash: Code ca. 5,3 kB,
+// Tabellen Klar ca. 6 kB, OptClassic ca. 5,7 kB.
 #pragma once
 #include <cstdint>
 #include <atomic>
@@ -32,6 +36,27 @@
 #define VK_DAC_FULL 1
 #endif
 
+// Ein Ton: Obertonsätze, Kurven (0,1-Schritte, gleiche Stützstellen wie VarioKlarTables.h) und Hüllkurvenform.
+// Alle Tabellen liegen im Flash und werden nur im Audio-Task gelesen.
+struct VkVoice {
+    const char *name;
+    const int16_t *harmClimb, *harmSink, *harmGlanz;      // NF x NH, Steigen / Sinken / Glanz
+    const uint16_t *hz;                                   // Tonhöhe, Q2 (Hz x 4), für beide Sätze
+    const uint16_t *rate, *rate2;                         // Pieps bzw. Atemzüge pro Sekunde, Q10; Satz 0 / Satz 1 (Sollfahrt durchgehend)
+    const uint8_t *floor, *duty, *gain;                   // Grundpegel Q8, Tonanteil Q8, Pegel (Lautheitsausgleich x Pegel je Wert) Q7
+    const uint8_t *floor2, *duty2, *gain2;
+    const uint8_t *env;                                   // Atem -> Pieps, Q8 (0 = Atem, 255 = Pieps); nullptr = Klar-Übergang
+    float attS, attSCont, relRatio;                       // Pieps-Anstieg (s), Doppelpieps-Anstieg (s), Abfall / Anstieg
+    float trendSt, glStart, glMax, bIn;                   // Trend (Halbtöne je m/s/s), Glanz ab / höchstens, Atem-Anschwellen
+    float shAttS, shRelS, shV0, shV1;                     // Pieps-Form: Kosinus hinein / hinaus (s), eingeblendet von shV0 bis shV1 (m/s); shAttS = 0: keine
+    bool slowQuiet;                                       // true: leiser beim Langsamfliegen (setSpeedAdapt), false: immer voll
+    bool gainGlide;                                       // true: Sprünge beim Wellenformtausch (10-Hz-Takt) ausgleichen: Energieverhältnis alt/neu, im Interrupt über 50 ms auf 1
+    float harmGain;                                       // Faktor auf die Obertontabellen (1 = wie gespeichert; > 1, wenn sie für int16 verkleinert sind)
+    uint8_t nf, nh; uint16_t lutN;                        // Größen zur Prüfung, müssen zu VarioKlarTables.h passen
+};
+extern const VkVoice VK_VOICE_KLAR;          // Klar (Ton aus Fassung 2)
+extern const VkVoice VK_VOICE_OPTCLASSIC;    // OptClassic (VarioKlarOptClassic.cpp)
+
 class VarioKlar {
 public:
     static constexpr int SAMPLE_RATE = 66150;    // muss zu ESPAudio.cpp passen
@@ -47,6 +72,12 @@ public:
     };
 
     void init();
+
+    // Ton wählen (Standard: Klar). Vor init() oder jederzeit aus dem Audio-Task (nicht aus einem anderen Task).
+    // Läuft der Ton, blendet der nächste update() in 25 ms aus und der übernächste mit dem neuen Ton wieder ein
+    // (rund 0,1 s Pause, kein Knacks). Gibt false zurück, wenn der Ton nicht zu den Tabellengrößen passt (dann bleibt der alte).
+    bool setVoice(const VkVoice *voice);
+    const VkVoice *voice() const { return voice_; }
 
     // Audio-Task, etwa 10x pro Sekunde.
     //  v       Vario in m/s, im Sollfahrt-Modus Abweichung in 10 km/h (+ = zu schnell), wie audio_value in ESPAudio
@@ -98,6 +129,7 @@ private:
         int32_t  rzTarget;        // Ruhezone bzw. Sollfahrt-Totzone: Ziel-Verstärkung Q15
         int32_t  rzAUp, rzADn;    // Glättung je CHUNK beim Lauter- / Leiserwerden, Q16
         int32_t  volTarget;       // Fahrt x Gleichstand: Ziel-Verstärkung Q15
+        uint32_t gRatio;          // neue Wellenform: Pegel alt / neu, Q16 (65536 = gleich); wird beim Tausch in vg_ übernommen
         uint8_t  sub;             // 1 = Doppelpieps (Lücke in der Mitte des Pieps)
         uint8_t  snap;            // 1 = Verstärkungen sofort auf das Ziel (Start)
     };
@@ -133,6 +165,11 @@ private:
     std::atomic<bool> fresh_{false};
 
     // Task-Zustand
+    const VkVoice *voice_ = &VK_VOICE_KLAR;
+    float waveE_ = 0.f;             // Energie der zuletzt gebauten Wellenform (gainGlide)
+    const VkVoice *pending_ = nullptr;   // gewünschter Ton, wird nach dem Ausblenden übernommen
+    bool fadeOut_ = false;
+    void applyVoice(const VkVoice *voice);
     float vs_ = 0.f, vsPrev_ = 0.f, dvs_ = 0.f;
     float aLast_[16]{};
     bool started_ = false, snap_ = true;

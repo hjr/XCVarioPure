@@ -55,9 +55,10 @@ bool AUDIO_PROFILE::isEqual(const AUDIO_PROFILE &ap) const
     if (!floatEqualFast(exponent, ap.exponent)) return false;
     return true;
 }
-constexpr int NUM_AUDIO_PRFLS = 8;
+constexpr int NUM_AUDIO_PRFLS = 9;
 const std::array<AUDIO_PROFILE, NUM_AUDIO_PRFLS> audio_prfls = {{ 
-    {"Pur",        489., 3.2, false, BOTH_CHOP, AUD_HARM_HIGH, .7 }, 
+    {"Pur0",       489., 3.2, false, BOTH_CHOP, AUD_HARM_HIGH, .7 }, 
+    {"Pur1",       520., 1.8, false, BOTH_CHOP, AUD_HARM_HIGH, .7 }, 
     {"XCVario",    500., 2.,  false, BOTH_CHOP, AUD_HARM_HIGH, 1. }, 
     {"eXtended",   500., 3.,  false, BOTH_CHOP, AUD_HARM_HIGH, 1.2 },
     {"Ilec",       500., 3.,  true,  BOTH_CHOP, AUD_HARM_MED,  1.2 },
