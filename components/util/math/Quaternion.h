@@ -46,7 +46,7 @@ public:
     static Quaternion AlignVectors(const vector_f &start, const vector_f &dest);
     static Quaternion fromRotationMatrix(const vector_f &X, const vector_f &Y);
     static Quaternion fromAccelerometer(const vector_f& accel);
-    static Quaternion fromGyro(const vector_f& w, float time);
+    static Quaternion fromGyro(const vector_f& gyro, float dt);
     vector_f toEulerRad() const;
 
     // something like a unit test
