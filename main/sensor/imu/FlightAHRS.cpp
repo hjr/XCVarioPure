@@ -47,7 +47,7 @@ bool FlightAHRS::setup() {
 static void update_fused_vector(vector_f& fused, float gyro_trust, vector_f& petal_force, const Quaternion& omega_step)
 {
     // move the previos fused attitude by the new omega step
-    vector_f virtual_gravity = omega_step.rotate(fused);
+    vector_f virtual_gravity = omega_step.rotateInv(fused);
     virtual_gravity.normalize();
     virtual_gravity *= gyro_trust;
     // ESP_LOGI(FNAME,"fused/virtual %.4f,%.4f,%.4f/%.4f,%.4f,%.4f", fused.a, fused.b, fused.c, virtual_gravity.a, virtual_gravity.b, virtual_gravity.c);
@@ -76,15 +76,17 @@ void FlightAHRS::postProcess() {
     // ESP_LOGI( FNAME, " Accel: %.3f,%.3f,%.3f dt: %.4f TS:%d", accel.x, accel.y, accel.z, dt, imuSensor?imuSensor->getTempStatus():temp_status_t::MPU_T_UNKNOWN);
 
     // create a gyro base rotation delta
-    vector_f petal;
     Quaternion d_gyro = Quaternion::fromGyro(gyro, dt);
+    // rotation around the nav Z axis (Down direction)
+    vector_f down = _q.rotateInv({0,0,1});
+    circle_omega = gyro.dot(down);
+    vector_f petal;
     rad_t roll = 0, pitch = 0;
+
     if (airborne.get()) {
-        float loadFactor = std::clamp(_processed.get_norm(), 0.f, 2.f);
-        // rotation around the nav Z axis
-        circle_omega = -gyro.dot(_processed);
-        // ESP_LOGI(FNAME,"attv: %.3f,%.3f,%.3f - %.3f,%.3f,%.3f - omega %f", _processed.x, _processed.y, _processed.z, z_nav_in_body.x, z_nav_in_body.y, z_nav_in_body.z, circle_omega);
-        // ESP_LOGI(FNAME,"attv: %.3f,%.3f,%.3f - omega %f", _processed.x, _processed.y, _processed.z, circle_omega);
+        float loadFactor = std::clamp(accel.get_norm(), 0.f, 2.f);
+        // ESP_LOGI(FNAME,"attv: %.3f,%.3f,%.3f - %.3f,%.3f,%.3f - omega %f", down.x, down.y, down.z, z_nav_in_body.x, z_nav_in_body.y, z_nav_in_body.z, circle_omega);
+        // ESP_LOGI(FNAME,"attv: %.3f,%.3f,%.3f - omega %f", down.x, down.y, down.z, circle_omega);
         // tan(roll):= petal force/G = m w v / m g
         float tanw = circle_omega * tas.get() / Units::g0;
         roll = std::atan(tanw);
@@ -92,29 +94,28 @@ void FlightAHRS::postProcess() {
         pitch = std::atan2(accel.x, -accel.z); // neglecting accel.y, because of minor influence on pitch and more noise
         // Virtual sum of forces (centrifugaland gravity), serving similar to the accel on the ground 
         // for this complementary filter
-        petal.x = sin(pitch);              // Nose up (positive Y turn) results in positive X force
-        petal.y = -sin(roll) * cos(pitch); // Right wing down (or positive X roll) results in negative Y force
-        petal.z = -cos(roll) * cos(pitch); // Any roll or pitch creates a smaller negative Z, gravity Z is negative
+        petal.x = -sin(pitch);              // Nose up (positive Y turn) results in positive X force
+        petal.y = sin(roll) * cos(pitch);   // Right wing down (or positive X roll) results in negative Y force
+        petal.z = cos(roll) * cos(pitch);   // Any roll or pitch creates a smaller negative Z, gravity Z is negative
         // trust in gyro at load factors unequal 1 g, trust notches down to "min" at +/-1g
         gravity_trust = (ahrs_min_gyro_factor.get() + 
             (ahrs_gyro_factor.get() * (pow(10, abs(loadFactor - 1) * ahrs_dynamic_factor.get()) - 1) ));
-        ESP_LOGI(FNAME, "Petal: %f/%f/%f Gyro Trust: %f", petal.x, petal.y, petal.z, gravity_trust);
+        // ESP_LOGI(FNAME, "Petal: %f/%f/%f Gyro Trust: %f", petal.x, petal.y, petal.z, gravity_trust);
     } else {
         // For still stand centripetal forces are taken from the accelerometer
-        petal = accel;
-        circle_omega = 0.f;
+        petal = accel.get_negated();
     }
     // ESP_LOGI( FNAME, " ax1:%f ay1:%f az1:%f Gx:%f Gy:%f GZ:%f dT:%f", petal.x, petal.y, petal.z, gyro.x, gyro.y, gyro.z, dt );
-    update_fused_vector(_processed, gravity_trust, petal, d_gyro.get_conjugate());
-    // ESP_LOGI(FNAME,"attv: %.3f %.3f %.3f ProjAccel: %f", _processed.x, _processed.y, _processed.z, accel.dot(_processed));
-    att_quat = Quaternion::fromAccelerometer(_processed.get_negated()).get_conjugate();
-    // vector_f img = att_quat.rotate(vector_f{0,0,1});
-    // ESP_LOGI(FNAME,"attv: %.3f,%.3f,%.3f - %.3f,%.3f,%.3f", _processed.x, _processed.y, _processed.z, img.x, img.y, img.z);
-    // ESP_LOGI(FNAME,"attq: %.3f %.3f %.3f %.3f", att_quat._x, att_quat._y, att_quat._z, att_quat._w );
-    // ESP_LOGI(FNAME,"Circle Omega: %f", circle_omega );
-    euler_rad = att_quat.toEulerRad();
+    update_fused_vector(down, gravity_trust, petal, d_gyro);
+    // ESP_LOGI(FNAME,"attv: %.3f %.3f %.3f ProjAccel: %f", down.x, down.y, down.z, accel.dot(down));
+    _q = Quaternion::fromDownVector(down);
+    euler_rad = _q.toEulerRad();
     // vector_f euler = euler_rad * rad2deg(1.f);
     // ESP_LOGI(FNAME, "Euler R:%.1f P:%.1f WR:%.1f IMUP:%.1f", euler.Roll(), euler.Pitch(), rad2deg(roll), rad2deg(pitch));
+    // ESP_LOGI("AHRS", "q=%.3f %.3f %.3f %.3f roll=%.1f pitch=%.1f omega=%.1f", att_quat._w, att_quat._x, att_quat._y, att_quat._z, getRollDeg(), getPitchDeg(), rad2deg(circle_omega));
+
+    vector_f ahrs{euler_rad.x, euler_rad.y, circle_omega};
+    pushAndPublish(ahrs, Clock::getMillis()); // an artificial attitude vector for the history
 
     rad_t gyro_heading_step = circle_omega * dt; // gyro heading change in this step (NED)
     _circle_footing = Vector::normalizePI2(_circle_footing + gyro_heading_step); // integrate gyro heading change to get the current circle footing
@@ -159,8 +160,9 @@ void FlightAHRS::startCalibration(int8_t duration) {
 degree_t FlightAHRS::getRollDeg() const { return rad2deg(euler_rad.Roll()); }
 rad_t FlightAHRS::getRoll() const { return euler_rad.Roll(); }
 degree_t FlightAHRS::getPitchDeg() const { return rad2deg(euler_rad.Pitch()); }
+rad_t FlightAHRS::getPitch() const { return euler_rad.Pitch(); }
 degree_t FlightAHRS::getYawDeg() const { return rad2deg(euler_rad.Yaw()); }
-degree_t FlightAHRS::getMagnHeadingDeg() const { return rad2deg(filtered_mag_heading); }
+degree_t FlightAHRS::getMagnHeadingDeg() const { return 0.f; } // rad2deg(filtered_mag_heading); }
 dps_t FlightAHRS::getCircleOmegaENUDeg() const { return rad2deg(-circle_omega); }
-Quaternion FlightAHRS::getBody2Nav() const { return att_quat; }
-Quaternion FlightAHRS::getNav2Body() const { return att_quat.get_conjugate(); }
+Quaternion FlightAHRS::getBody2Nav() const { return _q; }
+Quaternion FlightAHRS::getNav2Body() const { return _q.get_conjugate(); }

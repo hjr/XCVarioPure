@@ -287,27 +287,44 @@ Quaternion Quaternion::fromRotationMatrix(const vector_f &X, const vector_f &Y)
 // https://ahrs.readthedocs.io/en/latest/filters/aqua.html  Quaternion from Accelerometer
 // accel_par in m/(sec*sec), or in g (gravitational acceleration units)
 // and NED convention (at rest: 0, 0, -1)
-Quaternion Quaternion::fromAccelerometer(const vector_f& accel_par)
-{
-    // Normalize
-    vector_f an = accel_par;
-    an.normalize();
-    // ESP_LOGI(TAG,"ax=%.3f ay=%.3f az=%.3f", an.x, an.y, an.z);
+// Quaternion Quaternion::fromAccelerometer(const vector_f& accel_par)
+// {
+//     // Normalize
+//     vector_f an = accel_par;
+//     an.normalize();
+//     // ESP_LOGI(TAG,"ax=%.3f ay=%.3f az=%.3f", an.x, an.y, an.z);
 
-    // There is a singularity at an.z == -1
-    if ( an.z < 0.f ) {
-        float half_cos = std::sqrt(0.5f*(1.0f - an.z));
-        float temp = .5f / half_cos;
-        Quaternion orientation( -an.y*temp, half_cos, 0.0, an.x*temp );
-        //ESP_LOGI(TAG,"Quat: %.3f %.3f %.3f %.3f", orientation.a, orientation.b, orientation.c, orientation.d );
-        return orientation;
-    }
+//     // There is a singularity at an.z == -1
+//     if ( an.z < 0.f ) {
+//         float half_cos = std::sqrt(0.5f*(1.0f - an.z));
+//         float temp = .5f / half_cos;
+//         Quaternion orientation( -an.y*temp, half_cos, 0.0, an.x*temp );
+//         //ESP_LOGI(TAG,"Quat: %.3f %.3f %.3f %.3f", orientation.a, orientation.b, orientation.c, orientation.d );
+//         return orientation;
+//     }
     
-    float half_cos = std::sqrt(0.5f*(1.0f + an.z));
-    float temp = .5f / half_cos;
-    Quaternion orientation( half_cos, -an.y*temp, an.x*temp, 0.0 );
-    //ESP_LOGI(TAG,"Quat: %.3f %.3f %.3f %.3f", orientation.a, orientation.b, orientation.c, orientation.d );
-    return orientation;
+//     float half_cos = std::sqrt(0.5f*(1.0f + an.z));
+//     float temp = .5f / half_cos;
+//     Quaternion orientation( half_cos, -an.y*temp, an.x*temp, 0.0 );
+//     //ESP_LOGI(TAG,"Quat: %.3f %.3f %.3f %.3f", orientation.a, orientation.b, orientation.c, orientation.d );
+//     return orientation;
+// }
+
+// Down vector expressed in BODY coordinates.
+// Returns quaternion BODY -> NAV (NED).
+// Yaw remains unobservable; shortest rotation is chosen.
+Quaternion Quaternion::fromDownVector(const vector_f& downBody)
+{
+    vector_f d = downBody;
+    d.normalize();
+
+    const float dot = std::clamp(d.z, -1.f, 1.f);
+
+    if (dot < -0.9999f) {
+        // 180 degree rotation around X
+        return Quaternion(0.f, 1.f, 0.f, 0.f);
+    }
+    return Quaternion(1.f + dot, d.y, -d.x, 0.f).normalize();
 }
 
 // gyro in radians per second: dt in seconds
