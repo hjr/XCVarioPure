@@ -172,7 +172,7 @@ public:
     bool sendJPAbortWipe(const int side);
     bool sendJPShortPress(const int side);
     bool sendJPHoldPressed(const int side);
-    bool sendJPReleasePressed(const int side);
+    bool sendJPRelease(const int side);
 
 private:
     const ProtocolType _ptyp;   // a protocol id different per instance
