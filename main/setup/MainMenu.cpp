@@ -37,6 +37,7 @@
 #include "setup/SetupMenuChar.h"
 #include "setup/SetupMenuDisplay.h"
 #include "setup/SetupAction.h"
+#include "setup/WiperControl.h"
 #include "setup/SetupNG.h"
 #include "setup/Capability.h"
 #include "sensor/imu/Accelerometer.h"
@@ -246,14 +247,6 @@ static int water_adj(SetupMenuValFloat* p) {
     return 0;
 }
 
-static int wiper_button(SetupAction *p) {
-	NmeaPrtcl *jumbo = static_cast<NmeaPrtcl*>(DEVMAN->getProtocol(DeviceId::JUMBO_DEV, ProtocolType::JUMBOCMD_P));
-
-	ESP_LOGI(FNAME, "wipe %d", p->getCode());
-	jumbo->sendJPShortPress(p->getCode());
-	return 0;
-}
-
 static int startFlarmSimulation(SetupMenuSelect* p) {
     if (p->getSelect() > 0) {
         FlarmSim::StartSim(p->getSelect() - 1);
@@ -428,19 +421,17 @@ static void vario_menu_create_tek(SetupMenu *top) {
 static void bugs_item_create(SetupMenu *top) {
 	SetupMenuValFloat *bgs = new SetupMenuValFloat("Bugs", "%", nullptr, &bugs, RST_NONE, false);
 	bgs->setHelp("Percent degradation of gliding performance due to bugs contamination");
-	bgs->setTerminateMenu();
+	bgs->setTerminateSetup();
 	top->addEntry(bgs);
 }
 
-static void wiper_menu_create(SetupMenu *top) {
-	SetupAction *wiperL = new SetupAction("Wipe left         ", wiper_button, 1);
-	JumboCmdMsg::LeftAction = wiperL;
-	SetupAction *wiperR = new SetupAction("Wipe       right", wiper_button, 0);
-	JumboCmdMsg::RightAction = wiperR;
-	top->addEntry(wiperL);
-	top->addEntry(wiperR);
+static void wiper_menu_create(SetupMenu* top) {
+    ESP_LOGI(FNAME, "Create bugs menu");
 
-	bugs_item_create(top);
+    WiperControl* wiperctl = new WiperControl();
+    top->addEntry(wiperctl);
+
+    bugs_item_create(top);
 }
 
 static void vario_menu_create(SetupMenu *vae) {
@@ -981,17 +972,18 @@ void setup_create_root(SetupMenu *top) {
 		top->addEntry(vol);
 	}
 
-	ESP_LOGI(FNAME, "Create bugs menu");
-	Device *jumbo = DEVMAN->getDevice(DeviceId::JUMBO_DEV);
-	if (jumbo) {
-		sprintf(small_buf, "Bugs at %d%%", int(bugs.get()));
-		SetupMenu *wiper = new SetupMenu(small_buf, wiper_menu_create);
-		top->addEntry(wiper);
-	} else {
-		bugs_item_create(top);
-	}
+    Device* jumbo = DEVMAN->getDevice(DeviceId::JUMBO_DEV);
+    if (jumbo) {
+        SetupMenu* wiper = new SetupMenu("Bugs", wiper_menu_create);
+        wiper->setHelp("Wipe the bugs off");
+        sprintf(small_buf, "%d%%", int(bugs.get()));
+        wiper->setBuzzword(small_buf);
+        top->addEntry(wiper);
+    } else {
+        bugs_item_create(top);
+    }
 
-	SetupMenuValFloat *bal = SetupMenu::createBallastMenu();
+    SetupMenuValFloat *bal = SetupMenu::createBallastMenu();
 	top->addEntry(bal);
 
     SetupMenuValFloat* crewball = new SetupMenuValFloat("Crew Weight", "kg", start_weight_adj, &crew_weight, RST_NONE, true);
