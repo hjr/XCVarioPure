@@ -8,27 +8,32 @@
 
 #pragma once
 
-#include "setup/SetupMenuDisplay.h"
+#include "setup/primitive/MenuEntry.h"
+#include "driver/time/ClockIntf.h"
 
-class WiperControl : public SetupMenuDisplay
+class SensorTest final : public MenuEntry, public Clock_I
 {
-public:
-    WiperControl();
-    virtual ~WiperControl();
-
-    void enter() override;
-    void exit(int ups=1) override;
-    void display(int mode = 0) override;
-    void rot(int count) override;
-    void press() override;
-    void longPress() override;
-    void release() override;
-
-    void callback(int par);
-
 private:
-    uint8_t _active_button = 0;
-    const int16_t display_width;
+    SensorTest();
+
+public:
+    ~SensorTest();
+
+    // simple use
+    static SensorTest* create();
+    static void update();
+
+    // MenuEntry interface
+    void display(int mode = 0) override;
+    void draw(); // own
+
+    // Receiver interface
+    const char *value() const override { return nullptr; }
+    void rot(int count) override {}
+    void press() override;
+    void longPress() override { press(); }
+
+    // Clock tick callback
+    bool tick() override;
 };
 
-extern WiperControl* WPControl;

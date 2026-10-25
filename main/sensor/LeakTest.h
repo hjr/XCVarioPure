@@ -1,7 +1,7 @@
 
 #pragma once
 
-#include "setup/SetupMenuDisplay.h"
+#include "setup/primitive/SetupMenuDisplay.h"
 
 class PressureSensor;
 class AirspeedSensor;

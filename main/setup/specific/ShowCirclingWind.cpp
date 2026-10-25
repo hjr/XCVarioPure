@@ -17,7 +17,7 @@ Last update: 2021-04-18
 
  ****************************************************************************/
 
-#include "ShowCirclingWind.h"
+#include "setup/specific/ShowCirclingWind.h"
 
 #include "wind/CircleWind.h"
 #include "Atmosphere.h"

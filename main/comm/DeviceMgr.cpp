@@ -22,7 +22,7 @@
 #include "protocol/NMEA.h"
 #include "protocol/MagSensBin.h"
 #include "setup/Capability.h"
-#include "setup/DataMonitor.h"
+#include "setup/specific/DataMonitor.h"
 #include "setup/SetupNG.h"
 #include "sensor/adc/FlapSens.h"
 #include "sensor/mag/MagVSensor.h"

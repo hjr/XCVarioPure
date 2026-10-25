@@ -7,10 +7,10 @@
  ***********************************************************/
 
 #include "JumboCmdMsg.h"
-#include "setup/WiperControl.h"
+#include "setup/specific/WiperControl.h"
 #include "protocol/nmea_util.h"
 #include "comm/Messages.h"
-#include "logdef.h"
+#include "logdefnone.h"
 
 #include <string_view>
 #include <cstring>

@@ -4,9 +4,9 @@
  *  Created on: Feb 4, 2018
  *      Author: iltis
  */
-#include "setup/MenuEntry.h"
+#include "MenuEntry.h"
 
-#include "setup/SetupMenu.h"
+#include "SetupMenu.h"
 #include "setup/SetupCommon.h"
 #include "Colors.h"
 #include "driver/audio/ESPAudio.h"

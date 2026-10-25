@@ -6,11 +6,11 @@
  ***       Copyright (C) Rohs Engineering Design         ***
  ***********************************************************/
 
-#include "setup/SetupMenu.h"
-#include "setup/SetupMenuSelect.h"
-#include "setup/SetupMenuValFloat.h"
-#include "setup/SetupMenuDisplay.h"
-#include "setup/SetupNG.h"
+#include "setup/primitive/SetupMenu.h"
+#include "setup/primitive/SetupMenuSelect.h"
+#include "setup/primitive/SetupMenuValFloat.h"
+#include "setup/primitive/SetupMenuDisplay.h"
+#include "SetupNG.h"
 #include "sensor/imu/Accelerometer.h"
 #include "sensor/imu/Gyroscope.h"
 #include "sensor/imu/FlightAHRS.h"

@@ -18,7 +18,7 @@ Author: Eckhard Völlm, May 2021
 
 #pragma once
 
-#include "setup/SetupMenuDisplay.h"
+#include "setup/primitive/SetupMenuDisplay.h"
 
 class ShowCirclingWind: public SetupMenuDisplay
 {

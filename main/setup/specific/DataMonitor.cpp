@@ -1,7 +1,7 @@
-#include "setup/DataMonitor.h"
+#include "DataMonitor.h"
 
 #include "comm/DeviceMgr.h"
-#include "setup/SetupAction.h"
+#include "setup/primitive/SetupAction.h"
 #include "setup/SetupNG.h"
 #include "Colors.h"
 #include "AdaptUGC.h"

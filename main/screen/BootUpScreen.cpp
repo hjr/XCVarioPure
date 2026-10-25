@@ -12,8 +12,8 @@
 #include "DrawDisplay.h"
 #include "UiEvents.h"
 #include "driver/time/Clock.h"
-#include "setup/ShowBootMsg.h"
-#include "setup/SetupMenuDisplay.h"
+#include "setup/specific/ShowBootMsg.h"
+#include "setup/primitive/SetupMenuDisplay.h"
 #include "setup/SetupNG.h"
 #include "AdaptUGC.h"
 

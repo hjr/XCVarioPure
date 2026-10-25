@@ -11,9 +11,8 @@
 #include "AdaptUGC.h"
 
 #include "setup/SetupNG.h"
-#include "setup/SetupMenuSelect.h"
-#include "setup/SetupMenuValFloat.h"
-#include "screen/ScreenRoot.h"
+#include "SetupMenuSelect.h"
+#include "SetupMenuValFloat.h"
 #include "logdefnone.h"
 
 #include <algorithm>

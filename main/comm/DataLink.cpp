@@ -29,7 +29,7 @@
 #include "protocol/MagSensBin.h"
 #include "protocol/TestQuery.h"
 #include "DeviceMgr.h"
-#include "setup/DataMonitor.h"
+#include "setup/specific/DataMonitor.h"
 #include "driver/time/AliveMonitor.h"
 #include "setup/SetupNG.h"
 #include "logdefnone.h"

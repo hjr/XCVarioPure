@@ -8,7 +8,7 @@
 
 #pragma once
 
-#include "setup/MenuEntry.h"
+#include "setup/primitive/MenuEntry.h"
 #include "driver/time/WatchDog.h"
 
 #include <atomic>

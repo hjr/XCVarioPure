@@ -6,7 +6,7 @@
  */
 #pragma once
 
-#include "setup/MenuEntry.h"
+#include "setup/primitive/MenuEntry.h"
 #include "comm/InterfaceCtrl.h"
 #include "comm/Mutex.h"
 

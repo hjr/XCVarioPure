@@ -1,14 +1,13 @@
 
 #include "SubMenuCompassWind.h"
 
-#include "setup/SetupMenu.h"
-#include "setup/SetupMenuSelect.h"
-#include "setup/SetupMenuValFloat.h"
-#include "setup/Capability.h"
-
-#include "ShowCirclingWind.h"
-#include "ShowStraightWind.h"
-#include "setup/SetupNG.h"
+#include "setup/primitive/SetupMenu.h"
+#include "setup/primitive/SetupMenuSelect.h"
+#include "setup/primitive/SetupMenuValFloat.h"
+#include "setup/specific/ShowCirclingWind.h"
+#include "setup/specific/ShowStraightWind.h"
+#include "Capability.h"
+#include "SetupNG.h"
 #include "wind/WindCalcTask.h"
 #include "AdaptUGC.h"
 #include "logdefnone.h"

@@ -17,7 +17,7 @@ Last update: 2021-02-25
 
  ****************************************************************************/
 
-#include "setup/SetupMenuDisplay.h"
+#include "SetupMenuDisplay.h"
 #include "AdaptUGC.h"
 #include "logdefnone.h"
 

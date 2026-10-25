@@ -16,9 +16,9 @@
 #include "FlarmScreen.h"
 #include "HorizonPage.h"
 
-#include "setup/SensorTest.h"
-#include "setup/SetupMenuValFloat.h"
-#include "setup/SetupMenu.h"
+#include "setup/specific/SensorTest.h"
+#include "setup/primitive/SetupMenuValFloat.h"
+#include "setup/primitive/SetupMenu.h"
 #include "setup/SubMenuGlider.h"
 #include "setup/CruiseMode.h"
 #include "driver/gpio/ESPRotary.h"

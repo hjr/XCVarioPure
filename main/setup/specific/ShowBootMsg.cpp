@@ -6,7 +6,7 @@
  ***       Copyright (C) Rohs Engineering Design         ***
  ***********************************************************/
 
-#include "setup/SetupMenuDisplay.h"
+#include "setup/primitive/SetupMenuDisplay.h"
 
 #include "AdaptUGC.h"
 #include "sensor.h"

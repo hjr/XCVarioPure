@@ -5,9 +5,9 @@
  *      Author: iltis
  */
 
-#include "setup/SetupMenuValFloat.h"
+#include "SetupMenuValFloat.h"
 
-#include "setup/SetupMenu.h"
+#include "SetupMenu.h"
 #include "AdaptUGC.h"
 #include "IpsDisplay.h"
 #include "math/Units.h"

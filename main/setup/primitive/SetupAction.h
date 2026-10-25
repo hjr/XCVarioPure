@@ -8,7 +8,7 @@
 
 #pragma once
 
-#include "setup/MenuEntry.h"
+#include "MenuEntry.h"
 
 // The action menu never attaches and has no ability to be entered, 
 // but executes the action immediately and passes this pointer to properly exit it.

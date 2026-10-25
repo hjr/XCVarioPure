@@ -7,10 +7,9 @@
 
 #pragma once
 
-#include "setup/MenuEntry.h"
+#include "MenuEntry.h"
 #include "setup/SetupNG.h"
 
-// #include <string_view>
 #include <vector>
 #include <utility>
 

@@ -8,9 +8,9 @@
 #pragma once
 
 class SetupMenu;
-class SetupMenuSelect;
+class SetupAction;
 class SetupMenuValFloat;
 
 void setup_create_root(SetupMenu *top);
-int do_display_test(SetupMenuSelect* p);
+int do_display_test(SetupAction* p);
 int factv_adj(SetupMenuValFloat *p);

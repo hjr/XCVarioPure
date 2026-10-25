@@ -5,8 +5,8 @@
  *      Author: iltis
  */
 
-#include "setup/SetupMenuSelect.h"
-#include "setup/SetupMenu.h"
+#include "SetupMenuSelect.h"
+#include "SetupMenu.h"
 #include "logdefnone.h"
 
 
