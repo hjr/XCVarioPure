@@ -11,7 +11,7 @@ class LeakTest : public SetupMenuDisplay {
     static constexpr float LEAK_TEST_MAX_LOSS = 0.05f;
 
   public:
-    LeakTest(const char* title) : SetupMenuDisplay(title, nullptr) {}
+    LeakTest(const char* title) : SetupMenuDisplay(title) {}
     virtual ~LeakTest() = default;
     const char *value() const override;
 

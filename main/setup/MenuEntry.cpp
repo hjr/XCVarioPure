@@ -74,6 +74,14 @@ void MenuEntry::menuPrintChar(char chr, int ln, int x) const {
     MYUCG->print(chr);
 }
 
+void MenuEntry::printTitle() const {
+    MYUCG->setFont(ucg_font_fub14_hr, true);
+    if ( ! _title.empty() ) {
+        menuPrintLn("  <", 0);
+        menuPrintLn(_title.c_str(), 0, 30);
+    }
+}
+
 void MenuEntry::reBoot(int s) {
     delete AUDIO;
     clear();

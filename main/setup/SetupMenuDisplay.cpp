@@ -26,19 +26,15 @@ Last update: 2021-02-25
 extern AdaptUGC *MYUCG;
 
 SetupMenuDisplay::SetupMenuDisplay(const char *title, int (*action)(SetupMenuDisplay *p, int mode)) :
-    MenuEntry(title)
+    MenuEntry(title),
+    _action(action)
 {
-    _action = action;
 }
 
 void SetupMenuDisplay::display(int mode) {
     if (_action != nullptr) {
         ESP_LOGI(FNAME, "SetupMenuDisplay::display mode %d", mode);
-        MYUCG->setFont(ucg_font_fub14_hr, true);
-        if ( _title.size() != 0 ) {
-            menuPrintLn("  <", 0);
-            menuPrintLn(_title.c_str(), 0, 30);
-        }
+        printTitle();
         // Call user's callback
         (*_action)(this, mode);
     }

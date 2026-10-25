@@ -41,9 +41,8 @@ void ShowCirclingWind::display(int mode)
 	ESP_LOGI(FNAME, "display() mode=%d", mode );
 	if( mode != 5 ) {
 		clear();
+        printTitle();
 	}
-	MYUCG->setFont( ucg_font_fub14_hr, true );
-	menuPrintLn(_title.c_str(), 0);
 
 	char buffer[32];
 	int i = 1;

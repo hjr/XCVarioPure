@@ -22,9 +22,8 @@ void ShowFlightInfo::display(int mode) {
     ESP_LOGI(FNAME, "display() mode=%d", mode);
     if (mode == 0) {
         clear();
+        printTitle();
     }
-    MYUCG->setFont(ucg_font_fub14_hr);
-    menuPrintLn(_title.c_str(), 0);
 
     time_t t;
     time(&t);
