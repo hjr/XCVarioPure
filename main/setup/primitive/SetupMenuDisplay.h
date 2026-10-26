@@ -19,7 +19,7 @@ Last update: 2021-02-25
 
 #pragma once
 
-#include "setup/MenuEntry.h"
+#include "MenuEntry.h"
 
 
 class SetupMenuDisplay: public MenuEntry

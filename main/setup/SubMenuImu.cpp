@@ -6,11 +6,11 @@
  ***       Copyright (C) Rohs Engineering Design         ***
  ***********************************************************/
 
-#include "setup/SetupMenu.h"
-#include "setup/SetupMenuSelect.h"
-#include "setup/SetupMenuValFloat.h"
-#include "setup/SetupMenuDisplay.h"
-#include "setup/SetupNG.h"
+#include "setup/primitive/SetupMenu.h"
+#include "setup/primitive/SetupMenuSelect.h"
+#include "setup/primitive/SetupMenuValFloat.h"
+#include "setup/primitive/SetupMenuDisplay.h"
+#include "SetupNG.h"
 #include "sensor/imu/Accelerometer.h"
 #include "sensor/imu/Gyroscope.h"
 #include "sensor/imu/FlightAHRS.h"
@@ -376,7 +376,7 @@ static int imu_status_action(SetupMenuDisplay *p, int mode) {
     char buf[64];
     while (true) {
         int idx = 0;
-        p->menuPrintLn("Accelerometer [g]:", idx++);
+        p->menuPrintLn("Accelerometer:", idx++);
         if (Rotary->readSwitch(200)) { // fixme this supresses eg a Flarm alarm
             // exit by press;
             break;
@@ -388,17 +388,17 @@ static int imu_status_action(SetupMenuDisplay *p, int mode) {
                 tstat = "Locked";
                 break;
             case temp_status_t::MPU_T_LOW:
-                tstat = "Too Low";
+                tstat = "Low";
                 break;
             case temp_status_t::MPU_T_HIGH:
-                tstat = "Too High";
+                tstat = "High";
                 break;
             case temp_status_t::MPU_T_UNKNOWN:
             default:
                 tstat = "Unknown";
                 break;
             }
-            snprintf(buf, sizeof(buf), "  Heating %.1f°: %s    ", imuSensor->getTemperature(), tstat);
+            snprintf(buf, sizeof(buf), "  Heating %.1f° %s    ", imuSensor->getTemperature(), tstat);
         } else {
             snprintf(buf, sizeof(buf), "No Heating");
         }
@@ -408,7 +408,7 @@ static int imu_status_action(SetupMenuDisplay *p, int mode) {
         snprintf(buf, sizeof(buf), "  %s (%.2f/%.2f/%.2f)  ", rest, tmp->x, tmp->y, tmp->z);
         p->menuPrintLn(buf, idx++);
         tmp = &gyroSensor->getBias();
-        snprintf(buf, sizeof(buf), "Gyro [°/s]: b(%.2f/%.2f/%.2f)  ", rad2deg(tmp->x), rad2deg(tmp->y), rad2deg(tmp->z));
+        snprintf(buf, sizeof(buf), "Gyro: b(%.2f/%.2f/%.2f)  ", rad2deg(tmp->x), rad2deg(tmp->y), rad2deg(tmp->z));
         p->menuPrintLn(buf, idx++);
         rest = gyroSensor->isResting() ? "Rest" : "Move";
         tmp = &gyroSensor->getRef();
@@ -417,8 +417,8 @@ static int imu_status_action(SetupMenuDisplay *p, int mode) {
         p->menuPrintLn("AHRS:", idx++);
         snprintf(buf, sizeof(buf), "  Pitch %.1f° Roll: %.1f°   ", ahrsSensor->getPitchDeg(), ahrsSensor->getRollDeg());
         p->menuPrintLn(buf, idx++);
-        vector_f att = ahrsSensor->get();
-        snprintf(buf, sizeof(buf), "  AttVec (%.2f/%.2f/%.2f)  ", att.x, att.y, att.z);
+        vector_f down = ahrsSensor->getBody2Nav().rotateInv({0,0,1});
+        snprintf(buf, sizeof(buf), "  Down: (%.2f/%.2f/%.2f)  ", down.x, down.y, down.z);
         p->menuPrintLn(buf, idx++);
         float ang = 0.f;
         if ( gpsSensor ) {

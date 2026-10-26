@@ -7,18 +7,13 @@
  ***********************************************************/
 
 #include "JumboCmdMsg.h"
-#include "setup/SetupAction.h"
+#include "setup/specific/WiperControl.h"
 #include "protocol/nmea_util.h"
-#include "comm/DeviceMgr.h"
 #include "comm/Messages.h"
-#include "logdef.h"
+#include "logdefnone.h"
 
 #include <string_view>
 #include <cstring>
-
-
-SetupAction* JumboCmdMsg::RightAction = nullptr;
-SetupAction* JumboCmdMsg::LeftAction = nullptr;
 
 
 // The jumbo command host side protocol parser. Those commands/queries are supported:
@@ -149,13 +144,9 @@ dl_action_t JumboCmdMsg::alive(NmeaPlugin *plg)
     std::string token = NMEA::extractWord(sm->_frame, tmp);
     char* endptr;
     tmp = std::strtol(token.c_str() + 1, &endptr, 10);
-    if ( token[0] == 'R' ) {
-        if ( RightAction ) {
-            RightAction->display(tmp);
-        }
-    }
-    else if ( LeftAction ) {
-        LeftAction->display(tmp);
+    if ( WPControl ) {
+        tmp = (tmp & 0xFFFF) | ((token[0] == 'L') << 16);
+        WPControl->callback(tmp);
     }
     return NOACTION;
 }
@@ -271,7 +262,7 @@ bool NmeaPrtcl::sendJPHoldPressed(const int side)
     return DEV::Send(msg);
 }
 
-bool NmeaPrtcl::sendJPReleasePressed(const int side)
+bool NmeaPrtcl::sendJPRelease(const int side)
 {
     Message* msg = newMessage();
 

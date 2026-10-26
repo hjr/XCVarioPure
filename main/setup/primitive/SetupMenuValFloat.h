@@ -8,7 +8,7 @@
 #pragma once
 
 #include "setup/SetupNG.h"
-#include "setup/MenuEntry.h"
+#include "MenuEntry.h"
 
 
 class SetupMenuValFloat:  public MenuEntry {
@@ -23,7 +23,6 @@ public:
 	void displayVal();
 	void setPrecision( int prec );
 	const char *value() const override;
-	void setTerminateMenu() { bits._end_menu = true; }
 	float getNVSVal() const { return _nvs->get(); }
 	float get() const { return _value; }
 	void set( float val ) { _value = val; }

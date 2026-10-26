@@ -8,13 +8,13 @@
 
 #pragma once
 
-#include "setup/SetupMenuDisplay.h"
+#include "setup/primitive/SetupMenuDisplay.h"
 
 class ShowFlightInfo : public SetupMenuDisplay
 {
 public:
 
-	ShowFlightInfo( const char* title ) : SetupMenuDisplay( title, nullptr ) {}
+	ShowFlightInfo( const char* title ) : SetupMenuDisplay(title) {}
 	virtual ~ShowFlightInfo() {}
 
 	void display(int mode=0) override;

@@ -5,9 +5,9 @@
  *      Author: iltis
  */
 
-#include "setup/SetupMenuValFloat.h"
+#include "SetupMenuValFloat.h"
 
-#include "setup/SetupMenu.h"
+#include "SetupMenu.h"
 #include "AdaptUGC.h"
 #include "IpsDisplay.h"
 #include "math/Units.h"
@@ -124,7 +124,7 @@ void SetupMenuValFloat::display(int mode)
 		indentHighlight(_parent->getHighlight());
 	}
 	else {
-		menuPrintLn(_title.c_str(), 0, 5 );
+		printTitle();
 		displayVal();
 	}
 	if( _action != 0 ) {
@@ -196,6 +196,9 @@ void SetupMenuValFloat::press()
 		exit(2);
 		return;
 	}
-
+	else if ( bits._end_setup ) {
+		exit(-1);
+		return;
+	}
 	exit();
 }

@@ -8,8 +8,8 @@
 
 #pragma once
 
-#include "setup/MenuEntry.h"
-#include "setup/SetupMenu.h"
+#include "setup/primitive/MenuEntry.h"
+#include "setup/primitive/SetupMenu.h"
 #include "driver/time/WatchDog.h"
 
 enum ScreenTypes // bit field

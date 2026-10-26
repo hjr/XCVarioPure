@@ -2,7 +2,7 @@
 #include "Webserver.h"
 #include "coredump_to_server.h"
 #include "setup/SetupCommon.h"
-#include "setup/MenuEntry.h"
+#include "setup/primitive/MenuEntry.h"
 #include "comm/DeviceMgr.h"
 #include "protocol/NMEA.h"
 #include "version.h"

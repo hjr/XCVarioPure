@@ -5,22 +5,28 @@
  *      Author: iltis
  */
 
-#include "SetupMenu.h"
+#include "MainMenu.h"
 
+#include "setup/primitive/SetupMenuSelect.h"
+#include "setup/primitive/SetupMenuValFloat.h"
+#include "setup/primitive/SetupMenuChar.h"
+#include "setup/primitive/SetupMenuDisplay.h"
+#include "setup/primitive/SetupAction.h"
 #include "SetupCommon.h"
-#include "setup/SubMenuAudio.h"
-#include "setup/SubMenuDevices.h"
-#include "setup/SubMenuCompassWind.h"
-#include "setup/SubMenuGlider.h"
-#include "setup/SubMenuFlap.h"
-#include "setup/SubMenuImu.h"
-#include "setup/SubMenuOTA.h"
-#include "setup/ShowBootMsg.h"
-#include "setup/ShowFlightInfo.h"
+#include "SubMenuAudio.h"
+#include "SubMenuDevices.h"
+#include "SubMenuCompassWind.h"
+#include "SubMenuGlider.h"
+#include "SubMenuFlap.h"
+#include "SubMenuImu.h"
+#include "SubMenuOTA.h"
+#include "setup/specific/ShowBootMsg.h"
+#include "setup/specific/ShowFlightInfo.h"
+#include "setup/specific/SensorTest.h"
 #include "screen/ScreenRoot.h"
+#include "setup/specific/WiperControl.h"
 #include "screen/element/MultiGauge.h"
 #include "screen/element/ThermalAssist.h"
-#include "setup/SensorTest.h"
 #include "sensor/VarioFilter.h"
 #include "ESP32NVS.h"
 #include "S2F.h"
@@ -32,31 +38,23 @@
 #include "Atmosphere.h"
 #include "driver/gpio/S2fSwitch.h"
 #include "Flap.h"
-#include "setup/SetupMenuSelect.h"
-#include "setup/SetupMenuValFloat.h"
-#include "setup/SetupMenuChar.h"
-#include "setup/SetupMenuDisplay.h"
-#include "setup/SetupAction.h"
-#include "setup/SetupNG.h"
-#include "setup/Capability.h"
+#include "SetupNG.h"
+#include "Capability.h"
 #include "sensor/imu/Accelerometer.h"
 #include "sensor/pressure/PressureSensor.h"
 #include "sensor/press_diff/AirspeedSensor.h"
 #include "sensor/adc/BatteryVoltage.h"
+#include "sensor/LeakTest.h"
 #include "Colors.h"
 #include "AdaptUGC.h"
 #include "sensor.h"
-#include "sensor/LeakTest.h"
 #include "logdef.h"
 
 #include "comm/DeviceMgr.h"
-#include "protocol/NMEA.h"
-#include "protocol/nmea/JumboCmdMsg.h"
 #include "protocol/FlarmSim.h"
 
 #include <algorithm>
 #include <array>
-#include <cstdint>
 #include <string_view>
 
 extern AdaptUGC *MYUCG;
@@ -246,14 +244,6 @@ static int water_adj(SetupMenuValFloat* p) {
     return 0;
 }
 
-static int wiper_button(SetupAction *p) {
-	NmeaPrtcl *jumbo = static_cast<NmeaPrtcl*>(DEVMAN->getProtocol(DeviceId::JUMBO_DEV, ProtocolType::JUMBOCMD_P));
-
-	ESP_LOGI(FNAME, "wipe %d", p->getCode());
-	jumbo->sendJPShortPress(p->getCode());
-	return 0;
-}
-
 static int startFlarmSimulation(SetupMenuSelect* p) {
     if (p->getSelect() > 0) {
         FlarmSim::StartSim(p->getSelect() - 1);
@@ -428,19 +418,17 @@ static void vario_menu_create_tek(SetupMenu *top) {
 static void bugs_item_create(SetupMenu *top) {
 	SetupMenuValFloat *bgs = new SetupMenuValFloat("Bugs", "%", nullptr, &bugs, RST_NONE, false);
 	bgs->setHelp("Percent degradation of gliding performance due to bugs contamination");
-	bgs->setTerminateMenu();
+	bgs->setTerminateSetup();
 	top->addEntry(bgs);
 }
 
-static void wiper_menu_create(SetupMenu *top) {
-	SetupAction *wiperL = new SetupAction("Wipe left         ", wiper_button, 1);
-	JumboCmdMsg::LeftAction = wiperL;
-	SetupAction *wiperR = new SetupAction("Wipe       right", wiper_button, 0);
-	JumboCmdMsg::RightAction = wiperR;
-	top->addEntry(wiperL);
-	top->addEntry(wiperR);
+static void wiper_menu_create(SetupMenu* top) {
+    ESP_LOGI(FNAME, "Create bugs menu");
 
-	bugs_item_create(top);
+    WiperControl* wiperctl = new WiperControl();
+    top->addEntry(wiperctl);
+
+    bugs_item_create(top);
 }
 
 static void vario_menu_create(SetupMenu *vae) {
@@ -981,17 +969,18 @@ void setup_create_root(SetupMenu *top) {
 		top->addEntry(vol);
 	}
 
-	ESP_LOGI(FNAME, "Create bugs menu");
-	Device *jumbo = DEVMAN->getDevice(DeviceId::JUMBO_DEV);
-	if (jumbo) {
-		sprintf(small_buf, "Bugs at %d%%", int(bugs.get()));
-		SetupMenu *wiper = new SetupMenu(small_buf, wiper_menu_create);
-		top->addEntry(wiper);
-	} else {
-		bugs_item_create(top);
-	}
+    Device* jumbo = DEVMAN->getDevice(DeviceId::JUMBO_DEV);
+    if (jumbo) {
+        SetupMenu* wiper = new SetupMenu("Bugs", wiper_menu_create);
+        wiper->setHelp("Wipe the bugs off");
+        sprintf(small_buf, "%d%%", int(bugs.get()));
+        wiper->setBuzzword(small_buf);
+        top->addEntry(wiper);
+    } else {
+        bugs_item_create(top);
+    }
 
-	SetupMenuValFloat *bal = SetupMenu::createBallastMenu();
+    SetupMenuValFloat *bal = SetupMenu::createBallastMenu();
 	top->addEntry(bal);
 
     SetupMenuValFloat* crewball = new SetupMenuValFloat("Crew Weight", "kg", start_weight_adj, &crew_weight, RST_NONE, true);

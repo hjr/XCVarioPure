@@ -45,15 +45,19 @@ static void spp_event_handler(esp_spp_cb_event_t event, esp_spp_cb_param_t* para
         BLUEspp->_server_running = true;
         break;
 
+    case ESP_SPP_START_EVT:
+        ESP_LOGI(FNAME, "SPP server started");
+        break;
+
     case ESP_SPP_SRV_STOP_EVT:
         ESP_LOGI(FNAME, "SPP server stoped");
-        BLUEspp->_server_running = true;
+        BLUEspp->_server_running = false;
         break;
 
     case ESP_SPP_SRV_OPEN_EVT:
         ESP_LOGI(FNAME, "SPP rcomm opened, handle: %u", (unsigned)param->open.handle);
         BLUEspp->_client_handle = param->open.handle;
-        esp_bt_gap_set_scan_mode(ESP_BT_CONNECTABLE, ESP_BT_NON_DISCOVERABLE);
+        // esp_bt_gap_set_scan_mode(ESP_BT_CONNECTABLE, ESP_BT_NON_DISCOVERABLE);
         break;
 
         // never received this for rfcomm channels
@@ -66,7 +70,7 @@ static void spp_event_handler(esp_spp_cb_event_t event, esp_spp_cb_param_t* para
     case ESP_SPP_CLOSE_EVT:
         ESP_LOGI(FNAME, "SPP connection closed, handle: %u", (unsigned)param->close.handle);
         BLUEspp->_client_handle = 0;
-        esp_bt_gap_set_scan_mode(ESP_BT_CONNECTABLE, ESP_BT_GENERAL_DISCOVERABLE);
+        // esp_bt_gap_set_scan_mode(ESP_BT_CONNECTABLE, ESP_BT_GENERAL_DISCOVERABLE);
         break;
 
     case ESP_SPP_DATA_IND_EVT: {

@@ -83,6 +83,7 @@ ThermalAssist::ThermalAssist(PolarGauge &g) :
 
 // th_strength normalized to 0 .. 1
 void ThermalAssist::drawThermal(float th_strength, int idir) {
+    static const uint8_t hem_flag[4] = {1, 8, 2, 4};
     // ESP_LOGI(FNAME,"drawThermal, th_strength: %.1f, idir: %d", th_strength, idir);
     if (idir >= CA_NUM_DIRS || idir < 0) {
         ESP_LOGE(FNAME, "index out of range: %d", idir);
@@ -96,8 +97,10 @@ void ThermalAssist::drawThermal(float th_strength, int idir) {
             ddir = (idir + CA_NUM_DIRS / 4) % CA_NUM_DIRS;  // move reference to the right
         }
     }
-    int16_t cx = _gauge._ref.x + fast_sin_rad(ddir * CA_STEP) * _gauge._radius;
-    int16_t cy = _gauge._ref.y - fast_cos_rad(ddir * CA_STEP) * _gauge._radius;
+    Point center = {(int16_t)(fast_sin_rad(ddir * CA_STEP) * _gauge._radius), (int16_t)(fast_cos_rad(ddir * CA_STEP) * _gauge._radius)};
+    uint8_t hem = (center.y < 0) ? 2 : 0;
+    hem |= (center.x < 0);
+    center += _gauge._ref;
 
     // a green thermal spot that brightens with increasing thermal strength (up to 10%)
     ucg_color_t col = { COLOR_GREEN };
@@ -105,16 +108,23 @@ void ThermalAssist::drawThermal(float th_strength, int idir) {
     // ESP_LOGI(FNAME,"drawThermal, th: %.1f, ths: %.3f, color: %d,%d,%d", th.strength, th_strength, col.color[0], col.color[1], col.color[2]);
     MYUCG->setColor(col.color[0], col.color[1], col.color[2]);
     if (idir != 0) {
-        MYUCG->startBuffering(cx-MAX_DISK_RAD, cy-MAX_DISK_RAD, 2*MAX_DISK_RAD+1, 2*MAX_DISK_RAD);
-        // MYUCG->drawFrame(cx-MAX_DISK_RAD, cy-MAX_DISK_RAD, 2*MAX_DISK_RAD, 2*MAX_DISK_RAD-1);
+        MYUCG->startBuffering(center.x-MAX_DISK_RAD, center.y-MAX_DISK_RAD, 2*MAX_DISK_RAD+1, 2*MAX_DISK_RAD);
+        // MYUCG->drawFrame(center.x-MAX_DISK_RAD, center.y-MAX_DISK_RAD, 2*MAX_DISK_RAD, 2*MAX_DISK_RAD-1);
         int16_t radius = std::clamp((int16_t)fast_iroundf_positive(th_strength * MAX_DISK_RAD), (int16_t)1, MAX_DISK_RAD);
-        MYUCG->drawDisc(cx, cy, radius, UCG_DRAW_ALL);
+        MYUCG->drawDisc(center.x, center.y, radius, UCG_DRAW_ALL);
+        if ( _last_radius > 5 ) {
+            // fill potential bbox overlap with the previous disc
+            MYUCG->drawDisc(_last_center.x, _last_center.y, _last_radius, hem_flag[hem]);
+        }
+        _last_radius = radius;
         MYUCG->finishBuffering();
     }
     else {
         // draw glider icon here
-        drawGlider(cx, cy);
+        drawGlider(center);
+        _last_radius = 0;
     }
+    _last_center = center;
 }
 
 //  x Cxy + (A,-W)
@@ -127,7 +137,7 @@ void ThermalAssist::drawThermal(float th_strength, int idir) {
 //  .  .
 //  x Cxy + (A,W)
 //
-void ThermalAssist::drawGlider(int16_t cx, int16_t cy) {
+void ThermalAssist::drawGlider(Point center) {
     constexpr int16_t A = -3;
     constexpr int16_t B = 3;
     constexpr int16_t W = 8;
@@ -137,7 +147,7 @@ void ThermalAssist::drawGlider(int16_t cx, int16_t cy) {
     MYUCG->setColor(COLOR_WHITE);
     int16_t *trptr = (int16_t*)triangle[2];
     if (_glider_on_top) {
-        MYUCG->startBuffering(cx-B, cy-W, 2*B+1, 2*W+1);
+        MYUCG->startBuffering(center.x-B, center.y-W, 2*B+1, 2*W+1);
         // MYUCG->drawFrame(cx-B, cy-W, 2*B, 2*W);
         if ( _cdir == (uint8_t)circdir_t::circlRight )
             trptr = (int16_t*)triangle[0];
@@ -145,12 +155,12 @@ void ThermalAssist::drawGlider(int16_t cx, int16_t cy) {
             trptr = (int16_t*)triangle[1];
         }
     } else {
-        MYUCG->startBuffering(cx-W, cy-B, 2*W+1, 2*B+1);
+        MYUCG->startBuffering(center.x-W, center.y-B, 2*W+1, 2*B+1);
         // MYUCG->drawFrame(cx-W, cy-B, 2*W, 2*B);
     }
     if ( _confidence.get() > 0.7f ) {
         MYUCG->setColor(COLOR_WHITE);
-        MYUCG->drawTriangle(cx + trptr[0], cy + trptr[1], cx + trptr[2], cy + trptr[3], cx + trptr[4], cy + trptr[5]);
+        MYUCG->drawTriangle(center.x + trptr[0], center.y + trptr[1], center.x + trptr[2], center.y + trptr[3], center.x + trptr[4], center.y + trptr[5]);
     }
     MYUCG->finishBuffering();
 }
@@ -259,14 +269,19 @@ void ThermalAssist::checkHeading(rad_t vheading, rad_t omega, rad_t bank) {
     // integrate footing/heading, create a new thermal when the heading has changed by 15° or more
     rad_t diff = Vector::angleDiff( vheading, cur_heading );
     if ( fabsf(diff) > CA_STEP ) {
-        ESP_LOGI(FNAME,"CheckHeading, heading diff: %.1f", Units::rad_to_deg(diff) );
-        cur_heading = Vector::normalizePI2(cur_heading + diff);
+        ESP_LOGI(FNAME,"CheckHeading, heading: %.1f, diff: %.1f", Units::rad_to_deg(vheading), Units::rad_to_deg(diff) );
+        // advance in CA_STEP's
+        cur_heading = Vector::normalizePI2(cur_heading + (std::signbit(diff) ? -CA_STEP : CA_STEP));
 
         // calc next thermal
         uint32_t dt = Clock::getMillis() - thermals[_idir].timestamp; // last updated at
-        _idir += std::signbit(diff) ? -1 : 1;
-        if (_idir < 0) _idir += CA_NUM_DIRS;
-        if (_idir >= CA_NUM_DIRS) _idir -= CA_NUM_DIRS;
+        if ( std::signbit(diff) ) { // go against the turn direction
+            _idir += 1;
+            if (_idir >= CA_NUM_DIRS) _idir = 0;
+        } else {
+            _idir -= 1;
+            if (_idir < 0) _idir = CA_NUM_DIRS - 1;
+        }
         ESP_LOGI(FNAME,"VHeading: %.1f, omega: %.1f, bank: %.1f, c_turn: %.2f, c_bank: %.2f, confidence: %.2f",
             Units::rad_to_deg(vheading), Units::rad_to_deg(omega), Units::rad_to_deg(bank), c_turn, c_bank, _confidence.get() );
 

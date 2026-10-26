@@ -7,7 +7,7 @@
  *                                                                         *
  ****************************************************************************
 
-File: ShowStraightWind.cpp
+File: ShowCirclingWind.cpp
 
 Class to display the compass status overview.
 
@@ -17,62 +17,64 @@ Last update: 2021-04-18
 
  ****************************************************************************/
 
-#include "wind/StraightWind.h"
-#include "ShowStraightWind.h"
+#include "setup/specific/ShowCirclingWind.h"
+
+#include "wind/CircleWind.h"
 #include "Atmosphere.h"
 #include "setup/SetupNG.h"
 #include "AdaptUGC.h"
-
 #include "logdefnone.h"
 
 extern AdaptUGC *MYUCG;
 
-StraightWind *straightWind = nullptr;
 
-ShowStraightWind::ShowStraightWind( const char* title ) :
+ShowCirclingWind::ShowCirclingWind( const char* title ) :
     SetupMenuDisplay( title, nullptr )
 {
-	ESP_LOGI(FNAME, "ShowStraightWind(): title='%s'", title );
+	ESP_LOGI(FNAME, "ShowCirclingWind(): title='%s'", title );
 }
 
 
 
-void ShowStraightWind::display(int mode)
+void ShowCirclingWind::display(int mode)
 {
 	ESP_LOGI(FNAME, "display() mode=%d", mode );
 	if( mode != 5 ) {
 		clear();
+        printTitle();
 	}
-	MYUCG->setFont( ucg_font_fub14_hr, true );
-	menuPrintLn(_title.c_str(), 0, 5);
 
 	char buffer[32];
 	int i = 1;
 
-	sprintf( buffer, "Straight Wind enabled: %s", (wind_enable.get() & WA_STRAIGHT) ? "Yes" : "No  "  );
+	sprintf( buffer, "Circling Wind enabled: %s", (wind_enable.get() & WA_CIRCLING) ? "Yes" : "No  "  );
 	menuPrintLn(buffer, i++);
 
-	if ( straightWind )
+	if ( circleWind )
 	{
-		sprintf( buffer, "Status: %s     ", straightWind->getStatus() );
+		sprintf( buffer, "GPS Status : %s", (circleWind->getGpsStatus() == true ) ? "Good" : "Bad  "  );
 		menuPrintLn(buffer, i++);
 
-		sprintf( buffer, "GPS Status : %s", (straightWind->getGpsStatus() == true ) ? "Good" : "Bad  "  );
+		if( circleWind->getGpsStatus() ){
+			sprintf( buffer, "GPS Satellites : %d  ", circleWind->getSatCnt() );
+			menuPrintLn(buffer, i++);
+		}
+
+		sprintf( buffer, "Number of Circles : %2.2f  ", circleWind->getNumCircles() );
 		menuPrintLn(buffer, i++);
 
-		sprintf( buffer, "AS C/F: %+3.3f %%/%3.3f %%  ", (straightWind->getAsCorrection()-1.0)*100, (wind_as_calibration.get()-1.0)*100 );
+		sprintf( buffer, "Last Wind : %3.1f°/%2.1f  ", circleWind->getAngleDeg(), SpeedUnit->apply(circleWind->getSpeed()) );
 		menuPrintLn(buffer, i++);
 
-		sprintf( buffer, "Last Wind : %3.1f°/%2.1f   ", straightWind->getAngle(), SpeedUnit->apply(straightWind->getSpeed()) );
+		sprintf( buffer, "Wind Age : %d sec   ", circleWind->getAge() );
 		menuPrintLn(buffer, i++);
 
-		sprintf( buffer, "MH/Dev: %3.2f/%+3.2f   ", straightWind->getMH(), straightWind->getDeviation() );
+		sprintf( buffer, "Status : %s    ", circleWind->getStatus() );
 		menuPrintLn(buffer, i++);
 
-		sprintf( buffer, "Wind Age : %d sec   ", straightWind->getAge() );
+		sprintf( buffer, "Flight Mode : %s    ", circleWind->getFlightModeStr() );
 		menuPrintLn(buffer, i++);
 	}
-
-
 	menuPrintLn("Press button to exit", i+1, 5);
+
 }

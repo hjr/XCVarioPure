@@ -91,6 +91,7 @@ public:
 	void menuPrintLn(const char* str, int ln, int x=1) const;
 	void menuClearLn(int ln) const;
 	void menuPrintChar(char chr, int ln, int x) const;
+    void printTitle() const;
 	// void uprint( int x, int y, const char* str );
 	void SavedDelay(bool showit=true);
 	void scheduleReboot(uint8_t r = 0x80) { _restart |= r; }

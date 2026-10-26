@@ -8,7 +8,7 @@
 
 #include "SetupAction.h"
 
-#include "setup/SetupMenu.h"
+#include "SetupMenu.h"
 #include "AdaptUGC.h"
 #include "logdefnone.h"
 

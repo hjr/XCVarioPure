@@ -5,8 +5,8 @@
  *      Author: iltis
  */
 
-#include "setup/SetupMenuChar.h"
-#include "setup/SetupMenu.h"
+#include "SetupMenuChar.h"
+#include "SetupMenu.h"
 
 #include "AdaptUGC.h"
 #include "logdefnone.h"

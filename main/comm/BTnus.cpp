@@ -251,7 +251,6 @@ public:
                                     ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE,
                                     &cccd_val, NULL);
 
-            esp_ble_gap_start_advertising((esp_ble_adv_params_t *)&adv_params);
             BLUEnus->_server_running = true;
             break;
         }
@@ -320,6 +319,7 @@ public:
         {
         case ESP_GAP_BLE_ADV_DATA_SET_COMPLETE_EVT:
         {
+            esp_ble_gap_start_advertising((esp_ble_adv_params_t *)&adv_params);
             // Advertising data was successfully set
             ESP_LOGI(FNAME, "Advertising data set successfully");
             break;

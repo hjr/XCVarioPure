@@ -10,8 +10,6 @@
 
 #include "protocol/NMEA.h"
 
-class SetupAction;
-
 class JumboCmdMsg final : public NmeaPlugin
 {
 public:
@@ -22,10 +20,6 @@ public:
     virtual ~JumboCmdMsg() = default;
     const ParserEntry* getPT() const override { return _pt; }
 
-    // API to setup menu
-    static SetupAction* RightAction;
-    static SetupAction* LeftAction;
-    
 private:
     // Received messages
     static const ParserEntry _pt[];

@@ -57,13 +57,10 @@ void SensorTest::update() {
 
 void SensorTest::display(int mode)
 {
-    // if ( mode == 0 ) {
-    //     Display->clear();
-    // }
-
     ESP_LOGI(FNAME, "sensor test mode %d", mode);
-    menuPrintLn("  <", 0);
-    menuPrintLn(_title.c_str(), 0, 30);
+    if ( mode == 0) {
+        printTitle();
+    }
 
     // draw item list and start timer
     MYUCG->setColor(COLOR_LBBLUE);

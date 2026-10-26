@@ -11,9 +11,8 @@
 #include "AdaptUGC.h"
 
 #include "setup/SetupNG.h"
-#include "setup/SetupMenuSelect.h"
-#include "setup/SetupMenuValFloat.h"
-#include "screen/ScreenRoot.h"
+#include "SetupMenuSelect.h"
+#include "SetupMenuValFloat.h"
 #include "logdefnone.h"
 
 #include <algorithm>
@@ -83,8 +82,7 @@ void SetupMenu::display(int mode)
 	ESP_LOGI(FNAME,"Title: %s child size:%d", _title.c_str(), _childs.size());
 	MYUCG->setFont(ucg_font_fub14_hr, true);
 	MYUCG->setFontPosBottom();
-	menuPrintLn("  <", 0);
-	menuPrintLn(_title.c_str(), 0, 30);
+	printTitle();
 	doHighlight(highlight);
 	for (int i = 0; i < _childs.size(); i++) {
 		MenuEntry *child = _childs[i];

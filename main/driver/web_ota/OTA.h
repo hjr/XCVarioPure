@@ -6,7 +6,7 @@
  */
 #pragma once
 
-#include "setup/SetupMenuDisplay.h"
+#include "setup/primitive/SetupMenuDisplay.h"
 #include "driver/time/ClockIntf.h"
 
 

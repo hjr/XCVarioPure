@@ -7,7 +7,7 @@
 
 #pragma once
 
-#include "setup/MenuEntry.h"
+#include "MenuEntry.h"
 
 #include <cstdint>
 #include <string>

@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include "IpsDisplay.h"
 #include "sensor/Filters.h"
 #include "math/Units.h"
 
@@ -16,7 +17,6 @@
 constexpr int CA_NUM_DIRS = 24;  // every 15°
 
 class PolarGauge;
-struct Point;
 
 struct Thermal {
     mps_t    strength;
@@ -38,7 +38,7 @@ public:
 private:
     ThermalAssist(PolarGauge &g);
     void drawThermal(float th_strength, int idir);
-    void drawGlider(int16_t cx, int16_t cy);
+    void drawGlider(Point center);
     // int maxClimbIndex();
     Point getThermalCG() const;
     float getTop8Norm() const;
@@ -52,6 +52,9 @@ private:
     LowPassFilterT<float> _confidence; // 0..1, how confident we are that we are thermaling;
     rad_t cur_heading = 0.f; // accumulating heading delta and dice in e.g.15° steps
     LowPassFilterT<float> _th_norm; // normalization factor for thermal strength
+    // pixel clean bit bubbles
+    Point _last_center;
+    int16_t _last_radius = 0;
 };
 
 extern ThermalAssist  *thrmAssist;

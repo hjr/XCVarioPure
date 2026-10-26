@@ -287,52 +287,79 @@ Quaternion Quaternion::fromRotationMatrix(const vector_f &X, const vector_f &Y)
 // https://ahrs.readthedocs.io/en/latest/filters/aqua.html  Quaternion from Accelerometer
 // accel_par in m/(sec*sec), or in g (gravitational acceleration units)
 // and NED convention (at rest: 0, 0, -1)
-Quaternion Quaternion::fromAccelerometer(const vector_f& accel_par)
-{
-    // Normalize
-    vector_f an = accel_par;
-    an.normalize();
-    // ESP_LOGI(TAG,"ax=%.3f ay=%.3f az=%.3f", an.x, an.y, an.z);
+// Quaternion Quaternion::fromAccelerometer(const vector_f& accel_par)
+// {
+//     // Normalize
+//     vector_f an = accel_par;
+//     an.normalize();
+//     // ESP_LOGI(TAG,"ax=%.3f ay=%.3f az=%.3f", an.x, an.y, an.z);
 
-    // There is a singularity at an.z == -1
-    if ( an.z < 0.f ) {
-        float half_cos = std::sqrt(0.5f*(1.0f - an.z));
-        float temp = .5f / half_cos;
-        Quaternion orientation( -an.y*temp, half_cos, 0.0, an.x*temp );
-        //ESP_LOGI(TAG,"Quat: %.3f %.3f %.3f %.3f", orientation.a, orientation.b, orientation.c, orientation.d );
-        return orientation;
-    }
+//     // There is a singularity at an.z == -1
+//     if ( an.z < 0.f ) {
+//         float half_cos = std::sqrt(0.5f*(1.0f - an.z));
+//         float temp = .5f / half_cos;
+//         Quaternion orientation( -an.y*temp, half_cos, 0.0, an.x*temp );
+//         //ESP_LOGI(TAG,"Quat: %.3f %.3f %.3f %.3f", orientation.a, orientation.b, orientation.c, orientation.d );
+//         return orientation;
+//     }
     
-    float half_cos = std::sqrt(0.5f*(1.0f + an.z));
-    float temp = .5f / half_cos;
-    Quaternion orientation( half_cos, -an.y*temp, an.x*temp, 0.0 );
-    //ESP_LOGI(TAG,"Quat: %.3f %.3f %.3f %.3f", orientation.a, orientation.b, orientation.c, orientation.d );
-    return orientation;
+//     float half_cos = std::sqrt(0.5f*(1.0f + an.z));
+//     float temp = .5f / half_cos;
+//     Quaternion orientation( half_cos, -an.y*temp, an.x*temp, 0.0 );
+//     //ESP_LOGI(TAG,"Quat: %.3f %.3f %.3f %.3f", orientation.a, orientation.b, orientation.c, orientation.d );
+//     return orientation;
+// }
+
+// Down vector expressed in BODY coordinates.
+// Returns quaternion BODY -> NAV (NED).
+// Yaw remains unobservable; shortest rotation is chosen.
+Quaternion Quaternion::fromDownVector(const vector_f& downBody)
+{
+    vector_f d = downBody;
+    d.normalize();
+
+    const float dot = std::clamp(d.z, -1.f, 1.f);
+
+    if (dot < -0.9999f) {
+        // 180 degree rotation around X
+        return Quaternion(0.f, 1.f, 0.f, 0.f);
+    }
+    return Quaternion(1.f + dot, d.y, -d.x, 0.f).normalize();
 }
 
-// omega in radians per second: dtime in seconds
-Quaternion Quaternion::fromGyro(const vector_f& omega, float dtime)
+// gyro in radians per second: dt in seconds
+Quaternion Quaternion::fromGyro(const vector_f& gyro, float dt)
 {
-    // ESP_LOGI(TAG,"Quat: %.3f %.3f %.3f", omega.a, omega.b, omega.c );
-    float alpha = 0.5*dtime;
-    float a,b,c,d;
-    b = alpha*(omega.x);
-    c = alpha*(omega.y);
-    d = alpha*(omega.z);
-    a = 1.f - 0.5f*(b*b+c*c+d*d);
-    Quaternion result(a,b,c,d);
-    result.normalize();
-    // ESP_LOGI(TAG,"Quat1: %.3f %.3f %.3f %.3f", result.a, result.b, result.c, result.d );
+    // ESP_LOGI(TAG,"Quat: %.3f %.3f %.3f", gyro.x, gyro.y, gyro.z );
+    // Taylor aproximation w/o trigonometric functions and Ok for small angles
+    // rate     °/sample    angular error
+    // 10       1°          ca. 0,000013°
+    // 30       3°          ca. 0,00035°
+    // 90       9°          ca. 0,0094°
+    // 180      18°         ca. 0,075°
+    const float h_dt = 0.5f * dt;
+    const float x = gyro.x * h_dt;
+    const float y = gyro.y * h_dt;
+    const float z = gyro.z * h_dt;
+    const float r2 = x*x + y*y + z*z;
 
-    // Often found in literature and identic for small angles.
-    // // omega=(alpha,beta,gamma)
-    // // theta = ||omega||*dt; //length of angular velocity vector
-    // float norm = omega.normalize(); // normalized orientation of angular velocity vector
-    // float theta_05 = norm * 0.5 * dtime;
-    // Quaternion result2(cos(theta_05), omega.a * sin(theta_05), omega.b * sin(theta_05), omega.c * sin(theta_05));
-    // result = result2;
-    // ESP_LOGI(TAG,"Quat2: %.3f %.3f %.3f %.3f", result.a, result.b, result.c, result.d );
-    return result;
+    Quaternion q(1.f - 0.5f*r2, x, y, z);
+    q.normalize();
+    // ESP_LOGI(TAG,"Quat1: %.3f %.3f %.3f %.3f", q._w, q._x, q._y, q._z );
+
+
+    // The correct formula and code
+    // theta = ||gyro||*dt; //length of angular velocity vector
+    // float norm = gyro.normalize(); // normalized orientation of angular velocity vector
+    // float theta_05 = norm * 0.5 * dt;
+    // Quaternion(cos(theta_05), gyro._x * sin(theta_05), gyro._y * sin(theta_05), gyro._z * sin(theta_05));
+
+    // const float om = gyro.get_norm(),   // omega
+    // half = 0.5f * om * dt;          // half angle theta
+    // const float scale = (om > 1e-7f) ? std::sin(half) / om : 0.5f * dt;
+    // Quaternion q(std::cos(half), gyro.x*scale, gyro.y*scale, gyro.z*scale);
+
+    return q;
 }
 
 #ifdef Quaternionen_Test

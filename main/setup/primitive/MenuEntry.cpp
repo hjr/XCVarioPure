@@ -4,9 +4,9 @@
  *  Created on: Feb 4, 2018
  *      Author: iltis
  */
-#include "setup/MenuEntry.h"
+#include "MenuEntry.h"
 
-#include "setup/SetupMenu.h"
+#include "SetupMenu.h"
 #include "setup/SetupCommon.h"
 #include "Colors.h"
 #include "driver/audio/ESPAudio.h"
@@ -72,6 +72,14 @@ void MenuEntry::menuPrintChar(char chr, int ln, int x) const {
     }
     MYUCG->setPrintPos(x,(ln+1)*LINE_HEIGHT);
     MYUCG->print(chr);
+}
+
+void MenuEntry::printTitle() const {
+    MYUCG->setFont(ucg_font_fub14_hr, true);
+    if ( ! _title.empty() ) {
+        menuPrintLn("  <", 0);
+        menuPrintLn(_title.c_str(), 0, 30);
+    }
 }
 
 void MenuEntry::reBoot(int s) {
