@@ -141,6 +141,7 @@ static void checkWarnings()
     // Gear Warning
     if (gear_warning.get()) {
         int gw = 0;
+        static uint8_t mbox_id=0;
         if (gear_warning.get() == GW_EXTERNAL) {
             gw = gflags.gear_warn_external;
         } else {
@@ -153,11 +154,15 @@ static void checkWarnings()
             if (!gear_warning_active && !stall_warning_active) {
                 // never repeat sound, only show message until condition is gone
                 AUDIO->startSound(AUDIO_ALARM_GEAR);
-                MBOX->pushMessage(4, "! GEAR !", 30);
+		AUDIO->updateAudioMode();
+                mbox_id=MBOX->pushMessage(4, "! GEAR !", 30);
                 gear_warning_active = true;
             }
         } else {
-            gear_warning_active = false;
+            if( gear_warning_active ) {
+                MBOX->popMessage(mbox_id);
+                gear_warning_active = false;
+            }
         }
     }
 
