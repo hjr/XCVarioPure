@@ -21,6 +21,14 @@
 //     std::lock_guard<SemaphoreMutex> lock(mutex);
 //     // critical section
 // }
+// or
+// {
+//     std::unique_lock<SemaphoreMutex> lock(_mutex, std::try_to_lock);
+//     if (lock.owns_lock()) {
+//         // optional critical section
+//         ...
+//     }
+// }
 
 class SemaphoreMutex {
 public:
