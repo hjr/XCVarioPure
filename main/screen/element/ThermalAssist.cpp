@@ -269,7 +269,7 @@ void ThermalAssist::checkHeading(rad_t vheading, rad_t omega, rad_t bank) {
     // integrate footing/heading, create a new thermal when the heading has changed by 15° or more
     rad_t diff = Vector::angleDiff( vheading, cur_heading );
     if ( fabsf(diff) > CA_STEP ) {
-        ESP_LOGI(FNAME,"CheckHeading, heading: %.1f, diff: %.1f", Units::rad_to_deg(vheading), Units::rad_to_deg(diff) );
+        // ESP_LOGI(FNAME,"CheckHeading, heading: %.1f, diff: %.1f", Units::rad_to_deg(vheading), Units::rad_to_deg(diff) );
         // advance in CA_STEP's
         cur_heading = Vector::normalizePI2(cur_heading + (std::signbit(diff) ? -CA_STEP : CA_STEP));
 
@@ -282,23 +282,23 @@ void ThermalAssist::checkHeading(rad_t vheading, rad_t omega, rad_t bank) {
             _idir -= 1;
             if (_idir < 0) _idir = CA_NUM_DIRS - 1;
         }
-        ESP_LOGI(FNAME,"VHeading: %.1f, omega: %.1f, bank: %.1f, c_turn: %.2f, c_bank: %.2f, confidence: %.2f",
-            Units::rad_to_deg(vheading), Units::rad_to_deg(omega), Units::rad_to_deg(bank), c_turn, c_bank, _confidence.get() );
+        // ESP_LOGI(FNAME,"VHeading: %.1f, omega: %.1f, bank: %.1f, c_turn: %.2f, c_bank: %.2f, confidence: %.2f",
+        //     Units::rad_to_deg(vheading), Units::rad_to_deg(omega), Units::rad_to_deg(bank), c_turn, c_bank, _confidence.get() );
 
         mps_t te = 0.f;
         if ( _confidence.get() > 0.7f && dt < 20000 ) { // 15° in max 20sec
 
-            te = varioSensor->getAVG(dt);
-            ESP_LOGI(FNAME,"New thermal at heading %.1f, TE: %.2f, %dmsec", Units::rad_to_deg(cur_heading), te, (int)dt );
+            te = varioSensor->getAVG(dt * 2.f);
+            // ESP_LOGI(FNAME,"New thermal at heading %.1f, TE: %.2f, %dmsec", Units::rad_to_deg(cur_heading), te, (int)dt );
             uint8_t new_c_dir = std::signbit(diff) ? (uint8_t)circdir_t::circlLeft : (uint8_t)circdir_t::circlRight;
-            if ( new_c_dir != _cdir ) {
-                ESP_LOGI(FNAME,"ThermalAssist checkHeading, circling direction changed to %s", new_c_dir == (uint8_t)circdir_t::circlLeft ? "left" : "right");
-            }
+            // if ( new_c_dir != _cdir ) {
+            //     ESP_LOGI(FNAME,"ThermalAssist checkHeading, circling direction changed to %s", new_c_dir == (uint8_t)circdir_t::circlLeft ? "left" : "right");
+            // }
             _cdir = new_c_dir;
         }
         else {
             _th_norm.filter(std::max(1.f, MC.get()));
-            ESP_LOGI(FNAME,"ThermalAssist checkHeading, no thermaling detected, reset peak value %.2f, dt: %d", _confidence.get(), (int)dt);
+            // ESP_LOGI(FNAME,"ThermalAssist checkHeading, no thermaling detected, reset peak value %.2f, dt: %d", _confidence.get(), (int)dt);
         }
         thermals[_idir].set(te);
     }
