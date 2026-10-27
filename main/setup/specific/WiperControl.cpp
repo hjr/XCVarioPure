@@ -106,7 +106,11 @@ void WiperControl::callback(int par) {
     const int16_t dw = MYUCG->getDisplayWidth();
     int16_t percent = par & 0xFFFF;
     char buf[30];
-    snprintf(buf, sizeof(buf), "% 4d%% ", percent);
+    if ( percent == (int16_t)0x8000 ) {
+        sprintf(buf, "parked");
+    } else {
+        snprintf(buf, sizeof(buf), "% 4d%% ", percent);
+    }
     MYUCG->setFont(ucg_font_fub14_hr, true);
     menuPrintLn(buf, 4, ((par>>16) ? dw/4 : 3*dw/4) - 20);
 

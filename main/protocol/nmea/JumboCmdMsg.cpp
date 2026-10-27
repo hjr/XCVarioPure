@@ -153,8 +153,17 @@ dl_action_t JumboCmdMsg::alive(NmeaPlugin *plg)
 
 dl_action_t JumboCmdMsg::event(NmeaPlugin *plg)
 {
+    // $PJPJE, RPK
     ESP_LOGI(FNAME, "JP event");
-    // todo
+    ProtocolState *sm = plg->getNMEA().getSM();
+    int tmp = 7;
+    std::string token = NMEA::extractWord(sm->_frame, tmp);
+    if (strcmp(token.c_str() + 1, "PK") == 0) {
+        if ( WPControl ) {
+            tmp = ((token[0] == 'L') << 16) | 0x8000;
+            WPControl->callback(tmp);
+        }
+    }
     return NOACTION;
 }
 
