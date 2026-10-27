@@ -435,6 +435,8 @@ void system_startup(void *args){
     gyro_gating.set(gyro_gating.getDefault(), false, false);
     imu_reference.set(imu_reference.getDefault(), false, false);
     core_climb_period.set(core_climb_period.getDefault(), false, false);
+#else
+    gflags.expert = true;
 #endif
 
     // Check on sensorless Vario
