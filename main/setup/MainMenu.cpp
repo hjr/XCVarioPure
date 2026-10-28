@@ -99,6 +99,9 @@ static int vario_setup(SetupMenuValFloat* p) {
     varioSensor->setup();
     return 0;
 }
+inline int vario_setupS(SetupMenuSelect *p) {
+    return vario_setup(nullptr);
+}
 
 static int s2f_change_action(SetupMenuValFloat *p) {
     Speed2Fly.changeDamping();
@@ -403,13 +406,13 @@ static void vario_menu_create_s2f(SetupMenu *top) {
 }
 
 static void vario_menu_create_tek(SetupMenu *top) {
-    SetupMenuSelect* enac = new SetupMenuSelect("Method", RST_NONE, nullptr, &te_comp_enable);
+    SetupMenuSelect* enac = new SetupMenuSelect("Method", RST_NONE, vario_setupS, &te_comp_enable);
     enac->setHelp("Probe or electronic TE compensation");
     enac->addEntry("Probe");
     enac->addEntry("eComp");
     top->addEntry(enac);
 
-    SetupMenuValFloat* elca = new SetupMenuValFloat("eAdjustment", "%", nullptr, &te_comp_adjust, RST_NONE, false);
+    SetupMenuValFloat* elca = new SetupMenuValFloat("eAdjustment", "%", vario_setup, &te_comp_adjust, RST_NONE, false);
     elca->setHelp("Electronic correction factor deviating from lossless \"100%\"");
     elca->setPrecision(1);
     top->addEntry(elca);
