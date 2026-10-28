@@ -95,15 +95,6 @@ SerialLine *S2 = nullptr;
 // boot log
 std::string logged_tests;
 
-// global color variables for adaptable display variant
-uint8_t g_col_background; // black
-uint8_t g_col_highlight;
-uint8_t g_col_header_r;
-uint8_t g_col_header_g;
-uint8_t g_col_header_b;
-uint8_t g_col_header_light_r;
-uint8_t g_col_header_light_g;
-uint8_t g_col_header_light_b;
 uint8_t gyro_flash_savings=0;
 
 global_flags gflags = {};

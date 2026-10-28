@@ -40,6 +40,7 @@
 #include "setup/SetupNG.h"
 #include "AdaptUGC.h"
 #include "Colors.h"
+#include "Skins.h"
 #include "sensor.h"
 #include "logdefnone.h"
 
@@ -476,27 +477,7 @@ void IpsDisplay::setupDisplay() {
 }
 
 void IpsDisplay::setGlobalColors() {
-    // set global color variables according to selected display_variant
-	if ( display_variant.get() == DISPLAY_WHITE_ON_BLACK ) {
-		g_col_background = 255;
-		g_col_highlight = 0;
-		g_col_header_r=179; // 76
-		g_col_header_g=171; // 84
-		g_col_header_b=164; // 91
-		g_col_header_light_r=94; // 161
-		g_col_header_light_g=77;
-		g_col_header_light_b=62;
-	}
-	else {
-		g_col_background = 0;
-		g_col_highlight = 255;
-		g_col_header_r=179;
-		g_col_header_g=171;
-		g_col_header_b=164;
-		g_col_header_light_r=161;
-		g_col_header_light_g=168;
-		g_col_header_light_b=255;
-	}
+    skin_apply(color_scheme.get());
 }
 
 void IpsDisplay::initDisplay() {

@@ -47,7 +47,7 @@ void S2FBar::drawArrow(int16_t x, int16_t y, int16_t level)
         MYUCG->setColor(COLOR_WHITE);
     }
     else {
-        MYUCG->setColor(COLOR_WGREY);
+        MYUCG->setColor(COLOR_S2FPF);
     }
 
     int16_t l = level - init;
@@ -65,7 +65,7 @@ void S2FBar::drawBlock(int16_t level)
         MYUCG->setColor(COLOR_DGREEN);
     }
     else {
-        MYUCG->setColor(COLOR_WGREY);
+        MYUCG->setColor(COLOR_S2FPF);
     }
     MYUCG->drawRBox(_ref.x - _width_half + 3, _ref.y - _gap_half + 1, 2 * _width_half - 6, 2 * _gap_half - 3, 2);
 }
@@ -73,7 +73,7 @@ void S2FBar::drawBlock(int16_t level)
 void S2FBar::drawCircle(int16_t score)
 {
     // draw circle
-    MYUCG->setColor(COLOR_WGREY);
+    MYUCG->setColor(COLOR_S2FPF);
     MYUCG->drawCircle(_ref.x, _ref.y + 4, SYMBOL_SIZE, UCG_DRAW_UPPER_RIGHT | UCG_DRAW_LOWER_RIGHT | UCG_DRAW_LOWER_LEFT);
     MYUCG->drawCircle(_ref.x, _ref.y + 4, SYMBOL_SIZE - 1, UCG_DRAW_UPPER_RIGHT | UCG_DRAW_LOWER_RIGHT | UCG_DRAW_LOWER_LEFT);
     int tipx = _ref.x - SYMBOL_SIZE;

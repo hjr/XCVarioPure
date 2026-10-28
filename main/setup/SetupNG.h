@@ -391,6 +391,7 @@ extern SetupNG<gee_t>		gload_pos_max;
 extern SetupNG<gee_t>		gload_neg_max;
 extern SetupNG<mps_t>		airspeed_max;
 extern SetupNG<int>		    display_variant;
+extern SetupNG<int>			color_scheme;
 // extern SetupNG<int>       	compass_dev_auto;
 extern SetupNG<degree_t>  	max_circle_wind_diff;
 extern SetupNG<degree_t>  	max_circle_wind_delta_deg;

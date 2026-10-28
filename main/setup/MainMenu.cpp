@@ -48,6 +48,7 @@
 #include "Colors.h"
 #include "AdaptUGC.h"
 #include "sensor.h"
+#include "Skins.h"
 #include "logdef.h"
 
 #include "comm/DeviceMgr.h"
@@ -66,6 +67,12 @@ static int caid_reference(SetupMenuSelect* p) {
     }
     return 0;
 }
+
+static int skin_action(SetupMenuSelect* p) {
+    skin_apply(color_scheme.get());
+    return 0;
+}
+
 
 static int user_nvs_action(SetupMenuSelect* p) {
     if (p->getSelect() == 1) {
@@ -666,7 +673,20 @@ static void options_menu_create_screens(SetupMenu *top) { // dynamic!
         }
         top->addEntry(horizon);
 
-#ifdef DEBUG_AND_TEST
+        SetupMenuSelect* skin = new SetupMenuSelect("Skin", RST_NONE, skin_action, &color_scheme);
+        top->addEntry(skin);
+        skin->setHelp("Choose a display skin that suits you");
+        skin->addEntry(SKIN_NAME[0]);
+        skin->addEntry(SKIN_NAME[1]);
+        skin->addEntry(SKIN_NAME[2]);
+        skin->addEntry(SKIN_NAME[3]);
+        skin->addEntry(SKIN_NAME[4]);
+        skin->addEntry(SKIN_NAME[5]);
+        skin->addEntry(SKIN_NAME[6]);
+        skin->addEntry(SKIN_NAME[7]);
+        skin->addEntry(SKIN_NAME[8]);
+
+        #ifdef DEBUG_AND_TEST
         SetupMenuSelect* disva = new SetupMenuSelect("Color Variant", RST_NONE, nullptr, &display_variant);
         top->addEntry(disva);
         disva->setHelp("Display variant white on black (W/B) or black on white (B/W)");

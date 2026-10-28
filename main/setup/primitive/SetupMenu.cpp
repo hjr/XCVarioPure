@@ -90,10 +90,10 @@ void SetupMenu::display(int mode)
 		if ( dirty ) { child->refresh(); }
 		
 		// Menu entry
-		MYUCG->setColor(COLOR_WHITE);
+		MYUCG->setColor(COLOR_MTEXT);
         const char *cv = child->value();
 		if ( ! child->isLeaf()  || cv ) {
-			MYUCG->setColor(COLOR_LBBLUE);
+			MYUCG->setColor(COLOR_MZWEIG);
 		}
 		menuPrintLn(child->getTitle(), i+1);
 
@@ -110,9 +110,9 @@ void SetupMenu::display(int mode)
 			menuPrintLn(sep, i+1, 1+entry_len);
 
 			if (child->isLeaf() ) {
-				MYUCG->setColor(COLOR_WHITE);
+				MYUCG->setColor(COLOR_MTEXT);
 			} else {
-				MYUCG->setColor(COLOR_HEADER_LIGHT);
+				MYUCG->setColor(COLOR_MWERT);
 			}
 			menuPrintLn(cv, i+1, 1 + entry_len + MYUCG->getStrWidth(sep));
 			ESP_LOGI(FNAME,"Child V: %s", cv );

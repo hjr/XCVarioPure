@@ -24,8 +24,24 @@
 #include <algorithm>
 
 extern AdaptUGC *MYUCG;
-static constexpr const ucg_color_t bow_color[4] = {{COLOR_DGREEN}, {COLOR_BLUE}, {COLOR_ORANGE}, {COLOR_RED}};
-static const ucg_color_t lne_color[3] = {{COLOR_LGREY}, {COLOR_MGREY}, {COLOR_WHITE}};
+
+// These helpers replace compile-time static arrays: COLOR_* macros now resolve
+// through the runtime g_skin pointer and cannot be used in static initializers.
+static void setBowColor(int cidx) {
+    switch (std::clamp(cidx, 0, 3)) {
+        case 0:  MYUCG->setColor(COLOR_DGREEN); break;  // optimal / S2F
+        case 1:  MYUCG->setColor(COLOR_BLUE);   break;  // info / neutral
+        case 2:  MYUCG->setColor(COLOR_GWARN);  break;  // G-meter warning
+        default: MYUCG->setColor(COLOR_GLIMIT); break;  // G-meter limit
+    }
+}
+static void setLneColor(int cidx) {
+    switch (std::clamp(cidx, 0, 2)) {
+        case 0:  MYUCG->setColor(COLOR_LGREY); break;
+        case 1:  MYUCG->setColor(COLOR_MGREY); break;
+        default: MYUCG->setColor(COLOR_WHITE); break;
+    }
+}
 
 
 ////////////////////////////
@@ -320,7 +336,7 @@ void PolarGauge::drawOneScaleLine(float a, int16_t l1_off, int16_t w, int16_t ci
     int16_t yn_3 = _ref.y - fast_iroundf(si * l2 + py);
 
     cidx = std::clamp(cidx, (int16_t)0, (int16_t)2);
-    MYUCG->setColor(lne_color[cidx].color[0], lne_color[cidx].color[1], lne_color[cidx].color[2]);
+    setLneColor(cidx);
     MYUCG->drawTetragon(xn_0, yn_0, xn_1, yn_1, xn_2, yn_2, xn_3, yn_3);
 }
 
@@ -338,7 +354,7 @@ void PolarGauge::drawBow(int16_t idx, int16_t &old, int16_t w, int16_t off, int1
     }
     else {
         if (cidx>=0) {
-            MYUCG->setColor(bow_color[cidx].color[0], bow_color[cidx].color[1], bow_color[cidx].color[2]);
+            setBowColor(cidx);
 
         } else {
             MYUCG->setColor(COLOR_BLACK);
@@ -407,7 +423,7 @@ void PolarGauge::drawOneLabel(float val, int16_t labl) const
         MYUCG->setFont(ucg_font_fub20_hn, false);
         x = CosCenteredDeg2(dice_rad(val), _radius - 16) - MYUCG->getStrWidth(s)/2;
         y = SinCenteredDeg2(dice_rad(val), _radius - 16);
-        MYUCG->setColor(COLOR_HEADER_LIGHT);
+        MYUCG->setColor(COLOR_SKALZ);
     }
     MYUCG->setPrintPos(x, y);
     MYUCG->print(s);
@@ -593,7 +609,7 @@ void PolarGauge::drawOneDot(int16_t a, int16_t size, int16_t cidx) const
     // ESP_LOGI(FNAME, "dot a:%ddeg", a);
     int16_t bx = fast_iroundf(fast_sin_idx(a*2) * _radius);
     int16_t by = fast_iroundf(fast_cos_idx(a*2) * _radius);
-    MYUCG->setColor(lne_color[cidx].color[0], lne_color[cidx].color[1], lne_color[cidx].color[2]);
+    setLneColor(cidx);
     MYUCG->drawDisc(_ref.x + bx,_ref.y - by, size, UCG_DRAW_ALL );
 }
 

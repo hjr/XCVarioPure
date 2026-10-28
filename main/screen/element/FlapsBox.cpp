@@ -89,7 +89,7 @@ void FlapsBox::drawLabels(FBoxStateHash cs)
         MYUCG->setColor(COLOR_DGREEN);
         MYUCG->drawBox(boxx, green_top, boxw+1, BOX_WIDTH);
     }
-    MYUCG->setColor(1, g_col_background, g_col_background, g_col_background);
+    MYUCG->setColor(1, COLOR_BLACK);
 
     // max. three foreground labels
     MYUCG->setFont(ucg_font_fub14_hr);

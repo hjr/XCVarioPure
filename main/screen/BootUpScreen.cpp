@@ -145,7 +145,7 @@ void BootUpScreen::animate()
     ucg_color_t c;
     _fadein += 0.1f;
     if (_fadein <= 1.f) {
-        c.fadeTo(ucg_color_t(COLOR_MARINE), _fadein);
+        c.fadeTo(ucg_color_t(COLOR_BOOTLOGO), _fadein);
         MYUCG->setColor(c.r, c.g, c.b);
         MYUCG->setFont(ucg_font_fub20_hr);
         MYUCG->setPrintPos(MYUCG->getDisplayWidth()/2 - 22, MYUCG->getDisplayHeight()/2 + 34);

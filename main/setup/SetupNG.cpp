@@ -617,6 +617,7 @@ SetupNG<gee_t>			gload_pos_max("GLOADPM", 1, FACTORY_RST);
 SetupNG<gee_t>			gload_neg_max("GLOADNM", 0, FACTORY_RST);
 SetupNG<mps_t>			airspeed_max("ASMAX", 0 , FACTORY_RST, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_HSPEED);
 SetupNG<int>        	display_variant("DISPLAY_VARIANT", 0, USER_RST );
+SetupNG<int>        	color_scheme("COLOR_SCHEME", 0, FACTORY_RST);
 // SetupNG<int>        	compass_dev_auto("COMPASS_DEV", 0 );
 SetupNG<degree_t>    	max_circle_wind_diff("CI_WINDDM", 60.0, USER_RST, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(0, 90.0, 1.0));
 SetupNG<degree_t>    	max_circle_wind_delta_deg("CIMDELD", 20.0, USER_RST, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(0.0, 60.0, 0.1));
