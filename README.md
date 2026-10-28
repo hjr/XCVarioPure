@@ -75,6 +75,20 @@ The ESP32 integrates Bluetooth, Wi-Fi, and multiple serial interfaces, allowing 
 * Battery voltage and status indicator
 * Thermal assistant indicator for efficient thermal centering
 * Wind rose indicator with optional second, instant wind pointer
+* Air mass estimator: EKF fusion of IMU, AHRS, airspeed, baro altitude and GNSS velocity
+  - instant 3D wind; the horizontal part drives the instant wind pointer (wind source "XCVario+Instant")
+  - vertical air mass movement as vario mode "Air Mass" (or "Cruise-Air Mass", gross while circling), insensitive to horizontal gusts and independent of TE compensation; falls back to netto while not available
+  - uses the static port directly, whatever the altimeter source setting; compensates the IMU lever arm and accounts for sideslip from the lateral acceleration
+  - runs its own gyro propagated attitude, aided by air data instead of a plain accelerometer gravity reference: pull-ups and zooms do not tilt it, so a stick thermal shows less false climb than TE netto
+  - damped with half the Vario Damping setting: it does not take gusts for lift, so it can show a thermal entry about a second earlier than TE netto
+  - with Netto Mode "Super-Netto" the circling sink is added (needle, average and audio), showing the climb as if circling there
+  - in Air Mass mode the speed to fly command uses the air mass movement as well, steadier in gusts and pull-ups than TE netto
+  - works with the 1 Hz GNSS of the Flarm
+  - learns airspeed scale, pitch/AoA offset and the GNSS latency in flight, saved every 5 minutes and after landing; learned values are discarded when the IMU calibration, airspeed calibration, glider or GNSS source changes
+  - flapped gliders: the pitch/AoA offset is learned per flap position (flaps shift the fuselage angle of attack by degrees); with a flap sensor it follows the lever, without one the flap recommendation (the glider's flap speeds; the Flap-Assist display need not be enabled), which works as long as the flaps are set roughly as recommended
+  - a calibrated compass aligns the heading before the first turn
+  - optional `$PXCVA` NMEA output for evaluation, and "Wind to Navi" sends the averaged wind to the navigation computer (`$WIMWV`, Cambridge `!w`)
+  - "Pull-up Comp." compensates the static port error like the TE eAdjustment: tune it in calm air until pull-ups show neither false climb nor sink
 * Bluetooth, Wi-Fi, and two serial interfaces for external devices (XCSoar, LK8000, FLARM, Anemoi, other sensors …)
 * Complete support for a secondary variometer (two-seater) with automatic routing to all connected devices
 * High-precision barometric altimeter with 1 hPa (≈ 8 m) absolute accuracy and 0.1 m resolution

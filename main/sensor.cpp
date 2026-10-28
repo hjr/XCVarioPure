@@ -49,6 +49,7 @@
 
 #include "Flap.h"
 #include "wind/WindCalcTask.h"
+#include "airmass/AirMass.h"
 #include "comm/SerialLine.h"
 #include "comm/OneWireBus.h"
 #include "comm/CanBus.h"
@@ -977,6 +978,8 @@ void system_startup(void *args){
         asSensor->update(Clock::getMillis());
     }
     
+    airmass::startup();
+
     // TE vario "sensor" always needed, but last in line
     varioSensor = new VarioFilter();
     if ( (baroSensor && teSensor && asSensor) || SetupCommon::isClient() ) {
@@ -997,7 +1000,7 @@ void system_startup(void *args){
     // Init the vario screens
     MenuRoot->initScreens();
 
-    if (flapbox_enable.get()) {
+    if (Flap::needed()) {
         Flap::theFlap();  // check on FLAP pointer further on
     }
     // if (hardwareRevision.get() != XCVARIO_20) {

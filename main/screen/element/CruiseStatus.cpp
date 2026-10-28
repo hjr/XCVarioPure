@@ -9,6 +9,7 @@
 #include "CruiseStatus.h"
 
 #include "setup/CruiseMode.h"
+#include "airmass/AirMass.h"
 #include "Colors.h"
 #include "AdaptUGC.h"
 #include "logdefnone.h"
@@ -55,7 +56,9 @@ void CruiseStatus::draw() {
         MYUCG->setColor(COLOR_BLACK);
     }
     const char *s = "  net";
-    if (CRMOD.getVMode() == CruiseMode::MODE_REL_NETTO) {
+    if (airmass::varioShown()) {
+        s = CRMOD.isRelative() ? " sair" : "  air";
+    } else if (CRMOD.isRelative()) {
         s = "snet";
     }
     ESP_LOGI(FNAME, "print netto stat %d - %s", CRMOD.isNetto(), s);

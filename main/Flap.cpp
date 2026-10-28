@@ -58,6 +58,12 @@ Flap::~Flap() {
     _instance = nullptr;
     FLAP = nullptr;
 }
+// the flap levels serve the flap box, the flap sensor, and with a flapped glider AirMass (the recommendation
+// stands in for a flap sensor), whether the box is shown or not
+bool Flap::needed() {
+    return flapbox_enable.get() || sensAvailable() || Speed2Fly.hasFlaps();
+}
+
 Flap *Flap::theFlap() {
     if (!_instance) {
         _instance = new Flap();
@@ -181,7 +187,11 @@ void Flap::removeLevel(int idx)
 // get optimum flap position for given speed
 float Flap::getOptimum(mps_t spd) const {
     // Correct for current g load
-    float g_force = accSensor ? accSensor->getGload() : 1.f;
+    return getOptimum(spd, accSensor ? accSensor->getGload() : 1.f);
+}
+
+// for the given g load
+float Flap::getOptimum(mps_t spd, float g_force) const {
     if (g_force < 0.3) {
         g_force = 0.3; // Ignore meaningless values below 0.3g
     }

@@ -9,3 +9,4 @@
 dependencies.lock
 sdkconfig
 sdkconfig.old
+/build_sim

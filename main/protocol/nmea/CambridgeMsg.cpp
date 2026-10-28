@@ -14,6 +14,7 @@
 #include "comm/Messages.h"
 #include "math/Units.h"
 #include "setup/SetupNG.h"
+#include "airmass/AirMass.h"
 #include "logdefnone.h"
 
 
@@ -87,7 +88,7 @@ void NmeaPrtcl::sendCambridge()
     }
     Message* msg = newMessage();
 
-    msg->buffer = "!w,0,0,0,0,";
+    msg->buffer = airmass::cambridgeWind();
     char buffer[50];
     std::sprintf(buffer, "%d", int(altitude.get()+1000.5)); // m + 1000
     msg->buffer += buffer;

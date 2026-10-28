@@ -54,6 +54,18 @@ jobs:
         git status
         git describe --tags --dirty || echo "describe failed"
 
+    - name: AirMass estimator tests
+      shell: bash
+      run: |
+        docker run --rm \
+          -v ${{ github.workspace }}:/project \
+          -w /project \
+          espressif/idf:release-v5.4 \
+          bash -c ". \$IDF_PATH/export.sh > /dev/null && \
+            cmake -S tools/airmass_sim -B build_sim -DCMAKE_BUILD_TYPE=Release && \
+            cmake --build build_sim -j && \
+            ctest --test-dir build_sim --output-on-failure"
+
     - name: Build
       shell: bash
       run: |

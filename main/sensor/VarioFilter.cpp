@@ -14,6 +14,7 @@
 #include "AverageVario.h"
 #include "setup/CruiseMode.h"
 #include "setup/SetupNG.h"
+#include "airmass/AirMass.h"
 #include "logdef.h"
 
 
@@ -147,30 +148,35 @@ void VarioFilter::postProcess()
     // ESP_LOGI(FNAME, "Varioscore TE: %.3f, sink: %.3f, Gact: %.3f, Gmax: %.3f, tp: %.3f", vkf.v, _polar_sink, _Gact.get(), _Goptimal.get(), tp);
     thermal_score.set(tp);
 
-    // Adjust the net for Super Netto mode if applicable
-    if (CRMOD.getVMode() == CruiseMode::MODE_REL_NETTO) {
-        // Super Netto, considering circling sink
-        _polar_sink += Speed2Fly.getCirclingSink();
-    }
+    // Super Netto shows the climb as if circling here: netto (or air mass) plus the circling sink
+    const mps_t rel_sink = CRMOD.isRelative() ? Speed2Fly.getCirclingSink() : 0.f;
     te_netto.set(te_ne);
 
-    if ( CRMOD.getChanged() ) {
+    // Air Mass mode: vertical air mass movement of the estimator, falls back to netto
+    mps_t air;
+    bool air_changed;
+    const bool airmass_ok = airmass::vario(te_ne, air, air_changed);
+
+    if ( CRMOD.getChanged() || air_changed ) {
         restartRunningAvg(); // restart the running average when the cruise mode changes, avoid smeared data
         ESP_LOGI(FNAME, "Cruise mode changed, restarting running average");
     }
-    if (CRMOD.isGross()) {
+    if (airmass_ok) {
+        pushAndPublish(air + rel_sink, now);
+        te_gross.set(te_gr);
+    } else if (CRMOD.isGross()) {
         pushAndPublish(te_gr, now); // damp
         te_gross.set(get());                // use damped value
         te_netto.set(get() - _polar_sink);
     } else {
-        pushAndPublish(te_ne, now);
-        te_gross.set(get() + _polar_sink);
-        te_netto.set(get());
+        pushAndPublish(te_ne + rel_sink, now);
+        te_gross.set(get() - rel_sink + _polar_sink);
+        te_netto.set(get() - rel_sink);
     }
     _avg_vario.filter(getRunningAvg());
 
-    // speed to fly update on current vario
-    s2f_ideal.set(Speed2Fly.calculate(te_ne, !CRMOD.getCMode()));
+    // speed to fly update on current vario, in Air Mass mode on the air mass movement (never with the circling sink)
+    s2f_ideal.set(Speed2Fly.calculate(airmass_ok ? air : te_ne, !CRMOD.getCMode()));
 
     AverageVario::newSample(te_gr);
 }
