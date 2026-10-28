@@ -10,6 +10,9 @@
 
 #include <cstdint>
 
+// most important timing contant for the sensor loop and the vario
+constexpr int SENSOR_LOOP_ATOMIC_CYCLE = 50; // 50msec loops
+
 enum SensorType : uint8_t {
     NONE = 0,
     TEMPERATURE,

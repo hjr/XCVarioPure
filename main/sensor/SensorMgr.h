@@ -21,8 +21,8 @@ class SensorBase;
 struct SensorEntry {
     SensorId    id = SensorId(SensorType::NONE);
     SensorBase* sensor = nullptr;   // polymorph
-    uint16_t    dutycycle = 0;      // x 100msec loops
-    uint16_t    postproccycle = 0;  // x 100msec loops, 0 for not part of the loop
+    uint16_t    dutycycle = 0;      // x SENSOR_LOOP_ATOMIC_CYCLE loops
+    uint16_t    postproccycle = 0;  // x SENSOR_LOOP_ATOMIC_CYCLE loops, 0 for not part of the loop
     constexpr bool isActive() const { return sensor != nullptr; }
 };
 

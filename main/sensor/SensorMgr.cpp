@@ -88,8 +88,8 @@ void SensorRegistry::updateCycleTimes(SensorBase* s)
 
     SensorEntry *entry = find(s->getId().type);
     if (entry && entry->sensor == s) {
-        entry->dutycycle = (uint16_t)(s->getDutyCycle() / 100);
-        entry->postproccycle = (uint16_t)(s->getProcessInterval() / 100);
+        entry->dutycycle = (uint16_t)(s->getDutyCycle() / SENSOR_LOOP_ATOMIC_CYCLE);
+        entry->postproccycle = (uint16_t)(s->getProcessInterval() / SENSOR_LOOP_ATOMIC_CYCLE);
     }
 }
 
@@ -144,7 +144,7 @@ bool SensorRegistry::addSensor(SensorBase* s)
             if (existing->id.prio == id.prio) {
                 ESP_LOGW(FNAME, "Sensor %s already registered, replacing it", idmemo[id.type]);
                 SensorBase *old_sensor = existing->sensor;
-                *existing = { id, s, (uint16_t)(s->getDutyCycle() / 100), (uint16_t)(s->getProcessInterval() / 100) };
+                *existing = { id, s, (uint16_t)(s->getDutyCycle() / SENSOR_LOOP_ATOMIC_CYCLE), (uint16_t)(s->getProcessInterval() / SENSOR_LOOP_ATOMIC_CYCLE) };
                 delete old_sensor;
                 return true;
             } else {
@@ -172,9 +172,15 @@ bool SensorRegistry::addSensor(SensorBase* s)
         } else {
             e = end();
         }
-        *e = { id, s, (uint16_t)(s->getDutyCycle() / 100), (uint16_t)(s->getProcessInterval() / 100) }; // store dutycycle in 100ms units
+        *e = { id, 
+            s, 
+            (uint16_t)(s->getDutyCycle() / SENSOR_LOOP_ATOMIC_CYCLE), 
+            (uint16_t)(s->getProcessInterval() / SENSOR_LOOP_ATOMIC_CYCLE)
+        }; // store dutycycle in 50ms units
+
             ESP_LOGW(FNAME, "%d. %s%s sensor%s (%s) registered with dutycycle %dmsec and postproccycle %dmsec", 
-                numSensors, (id.isLocalSensor() ? "internal," : ""), idmemo[id.type], (id.isEssentialSensor() ? "*" : ""), s->name(), e->dutycycle * 100, e->postproccycle * 100);
+                numSensors, (id.isLocalSensor() ? "internal," : ""), idmemo[id.type], (id.isEssentialSensor() ? "*" : ""), 
+                s->name(), e->dutycycle * SENSOR_LOOP_ATOMIC_CYCLE, e->postproccycle * SENSOR_LOOP_ATOMIC_CYCLE);
         // increment numSensors to account for the new sensor
         numSensors++;
 #ifdef DEBUG_AND_TEST

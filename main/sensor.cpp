@@ -3,6 +3,7 @@
 
 #include "ESP32NVS.h"
 #include "imu/ImuSensor.h"
+#include "sensor/SensorTypes.h"
 #include "sensor/adc/BatteryVoltage.h"
 #include "sensor/adc/FlapSens.h"
 #include "sensor/pressure/PressureSensor.h"
@@ -237,7 +238,7 @@ void readSensors(void *pvParameters)
                 xQueueSend(BackgroundTaskQueue, &job, 0);
             }
             // 5Hz events
-            if ( !(count % 2) ) {
+            if ( !(count % 4) ) {
                 CalkTaskJob job(CalkTaskJob::CALK_TASK_TOY_FEED);
                 xQueueSend(BackgroundTaskQueue, &job, 0);
             }
@@ -245,13 +246,13 @@ void readSensors(void *pvParameters)
 
         // todo convert to a sensor and reimplement
         // low rate update of long term climb average
-        if ( ! (count % (((int)core_climb_period.get()) * 10)) ) {
+        if ( ! (count % (((int)core_climb_period.get()) * 20)) ) {
             CalkTaskJob job(CalkTaskJob::CALK_TASK_THERMAL_STATS);
             xQueueSend(BackgroundTaskQueue, &job, 0);
         }
 
         // 2Hz tasks
-        if ( !(count % 5) ) {
+        if ( !(count % 10) ) {
             // Check on warnings
             checkWarnings();
         }
@@ -269,7 +270,7 @@ void readSensors(void *pvParameters)
         }
 
         // every second todo convert into a sensor
-        if ( !(count%10) ) {
+        if ( !(count%20) ) {
             // Check auto s2f mode filter every second
             if (S2FSWITCH) {
                 S2FSWITCH->checkCruiseMode();
@@ -277,23 +278,30 @@ void readSensors(void *pvParameters)
         }
 
         // MinMax tracking
-        if (accSensor) {
-            float g = accSensor->getGload();
-            if (g > gload_pos_max.get()) {
-                gload_pos_max.set(g);
+        if ( !(count%2) ) {
+            if (accSensor) {
+                float g = accSensor->getGload();
+                if (g > gload_pos_max.get()) {
+                    gload_pos_max.set(g);
+                }
+                else if (g < gload_neg_max.get()) {
+                    gload_neg_max.set(g);
+                }
             }
-            else if (g < gload_neg_max.get()) {
-                gload_neg_max.set(g);
+            if( ias.get() > airspeed_max.get() ){
+                airspeed_max.set( ias.get() );
             }
-        }
-		if( ias.get() > airspeed_max.get() ){
-			airspeed_max.set( ias.get() );
-		}
 
 
-        if (OneWIRE) { // todo might fit into sensor management framework
-            // read one wire sensors
-            OneWIRE->groupUpdate(Clock::getMillis());
+            if (OneWIRE) { // todo might fit into sensor management framework
+                // read one wire sensors
+                OneWIRE->groupUpdate(Clock::getMillis());
+            }
+
+            // NVS lazy commit
+            if ( !(count % 50) ) { // all 5 seconds
+                SetupCommon::commitDirty(); // flash NVS settings permanently
+            }
         }
 
         // audio update
@@ -306,16 +314,11 @@ void readSensors(void *pvParameters)
             xQueueSend(uiEventQueue, &screenEvent, 0);
         }
 
-        // NVS lazy commit
-        if ( !(count % 50) ) { // all 5 seconds
-            SetupCommon::commitDirty(); // flash NVS settings permanently
-        }
-
         // check on sensor loop changes
         SensorRegistry::applyChange();
 
 #ifdef DEBUG_AND_TEST
-        if ( !(count % 300) ) {
+        if ( !(count % 600) ) {
             ESP_LOGI(FNAME, "Free Heap: %d bytes", heap_caps_get_free_size(MALLOC_CAP_8BIT));
             if (uxTaskGetStackHighWaterMark(NULL) < 512)
             {
@@ -354,7 +357,7 @@ void readSensors(void *pvParameters)
 
         esp_task_wdt_reset();
         if (SetupCommon::isMaster() && !gflags.inSimulationMode) {
-            xTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(100));
+            xTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(SENSOR_LOOP_ATOMIC_CYCLE));
         } else {
             ulTaskNotifyTake(pdTRUE, 0);  // delete pending notifications
             ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(150)); // get in synch with the master loop, or sim
