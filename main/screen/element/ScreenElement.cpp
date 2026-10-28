@@ -8,5 +8,8 @@
 
 #include "ScreenElement.h"
 
-
+void ScreenElement::setRef(Point r) {
+    _bbox.move(r - _ref);
+    _ref = r;
+}
 

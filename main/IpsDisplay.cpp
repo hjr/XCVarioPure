@@ -156,10 +156,12 @@ Point Point::centralProjection(const vector_f &obj, float focus) {
 
 // Implementation of the bounding box based on the 2d point
 void BoundingBox::add(Point p) {
-    if (p.x < pmin.x) pmin.x = p.x;
-    if (p.y < pmin.y) pmin.y = p.y;
-    if (p.x > pmax.x) pmax.x = p.x;
-    if (p.y > pmax.y) pmax.y = p.y;
+    Point end = origin + size;
+    if (p.x < origin.x) origin.x = p.x;
+    if (p.y < origin.y) origin.y = p.y;
+    if (p.x > end.x) end.x = p.x;
+    if (p.y > end.y) end.y = p.y;
+    size = end - origin;
 }
 void BoundingBox::add(const Point *pts, int n) {
     for (int i=0; i<n; i++) {
@@ -167,11 +169,14 @@ void BoundingBox::add(const Point *pts, int n) {
     }
 }
 void BoundingBox::enlarge(int16_t val) {
-    pmin -= val;
-    pmax += val;
+    origin -= val;
+    size += 2 * val;
+}
+void BoundingBox::move(Point delta) {
+    origin += delta;
 }
 bool BoundingBox::isIn(Point p) const {
-    return p.x >= pmin.x && p.x <= pmax.x && p.y >= pmin.y && p.y <= pmax.y;
+    return p.x >= origin.x && p.x < (origin.x+size.x) && p.y >= origin.y && p.y < (origin.y+size.y);
 }
 
 

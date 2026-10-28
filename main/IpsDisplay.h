@@ -56,14 +56,15 @@ struct Point {
 };
 
 struct BoundingBox {
-    Point pmin;
-    Point pmax;
-    constexpr BoundingBox() : pmin(Point(INT16_MAX, INT16_MAX)), pmax(Point(INT16_MIN, INT16_MIN)) {}
-    constexpr BoundingBox(Point p1, Point P2) : pmin(p1), pmax(P2) {}
-    constexpr void initialize(Point p) { pmin = pmax = p; }
+    Point origin;
+    Point size;
+    constexpr BoundingBox() : origin(Point(0, 0)), size(Point(0, 0)) {}
+    constexpr BoundingBox(Point org, Point siz) : origin(org), size(siz) {}
+    constexpr void initialize(Point p) { origin = p; size =  Point(); }
     void add(Point p);
     void add(const Point *pts, int n);
     void enlarge(int16_t val);
+    void move(Point delta);
     bool isIn(Point p) const;
 };
 

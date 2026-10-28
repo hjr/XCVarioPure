@@ -19,7 +19,8 @@ public:
     ScreenElement() = delete;
     constexpr ScreenElement(int16_t refx, int16_t refy) : _ref(refx, refy) {}
     virtual ~ScreenElement() = default;
-    void setRef(int16_t x, int16_t y) { _ref.x=x; _ref.y=y; }
+    void setRef(Point r);
+    inline void setRef(int16_t x, int16_t y) { setRef(Point(x, y)); }
     const BoundingBox& getBoundingBox() const { return _bbox; }
     void forceRedraw() { _dirty = true; }
     // virtual void update(const UiEvent&) {}
