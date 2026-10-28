@@ -32,7 +32,7 @@ ArrowIndicator::ArrowIndicator(PolarGauge &g, int16_t tipradius, int16_t length,
     _shoulder_val_offset(atan(static_cast<float>(half_base)/(_tip-length))*g.IDX_SCALE), // correct for cutting the radius from base points
     _half_width(half_base)
 {
-    ESP_LOGI(FNAME,"Base  tl:%d off:%d tip:%d base:%d", _tip-length, _shoulder_val_offset, _tip, _root );
+    ESP_LOGI(FNAME,"Base  tl:%d off:%d tip:%d base:%d", _tip-length, _shoulder_val_offset, _tip, _base );
     prev.x_0 = _gauge.CosCenteredDeg2(0, _base); // root center
     prev.y_0 = _gauge.SinCenteredDeg2(0, _base);
     prev.x_1 = prev.x_0 - 0; // lower shoulder
@@ -161,30 +161,31 @@ bool ArrowIndicator::drawOver(int16_t val,float a)
         (int16_t)(_gauge._ref.y - fast_iroundf(si * _tip)),
     };
     ESP_LOGI(FNAME,"drawTetragon  x0:%d y0:%d x1:%d y1:%d x2:%d y2:%d x3:%d y3:%d", n.x_0, n.y_0, n.x_1, n.y_1, n.x_2, n.y_2, n.x_3, n.y_3 );
-    BoundingBox pbox({prev.x_0, prev.y_0}, {prev.x_0, prev.y_0});
+    BoundingBox pbox({prev.x_0, prev.y_0}, {});
     pbox.add((Point*)(&prev.x_1), 6);
     BoundingBox box = pbox;
     box.add((Point*)(&n.x_0), 7); // bigger combined box
     // Enlarge box by one pixel in each direction
     box.enlarge(1);
     // try first if the combined box fits into the frame buffer
-    ESP_LOGI(FNAME, "draw over frame size %dbyte", (box.pmax.x - box.pmin.x +1) * (box.pmax.y - box.pmin.y +1) * 3 );
+    ESP_LOGI(FNAME, "draw over frame size %dbyte", (box.size.x +1) * (box.size.y +1) * 3 );
     bool extra_draw = false;
-    if ( ((box.pmax.x - box.pmin.x +1) * (box.pmax.y - box.pmin.y +1)) > (EGLIB_FRAMEBUFFER_SIZE/3) ) {
+    if ( ((box.size.x +1) * (box.size.y +1)) > (EGLIB_FRAMEBUFFER_SIZE/3) ) {
         extra_draw = true;
         box = pbox;
         box.enlarge(1);
-        ESP_LOGI(FNAME, "draw over frame size %dbyte", (box.pmax.x - box.pmin.x +1) * (box.pmax.y - box.pmin.y +1) * 3 );
-        if ( ((box.pmax.x - box.pmin.x +1) * (box.pmax.y - box.pmin.y +1)) > (EGLIB_FRAMEBUFFER_SIZE/3) ) {
+        ESP_LOGW(FNAME, "draw extra, frame size %dbyte", (box.size.x +1) * (box.size.y +1) * 3 );
+        if ( ((box.size.x +1) * (box.size.y +1)) > (EGLIB_FRAMEBUFFER_SIZE/3) ) {
             // too much for the 14k frame buffer, guess prev unset
             prev = n;
-            return false;
+            ESP_LOGE(FNAME, "ArrowIndicator: frame buffer too small for drawing");
+            assert(false);
         }
     }
     // ESP_LOGI(FNAME,"draw over  minx:%d maxx:%d miny:%d maxy:%d", box.pmin.x, box.pmax.x, box.pmin.y, box.pmax.y );
-    // MYUCG->drawFrame(box.pmin.x-1, box.pmin.y-1, box.pmax.x - box.pmin.x + 2, box.pmax.y - box.pmin.y + 2);
-    MYUCG->startBuffering(box.pmin.x, box.pmin.y, box.pmax.x - box.pmin.x +1, box.pmax.y - box.pmin.y +1);
-    float diag = (float)(std::min(box.pmax.x - box.pmin.x +1, box.pmax.y - box.pmin.y +1)) / (_gauge.getDist05()); // rough estimate
+    // MYUCG->drawFrame(box.origin.x-1, box.origin.y-1, box.size.x + 2, box.size.y + 2);
+    MYUCG->startBuffering(box.origin.x, box.origin.y, box.size.x +1, box.size.y +1);
+    float diag = (float)(std::min(box.size.x +1, box.size.y +1)) / (_gauge.getDist05()); // rough estimate
     ESP_LOGI(FNAME,"draw over diag: %.2f dist05: %d", diag, _gauge.getDist05() );
     _gauge.drawScale(_last_a + diag, _last_a - diag); // redraw scale at last position to clean up artifacts
     MYUCG->setColor(COLOR_ORANGE);
@@ -192,7 +193,7 @@ bool ArrowIndicator::drawOver(int16_t val,float a)
     if ( _arrowhead > 0 ) {
         MYUCG->drawTriangle(n.x_4, n.y_4, n.x_5, n.y_5, n.x_6, n.y_6);
     }
-    // draw a black frame around the needle
+    // draw a frame around the needle
     MYUCG->setColor(COLOR_BLACK);
     MYUCG->drawLine(n.x_0, n.y_0, n.x_1, n.y_1);
     MYUCG->drawLine(n.x_1, n.y_1, n.x_4, n.y_4);
@@ -208,7 +209,7 @@ bool ArrowIndicator::drawOver(int16_t val,float a)
         if ( _arrowhead > 0 ) {
             MYUCG->drawTriangle(n.x_4, n.y_4, n.x_5, n.y_5, n.x_6, n.y_6);
         }
-        // draw a black frame around the needle
+        // draw a frame around the needle
         MYUCG->setColor(COLOR_BLACK);
         MYUCG->drawLine(n.x_0, n.y_0, n.x_1, n.y_1);
         MYUCG->drawLine(n.x_1, n.y_1, n.x_4, n.y_4);

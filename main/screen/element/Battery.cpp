@@ -29,7 +29,7 @@ Battery::Battery(int16_t cx, int16_t cy) :
 void Battery::blank()
 {
     MYUCG->setColor(COLOR_BLACK);
-    MYUCG->drawBox(_bbox.pmin.x, _bbox.pmin.y, _bbox.pmax.x, _bbox.pmax.y);
+    MYUCG->drawBox(_bbox.origin.x, _bbox.origin.y, _bbox.size.x, _bbox.size.y);
     _dirty = true;
 }
 
@@ -53,7 +53,7 @@ void Battery::draw(float volt)
 
     // MYUCG->setColor(COLOR_HEADER);
     // MYUCG->drawFrame(_ref.x-36,_ref.y-20, 56, 19);
-    MYUCG->startBuffering(_bbox.pmin.x, _bbox.pmin.y, _bbox.pmax.x, _bbox.pmax.y);
+    MYUCG->startBuffering(_bbox.origin.x, _bbox.origin.y, _bbox.size.x, _bbox.size.y);
     chargep = std::clamp(chargep, 0, 100);
     char buf[32];
     char unit;
