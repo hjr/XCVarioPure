@@ -189,12 +189,15 @@ mps_t S2F::calculate(mps_t netto_vario, bool circling)
 // v_in : [m/s]
 // sink rate at given airspeed and current load factor
 mps_t S2F::getSink( mps_t v_in ) {
+	return getSink( v_in, getLoadFactor() );
+}
+
+mps_t S2F::getSink( mps_t v_in, float n ) {
 	float v_stall = _stall_speed * 0.9;
 	if ( v_in < v_stall || !_valid ){
 		// ESP_LOGI(FNAME,"S2F::sink, warning, airspeed %.1f below minimum speed %.1f km/h", v_in, v_stall );
 		return 0.0;
 	}
-	float n=getLoadFactor();
 	float sqn = std::sqrt(n);
 	mps_t s = a0*n*sqn + a1*v_in*n + a2*v_in*v_in*sqn;
 	// ESP_LOGI(FNAME,"S2F::sink() V:%0.1f sink:%2.2f G-Load:%1.2f", v_in, s, n );

@@ -15,6 +15,7 @@
 #include "AverageVario.h"
 #include "setup/SetupCommon.h"
 #include "setup/SetupNG.h"
+#include "airmass/AirMass.h"
 #include "logdefnone.h"
 
 #include <freertos/FreeRTOS.h>
@@ -114,6 +115,7 @@ static void wind_calc_task(void *arg)
                             ToyNmeaPrtcl->sendXCVNmeaHDT();
                         }
                     }
+                    airmass::nmeaFeed(ToyNmeaPrtcl, !(count%5));
                 }
                 break;
             }

@@ -346,7 +346,7 @@ static void change_audio() {
 
 
 void flap_act() {
-    if ( flapbox_enable.get() || Flap::sensAvailable() ) {
+    if ( Flap::needed() ) {
         FLAP = Flap::theFlap(); // check on FLAP pointer further on
     }
     else if ( FLAP ) {

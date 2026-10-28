@@ -26,12 +26,15 @@ class CruiseMode
 {
 public:
     using CruiseAudio = enum : uint8_t { AUDIO_S2F, AUDIO_VARIO };
-    using VarioModeBits = enum : uint8_t { MODE_BRUTTO=0, MODE_NORMAL_NETTO=1, MODE_REL_NETTO=3 }; // vario mode bits
+    // vario mode bits: 1 net, 2 relative (Super Netto, plus circling sink), 4 air mass
+    using VarioModeBits = enum : uint8_t { MODE_BRUTTO=0, MODE_NORMAL_NETTO=1, MODE_REL_NETTO=3, MODE_AIRMASS=5, MODE_REL_AIRMASS=7 };
     CruiseMode();
     bool getCMode() const { return _cmode; };
     bool getChanged() const { return _cm_changed; }
     bool isGross() const { return _vmode == MODE_BRUTTO; }
     bool isNet() const { return _vmode != MODE_BRUTTO; }
+    bool isRelative() const { return _vmode & 2; }
+    bool isAirMass() const { return _vmode & 4; }
     bool audioIsVario() const { return _audio_vario; }
     bool audioIsChopping() const { return _audio_chopping; }
     int16_t getVMode() const { return _vmode; }

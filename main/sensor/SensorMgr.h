@@ -29,7 +29,7 @@ struct SensorEntry {
 class SensorRegistry
 {
 public:
-    static constexpr int MaxSensors = 14;
+    static constexpr int MaxSensors = 16;
     static void createQueue();
 
     static bool registerSensor(SensorBase* sensor);

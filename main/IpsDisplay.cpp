@@ -36,6 +36,7 @@
 #include "Flarm.h"
 #include "setup/CruiseMode.h"
 #include "wind/Wind.h"
+#include "airmass/AirMass.h"
 #include "driver/time/AliveMonitor.h"
 #include "setup/SetupNG.h"
 #include "AdaptUGC.h"
@@ -578,7 +579,7 @@ void IpsDisplay::initDisplay() {
         WNDgauge = new PolarGauge(AMIDX + AVGOFFX, AMIDY, 360, 
             (display_orientation.get() == DISPLAY_NINETY) ? 56 : 58, PolarGauge::COMPASS);
     }
-    WNDgauge->enableWindIndicator(false /*wind_enable.get() > WA_OFF*/, wind_enable.get() == WA_EXTERNAL);
+    WNDgauge->enableWindIndicator(false /*wind_enable.get() > WA_OFF*/, wind_enable.get() == WA_EXTERNAL || (wind_enable.get() & WA_AIRMASS));
     WNDgauge->setUnit(SpeedUnit->scale);
 
     if (thermal_assist.get()) {
@@ -890,11 +891,12 @@ void IpsDisplay::drawDisplay(){
             if (synoptic_wind.getValid()) {
                 swind = static_cast<WindData>(synoptic_wind.get());
             }
+            airmass::displayWind(swind, iwind);
         } else {
             iwind.raw = ext_inst_wind.get();
             swind.raw = ext_syn_wind.get();
         }
-        if (wind_enable.get() == WA_EXTERNAL && WNDgauge) {
+        if ((wind_enable.get() == WA_EXTERNAL || (wind_enable.get() & WA_AIRMASS)) && WNDgauge) {
             // static int idir=0;
             // static int ival=5;
             // the wind simulator to check the wind indicator

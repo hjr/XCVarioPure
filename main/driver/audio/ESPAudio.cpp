@@ -1132,10 +1132,7 @@ void Audio::dactask()
                     float audio_value;
                     if( CRMOD.audioIsVario() ) {
                         // vario is the parameter for audio
-                        audio_value = te_vario.get();
-                        if ( CRMOD.getVMode() == CruiseMode::MODE_REL_NETTO ) {
-                            audio_value += Speed2Fly.getCirclingSink();
-                        }
+                        audio_value = te_vario.get(); // includes the circling sink for Super Netto
                     }
                     else {
                         // speed to fly is the parameter for audio

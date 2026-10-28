@@ -29,6 +29,7 @@ public:
 	mps_t getDelta() const { return _s2f_delta; }
 	mps_t getStallSpeed() const { return _stall_speed; }
 	mps_t getSink( mps_t v );
+	mps_t getSink( mps_t v, float load_factor ); // at a given load factor
 	mps_t getMinsink();
 	mps_t getMinsinkSpeed();
 	mps_t getStaticMinsinkSpeed() { return _min_sink_speed; };

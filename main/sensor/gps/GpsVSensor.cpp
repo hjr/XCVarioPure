@@ -11,6 +11,7 @@
 #include "math/Trigonometry.h"
 #include "math/Units.h"
 #include "wind/Wind.h"
+#include "airmass/AirMass.h"
 #include "vector.h"
 
 
@@ -58,6 +59,7 @@ void GpsVSensor::inject(float lat, float lon, mps_t gndSpeed, rad_t gndCourse)
     // publish current speed an course through blackboard for other consumers, e.g. wind calc
     gnd_speed.set(gndSpeed);
     gnd_course.set(gndCourse);
+    airmass::gnssVelocity(gndSpeed, gndCourse, time, _latency_ms);
 }
 
 void GpsVSensor::setExternalAltitude(float alt) {
@@ -93,6 +95,9 @@ void GpsVSensor::postProcess() {
 
     // check on avg wind
     rad_t track = gnd_course.get();
+    if ( airmass::heading(track) ) {
+        return; // the air mass estimator tracks the heading directly
+    }
     if( ! tas.getValid() || ! synoptic_wind.getValid() ) {
         heading_tru.set(track); // fall back
         heading_wca.set(0.f);

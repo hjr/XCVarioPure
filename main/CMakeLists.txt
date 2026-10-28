@@ -7,6 +7,7 @@ idf_component_register(SRC_DIRS "."
 # global compiler settings
 target_compile_options(${COMPONENT_LIB} PRIVATE -Wno-error=format)
 
+add_subdirectory("airmass")
 add_subdirectory("comm")
 add_subdirectory("driver")
 add_subdirectory("protocol")

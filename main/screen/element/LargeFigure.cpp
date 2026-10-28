@@ -13,6 +13,7 @@
 #include "Atmosphere.h"
 #include "math/Floats.h"
 #include "setup/CruiseMode.h"
+#include "airmass/AirMass.h"
 #include "setup/SetupNG.h"
 #include "logdefnone.h"
 
@@ -81,11 +82,14 @@ void LargeFigure::drawStatic() {
     MYUCG->setFont(ucg_font_fub11_hr, true);
     MYUCG->setColor(COLOR_HEADER);
     const char *mode = ""; // omit default "gross"
-    if ( CRMOD.getVMode() == CruiseMode::MODE_REL_NETTO) {
-        mode = "s-netto";
-    }
-    else if ( CRMOD.getVMode() == CruiseMode::MODE_NORMAL_NETTO) {
-        mode = "netto";
+    if ( CRMOD.isNet() ) {
+        // short labels, the cleared area above is 56 pixel wide
+        if ( airmass::varioShown() ) {
+            mode = CRMOD.isRelative() ? "s-air" : "air";
+        }
+        else {
+            mode = CRMOD.isRelative() ? "s-netto" : "netto";
+        }
     }
     int16_t str_width = MYUCG->getStrWidth(mode);
     ESP_LOGI(FNAME, "stringlength %s: %d, font height: %d", mode, str_width, MYUCG->getFontAscent() - MYUCG->getFontDescent());

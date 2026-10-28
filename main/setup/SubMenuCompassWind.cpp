@@ -359,6 +359,9 @@ void options_menu_create_wind(SetupMenu *top) {
 	// Wind speed observation window
 	SetupMenuSelect *windcal = new SetupMenuSelect("Source", RST_NONE, windResourcesAction, &wind_enable);
 	windcal->addEntry("XCVario", WA_BOTH);
+    if ( XcvCaps::haveCap(XcvCaps::AHRS_CAP) ) {
+        windcal->addEntry("XCVario+Instant", WA_BOTH | WA_AIRMASS);
+    }
     if ( XcvCaps::haveCap(XcvCaps::EXTWIND_CAP) ) {
         windcal->addEntry("External", WA_EXTERNAL);
     }
