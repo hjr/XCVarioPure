@@ -71,8 +71,10 @@ void MagVSensor::postProcess()
     rad_t heading = Vector::polar(-_processed.y, _processed.x);  // the "-" translates into a ENU nav frame
     // ESP_LOGI(FNAME, "mag (%.2f,%.2f,%.2f) heading %.2f", _processed.x, _processed.y, _processed.z, Units::rad_to_deg(heading));
 
-    // publish the heading
-    heading_mag.set(_lpf_heading.filter(heading));
+    // publish the heading, low passed on the circle (a plain low pass would swing through south at north)
+    const rad_t prev = Vector::normalizePI2(_lpf_heading.get());
+    _lpf_heading.reset(prev); // keep the filter state in range
+    heading_mag.set(Vector::normalizePI2(_lpf_heading.filter(prev + Vector::angleDiff(heading, prev))));
     // todo later
     // heading_tru.set(_lpf_heading.get() - Units::deg_to_rad(compass_declination.get()));
 }
