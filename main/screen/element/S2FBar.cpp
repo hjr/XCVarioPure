@@ -80,16 +80,16 @@ void S2FBar::drawCircle(int16_t score)
     constexpr const int16_t S2FTS = SYMBOL_SIZE/2;
     MYUCG->drawTriangle(tipx - S2FTS +2, _ref.y + 4 + S2FTS +1, tipx + S2FTS+2, _ref.y + 4 + S2FTS -2, tipx, _ref.y + 4);
 
-    if ( score < 25 ) {
-        return;
-    }
+    // if ( score < 25 ) {
+    //     return;
+    // }
 
-    // draw score
-    MYUCG->setFont(ucg_font_fub14_hr, true);
-    MYUCG->setColor(COLOR_WHITE);
+    // // draw score
+    // MYUCG->setFont(ucg_font_fub14_hr, true);
+    // MYUCG->setColor(COLOR_WHITE);
 
-    MYUCG->setPrintPos(_ref.x - 12, _ref.y + 6);
-    MYUCG->print(score);
+    // MYUCG->setPrintPos(_ref.x - 12, _ref.y + 6);
+    // MYUCG->print(score);
 }
 
 // speed to fly delta given in m/s, s2fd > 0 means speed up
