@@ -51,7 +51,11 @@ union WindData
     // setters
     constexpr void setDeg2(int16_t d) { dir = d % 720; }
     constexpr void setKmh(kmh_t v) { val = fast_iroundf(v * Units::kmh_to_mps(8)); }
-    constexpr void inclHeading(rad_t d) { dir = (dir - fast_iroundf(Units::rad_to_deg(d) * 2)) % 720; }
+    constexpr void inclHeading(rad_t d) {
+        if (isValid()) { // the invalid marker must stay one
+            dir = (dir - fast_iroundf(Units::rad_to_deg(d) * 2)) % 720;
+        }
+    }
     // compare
     constexpr bool operator==(WindData other) const { return raw == other.raw; }
     constexpr bool operator!=(WindData other) const { return raw != other.raw; }
