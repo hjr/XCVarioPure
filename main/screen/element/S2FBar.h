@@ -33,7 +33,7 @@ private:
     // void drawSpeed(mps_t v);
     void drawBlock(int16_t level);
     void drawCircle(int16_t score);
-    void drawArrow(int16_t x, int16_t y, int16_t level, bool del);
+    void drawArrow(int16_t x, int16_t y, int16_t level);
 
 private: // attributes
     union Hash {
