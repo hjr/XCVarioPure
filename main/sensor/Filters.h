@@ -46,9 +46,9 @@ public:
     void setTau(second_t tau, second_t dt) { _alpha = alphaFromTau(tau, dt); }
     void setAlpha(float alpha) { _alpha = alpha; }
     float getAlpha() const { return _alpha; }
-    void reset(T init_val = T{}) { _last_output = init_val; }
-    T filter(T input);
-    T get() const { return _last_output; }
+    void reset(T init_val = T{}) override { _last_output = init_val; }
+    T filter(T input) override;
+    T get() const override { return _last_output; }
     const T& getRef() const { return _last_output; }
 protected:
     float _alpha;
@@ -87,13 +87,14 @@ private:
 // A simple leaky integrator filter
 // designed for const dt sampling
 template <typename T>
-class LeakyIntegratorT : public FilterItf<T>{
+class LeakyIntegratorT : public FilterItf<T>
+{
 public:
     constexpr explicit LeakyIntegratorT(float tau, float dt) : _dt(dt), _decay(expf(-dt / tau)), _last_output(T{}) {}
     void setTau(second_t tau) { _decay = decayFromTau(tau, _dt); }
-    void reset(T init_val = T{}) { _last_output = init_val; }
-    T filter(T input);
-    T get() const { return _last_output; }
+    void reset(T init_val = T{}) override { _last_output = init_val; }
+    T filter(T input) override;
+    T get() const override { return _last_output; }
 private:
     static constexpr inline float decayFromTau(second_t tau, second_t dt) {
         return expf(-dt / tau);
@@ -101,4 +102,21 @@ private:
     const float _dt;
     float _decay;
     T _last_output;
+};
+
+// A periodic filter dedicated for navigation topics
+template <typename T>
+class PeriodicLowPassFilterT : public LowPassFilterT<T>
+{
+public:
+    explicit PeriodicLowPassFilterT(float alpha, T period)
+        : LowPassFilterT<T>(alpha), _period(period) {}
+
+    void reset(T init_val = T{}) override {
+       LowPassFilterT<T>::reset(std::remainder(init_val, _period));
+    }
+    T filter(T input) override;
+
+private:
+    T _period;
 };

@@ -56,8 +56,19 @@ T LeakyIntegratorT<T>::filter(T input)
     return _last_output;
 }
 
+template <typename T>
+T PeriodicLowPassFilterT<T>::filter(T input)
+{
+    T delta = std::remainder(input - this->_last_output, _period);
+    T unwrapped = this->_last_output + delta;
+    T result = LowPassFilterT<T>::filter(unwrapped);
+    this->_last_output = std::remainder(result, _period);
+    return this->_last_output;
+}
+
 // we explicitly need those instantiations
 template class LowPassFilterT<float>;
 template class LowPassFilterT<vector_f>;
 template class AdaptiveLowPassFilterT<float>;
 template class LeakyIntegratorT<float>;
+template class PeriodicLowPassFilterT<float>;
