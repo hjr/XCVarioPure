@@ -138,10 +138,10 @@ static void checkWarnings()
             MBOX->popMessage();
         }
     }
-    // Gear Warning
+    // Gear Warning - fixme should not be part of the sensor loop
     if (gear_warning.get()) {
         int gw = 0;
-        static uint8_t mbox_id=0;
+        static uint8_t mbox_id = 0;
         if (gear_warning.get() == GW_EXTERNAL) {
             gw = gflags.gear_warn_external;
         } else {
@@ -153,9 +153,9 @@ static void checkWarnings()
         if (gw) {
             if (!gear_warning_active && !stall_warning_active) {
                 // never repeat sound, only show message until condition is gone
+                ESP_LOGI(FNAME, "Gear warning active");
                 AUDIO->startSound(AUDIO_ALARM_GEAR);
-		AUDIO->updateAudioMode();
-                mbox_id=MBOX->pushMessage(4, "! GEAR !", 30);
+                mbox_id = MBOX->pushMessage(4, "! GEAR !", 30);
                 gear_warning_active = true;
             }
         } else {

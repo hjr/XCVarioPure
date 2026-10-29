@@ -351,7 +351,7 @@ const std::array<VOICECONF, 4> all_vconf = {{ {0, 128}, {0, 128}, {0, 128}, {1, 
 const SOUND GloadWarn = { gload_tim.data(), { gload_seq1.data(), gload_seq2.data(), gload_seq3.data(), gload_seq4.data() }, all_vconf.data(), 0 };
 
 // Gear warning
-const std::array<DURATION, 12> gear_tim = {{ {150}, {65}, {110}, {50}, {134}, {30},  {150}, {65}, {110}, {50}, {134}, {800} }};
+const std::array<DURATION, 12> gear_tim = {{ {150}, {65}, {110}, {50}, {134}, {30},  {150}, {65}, {110}, {50}, {134}, {0} }};
 const std::array<TONE, 12> gear_seq1 = {{ {0}, {3150}, {446}, {354}, {330}, {0}, {0}, {3150}, {446}, {354}, {330}, {0} }};
 const std::array<TONE, 12> gear_seq2 = {{ {0}, {470}, {1318}, {728}, {662}, {0}, {0}, {470}, {1318}, {728}, {662}, {0} }};
 const std::array<TONE, 12> gear_seq3 = {{ {0}, {1290}, {0}, {1227}, {1255}, {0}, {0}, {1290}, {0}, {1227}, {1255}, {0} }};
@@ -680,7 +680,7 @@ static bool IRAM_ATTR dacdma_done(dac_continuous_handle_t h, const dac_event_dat
             }
             cmd.idx = 0;
         }
-        // the end+1 time slice needs to be zero, as well as the n+1 steps need tp be zero
+        // the end+1 time slice needs to be zero, as well as the n+1 steps need to be zero
         cmd.counter = cmd.timeseq[cmd.idx].duration;
         // prepare an optional extra voice reload for signal periods longer than 300msec
         reload_count = (cmd.counter > DMACMD::calcNrSamples(300)) ? cmd.counter/2 : 0;
@@ -1271,7 +1271,7 @@ void Audio::dactask()
                     ESP_LOGI(FNAME, "Preempt sound");
                     current_dmacmd->repcount = 0;
                 } else {
-                    ESP_LOGI(FNAME, "Queue sound request, but current sound is not endless %d", current_dmacmd->repcount = 0);
+                    ESP_LOGI(FNAME, "Queue sound request, but current sound is not endless %d", current_dmacmd->repcount);
                 }
                 ESP_LOGI(FNAME, "Queue sound id%d at%d counter%d", event.getSoundId(), snd_queue.size(), (int)current_dmacmd->counter);
                 snd_queue.push_back(event.raw);
