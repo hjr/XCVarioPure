@@ -11,6 +11,7 @@
 #include "math/Units.h"
 #include "vector.h"
 #include "math/vector_3d.h"
+#include "math/Trigonometry.h"
 #include "driver/time/Clock.h"
 #include "sensor/imu/FlightAHRS.h"
 #include "logdefnone.h"
@@ -23,7 +24,7 @@ static __attribute__((aligned(4))) vector_f mag_buffer[ HSIZE + 1 ];
 MagVSensor* magSensor = nullptr;
 
 MagVSensor::MagVSensor() : SensorTP<vector_f>(mag_buffer, HSIZE, DUTY_CYCLE_MS, 5),
-    _lpf_heading(LowPassFilterT<float>::alphaFromTau(1.f, .5f))
+    _plpf_heading(LowPassFilterT<float>::alphaFromTau(1.f, .5f), 2.f * My_PIf)
 {
     _id = SensorId(SensorType::MAGNETO, 8);
     _latency_ms = 20; // estimated latency of CAN sensor
@@ -72,7 +73,7 @@ void MagVSensor::postProcess()
     // ESP_LOGI(FNAME, "mag (%.2f,%.2f,%.2f) heading %.2f", _processed.x, _processed.y, _processed.z, Units::rad_to_deg(heading));
 
     // publish the heading
-    heading_mag.set(_lpf_heading.filter(heading));
+    heading_mag.set(_plpf_heading.filter(heading));
     // todo later
     // heading_tru.set(_lpf_heading.get() - Units::deg_to_rad(compass_declination.get()));
 }

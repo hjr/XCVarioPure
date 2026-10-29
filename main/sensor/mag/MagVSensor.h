@@ -42,7 +42,7 @@ private:
 
     vector_f _bias;
     vector_f _scale;
-    LowPassFilterT<float> _lpf_heading;
+    PeriodicLowPassFilterT<float> _plpf_heading;
 };
 
 extern MagVSensor* magSensor;
