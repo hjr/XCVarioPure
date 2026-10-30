@@ -14,7 +14,7 @@
 #include "logdef.h"
 
 SensorBase::SensorBase(int ums, int process_multiple) :
-    _update_interval_ms(ums),
+    _lpf_interval(0.1),
     _process_interval_ms(process_multiple * ums),
     _latency_ms(0),
     _last_update_time_ms(0),
@@ -24,6 +24,7 @@ SensorBase::SensorBase(int ums, int process_multiple) :
     // Pls register sensors as needed for the read-sensor loop and in the proper order
     // and when they are fully initialized and tested functional.
     // SensorRegistry::registerSensor(this);
+    _lpf_interval.reset(ums);
 }
 
 // destructing a registered sensor is only allowed from the registry itself

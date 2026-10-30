@@ -178,7 +178,7 @@ bool Accelerometer::detectRest() {
     
     if (accVar.get_norm2() < ACCVAR_THRESHOLD2 && std::fabsf(accel.get_norm() - 1.f) < ACCEL_THRESHOLD) {
          // min. 3 sec below threshold, consider as rest
-        _restTimer += getDutyCycle();
+        _restTimer += getDutyCycleMS();
         if ( _restTimer > 3000) {
             _isResting = true;
         }

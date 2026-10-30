@@ -109,8 +109,8 @@ public:
     virtual bool update(uint32_t now_ms) = 0;
     virtual void postProcess() {};
     virtual bool isResting() const { return false; } // whether the sensor is in a calm state
-    uint16_t getDutyCycle() const { return _update_interval_ms; }
-    float getDutyCycleS() const { return (float)_update_interval_ms / 1000.0f; }
+    uint16_t getDutyCycleMS() const { return (uint16_t)_lpf_interval.get(); }
+    float getDutyCycleS() const { return _lpf_interval.get() / 1000.0f; }
     uint16_t getProcessInterval() const { return _process_interval_ms; }
     inline int getLastUpdateTimeMs() const { return _last_update_time_ms; }
     int getLastObservationTime() const { return _last_update_time_ms - _latency_ms; }
@@ -119,7 +119,7 @@ public:
     inline SensorId getId() const { return _id; }
 
 protected:
-    uint16_t _update_interval_ms;   ///< Expected update interval
+    LowPassFilterT<float> _lpf_interval; ///< Expected update interval
     uint16_t _process_interval_ms;  ///< a multiple of the update interval for post processing, or "0" if not used
     uint16_t _latency_ms;           ///< Sensor conversion/acquisition latency
     uint32_t _last_update_time_ms;  ///< Time the update got registered
@@ -156,9 +156,9 @@ public:
     // Call this periodically from main loop or task.
     // returns true if new data was read.
     bool update(uint32_t now_ms) override {
-        if ((now_ms - _last_update_time_ms) < _update_interval_ms) {
-            return false;
-        }
+        // if ((now_ms - _last_update_time_ms) < getDutyCycleMS()) {
+        //     return false;
+        // }
 
         // Read sensor && store in history
         T value;
@@ -175,6 +175,7 @@ public:
 
     // The sensor bypass to fill the history directly (e.g. from group read)
     void pushToHistory(const T& value, uint32_t now_ms) {
+        _lpf_interval.filter(now_ms - _latency_ms);
         _last_update_time_ms = now_ms;
         _history.push(value);
         if (_running_avg_count >= 0) {
@@ -275,7 +276,7 @@ public:
         if (interval_ms <= 0 || interval_ms > getCapacityMS()) {
             return false; // invalid interval
         }
-        _running_avg_span = interval_ms / _update_interval_ms;
+        _running_avg_span = (interval_ms + getDutyCycleMS()/2) / getDutyCycleMS();
         _running_avg_sum = T{};
         _running_avg_count = 0;
         return true;
@@ -391,7 +392,7 @@ public:
     }
     int getFirstUpdateTimeMs() const { 
         int count = _history.level();
-        return _last_update_time_ms - (count - 1) * _update_interval_ms;
+        return _last_update_time_ms - (count - 1) * getDutyCycleMS();
     }
     int getLevel() const {
         return _history.level();
@@ -423,10 +424,10 @@ protected:
         // uint32_t cutoff_time = Clock::getMillis() - interval_ms;
         // return std::min((_last_update_time_ms - cutoff_time) / _update_interval_ms, (uint32_t)_history.level());
         // assume regular updates, simply calculate count based on index
-        return std::min((interval_ms / _update_interval_ms), (uint32_t)_history.level());
+        return std::min((interval_ms / getDutyCycleMS()), (uint32_t)_history.level());
     }
     int getCapacityMS() const {
-        return (_history.getCapacity() - 1) * _update_interval_ms;
+        return (_history.getCapacity() - 1) * getDutyCycleMS();
     }
 
 

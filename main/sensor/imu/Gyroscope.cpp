@@ -118,13 +118,13 @@ bool Gyroscope::detectRest() {
     bool cond1 = gyrVar.get_norm2() < GYRO_THRESHOLD2;
     if ( cond1 && _processed.get_norm2() < GYRO_THRESHOLD * 2.f) {
          // min. 1.5–3 sec below threshold → consider as rest
-        _restTimer += getDutyCycle();
+        _restTimer += getDutyCycleMS();
         if ( _restTimer > 3000) {
             _isResting = 2;
         }
     } 
     else if ( cond1 ) {
-        _restTimer += getDutyCycle();
+        _restTimer += getDutyCycleMS();
         if ( _restTimer > 6000) {
             _isResting = 1; // resting, bias update enforced to break condition2
         }
