@@ -16,6 +16,10 @@ constexpr float RHO0 = Units::rho0;
 constexpr float CL_ALPHA = 5.7f; // 1/rad, typical glider wing lift slope
 constexpr float CY_BETA = 0.3f;  // 1/rad, side force slope of fuselage and fin, referenced to the wing area
 constexpr float SLIP_MAX = 0.35f;
+// Rolling swings the nose out of the turn (adverse yaw) more than the side force shows: up to ROLL_SLIP rad of
+// sideslip per rad/s of roll rate, settling with the yaw dynamics (ROLL_SLIP_TAU)
+constexpr float ROLL_SLIP = 0.3f;     // s
+constexpr float ROLL_SLIP_TAU = 1.f;  // s
 
 struct Raw {
     float f_body[3] = {0.f, 0.f, -1.f}; // g, specific force at the IMU, body NED (level at rest: 0,0,-1)

@@ -62,9 +62,9 @@ void AirMassEKF::reset(float baro_alt, float k_tas, float pitch_ofs, float laten
     _wind_rate[0] = _wind_rate[1] = 0.f;
     _tas_f = NAN;
     _tas_dot_f = 0.f;
-    _vd_f = 0.f;
-    _acc_long_f = NAN;
-    _sink_f = NAN;
+    _vd_f = _vd_p = 0.f;
+    _acc_long_f = _acc_long_p = NAN;
+    _sink_f = _sink_p = NAN;
     _acc_corr = 0.f;
     _acc_kin = 0.f;
     _acc_mem = 0.f;
@@ -75,6 +75,8 @@ void AirMassEKF::reset(float baro_alt, float k_tas, float pitch_ofs, float laten
     _last_gnss_ms = _last_time_ms;
     _aligned = false;
     _wind_valid = false;
+    _wind_degraded = false;
+    _wind_valid_ms = 0;
     restartAlignment();
     _running = true;
 }
@@ -184,15 +186,19 @@ void AirMassEKF::predict(const Input& in) {
     const float ae = dt / (_cfg.energy_tau + dt);
     if (std::isnan(_tas_f)) {
         _tas_f = in.tas;
-        _vd_f = _x[VD];
-        _acc_long_f = in.acc_long;
+        _vd_f = _vd_p = _x[VD];
+        _acc_long_f = _acc_long_p = in.acc_long;
     }
 
     const float tas_prev = _tas_f;
     _tas_f += (in.tas - _tas_f) * ae;
     _tas_dot_f = (_tas_f - tas_prev) / dt;
-    _vd_f += (_x[VD] - _vd_f) * ae;
-    _acc_long_f += (in.acc_long - _acc_long_f) * ae;
+    // the measured airspeed lags by the pitot line: the inertial terms get the same delay
+    const float ap = dt / (_cfg.lag_pitot + dt);
+    _vd_p += (_x[VD] - _vd_p) * ap;
+    _acc_long_p += (in.acc_long - _acc_long_p) * ap;
+    _vd_f += (_vd_p - _vd_f) * ae;
+    _acc_long_f += (_acc_long_p - _acc_long_f) * ae;
     // a complementary filter AHRS recovers from acceleration errors with seconds of delay
     _acc_mem = std::max(std::fabs(in.acc_long), _acc_mem * (1.f - dt / 2.f));
 
@@ -251,7 +257,9 @@ void AirMassEKF::update(const Input& in) {
 void AirMassEKF::fuseBaro(float alt) {
     float h[NX] = {};
     h[ALT] = 1.f;
-    if (ekfScalarUpdate(_cov, _x, h, alt - _x[ALT], _cfg.r_baro, _cfg.gate * 2.f)) {
+    // the static line delays the reading: it shows the altitude of lag_static ago, alt + lag * vd
+    h[VD] = _cfg.lag_static;
+    if (ekfScalarUpdate(_cov, _x, h, alt - (_x[ALT] + _cfg.lag_static * _x[VD]), _cfg.r_baro, _cfg.gate * 2.f)) {
         _baro_consecutive_rejects = 0;
     } else if (++_baro_consecutive_rejects > 20) {
         // disruptive altitude change (e.g. simulator jump), restart the vertical channel
@@ -277,7 +285,9 @@ void AirMassEKF::fuseKinematic(const Input& in, const float va[3], const float d
     // the gyro propagated attitude (AirMassAttitude.h) needs no extra margin for the load factor
     const float sig = _cfg.sigma_pitch * (1.f + 2.f * std::fabs(std::sin(in.roll)) + 0.7f * _acc_mem);
     const float sv = in.tas * sig;
-    ekfScalarUpdate(_cov, _x, h, y, sv * sv + 0.01f, _cfg.gate);
+    // sideslip in a bank tilts the air vector vertically by V * beta * sin(roll)
+    const float ss = in.tas * in.slip_sigma * std::fabs(std::sin(in.roll));
+    ekfScalarUpdate(_cov, _x, h, y, sv * sv + ss * ss + 0.01f, _cfg.gate);
 }
 
 // Acceleration along the air velocity for the energy balance. Relative to the air the kinetic energy changes
@@ -305,7 +315,10 @@ void AirMassEKF::fuseEnergy(const Input& in) {
     // the polar sink follows the load factor, it gets the same low pass as the vertical speed it is compared with:
     // a roll-in raises the sink within a second or two
     const float ae = in.dt / (_cfg.energy_tau + in.dt);
-    _sink_f = std::isnan(_sink_f) ? in.polar_sink : _sink_f + (in.polar_sink - _sink_f) * ae;
+    // and the delay of the airspeed (lag_pitot)
+    const float ap = in.dt / (_cfg.lag_pitot + in.dt);
+    _sink_p = std::isnan(_sink_p) ? in.polar_sink : _sink_p + (in.polar_sink - _sink_p) * ap;
+    _sink_f = std::isnan(_sink_f) ? _sink_p : _sink_f + (_sink_p - _sink_f) * ae;
     const float z = -(_sink_f + v * _acc_kin / G0);
     float h[NX] = {};
     h[WD] = 1.f;
@@ -603,6 +616,8 @@ uint8_t AirMassEKF::status() const {
         }
         if (_wind_valid) {
             st |= ST_WIND_VALID;
+        } else if (_wind_degraded) {
+            st |= ST_WIND_DEGRADED;
         }
     }
     return st;
@@ -614,7 +629,16 @@ void AirMassEKF::updateWindValid() {
     constexpr float RECOVER = 0.9f;
     const float f = _wind_valid ? 1.f : RECOVER;
     const float sw = std::sqrt(_cov(WN, WN) + _cov(WE, WE));
-    _wind_valid = _running && _aligned && gnssAgeMs() < 30000 && sw < f * _cfg.sigma_wind_valid && sigma(PSI) < f * _cfg.sigma_psi_valid;
+    const bool ok = _running && _aligned && gnssAgeMs() < 30000;
+    _wind_valid = ok && sw < f * _cfg.sigma_wind_valid && sigma(PSI) < f * _cfg.sigma_psi_valid;
+    if (_wind_valid) {
+        _wind_valid_ms = _last_time_ms;
+    }
+    // after the wind got invalid (long straight glides: the heading is only checked in turns) the estimate stays
+    // better than the last valid wind for a while
+    const float d = _cfg.degraded_factor;
+    _wind_degraded = !_wind_valid && ok && _wind_valid_ms != 0 && (_last_time_ms - _wind_valid_ms) * 1e-3f <= _cfg.degraded_time &&
+                     sw < d * _cfg.sigma_wind_valid && sigma(PSI) < d * _cfg.sigma_psi_valid;
 }
 
 bool AirMassEKF::covarianceHealthy() const {

@@ -887,11 +887,12 @@ void IpsDisplay::drawDisplay(){
         }
 
         WindData swind, iwind;
+        bool iwind_degraded = false;
         if (wind_enable.get() & WA_BOTH) {
             if (synoptic_wind.getValid()) {
                 swind = static_cast<WindData>(synoptic_wind.get());
             }
-            airmass::displayWind(swind, iwind);
+            airmass::displayWind(swind, iwind, iwind_degraded);
         } else {
             iwind.raw = ext_inst_wind.get();
             swind.raw = ext_syn_wind.get();
@@ -909,7 +910,7 @@ void IpsDisplay::drawDisplay(){
 
             ESP_LOGI(FNAME, "draw wind swind: %d@%.1f cwind: %d@%.1f", swind.getDeg(), Units::mps_to_kmh(swind.getVal()), 
                 iwind.getDeg(), Units::mps_to_kmh(iwind.getVal()));
-            WNDgauge->drawWind(swind, iwind);
+            WNDgauge->drawWind(swind, iwind, iwind_degraded);
         }
         if (wind_enable.get() > WA_OFF && WNDicon) {
             WNDicon->draw(swind);

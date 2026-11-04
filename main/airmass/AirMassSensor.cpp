@@ -447,6 +447,12 @@ void AirMassSensor::publish()
         if (!(_count % 10)) {
             setChanged(airmass_avg_wind, windFromVector(avg).data());
         }
+    } else if (st & AirMassEKF::ST_WIND_DEGRADED) {
+        // not valid any more, the estimate is still the best instant wind there is: shown marked, no average
+        if (!(_count % 5)) {
+            setChanged(airmass_inst_wind, windFromVector(wind).data());
+        }
+        setChanged(airmass_avg_wind, WindData().data());
     } else {
         // no stale wind for consumers that do not check the status
         setChanged(airmass_inst_wind, WindData().data());

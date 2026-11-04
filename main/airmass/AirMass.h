@@ -30,8 +30,9 @@ bool vario(mps_t netto, mps_t& air, bool& changed);
 // the vario shows the air mass movement (mode labels)
 bool varioShown();
 
-// wind gauge: the estimator's instant wind, and its average where no synoptic wind is valid
-void displayWind(WindData& synoptic, WindData& instant);
+// wind gauge: the estimator's instant wind, and its average where no synoptic wind is valid; degraded: the instant
+// wind is not valid any more but still the best estimate (long straight glides), to be shown marked
+void displayWind(WindData& synoptic, WindData& instant, bool& degraded);
 
 // setup menu: the Air Mass vario modes, and the Air Mass settings menu
 void menuVarioModes(SetupMenuSelect* mode);

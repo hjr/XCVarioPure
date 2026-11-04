@@ -76,7 +76,7 @@ The ESP32 integrates Bluetooth, Wi-Fi, and multiple serial interfaces, allowing 
 * Thermal assistant indicator for efficient thermal centering
 * Wind rose indicator with optional second, instant wind pointer
 * Air mass estimator: EKF fusion of IMU, AHRS, airspeed, baro altitude and GNSS velocity
-  - instant 3D wind; the horizontal part drives the instant wind pointer (wind source "XCVario+Instant")
+  - instant 3D wind; the horizontal part drives the instant wind pointer (wind source "XCVario+Instant"); in long straight glides, where the heading is not checked against the GNSS track, the wind turns invalid: the pointer then turns grey and keeps showing the estimate for up to 2 minutes while its uncertainty stays within twice the validity limits (in the simulation more accurate than holding the last valid wind)
   - vertical air mass movement as vario mode "Air Mass" (or "Cruise-Air Mass", gross while circling), insensitive to horizontal gusts and independent of TE compensation; falls back to netto while not available
   - uses the static port directly, whatever the altimeter source setting, and the gyro without the "Gyro Gating" dead zone; compensates the IMU lever arm and accounts for sideslip from the lateral acceleration
   - runs its own gyro propagated attitude, aided by air data instead of a plain accelerometer gravity reference: pull-ups and zooms do not tilt it, so a stick thermal shows less false climb than TE netto
@@ -88,6 +88,8 @@ The ESP32 integrates Bluetooth, Wi-Fi, and multiple serial interfaces, allowing 
   - flapped gliders: the pitch/AoA offset is learned per flap position (flaps shift the fuselage angle of attack by degrees); with a flap sensor it follows the lever, without one the flap recommendation (the glider's flap speeds; the Flap-Assist display need not be enabled), which works as long as the flaps are set roughly as recommended
   - a calibrated compass aligns the heading before the first turn
   - in gusts the energy balance takes the inertial acceleration instead of the airspeed change, so a horizontal gust neither shows as lift nor gets the energy balance distrusted
+  - models the pneumatic lag of the static and pitot lines (0.2 s each, not measured yet), so pull-ups and thermal entries do not show the lag mismatch of the two pressures
+  - while rolling the pitch based estimate is trusted less: adverse yaw sideslips the glider more than the side force shows
   - averaged wind: a 30 s low pass in straight flight, while circling an average over heading sectors, so every heading counts the same also in an unevenly flown circle
   - optional `$PXCVA` NMEA output for evaluation, and "Wind to Navi" sends the averaged wind to the navigation computer (`$WIMWV`, Cambridge `!w`)
   - "NMEA Output" Recording adds the estimator inputs (about 1.3 kB/s, use Wi-Fi or Bluetooth): a flight in the navigation computer's NMEA log can be replayed on a PC with `tools/airmass_sim` (`airmass_replay <log> --csv out.csv`), through the same code the device runs; the replay checks itself against the recorded `$PXCVA` output
