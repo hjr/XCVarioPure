@@ -57,8 +57,12 @@ static void createMenu(SetupMenu* top)
     top->addEntry(amw);
 
     SetupMenuSelect* amnmea = new SetupMenuSelect("NMEA Output", RST_NONE, nullptr, &airmass_nmea);
-    amnmea->setHelp("Send the $PXCVA sentence with air mass vario, instant wind and learned calibration");
-    amnmea->mkEnable();
+    amnmea->setHelp("Send the $PXCVA sentence with air mass vario, instant wind and learned calibration. Recording adds the estimator "
+                    "inputs at 10Hz (about 1.3 kB/s, use Wi-Fi or Bluetooth): a flight logged by the navigation computer can then "
+                    "be replayed and analysed on a PC");
+    amnmea->addEntry("Disable", 0);
+    amnmea->addEntry("Output", 1);
+    amnmea->addEntry("Recording", 2);
     top->addEntry(amnmea);
 }
 

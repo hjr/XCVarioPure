@@ -21,11 +21,13 @@ add_executable(airmass_sim
     ${UTIL_MATH}/Trigonometry.cpp
     ${UTIL_MATH}/Floats.cpp
     ${UTIL_MATH}/Units.cpp
+    ${REPO}/main/protocol/nmea_util.cpp
 )
 target_include_directories(airmass_sim PRIVATE
     ${REPO}/main/airmass
     ${REPO}/components/util
     ${CMAKE_CURRENT_SOURCE_DIR}/stub
+    ${REPO}/main
 )
 target_compile_options(airmass_sim PRIVATE -Wall -Wextra -Wno-unused-parameter -fsingle-precision-constant
     -include ${CMAKE_CURRENT_SOURCE_DIR}/stub/host_compat.h)
@@ -34,6 +36,12 @@ target_compile_options(airmass_sim PRIVATE -Wall -Wextra -Wno-unused-parameter -
 add_executable(input_test input_test.cpp ${REPO}/main/airmass/AirMassEKF.cpp)
 target_include_directories(input_test PRIVATE ${REPO}/main/airmass ${REPO}/components/util)
 target_compile_options(input_test PRIVATE -Wall -Wextra -fsingle-precision-constant
+    -include ${CMAKE_CURRENT_SOURCE_DIR}/stub/host_compat.h)
+
+# replay of recorded flights (main/airmass/AirMassRecord.h) through the same pipeline
+add_executable(airmass_replay replay.cpp ${REPO}/main/airmass/AirMassEKF.cpp ${REPO}/main/protocol/nmea_util.cpp)
+target_include_directories(airmass_replay PRIVATE ${REPO}/main/airmass ${REPO}/components/util ${REPO}/main)
+target_compile_options(airmass_replay PRIVATE -Wall -Wextra -fsingle-precision-constant
     -include ${CMAKE_CURRENT_SOURCE_DIR}/stub/host_compat.h)
 
 enable_testing()
@@ -68,5 +76,17 @@ add_test(NAME nl_asw20_flapbox_pilot COMMAND airmass_sim nl --set flaps=1 --set 
 # a lift curve bending towards the stall: the flapped glider circles where the AoA model still holds
 add_test(NAME nl_asw20_bent COMMAND airmass_sim nl --set flaps=1 --set aoa_nonlin=0.25)
 
+# a large gyro bias (in flight drift, the device calibrates the gyro at rest): the pitch gyro bias enters the heading
+# rate in turns with sin(roll), the body z bias with cos(roll), the heading must not drift off after circling; the
+# attitude takes the body z bias from the estimator, unlearned it tilts the attitude in every circle (climb reading 0.13)
+add_test(NAME nl_gyro_bias COMMAND airmass_sim nl --set gyro_bias=0.01 --max-climb-err 0.06)
+
 # compass aided alignment: the wind gets valid early in the first turn (78s without compass)
 add_test(NAME straight_compass COMMAND airmass_sim straight --compass 2 --max-wind-valid 70)
+
+# record a flight like the device's "NMEA Output" Recording, the replay must reproduce the recorded $PXCVA output:
+# a flapped glider with compass, so every sentence type is in the log
+add_test(NAME record_nl COMMAND airmass_sim nl --set flaps=1 --compass 2 --record ${CMAKE_CURRENT_BINARY_DIR}/nl_record.nmea)
+set_tests_properties(record_nl PROPERTIES FIXTURES_SETUP nl_record)
+add_test(NAME replay_nl COMMAND airmass_replay ${CMAKE_CURRENT_BINARY_DIR}/nl_record.nmea --check 0.02)
+set_tests_properties(replay_nl PROPERTIES FIXTURES_REQUIRED nl_record)

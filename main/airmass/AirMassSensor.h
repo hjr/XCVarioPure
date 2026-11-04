@@ -1,13 +1,13 @@
 #pragma once
 
 #include "AirMassEKF.h"
-#include "AirMassAttitude.h"
-#include "AirMassFlaps.h"
+#include "AirMassPipeline.h"
 #include "sensor/SensorBase.h"
 #include "math/vector_3d.h"
 #include "wind/Wind.h"
 
 #include <cmath>
+#include <string>
 
 //
 // Virtual sensor running the AirMass estimator in the sensor loop (master only).
@@ -26,10 +26,10 @@ public:
     bool doRead(vector_f& val) override { return false; }
     void postProcess() override;
 
-    void configChanged() { _config_changed = true; }
-    const AirMassEKF& getEKF() const { return _ekf; }
+    const AirMassEKF& getEKF() const { return _pipe.ekf(); }
 
 private:
+    airmass::Setup currentSetup() const;
     void applyConfig();
     bool readBaroAltitude(float& alt) const;
     void start();
@@ -37,18 +37,16 @@ private:
     void persistLearned();
     void publish();
 
-    AirMassEKF _ekf;
-    airmass::Attitude _att; // gyro propagated, air data aided: robust in pull-ups unlike the accelerometer referenced AHRS
-    airmass::FlapOffsets _flaps; // pitch offset per flap position
-    uint32_t _prev_time = 0;
+    // estimator, own attitude and flap offsets, the same code the host simulation and replay run
+    airmass::Pipeline _pipe;
     uint16_t _gnss_epoch = 0;
     uint16_t _count = 0;
-    LowPassFilterT<vector_f> _avg_wind;
-    LowPassFilterT<vector_f> _gyro_dot; // angular acceleration for the lever arm compensation
-    vector_f _gyro_prev;
     bool _active = false;
-    bool _config_changed = true;
 };
+
+// NMEA output of the estimator ("NMEA Output"): $PXCVA, with the recording also the input sentences of
+// AirMassRecord.h, queued by the sensor loop in the order they happened. Pops the next line, false when empty.
+bool airmassNmeaPop(std::string& line);
 
 extern AirMassSensor *airmassSensor;
 

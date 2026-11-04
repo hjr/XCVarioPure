@@ -30,6 +30,8 @@ public:
 	mps_t getStallSpeed() const { return _stall_speed; }
 	mps_t getSink( mps_t v );
 	mps_t getSink( mps_t v, float load_factor ); // at a given load factor
+	// the coefficients of getSink(v, n), for the AirMass estimator (airmass::Polar computes the same)
+	void getPolar(float& c0, float& c1, float& c2, mps_t& v_stall, bool& valid) const { c0 = a0; c1 = a1; c2 = a2; v_stall = _stall_speed; valid = _valid; }
 	mps_t getMinsink();
 	mps_t getMinsinkSpeed();
 	mps_t getStaticMinsinkSpeed() { return _min_sink_speed; };
