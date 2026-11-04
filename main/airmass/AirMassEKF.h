@@ -66,16 +66,24 @@ class AirMassEKF {
         float kinetic_tau = 30.f;   // s, low pass of the airspeed derivative minus the inertial acceleration (attitude error)
         float gust_acc = 1.5f;      // m/s², transient disagreement at which the inertial acceleration takes over (gust)
         float sigma_air = 0.25f;    // m/s air vector model error in the GNSS fusion (plus 1% of TAS)
+        // pneumatic lags (lines and sensors), not measured yet: 0.2 s each has the smallest worst case pull-up error
+        // over 0..0.3 s static and 0..0.6 s pitot lag in tools/airmass_sim (an overestimate costs less than none)
+        float lag_static = 0.2f;    // s, static pressure: the baro altitude model
+        float lag_pitot = 0.2f;     // s, dynamic pressure: the energy balance delays the inertial terms by it, to
+                                    // compare them with the airspeed change at the same time
         float static_comp = 1.f;    // static port error compensation, like the TE adjustment (1 = lossless):
                                     // baro altitude corrected by (static_comp - 1) * V²/2g
         float gate = 5.f;           // innovation gate in sigma
         bool learn_calibration = true; // false: airspeed scale, pitch/AoA offset, AoA scale and latency stay as started
         float sigma_wind_valid = 1.5f; // m/s horizontal wind validity threshold
         float sigma_psi_valid = 0.17f; // rad heading validity threshold
+        float degraded_factor = 2.f;   // degraded wind: up to this times the validity thresholds,
+        float degraded_time = 120.f;   // s, and this long after the wind was valid
     };
 
     // status bits
-    enum : uint8_t { ST_VARIO_VALID = 1, ST_WIND_VALID = 2, ST_GNSS_FRESH = 4, ST_ALIGNED = 8 };
+    // ST_WIND_DEGRADED: not valid any more, but still more accurate than holding the last valid wind (shown marked)
+    enum : uint8_t { ST_VARIO_VALID = 1, ST_WIND_VALID = 2, ST_GNSS_FRESH = 4, ST_ALIGNED = 8, ST_WIND_DEGRADED = 16 };
 
     AirMassEKF();
 
@@ -171,6 +179,7 @@ class AirMassEKF {
     float _tas_f = NAN;  // energy balance low pass of TAS
     float _tas_dot_f = 0.f;
     float _vd_f = 0.f;   // matched low pass of the vertical speed
+    float _vd_p = 0.f, _acc_long_p = NAN, _sink_p = NAN; // the inertial terms delayed like the airspeed (lag_pitot)
     float _sink_f = NAN; // matched low pass of the polar sink
     float _acc_long_f = NAN; // matched low pass of the inertial acceleration along the air velocity
     float _acc_corr = 0.f;   // low passed airspeed derivative minus inertial acceleration (attitude error)
@@ -203,4 +212,6 @@ class AirMassEKF {
     bool _running = false;
     bool _aligned = false;
     bool _wind_valid = false;
+    bool _wind_degraded = false;
+    uint32_t _wind_valid_ms = 0; // the last cycle with a valid wind
 };

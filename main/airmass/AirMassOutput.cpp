@@ -50,11 +50,14 @@ bool airmass::varioShown()
     return CRMOD.isAirMass() && vario_shown;
 }
 
-void airmass::displayWind(WindData& synoptic, WindData& instant)
+void airmass::displayWind(WindData& synoptic, WindData& instant, bool& degraded)
 {
-    if ((wind_enable.get() & WA_AIRMASS) && (airmass_status.get() & AirMassEKF::ST_WIND_VALID)) {
+    const int st = airmass_status.get();
+    degraded = false;
+    if ((wind_enable.get() & WA_AIRMASS) && (st & (AirMassEKF::ST_WIND_VALID | AirMassEKF::ST_WIND_DEGRADED))) {
         instant.raw = airmass_inst_wind.get();
-        if (!synoptic.isValid()) {
+        degraded = !(st & AirMassEKF::ST_WIND_VALID);
+        if (!synoptic.isValid() && !degraded) {
             synoptic.raw = airmass_avg_wind.get(); // the long term average of the estimator
         }
     }

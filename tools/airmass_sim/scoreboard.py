@@ -1,13 +1,27 @@
 """Scoreboard of the AirMass estimator against TE netto and the GNSS/INS reference (ins_reference.h), lower is better.
 Every metric of the synthetic flights, NL day and segment scenarios averaged over 6 noise seeds; LOSS marks a metric
-where TE netto or the reference does better. Run after tools/airmass_sim/run.sh built build_sim, from the repo root:
+where TE netto or the reference does better. --holdout scores the held-out days instead (see HOLDOUT).
+Run after tools/airmass_sim/run.sh built build_sim, from the repo root:
   docker run --rm --entrypoint "" -v "$PWD":/project -w /project espressif/idf:release-v5.4 python3 -I tools/airmass_sim/scoreboard.py [sim args]"""
 import re
 import subprocess
 import sys
 
 B = "build_sim/airmass_sim"
-extra = sys.argv[1:]
+holdout = "--holdout" in sys.argv
+extra = [a for a in sys.argv[1:] if a != "--holdout"]
+
+# Held-out flights: other days (air mass realisations, conditions) than the Dutch day the estimator was developed on.
+# Report them, never tune on them: a change is judged on the development set, the held-out set shows whether it
+# generalises. Each is one flight with its own sensor noise.
+HOLDOUT = [
+    ["--set", "day=101"],
+    ["--set", "day=102", "--set", "wind=12", "--set", "turb=1.5"],  # windy, rough
+    ["--set", "day=103", "--set", "lift=1.8"],                      # strong thermals
+    ["--set", "day=104", "--set", "wind=3", "--set", "turb=0.6"],   # light wind, smooth
+    ["--set", "day=105", "--set", "dolphin=1"],                     # speed to fly in cruise
+    ["--set", "day=106", "--set", "flaps=1"],                       # flapped glider
+]
 
 
 def run(args):
@@ -29,10 +43,11 @@ def add_means(prefix, acc):
         rows.append((f"{prefix}: {k}", *mean))
 
 
-def nl(variant, seeds=6):
+def nl(name, runs):
+    """the Dutch day metrics, averaged over runs (lists of sim arguments)"""
     acc = {}
-    for s in range(1, seeds + 1):
-        t = run(["nl", "--seed", str(s)] + variant + extra)
+    for args in runs:
+        t = run(["nl"] + args + extra)
         v = {}
         c = grab(t, r"cruise rms ([0-9.]+) / ([0-9.]+)")
         f = grab(t, r"false lift events ([0-9]+) / ([0-9]+)")
@@ -46,6 +61,7 @@ def nl(variant, seeds=6):
         mw = grab(t, r"averaged wind off the mean wind ([0-9.]+) / ([0-9.]+)")
         iv = grab(t, r"instant ([0-9.]+) m/s off the 5s")
         ia = grab(t, r"instant over the whole flight ([0-9.]+)")
+        sw = grab(t, r"shown wind \(valid or degraded\): ([0-9.]+)% of the flight, instant ([0-9.]+) m/s \(reference on the same samples ([0-9.]+)\)")
         rw = grab(t, r"reference wind \(where ours is valid / whole flight\): instant ([0-9.]+) / ([0-9.]+), 30s average ([0-9.]+) / ([0-9.]+) m/s, "
                      r"averaged off the mean wind ([0-9.]+) / ([0-9.]+)")
         v["cruise rms"] = (c[0], c[1], r[0])
@@ -57,12 +73,13 @@ def nl(variant, seeds=6):
         v["display lag s"] = (lag[0], lag[1], r[6])
         v["wind instant (valid)"] = (iv[0], None, rw[0])
         v["wind instant (all)"] = (ia[0], None, rw[1])
+        v["wind shown (valid+degraded)"] = (sw[1], None, sw[2])
+        v["wind not shown %"] = (100. - sw[0], None, None)
         v["wind 30s avg"] = (av[0], None, rw[2])
         v["avg vs mean, straight"] = (mw[0], None, rw[4])
         v["avg vs mean, circling"] = (mw[1], None, rw[5])
         for k, x in v.items():
             acc.setdefault(k, []).append(x)
-    name = "nl " + " ".join(variant)
     add_means(name, acc)
 
 
@@ -85,9 +102,12 @@ def segment(sc, seeds=6):
     add_means(sc, acc)
 
 
-nl([])
-for sc in ["straight", "thermal", "gust", "pullup", "slip", "endurance"]:
-    segment(sc)
+if holdout:
+    nl("held-out nl", [a + ["--seed", str(101 + i)] for i, a in enumerate(HOLDOUT)])
+else:
+    nl("nl", [["--seed", str(s)] for s in range(1, 7)])
+    for sc in ["straight", "thermal", "gust", "pullup", "slip", "endurance"]:
+        segment(sc)
 
 losses = 0
 print(f"{'metric':52s} {'ours':>7s} {'TE':>7s} {'ref':>7s}")

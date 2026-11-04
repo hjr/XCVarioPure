@@ -75,6 +75,8 @@ public:
     // simulation experiments
     struct Options {
         bool slip_aid = true; // sideslip uncertainty from the lateral acceleration
+        float lag_static = NAN, lag_pitot = NAN; // s, pneumatic lags the estimator assumes (NAN: its defaults)
+        float degraded_factor = NAN, degraded_time = NAN; // the degraded wind range (NAN: the estimator's defaults)
     };
 
     void configure(const Setup& s) {
@@ -84,9 +86,24 @@ public:
         cfg.q_wind_v *= s.vario_resp * s.vario_resp;
         cfg.static_comp = s.te_adjust / 100.f;
         cfg.learn_calibration = _learn;
+        if (std::isfinite(_opt.lag_static)) {
+            cfg.lag_static = _opt.lag_static;
+        }
+        if (std::isfinite(_opt.lag_pitot)) {
+            cfg.lag_pitot = _opt.lag_pitot;
+        }
+        if (std::isfinite(_opt.degraded_factor)) {
+            cfg.degraded_factor = _opt.degraded_factor;
+        }
+        if (std::isfinite(_opt.degraded_time)) {
+            cfg.degraded_time = _opt.degraded_time;
+        }
         _ekf.setConfig(cfg);
     }
-    void setOptions(const Options& o) { _opt = o; }
+    void setOptions(const Options& o) {
+        _opt = o;
+        configure(_setup);
+    }
     void setLearning(bool learn) {
         _learn = learn;
         configure(_setup);
@@ -101,6 +118,7 @@ public:
             _gyro_prev[i] = gyro[i];
             _gyro_dot[i] = 0.f;
         }
+        _roll_mem = 0.f;
         _prev_time = time_ms;
         _avg_wind.reset(0.f, 0.f);
         _open = false;
@@ -147,6 +165,9 @@ public:
             raw.down_body[i] = _att.down()[i];
         }
         fillInput(raw, air, in);
+        // sideslip while rolling (adverse yaw), the side force shows little of it
+        _roll_mem = std::max(std::fabs(raw.gyro[0]), _roll_mem * (1.f - in.dt / ROLL_SLIP_TAU));
+        in.slip_sigma = std::min(std::max(in.slip_sigma, ROLL_SLIP * _roll_mem), SLIP_MAX);
         if (!_opt.slip_aid) {
             in.slip_sigma = 0.f;
         }
@@ -190,8 +211,10 @@ private:
     AirMassEKF::Input _in;
     WindAverage _avg_wind;
     bool _open = false; // a cycle stepped, not ended yet
+
     float _gyro_prev[3] = {};
     float _gyro_dot[3] = {};
+    float _roll_mem = 0.f; // rad/s, recent roll rate
     uint32_t _prev_time = 0;
     bool _learn = true;
 };

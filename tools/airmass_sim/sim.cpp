@@ -81,6 +81,18 @@ struct Knobs {
     float flap_pilot = 0.f;   // 0: the pilot's own flap schedule, 1: follows the flap recommendation, 2 s late
     float aoa_nonlin = 0.f;   // rad per CL², lift curve bending towards the stall (above CL 0.9, flaps shift that up)
     float gyro_gate = 0.f;    // °/s, experiment: the estimator on a gyro with the device's "Gyro Gating" dead zone (the device bypasses it, AirMassSensor's gyroRates)
+    // realism of the truth model and the air data (assumptions, to be calibrated with recorded flights)
+    float gust_resp = 1.f;    // 1: a vertical gust first changes the angle of attack, the lift then accelerates the glider
+                              // (plunge time constant 2m / (rho V S CLa), ~0.4 s); 0: the glider rides the air instantly
+    float adverse_yaw = 0.25f;// s, sideslip per roll rate while rolling (rad per rad/s), the nose swings out of the turn
+    float yaw_tau = 0.5f;     // s, the sideslip follows the pilot's slip and the adverse yaw with the yaw dynamics
+    float lag_static = 0.15f; // s, pneumatic lag of the static line
+    float lag_pitot = 0.3f;   // s, pneumatic lag of the pitot line (dynamic pressure)
+    float static_cl = 0.01f;  // static port error per lift coefficient (pressure coefficient, around CL 0.6): changes
+                              // with the angle of attack, so the pull-up compensation cannot cancel it
+    float day = 0.f;          // Dutch day air mass realisation (thermal positions, turbulence), held-out days for the scoreboard
+    float ekf_lag_static = -1.f, ekf_lag_pitot = -1.f; // s, the lags the estimator assumes (negative: its defaults)
+    float degraded_factor = -1.f, degraded_time = -1.f; // the degraded wind range (negative: the estimator's defaults)
 };
 Knobs K;
 const std::pair<const char*, float*> KNOBS[] = {
@@ -88,6 +100,9 @@ const std::pair<const char*, float*> KNOBS[] = {
     {"polar_err", &K.polar_err}, {"mass_err", &K.mass_err}, {"tas_noise", &K.tas_noise}, {"wind", &K.wind}, {"turb", &K.turb},
     {"lift", &K.lift}, {"dolphin", &K.dolphin}, {"gps_out", &K.gps_out}, {"gps_out_len", &K.gps_out_len},
     {"flaps", &K.flaps}, {"flap_alpha0", &K.flap_alpha0}, {"flap_aid", &K.flap_aid}, {"flap_pilot", &K.flap_pilot}, {"aoa_nonlin", &K.aoa_nonlin}, {"gyro_gate", &K.gyro_gate},
+    {"gust_resp", &K.gust_resp}, {"adverse_yaw", &K.adverse_yaw}, {"yaw_tau", &K.yaw_tau}, {"lag_static", &K.lag_static},
+    {"lag_pitot", &K.lag_pitot}, {"static_cl", &K.static_cl}, {"day", &K.day},
+    {"ekf_lag_static", &K.ekf_lag_static}, {"ekf_lag_pitot", &K.ekf_lag_pitot}, {"degraded_factor", &K.degraded_factor}, {"degraded_time", &K.degraded_time},
 };
 constexpr float CY_TRUE = 0.25f;   // side force slope of the "real" glider, the device assumes airmass::CY_BETA
 constexpr float CD_BETA = 0.4f;    // 1/rad², drag increase with sideslip (about +0.3 m/s sink at 8° and 100 km/h)
@@ -674,6 +689,7 @@ int main(int argc, char** argv) {
     const uint16_t gnss_latency = 750;  // ms
     const float gnss_sigma = 0.3f;
 
+    g_nl.rng.seed(20240601u + static_cast<unsigned>(K.day));
     float total = sc.duration;
     for (auto& s : sc.segments) total += s.duration;
 
@@ -695,6 +711,10 @@ int main(int argc, char** argv) {
     pipe.configure(setup);
     airmass::Pipeline::Options opts;
     opts.slip_aid = slip_aid;
+    opts.lag_static = K.ekf_lag_static >= 0.f ? K.ekf_lag_static : NAN;
+    opts.lag_pitot = K.ekf_lag_pitot >= 0.f ? K.ekf_lag_pitot : NAN;
+    opts.degraded_factor = K.degraded_factor >= 0.f ? K.degraded_factor : NAN;
+    opts.degraded_time = K.degraded_time >= 0.f ? K.degraded_time : NAN;
     pipe.setOptions(opts);
     airmass::Warm warm_start;
     warm_start.k_tas = warm[0];
@@ -745,6 +765,12 @@ int main(int argc, char** argv) {
     const bool flap_offsets = K.flaps > 0.f && K.flap_aid > 0.f;
     float vdot_l = 0.f;
     int restarts = 0;
+    float w_eff = NAN;          // m/s, the vertical air movement the glider's inertial motion has taken up (gust response)
+    float load_p = 1.f;         // the load factor the pilot flies (turn, path curvature), without the gust load
+    float prev_gamma_ss = 0.f;  // its flight path angle
+    float beta = 0.f;           // rad, sideslip: the pilot's slip and the adverse yaw, through the yaw dynamics
+    float prev_roll = NAN;
+    float static_alt = NAN, pitot_v2 = NAN; // the air data at the sensors, through the pneumatic lag
 
     // pilot driven scenarios: the vario as the pilot reads it
     struct FalseLift {
@@ -768,6 +794,10 @@ int main(int argc, char** argv) {
         // [0] air mass, [1] TE netto, [2] the GNSS/INS reference
         Stats cruise[3], entry[3], circle[3], avg_wind, avg_mean[2], avg_truth_dev, inst_wind;
         Stats ins_inst_wind, ins_avg_wind, ins_avg_mean[2], ins_inst_all, ins_avg_all, inst_all;
+        // the instant wind as shown (valid, or degraded), the reference on the same samples
+        Stats wind_shown, ins_wind_shown, wind_degraded, last_valid_degraded, ins_degraded;
+        float last_valid[2] = {NAN, NAN}; // the last valid wind, what holding it would show
+        int wind_shown_n = 0;
         // AirMassSensor's averaged wind (navigation) against the 30s average of the truth and against the mean wind
         // (straight flight / circling), and the instant wind against the trackable part of the turbulent truth
         Lpf avg_tn{30.f, 0.1f}, avg_te{30.f, 0.1f}, true_n{5.f, 0.1f}, true_e{5.f, 0.1f};
@@ -799,9 +829,9 @@ int main(int argc, char** argv) {
         // sideslip: its side force (body y, opposing it) is balanced like in a real slip, the pilot lowers the wing into
         // the relative wind so the commanded turn stays (straight flight stays straight)
         // sideslip in body axes, like the angle of attack: the air velocity is v (cos a cos b, sin b, sin a cos b) in the body
-        const float beta = sc.slip(tr.t);
-        const float side_acc = -0.5f * RHO * tr.v * tr.v * AREA * CY_TRUE * beta / MASS;
-        const float roll_target = bank_deg * D2R + std::asin(std::clamp(-side_acc / G, -0.5f, 0.5f));
+        const float slip_pilot = sc.slip(tr.t);
+        const float slip_hold_acc = -0.5f * RHO * tr.v * tr.v * AREA * CY_TRUE * slip_pilot / MASS;
+        const float roll_target = bank_deg * D2R + std::asin(std::clamp(-slip_hold_acc / G, -0.5f, 0.5f));
         if (K.flaps > 0.f) {
             if (K.flap_pilot > 0.f) {
                 // follows the flap box when it has shown another position for 2 s
@@ -818,6 +848,14 @@ int main(int argc, char** argv) {
             flap_defl += std::clamp(target - flap_defl, -30.f * D2R * dt_truth, 30.f * D2R * dt_truth);
         }
         tr.roll += std::clamp(roll_target - tr.roll, -15.f * D2R * dt_truth, 15.f * D2R * dt_truth);
+        // adverse yaw: rolling into a turn swings the nose out of it (air from the side the glider rolls to); the
+        // sideslip follows through the yaw dynamics, the nose turns against the flight path so that stays smooth
+        const float roll_rate = std::isnan(prev_roll) ? 0.f : (tr.roll - prev_roll) / dt_truth;
+        prev_roll = tr.roll;
+        const float beta_prev = beta;
+        beta += (slip_pilot + K.adverse_yaw * roll_rate - beta) * dt_truth / std::max(K.yaw_tau, dt_truth);
+        tr.psi -= (beta - beta_prev) * std::cos(tr.roll);
+        const float side_acc = -0.5f * RHO * tr.v * tr.v * AREA * CY_TRUE * beta / MASS;
         // speed changes ramp in through the pitch dynamics of the glider
         const float vdot_cmd = std::clamp((v_target - tr.v) / sc.v_tau, -3.f, 3.f);
         vdot_l += (vdot_cmd - vdot_l) * dt_truth / 0.8f;
@@ -840,28 +878,49 @@ int main(int argc, char** argv) {
         const float wd_dot = std::isnan(prev_wd) ? 0.f : (tr.wd - prev_wd) / dt_truth;
         prev_wd = tr.wd;
 
-        // a horizontal gust changes TAS directly (inertial speed is kept), the pilot then restores speed
+        // vertical gust: the inertial velocity is continuous, so a change of the vertical air movement first turns the
+        // relative wind (the angle of attack, in a bank partly the sideslip); the extra lift then accelerates the glider
+        // with the plunge time constant. gust: the air relative descent not taken up yet (down positive)
+        const float c_roll = std::cos(tr.roll), s_roll = std::sin(tr.roll);
+        if (std::isnan(w_eff) || K.gust_resp <= 0.f) {
+            w_eff = tr.wd;
+        }
+        const float gust = w_eff - tr.wd;
+        const float tau_plunge = 2.f * MASS / (RHO * std::max(tr.v, 10.f) * AREA * K.cla_true);
+        const float gust_load = gust * c_roll / (tau_plunge * G); // the lift of the angle of attack change
+        w_eff += (tr.wd - w_eff) * c_roll * c_roll * dt_truth / tau_plunge;
+
+        // a horizontal gust changes TAS directly (inertial speed is kept), the pilot then restores speed; the steeper
+        // air relative path in a vertical gust (gust) speeds the glider up by gravity
         float va_dot_wdot = tr.va[0] * tr.wdot[0] + tr.va[1] * tr.wdot[1];
-        tr.vdot = vdot_l - va_dot_wdot / std::max(tr.v, 1.f);
+        if (K.gust_resp > 0.f) {
+            va_dot_wdot += tr.va[2] * wd_dot;
+        }
+        tr.vdot = vdot_l - va_dot_wdot / std::max(tr.v, 1.f) + G * gust / std::max(tr.v, 1.f);
         tr.v += tr.vdot * dt_truth;
 
-        // load factor from turn and path curvature, smoothed by the pitch dynamics of the glider
-        const float cosg = std::cos(tr.gamma_up);
-        const float load_cmd =
-            std::clamp((cosg + tr.v * (tr.gamma_up - prev_gamma) / dt_truth / G - wd_dot / G) / std::cos(tr.roll), 0.3f, 3.f);
-        tr.load += (load_cmd - tr.load) * dt_truth / 0.4f;
-        prev_gamma = tr.gamma_up;
+        // load factor from turn and path curvature, smoothed by the pitch dynamics of the glider, plus the gust load
+        // (without the gust response the glider rides the vertical air acceleration directly)
+        const float cosg = std::cos(prev_gamma_ss);
+        const float ride = K.gust_resp > 0.f ? 0.f : wd_dot / G;
+        const float load_cmd = std::clamp((cosg + tr.v * (prev_gamma_ss - prev_gamma) / dt_truth / G - ride) / c_roll, 0.3f, 3.f);
+        load_p += (load_cmd - load_p) * dt_truth / 0.4f;
+        tr.load = std::clamp(load_p + gust_load, 0.2f, 4.f);
+        prev_gamma = prev_gamma_ss;
 
         // energy balance: air relative sink rate
         // sideslip drag (fuselage and fin side force, induced): delta CD = CD_BETA * beta², the sink rate increase is D V / (m g)
         const float slip_sink = 0.5f * RHO * tr.v * tr.v * AREA * CD_BETA * beta * beta * tr.v / (MASS * G);
         const float va_d = polar(tr.v, tr.load) + slip_sink + tr.v * tr.vdot / G + va_dot_wdot / G;
         tr.gamma_up = -std::asin(std::clamp(va_d / tr.v, -0.9f, 0.9f));
+        prev_gamma_ss = -std::asin(std::clamp((va_d - gust) / tr.v, -0.9f, 0.9f)); // the path the pilot flies
         const float cl = 2.f * tr.load * MASS * G / (RHO * AREA * tr.v * tr.v);
         const float cl_bend = std::max(cl - (0.9f + 1.5f * flap_defl), 0.f);
         tr.alpha = cl / K.cla_true + ALPHA0 - K.flap_alpha0 * flap_defl + K.aoa_nonlin * cl_bend * cl_bend;
-        tr.pitch = solvePitch(tr.v, tr.roll, tr.alpha, beta, va_d);
-        trueAirVelocity(tr.v, tr.roll, tr.pitch, tr.psi, tr.alpha, beta, tr.va);
+        // the angle of attack change of the gust comes with the gust load (CL), its side part is sideslip
+        const float beta_air = beta + gust * s_roll / std::max(tr.v, 1.f);
+        tr.pitch = solvePitch(tr.v, tr.roll, tr.alpha, beta_air, va_d);
+        trueAirVelocity(tr.v, tr.roll, tr.pitch, tr.psi, tr.alpha, beta_air, tr.va);
 
         tr.vg[0] = tr.va[0] + tr.wn;
         tr.vg[1] = tr.va[1] + tr.we;
@@ -907,7 +966,7 @@ int main(int argc, char** argv) {
                 const float th = tr.pitch + ref_att_err[1], ps = tr.psi + ref_att_err[2];
                 const float xb[3] = {std::cos(th) * std::cos(ps), std::cos(th) * std::sin(ps), -std::sin(th)};
                 // its airspeed: the same installation error, the noise of a 100 Hz reading
-                const float tas_ref = tr.v / K.k_tas + K.tas_noise * std::sqrt(10.f) * nd(rng_ref);
+                const float tas_ref = std::sqrt(pitot_v2) / K.k_tas + K.tas_noise * std::sqrt(10.f) * nd(rng_ref);
                 ins.update(ref_v, ref_alt, acc, xb, tas_ref, std::remainder(ps, 6.2831853f), tr.yaw_rate);
             }
         } else {
@@ -922,6 +981,12 @@ int main(int argc, char** argv) {
         // turn rate from the body y force balance: the side force and gravity's part give the centripetal acceleration
         // (coordinated without sideslip: g tan(roll) / V); the IMU then reads the side force, consistent with the motion
         tr.yaw_rate = (side_acc + G * std::sin(tr.roll) * std::cos(tr.pitch)) / (tr.v * std::cos(tr.roll));
+        tr.yaw_rate += gust_load * G * std::sin(tr.roll) / tr.v; // the gust lift tightens the turn
+        // air data at the sensors: static port error (installation, with the angle of attack), pneumatic lags
+        const float cp_static = (static_adj - 1.f) + K.static_cl * (cl - 0.6f);
+        const float alt_port = tr.h - cp_static * tr.v * tr.v / (2.f * G);
+        static_alt = std::isnan(static_alt) ? alt_port : static_alt + (alt_port - static_alt) * dt_truth / std::max(K.lag_static, dt_truth);
+        pitot_v2 = std::isnan(pitot_v2) ? tr.v * tr.v : pitot_v2 + (tr.v * tr.v - pitot_v2) * dt_truth / std::max(K.lag_pitot, dt_truth);
         tr.psi += tr.yaw_rate * dt_truth;
         tr.h -= tr.vg[2] * dt_truth;
         tr.xa += tr.va[0] * dt_truth;
@@ -950,11 +1015,11 @@ int main(int argc, char** argv) {
             }
         }
         f_sum = w_sum = vector_f();
-        const float tas_m = tr.v / K.k_tas + K.tas_noise * nd(rng);
+        const float tas_m = std::sqrt(pitot_v2) / K.k_tas + K.tas_noise * nd(rng);
         ahrs.update(accel, gyro, tas_m);
 
-        // static port error: the reading is off by (1 - static_adj) * V²/2g
-        const float baro_alt = tr.h - (static_adj - 1.f) * tr.v * tr.v / (2.f * G) + 0.25f * nd(rng);
+        // static port: its error and lag (above), sensor noise
+        const float baro_alt = static_alt + 0.25f * nd(rng);
         const vector_f ahrs_down = ahrs.q.rotateInv({0, 0, 1});
         const float device_down[3] = {ahrs_down.x, ahrs_down.y, ahrs_down.z};
         // the device AHRS has converged long before the takeoff starts the estimator
@@ -1109,6 +1174,19 @@ int main(int argc, char** argv) {
                 pe.ins_inst_all.add(std::hypot(ins.windN() - tn, ins.windE() - te));
                 pe.ins_avg_all.add(std::hypot(ins.avgWindN() - atn, ins.avgWindE() - ate));
                 pe.inst_all.add(std::hypot(ekf.windN() - tn, ekf.windE() - te)); // ours, also while not valid
+                if (st & (AirMassEKF::ST_WIND_VALID | AirMassEKF::ST_WIND_DEGRADED)) {
+                    pe.wind_shown_n++;
+                    pe.wind_shown.add(std::hypot(ekf.windN() - tn, ekf.windE() - te));
+                    pe.ins_wind_shown.add(std::hypot(ins.windN() - tn, ins.windE() - te));
+                }
+                if (st & AirMassEKF::ST_WIND_VALID) {
+                    pe.last_valid[0] = avg_wind.windN();
+                    pe.last_valid[1] = avg_wind.windE();
+                } else if (st & AirMassEKF::ST_WIND_DEGRADED) {
+                    pe.wind_degraded.add(std::hypot(ekf.windN() - tn, ekf.windE() - te));
+                    pe.last_valid_degraded.add(std::hypot(pe.last_valid[0] - tn, pe.last_valid[1] - te));
+                    pe.ins_degraded.add(std::hypot(ins.windN() - tn, ins.windE() - te));
+                }
             }
             if (t_wind_valid >= 0.f && tr.t > t_wind_valid + 60.f && (st & AirMassEKF::ST_WIND_VALID)) {
                 pe.avg_wind.add(std::hypot(an - atn, ae - ate));
@@ -1246,6 +1324,10 @@ int main(int argc, char** argv) {
                     "averaged off the mean wind %.2f / %.2f (straight / circling)\n",
                     pe.ins_inst_wind.rms(), pe.ins_inst_all.rms(), pe.ins_avg_wind.rms(), pe.ins_avg_all.rms(), pe.ins_avg_mean[0].rms(),
                     pe.ins_avg_mean[1].rms());
+        std::printf("  shown wind (valid or degraded): %.0f%% of the flight, instant %.2f m/s (reference on the same samples %.2f), "
+                    "degraded part %.2f m/s (%.0f%% of the flight; the last valid average held %.2f, the reference %.2f there)\n",
+                    100.f * pe.wind_shown_n / std::max(pe.total_n, 1), pe.wind_shown.rms(), pe.ins_wind_shown.rms(), pe.wind_degraded.rms(),
+                    100.f * pe.wind_degraded.n / std::max(pe.total_n, 1), pe.last_valid_degraded.rms(), pe.ins_degraded.rms());
         if (sc.max_climb_err_rms > 0.f) {
             check(used >= 3 && climb[0].rms() <= sc.max_climb_err_rms, "thermal climb reading off");
         }
@@ -1256,7 +1338,10 @@ int main(int argc, char** argv) {
         // against the GNSS/INS reference with its own 10 Hz GNSS (ins_reference.h)
         check(pe.cruise[0].rms() < pe.cruise[2].rms() && pe.entry[0].rms() < pe.entry[2].rms() && pe.circle[0].rms() < pe.circle[2].rms(),
               "vario worse than the GNSS/INS reference");
-        check(pe.inst_all.rms() < pe.ins_inst_all.rms() && pe.avg_wind.rms() < pe.ins_avg_wind.rms(), "wind worse than the GNSS/INS reference");
+        // the instant wind as shown (valid or degraded) against the reference on the same samples, which shows its wind
+        // always; ours is shown at least 85% of the flight
+        check(pe.wind_shown.rms() < pe.ins_wind_shown.rms() && pe.avg_wind.rms() < pe.ins_avg_wind.rms(), "wind worse than the GNSS/INS reference");
+        check(pe.wind_shown_n >= 0.85f * pe.total_n, "instant wind shown too rarely");
         // the uncertainty grows in long straight glides, the wind goes invalid there, but must not flicker (17 per hour
         // without the hysteresis)
         check(pe.dropouts <= 12, "wind validity flickers");

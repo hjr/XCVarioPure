@@ -69,7 +69,7 @@ public:
     void drawPolarSink(mps_t a);
     void drawAvgClimb();
     void drawFigure(float a);
-    void drawWind(WindData s, WindData i);
+    void drawWind(WindData s, WindData i, bool i_degraded = false); // i_degraded: the instant wind drawn grey
     using BowColorIdx = enum { GREEN, BLUE, ORANGE, RED };
     void drawScale(float from = -1000., float to = -1000.);
     void drawScaleBottom();

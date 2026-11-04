@@ -254,7 +254,7 @@ void PolarGauge::drawFigure(float a)
     }
 }
 
-void PolarGauge::drawWind(WindData s, WindData i)
+void PolarGauge::drawWind(WindData s, WindData i, bool i_degraded)
 {
     if ( wind_reference.get() == static_cast<int>(WindReference::WR_HEADING) && heading_tru.getValid() ) {
         rad_t heading = heading_tru.get();
@@ -271,7 +271,8 @@ void PolarGauge::drawWind(WindData s, WindData i)
     }
 
     if ( _wind_live ) {
-        if (_wind_live->changed(i) || _dirty) {
+        const bool restyled = _wind_live->setDegraded(i_degraded);
+        if (_wind_live->changed(i) || _dirty || restyled) {
             _wind_live->drawWind();
         }
     }
