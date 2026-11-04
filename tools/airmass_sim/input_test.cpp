@@ -1,9 +1,12 @@
 // Unit checks of the raw measurement conversion (main/airmass/AirMassInput.h):
-// frame conventions, signs and units against hand calculated flight states.
+// frame conventions, signs and units against hand calculated flight states. Also the flap offsets and the
+// averaged wind.
 
 #include "AirMassInput.h"
 #include "AirMassAttitude.h"
 #include "AirMassFlaps.h"
+#include "AirMassPipeline.h"
+#include "AirMassWindAverage.h"
 
 #include <cmath>
 #include <cstdio>
@@ -185,7 +188,7 @@ int main() {
             f[0] = -3.f / G - down[0];
             f[1] = -down[1];
             f[2] = -down[2];
-            att.update(gyro, f, tas, 0.f, 0.1f);
+            att.update(gyro, f, tas, 0.f, 0.1f, 0.f);
         }
         expect("pitch of the air data aided attitude [deg]", att.pitch() / D2R, 10.f, 0.3f);
         expect("pitch of a plain accelerometer reference [deg]", std::atan2(f[0], -f[2]) / D2R, 10.f - 17.f, 1.5f);
@@ -216,6 +219,69 @@ int main() {
         expect("at the next notch: its offset [rad]", ekf.pitchOffset(), 0.10f, 1e-6f);
         expect("learned notch: certain [rad]", flaps.sigma(2), 0.002f, 1e-6f);
         expect("never flown notch: unknown", flaps.known(5) ? 1.f : 0.f, 0.f, 0.f);
+    }
+
+    std::printf("averaged wind (AirMassWindAverage.h)\n");
+    {
+        // circling unevenly (faster on the north side) with a heading dependent wind error of 1 m/s along the
+        // heading, like a residual airspeed scale error: the sector mean cancels it, a low pass is biased towards
+        // the slow side and ripples
+        constexpr float WN = -4.f, WE = 3.f, DT = 0.1f;
+        airmass::WindAverage avg;
+        avg.reset(WN, WE);
+        float lpf[2] = {WN, WE};
+        float psi = 0.f, max_avg = 0.f, max_lpf = 0.f, out_prev[2] = {};
+        for (int i = 0; i < 2400; ++i) {
+            const float t = i * DT;
+            const bool circling = t >= 30.f && t < 210.f;
+            const float rate = circling ? 0.3f * (1.f + 0.5f * std::cos(psi)) : 0.f;
+            psi = std::remainder(psi + rate * DT, 360.f * D2R);
+            const float wn = WN + std::cos(psi), we = WE + std::sin(psi);
+            avg.update(wn, we, psi, rate, DT);
+            lpf[0] += (wn - lpf[0]) * DT / (airmass::WindAverage::TAU + DT);
+            lpf[1] += (we - lpf[1]) * DT / (airmass::WindAverage::TAU + DT);
+            if (t >= 120.f && t < 210.f) {
+                max_avg = std::fmax(max_avg, std::hypot(avg.windN() - WN, avg.windE() - WE));
+                max_lpf = std::fmax(max_lpf, std::hypot(lpf[0] - WN, lpf[1] - WE));
+            }
+            if (i == 2099) { // the last cycle of circling
+                expect("circling state", avg.circling() ? 1.f : 0.f, 1.f, 0.f);
+            }
+            if (i == 2101) {
+                expect("straight flight continues from the circle mean [m/s]", std::hypot(avg.windN() - out_prev[0], avg.windE() - out_prev[1]), 0.f, 0.02f);
+            }
+            out_prev[0] = avg.windN();
+            out_prev[1] = avg.windE();
+        }
+        expect("circling: sector mean error [m/s]", max_avg, 0.f, 0.05f);
+        std::printf("  (a 30s low pass of the same wind is %.2f m/s off)\n", max_lpf);
+        expect("circling: sector mean beats the low pass", max_avg < 0.2f * max_lpf ? 1.f : 0.f, 1.f, 0.f);
+        expect("straight again after 10s", avg.circling() ? 1.f : 0.f, 0.f, 0.f);
+        // straight flight: the plain low pass
+        airmass::WindAverage s;
+        s.reset(0.f, 0.f);
+        for (int i = 0; i < 300; ++i) {
+            s.update(1.f, -2.f, 0.3f, 0.f, DT);
+        }
+        expect("straight: 30s low pass after 30s, north [m/s]", s.windN(), 1.f - std::exp(-1.f), 0.01f);
+        expect("straight: 30s low pass after 30s, east [m/s]", s.windE(), -2.f * (1.f - std::exp(-1.f)), 0.02f);
+    }
+
+    std::printf("polar (AirMassPipeline.h, the formula of S2F::getSink)\n");
+    {
+        airmass::Polar p;
+        p.a0 = -2.78f;
+        p.a1 = 0.176f;
+        p.a2 = -0.00363f;
+        p.v_stall = 18.f;
+        p.valid = true;
+        expect("1g sink at 30 m/s [m/s]", p.sink(30.f, 1.f), -2.78f + 0.176f * 30.f - 0.00363f * 900.f, 1e-5f);
+        // n^1.5 a0 + n a1 v + n^0.5 a2 v²: the speed polar of the heavier glider at sqrt(n) times the speed
+        const float n = 1.44f;
+        expect("sink at 1.44g = 1.728 * 1g sink at v/1.2 [m/s]", p.sink(36.f, n), 1.728f * p.sink(30.f, 1.f), 1e-4f);
+        expect("below 0.9 stall speed: none", p.sink(16.f, 1.f), 0.f, 0.f);
+        p.valid = false;
+        expect("invalid polar: none", p.sink(30.f, 1.f), 0.f, 0.f);
     }
 
     std::printf("%s\n", failures ? "FAILED" : "PASS");

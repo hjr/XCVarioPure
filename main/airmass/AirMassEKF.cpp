@@ -57,11 +57,16 @@ void AirMassEKF::reset(float baro_alt, float k_tas, float pitch_ofs, float laten
     _hist_head = -1;
     _hist_level = 0;
     _psi_gyro = 0.f;
+    _heading_rate = 0.f;
     _wind_prev[0] = _wind_prev[1] = 0.f;
     _wind_rate[0] = _wind_rate[1] = 0.f;
     _tas_f = NAN;
     _tas_dot_f = 0.f;
     _vd_f = 0.f;
+    _acc_long_f = NAN;
+    _sink_f = NAN;
+    _acc_corr = 0.f;
+    _acc_kin = 0.f;
     _acc_mem = 0.f;
     _gnss_rejects = 0;
     _gnss_consecutive_rejects = 0;
@@ -69,6 +74,7 @@ void AirMassEKF::reset(float baro_alt, float k_tas, float pitch_ofs, float laten
     _vertical_settle = 0;
     _last_gnss_ms = _last_time_ms;
     _aligned = false;
+    _wind_valid = false;
     restartAlignment();
     _running = true;
 }
@@ -134,10 +140,13 @@ void AirMassEKF::predict(const Input& in) {
     const float dt = in.dt;
     const float acc = in.acc_down - _x[BAZ];
 
-    const float yaw_rate = in.yaw_rate - _x[BGZ];
-    _x[PSI] += yaw_rate * dt;
+    // BGZ is the body z gyro bias, it enters the heading rate with cos(roll) / cos(pitch): a single yaw rate bias
+    // learned while circling would be off in straight flight
+    const float cb = std::cos(in.roll) / std::max(std::cos(in.pitch), 0.1f);
+    _heading_rate = in.yaw_rate - cb * _x[BGZ];
+    _x[PSI] += _heading_rate * dt;
     wrapPsi();
-    _psi_gyro = wrapPi(_psi_gyro + yaw_rate * dt);
+    _psi_gyro = wrapPi(_psi_gyro + _heading_rate * dt);
     _x[ALT] += -_x[VD] * dt - 0.5f * acc * dt * dt;
     _x[VD] += acc * dt;
 
@@ -148,12 +157,12 @@ void AirMassEKF::predict(const Input& in) {
     for (int j = 0; j < NX; ++j) {
         _cov(ALT, j) += -dt * _cov(VD, j) + hdt2 * _cov(BAZ, j);
         _cov(VD, j) += -dt * _cov(BAZ, j);
-        _cov(PSI, j) += -dt * _cov(BGZ, j);
+        _cov(PSI, j) += -dt * cb * _cov(BGZ, j);
     }
     for (int i = 0; i < NX; ++i) {
         _cov(i, ALT) += -dt * _cov(i, VD) + hdt2 * _cov(i, BAZ);
         _cov(i, VD) += -dt * _cov(i, BAZ);
-        _cov(i, PSI) += -dt * _cov(i, BGZ);
+        _cov(i, PSI) += -dt * cb * _cov(i, BGZ);
     }
     _cov(WN, WN) += _cfg.q_wind_h * dt;
     _cov(WE, WE) += _cfg.q_wind_h * dt;
@@ -176,11 +185,14 @@ void AirMassEKF::predict(const Input& in) {
     if (std::isnan(_tas_f)) {
         _tas_f = in.tas;
         _vd_f = _x[VD];
+        _acc_long_f = in.acc_long;
     }
+
     const float tas_prev = _tas_f;
     _tas_f += (in.tas - _tas_f) * ae;
     _tas_dot_f = (_tas_f - tas_prev) / dt;
     _vd_f += (_x[VD] - _vd_f) * ae;
+    _acc_long_f += (in.acc_long - _acc_long_f) * ae;
     // a complementary filter AHRS recovers from acceleration errors with seconds of delay
     _acc_mem = std::max(std::fabs(in.acc_long), _acc_mem * (1.f - dt / 2.f));
 
@@ -223,12 +235,14 @@ void AirMassEKF::update(const Input& in) {
         float va[3], dalpha[3];
         airVelocity(in.tas, _x[KTAS], in.roll, in.pitch, _x[PSI], alphaOf(in.aoa), va, dalpha);
         fuseKinematic(in, va, dalpha);
+        updateKinetic(in, va);
         if (std::isfinite(in.polar_sink)) {
-            fuseEnergy(in, va);
+            fuseEnergy(in);
         }
     }
 
     sanitize();
+    updateWindValid();
     if (_running && _vertical_settle < 0xffff) {
         _vertical_settle++;
     }
@@ -266,20 +280,39 @@ void AirMassEKF::fuseKinematic(const Input& in, const float va[3], const float d
     ekfScalarUpdate(_cov, _x, h, y, sv * sv + 0.01f, _cfg.gate);
 }
 
-// Pitch independent energy balance: Wd = vd - s(V,n) - V*dV/dt/g - va.dW/dt/g
-// on low passed vertical speed and TAS (the wind is assumed to change slower than energy_tau)
-void AirMassEKF::fuseEnergy(const Input& in, const float va[3]) {
+// Acceleration along the air velocity for the energy balance. Relative to the air the kinetic energy changes
+// with V * dV/dt + va . dW/dt, which is V times the inertial acceleration along the air velocity: a horizontal
+// gust changes the airspeed, not the inertial acceleration. The airspeed derivative plus the estimated wind
+// change is free of attitude errors, but misses gusts (the wind estimate is slow). The inertial acceleration
+// follows gusts, but carries g times the pitch error. Their disagreement splits into a slow part (attitude error,
+// tracked with kinetic_tau) and a transient part (gust): the inertial acceleration, cleared from the slow part,
+// takes over as the transient part grows towards gust_acc.
+void AirMassEKF::updateKinetic(const Input& in, const float va[3]) {
+    const float k = _x[KTAS];
+    const float a_air = k * _tas_dot_f + (va[0] * _wind_rate[0] + va[1] * _wind_rate[1]) / std::max(k * in.tas, 1.f);
+    const float d = a_air - _acc_long_f;
+    _acc_corr += (d - _acc_corr) * in.dt / (_cfg.kinetic_tau + in.dt);
+    const float gust = d - _acc_corr;
+    const float w = std::clamp(std::fabs(gust) / _cfg.gust_acc, 0.f, 1.f);
+    _acc_kin = a_air - w * gust;
+}
+
+// Pitch independent energy balance: Wd = vd - s(V,n) - V * a/g, a the acceleration along the air velocity
+// (updateKinetic), on low passed vertical speed and acceleration
+void AirMassEKF::fuseEnergy(const Input& in) {
     const float k = _x[KTAS];
     const float v = k * _tas_f;
-    const float vdot = k * _tas_dot_f;
-    const float z = -(in.polar_sink + v * vdot / G0 + (va[0] * _wind_rate[0] + va[1] * _wind_rate[1]) / G0);
+    // the polar sink follows the load factor, it gets the same low pass as the vertical speed it is compared with:
+    // a roll-in raises the sink within a second or two
+    const float ae = in.dt / (_cfg.energy_tau + in.dt);
+    _sink_f = std::isnan(_sink_f) ? in.polar_sink : _sink_f + (in.polar_sink - _sink_f) * ae;
+    const float z = -(_sink_f + v * _acc_kin / G0);
     float h[NX] = {};
     h[WD] = 1.f;
     h[VD] = -1.f; // approximately, the low passed vertical speed follows the state
     const float y = z - (_x[WD] - _vd_f);
-    // airspeed changes not explained by inertial acceleration indicate horizontal gusts, which the
-    // energy balance can only follow through the slow GNSS wind estimate
-    const float gust = std::fabs(vdot - in.acc_long);
+    // airspeed changes not explained by inertial acceleration indicate horizontal gusts
+    const float gust = std::fabs(k * _tas_dot_f - in.acc_long);
     const float sig = _cfg.sigma_energy * (1.f + 2.f * std::fabs(in.load_factor - 1.f) + 1.5f * gust);
     ekfScalarUpdate(_cov, _x, h, y, sig * sig, _cfg.gate);
 }
@@ -568,12 +601,20 @@ uint8_t AirMassEKF::status() const {
         if (age < 5000) {
             st |= ST_GNSS_FRESH;
         }
-        const float sw = std::sqrt(_cov(WN, WN) + _cov(WE, WE));
-        if (age < 30000 && sw < _cfg.sigma_wind_valid && sigma(PSI) < _cfg.sigma_psi_valid) {
+        if (_wind_valid) {
             st |= ST_WIND_VALID;
         }
     }
     return st;
+}
+
+// wind validity with hysteresis: the uncertainty grows slowly in straight flight and saw-tooths with every GNSS
+// fix, valid again only clearly below the threshold, so the outputs do not flicker
+void AirMassEKF::updateWindValid() {
+    constexpr float RECOVER = 0.9f;
+    const float f = _wind_valid ? 1.f : RECOVER;
+    const float sw = std::sqrt(_cov(WN, WN) + _cov(WE, WE));
+    _wind_valid = _running && _aligned && gnssAgeMs() < 30000 && sw < f * _cfg.sigma_wind_valid && sigma(PSI) < f * _cfg.sigma_psi_valid;
 }
 
 bool AirMassEKF::covarianceHealthy() const {

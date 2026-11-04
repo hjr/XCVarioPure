@@ -67,8 +67,7 @@ static bool naviWind(WindData& w)
     return airmass_wind_nmea.get() && (airmass_status.get() & AirMassEKF::ST_WIND_VALID) && w.isValid();
 }
 
-// Air mass estimator output (master only)
-// $PXCVA,vario,wdir,wspeed,wd,k_tas,pitch_ofs,latency,status*CHK
+// "NMEA Output" (master only): the estimator output $PXCVA (format in AirMassRecord.h)
 //    * vario: vertical air mass movement in m/s, up positive
 //    * wdir: instant wind direction in deg (the direction the wind blows from)
 //    * wspeed: instant wind speed in km/h
@@ -77,28 +76,19 @@ static bool naviWind(WindData& w)
 //    * pitch_ofs: learned pitch/AoA offset in deg
 //    * latency: estimated effective GNSS velocity latency in ms
 //    * status: AirMassEKF status bits (hex)
-static void sendAirMass(NmeaPrtcl* nmea)
-{
-    if (nmea->getDL()->isBinActive() || !airmassSensor) {
-        return;
-    }
-    const AirMassEKF& ekf = airmassSensor->getEKF();
-    Message* msg = nmea->newMessage();
-
-    const WindData wind = windFromVector(vector_f(ekf.windN(), ekf.windE(), 0.f));
-    char str[80];
-    std::snprintf(str, sizeof(str), "$PXCVA,%.2f,%d,%.1f,%.2f,%.3f,%.2f,%.0f,%X",
-            ekf.airmassVario(), wind.getDeg(), Units::mps_to_kmh(wind.getVal()), ekf.windD(),
-            ekf.kTas(), Units::rad_to_deg(ekf.pitchOffset()), ekf.gnssLatency() * 1000.f, (unsigned)ekf.status());
-    msg->buffer = str;
-    msg->buffer += "*" + NMEA::CheckSum(msg->buffer.c_str()) + "\r\n";
-    DEV::Send(msg);
-}
-
+// and with "Recording" the estimator inputs, for the replay on a host (tools/airmass_sim/replay). The sensor loop
+// queues the lines in the order of its cycles.
 void airmass::nmeaFeed(NmeaPrtcl* nmea, bool slow)
 {
-    if (airmass_nmea.get()) {
-        sendAirMass(nmea);
+    // the queued lines in one message; no NMEA in binary mode, the queue is drained anyway
+    std::string lines, line;
+    while (airmassNmeaPop(line)) {
+        lines += line;
+    }
+    if (!lines.empty() && !nmea->getDL()->isBinActive()) {
+        Message* msg = nmea->newMessage();
+        msg->buffer = std::move(lines);
+        DEV::Send(msg);
     }
     // the Cambridge sentence carries the wind already
     WindData wind;

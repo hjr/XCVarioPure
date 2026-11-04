@@ -1,6 +1,7 @@
 #include "AirMassSensor.h"
 #include "AirMass.h"
 #include "AirMassInput.h"
+#include "AirMassRecord.h"
 
 #include "sensor/imu/Accelerometer.h"
 #include "sensor/imu/Gyroscope.h"
@@ -18,9 +19,11 @@
 #include "logdefnone.h"
 
 #include <freertos/FreeRTOS.h>
+#include <freertos/queue.h>
 
 #include <algorithm>
 #include <cmath>
+#include <cstring>
 #include <initializer_list>
 
 AirMassSensor *airmassSensor = nullptr;
@@ -35,7 +38,42 @@ constexpr float COMPASS_SIGMA = 0.15f;        // rad, compass heading incl. devi
 constexpr int COMPASS_CYCLES = 100;           // fuse the compass every 10s, its errors are not white
 constexpr float COMPASS_MAX_ROLL = 0.17f;     // rad, the compass is only trusted in straight flight
 constexpr uint16_t PERSIST_CYCLES = 3000;     // save the learned calibration every 5 minutes in flight
-constexpr float GYRO_DOT_TAU = 0.2f;          // s, low pass of the differentiated gyro (lever arm)
+constexpr uint16_t SETUP_CYCLES = 100;        // repeat the recorded setup every 10s, for logs started in flight
+
+// "NMEA Output" (airmass_nmea)
+enum : int { NMEA_OFF = 0, NMEA_OUTPUT = 1, NMEA_RECORD = 2 };
+
+// lines for the NMEA output, from the sensor loop to the NMEA feed (5Hz), created with the first line
+constexpr int QUEUE_LINES = 20;
+constexpr int QUEUE_LEN = 224; // the longest sentence ($PXCVS) has about 190 characters
+static QueueHandle_t nmea_queue = nullptr;
+
+static void queueLine(const std::string& line)
+{
+    if (!nmea_queue) {
+        nmea_queue = xQueueCreate(QUEUE_LINES, QUEUE_LEN);
+    }
+    if (nmea_queue && line.size() < QUEUE_LEN) {
+        char buf[QUEUE_LEN]; // the queue copies whole items
+        std::memcpy(buf, line.c_str(), line.size() + 1);
+        xQueueSend(nmea_queue, buf, 0); // full: dropped, the replay sees a gap
+    }
+}
+
+bool airmassNmeaPop(std::string& line)
+{
+    char buf[QUEUE_LEN];
+    if (!nmea_queue || xQueueReceive(nmea_queue, buf, 0) != pdTRUE) {
+        return false;
+    }
+    line = buf;
+    return true;
+}
+
+static bool recording()
+{
+    return airmass_nmea.get() == NMEA_RECORD;
+}
 
 static_assert(airmass::FlapOffsets::N == Flap::MAX_NR_POS, "a pitch offset per flap position");
 static SetupNG<float>* const FLAP_OFS[airmass::FlapOffsets::N] = {&airmass_flap_ofs_0, &airmass_flap_ofs_1, &airmass_flap_ofs_2,
@@ -80,6 +118,15 @@ static int pitchSignature()
 static int speedSignature()
 {
     return signatureOf({&speedcal, &glider_type});
+}
+
+// Body rates without the "Gyro Gating" of the processed gyro: its dead zone (0.5°/s) drops the slow rotations, the
+// gentle pitch changes in cruise, small heading corrections, the roll axis rate in a steady turn. The recorded
+// reading has the bias estimate subtracted once, the processed one twice (the estimator learns on the recorded
+// readings and settles at half the bias), so this is the processed gyro before the gating.
+static vector_f gyroRates()
+{
+    return gyroSensor->getHead() - gyroSensor->getBias();
 }
 
 // latest GNSS ground velocity, written by the protocol task, read by the sensor loop
@@ -128,9 +175,7 @@ void airmass::startup()
 }
 
 AirMassSensor::AirMassSensor() :
-    SensorTP<vector_f>(airmass_buffer, HSIZE, DUTY_CYCLE_MS, 1),
-    _avg_wind(LowPassFilterT<vector_f>::alphaFromTau(30.f, DUTY_CYCLE_MS / 1000.f)),
-    _gyro_dot(LowPassFilterT<vector_f>::alphaFromTau(GYRO_DOT_TAU, DUTY_CYCLE_MS / 1000.f))
+    SensorTP<vector_f>(airmass_buffer, HSIZE, DUTY_CYCLE_MS, 1)
 {
     // after AHRS and airspeed, right before the vario filter
     _id = SensorId(SensorType::AIRMASS, 9);
@@ -147,16 +192,26 @@ bool AirMassSensor::setup()
     return true;
 }
 
+// installation, polar (with ballast) and settings, they can change in flight
+airmass::Setup AirMassSensor::currentSetup() const
+{
+    airmass::Setup s;
+    s.lever_arm = imuSensor ? imuSensor->getLeverArm() : 0.f;
+    s.mass = gross_weight.get();
+    s.wing_area = polar_wingarea.get();
+    Speed2Fly.getPolar(s.polar.a0, s.polar.a1, s.polar.a2, s.polar.v_stall, s.polar.valid);
+    s.wind_resp = airmass_wind_resp.get();
+    s.vario_resp = airmass_vario_resp.get();
+    s.te_adjust = airmass_te_adjust.get();
+    return s;
+}
+
 void AirMassSensor::applyConfig()
 {
-    AirMassEKF::Config cfg;
-    const float wr = airmass_wind_resp.get();
-    const float vr = airmass_vario_resp.get();
-    cfg.q_wind_h *= wr * wr;
-    cfg.q_wind_v *= vr * vr;
-    cfg.static_comp = airmass_te_adjust.get() / 100.f;
-    _ekf.setConfig(cfg);
-    _config_changed = false;
+    _pipe.configure(currentSetup());
+    if (recording()) {
+        queueLine(airmass::record::setup(_pipe.setup()));
+    }
 }
 
 // static port altitude, independent of the altimeter source setting (TE or external would corrupt the estimator)
@@ -181,20 +236,30 @@ void AirMassSensor::start()
              Units::rad_to_deg(pitch_ofs), pitch_ok ? "" : " (reset)", airmass_lat_ofs.get());
     float alt = 0.f;
     readBaroAltitude(alt);
-    _ekf.reset(alt, k_tas, pitch_ofs, airmass_lat_ofs.get(), k_aoa);
-    float flap_ofs[airmass::FlapOffsets::N];
+    airmass::Warm warm;
+    warm.k_tas = k_tas;
+    warm.pitch_ofs = pitch_ofs;
+    warm.lat_ofs = airmass_lat_ofs.get();
+    warm.k_aoa = k_aoa;
     for (int i = 0; i < airmass::FlapOffsets::N; ++i) {
-        flap_ofs[i] = pitch_ok ? FLAP_OFS[i]->get() : airmass::FlapOffsets::UNKNOWN;
+        warm.flap_ofs[i] = pitch_ok ? FLAP_OFS[i]->get() : airmass::FlapOffsets::UNKNOWN;
     }
-    _flaps.load(flap_ofs);
     // the own attitude starts from the converged AHRS
+    airmass::record::Start st;
+    st.t = Clock::getMillis();
+    st.alt = alt;
     const vector_f down = ahrsSensor->getBody2Nav().rotateInv(vector_f(0.f, 0.f, 1.f));
-    const float d[3] = {down.x, down.y, down.z};
-    _att.reset(d);
-    _avg_wind.reset();
-    _gyro_dot.reset();
-    _gyro_prev = gyroSensor ? gyroSensor->getRef() : vector_f();
-    _prev_time = Clock::getMillis();
+    const vector_f gyro = gyroSensor ? gyroRates() : vector_f();
+    for (int i = 0; i < 3; ++i) {
+        st.down[i] = down[i];
+        st.gyro[i] = gyro[i];
+    }
+    st.warm = warm;
+    applyConfig();
+    _pipe.start(st.t, st.alt, st.down, st.gyro, st.warm);
+    if (recording()) {
+        queueLine(airmass::record::start(st));
+    }
     AirMassEKF::GnssVelocity g;
     _gnss_epoch = latestGnss(g); // only fresh epochs
 }
@@ -217,31 +282,33 @@ static void store(SetupNG<int>& item, int value)
 // keep the learned calibration as warm start for the next flight
 void AirMassSensor::persistLearned()
 {
-    if (!_ekf.isRunning() || !_ekf.isAligned()) {
+    AirMassEKF& ekf = _pipe.ekf();
+    airmass::FlapOffsets& flaps = _pipe.flaps();
+    if (!ekf.isRunning() || !ekf.isAligned()) {
         return;
     }
     constexpr float PITCH_SIGMA = 0.01f; // rad, a pitch offset this certain is kept
-    if (_ekf.sigma(AirMassEKF::KTAS) < 0.02f) {
-        store(airmass_k_tas, _ekf.kTas(), 1e-3f);
+    if (ekf.sigma(AirMassEKF::KTAS) < 0.02f) {
+        store(airmass_k_tas, ekf.kTas(), 1e-3f);
         store(airmass_sig_speed, speedSignature());
     }
-    if (_flaps.active()) {
+    if (flaps.active()) {
         // flapped glider: an offset per lever position
-        _flaps.keep(_ekf);
+        flaps.keep(ekf);
         for (int i = 0; i < airmass::FlapOffsets::N; ++i) {
-            if (_flaps.sigma(i) < PITCH_SIGMA) {
-                store(*FLAP_OFS[i], _flaps.offset(i), 1e-3f);
+            if (flaps.sigma(i) < PITCH_SIGMA) {
+                store(*FLAP_OFS[i], flaps.offset(i), 1e-3f);
             }
         }
-        store(airmass_k_aoa, _ekf.aoaScale(), 1e-3f);
+        store(airmass_k_aoa, ekf.aoaScale(), 1e-3f);
         store(airmass_sig_pitch, pitchSignature());
-    } else if (_ekf.sigma(AirMassEKF::THB) < PITCH_SIGMA) {
-        store(airmass_pitch_ofs, _ekf.pitchOffset(), 1e-3f);
-        store(airmass_k_aoa, _ekf.aoaScale(), 1e-3f);
+    } else if (ekf.sigma(AirMassEKF::THB) < PITCH_SIGMA) {
+        store(airmass_pitch_ofs, ekf.pitchOffset(), 1e-3f);
+        store(airmass_k_aoa, ekf.aoaScale(), 1e-3f);
         store(airmass_sig_pitch, pitchSignature());
     }
-    if (_ekf.sigma(AirMassEKF::TAU) < 0.1f) {
-        store(airmass_lat_ofs, _ekf.latencyOffset(), 0.01f);
+    if (ekf.sigma(AirMassEKF::TAU) < 0.1f) {
+        store(airmass_lat_ofs, ekf.latencyOffset(), 0.01f);
     }
     ESP_LOGI(FNAME, "AirMass learned k_tas %.3f, pitch ofs %.2f°, gnss latency ofs %.2fs", airmass_k_tas.get(),
              Units::rad_to_deg(airmass_pitch_ofs.get()), airmass_lat_ofs.get());
@@ -250,7 +317,10 @@ void AirMassSensor::persistLearned()
 void AirMassSensor::stop()
 {
     persistLearned();
-    _ekf.stop();
+    _pipe.ekf().stop();
+    if (recording()) {
+        queueLine(airmass::record::stop(Clock::getMillis()));
+    }
     airmass_status.set(0);
     airmass_inst_wind.set(WindData().data());
     airmass_avg_wind.set(WindData().data());
@@ -258,10 +328,6 @@ void AirMassSensor::stop()
 
 void AirMassSensor::postProcess()
 {
-    if (_config_changed) {
-        applyConfig();
-    }
-
     const bool active = airmass_enable.get() && airborne.get() && ahrsSensor && accSensor && gyroSensor;
     if (active != _active) {
         _active = active;
@@ -283,74 +349,70 @@ void AirMassSensor::postProcess()
         }
         return;
     }
-    if (!_ekf.isRunning()) {
+    if (!_pipe.ekf().isRunning()) {
         ESP_LOGW(FNAME, "AirMass estimator restart");
         start();
     }
+    // settings, ballast and the polar can change in flight
+    const bool rec = recording();
+    if (currentSetup() != _pipe.setup()) {
+        applyConfig();
+    } else if (rec && !(_count % SETUP_CYCLES)) {
+        queueLine(airmass::record::setup(_pipe.setup())); // for logs started in flight
+    }
 
-    const uint32_t now = Clock::getMillis();
-    AirMassEKF::Input in;
-    in.time_ms = now;
-    in.dt = std::clamp((now - _prev_time) / 1000.f, 0.05f, 0.3f);
-    _prev_time = now;
-
-    in.baro_alt = baro_alt;
-
-    // the flap position decides the pitch/AoA offset the estimator works with
-    _flaps.update(_ekf, flapLever(_att.roll()));
-
-    // IMU and air data
-    airmass::Raw raw;
+    // the raw measurements of this cycle
+    airmass::Frame f;
+    f.time_ms = Clock::getMillis();
     const vector_f& f_body = accSensor->getHead(); // specific force in g, body NED
-    const vector_f& gyro = gyroSensor->getRef();   // rad/s, body
-    const vector_f gyro_dot = _gyro_dot.filter((gyro - _gyro_prev) * (1.f / in.dt));
-    _gyro_prev = gyro;
+    const vector_f gyro = gyroRates();             // rad/s, body
     for (int i = 0; i < 3; ++i) {
-        raw.f_body[i] = f_body[i];
-        raw.gyro[i] = gyro[i];
-        raw.gyro_dot[i] = gyro_dot[i];
+        f.f_body[i] = f_body[i];
+        f.gyro[i] = gyro[i];
     }
-    raw.lever_arm = imuSensor ? imuSensor->getLeverArm() : 0.f;
-    raw.ias = ias.get();
-    raw.tas = tas.get();
-    raw.mass = gross_weight.get();
-    raw.wing_area = polar_wingarea.get();
-    const airmass::AirData air = airmass::airData(raw, _ekf);
-    raw.polar_sink_ias = Speed2Fly.getSink(air.ias, air.n_lift);
-
-    // attitude: aided by the air velocity direction
-    _att.update(raw.gyro, air.f_cg, _ekf.kTas() * raw.tas, air.alpha, in.dt);
-    in.roll = _att.roll();
-    in.pitch = _att.pitch();
-    in.yaw_rate = _att.yawRate(raw.gyro);
-    for (int i = 0; i < 3; ++i) {
-        raw.down_body[i] = _att.down()[i];
+    f.ias = ias.get();
+    f.tas = tas.get();
+    f.baro_alt = baro_alt;
+    f.flap_lever = flapLever(_pipe.attitude().roll());
+    _pipe.step(f);
+    if (rec) {
+        queueLine(airmass::record::frame(f));
     }
-    airmass::fillInput(raw, air, in);
-
-    _ekf.update(in);
 
     // compass: absolute heading in straight flight, aligns the wind before the first turn
-    if (!(_count % COMPASS_CYCLES) && heading_mag.getValid() && std::fabs(in.roll) < COMPASS_MAX_ROLL) {
-        const rad_t psi = Vector::normalizePI(heading_mag.get() + Units::deg_to_rad(compass_declination.get()));
-        _ekf.fuseHeading(psi, COMPASS_SIGMA);
+    if (!(_count % COMPASS_CYCLES) && heading_mag.getValid() && std::fabs(_pipe.input().roll) < COMPASS_MAX_ROLL) {
+        const airmass::record::Heading h{f.time_ms, Vector::normalizePI(heading_mag.get() + Units::deg_to_rad(compass_declination.get())),
+                                         COMPASS_SIGMA};
+        _pipe.heading(h.psi, h.sigma);
+        if (rec) {
+            queueLine(airmass::record::heading(h));
+        }
     }
 
     // GNSS velocity epochs
-    AirMassEKF::GnssVelocity g;
-    const uint16_t epoch = latestGnss(g);
+    airmass::record::Gnss g;
+    const uint16_t epoch = latestGnss(g.v);
     if (epoch && epoch != _gnss_epoch) {
         _gnss_epoch = epoch;
         // a valid synoptic wind (circling/straight wind) serves as prior for the alignment
-        const bool prior = synoptic_wind.getValid();
-        vector_f w;
-        if (prior) {
-            w = static_cast<WindData>(synoptic_wind.get()).getVector();
+        g.prior = synoptic_wind.getValid();
+        if (g.prior) {
+            const vector_f w = static_cast<WindData>(synoptic_wind.get()).getVector();
+            g.wn0 = w.x;
+            g.we0 = w.y;
         }
-        _ekf.fuseGnss(g, prior, w.x, w.y);
+        _pipe.gnss(g.v, g.prior, g.wn0, g.we0);
+        if (rec) {
+            queueLine(airmass::record::gnss(g));
+        }
     }
 
+    _pipe.endCycle();
     publish();
+    // the estimator output at 5Hz, after the cycle it belongs to
+    if (airmass_nmea.get() != NMEA_OFF && !(_count % 2)) {
+        queueLine(airmass::record::output(_pipe.ekf()));
+    }
 
     // a power cut before the landing detection must not lose the whole flight
     if (!(_count % PERSIST_CYCLES)) {
@@ -360,14 +422,15 @@ void AirMassSensor::postProcess()
 
 void AirMassSensor::publish()
 {
+    const AirMassEKF& ekf = _pipe.ekf();
     const uint32_t now = Clock::getMillis();
-    const vector_f wind(_ekf.windN(), _ekf.windE(), _ekf.windD());
+    const vector_f wind(ekf.windN(), ekf.windE(), ekf.windD());
     pushAndPublish(wind, now);
-    const uint8_t st = _ekf.status();
+    const uint8_t st = ekf.status();
     _count++;
 
     // vertical air mass movement at 5Hz to the second seat, the vario filter reads it locally every cycle
-    airmass_vario.set(_ekf.airmassVario(), !(_count % 2));
+    airmass_vario.set(ekf.airmassVario(), !(_count % 2));
     // volatile entries stay dirty once set, so every set() would sync: only set on change
     auto setChanged = [](SetupNG<int>& var, int val) {
         if (val != var.get()) {
@@ -377,7 +440,7 @@ void AirMassSensor::publish()
     setChanged(airmass_status, st);
 
     if (st & AirMassEKF::ST_WIND_VALID) {
-        const vector_f avg = _avg_wind.filter(wind);
+        const vector_f avg(_pipe.avgWind().windN(), _pipe.avgWind().windE(), 0.f);
         if (!(_count % 5)) {
             setChanged(airmass_inst_wind, windFromVector(wind).data());
         }
@@ -385,14 +448,13 @@ void AirMassSensor::publish()
             setChanged(airmass_avg_wind, windFromVector(avg).data());
         }
     } else {
-        _avg_wind.reset(wind);
         // no stale wind for consumers that do not check the status
         setChanged(airmass_inst_wind, WindData().data());
         setChanged(airmass_avg_wind, WindData().data());
     }
     if (!(_count % 50)) {
         ESP_LOGI(FNAME, "AirMass st %x wind %.1f/%.1f/%.2f psi %.1f° k %.3f thb %.2f° baz %.3f bgz %.3f°/s lat %.0fms", st, wind.x, wind.y,
-                 wind.z, Units::rad_to_deg(_ekf.heading()), _ekf.kTas(), Units::rad_to_deg(_ekf.pitchOffset()), _ekf.accBias(),
-                 Units::rad_to_deg(_ekf.yawRateBias()), _ekf.gnssLatency() * 1000.f);
+                 wind.z, Units::rad_to_deg(ekf.heading()), ekf.kTas(), Units::rad_to_deg(ekf.pitchOffset()), ekf.accBias(),
+                 Units::rad_to_deg(ekf.yawRateBias()), ekf.gnssLatency() * 1000.f);
     }
 }

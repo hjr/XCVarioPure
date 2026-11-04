@@ -8,26 +8,31 @@
 // The GNSS is the 1Hz NMEA velocity of a Flarm.
 //
 // usage: airmass_sim <scenario> [--lat-err ms] [--static-adj %] [--comp %] [--compass deg]
-//                     [--slip-aid 0|1] [--attitude own|device] [--max-wind-valid s] [--csv file]
+//                     [--slip-aid 0|1] [--max-wind-valid s] [--csv file]
 //   --lat-err: the true GNSS latency differs from the nominal one the filter is told
 //   --static-adj: static port error of the installation, as the TE adjustment that would cancel it
 //   --comp: configured compensation of the air mass filter and the electronic TE reference
 //   --compass: magnetic compass with this noise (plus a fixed deviation) aids the heading
 //   --slip-aid: sideslip estimate from the lateral acceleration (default on)
-//   --attitude: the estimator's own air data aided attitude (default), or the device AHRS
 //   --max-wind-valid: override the scenario's limit for the time to a valid wind
 //   --max-wind-rms: override the scenario's limit for the wind rms
+//   --max-climb-err: override the scenario's limit for the per thermal climb reading error
 //   --seed: sensor noise realisation (the scenario's air mass stays the same)
 //   --vario-agility: like the device setting, scales the vertical air movement process noise by its square
 //   --set name=value: change an assumption (see Knobs), e.g. --set k_tas=0.95 --set wind=11
 //   --warm k_tas,pitch_ofs,aoa_scale,latency_ofs: start with these learned values, like the device after a flight
 //   --flap-warm o0,..,o4: learned pitch offsets per flap position [rad] of an earlier flight (--set flaps=1)
 //   --no-learn: keep the calibration values as started
+//   --record file: write the estimator inputs like the device's "NMEA Output" Recording, for tools/airmass_sim/replay
 
 #include "AirMassEKF.h"
 #include "AirMassInput.h"
 #include "AirMassAttitude.h"
 #include "AirMassFlaps.h"
+#include "AirMassPipeline.h"
+#include "AirMassRecord.h"
+#include "ins_reference.h"
+#include "stats.h"
 #include "math/Quaternion.h"
 #include "math/vector_3d.h"
 
@@ -75,15 +80,17 @@ struct Knobs {
                               // 2 the device's flap recommendation (no sensor), 0 none
     float flap_pilot = 0.f;   // 0: the pilot's own flap schedule, 1: follows the flap recommendation, 2 s late
     float aoa_nonlin = 0.f;   // rad per CL², lift curve bending towards the stall (above CL 0.9, flaps shift that up)
+    float gyro_gate = 0.f;    // °/s, experiment: the estimator on a gyro with the device's "Gyro Gating" dead zone (the device bypasses it, AirMassSensor's gyroRates)
 };
 Knobs K;
 const std::pair<const char*, float*> KNOBS[] = {
     {"k_tas", &K.k_tas}, {"mount", &K.mount}, {"gyro_bias", &K.gyro_bias}, {"acc_bias", &K.acc_bias}, {"cla_true", &K.cla_true},
     {"polar_err", &K.polar_err}, {"mass_err", &K.mass_err}, {"tas_noise", &K.tas_noise}, {"wind", &K.wind}, {"turb", &K.turb},
     {"lift", &K.lift}, {"dolphin", &K.dolphin}, {"gps_out", &K.gps_out}, {"gps_out_len", &K.gps_out_len},
-    {"flaps", &K.flaps}, {"flap_alpha0", &K.flap_alpha0}, {"flap_aid", &K.flap_aid}, {"flap_pilot", &K.flap_pilot}, {"aoa_nonlin", &K.aoa_nonlin},
+    {"flaps", &K.flaps}, {"flap_alpha0", &K.flap_alpha0}, {"flap_aid", &K.flap_aid}, {"flap_pilot", &K.flap_pilot}, {"aoa_nonlin", &K.aoa_nonlin}, {"gyro_gate", &K.gyro_gate},
 };
 constexpr float CY_TRUE = 0.25f;   // side force slope of the "real" glider, the device assumes airmass::CY_BETA
+constexpr float CD_BETA = 0.4f;    // 1/rad², drag increase with sideslip (about +0.3 m/s sink at 8° and 100 km/h)
 constexpr float AHRS_WARMUP = 20.f; // s, attitude filters running before the estimator starts
 constexpr float COMPASS_DEV = 3.f * D2R; // residual compass deviation
 
@@ -95,6 +102,34 @@ float polar(float v, float n) {
     n = std::max(n, 0.3f);
     const float sq = std::sqrt(n);
     return n * sq * polar1g(v / sq);
+}
+
+// The polar the device works with: like S2F, the quadratic through three points of the glider's polar (here of the
+// "real" glider, scaled by the polar error), sink negative.
+airmass::Polar devicePolar() {
+    const double v[3] = {22.0, 30.0, 42.0};
+    double m[3][4];
+    for (int i = 0; i < 3; ++i) {
+        m[i][0] = 1.0;
+        m[i][1] = v[i];
+        m[i][2] = v[i] * v[i];
+        m[i][3] = -K.polar_err * polar1g(v[i]);
+    }
+    for (int c = 0; c < 3; ++c) { // Gauss-Jordan, the Vandermonde system is well conditioned enough here
+        for (int r = 0; r < 3; ++r) {
+            if (r != c) {
+                const double f = m[r][c] / m[c][c];
+                for (int k = c; k < 4; ++k) m[r][k] -= f * m[c][k];
+            }
+        }
+    }
+    airmass::Polar p;
+    p.a0 = m[0][3] / m[0][0];
+    p.a1 = m[1][3] / m[1][1];
+    p.a2 = m[2][3] / m[2][2];
+    p.v_stall = 18.f;
+    p.valid = true;
+    return p;
 }
 
 struct Segment {
@@ -180,14 +215,29 @@ struct Lpf {
     }
 };
 
+// true air velocity in NED: the body air velocity v (cos a cos b, sin b, sin a cos b) with the sideslip beta, rotated
+// by roll, pitch and heading (the estimator's AirMassEKF::airVelocity is the same without sideslip)
+void trueAirVelocity(float v, float roll, float pitch, float psi, float alpha, float beta, float out[3]) {
+    const float sp = std::sin(roll), cp = std::cos(roll);
+    const float st = std::sin(pitch), ct = std::cos(pitch);
+    const float ss = std::sin(psi), cs = std::cos(psi);
+    const float vx = v * std::cos(alpha) * std::cos(beta), vy = v * std::sin(beta), vz = v * std::sin(alpha) * std::cos(beta);
+    const float zr = sp * vy + cp * vz; // after the roll
+    const float ux = ct * vx + st * zr;
+    const float uy = cp * vy - sp * vz;
+    out[0] = cs * ux - ss * uy;
+    out[1] = ss * ux + cs * uy;
+    out[2] = -st * vx + ct * zr;
+}
+
 // solve pitch so that the body/air geometry yields the wanted air vertical speed
-float solvePitch(float v, float roll, float alpha, float va_d) {
+float solvePitch(float v, float roll, float alpha, float beta, float va_d) {
     float th = -std::asin(std::clamp(va_d / v, -0.9f, 0.9f)) + alpha * std::cos(roll);
     for (int i = 0; i < 5; ++i) {
         float out[3];
-        AirMassEKF::airVelocity(v, 1.f, roll, th, 0.f, alpha, out, nullptr);
+        trueAirVelocity(v, roll, th, 0.f, alpha, beta, out);
         float out2[3];
-        AirMassEKF::airVelocity(v, 1.f, roll, th + 1e-4f, 0.f, alpha, out2, nullptr);
+        trueAirVelocity(v, roll, th + 1e-4f, 0.f, alpha, beta, out2);
         const float d = (out2[2] - out[2]) / 1e-4f;
         th -= (out[2] - va_d) / d;
     }
@@ -295,18 +345,6 @@ struct DeviceDamp {
 };
 constexpr float DAMPING = 4.f;         // vario_delay default (TE netto)
 constexpr float AIRMASS_DAMPING = 2.f; // half of it for the air mass vario
-
-struct Stats {
-    double sum2 = 0;
-    int n = 0;
-    float maxabs = 0;
-    void add(float e) {
-        sum2 += e * e;
-        n++;
-        maxabs = std::max(maxabs, std::fabs(e));
-    }
-    float rms() const { return n ? std::sqrt(sum2 / n) : NAN; }
-};
 
 bool inWindows(float t, const std::vector<std::pair<float, float>>& w) {
     for (auto& p : w) {
@@ -457,7 +495,7 @@ std::vector<Scenario> scenarios() {
         c.eval_wind_after = 200.f;
         c.steady = {{200, 248}, {290, 380}};
         c.spikes = {{249, 275}};
-        c.max_spike = 1.2f;
+        c.max_spike = 0.6f; // the energy balance takes the inertial acceleration in gusts (0.38 m/s), 1.0 without
         c.max_wind_rms = 1.4f; // the wind estimate cannot follow a 4 m/s step within 2s, the evaluation includes it
         s.push_back(c);
     }
@@ -521,9 +559,9 @@ std::vector<Scenario> scenarios() {
         };
         c.air.vertical = [](float t) { return 1.2f * std::sin(t / 47.f) * std::sin(t / 13.f); };
         c.eval_wind_after = 300.f;
-        c.max_wind_rms = 1.2f;
+        c.max_wind_rms = 0.4f;   // 0.16 (0.25 with a latency error); 1.0 with a 2% clock error past one hour
         c.steady = {{600, 10800}};
-        c.max_vario_rms = 0.5f;
+        c.max_vario_rms = 0.25f; // 0.13
         c.check_latency = true;
         s.push_back(c);
     }
@@ -535,16 +573,17 @@ std::vector<Scenario> scenarios() {
 int main(int argc, char** argv) {
     if (argc < 2) {
         std::fprintf(stderr, "usage: %s <scenario> [--lat-err ms] [--static-adj %%] [--comp %%] [--compass deg] "
-                             "[--slip-aid 0|1] [--attitude own|device] [--max-wind-valid s] [--max-wind-rms m/s] [--csv file]\n", argv[0]);
+                             "[--slip-aid 0|1] [--max-wind-valid s] [--max-wind-rms m/s] [--csv file]\n", argv[0]);
         return 2;
     }
     const std::string which = argv[1];
     FILE* csv = nullptr;
     const char* csv_name = nullptr;
+    const char* record_name = nullptr;
     int lat_err = 0;
     float static_adj = 1.f, comp = 1.f;
-    float compass_sigma = -1.f, max_wind_valid = -1.f, max_wind_rms = -1.f;
-    bool slip_aid = true, own_attitude = true;
+    float compass_sigma = -1.f, max_wind_valid = -1.f, max_wind_rms = -1.f, max_climb_err = -1.f;
+    bool slip_aid = true;
     unsigned seed = 4711;
     float vario_agility = 1.f;
     float warm[4] = {1.f, 0.f, 1.f, 0.f};
@@ -565,8 +604,6 @@ int main(int argc, char** argv) {
             compass_sigma = std::atof(argv[i + 1]) * D2R;
         } else if (std::strcmp(argv[i], "--slip-aid") == 0) {
             slip_aid = std::atoi(argv[i + 1]) != 0;
-        } else if (std::strcmp(argv[i], "--attitude") == 0) {
-            own_attitude = std::strcmp(argv[i + 1], "device") != 0;
         } else if (std::strcmp(argv[i], "--max-wind-valid") == 0) {
             max_wind_valid = std::atof(argv[i + 1]);
         } else if (std::strcmp(argv[i], "--set") == 0) {
@@ -594,8 +631,12 @@ int main(int argc, char** argv) {
             vario_agility = std::atof(argv[i + 1]);
         } else if (std::strcmp(argv[i], "--seed") == 0) {
             seed = (unsigned)std::atoi(argv[i + 1]);
+        } else if (std::strcmp(argv[i], "--max-climb-err") == 0) {
+            max_climb_err = std::atof(argv[i + 1]);
         } else if (std::strcmp(argv[i], "--max-wind-rms") == 0) {
             max_wind_rms = std::atof(argv[i + 1]);
+        } else if (std::strcmp(argv[i], "--record") == 0) {
+            record_name = argv[i + 1];
         } else if (std::strcmp(argv[i], "--csv") == 0) {
             csv_name = argv[i + 1];
             csv = std::fopen(csv_name, "w");
@@ -620,6 +661,9 @@ int main(int argc, char** argv) {
     if (max_wind_rms > 0.f) {
         sc.max_wind_rms = max_wind_rms;
     }
+    if (max_climb_err > 0.f) {
+        sc.max_climb_err_rms = max_climb_err;
+    }
 
     std::mt19937 rng(seed);
     std::normal_distribution<float> nd(0.f, 1.f);
@@ -639,35 +683,65 @@ int main(int argc, char** argv) {
         tr.h = 900.f; // released from the winch / tow
         tr.v = NlDay::V_CRUISE;
     }
-    AirMassEKF ekf;
-    AirMassEKF::Config cfg;
-    cfg.static_comp = comp;
-    cfg.q_wind_v *= vario_agility * vario_agility; // AirMassSensor::applyConfig
-    cfg.learn_calibration = learn;
-    ekf.setConfig(cfg);
-    ekf.reset(tr.h, warm[0], warm[1], warm[3], warm[2]);
+    // the device's processing (AirMassSensor): the same pipeline, setup and warm start
+    airmass::Pipeline pipe;
+    airmass::Setup setup;
+    setup.mass = MASS * K.mass_err;
+    setup.wing_area = AREA;
+    setup.polar = devicePolar();
+    setup.vario_resp = vario_agility;
+    setup.te_adjust = comp * 100.f;
+    pipe.setLearning(learn);
+    pipe.configure(setup);
+    airmass::Pipeline::Options opts;
+    opts.slip_aid = slip_aid;
+    pipe.setOptions(opts);
+    airmass::Warm warm_start;
+    warm_start.k_tas = warm[0];
+    warm_start.pitch_ofs = warm[1];
+    warm_start.k_aoa = warm[2];
+    warm_start.lat_ofs = warm[3];
+    std::copy(std::begin(flap_warm), std::end(flap_warm), std::begin(warm_start.flap_ofs));
+    AirMassEKF& ekf = pipe.ekf();
+    FILE* rec = record_name ? std::fopen(record_name, "w") : nullptr;
+    if (record_name && !rec) {
+        std::fprintf(stderr, "cannot write %s\n", record_name);
+        return 2;
+    }
+    unsigned rec_count = 0; // like AirMassSensor's cycle count, for the 5Hz output
 
-    // sensor processing state: raw IMU into the device AHRS
+    // raw IMU into the device AHRS, whose attitude starts the estimator
     DeviceAhrs ahrs;
-    airmass::Attitude att;
-    bool att_init = false, ekf_started = false;
+    bool ekf_started = false;
     float prev_vg[3] = {NAN, NAN, NAN};
     float prev_att[3] = {NAN, NAN, NAN};
-    vector_f f_sum, w_sum, gyro_prev, gyro_dot;
+    vector_f f_sum, w_sum;
     DeviceDamp am_display(AIRMASS_DAMPING), te_lpf(DAMPING);
     Lpf te_alt(0.5f, 0.1f);
     float prev_te_alt = NAN;
     struct GnssSample { uint32_t t_obs; float vn, ve; };
     std::vector<GnssSample> gnss_q;
 
-    Stats wind_err, vario_err, te_err, spike_err, te_spike_err;
+    Stats wind_err, vario_err, te_err, spike_err, te_spike_err, avg_wind_err;
+    // the GNSS/INS reference instrument (ins_reference.h) with its own 10 Hz GNSS and sensors; its own random numbers,
+    // so it does not change the noise of ours. Its GNSS is not hit by the outage of the Flarm (--set gps_out).
+    ref::InsReference ins;
+    std::mt19937 rng_ref(seed + 1000003u);
+    struct RefFix { uint32_t t; float v[3]; float alt; };
+    std::vector<RefFix> ref_q;
+    float ref_v[3] = {}, ref_alt = NAN, ref_att_err[3] = {}, ref_alt_err = 0.f;
+    constexpr float REF_ATT_SIGMA[3] = {0.3f * D2R, 0.3f * D2R, 0.7f * D2R}; // roll, pitch, heading of its AHRS
+    constexpr float REF_ATT_TAU = 30.f, REF_ALT_SIGMA = 1.5f, REF_ALT_TAU = 20.f;
+    constexpr float REF_VEL_SIGMA = 0.08f, REF_VZ_SIGMA = 0.12f; // m/s, u-blox speed accuracy
+    constexpr uint32_t REF_LATENCY_MS = 100;
+    Stats ins_wind_err, ins_vario_err, ins_spike_err, ins_avg_wind_err;
+    const airmass::WindAverage& avg_wind = pipe.avgWind();
     float t_wind_valid = -1.f;
     float prev_gamma = 0.f, prev_wn = NAN, prev_we = NAN, prev_wd = NAN;
     int flap_lever = -1;
     float rec_since = 0.f;
     float flap_defl = 0.f;
-    airmass::FlapOffsets flap_ofs;
-    flap_ofs.load(flap_warm); // first flight: nothing learned
+    airmass::FlapOffsets& flap_ofs = pipe.flaps();
     const bool flap_offsets = K.flaps > 0.f && K.flap_aid > 0.f;
     float vdot_l = 0.f;
     int restarts = 0;
@@ -691,14 +765,18 @@ int main(int argc, char** argv) {
         }
     };
     struct PilotEval {
-        Stats cruise[2], entry[2], circle[2], avg_wind, avg_truth_dev, inst_wind;
-        // the 30s average like AirMassSensor's averaged wind (navigation) against the same average of the truth,
-        // and the instant wind against the trackable part of the turbulent truth
-        Lpf avg_n{30.f, 0.1f}, avg_e{30.f, 0.1f}, avg_tn{30.f, 0.1f}, avg_te{30.f, 0.1f}, true_n{5.f, 0.1f}, true_e{5.f, 0.1f};
-        FalseLift false_lift[2];
-        std::vector<double> th_sum[2];
+        // [0] air mass, [1] TE netto, [2] the GNSS/INS reference
+        Stats cruise[3], entry[3], circle[3], avg_wind, avg_mean[2], avg_truth_dev, inst_wind;
+        Stats ins_inst_wind, ins_avg_wind, ins_avg_mean[2], ins_inst_all, ins_avg_all, inst_all;
+        // AirMassSensor's averaged wind (navigation) against the 30s average of the truth and against the mean wind
+        // (straight flight / circling), and the instant wind against the trackable part of the turbulent truth
+        Lpf avg_tn{30.f, 0.1f}, avg_te{30.f, 0.1f}, true_n{5.f, 0.1f}, true_e{5.f, 0.1f};
+        FalseLift false_lift[3];
+        int valid_n = 0, total_n = 0, dropouts = 0;
+        bool was_valid = true;
+        std::vector<double> th_sum[3];
         std::vector<int> th_n;
-        std::vector<float> truth, shown[2];
+        std::vector<float> truth, shown[3];
     } pe;
 
     int step = 0;
@@ -718,7 +796,12 @@ int main(int argc, char** argv) {
         }
 
         // pilot: roll rate limited, speed first order
-        const float roll_target = bank_deg * D2R;
+        // sideslip: its side force (body y, opposing it) is balanced like in a real slip, the pilot lowers the wing into
+        // the relative wind so the commanded turn stays (straight flight stays straight)
+        // sideslip in body axes, like the angle of attack: the air velocity is v (cos a cos b, sin b, sin a cos b) in the body
+        const float beta = sc.slip(tr.t);
+        const float side_acc = -0.5f * RHO * tr.v * tr.v * AREA * CY_TRUE * beta / MASS;
+        const float roll_target = bank_deg * D2R + std::asin(std::clamp(-side_acc / G, -0.5f, 0.5f));
         if (K.flaps > 0.f) {
             if (K.flap_pilot > 0.f) {
                 // follows the flap box when it has shown another position for 2 s
@@ -770,15 +853,15 @@ int main(int argc, char** argv) {
         prev_gamma = tr.gamma_up;
 
         // energy balance: air relative sink rate
-        const float va_d = polar(tr.v, tr.load) + tr.v * tr.vdot / G + va_dot_wdot / G;
+        // sideslip drag (fuselage and fin side force, induced): delta CD = CD_BETA * beta², the sink rate increase is D V / (m g)
+        const float slip_sink = 0.5f * RHO * tr.v * tr.v * AREA * CD_BETA * beta * beta * tr.v / (MASS * G);
+        const float va_d = polar(tr.v, tr.load) + slip_sink + tr.v * tr.vdot / G + va_dot_wdot / G;
         tr.gamma_up = -std::asin(std::clamp(va_d / tr.v, -0.9f, 0.9f));
         const float cl = 2.f * tr.load * MASS * G / (RHO * AREA * tr.v * tr.v);
         const float cl_bend = std::max(cl - (0.9f + 1.5f * flap_defl), 0.f);
         tr.alpha = cl / K.cla_true + ALPHA0 - K.flap_alpha0 * flap_defl + K.aoa_nonlin * cl_bend * cl_bend;
-        tr.pitch = solvePitch(tr.v, tr.roll, tr.alpha, va_d);
-        // with sideslip the flight path is turned against the nose heading
-        const float beta = sc.slip(tr.t);
-        AirMassEKF::airVelocity(tr.v, 1.f, tr.roll, tr.pitch, tr.psi + beta, tr.alpha, tr.va, nullptr);
+        tr.pitch = solvePitch(tr.v, tr.roll, tr.alpha, beta, va_d);
+        trueAirVelocity(tr.v, tr.roll, tr.pitch, tr.psi, tr.alpha, beta, tr.va);
 
         tr.vg[0] = tr.va[0] + tr.wn;
         tr.vg[1] = tr.va[1] + tr.we;
@@ -790,14 +873,43 @@ int main(int argc, char** argv) {
                                     (tr.vg[2] - prev_vg[2]) / dt_truth / G - 1.f};
             float f_b[3];
             navToBody(tr.roll, tr.pitch, tr.psi, f_nav, f_b);
-            // side force opposes the sideslip
-            f_b[1] += -0.5f * RHO * tr.v * tr.v * AREA * CY_TRUE * beta / (MASS * G);
             const float rd = (tr.roll - prev_att[0]) / dt_truth, pd = (tr.pitch - prev_att[1]) / dt_truth;
             const float yd = (tr.psi - prev_att[2]) / dt_truth;
             const float sr = std::sin(tr.roll), cr = std::cos(tr.roll), sp = std::sin(tr.pitch), cp = std::cos(tr.pitch);
             const float w_b[3] = {rd - yd * sp, pd * cr + yd * sr * cp, -pd * sr + yd * cr * cp};
             f_sum += mountRotate(f_b);
             w_sum += mountRotate(w_b);
+
+            // the reference instrument at 100 Hz: its attitude errors (slowly varying), GNSS fixes with latency
+            for (int i = 0; i < 3; ++i) {
+                ref_att_err[i] += -ref_att_err[i] * dt_truth / REF_ATT_TAU + REF_ATT_SIGMA[i] * std::sqrt(2.f * dt_truth / REF_ATT_TAU) * nd(rng_ref);
+            }
+            ref_alt_err += -ref_alt_err * dt_truth / REF_ALT_TAU + REF_ALT_SIGMA * std::sqrt(2.f * dt_truth / REF_ALT_TAU) * nd(rng_ref);
+            if (step % 10 == 0) {
+                ref_q.push_back({(uint32_t)step * 10u,
+                                 {tr.vg[0] + REF_VEL_SIGMA * nd(rng_ref), tr.vg[1] + REF_VEL_SIGMA * nd(rng_ref), tr.vg[2] + REF_VZ_SIGMA * nd(rng_ref)},
+                                 tr.h + ref_alt_err + 0.3f * nd(rng_ref)});
+            }
+            while (!ref_q.empty() && ref_q.front().t + REF_LATENCY_MS <= (uint32_t)step * 10u) {
+                std::copy(std::begin(ref_q.front().v), std::end(ref_q.front().v), ref_v);
+                ref_alt = ref_q.front().alt;
+                ref_q.erase(ref_q.begin());
+            }
+            if (std::isfinite(ref_alt)) {
+                // specific force in NED, tilted by its attitude error
+                const float cy = std::cos(tr.psi), sy = std::sin(tr.psi);
+                const float e[3] = {ref_att_err[0] * cy - ref_att_err[1] * sy, ref_att_err[0] * sy + ref_att_err[1] * cy, ref_att_err[2]};
+                float fn[3], acc[3];
+                for (int i = 0; i < 3; ++i) fn[i] = f_nav[i] * G;
+                acc[0] = fn[0] + e[1] * fn[2] - e[2] * fn[1] + 0.003f * G * nd(rng_ref);
+                acc[1] = fn[1] + e[2] * fn[0] - e[0] * fn[2] + 0.003f * G * nd(rng_ref);
+                acc[2] = fn[2] + e[0] * fn[1] - e[1] * fn[0] + 0.003f * G * nd(rng_ref);
+                const float th = tr.pitch + ref_att_err[1], ps = tr.psi + ref_att_err[2];
+                const float xb[3] = {std::cos(th) * std::cos(ps), std::cos(th) * std::sin(ps), -std::sin(th)};
+                // its airspeed: the same installation error, the noise of a 100 Hz reading
+                const float tas_ref = tr.v / K.k_tas + K.tas_noise * std::sqrt(10.f) * nd(rng_ref);
+                ins.update(ref_v, ref_alt, acc, xb, tas_ref, std::remainder(ps, 6.2831853f), tr.yaw_rate);
+            }
         } else {
             f_sum += vector_f(0.f, 0.f, -1.f);
         }
@@ -807,7 +919,9 @@ int main(int argc, char** argv) {
         prev_att[0] = tr.roll;
         prev_att[1] = tr.pitch;
         prev_att[2] = tr.psi;
-        tr.yaw_rate = G * std::tan(tr.roll) / tr.v;
+        // turn rate from the body y force balance: the side force and gravity's part give the centripetal acceleration
+        // (coordinated without sideslip: g tan(roll) / V); the IMU then reads the side force, consistent with the motion
+        tr.yaw_rate = (side_acc + G * std::sin(tr.roll) * std::cos(tr.pitch)) / (tr.v * std::cos(tr.roll));
         tr.psi += tr.yaw_rate * dt_truth;
         tr.h -= tr.vg[2] * dt_truth;
         tr.xa += tr.va[0] * dt_truth;
@@ -816,7 +930,7 @@ int main(int argc, char** argv) {
         // GNSS observation enters a latency queue
         const bool gps_out = K.gps_out >= 0.f && tr.t >= K.gps_out && tr.t < K.gps_out + K.gps_out_len;
         if (step % gnss_div == 0 && !gps_out) {
-            gnss_q.push_back({(uint32_t)(tr.t * 1000.f), tr.vg[0] + gnss_sigma * nd(rng), tr.vg[1] + gnss_sigma * nd(rng)});
+            gnss_q.push_back({(uint32_t)step * 10u, tr.vg[0] + gnss_sigma * nd(rng), tr.vg[1] + gnss_sigma * nd(rng)});
         }
 
         if (step % sensor_div != 0) {
@@ -824,70 +938,25 @@ int main(int argc, char** argv) {
         }
 
         // 10Hz sensor loop: averaged IMU samples (digital low pass of the sensor) with noise and bias
-        const uint32_t now = (uint32_t)(tr.t * 1000.f);
+        // device milliseconds from the step count: the float time tr.t loses resolution in long flights
+        const uint32_t now = (uint32_t)step * 10u;
         const vector_f accel = f_sum * (1.f / sensor_div) +
                                vector_f(0.01f * nd(rng), 0.01f * nd(rng), K.acc_bias + 0.01f * nd(rng));
-        const vector_f gyro = w_sum * (1.f / sensor_div) +
-                              vector_f(0.5f * K.gyro_bias + 0.002f * nd(rng), 0.5f * K.gyro_bias + 0.002f * nd(rng), K.gyro_bias + 0.002f * nd(rng));
+        vector_f gyro = w_sum * (1.f / sensor_div) +
+                        vector_f(0.5f * K.gyro_bias + 0.002f * nd(rng), 0.5f * K.gyro_bias + 0.002f * nd(rng), K.gyro_bias + 0.002f * nd(rng));
+        for (int i = 0; i < 3; ++i) {
+            if (std::fabs(gyro[i]) < K.gyro_gate * D2R) {
+                gyro[i] = 0.f;
+            }
+        }
         f_sum = w_sum = vector_f();
         const float tas_m = tr.v / K.k_tas + K.tas_noise * nd(rng);
         ahrs.update(accel, gyro, tas_m);
 
-        // the same input conversion as the device (AirMassSensor::postProcess)
-        AirMassEKF::Input in;
-        in.time_ms = now;
-        in.dt = 0.1f;
-        in.roll = ahrs.euler.x;
-        in.pitch = ahrs.euler.y;
-        in.yaw_rate = ahrs.circle_omega;
         // static port error: the reading is off by (1 - static_adj) * V²/2g
-        in.baro_alt = tr.h - (static_adj - 1.f) * tr.v * tr.v / (2.f * G) + 0.25f * nd(rng);
-        airmass::Raw raw;
-        const vector_f down = ahrs.q.rotateInv({0, 0, 1});
-        gyro_dot = gyro_dot + ((gyro - gyro_prev) * (1.f / in.dt) - gyro_dot) * (0.1f / (0.2f + 0.1f));
-        gyro_prev = gyro;
-        for (int i = 0; i < 3; ++i) {
-            raw.f_body[i] = accel[i];
-            raw.down_body[i] = down[i];
-            raw.gyro[i] = gyro[i];
-            raw.gyro_dot[i] = gyro_dot[i];
-        }
-        raw.ias = raw.tas = tas_m; // sea level
-        if (flap_offsets && ekf_started) { // like the device: before the inputs are converted
-            // the lever sensor reads the flaps' position, between the notches while they move
-            float lever = 0.f;
-            for (int i = 1; i < 5 && flap_defl > FLAP_DEG[i - 1] * D2R; ++i) {
-                lever = i - 1 + std::min((flap_defl / D2R - FLAP_DEG[i - 1]) / (FLAP_DEG[i] - FLAP_DEG[i - 1]), 1.f);
-            }
-            if (K.flap_aid == 2.f) {
-                // no sensor (AirMassSensor's flapLever): the recommendation at the turn's load
-                lever = flapRecommendation(tas_m, 1.f / std::max(std::cos(att.roll()), 0.3f));
-            }
-            flap_ofs.update(ekf, lever);
-        }
-        raw.mass = MASS * K.mass_err;
-        raw.wing_area = AREA;
-        const airmass::AirData air = airmass::airData(raw, ekf);
-        raw.polar_sink_ias = -K.polar_err * polar(air.ias, std::max(air.n_lift, 0.3f)); // the configured polar
-        // like the device (AirMassSensor::start): the attitude starts with the estimator, from the converged device AHRS
-        if (!att_init && tr.t >= AHRS_WARMUP) {
-            att.reset(raw.down_body);
-            att_init = true;
-        }
-        // the centripetal reference needs the true airspeed, with the learned airspeed scale
-        att.update(raw.gyro, air.f_cg, ekf.kTas() * tas_m, air.alpha, in.dt);
-        if (own_attitude) {
-            in.roll = att.roll();
-            in.pitch = att.pitch();
-            in.yaw_rate = att.yawRate(raw.gyro);
-            for (int i = 0; i < 3; ++i) {
-                raw.down_body[i] = att.down()[i];
-            }
-        }
-        airmass::fillInput(raw, air, in);
-        if (!slip_aid) {
-            in.slip_sigma = 0.f;
-        }
+        const float baro_alt = tr.h - (static_adj - 1.f) * tr.v * tr.v / (2.f * G) + 0.25f * nd(rng);
+        const vector_f ahrs_down = ahrs.q.rotateInv({0, 0, 1});
+        const float device_down[3] = {ahrs_down.x, ahrs_down.y, ahrs_down.z};
         // the device AHRS has converged long before the takeoff starts the estimator
         if (tr.t < AHRS_WARMUP) {
             while (!gnss_q.empty() && gnss_q.front().t_obs + gnss_latency + lat_err <= now) {
@@ -895,38 +964,85 @@ int main(int argc, char** argv) {
             }
             continue;
         }
-        if (!ekf_started) {
-            ekf.reset(in.baro_alt, warm[0], warm[1], warm[3], warm[2]);
+
+        // like AirMassSensor::postProcess: start (or restart) from the device AHRS, then one cycle
+        if (!ekf_started || !ekf.isRunning()) {
+            restarts += ekf_started;
+            airmass::record::Start st;
+            st.t = now;
+            st.alt = baro_alt;
+            for (int i = 0; i < 3; ++i) {
+                st.down[i] = device_down[i];
+                st.gyro[i] = gyro[i];
+            }
+            st.warm = warm_start;
+            pipe.start(st.t, st.alt, st.down, st.gyro, st.warm);
+            if (rec) {
+                std::fputs(airmass::record::setup(pipe.setup()).c_str(), rec);
+                std::fputs(airmass::record::start(st).c_str(), rec);
+            }
             ekf_started = true;
         }
-        ekf.update(in);
+        airmass::Frame frame;
+        frame.time_ms = now;
+        for (int i = 0; i < 3; ++i) {
+            frame.f_body[i] = accel[i];
+            frame.gyro[i] = gyro[i];
+        }
+        frame.ias = frame.tas = tas_m; // sea level
+        frame.baro_alt = baro_alt;
+        if (flap_offsets) {
+            // the lever sensor reads the flaps' position, between the notches while they move
+            float lever = 0.f;
+            for (int i = 1; i < 5 && flap_defl > FLAP_DEG[i - 1] * D2R; ++i) {
+                lever = i - 1 + std::min((flap_defl / D2R - FLAP_DEG[i - 1]) / (FLAP_DEG[i] - FLAP_DEG[i - 1]), 1.f);
+            }
+            if (K.flap_aid == 2.f) {
+                // no sensor (AirMassSensor's flapLever): the recommendation at the turn's load
+                lever = flapRecommendation(tas_m, 1.f / std::max(std::cos(pipe.attitude().roll()), 0.3f));
+            }
+            frame.flap_lever = lever;
+        }
+        pipe.step(frame);
+        if (rec) {
+            std::fputs(airmass::record::frame(frame).c_str(), rec);
+        }
+        const AirMassEKF::Input& in = pipe.input();
         if (compass_sigma > 0.f && step % (sensor_div * 100) == 0 && std::fabs(tr.roll) < 0.17f) {
-            ekf.fuseHeading(std::remainder(tr.psi + COMPASS_DEV + compass_sigma * nd(rng), 6.2831853f), 0.15f);
+            const airmass::record::Heading h{now, std::remainder(tr.psi + COMPASS_DEV + compass_sigma * nd(rng), 6.2831853f), 0.15f};
+            pipe.heading(h.psi, h.sigma);
+            if (rec) {
+                std::fputs(airmass::record::heading(h).c_str(), rec);
+            }
         }
 
         while (!gnss_q.empty() && gnss_q.front().t_obs + gnss_latency + lat_err <= now) {
-            AirMassEKF::GnssVelocity g;
-            g.time_ms = gnss_q.front().t_obs + gnss_latency + lat_err;
-            g.latency_ms = gnss_latency;
-            g.vn = gnss_q.front().vn;
-            g.ve = gnss_q.front().ve;
-            g.sigma_h = 0.5f;
-            ekf.fuseGnss(g);
+            airmass::record::Gnss g;
+            g.v.time_ms = gnss_q.front().t_obs + gnss_latency + lat_err;
+            g.v.latency_ms = gnss_latency;
+            g.v.vn = gnss_q.front().vn;
+            g.v.ve = gnss_q.front().ve;
+            g.v.sigma_h = 0.5f;
+            pipe.gnss(g.v, g.prior, g.wn0, g.we0);
+            if (rec) {
+                std::fputs(airmass::record::gnss(g).c_str(), rec);
+            }
             gnss_q.erase(gnss_q.begin());
         }
-        if (!ekf.isRunning()) {
-            restarts++;
-            ekf.reset(in.baro_alt, warm[0], warm[1], warm[3], warm[2]);
-            flap_ofs.load(flap_warm); // like the device: start() loads the saved offsets again
+        pipe.endCycle();
+        if (rec && !(++rec_count % 2)) {
+            std::fputs(airmass::record::output(ekf).c_str(), rec);
         }
 
         // classic TE netto reference (electronic compensation, perfect polar knowledge)
-        const float te_h = te_alt.f(in.baro_alt + comp * tas_m * tas_m / (2.f * G));
+        const float te_h = te_alt.f(baro_alt + comp * tas_m * tas_m / (2.f * G));
         const float te = std::isnan(prev_te_alt) ? 0.f : (te_h - prev_te_alt) / 0.1f;
         prev_te_alt = te_h;
-        // the device netto uses the polar at the raw IAS and the body z g load (S2F::getSink(ias))
-        const float te_polar = K.polar_err * polar(tas_m, std::max(-accel.z, 0.3f));
+        // the device netto uses its polar (S2F) at the raw IAS and the body z g load (S2F::getSink(ias))
+        const float te_polar = -setup.polar.sink(tas_m, std::max(-accel.z, 0.3f));
         const float te_netto = te_lpf.f(te) + te_polar;
+        // the reference's total energy vario as netto, with the same polar as TE netto
+        const float ins_netto = ins.vario() + te_polar;
 
         // evaluation
         const uint8_t st = ekf.status();
@@ -938,19 +1054,26 @@ int main(int argc, char** argv) {
         if (tr.t > sc.eval_wind_after) {
             const float ew = std::hypot(ekf.windN() - tr.wn, ekf.windE() - tr.we);
             wind_err.add(ew);
+            ins_wind_err.add(std::hypot(ins.windN() - tr.wn, ins.windE() - tr.we));
+            if (!sc.pilot) {
+                avg_wind_err.add(std::hypot(avg_wind.windN() - tr.wn, avg_wind.windE() - tr.we));
+                ins_avg_wind_err.add(std::hypot(ins.avgWindN() - tr.wn, ins.avgWindE() - tr.we));
+            }
         }
         if (inWindows(tr.t, sc.steady)) {
             vario_err.add(am_vario - vario_true);
             te_err.add(te_netto - vario_true);
+            ins_vario_err.add(ins_netto - vario_true);
         }
         if (inWindows(tr.t, sc.spikes)) {
             spike_err.add(am_vario - vario_true);
             te_spike_err.add(te_netto - vario_true);
+            ins_spike_err.add(ins_netto - vario_true);
         }
         if (sc.pilot) {
-            const float shown[2] = {am_vario, te_netto};
+            const float shown[3] = {am_vario, te_netto, ins_netto};
             pe.truth.push_back(vario_true);
-            for (int k = 0; k < 2; ++k) {
+            for (int k = 0; k < 3; ++k) {
                 const float e = shown[k] - vario_true;
                 pe.shown[k].push_back(shown[k]);
                 if (g_pilot.mode == 0 && g_pilot.mode_t > 8.f) {
@@ -962,8 +1085,9 @@ int main(int argc, char** argv) {
                     pe.circle[k].add(e);
                     if ((int)pe.th_n.size() <= g_pilot.thermal) {
                         pe.th_n.resize(g_pilot.thermal + 1, 0);
-                        pe.th_sum[0].resize(g_pilot.thermal + 1, 0.);
-                        pe.th_sum[1].resize(g_pilot.thermal + 1, 0.);
+                        for (auto& sum : pe.th_sum) {
+                            sum.resize(g_pilot.thermal + 1, 0.);
+                        }
                     }
                     pe.th_sum[k][g_pilot.thermal] += e;
                     if (k == 0) {
@@ -971,22 +1095,44 @@ int main(int argc, char** argv) {
                     }
                 }
             }
-            const float an = pe.avg_n.f(ekf.windN()), ae = pe.avg_e.f(ekf.windE());
+            const float an = avg_wind.windN(), ae = avg_wind.windE();
             const float atn = pe.avg_tn.f(tr.wn), ate = pe.avg_te.f(tr.we);
             const float tn = pe.true_n.f(tr.wn), te = pe.true_e.f(tr.we);
             if (t_wind_valid >= 0.f && tr.t > t_wind_valid + 60.f) {
+                // what the consumers get: the outputs are invalid while the wind is not valid
+                const bool valid = st & AirMassEKF::ST_WIND_VALID;
+                pe.valid_n += valid;
+                pe.total_n++;
+                pe.dropouts += pe.was_valid && !valid;
+                pe.was_valid = valid;
+                // the reference over the whole flight, it has no validity
+                pe.ins_inst_all.add(std::hypot(ins.windN() - tn, ins.windE() - te));
+                pe.ins_avg_all.add(std::hypot(ins.avgWindN() - atn, ins.avgWindE() - ate));
+                pe.inst_all.add(std::hypot(ekf.windN() - tn, ekf.windE() - te)); // ours, also while not valid
+            }
+            if (t_wind_valid >= 0.f && tr.t > t_wind_valid + 60.f && (st & AirMassEKF::ST_WIND_VALID)) {
                 pe.avg_wind.add(std::hypot(an - atn, ae - ate));
+                pe.avg_mean[g_pilot.mode].add(std::hypot(an - sc.mean_wind[0], ae - sc.mean_wind[1]));
                 pe.avg_truth_dev.add(std::hypot(atn - sc.mean_wind[0], ate - sc.mean_wind[1]));
                 pe.inst_wind.add(std::hypot(ekf.windN() - tn, ekf.windE() - te));
+                // the reference on the same samples
+                pe.ins_inst_wind.add(std::hypot(ins.windN() - tn, ins.windE() - te));
+                pe.ins_avg_wind.add(std::hypot(ins.avgWindN() - atn, ins.avgWindE() - ate));
+                pe.ins_avg_mean[g_pilot.mode].add(std::hypot(ins.avgWindN() - sc.mean_wind[0], ins.avgWindE() - sc.mean_wind[1]));
             }
         }
         if (csv) {
-            std::fprintf(csv, "%.1f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.3f,%.3f,%.3f,%.3f,%.4f,%d,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.1f,%.2f,%.1f,%.1f,%.1f,%d,%.3f\n", tr.t, tr.wn, tr.we, ekf.windN(),
+            std::fprintf(csv, "%.1f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.3f,%.3f,%.3f,%.3f,%.4f,%d,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.1f,%.2f,%.1f,%.1f,%.1f,%d,%.3f,%.4f,%.5f\n", tr.t, tr.wn, tr.we, ekf.windN(),
                          ekf.windE(), vario_true, am_vario, te_netto, std::remainder(ekf.heading() - tr.psi, 6.2831853f),
                          ekf.kTas(), ekf.pitchOffset(), ekf.accBias(), st, std::sqrt(ekf.sigma(0) * ekf.sigma(0) + ekf.sigma(1) * ekf.sigma(1)),
                          tr.roll / D2R, tr.vg[2], ekf.vDown(), ekf.airmassVario(), (in.roll - tr.roll) / D2R,
-                         (in.pitch - tr.pitch) / D2R, tr.v, in.load_factor, tr.h, tr.xa, tr.ya, g_pilot.mode, te + te_polar);
+                         (in.pitch - tr.pitch) / D2R, tr.v, in.load_factor, tr.h, tr.xa, tr.ya, g_pilot.mode, te + te_polar,
+                         ekf.sigma(AirMassEKF::PSI), ekf.yawRateBias());
         }
+    }
+    if (rec) {
+        std::fputs(airmass::record::stop((uint32_t)step * 10u).c_str(), rec);
+        std::fclose(rec);
     }
     if (csv) {
         std::fclose(csv);
@@ -1010,6 +1156,9 @@ int main(int argc, char** argv) {
                 sc.name.c_str(), t_wind_valid, wind_err.rms(), wind_err.maxabs, vario_err.rms(), te_err.rms(),
                 spike_err.maxabs, te_spike_err.maxabs, ekf.kTas(), k_err, ekf.pitchOffset(), ekf.aoaScale(), CLA_MODEL / K.cla_true, ekf.accBias(),
                 ekf.rejectedGnss(), restarts);
+
+    std::printf("  reference (GNSS/INS): wind rms %.2f m/s, averaged wind rms %.2f, vario rms %.2f, spike max %.2f m/s\n", ins_wind_err.rms(),
+                ins_avg_wind_err.rms(), ins_vario_err.rms(), ins_spike_err.maxabs);
 
     bool ok = true;
     auto check = [&](bool cond, const char* what) {
@@ -1052,18 +1201,18 @@ int main(int argc, char** argv) {
     }
     if (sc.pilot) {
         // per thermal average climb reading error, and the lag of the display
-        Stats climb[2];
+        Stats climb[3];
         int used = 0;
         for (size_t i = 0; i < pe.th_n.size(); ++i) {
             if (pe.th_n[i] >= 100) {
                 used++;
-                for (int k = 0; k < 2; ++k) {
+                for (int k = 0; k < 3; ++k) {
                     climb[k].add(pe.th_sum[k][i] / pe.th_n[i]);
                 }
             }
         }
-        int lag[2] = {};
-        for (int k = 0; k < 2; ++k) {
+        int lag[3] = {};
+        for (int k = 0; k < 3; ++k) {
             double best = 1e30;
             for (int l = 0; l <= 40; ++l) {
                 double sum = 0.;
@@ -1084,8 +1233,19 @@ int main(int argc, char** argv) {
         std::printf("  climb reading per thermal (%d thermals): rms %.2f / %.2f, max %.2f / %.2f; display lag %.1f / %.1f s\n", used,
                     climb[0].rms(), climb[1].rms(), climb[0].maxabs, climb[1].maxabs, lag[0] * 0.1f, lag[1] * 0.1f);
         std::printf("  wind: 30s average %.2f m/s off the averaged truth (max %.2f; the averaged truth itself is %.2f off the mean wind), "
-                    "instant %.2f m/s off the 5s smoothed truth; final altitude %.0f m\n",
-                    pe.avg_wind.rms(), pe.avg_wind.maxabs, pe.avg_truth_dev.rms(), pe.inst_wind.rms(), tr.h);
+                    "averaged wind off the mean wind %.2f / %.2f m/s (straight / circling), "
+                    "instant %.2f m/s off the 5s smoothed truth; final altitude %.0f m\n"
+                    "  wind valid %.0f%% of the flight (after the first minute valid), %d dropouts; instant over the whole flight %.2f m/s\n",
+                    pe.avg_wind.rms(), pe.avg_wind.maxabs, pe.avg_truth_dev.rms(), pe.avg_mean[0].rms(), pe.avg_mean[1].rms(),
+                    pe.inst_wind.rms(), tr.h, 100.f * pe.valid_n / std::max(pe.total_n, 1), pe.dropouts, pe.inst_all.rms());
+        std::printf("  reference (GNSS/INS TE netto, 10 Hz GNSS): cruise rms %.2f, false lift events %d, thermal entry rms %.2f (max %.2f), "
+                    "circling rms %.2f, climb reading rms %.2f (max %.2f), display lag %.1f s\n",
+                    pe.cruise[2].rms(), pe.false_lift[2].events, pe.entry[2].rms(), pe.entry[2].maxabs, pe.circle[2].rms(), climb[2].rms(),
+                    climb[2].maxabs, lag[2] * 0.1f);
+        std::printf("  reference wind (where ours is valid / whole flight): instant %.2f / %.2f, 30s average %.2f / %.2f m/s, "
+                    "averaged off the mean wind %.2f / %.2f (straight / circling)\n",
+                    pe.ins_inst_wind.rms(), pe.ins_inst_all.rms(), pe.ins_avg_wind.rms(), pe.ins_avg_all.rms(), pe.ins_avg_mean[0].rms(),
+                    pe.ins_avg_mean[1].rms());
         if (sc.max_climb_err_rms > 0.f) {
             check(used >= 3 && climb[0].rms() <= sc.max_climb_err_rms, "thermal climb reading off");
         }
@@ -1093,7 +1253,17 @@ int main(int argc, char** argv) {
             check(pe.avg_wind.rms() <= sc.max_mean_wind_rms, "averaged wind too far off");
         }
         check(pe.cruise[0].rms() <= pe.cruise[1].rms() + 0.05f, "cruise vario worse than TE netto");
+        // against the GNSS/INS reference with its own 10 Hz GNSS (ins_reference.h)
+        check(pe.cruise[0].rms() < pe.cruise[2].rms() && pe.entry[0].rms() < pe.entry[2].rms() && pe.circle[0].rms() < pe.circle[2].rms(),
+              "vario worse than the GNSS/INS reference");
+        check(pe.inst_all.rms() < pe.ins_inst_all.rms() && pe.avg_wind.rms() < pe.ins_avg_wind.rms(), "wind worse than the GNSS/INS reference");
+        // the uncertainty grows in long straight glides, the wind goes invalid there, but must not flicker (17 per hour
+        // without the hysteresis)
+        check(pe.dropouts <= 12, "wind validity flickers");
         check(pe.false_lift[0].events <= pe.false_lift[1].events, "more false lift than TE netto");
+    }
+    if (avg_wind_err.n) {
+        std::printf("  averaged wind rms %.2f m/s (max %.2f)\n", avg_wind_err.rms(), avg_wind_err.maxabs);
     }
     std::printf("  gnss latency: nominal %d ms, true %d ms, estimated %d ms\n", gnss_latency, gnss_latency + lat_err,
                 (int)std::lround(ekf.gnssLatency() * 1000.f));

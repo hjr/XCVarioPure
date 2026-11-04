@@ -27,7 +27,7 @@ class AirMassEKF {
         float dt = 0.1f;        // s
         float roll = 0.f;       // rad, right wing down positive
         float pitch = 0.f;      // rad, nose up positive
-        float yaw_rate = 0.f;   // rad/s, rotation around the nav down axis (clockwise positive)
+        float yaw_rate = 0.f;   // rad/s, heading rate (clockwise positive), with the body z gyro bias left in
         float acc_down = 0.f;   // m/s², inertial acceleration NED down component (gravity removed)
         float acc_long = 0.f;   // m/s², inertial acceleration along the air velocity (gravity removed)
         float tas = 0.f;        // m/s, unfiltered
@@ -56,13 +56,15 @@ class AirMassEKF {
         float q_alt = 0.01f;        // m²/s
         float q_vd = 0.25f;         // (m/s)²/s accelerometer noise
         float q_baz = 1e-5f;        // (m/s²)²/s accel bias random walk
-        float q_bgz = 1e-8f;        // (rad/s)²/s yaw rate bias random walk (temperature drift)
+        float q_bgz = 1e-8f;        // (rad/s)²/s body z gyro bias random walk (temperature drift)
         float q_tau = 1e-6f;        // s²/s GNSS latency correction random walk
         float q_kcl = 1e-8f;        // 1/s angle of attack scale random walk
         float r_baro = 0.09f;       // m² baro altitude noise
         float sigma_pitch = 0.017f; // rad AHRS pitch noise in calm straight flight
         float sigma_energy = 0.5f;  // m/s energy constraint noise (polar error, TAS derivative)
-        float energy_tau = 0.5f;    // s low pass for the energy balance terms (TAS derivative and vertical speed alike)
+        float energy_tau = 0.5f;    // s low pass for the energy balance terms (acceleration and vertical speed alike)
+        float kinetic_tau = 30.f;   // s, low pass of the airspeed derivative minus the inertial acceleration (attitude error)
+        float gust_acc = 1.5f;      // m/s², transient disagreement at which the inertial acceleration takes over (gust)
         float sigma_air = 0.25f;    // m/s air vector model error in the GNSS fusion (plus 1% of TAS)
         float static_comp = 1.f;    // static port error compensation, like the TE adjustment (1 = lossless):
                                     // baro altitude corrected by (static_comp - 1) * V²/2g
@@ -108,7 +110,8 @@ class AirMassEKF {
     float alphaOf(float aoa_model) const { return aoa_model * _x[KCL] - _x[THB]; }
     float vDown() const { return _x[VD]; }
     float accBias() const { return _x[BAZ]; }
-    float yawRateBias() const { return _x[BGZ]; }
+    float headingRate() const { return _heading_rate; } // rad/s, the heading rate of the last cycle, without the gyro bias
+    float yawRateBias() const { return _x[BGZ]; } // rad/s, body z gyro bias (yaw_rate input minus the true heading rate in level flight)
     float latencyOffset() const { return _x[TAU]; } // s, learned correction to the nominal GNSS latency
     float gnssLatency() const { return std::max(_gnss_nominal_ms * 1e-3f + _x[TAU], 0.f); } // s, effective
     float sigma(int i) const { return std::sqrt(_cov(i, i)); }
@@ -143,7 +146,8 @@ class AirMassEKF {
     void predict(const Input& in);
     void fuseBaro(float alt);
     void fuseKinematic(const Input& in, const float va[3], const float dalpha[3]);
-    void fuseEnergy(const Input& in, const float va[3]);
+    void updateKinetic(const Input& in, const float va[3]);
+    void fuseEnergy(const Input& in);
     void alignFromPrior(const GnssVelocity& g, float wn0, float we0);
     void alignFromHeading(const GnssVelocity& g, const Snapshot& s);
     void accumulateAlignment(const GnssVelocity& g, const Snapshot& s);
@@ -153,6 +157,7 @@ class AirMassEKF {
     bool delayedState(uint32_t t, Delayed& d) const;
     void wrapPsi();
     void clampCalibration();
+    void updateWindValid();
     void sanitize();
 
     Config _cfg;
@@ -162,9 +167,14 @@ class AirMassEKF {
     int _hist_head = -1;
     int _hist_level = 0;
     float _psi_gyro = 0.f;
+    float _heading_rate = 0.f;
     float _tas_f = NAN;  // energy balance low pass of TAS
     float _tas_dot_f = 0.f;
     float _vd_f = 0.f;   // matched low pass of the vertical speed
+    float _sink_f = NAN; // matched low pass of the polar sink
+    float _acc_long_f = NAN; // matched low pass of the inertial acceleration along the air velocity
+    float _acc_corr = 0.f;   // low passed airspeed derivative minus inertial acceleration (attitude error)
+    float _acc_kin = 0.f;    // acceleration along the air velocity for the energy balance (updateKinetic)
     float _acc_mem = 0.f;// decaying peak of the longitudinal acceleration (AHRS disturbance memory)
     float _wind_prev[2] = {};
     float _wind_rate[2] = {};
@@ -192,4 +202,5 @@ class AirMassEKF {
     uint16_t _vertical_settle = 0;
     bool _running = false;
     bool _aligned = false;
+    bool _wind_valid = false;
 };
