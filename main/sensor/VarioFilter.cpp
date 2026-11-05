@@ -129,7 +129,11 @@ void VarioFilter::postProcess()
     te_gr += ((TEAVG - te_gr)) / vario_delay.get();
     _got_positive = te_gr > .0f && te_vario.get() < .0f;
 
-    _polar_sink = Speed2Fly.getSink(ias.get());
+    // the polar is over IAS: at altitude the same IAS (same lift coefficient and glide ratio) flies faster, the sink
+    // rate grows with TAS/IAS like the total energy rate it is compared with (about 16% at 3000 m)
+    const mps_t polar_ias = ias.get();
+    const float tas_per_ias = (polar_ias > 10.f && tas.getValid()) ? tas.get() / polar_ias : 1.f;
+    _polar_sink = Speed2Fly.getSink(polar_ias) * tas_per_ias;
     mps_t te_ne = te_gr - _polar_sink;
 
     // calc the climb score
@@ -137,7 +141,7 @@ void VarioFilter::postProcess()
         // achieved gross climb integral
         _Gact.filter(std::max(te_gr, 0.f));
         // Gmax​(N)=N−S(vopt​)); max. gross achievable integral with current load and net vario
-        _Goptimal.filter(std::max(te_ne + Speed2Fly.getMinsink(), .1f));
+        _Goptimal.filter(std::max(te_ne + Speed2Fly.getMinsink() * tas_per_ias, .1f));
     }
     else {
         _Gact.filter(.0f);
