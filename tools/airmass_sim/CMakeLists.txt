@@ -44,6 +44,10 @@ target_include_directories(airmass_replay PRIVATE ${REPO}/main/airmass ${REPO}/c
 target_compile_options(airmass_replay PRIVATE -Wall -Wextra -fsingle-precision-constant
     -include ${CMAKE_CURRENT_SOURCE_DIR}/stub/host_compat.h)
 
+# the GNSS/INS reference (ins_reference.h) on replayed $SENS flights (sens2rec.py, airmass_replay)
+add_executable(ref_replay ref_replay.cpp)
+target_compile_options(ref_replay PRIVATE -Wall -Wextra -fsingle-precision-constant)
+
 enable_testing()
 add_test(NAME input_conversion COMMAND input_test)
 foreach(scenario straight thermal gust pullup slip nl endurance)
