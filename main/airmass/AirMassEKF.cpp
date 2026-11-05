@@ -10,7 +10,6 @@ constexpr float KTAS_MIN = 0.8f, KTAS_MAX = 1.25f;
 constexpr float THB_MAX = 0.25f; // rad
 constexpr float TAU_MIN = -0.5f, TAU_MAX = 1.f; // s, GNSS latency correction
 constexpr float TAU_SIGMA0 = 0.3f; // s, initial uncertainty of the latency correction
-constexpr float KCL_MIN = 0.8f, KCL_MAX = 1.25f;
 constexpr float SLIP_ALIGN_MAX = 0.1f; // rad, slipping samples do not go into the turn alignment
 constexpr uint32_t HEADING_AID_AGE_MS = 3000;
 
@@ -67,6 +66,10 @@ void AirMassEKF::reset(float baro_alt, float k_tas, float pitch_ofs, float laten
     _sink_f = _sink_p = NAN;
     _acc_corr = 0.f;
     _acc_kin = 0.f;
+    _a_air = 0.f;
+    _anchor = 0.f;
+    _wd_energy = _wd_energy_plain = NAN;
+    _ww_lp = _blend_lp = 0.f;
     _acc_mem = 0.f;
     _gnss_rejects = 0;
     _gnss_consecutive_rejects = 0;
@@ -299,12 +302,23 @@ void AirMassEKF::fuseKinematic(const Input& in, const float va[3], const float d
 // takes over as the transient part grows towards gust_acc.
 void AirMassEKF::updateKinetic(const Input& in, const float va[3]) {
     const float k = _x[KTAS];
-    const float a_air = k * _tas_dot_f + (va[0] * _wind_rate[0] + va[1] * _wind_rate[1]) / std::max(k * in.tas, 1.f);
+    float work = _cfg.wind_work * (va[0] * _wind_rate[0] + va[1] * _wind_rate[1]) / std::max(k * in.tas, 1.f);
+    if (_cfg.wind_work_hp > 0.f) {
+        _ww_lp += (work - _ww_lp) * in.dt / (_cfg.wind_work_hp + in.dt);
+        work -= _ww_lp;
+    }
+    const float a_air = k * _tas_dot_f + work;
     const float d = a_air - _acc_long_f;
     _acc_corr += (d - _acc_corr) * in.dt / (_cfg.kinetic_tau + in.dt);
     const float gust = d - _acc_corr;
     const float w = std::clamp(std::fabs(gust) / _cfg.gust_acc, 0.f, 1.f);
-    _acc_kin = a_air - w * gust;
+    float corr = -w * gust;
+    if (_cfg.blend_hp > 0.f) {
+        _blend_lp += (corr - _blend_lp) * in.dt / (_cfg.blend_hp + in.dt);
+        corr -= _blend_lp;
+    }
+    _acc_kin = a_air + corr;
+    _a_air = a_air;
 }
 
 // Pitch independent energy balance: Wd = vd - s(V,n) - V * a/g, a the acceleration along the air velocity
@@ -320,14 +334,24 @@ void AirMassEKF::fuseEnergy(const Input& in) {
     _sink_p = std::isnan(_sink_p) ? in.polar_sink : _sink_p + (in.polar_sink - _sink_p) * ap;
     _sink_f = std::isnan(_sink_f) ? _sink_p : _sink_f + (_sink_p - _sink_f) * ae;
     const float z = -(_sink_f + v * _acc_kin / G0);
+    _wd_energy = z + _vd_f;
+    _wd_energy_plain = -(_sink_f + v * _a_air / G0) + _vd_f;
     float h[NX] = {};
     h[WD] = 1.f;
     h[VD] = -1.f; // approximately, the low passed vertical speed follows the state
     const float y = z - (_x[WD] - _vd_f);
     // airspeed changes not explained by inertial acceleration indicate horizontal gusts
     const float gust = std::fabs(k * _tas_dot_f - in.acc_long);
-    const float sig = _cfg.sigma_energy * (1.f + 2.f * std::fabs(in.load_factor - 1.f) + 1.5f * gust);
-    ekfScalarUpdate(_cov, _x, h, y, sig * sig, _cfg.gate);
+    const float sig = _cfg.sigma_energy * (1.f + _cfg.energy_load_weight * std::fabs(in.load_factor - 1.f) + _cfg.energy_gust_weight * gust);
+    ekfScalarUpdate(_cov, _x, h, y, sig * sig, _cfg.energy_gate);
+
+    // The energy balance is down weighted in gusts and at high load factors, which come with the lift in thermals: on
+    // its own the estimate then reads low over minutes. The output follows the plain energy balance (the airspeed
+    // derivative, equal weight) over anchor_tau, the estimator keeps the fast part (gust rejection, pull-ups).
+    if (_cfg.anchor_tau > 0.f) {
+        const float wd_plain = -(_sink_f + v * _a_air / G0) + _vd_f;
+        _anchor += (wd_plain - _x[WD] - _anchor) * in.dt / (_cfg.anchor_tau + in.dt);
+    }
 }
 
 const AirMassEKF::Snapshot* AirMassEKF::findSnapshot(uint32_t t) const {
@@ -565,7 +589,7 @@ void AirMassEKF::clampCalibration() {
     _x[KTAS] = std::clamp(_x[KTAS], KTAS_MIN, KTAS_MAX);
     _x[THB] = std::clamp(_x[THB], -THB_MAX, THB_MAX);
     _x[TAU] = std::clamp(_x[TAU], TAU_MIN, TAU_MAX);
-    _x[KCL] = std::clamp(_x[KCL], KCL_MIN, KCL_MAX);
+    _x[KCL] = std::clamp(_x[KCL], _cfg.kcl_min, _cfg.kcl_max);
 }
 
 void AirMassEKF::setPitchOffset(float thb, float sigma) {

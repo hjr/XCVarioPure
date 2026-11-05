@@ -77,6 +77,10 @@ public:
         bool slip_aid = true; // sideslip uncertainty from the lateral acceleration
         float lag_static = NAN, lag_pitot = NAN; // s, pneumatic lags the estimator assumes (NAN: its defaults)
         float degraded_factor = NAN, degraded_time = NAN; // the degraded wind range (NAN: the estimator's defaults)
+        float energy_load_weight = NAN, energy_gust_weight = NAN; // energy balance noise growth (NAN: the defaults)
+        float anchor_tau = NAN; // s, output anchor to the plain energy balance (NAN: the default)
+        float energy_gate = NAN, kinetic_tau = NAN; // energy balance gate [sigma], slow kinetic correction [s]
+        float wind_work = NAN, wind_work_hp = NAN, blend_hp = NAN; // wind work weight and high pass [s], blend high pass [s]
     };
 
     void configure(const Setup& s) {
@@ -97,6 +101,30 @@ public:
         }
         if (std::isfinite(_opt.degraded_time)) {
             cfg.degraded_time = _opt.degraded_time;
+        }
+        if (std::isfinite(_opt.energy_load_weight)) {
+            cfg.energy_load_weight = _opt.energy_load_weight;
+        }
+        if (std::isfinite(_opt.energy_gust_weight)) {
+            cfg.energy_gust_weight = _opt.energy_gust_weight;
+        }
+        if (std::isfinite(_opt.anchor_tau)) {
+            cfg.anchor_tau = _opt.anchor_tau;
+        }
+        if (std::isfinite(_opt.energy_gate)) {
+            cfg.energy_gate = _opt.energy_gate;
+        }
+        if (std::isfinite(_opt.kinetic_tau)) {
+            cfg.kinetic_tau = _opt.kinetic_tau;
+        }
+        if (std::isfinite(_opt.wind_work)) {
+            cfg.wind_work = _opt.wind_work;
+        }
+        if (std::isfinite(_opt.wind_work_hp)) {
+            cfg.wind_work_hp = _opt.wind_work_hp;
+        }
+        if (std::isfinite(_opt.blend_hp)) {
+            cfg.blend_hp = _opt.blend_hp;
         }
         _ekf.setConfig(cfg);
     }
@@ -153,7 +181,7 @@ public:
         raw.mass = _setup.mass;
         raw.wing_area = _setup.wing_area;
         const AirData air = airData(raw, _ekf);
-        raw.polar_sink_ias = _setup.polar.sink(air.ias, air.n_lift);
+        raw.polar_sink_ias = _setup.polar.sink(_ekf.config().polar_calibrated > 0.5f ? air.ias : f.ias, air.n_lift);
 
         // attitude: aided by the air velocity direction, with the estimator's body z gyro bias (the gravity reference
         // cannot learn it in straight flight)

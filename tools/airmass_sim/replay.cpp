@@ -6,10 +6,12 @@
 //
 // usage: airmass_replay <log> [--csv file] [--check m/s] [--warm k_tas,pitch_ofs,aoa_scale,latency_ofs] [--no-learn]
 //   --csv: per cycle t, air mass vario, wind N/E/D, status, heading, k_tas, pitch offset, latency, averaged wind
-//          N/E, roll, pitch, the device's vario where recorded
+//          N/E, roll, pitch, the device's vario where recorded, the estimator's polar sink (down positive), load
+//          factor, vertical speed (down), acceleration along the air velocity, vertical acceleration (down)
 //   --check: fail when the replayed vario differs from the device's by more than this, or a status differs
 //   --warm: start with these learned values instead of the recorded ones (what a new calibration would do)
 //   --no-learn: keep the calibration values as started
+//   --set name=value: experiment with an estimator setting (AirMassEKF::Config), e.g. --set sigma_pitch=0.05
 
 #include "AirMassPipeline.h"
 #include "AirMassRecord.h"
@@ -21,8 +23,41 @@
 #include <cstdio>
 #include <cstring>
 #include <string>
+#include <utility>
+#include <vector>
 
 using Units::rad_to_deg;
+
+namespace {
+// estimator settings for experiments (--set), applied after every setup
+bool applySettings(AirMassEKF& ekf, const std::vector<std::pair<std::string, float>>& settings) {
+    AirMassEKF::Config c = ekf.config();
+    const std::pair<const char*, float*> known[] = {
+        {"sigma_pitch", &c.sigma_pitch}, {"sigma_energy", &c.sigma_energy}, {"energy_tau", &c.energy_tau}, {"q_wind_v", &c.q_wind_v},
+        {"q_wind_h", &c.q_wind_h}, {"q_thb", &c.q_thb}, {"q_kcl", &c.q_kcl}, {"lag_static", &c.lag_static}, {"lag_pitot", &c.lag_pitot},
+        {"sigma_air", &c.sigma_air}, {"gust_acc", &c.gust_acc}, {"kinetic_tau", &c.kinetic_tau}, {"r_baro", &c.r_baro},
+        {"wind_work", &c.wind_work}, {"gate", &c.gate}, {"energy_load_weight", &c.energy_load_weight},
+        {"energy_gust_weight", &c.energy_gust_weight}, {"anchor_tau", &c.anchor_tau},
+        {"kcl_min", &c.kcl_min}, {"kcl_max", &c.kcl_max}, {"energy_gate", &c.energy_gate},
+        {"wind_work_hp", &c.wind_work_hp}, {"blend_hp", &c.blend_hp}, {"polar_calibrated", &c.polar_calibrated},
+    };
+    for (const auto& s : settings) {
+        bool found = false;
+        for (const auto& k : known) {
+            if (s.first == k.first) {
+                *k.second = s.second;
+                found = true;
+            }
+        }
+        if (!found) {
+            std::fprintf(stderr, "unknown setting %s\n", s.first.c_str());
+            return false;
+        }
+    }
+    ekf.setConfig(c);
+    return true;
+}
+} // namespace
 
 int main(int argc, char** argv) {
     if (argc < 2) {
@@ -33,6 +68,7 @@ int main(int argc, char** argv) {
     float check = -1.f;
     bool override_warm = false, learn = true;
     float warm_override[4] = {1.f, 0.f, 1.f, 0.f};
+    std::vector<std::pair<std::string, float>> settings;
     for (int i = 2; i < argc; ++i) {
         if (std::strcmp(argv[i], "--no-learn") == 0) {
             learn = false;
@@ -40,6 +76,13 @@ int main(int argc, char** argv) {
             csv_name = argv[++i];
         } else if (i + 1 < argc && std::strcmp(argv[i], "--check") == 0) {
             check = std::atof(argv[++i]);
+        } else if (i + 1 < argc && std::strcmp(argv[i], "--set") == 0) {
+            const char* eq = std::strchr(argv[++i], '=');
+            if (!eq) {
+                std::fprintf(stderr, "--set needs name=value\n");
+                return 2;
+            }
+            settings.emplace_back(std::string(argv[i], eq - argv[i]), std::atof(eq + 1));
         } else if (i + 1 < argc && std::strcmp(argv[i], "--warm") == 0) {
             override_warm = std::sscanf(argv[++i], "%f,%f,%f,%f", &warm_override[0], &warm_override[1], &warm_override[2], &warm_override[3]) == 4;
         } else {
@@ -58,7 +101,8 @@ int main(int argc, char** argv) {
         return 2;
     }
     if (csv) {
-        std::fprintf(csv, "t_s,vario,wind_n,wind_e,wind_d,status,heading_deg,k_tas,pitch_ofs_deg,latency_ms,avg_wind_n,avg_wind_e,roll_deg,pitch_deg,device_vario\n");
+        std::fprintf(csv, "t_s,vario,wind_n,wind_e,wind_d,status,heading_deg,k_tas,pitch_ofs_deg,latency_ms,avg_wind_n,avg_wind_e,roll_deg,pitch_deg,device_vario,"
+                          "polar_sink,load_factor,vd,acc_long,acc_down,wd_energy,wd_energy_plain\n");
     }
 
     airmass::Pipeline pipe;
@@ -91,7 +135,9 @@ int main(int argc, char** argv) {
         if (std::isfinite(device_vario)) {
             std::fprintf(csv, "%.2f", device_vario);
         }
-        std::fputc('\n', csv);
+        // the estimator's inputs and vertical speed, for diagnostics
+        std::fprintf(csv, ",%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f\n", i.polar_sink, i.load_factor, ekf.vDown(), i.acc_long, i.acc_down, ekf.energyWd(),
+                     ekf.energyWdPlain());
     };
 
     char line[512];
@@ -113,6 +159,9 @@ int main(int argc, char** argv) {
         }
         if (rec::decode(s, setup)) {
             pipe.configure(setup);
+            if (!applySettings(pipe.ekf(), settings)) {
+                return 2;
+            }
             configured = true;
         } else if (rec::decode(s, st)) {
             endCycle();

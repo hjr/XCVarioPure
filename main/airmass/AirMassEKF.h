@@ -63,8 +63,22 @@ class AirMassEKF {
         float sigma_pitch = 0.017f; // rad AHRS pitch noise in calm straight flight
         float sigma_energy = 0.5f;  // m/s energy constraint noise (polar error, TAS derivative)
         float energy_tau = 0.5f;    // s low pass for the energy balance terms (acceleration and vertical speed alike)
-        float kinetic_tau = 30.f;   // s, low pass of the airspeed derivative minus the inertial acceleration (attitude error)
+        float kinetic_tau = 10.f;   // s, low pass of the airspeed derivative minus the inertial acceleration (attitude error)
         float gust_acc = 1.5f;      // m/s², transient disagreement at which the inertial acceleration takes over (gust)
+        float wind_work = 1.f;      // weight of the work of the estimated wind change in the energy balance (va . dW/dt)
+        float wind_work_hp = 10.f;  // s, high pass of that term (0: none): only its fast part (gusts); slower, it is mostly
+                                    // the wobble of the estimated wind, which drifted the vario by 0.1 m/s over minutes
+        float polar_calibrated = 1.f; // 1: the polar at the calibrated IAS (k_tas), 0: at the measured IAS like S2F
+        float blend_hp = 120.f;     // s, high pass of the kinetic blend's gust correction (0: none): a gust is short, what the
+                                    // blend keeps correcting for minutes is attitude error
+        // The energy balance gets the same weight all the time, ungated: down weighting it in gusts or at high load
+        // factors, or gating its innovations, drops it just when the lift comes (turbulence and pull-ups in thermals):
+        // on real flights (tools/airmass_sim/analyze_sens.py) the vario then read climbs 0.17 m/s low and wandered 3x
+        // more than TE netto over minutes. The gust rejection is the kinetic blend (gust_acc) alone.
+        float energy_load_weight = 0.f; // energy balance noise growth with the load factor deviation |n - 1|
+        float energy_gust_weight = 0.f; // energy balance noise growth with the airspeed/inertia disagreement [per m/s²]
+        float kcl_min = 0.8f, kcl_max = 1.25f; // range of the angle of attack scale
+        float anchor_tau = 0.f;     // s, the vario output follows the plain energy balance over this time (0: off)
         float sigma_air = 0.25f;    // m/s air vector model error in the GNSS fusion (plus 1% of TAS)
         // pneumatic lags (lines and sensors), not measured yet: 0.2 s each has the smallest worst case pull-up error
         // over 0..0.3 s static and 0..0.6 s pitot lag in tools/airmass_sim (an overestimate costs less than none)
@@ -74,6 +88,7 @@ class AirMassEKF {
         float static_comp = 1.f;    // static port error compensation, like the TE adjustment (1 = lossless):
                                     // baro altitude corrected by (static_comp - 1) * V²/2g
         float gate = 5.f;           // innovation gate in sigma
+        float energy_gate = 100.f;  // innovation gate of the energy balance in sigma (effectively none, see above)
         bool learn_calibration = true; // false: airspeed scale, pitch/AoA offset, AoA scale and latency stay as started
         float sigma_wind_valid = 1.5f; // m/s horizontal wind validity threshold
         float sigma_psi_valid = 0.17f; // rad heading validity threshold
@@ -88,6 +103,7 @@ class AirMassEKF {
     AirMassEKF();
 
     void setConfig(const Config& c) { _cfg = c; }
+    const Config& config() const { return _cfg; }
 
     // Start the vertical part, warm start with learned calibration values
     void reset(float baro_alt, float k_tas = 1.f, float pitch_ofs = 0.f, float latency_ofs = 0.f, float k_aoa = 1.f);
@@ -107,7 +123,11 @@ class AirMassEKF {
     float windN() const { return _x[WN]; }
     float windE() const { return _x[WE]; }
     float windD() const { return _x[WD]; }
-    float airmassVario() const { return -_x[WD]; } // up positive
+    float airmassVario() const { return -(_x[WD] + _anchor); } // up positive, anchored to the plain energy balance
+    // diagnostics: the energy balance's vertical air movement (Wd, down positive) with the kinetic blend, and plain
+    // (the airspeed derivative only), of the last cycle
+    float energyWd() const { return _wd_energy; }
+    float energyWdPlain() const { return _wd_energy_plain; }
     float heading() const { return _x[PSI]; }
     float kTas() const { return _x[KTAS]; }
     float pitchOffset() const { return _x[THB]; }
@@ -184,6 +204,10 @@ class AirMassEKF {
     float _acc_long_f = NAN; // matched low pass of the inertial acceleration along the air velocity
     float _acc_corr = 0.f;   // low passed airspeed derivative minus inertial acceleration (attitude error)
     float _acc_kin = 0.f;    // acceleration along the air velocity for the energy balance (updateKinetic)
+    float _a_air = 0.f;      // its airspeed derivative part, without the gust blend
+    float _anchor = 0.f;     // m/s, low pass of the plain energy balance minus the estimate (anchor_tau)
+    float _wd_energy = NAN, _wd_energy_plain = NAN; // diagnostics, energyWd()
+    float _ww_lp = 0.f, _blend_lp = 0.f; // low passes of the wind work and the blend correction (wind_work_hp, blend_hp)
     float _acc_mem = 0.f;// decaying peak of the longitudinal acceleration (AHRS disturbance memory)
     float _wind_prev[2] = {};
     float _wind_rate[2] = {};

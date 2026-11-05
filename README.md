@@ -88,6 +88,7 @@ The ESP32 integrates Bluetooth, Wi-Fi, and multiple serial interfaces, allowing 
   - flapped gliders: the pitch/AoA offset is learned per flap position (flaps shift the fuselage angle of attack by degrees); with a flap sensor it follows the lever, without one the flap recommendation (the glider's flap speeds; the Flap-Assist display need not be enabled), which works as long as the flaps are set roughly as recommended
   - a calibrated compass aligns the heading before the first turn
   - in gusts the energy balance takes the inertial acceleration instead of the airspeed change, so a horizontal gust neither shows as lift nor gets the energy balance distrusted
+  - the energy balance always gets the same weight: trusting it less in gusts or pull-ups, which come with the lift in thermals, read climbs about 0.17 m/s low on real flights; its gust corrections (the inertial acceleration, the work of the wind change) count only for seconds, over minutes they were attitude errors and the wobble of the estimated wind, and the vario drifted twice as much as TE netto
   - models the pneumatic lag of the static and pitot lines (0.2 s each, not measured yet), so pull-ups and thermal entries do not show the lag mismatch of the two pressures
   - while rolling the pitch based estimate is trusted less: adverse yaw sideslips the glider more than the side force shows
   - averaged wind: a 30 s low pass in straight flight, while circling an average over heading sectors, so every heading counts the same also in an unevenly flown circle
