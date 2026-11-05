@@ -11,6 +11,7 @@
 #include "pressure/PressureSensor.h"
 #include "press_diff/AirspeedSensor.h"
 #include "S2F.h"
+#include "Atmosphere.h"
 #include "AverageVario.h"
 #include "setup/CruiseMode.h"
 #include "setup/SetupNG.h"
@@ -128,7 +129,9 @@ void VarioFilter::postProcess()
     te_gr += ((TEAVG - te_gr)) / vario_delay.get();
     _got_positive = te_gr > .0f && te_vario.get() < .0f;
 
-    _polar_sink = Speed2Fly.getSink(ias.get());
+    // the polar is over IAS, the sink grows with TAS/IAS
+    const float tas_per_ias = Atmosphere::TasPerIas();
+    _polar_sink = Speed2Fly.getSink(ias.get()) * tas_per_ias;
     mps_t te_ne = te_gr - _polar_sink;
 
     // calc the climb score
@@ -136,7 +139,7 @@ void VarioFilter::postProcess()
         // achieved gross climb integral
         _Gact.filter(std::max(te_gr, 0.f));
         // Gmax​(N)=N−S(vopt​)); max. gross achievable integral with current load and net vario
-        _Goptimal.filter(std::max(te_ne + Speed2Fly.getMinsink(), .1f));
+        _Goptimal.filter(std::max(te_ne + Speed2Fly.getMinsink() * tas_per_ias, .1f));
     }
     else {
         _Gact.filter(.0f);
@@ -150,7 +153,7 @@ void VarioFilter::postProcess()
     // Adjust the net for Super Netto mode if applicable
     if (CRMOD.getVMode() == CruiseMode::MODE_REL_NETTO) {
         // Super Netto, considering circling sink
-        _polar_sink += Speed2Fly.getCirclingSink();
+        _polar_sink += Speed2Fly.getCirclingSink() * tas_per_ias;
     }
     te_netto.set(te_ne);
 

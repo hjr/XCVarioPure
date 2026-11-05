@@ -13,6 +13,7 @@
 #include "driver/gpio/S2fSwitch.h"
 #include "driver/time/Clock.h"
 #include "S2F.h"
+#include "Atmosphere.h"
 #include "setup/CruiseMode.h"
 #include "setup/SetupNG.h"
 #include "sensor.h"
@@ -1134,7 +1135,7 @@ void Audio::dactask()
                         // vario is the parameter for audio
                         audio_value = te_vario.get();
                         if ( CRMOD.getVMode() == CruiseMode::MODE_REL_NETTO ) {
-                            audio_value += Speed2Fly.getCirclingSink();
+                            audio_value += Speed2Fly.getCirclingSink() * Atmosphere::TasPerIas();
                         }
                     }
                     else {

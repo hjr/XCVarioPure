@@ -326,14 +326,8 @@ static void calc_speeds() {
     }
     
     // IAS to TAS conversion
-    kelvin_t temp = OAT.get();
-    if (!OAT.getValid()) {
-        temp = Units::isa_temperature(altitude.get());
-        // ESP_LOGW(FNAME,"T invalid, using 15 deg");
-    }
     if (statp.getValid() && ias.getValid()) {
-        tas.set(Atmosphere::TAS(ias.get(), statp.get(), temp));
-        // ESP_LOGI(FNAME, "calc_speeds: IAS=%.2f, statp=%.2f, OAT=%.2f -> TAS=%.2f", ias.get(), statp.get(), temp, tas.get());
+        tas.set(ias.get() * Atmosphere::TasPerIas());
     }
     else {
         tas.setInvalid();

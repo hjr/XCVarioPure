@@ -46,6 +46,11 @@ const Units::unit_t *PressureUnit;
 // V(m/s) = sqrt(2*( <mmH2O> * 0.997585 * 9.807 ) / 1.225)
 
 
+float Atmosphere::TasPerIas() {
+    kelvin_t temp = OAT.getValid() ? OAT.get() : Units::isa_temperature(altitude.get());
+    return statp.getValid() ? TAS(1.f, statp.get(), temp) : 1.f;
+}
+
 mps_t Atmosphere::TAS(mps_t ias, pascal_t sp, kelvin_t temp) {
     return ias * std::sqrt( (Units::rho0 * Units::R_air * temp) / sp );
 }
