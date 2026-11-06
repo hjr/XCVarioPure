@@ -24,11 +24,35 @@ KNOT = 0.514444
 
 # components/glider/PolarTable.txt and FlapTable.txt
 GLIDERS = {
-    "ASG 29/18": dict(wingload=42.9, polar=((82, -0.47), (132, -0.80), (184, -1.80)), area=10.5, vne=280.0,
+    "ASG 29/18": dict(id=1032, wingload=42.9, polar=((82, -0.47), (132, -0.80), (184, -1.80)), area=10.5, vne=280.0,
                       flaps=(180, 142, 110, 94, 57)),
-    "ASG 29/15": dict(wingload=47.7, polar=((86, -0.58), (127, -0.80), (182, -1.80)), area=9.22, vne=285.0,
+    "ASG 29/15": dict(id=1033, wingload=47.7, polar=((86, -0.58), (127, -0.80), (182, -1.80)), area=9.22, vne=285.0,
                       flaps=(198, 156, 121, 104, 60)),
 }
+
+
+def parse_xcv(line, logged):
+    """What the device logs besides the sensors (main/protocol/nmea/XCVarioMsg.cpp): "!XCV,CA1,glider type,empty weight,
+    crew weight,ballast,speed cal,QNH", since protocol version 2 "!xcv,empty-weight|crew-weight|bal-water,kg" on
+    changes, and in a sensor log "!XCV,FLP,lever x 10" when the flap lever moves (FlapsBox: the flap sensor's position
+    to 0.5, or without a sensor the recommendation). Updates logged (kg, lever) from the line; returns "flap", "setup"
+    (glider or weights), or None if it is none"""
+    f = nmea_fields(line)
+    if f[0].lower() != "xcv" or len(f) < 3:
+        return None
+    key = {"empty-weight": "empty", "crew-weight": "crew", "bal-water": "ballast"}.get(f[1])
+    if f[1] not in ("FLP", "CA1") and not key:
+        return None
+    try:
+        if f[1] == "FLP":
+            logged["flap"] = float(f[2]) / 10.0
+        elif f[1] == "CA1":
+            logged["type"], logged["empty"], logged["crew"], logged["ballast"] = (float(x) for x in f[2:6])
+        else:
+            logged[key] = float(f[2])
+    except (ValueError, IndexError):
+        pass
+    return "flap" if f[1] == "FLP" else "setup"
 
 
 def checksum(body):
@@ -104,14 +128,17 @@ def main():
     ap.add_argument("log")
     ap.add_argument("out")
     ap.add_argument("--aux")
-    ap.add_argument("--glider", default="ASG 29/18", choices=sorted(GLIDERS))
+    ap.add_argument("--glider", default="ASG 29/18", choices=sorted(GLIDERS) + ["log"],
+                    help="log: the glider type the log names (CA1) if known here, else the ASG 29/18")
     ap.add_argument("--lever-arm", type=float, default=0.0)
-    ap.add_argument("--mass", type=float, default=0.0, help="gross weight [kg], instead of the logged ballast factor")
+    ap.add_argument("--mass", type=float, default=0.0,
+                    help="gross weight [kg], instead of the logged weights (CA1) or else the logged ballast factor")
     ap.add_argument("--no-flaps", action="store_true", help="no flap lever (one pitch offset for all flap positions)")
     ap.add_argument("--flap-fractional", action="store_true", help="the recommendation unrounded (the device rounds it)")
     ap.add_argument("--bugs", type=float, default=-1.0, help="polar degradation [%%], instead of the logged bugs setting")
     a = ap.parse_args()
-    g = GLIDERS[a.glider]
+    logged = dict(type=math.nan, empty=math.nan, crew=math.nan, ballast=math.nan, flap=math.nan)
+    g = None
 
     opener = gzip.open if a.log.endswith(".gz") else open
     out = open(a.out, "w")
@@ -129,15 +156,27 @@ def main():
     polar = flaps = None
 
     def setup():
-        bf = a.mass / (g["wingload"] * g["area"]) if a.mass > 0 else (pxcv["ballast"] if pxcv["ballast"] > 0.5 else 1.0)
-        nonlocal polar, flaps
+        nonlocal polar, flaps, g
+        # the glider and the weights as logged so far
+        name = next((n for n, x in GLIDERS.items() if x["id"] == logged["type"]), "ASG 29/18") if a.glider == "log" else a.glider
+        g = GLIDERS[name]
+        logged_mass = logged["empty"] + (logged["crew"] if logged["crew"] > 0 else 0) + (logged["ballast"] if logged["ballast"] > 0 else 0) \
+            if logged["empty"] > 0 else math.nan
+        ref = g["wingload"] * g["area"]
+        bf = a.mass / ref if a.mass > 0 else logged_mass / ref if logged_mass > 0 else (pxcv["ballast"] if pxcv["ballast"] > 0.5 else 1.0)
         polar, flaps = Polar(g, bf, a.bugs if a.bugs >= 0 else pxcv["bugs"]), Flaps(g, bf)
-        mass = bf * g["wingload"] * g["area"]
+        mass = bf * ref
         return sentence("PXCVC", [fmt(a.lever_arm, "%.4f"), fmt(mass, "%.2f"), fmt(g["area"], "%.4f"), fmt(polar.a0, "%.8g"),
                                   fmt(polar.a1, "%.8g"), fmt(polar.a2, "%.8g"), fmt(polar.v_stall, "%.4f"), "1", "1.000", "1.000",
                                   "100.000"])
 
     for raw in opener(a.log, "rt", errors="replace"):
+        xcv = parse_xcv(raw, logged) if raw.startswith("!") else None
+        if xcv:
+            # a new glider or weight in flight (water ballast dumped): the setup the device sends from now on
+            if xcv == "setup" and running:
+                setup_line = setup()
+            continue
         if raw.startswith("$PXCV,"):
             f = nmea_fields(raw)
             try:
@@ -207,7 +246,9 @@ def main():
             if running:
                 load = 1.0 / max(math.cos(math.radians(pxcv["roll"])), 0.3)
                 opt = flaps.optimum(ias, load)
-                flap = math.nan if a.no_flaps else (opt if a.flap_fractional else float(round(opt)))
+                # the lever as logged (FLP), else the recommendation
+                flap = math.nan if a.no_flaps else logged["flap"] if math.isfinite(logged["flap"]) \
+                    else (opt if a.flap_fractional else float(round(opt)))
                 sink = polar.sink(ias, max(-acc[2], 0.3))
                 setup_count += 1
                 if setup_count % 100 == 0:

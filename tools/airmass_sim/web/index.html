@@ -15,7 +15,7 @@
 <style>
 :root {
   --bg: #f3f5f6; --surface: #fcfcfb; --ink: #17212a; --muted: #5b6770; --rule: #d6dde2; --tint: #e8eef3;
-  --accent: #2f6fd0; --am: #2f6fd0; --net: #d9771f; --gnss: #000000; --degraded: #9aa3aa;
+  --accent: #2f6fd0; --am: #2f6fd0; --net: #d9771f; --gnss: #000000; --degraded: #9aa3aa; --hw: #8e44ad;
   --grid: #e3e8ec; --danger: #b3261e;
   --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -23,13 +23,13 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #111518; --surface: #1a1a19; --ink: #e4e9ec; --muted: #9aa6ae; --rule: #2c353b; --tint: #222b31;
-    --accent: #5a94e8; --am: #5a94e8; --net: #c9772a; --gnss: #000000; --degraded: #6f787e;
+    --accent: #5a94e8; --am: #5a94e8; --net: #c9772a; --gnss: #000000; --degraded: #6f787e; --hw: #b07cd8;
     --grid: #262e33; --danger: #f2827a; color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
   --bg: #111518; --surface: #1a1a19; --ink: #e4e9ec; --muted: #9aa6ae; --rule: #2c353b; --tint: #222b31;
-  --accent: #5a94e8; --am: #5a94e8; --net: #c9772a; --gnss: #000000; --degraded: #6f787e;
+  --accent: #5a94e8; --am: #5a94e8; --net: #c9772a; --gnss: #000000; --degraded: #6f787e; --hw: #b07cd8;
   --grid: #262e33; --danger: #f2827a; color-scheme: dark;
 }
 * { box-sizing: border-box; }
@@ -146,7 +146,7 @@ select { appearance: none; -webkit-appearance: none; padding-right: 26px !import
     <h1>AirMass Replay</h1>
     <label class="btn primary" for="file" title="An XCVario sensor log ($SENS) or an AirMass recording, plain or .gz; or drop it on the page">Open log…</label>
     <input type="file" id="file" accept=".nmea,.gz,.txt,.log,.igc">
-    <select id="glider" class="sel" aria-label="Glider" title="The glider's polar and flap speeds for a sensor log, which does not say which glider flew it (an AirMass recording carries the device's own polar); a change replays the flight"></select>
+    <select id="glider" class="sel" aria-label="Glider" title="The glider's polar and flap speeds for a sensor log. From the log: the glider type of its CA1 telegram (newer logs), else the ASG 29/18. An AirMass recording carries the device's own polar. A change replays the flight"></select>
     <button class="btn" id="playbtn" disabled aria-label="Play" title="Play / pause (Space)">▶</button>
     <select id="speed" class="sel" aria-label="Playback speed">
       <option value="1">1×</option><option value="2">2×</option><option value="5">5×</option><option value="10" selected>10×</option>
@@ -165,7 +165,7 @@ select { appearance: none; -webkit-appearance: none; padding-right: 26px !import
 
   <div class="settings" id="settings" hidden>
     <div class="form">
-      <label>Gross mass, kg <input type="number" id="mass" value="-1" min="-1" step="1" title="-1: the ballast logged in the sensor log ($PXCV)"></label>
+      <label>Gross mass, kg <input type="number" id="mass" value="-1" min="-1" step="1" title="-1: from the log: its empty, crew and ballast weights (CA1, newer logs), else its ballast factor ($PXCV)"></label>
       <label>Bugs, % <input type="number" id="bugs" value="-1" min="-1" step="1" title="-1: the setting logged in $PXCV"></label>
       <label>Vario damping, s <input type="number" id="damping" value="4" min="1" max="10" step="0.5" title="the device's vario delay, 4 s by default"></label>
       <label class="check" title="The GNSS netto reference gets the device's vario damping, like the TE vario it is compared with; off: undamped. The AirMass and TE netto needles always show what the device shows."><input type="checkbox" id="samesmooth" checked> Damp the GNSS reference like the vario</label>
@@ -216,12 +216,12 @@ select { appearance: none; -webkit-appearance: none; padding-right: 26px !import
         <div class="readouts">
           <span>Roll <b id="a-roll">–</b></span><span>Pitch <b id="a-pitch">–</b></span>
           <span>IAS <b id="v-ias">–</b></span><span>Heading <b id="w-hdg">–</b></span>
-          <span>GS <b id="w-gs">–</b></span>
+          <span>GS <b id="w-gs">–</b></span><span title="GNSS altitude above sea level (the pressure altitude, ISA, where there is no fix)">Alt <b id="w-alt">–</b></span>
         </div>
       </div>
     </div>
     <div class="panel charts" id="charts">
-      <div class="chead"><h3>Vario</h3><div class="legend"><span><i class="key" style="background:var(--am)"></i>Cockpit, Air Mass mode</span><span><i class="key" style="background:var(--net)"></i>TE netto</span><span><i class="key gnsskey"></i>GNSS netto (reference)</span><span id="stripkey">Strip: AirMass vario</span></div></div>
+      <div class="chead"><h3>Vario</h3><div class="legend"><span><i class="key" style="background:var(--am)"></i>Cockpit, Air Mass mode</span><span><i class="key" style="background:var(--net)"></i>TE netto</span><span title="GNSS altitude and ground velocity relative to AirMass's 2 min wind, minus the polar sink: the air's vertical movement, which a horizontal gust does not move (pitot TAS until a wind is known). The track colour 'GNSS netto' is the same, per second."><i class="key gnsskey"></i>GNSS netto (reference, gust-insensitive)</span><span id="stripkey">Strip: AirMass vario</span></div></div>
       <canvas id="strip"></canvas>
       <div class="tip" id="tip"></div>
     </div>
@@ -246,7 +246,7 @@ let view = null;         // the vario chart's time window [t0, t1]
 let C = {};
 function readColors() {
   const cs = getComputedStyle(document.documentElement);
-  for (const k of ["surface", "ink", "muted", "rule", "am", "net", "gnss", "degraded", "grid"]) C[k] = cs.getPropertyValue("--" + k).trim();
+  for (const k of ["surface", "ink", "muted", "rule", "am", "net", "gnss", "degraded", "grid", "hw"]) C[k] = cs.getPropertyValue("--" + k).trim();
   C.dark = cs.colorScheme === "dark";
   C.font = getComputedStyle(document.body).fontFamily;
 }
@@ -260,8 +260,10 @@ const CLIMB_LABELS = ["< −2", "−2 … −1", "−1 … −0.3", "±0.3", "0.
 const climbBin = (v) => { let b = 0; while (b < CLIMB_BINS.length && v >= CLIMB_BINS[b]) b++; return b; };
 
 // ---------- settings ----------
+$("glider").add(new Option("Glider from the log", "log"));
 for (const name of Object.keys(AirMassConvert.GLIDERS)) $("glider").add(new Option(name, name));
-$("glider").value = "ASG 29/18"; // the flights of discussion #451; a saved choice replaces it below
+// the default: the glider type the log names (CA1), else the ASG 29/18 of discussion #451; a saved choice replaces it
+$("glider").value = "log";
 $("glider").addEventListener("change", () => { if (fileText) run(); }); // a new polar: replay
 const SETTINGS_KEY = "airmass-replay-settings";
 const FIELDS = ["harmonics", "clip", "glider", "mass", "bugs", "damping", "samesmooth", "sets", "noflaps", "learn", "warm", "w0", "w1", "w2", "w3", "wingpitch", "follow", "speed", "soundsrc", "chartsmap"];
@@ -348,7 +350,9 @@ async function replayOnce() {
     derive(D);
     const s = rep.summary;
     const hours = (rep.n / 36000).toFixed(2);
-    const result = `${fileName}: ${conv.kind}, ${conv.starts} flight${conv.starts === 1 ? "" : "s"}, ${hours} h replayed in ${((performance.now() - t0) / 1000).toFixed(1)} s`;
+    const setupUsed = conv.glider ? ` · ${conv.glider}${{ log: " (from the log)", default: " (no glider in the log)" }[conv.gliderFrom] || ""}, ` +
+      `${Math.round(conv.mass)} kg (${conv.massFrom})${conv.flapsFrom ? `, flaps: ${conv.flapsFrom}` : ""}` : "";
+    const result = `${fileName}: ${conv.kind}, ${conv.starts} flight${conv.starts === 1 ? "" : "s"}, ${hours} h replayed in ${((performance.now() - t0) / 1000).toFixed(1)} s${setupUsed}`;
     setStatus(result, false, true);
     $("summary").textContent = result + ` · cycles ${s.cycles} · GNSS fixes ${s.gnss} · compass ${s.compass} · learned: k_tas ${s.k_tas.toFixed(3)}, pitch offset ${s.pitch_ofs_deg.toFixed(2)}°, ` +
       `AoA scale ${s.aoa_scale.toFixed(3)}, GNSS latency ${s.latency_ms} ms (offset ${s.latency_ofs_s.toFixed(3)} s), gyro z bias ${s.gyro_z_bias_dps.toFixed(3)}°/s` +
@@ -446,41 +450,81 @@ class Damp {
   }
 }
 
+// running sums (S) and counts (N) of the finite values of val(k), k < n
+function runningSums(n, val) {
+  const S = new Float64Array(n + 1), N = new Float64Array(n + 1);
+  for (let k = 0; k < n; k++) { const v = val(k); const ok = Number.isFinite(v); S[k + 1] = S[k] + (ok ? v : 0); N[k + 1] = N[k] + (ok ? 1 : 0); }
+  return { S, N };
+}
+
+// What the cockpit shows in Air Mass mode (airmass::vario, VarioFilter::postProcess): the air mass vario damped (a low
+// pass with tau = d/3, then y += (x - y) / d per 0.1 s cycle; the device's d = max(1, vario delay / 2); dampAt(k)) while
+// it is valid, otherwise netto, which the damping restarts from when the air mass vario comes back
+function cockpitSeries(D, dampAt) {
+  const out = new Float32Array(D.n).fill(NaN), f = new Damp(1);
+  for (let k = 0; k < D.n; k++) {
+    if (D.ai[k] < 0) { f.reset(NaN); continue; }
+    f.d = dampAt(k);
+    if (D.amOk[k]) {
+      if (f.y === null) f.reset(Number.isFinite(D.netto[k]) ? D.netto[k] : D.amRaw[k]);
+      out[k] = f.f(D.amRaw[k]);
+    } else {
+      f.reset(D.netto[k]); // the fallback, and where the damping restarts
+      out[k] = D.netto[k];
+    }
+  }
+  return out;
+}
+
+// GNSS netto from the energy height of the fixes (energyOf(fix), m): its change over the fixes before and after each
+// fix over their time difference, minus the mean polar sink (sinkUp, TAS terms) over that time. It belongs to the time
+// fix j was measured (its arrival minus the GNSS latency) and is interpolated in between. It uses the next fix, so no
+// instrument could show it live: it is the air movement at that moment, after the fact. Uses the global D (indexAt).
+function gnssNetFromEnergy(D, sinkUp, energyOf) {
+  const n = D.n, fixes = D.fixes, E = fixes.map(energyOf), { S: cs, N: cn } = runningSums(n, (k) => sinkUp[k]);
+  const ref = []; // {t, v}
+  for (let j = 1; j + 1 < fixes.length; j++) {
+    const p = fixes[j - 1], q = fixes[j + 1];
+    const dt = q.u - p.u;
+    if (!(dt > 0.5 && dt < 5)) continue;
+    const kp = indexAt(p.tm), kq = indexAt(q.tm), m = cn[kq + 1] - cn[kp]; // measurement times on the device clock
+    if (!(m > 0)) continue;
+    const v = (E[j + 1] - E[j - 1]) / dt - (cs[kq + 1] - cs[kp]) / m;
+    if (Number.isFinite(v)) ref.push({ t: fixes[j].tm, v });
+  }
+  const out = new Float32Array(n).fill(NaN);
+  for (let r0 = 0, k = 0; k < n; k++) {
+    const t = D.t[k];
+    while (r0 + 1 < ref.length && ref[r0 + 1].t <= t) r0++;
+    const a = ref[r0], b = ref[r0 + 1];
+    if (!a || !b || t < a.t || b.t - a.t > 3) continue;
+    out[k] = a.v + (b.v - a.v) * (t - a.t) / (b.t - a.t);
+  }
+  return out;
+}
+
 // shown values: the AirMass vario and the device's TE netto, both with the device's damping
 function derive(D) {
   const delay = Math.max(1, +$("damping").value || 4);
   const n = D.n, c = D.tr, r = D.rep.cols;
-  D.am = new Float32Array(n).fill(NaN);
   D.amOk = new Uint8Array(n);
   D.netto = new Float32Array(n).fill(NaN);
   D.amRaw = new Float32Array(n).fill(NaN);
-  const sinkUp = new Float32Array(n).fill(NaN); // the polar sink in TAS terms, up positive (so negative)
-  // What the cockpit shows in Air Mass mode (airmass::vario, VarioFilter::postProcess): the air mass vario with half
-  // the vario damping (a low pass with tau = D/3, then y += (x - y) / D per 0.1 s cycle, D = max(1, delay / 2)) while
-  // it is valid; otherwise netto, which the damping restarts from when the air mass vario comes back. Netto is the
-  // device's: its damped TE vario minus the polar sink of the moment (TAS terms), the sink not damped.
-  const dAir = Math.max(1, delay * 0.5);
-  const cockpit = new Damp(dAir);
+  const sinkUp = D.sinkUp = new Float32Array(n).fill(NaN); // the polar sink in TAS terms, up positive (so negative)
+  // Netto is the device's: its damped TE vario minus the polar sink of the moment (TAS terms), the sink not damped
   const sens = D.kind.startsWith("XCVario sensor");
   for (let k = 0; k < n; k++) {
     const i = D.ai[k];
-    if (i < 0) { cockpit.reset(NaN); continue; }
+    if (i < 0) continue;
     D.amRaw[k] = r.vario[i];
-    const ok = r.status[i] & 1;
-    D.amOk[k] = ok;
+    D.amOk[k] = r.status[i] & 1;
     // the polar sink in TAS terms (VarioFilter: getSink(ias) * tas / ias), negative
     const sink = sens ? c.polar_sink[k] * c.tas[k] / Math.max(c.ias[k], 10) : -r.polar_sink[i];
     if (Number.isFinite(sink)) sinkUp[k] = sink;
-    const netto = Number.isFinite(c.te_vario[k]) ? c.te_vario[k] - (Number.isFinite(sink) ? sink : 0) : NaN;
-    D.netto[k] = netto;
-    if (ok) {
-      if (cockpit.y === null) cockpit.reset(Number.isFinite(netto) ? netto : r.vario[i]);
-      D.am[k] = cockpit.f(r.vario[i]);
-    } else {
-      cockpit.reset(netto); // the fallback, and where the damping restarts
-      D.am[k] = netto;
-    }
+    D.netto[k] = Number.isFinite(c.te_vario[k]) ? c.te_vario[k] - (Number.isFinite(sink) ? sink : 0) : NaN;
   }
+  const dAir = Math.max(1, delay * 0.5);
+  D.am = cockpitSeries(D, () => dAir);
   // the GNSS climb: the altitude difference of the fixes before and after each fix over their time difference, at
   // the time the fix was measured, interpolated in between
   const fixes = D.fixes;
@@ -491,40 +535,27 @@ function derive(D) {
   }
   const gnssRate = atFixes(D, (f) => f.rate, 1.5);
 
-  // GNSS netto, the reference: the energy height change of the fixes before and after each fix (GNSS altitude plus
-  // TAS²/2g, the TAS when they were measured) over their time difference, minus the mean polar sink over that time. It
-  // belongs to the time fix j was measured (its arrival minus the GNSS latency) and is interpolated in between. It uses
-  // the next fix, so no instrument could show it live: it is the air movement at that moment, after the fact.
-  // running sums (S) and counts (N) of the finite values of a series
-  const cum = (val) => {
-    const S = new Float64Array(n + 1), N = new Float64Array(n + 1);
-    for (let k = 0; k < n; k++) { const v = val(k); const ok = Number.isFinite(v); S[k + 1] = S[k] + (ok ? v : 0); N[k + 1] = N[k] + (ok ? 1 : 0); }
-    return { S, N };
-  };
-  const { S: cs, N: cn } = cum((k) => sinkUp[k]);
+  // GNSS netto, the reference (gnssNetFromEnergy), with the energy height of a fix the GNSS altitude plus V²/2g, two
+  // ways:
+  //  - gust-insensitive (shown, the black line): V the GNSS ground velocity minus AirMass's averaged wind, smoothed
+  //    over 2 min. A horizontal gust changes the airspeed but neither the ground velocity nor that wind, so it does not
+  //    show as air movement (on real flights the pitot version showed gusts as 5 m/s spikes, more than TE netto);
+  //  - pitot (D.gnssNetPitot, where no wind is known yet the shown one): V the TAS when the fix was measured; a
+  //    horizontal gust counts as air movement, as for TE netto.
   const G = 9.80665;
-  const tasAt = (t) => c.tas[indexAt(t)];
-  const ref = []; // {t, v}
-  for (let j = 1; j + 1 < fixes.length; j++) {
-    const p = fixes[j - 1], q = fixes[j + 1];
-    const dt = q.u - p.u;
-    if (!(dt > 0.5 && dt < 5)) continue;
-    const tp = p.tm, tq = q.tm; // measurement times on the device clock
-    const vp = tasAt(tp), vq = tasAt(tq);
-    const kp = indexAt(tp), kq = indexAt(tq), m = cn[kq + 1] - cn[kp];
-    if (!(m > 0) || !Number.isFinite(vp) || !Number.isFinite(vq)) continue;
-    const sinkMean = (cs[kq + 1] - cs[kp]) / m;
-    ref.push({ t: fixes[j].tm, v: (q.alt - p.alt) / dt + (vq * vq - vp * vp) / (2 * G * dt) - sinkMean });
-  }
-  const gnssNet = new Float32Array(n).fill(NaN);
-  for (let r0 = 0, k = 0; k < n; k++) {
-    const t = D.t[k];
-    while (r0 + 1 < ref.length && ref[r0 + 1].t <= t) r0++;
-    const a = ref[r0], b = ref[r0 + 1];
-    if (!a || !b || t < a.t || b.t - a.t > 3) continue;
-    gnssNet[k] = a.v + (b.v - a.v) * (t - a.t) / (b.t - a.t);
-  }
-  D.gnssNetRaw = gnssNet;
+  // AirMass's averaged wind, where valid, as a 2 min centred mean (at least half of it valid)
+  const valid = (k) => D.ai[k] >= 0 && r.status[D.ai[k]] & 2;
+  const { S: wnS, N: wN } = runningSums(n, (k) => (valid(k) ? r.avg_wind_n[D.ai[k]] : NaN)), { S: weS } = runningSums(n, (k) => (valid(k) ? r.avg_wind_e[D.ai[k]] : NaN));
+  const HALF_2MIN = 600;
+  D.gnssNetPitot = gnssNetFromEnergy(D, sinkUp, (f) => { const tas = c.tas[indexAt(f.tm)]; return f.alt + tas * tas / (2 * G); });
+  D.gnssNetInert = gnssNetFromEnergy(D, sinkUp, (f) => {
+    const km = indexAt(f.tm), a = Math.max(0, km - HALF_2MIN), b = Math.min(n, km + HALF_2MIN), m = wN[b] - wN[a];
+    if (!(m > HALF_2MIN / 2)) return NaN;
+    const spd = c.gnss_speed[f.k], trk = c.gnss_track[f.k] * Math.PI / 180;
+    const vn = spd * Math.cos(trk) - (wnS[b] - wnS[a]) / m, ve = spd * Math.sin(trk) - (weS[b] - weS[a]) / m;
+    return f.alt + (vn * vn + ve * ve) / (2 * G);
+  });
+  const gnssNet = D.gnssNet = D.gnssNetInert.map((v, k) => (Number.isFinite(v) ? v : D.gnssNetPitot[k]));
   const same = $("samesmooth").checked;
   D.gnss = new Float32Array(n).fill(NaN); // shown: undamped, or with the device's vario damping
   let dG = null;
@@ -535,9 +566,9 @@ function derive(D) {
     D.gnss[k] = same ? dG.f(v) : v;
   }
   // running sums for the 30 s averages under the vario gauge
-  D.cum = { am: cum((k) => (D.amOk[k] ? D.amRaw[k] : NaN)), net: cum((k) => D.netto[k]), gnss: cum((k) => D.gnssNetRaw[k]) };
+  D.cum = { am: runningSums(n, (k) => (D.amOk[k] ? D.amRaw[k] : NaN)), net: runningSums(n, (k) => D.netto[k]), gnss: runningSums(n, (k) => gnssNet[k]) };
   // per second, for the map track and the strip under the vario chart: the AirMass vario where valid, the device's TE
-  // vario in flight, the GNSS climb, GNSS netto as the black line (speed compensated) and as SeeYou computes it (not)
+  // vario in flight, the GNSS climb, GNSS netto as the black line (undamped) and as SeeYou computes it
   D.sec = [];
   let k0 = 0;
   while (k0 < n) {
@@ -564,7 +595,7 @@ function derive(D) {
 }
 
 // the track colour
-const COLOR_BY = { gnssnet: "GNSS netto, speed compensated", airmass: "AirMass vario", te: "TE vario", gnss: "GNSS altitude change", seeyou: "Netto, SeeYou style" };
+const COLOR_BY = { gnssnet: "GNSS netto (the black line)", airmass: "AirMass vario", te: "TE vario", gnss: "GNSS altitude change", seeyou: "Netto, SeeYou style" };
 const colorBy = () => $("colorby").value;
 
 // the per-second entry that holds sample k
@@ -603,7 +634,8 @@ legend.onAdd = () => {
     CLIMB_COLORS.map((c, i) => `<i style="background:${c}"></i>${CLIMB_LABELS[i]}`).reverse().join("<br>") +
     `<br><i style="background:${C.degraded}"></i>no value` +
     `<div class="sect">Wind to the glider, ° km/h</div><i style="background:${C.am}"></i>AirMass instant<br>` +
-    `<i class="dash" style="border-color:${C.muted}"></i>AirMass average`;
+    `<i class="dash" style="border-color:${C.muted}"></i>AirMass average<br>` +
+    `<i style="background:${C.hw}"></i>Headwind / tailwind component`;
   L.DomEvent.disableClickPropagation(d);
   L.DomEvent.disableScrollPropagation(d);
   return d;
@@ -621,12 +653,16 @@ const followCtl = L.control({ position: "bottomright" });
 followCtl.onAdd = () => { const el = $("followbox"); L.DomEvent.disableClickPropagation(el); return el; };
 followCtl.addTo(map);
 let trackLayer = null, gliderMarker = null;
-// the wind arrows at the glider: AirMass average, AirMass instant (drawn in this order)
-const WIND_ARROWS = [{ id: "avg", width: 3, head: 5, dash: "5 4" }, { id: "inst", width: 5, head: 7 }];
+// the glider symbol and the wind arrows at it: the scale (1: a 36 px glider), the marker's size and the arrows' tip
+// distance from the glider's centre [px]
+const MARK = 1.5, MARK_SIZE = 320, ARROW_TIP = 19 * MARK;
+// the wind arrows at the glider: AirMass average, AirMass instant, its headwind component (drawn in this order); width
+// and head half-width at scale 1
+const WIND_ARROWS = [{ id: "avg", width: 3, head: 5, dash: "5 4" }, { id: "inst", width: 5, head: 7 }, { id: "hw", width: 3, head: 5 }];
 // a glider seen from above, nose up: long slender unswept wings (straight leading edge, the taper on the trailing
 // edge), a thin fuselage and a T-tail; a white outline (drawn first, under the fill) keeps it visible on any map
 const GLIDER_PATH = "M0,-10.5 C1.1,-10.5 1.3,-8 1.2,-3.6 L17,-3.6 Q17.6,-3.1 17,-2.5 L1.1,-0.9 L0.55,10 L4.6,10.3 L4.6,11.6 L-4.6,11.6 L-4.6,10.3 L-0.55,10 L-1.1,-0.9 L-17,-2.5 Q-17.6,-3.1 -17,-3.6 L-1.2,-3.6 C-1.3,-8 -1.1,-10.5 0,-10.5 Z";
-const GLIDER_SVG = (color) => `<svg width="36" height="36" viewBox="-18 -18 36 36">
+const GLIDER_SVG = (color, size = 36) => `<svg width="${size}" height="${size}" viewBox="-18 -18 36 36">
   <path d="${GLIDER_PATH}" fill="none" stroke="#fff" stroke-width="2.4" stroke-linejoin="round"/>
   <path d="${GLIDER_PATH}" fill="${color}"/></svg>`;
 
@@ -655,14 +691,14 @@ function drawTrack(fit = true) {
   if (gliderMarker) gliderMarker.remove();
   gliderMarker = null;
   if (!pts.length) { setStatus($("status").textContent + " · no GNSS positions in this log, so no map"); return; }
-  const S = 180, c0 = S / 2;
+  const S = MARK_SIZE, c0 = S / 2, gs = 36 * MARK;
   gliderMarker = L.marker(pts[0].ll, { icon: L.divIcon({ className: "glider-icon", iconSize: [S, S], iconAnchor: [c0, c0], html:
     `<div style="position:relative;width:${S}px;height:${S}px;pointer-events:none">
       <svg width="${S}" height="${S}" viewBox="${-c0} ${-c0} ${S} ${S}" style="position:absolute;left:0;top:0;overflow:visible">
-        ${WIND_ARROWS.map((w) => `<g id="wa-${w.id}" class="windarrow" style="display:none"><line x1="0" y1="-60" x2="0" y2="-26" stroke-width="${w.width}" stroke-linecap="round"${w.dash ? ` stroke-dasharray="${w.dash}"` : ""}/>
-          <path d="M0,${-19} L${-w.head},${-19 - 2 * w.head} L${w.head},${-19 - 2 * w.head} Z"/></g>`).join("")}</svg>
+        ${WIND_ARROWS.map((w) => { const h = w.head * MARK; return `<g id="wa-${w.id}" class="windarrow" style="display:none"><line x1="0" y1="${-(ARROW_TIP + 2 * h)}" x2="0" y2="${-(ARROW_TIP + h)}" stroke-width="${w.width * MARK}" stroke-linecap="round"${w.dash ? ` stroke-dasharray="${w.dash.split(" ").map((x) => x * MARK).join(" ")}"` : ""}/>
+          <path d="M0,${-ARROW_TIP} L${-h},${-ARROW_TIP - 2 * h} L${h},${-ARROW_TIP - 2 * h} Z"/></g>`; }).join("")}</svg>
       ${WIND_ARROWS.map((w) => `<div id="wl-${w.id}" class="windlabel"></div>`).join("")}
-      <div id="gl" style="position:absolute;left:${c0 - 18}px;top:${c0 - 18}px;width:36px;height:36px;transform-origin:18px 18px">${GLIDER_SVG(C.am)}</div>
+      <div id="gl" style="position:absolute;left:${c0 - gs / 2}px;top:${c0 - gs / 2}px;width:${gs}px;height:${gs}px;transform-origin:${gs / 2}px ${gs / 2}px">${GLIDER_SVG(C.am, gs)}</div>
     </div>` }), interactive: false, keyboard: false }).addTo(map);
 }
 map.on("click", (e) => {
@@ -929,6 +965,8 @@ function updateReadouts(k) {
   $("a-roll").textContent = Number.isFinite(ro) ? `${Math.abs(ro).toFixed(0)}° ${ro > 0.5 ? "R" : ro < -0.5 ? "L" : ""}`.trim() : "–";
   $("a-pitch").textContent = Number.isFinite(pi) ? (pi >= 0 ? "+" : "−") + Math.abs(pi).toFixed(1) + "°" + ($("wingpitch").checked ? " wing" : "") : "–";
   $("w-gs").textContent = Number.isFinite(D.tr.gnss_speed[k]) ? (D.tr.gnss_speed[k] * 3.6).toFixed(0) + " km/h" : "–";
+  const alt = Number.isFinite(D.tr.gnss_alt[k]) ? D.tr.gnss_alt[k] : D.tr.baro_alt[k];
+  $("w-alt").textContent = Number.isFinite(alt) ? alt.toFixed(0) + " m" : "–";
 }
 
 function drawAll() {
@@ -953,13 +991,28 @@ function drawAll() {
   }
 }
 
+// AirMass's instant wind along the glider's heading, m/s, positive from ahead (headwind), while the heading is aligned.
+// The ground speed measures it directly, so it holds where the whole wind is not valid (long glides): in straight
+// flight on the real flights it matched k_tas * TAS - GS along the heading within 0.8 m/s rms over 10 s whether the
+// wind was valid, degraded or neither
+function headwind(k) {
+  const r = D.rep.cols, i = D.ai[k];
+  if (i < 0 || !(r.status[i] & 8)) return NaN;
+  const psi = r.heading_deg[i] * Math.PI / 180;
+  return -(r.wind_n[i] * Math.cos(psi) + r.wind_e[i] * Math.sin(psi));
+}
+
 // The winds at the glider on the map, each an arrow from the upwind side towards it, its length by the speed, with
-// direction and speed at its tail: AirMass's instant wind (grey when degraded) and its average (dashed)
+// direction and speed at its tail: AirMass's instant wind (grey when degraded), its average (dashed), and its headwind
+// component along the glider's axis (from ahead, or from behind for a tailwind)
 function drawMapWind(k) {
-  const r = D.rep.cols, i = D.ai[k], st = i >= 0 ? r.status[i] : 0, S = 180;
+  const r = D.rep.cols, i = D.ai[k], st = i >= 0 ? r.status[i] : 0, S = MARK_SIZE;
+  const hw = headwind(k), psi = i >= 0 ? r.heading_deg[i] * Math.PI / 180 : 0;
+  // [north, east, colour, label prefix (default: the direction it comes from)]
   const winds = {
     inst: st & (2 | 16) ? [r.wind_n[i], r.wind_e[i], st & 2 ? C.am : C.degraded] : null,
     avg: st & 2 ? [r.avg_wind_n[i], r.avg_wind_e[i], C.muted] : null,
+    hw: Number.isFinite(hw) ? [-hw * Math.cos(psi), -hw * Math.sin(psi), C.hw, hw >= 0 ? "HW" : "TW"] : null,
   };
   const placed = [];
   for (const w of WIND_ARROWS) {
@@ -967,9 +1020,10 @@ function drawMapWind(k) {
     if (!g || !lab) continue;
     const v = winds[w.id];
     if (!v || !(Math.hypot(v[0], v[1]) * 3.6 > 0.5)) { g.style.display = "none"; lab.style.display = "none"; continue; }
-    const [wn, we, color] = v, kmh = Math.hypot(wn, we) * 3.6;
+    const [wn, we, color, prefix] = v, kmh = Math.hypot(wn, we) * 3.6;
     const from = (Math.atan2(-we, -wn) * 180 / Math.PI + 360) % 360;
-    const tail = 26 + 14 + Math.min(kmh, 60) / 60 * 50;
+    // calm: the head alone; the shaft grows with the speed up to 60 km/h
+    const tail = ARROW_TIP + 2 * w.head * MARK + Math.min(kmh, 60) / 60 * 50 * MARK;
     g.style.display = "";
     g.setAttribute("transform", `rotate(${from})`);
     const line = g.querySelector("line");
@@ -981,7 +1035,7 @@ function drawMapWind(k) {
     while (placed.some(([px, py]) => Math.abs(px - x) < 70 && Math.abs(py - y) < 14)) y += 14;
     placed.push([x, y]);
     lab.style.display = "block";
-    lab.textContent = `${String(Math.round(from) % 360).padStart(3, "0")}° ${kmh.toFixed(0)}`;
+    lab.textContent = `${prefix ?? String(Math.round(from) % 360).padStart(3, "0") + "°"} ${kmh.toFixed(0)}`;
     lab.style.left = x + "px";
     lab.style.top = y + "px";
     lab.style.color = color;

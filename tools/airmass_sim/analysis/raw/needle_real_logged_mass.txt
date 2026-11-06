@@ -1,0 +1,8 @@
+series                               needle 1 s (all / straight / circling)   delay (circling)   10 s error (all / straight / circling)   own error: 10 s (straight / circling)  30 s
+now                                  0.698 / 0.555 / 0.863            0.8 s (1.4 s)        0.565 / 0.465 / 0.659              0.187 / 0.280     0.178 / 0.137
+TE netto                             0.856 / 0.877 / 0.855            2.4 s (2.6 s)        0.621 / 0.599 / 0.641              0.421 / 0.234     0.171 / 0.109
+the reference's own error: 10 s 0.426 / 0.597, 30 s 0.227 / 0.173 (from now, TE netto and the reference)
+series                               needle 1 s (all / straight / circling)   delay (circling)   10 s error (all / straight / circling)   own error: 10 s (straight / circling)  30 s
+now                                  0.698 / 0.555 / 0.863            0.8 s (1.4 s)        0.582 / 0.479 / 0.683                –   / 0.220     0.165 / 0.125
+TE netto                             0.856 / 0.877 / 0.855            2.4 s (2.6 s)        0.688 / 0.669 / 0.714              0.466 / 0.302     0.177 / 0.110
+the reference's own error: 10 s 0.480 / 0.646, 30 s 0.241 / 0.192 (from now, TE netto and the reference)

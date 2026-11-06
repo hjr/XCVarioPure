@@ -3,7 +3,7 @@
 // and how much of the series is not in the reference (rms of the difference at that best delay, 2 s means).
 //   node lag.js <web dir> log1.nmea.gz ...
 const fs = require("fs"), zlib = require("zlib"), path = require("path");
-const { loadPage, lagOf, dampSeries, freeMask, inertialRef } = require("./page.js");
+const { loadPage, dampSeries, freeMask, logOptions } = require("./page.js");
 const web = path.resolve(process.argv[2]);
 const { convert, runReplay } = loadPage(web);
 const LAGS = []; for (let l = -2; l <= 10.001; l += 0.25) LAGS.push(+l.toFixed(2));
@@ -16,19 +16,19 @@ const resid = {}; // series -> lag -> {n, s2} on 2 s means
   const M = await require(path.join(web, "airmass.js"))();
   for (const log of process.argv.slice(3)) {
     fileName = path.basename(log);
-    const conv = convert(zlib.gunzipSync(fs.readFileSync(log)).toString("latin1"), { glider: "ASG 29/18" });
+    const conv = convert(zlib.gunzipSync(fs.readFileSync(log)).toString("latin1"), logOptions());
     D = build(conv, await runReplay(M, conv.rec, {}));
     derive(D);
     const r = D.rep.cols, c = D.tr, n = D.n;
     // AirMass with the TE vario's damping (the device's vario damping, 4 s), for an equal comparison
     const amTe = dampSeries(D.amRaw, D.amOk);
     const arr = { "AirMass (raw)": D.amRaw, "AirMass cockpit (half damping)": D.am, "AirMass with TE's damping": amTe, "TE netto (device)": D.netto };
-    const { free } = freeMask(D, (k) => D.amOk[k] && c.ias[k] > 60 / 3.6 && Number.isFinite(D.gnssNetRaw[k]));
+    const { free } = freeMask(D, (k) => D.amOk[k] && c.ias[k] > 60 / 3.6 && Number.isFinite(D.gnssNetPitot[k]));
     // 2 Hz samples
     const step = 5;
     for (let k = 0; k < n; k += step) {
       if (!free[k]) continue;
-      const ref = D.gnssNetRaw[k];
+      const ref = D.gnssNetPitot[k];
       LAGS.forEach((lag, li) => {
         const kk = k + Math.round(lag * 10);
         if (kk < 0 || kk >= n || !free[kk]) return;
@@ -43,7 +43,7 @@ const resid = {}; // series -> lag -> {n, s2} on 2 s means
       if (k1 < n && free[k1]) {
         const ph = Math.abs(r.roll_deg[D.ai[k]]) > 20 ? "circling" : "straight";
         for (const s of SER) { const d = arr[s][k1] - arr[s][k]; if (Number.isFinite(d)) { addJ(ph, s, d); addJ("all", s, d); } }
-        const d = D.gnssNetRaw[k1] - D.gnssNetRaw[k]; addJ("all", "GNSS netto (reference)", d); addJ(Math.abs(r.roll_deg[D.ai[k]]) > 20 ? "circling" : "straight", "GNSS netto (reference)", d);
+        const d = D.gnssNetPitot[k1] - D.gnssNetPitot[k]; addJ("all", "GNSS netto (reference)", d); addJ(Math.abs(r.roll_deg[D.ai[k]]) > 20 ? "circling" : "straight", "GNSS netto (reference)", d);
       }
     }
     process.stderr.write(fileName + "\n");

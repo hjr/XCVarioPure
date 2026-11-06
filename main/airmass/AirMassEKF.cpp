@@ -64,10 +64,11 @@ void AirMassEKF::reset(float baro_alt, float k_tas, float pitch_ofs, float laten
     _vd_f = _vd_p = 0.f;
     _acc_long_f = _acc_long_p = NAN;
     _sink_f = _sink_p = NAN;
-    _acc_corr = 0.f;
+    _acc_corr = _acc_corr_c = 0.f;
     _acc_kin = 0.f;
     _a_air = 0.f;
     _anchor = 0.f;
+    _vario_out = NAN;
     _wd_energy = _wd_energy_plain = NAN;
     _ww_lp = _blend_lp = 0.f;
     _acc_mem = 0.f;
@@ -240,6 +241,7 @@ void AirMassEKF::update(const Input& in) {
         fuseBaro(in.baro_alt + (_cfg.static_comp - 1.f) * in.tas * in.tas / (2.f * G0));
     }
 
+    _straight = blendBankWeight(in.roll);
     if (in.tas > 10.f) {
         float va[3], dalpha[3];
         airVelocity(in.tas, _x[KTAS], in.roll, in.pitch, _x[PSI], alphaOf(in.aoa), va, dalpha);
@@ -251,6 +253,10 @@ void AirMassEKF::update(const Input& in) {
     }
 
     sanitize();
+    // the vario output, smoothed while circling: without the blend the airspeed derivative reaches the needle
+    const float vario = rawVario();
+    const float tau = _cfg.circling_tau * (1.f - _straight);
+    _vario_out = std::isnan(_vario_out) ? vario : _vario_out + (vario - _vario_out) * in.dt / (tau + in.dt);
     updateWindValid();
     if (_running && _vertical_settle < 0xffff) {
         _vertical_settle++;
@@ -293,6 +299,14 @@ void AirMassEKF::fuseKinematic(const Input& in, const float va[3], const float d
     ekfScalarUpdate(_cov, _x, h, y, sv * sv + ss * ss + 0.01f, _cfg.gate);
 }
 
+float AirMassEKF::blendBankWeight(float roll) const {
+    if (_cfg.blend_bank <= 0.f) {
+        return 1.f;
+    }
+    const float bank = Units::rad_to_deg(std::fabs(roll));
+    return std::clamp((_cfg.blend_bank + 0.5f * _cfg.blend_bank_width - bank) / std::max(_cfg.blend_bank_width, 0.1f), 0.f, 1.f);
+}
+
 // Acceleration along the air velocity for the energy balance. Relative to the air the kinetic energy changes
 // with V * dV/dt + va . dW/dt, which is V times the inertial acceleration along the air velocity: a horizontal
 // gust changes the airspeed, not the inertial acceleration. The airspeed derivative plus the estimated wind
@@ -311,12 +325,12 @@ void AirMassEKF::updateKinetic(const Input& in, const float va[3]) {
     const float d = a_air - _acc_long_f;
     _acc_corr += (d - _acc_corr) * in.dt / (_cfg.kinetic_tau + in.dt);
     const float gust = d - _acc_corr;
-    float w = std::clamp(std::fabs(gust) / _cfg.gust_acc, 0.f, 1.f);
-    if (_cfg.blend_bank > 0.f) {
-        const float bank = Units::rad_to_deg(std::fabs(in.roll));
-        w *= std::clamp((_cfg.blend_bank + 0.5f * _cfg.blend_bank_width - bank) / std::max(_cfg.blend_bank_width, 0.1f), 0.f, 1.f);
-    }
+    const float w = std::clamp(std::fabs(gust) / _cfg.gust_acc, 0.f, 1.f) * _straight;
     float corr = -w * gust;
+    if (_cfg.circling_blend_tau > 0.f) {
+        _acc_corr_c += (d - _acc_corr_c) * in.dt / (_cfg.circling_blend_tau + in.dt);
+        corr -= (1.f - _straight) * (d - _acc_corr_c);
+    }
     if (_cfg.blend_hp > 0.f) {
         _blend_lp += (corr - _blend_lp) * in.dt / (_cfg.blend_hp + in.dt);
         corr -= _blend_lp;

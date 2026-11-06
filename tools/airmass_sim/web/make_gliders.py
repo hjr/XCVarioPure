@@ -35,7 +35,7 @@ out = {}
 for idx, p in sorted(polars.items(), key=lambda kv: kv[1]["name"].lower()):
     if p["area"] <= 0 or p["wingload"] <= 0:
         continue
-    g = dict(wingload=p["wingload"], polar=p["polar"], area=p["area"], vne=VNE)
+    g = dict(id=idx, wingload=p["wingload"], polar=p["polar"], area=p["area"], vne=VNE)  # id: the device's glider type
     if p["flapped"] and idx in flaps:
         g["flaps"] = flaps[idx]
     out[p["name"]] = g

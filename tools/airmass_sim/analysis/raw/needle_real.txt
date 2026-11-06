@@ -1,0 +1,5 @@
+series                               needle 1 s (all / straight / circling)   delay (circling)   10 s error (all / straight / circling)
+now (new defaults)                   0.697 / 0.555 / 0.862            0.8 s (1.4 s)        0.565 / 0.465 / 0.660
+fade 10-50°, circling_tau 0.75       0.716 / 0.554 / 0.895            1.2 s (2.2 s)        0.557 / 0.467 / 0.640
+fade 15-25°, no smoothing            1.139 / 0.556 / 1.627            1.4 s (2.2 s)        0.571 / 0.471 / 0.656
+TE netto                             0.858 / 0.879 / 0.854            2.4 s (2.6 s)        0.622 / 0.598 / 0.642

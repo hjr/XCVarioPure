@@ -75,15 +75,23 @@ class AirMassEKF {
         float polar_calibrated = 1.f; // 1: the polar at the calibrated IAS (k_tas), 0: at the measured IAS like S2F
         float blend_hp = 120.f;     // s, high pass of the kinetic blend's gust correction (0: none): a gust is short, what the
                                     // blend keeps correcting for minutes is attitude error
-        float blend_bank = 20.f;    // deg, the kinetic blend fades out around this bank angle (0: at any bank): on real
+        float blend_bank = 30.f;    // deg, the kinetic blend fades out around this bank angle (0: at any bank): on real
                                     // flights it rejects gusts in straight flight, but in circling the inertial acceleration
                                     // is not good enough for it, AirMass read 0.79 m/s rms off the GNSS energy over 10 s with
-                                    // it against 0.63 without (the simulator does not show this, its cause is not known yet)
-        float blend_bank_width = 10.f; // deg, over which it fades (blend_bank -+ width / 2)
-        // The energy balance gets the same weight all the time, ungated: down weighting it in gusts or at high load
-        // factors, or gating its innovations, drops it just when the lift comes (turbulence and pull-ups in thermals):
-        // on real flights (tools/airmass_sim/analyze_sens.py) the vario then read climbs 0.17 m/s low and wandered 3x
-        // more than TE netto over minutes. The gust rejection is the kinetic blend (gust_acc) alone.
+                                    // it at full weight against 0.63 without (the simulator does not show this, its cause is
+                                    // not known yet). Without it the airspeed derivative reaches the needle: faded out
+                                    // between 15 and 25° the needle moved 1.63 m/s within 1 s while circling, TE netto 0.85.
+                                    // Faded from 10 to 50° (25 % at 40°) it moves 1.22, as accurate (0.644 m/s, TE 0.642)
+        float blend_bank_width = 40.f; // deg, over which it fades (blend_bank -+ width / 2)
+        float circling_blend_tau = 0.5f; // s, as the blend fades out: the inertial acceleration for what changes faster
+                                    // than this, the airspeed derivative for the rest (complementary; 0: off). Too fast for
+                                    // the attitude error around the circle (period ~20 s) to pass, fast enough to keep the
+                                    // pitot noise off the needle and the lift early: on real flights the needle shows the
+                                    // lift 1.4 s late while circling (TE netto 2.6 s; without it 1.8 s, 2.2 s with the
+                                    // circling_tau that took for a steady needle), 0.660 m/s rms over 10 s (TE 0.642);
+                                    // 1 s: 0.0 s late, 0.676 m/s
+        float circling_tau = 0.5f;  // s, low pass of the vario output, faded in as the blend fades out (0: none): with
+                                    // the above the needle moves 0.86 m/s within 1 s while circling, as TE netto (0.85)
         float energy_load_weight = 0.f; // energy balance noise growth with the load factor deviation |n - 1|
         float energy_gust_weight = 0.f; // energy balance noise growth with the airspeed/inertia disagreement [per m/s²]
         float kcl_min = 0.8f, kcl_max = 1.25f; // range of the angle of attack scale
@@ -132,7 +140,8 @@ class AirMassEKF {
     float windN() const { return _x[WN]; }
     float windE() const { return _x[WE]; }
     float windD() const { return _x[WD]; }
-    float airmassVario() const { return -(_x[WD] + _anchor); } // up positive, anchored to the plain energy balance
+    // up positive, anchored to the plain energy balance, smoothed while circling (circling_tau)
+    float airmassVario() const { return std::isnan(_vario_out) ? rawVario() : _vario_out; }
     // diagnostics: the energy balance's vertical air movement (Wd, down positive) with the kinetic blend, and plain
     // (the airspeed derivative only), of the last cycle
     float energyWd() const { return _wd_energy; }
@@ -184,6 +193,10 @@ class AirMassEKF {
     void fuseBaro(float alt);
     void fuseKinematic(const Input& in, const float va[3], const float dalpha[3]);
     void updateKinetic(const Input& in, const float va[3]);
+    // the weight of the kinetic blend at this roll angle: 1 in straight flight, fading to 0 around blend_bank
+    float blendBankWeight(float roll) const;
+    // the vario output before the circling low pass (circling_tau): up positive, anchored to the plain energy balance
+    float rawVario() const { return -(_x[WD] + _anchor); }
     void fuseEnergy(const Input& in);
     void alignFromPrior(const GnssVelocity& g, float wn0, float we0);
     void alignFromHeading(const GnssVelocity& g, const Snapshot& s);
@@ -212,9 +225,12 @@ class AirMassEKF {
     float _sink_f = NAN; // matched low pass of the polar sink
     float _acc_long_f = NAN; // matched low pass of the inertial acceleration along the air velocity
     float _acc_corr = 0.f;   // low passed airspeed derivative minus inertial acceleration (attitude error)
+    float _acc_corr_c = 0.f; // the same with circling_blend_tau
     float _acc_kin = 0.f;    // acceleration along the air velocity for the energy balance (updateKinetic)
     float _a_air = 0.f;      // its airspeed derivative part, without the gust blend
     float _anchor = 0.f;     // m/s, low pass of the plain energy balance minus the estimate (anchor_tau)
+    float _vario_out = NAN;  // m/s, the vario output (airmassVario)
+    float _straight = 1.f;   // the kinetic blend's weight at this cycle's bank (blendBankWeight)
     float _wd_energy = NAN, _wd_energy_plain = NAN; // diagnostics, energyWd()
     float _ww_lp = 0.f, _blend_lp = 0.f; // low passes of the wind work and the blend correction (wind_work_hp, blend_hp)
     float _acc_mem = 0.f;// decaying peak of the longitudinal acceleration (AHRS disturbance memory)

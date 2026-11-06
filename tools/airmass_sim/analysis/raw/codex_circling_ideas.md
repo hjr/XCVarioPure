@@ -1,0 +1,34 @@
+## Diagnosis
+
+The strongest finding is a **turn dependent disagreement between measured airspeed change and inertial acceleration**. Its first harmonic is 0.06–0.09 m/s². At roughly 30–35 m/s, that corresponds to 0.18–0.32 m/s in the energy balance *if fully admitted*. Full kinetic blending made the real flight circling error 0.79 m/s versus 0.63 without it; the simulator shows the opposite. The current bank fade reduces this failure, but still admits some of the disagreement through [updateKinetic](/Users/levanov/XCVarioPure/main/airmass/AirMassEKF.cpp:316). Real 1 s airspeed changes are about three times the simulator’s, making an omitted real airflow or pressure effect plausible. These observations locate an error path; they do **not** identify whether the source is wind shear, pitot behavior, or attitude.
+
+The kinematic path also contributes. Across all 11 flights, raising `sigma_pitch` from 0.017 to 0.05 lowered its estimated 10 s circling own error from **0.280 to 0.259 m/s**, but increased circling delay from **1.4 to 2.0 s**. The observed ±0.5° AirMass–AHRS pitch difference could create about 0.26–0.31 m/s instantaneous vertical airspeed error, but AHRS is not attitude truth, and the existing turn uncertainty already downweights [fuseKinematic](/Users/levanov/XCVarioPure/main/airmass/AirMassEKF.cpp:283). I would not attribute the entire gap to that pitch difference.
+
+| All 11 flights, cockpit replay | 10 s circling own error | Circling delay | Circling 1 s needle movement |
+|---|---:|---:|---:|
+| Current | 0.280 m/s | 1.4 s | 0.863 m/s |
+| `circling_blend_tau=0.45` | 0.270 | 1.6 s | 0.877 |
+| `circling_blend_tau=0.4` | 0.266 | 1.8 s | 0.892 |
+| `sigma_pitch=0.05` | 0.259 | 2.0 s | 0.903 |
+| TE netto | 0.234 | 2.6 s | 0.855 |
+
+The “own error” values are three-cornered-hat estimates, not direct truth measurements; shared pressure and polar errors limit their interpretation. In the unshifted `REALTIME=1` score, `circling_blend_tau=0.45` changes circling 10 s error only **0.683 → 0.681 m/s**. It is a small improvement, not a solved circling error.
+
+## Ranked changes to try
+
+1. **Remove a repeatable turn harmonic from the kinetic blend’s acceleration discrepancy.** In [updateKinetic](/Users/levanov/XCVarioPure/main/airmass/AirMassEKF.cpp:316), fit `d = a_air - _acc_long_f` against `sin(heading)` and `cos(heading)` during stable circles, with separate small fits for left and right turns. Learn over at least two complete turns; freeze the fit during roll-in and thermal entry. Use `d_clean = d - fitted_harmonic` in the blend correction and its circling complementary filter. This targets the measured 0.06–0.09 m/s² component without adding output lag. The fit needs only a few float states. **Test:** rebuild the replay WASM, compare baseline and `turn_harmonic=1` with `needle.js` on all 11 logs, including `REALTIME=1`; inspect `phase.py` to verify the residual harmonic shrinks. Run development and held-out simulator scoreboards, adding a heading/turn correlated airspeed or acceleration error scenario. **Risk:** a repeatable real thermal gradient could be fitted away; require persistence across turns and verify entry rms, false lift, gust and pull-up spikes. This is the best targeted hypothesis, **not yet tested as code**.
+
+2. **Try the one-line near-term setting:** in [Config](/Users/levanov/XCVarioPure/main/airmass/AirMassEKF.h:86), change `circling_blend_tau = 0.5f` to `0.45f`. The all-flight replay supports a modest gain, and its measured 1.6 s circling delay is exactly 1 s ahead of TE. **Test now:** `SERIES='[["current","",2],["0.45","circling_blend_tau=0.45",2]]' node tools/airmass_sim/analysis/needle.js tools/airmass_sim/web flightlogs/discussion451/*.nmea.gz`, then repeat with `REALTIME=1`. Run `scoreboard.py --set cfg.circling_blend_tau=0.45` and `--holdout` in the simulator. **Risk:** the speed margin has no measured slack and movement is slightly above TE; this should remain an experiment until the simulator gates pass.
+
+3. **Correct the attitude gravity-reference model for changing AoA.** [Attitude::update](/Users/levanov/XCVarioPure/main/airmass/AirMassAttitude.h:57) models acceleration as `V′u + ω×Vu`. Since `u` changes with the modeled AoA, its derivative also contains `V α′(−sinα, 0, cosα)`. Add a filtered `_alpha_dot`, then add `−V*_alpha_dot*sin(alpha)` to `a[0]` and `+V*_alpha_dot*cos(alpha)` to `a[2]`. This is a **verified equation omission**, but its contribution to these flights is unverified; differentiation of noisy load factor or a proxy flap change could make it worse. **Test:** compare pitch harmonic, kinematic innovation, and `needle.js` scores; simulator cases need flap transitions, roll-in/out, pull-ups and turbulence. Reject it if false lift or entry spikes increase.
+
+4. **Investigate signed sideslip correction at high bank.** [airVelocity](/Users/levanov/XCVarioPure/main/airmass/AirMassEKF.cpp:120) fixes the body lateral air velocity to zero; [slipSigma](/Users/levanov/XCVarioPure/main/airmass/AirMassInput.h:67) only increases uncertainty. A 0.5° signed slip at 30 m/s and 40° bank changes the vertical component by about **0.17 m/s**. That is compatible in size with the observed **+0.20 m/s AirMass–TE** mean in left turns above 40°, but does not establish its sign or cause. A candidate change is a tightly bounded, filtered signed `beta` from CG lateral force, passed into `airVelocity` as a body-y component. **Test first:** a Recording flight with actual flap position, full gyro, lateral force and both turn directions; bin the AirMass–TE residual by signed `f_y·sin(roll)`. Then replay and simulator slip cases. **Risk:** mounting bias or an incorrect side-force coefficient would introduce a new turn bias. I would not implement this from the present logs alone.
+
+## Code and data cautions
+
+- Simply weakening kinematic fusion or shortening the circling blend further improves the shifted accuracy score but **fails the required ≥1 s circling speed advantage** in the all-flight replay.
+- The attitude reference assumes constant wind during its acceleration calculation and does not time-align its airspeed derivative with the IMU in the same way the EKF energy path accounts for pitot lag. Those are plausible real-flight error sources, not demonstrated defects here.
+- Removing the converter’s recommended-flap proxy slightly worsened the all-flight replay (circling 10 s reference error **0.659 → 0.663 m/s**). The unknown actual lever still limits the diagnosis.
+- The `$SENS` gyro dead zone and the shared wind directions prevent this data set from separating absolute-heading effects from wind-relative effects. A Recording flight with exact estimator inputs, full gyro and circles in substantially different wind directions is the decisive physical-source check.
+
+No files were edited. I ran the real-flight WASM replays; I did not run the Docker simulator.
