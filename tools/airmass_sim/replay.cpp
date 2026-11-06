@@ -13,51 +13,15 @@
 //   --no-learn: keep the calibration values as started
 //   --set name=value: experiment with an estimator setting (AirMassEKF::Config), e.g. --set sigma_pitch=0.05
 
-#include "AirMassPipeline.h"
-#include "AirMassRecord.h"
 #include "math/Units.h"
-#include "stats.h"
+#include "replay_core.h"
 
-#include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
-#include <string>
-#include <utility>
-#include <vector>
 
 using Units::rad_to_deg;
-
-namespace {
-// estimator settings for experiments (--set), applied after every setup
-bool applySettings(AirMassEKF& ekf, const std::vector<std::pair<std::string, float>>& settings) {
-    AirMassEKF::Config c = ekf.config();
-    const std::pair<const char*, float*> known[] = {
-        {"sigma_pitch", &c.sigma_pitch}, {"sigma_energy", &c.sigma_energy}, {"energy_tau", &c.energy_tau}, {"q_wind_v", &c.q_wind_v},
-        {"q_wind_h", &c.q_wind_h}, {"q_thb", &c.q_thb}, {"q_kcl", &c.q_kcl}, {"lag_static", &c.lag_static}, {"lag_pitot", &c.lag_pitot},
-        {"sigma_air", &c.sigma_air}, {"gust_acc", &c.gust_acc}, {"kinetic_tau", &c.kinetic_tau}, {"r_baro", &c.r_baro},
-        {"wind_work", &c.wind_work}, {"gate", &c.gate}, {"energy_load_weight", &c.energy_load_weight},
-        {"energy_gust_weight", &c.energy_gust_weight}, {"anchor_tau", &c.anchor_tau},
-        {"kcl_min", &c.kcl_min}, {"kcl_max", &c.kcl_max}, {"energy_gate", &c.energy_gate},
-        {"wind_work_hp", &c.wind_work_hp}, {"blend_hp", &c.blend_hp}, {"polar_calibrated", &c.polar_calibrated},
-    };
-    for (const auto& s : settings) {
-        bool found = false;
-        for (const auto& k : known) {
-            if (s.first == k.first) {
-                *k.second = s.second;
-                found = true;
-            }
-        }
-        if (!found) {
-            std::fprintf(stderr, "unknown setting %s\n", s.first.c_str());
-            return false;
-        }
-    }
-    ekf.setConfig(c);
-    return true;
-}
-} // namespace
 
 int main(int argc, char** argv) {
     if (argc < 2) {
@@ -68,7 +32,7 @@ int main(int argc, char** argv) {
     float check = -1.f;
     bool override_warm = false, learn = true;
     float warm_override[4] = {1.f, 0.f, 1.f, 0.f};
-    std::vector<std::pair<std::string, float>> settings;
+    airmass::replay::Settings settings;
     for (int i = 2; i < argc; ++i) {
         if (std::strcmp(argv[i], "--no-learn") == 0) {
             learn = false;
@@ -77,12 +41,11 @@ int main(int argc, char** argv) {
         } else if (i + 1 < argc && std::strcmp(argv[i], "--check") == 0) {
             check = std::atof(argv[++i]);
         } else if (i + 1 < argc && std::strcmp(argv[i], "--set") == 0) {
-            const char* eq = std::strchr(argv[++i], '=');
-            if (!eq) {
-                std::fprintf(stderr, "--set needs name=value\n");
+            std::string error;
+            if (!airmass::replay::parseSettings(argv[++i], settings, &error)) {
+                std::fprintf(stderr, "--set: %s\n", error.c_str());
                 return 2;
             }
-            settings.emplace_back(std::string(argv[i], eq - argv[i]), std::atof(eq + 1));
         } else if (i + 1 < argc && std::strcmp(argv[i], "--warm") == 0) {
             override_warm = std::sscanf(argv[++i], "%f,%f,%f,%f", &warm_override[0], &warm_override[1], &warm_override[2], &warm_override[3]) == 4;
         } else {
@@ -105,24 +68,12 @@ int main(int argc, char** argv) {
                           "polar_sink,load_factor,vd,acc_long,acc_down,wd_energy,wd_energy_plain\n");
     }
 
-    airmass::Pipeline pipe;
-    pipe.setLearning(learn);
-    bool running = false, configured = false;
-    long lines = 0, frames = 0, gnss = 0, headings = 0, starts = 0, skipped = 0, bad = 0;
-    uint32_t t_first = 0, t_last = 0;
-    Stats vario_diff;
-    long status_diff = 0, outputs = 0;
-
-    // a cycle ends with the next one (or a restart, the stop, the end of the log): its CSV row then has the cycle's
-    // GNSS and compass fusion, the averaged wind and the device's output
-    bool open = false;
-    float device_vario = NAN;
-    auto endCycle = [&]() {
-        if (!open) {
-            return;
-        }
-        open = false;
-        pipe.endCycle();
+    airmass::replay::Replayer r;
+    r.setLearning(learn);
+    r.settings = settings;
+    r.override_warm = override_warm;
+    std::copy(std::begin(warm_override), std::end(warm_override), r.warm);
+    r.on_cycle = [csv](const airmass::Pipeline& pipe, float device_vario) {
         if (!csv) {
             return;
         }
@@ -141,87 +92,29 @@ int main(int argc, char** argv) {
     };
 
     char line[512];
-    namespace rec = airmass::record;
-    rec::Sentence s;
-    airmass::Setup setup;
-    rec::Start st;
-    airmass::Frame fr;
-    rec::Gnss g;
-    rec::Heading h;
-    rec::Output out;
-    while (std::fgets(line, sizeof(line), in)) {
-        lines++;
-        if (!rec::parse(line, s)) {
-            if (std::strncmp(line, "$PXCV", 5) == 0) {
-                bad++; // ours, but damaged (checksum)
-            }
-            continue;
-        }
-        if (rec::decode(s, setup)) {
-            pipe.configure(setup);
-            if (!applySettings(pipe.ekf(), settings)) {
-                return 2;
-            }
-            configured = true;
-        } else if (rec::decode(s, st)) {
-            endCycle();
-            if (override_warm) {
-                st.warm.k_tas = warm_override[0];
-                st.warm.pitch_ofs = warm_override[1];
-                st.warm.k_aoa = warm_override[2];
-                st.warm.lat_ofs = warm_override[3];
-                std::fill(std::begin(st.warm.flap_ofs), std::end(st.warm.flap_ofs), airmass::FlapOffsets::UNKNOWN); // a new calibration
-            }
-            pipe.start(st.t, st.alt, st.down, st.gyro, st.warm);
-            running = configured;
-            starts++;
-            if (!t_first) {
-                t_first = st.t;
-            }
-        } else if (!running) {
-            skipped += !std::strcmp(s.name, "PXCVR"); // the log started in flight: wait for the next start
-        } else if (rec::decode(s, fr)) {
-            endCycle();
-            pipe.step(fr);
-            open = true;
-            device_vario = NAN;
-            frames++;
-            t_last = fr.time_ms;
-        } else if (rec::decode(s, g)) {
-            pipe.gnss(g.v, g.prior, g.wn0, g.we0);
-            gnss++;
-        } else if (rec::decode(s, h)) {
-            pipe.heading(h.psi, h.sigma);
-            headings++;
-        } else if (!std::strcmp(s.name, "PXCVX")) {
-            endCycle();
-            running = false;
-        } else if (rec::decode(s, out)) {
-            // the device's output for the cycle before
-            const AirMassEKF& ekf = pipe.ekf();
-            vario_diff.add(ekf.airmassVario() - out.vario);
-            status_diff += out.status != ekf.status();
-            outputs++;
-            device_vario = out.vario;
-        }
+    while (std::fgets(line, sizeof(line), in) && r.line(line)) {
     }
-    endCycle();
+    r.finish();
     std::fclose(in);
     if (csv) {
         std::fclose(csv);
     }
+    if (!r.error.empty()) {
+        std::fprintf(stderr, "%s\n", r.error.c_str());
+        return 2;
+    }
 
-    const AirMassEKF& ekf = pipe.ekf();
-    std::printf("%ld lines: %ld cycles (%.0f s), %ld GNSS, %ld compass, %ld starts; %ld cycles before the first start, %ld damaged\n", lines, frames,
-                (t_last - t_first) * 1e-3, gnss, headings, starts, skipped, bad);
+    const AirMassEKF& ekf = r.pipeline().ekf();
+    std::printf("%ld lines: %ld cycles (%.0f s), %ld GNSS, %ld compass, %ld starts; %ld cycles before the first start, %ld damaged\n", r.lines, r.frames,
+                (r.t_last - r.t_first) * 1e-3, r.gnss, r.headings, r.starts, r.skipped, r.bad);
     std::printf("learned: k_tas %.3f, pitch ofs %.2f°, aoa scale %.3f, gnss latency %.0f ms, gyro z bias %.3f°/s\n", ekf.kTas(),
                 rad_to_deg(ekf.pitchOffset()), ekf.aoaScale(), ekf.gnssLatency() * 1000.f, rad_to_deg(ekf.yawRateBias()));
-    bool ok = frames > 0;
-    if (outputs) {
-        std::printf("against the device's $PXCVA (%ld): vario rms %.3f m/s, max %.3f m/s, status differs %ld times\n", outputs, vario_diff.rms(),
-                    vario_diff.maxabs, status_diff);
+    bool ok = r.frames > 0;
+    if (r.outputs) {
+        std::printf("against the device's $PXCVA (%ld): vario rms %.3f m/s, max %.3f m/s, status differs %ld times\n", r.outputs, r.vario_diff.rms(),
+                    r.vario_diff.maxabs, r.status_diff);
         if (check >= 0.f) {
-            ok = ok && vario_diff.maxabs <= check && status_diff == 0;
+            ok = ok && r.vario_diff.maxabs <= check && r.status_diff == 0;
         }
     } else if (check >= 0.f) {
         std::printf("no $PXCVA in the log, nothing to check against\n");

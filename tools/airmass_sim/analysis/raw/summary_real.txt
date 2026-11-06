@@ -1,0 +1,50 @@
+11 flights, 35.8 h free flight; AirMass with the TE vario's 4 s damping, every series shifted by its own delay
+
+=== against the GNSS netto with the speed term from GNSS ground speed minus a 2 min wind (gust-insensitive)
+  delays: AirMass now 1.8 s, AirMass, 1st real-flight tuning 1.2 s, AirMass before real-flight tuning 1 s, TE netto 2.4 s, GNSS/INS (Larus design) 2.2 s
+  10 s windows, rms m/s (all / straight / circling; mean all):
+    AirMass now                          0.553 / 0.459 / 0.636   (0.006)   [12477]
+    AirMass, 1st real-flight tuning      0.632 / 0.471 / 0.790   (0.009)   [12477]
+    AirMass before real-flight tuning    0.760 / 0.595 / 0.937   (-0.014)   [12477]
+    TE netto                             0.622 / 0.597 / 0.643   (-0.020)   [12477]
+    GNSS/INS (Larus design)              0.753 / 0.544 / 0.952   (-0.007)   [12477]
+  30 s windows, rms m/s (all / straight / circling; mean all):
+    AirMass now                          0.265 / 0.285 / 0.209   (0.003)   [3993]
+    AirMass, 1st real-flight tuning      0.303 / 0.299 / 0.280   (0.007)   [3993]
+    AirMass before real-flight tuning    0.470 / 0.460 / 0.474   (-0.017)   [3993]
+    TE netto                             0.255 / 0.282 / 0.204   (-0.024)   [3993]
+    GNSS/INS (Larus design)              0.367 / 0.315 / 0.319   (-0.013)   [3993]
+  300 s windows, rms m/s (all; mean all):
+    AirMass now                          0.052   (0.001)   [233]
+    AirMass, 1st real-flight tuning      0.053   (0.001)   [233]
+    AirMass before real-flight tuning    0.179   (-0.039)   [233]
+    TE netto                             0.049   (-0.025)   [233]
+    GNSS/INS (Larus design)              0.045   (-0.009)   [233]
+
+=== against the GNSS netto with the speed term from pitot TAS (gusts count as air movement)
+  delays: AirMass now 1.6 s, AirMass, 1st real-flight tuning 2 s, AirMass before real-flight tuning 1.6 s, TE netto 2.4 s, GNSS/INS (Larus design) 1.8 s
+  10 s windows, rms m/s (all / straight / circling; mean all):
+    AirMass now                          0.474 / 0.559 / 0.358   (0.008)   [12477]
+    AirMass, 1st real-flight tuning      0.655 / 0.582 / 0.748   (0.010)   [12477]
+    AirMass before real-flight tuning    0.829 / 0.762 / 0.930   (-0.013)   [12477]
+    TE netto                             0.310 / 0.292 / 0.324   (-0.018)   [12477]
+    GNSS/INS (Larus design)              0.911 / 0.753 / 1.075   (-0.005)   [12477]
+  30 s windows, rms m/s (all / straight / circling; mean all):
+    AirMass now                          0.237 / 0.285 / 0.173   (0.008)   [3993]
+    AirMass, 1st real-flight tuning      0.288 / 0.305 / 0.271   (0.010)   [3993]
+    AirMass before real-flight tuning    0.477 / 0.497 / 0.477   (-0.013)   [3993]
+    TE netto                             0.127 / 0.124 / 0.130   (-0.019)   [3993]
+    GNSS/INS (Larus design)              0.397 / 0.351 / 0.358   (-0.007)   [3993]
+  300 s windows, rms m/s (all; mean all):
+    AirMass now                          0.052   (0.005)   [233]
+    AirMass, 1st real-flight tuning      0.053   (0.004)   [233]
+    AirMass before real-flight tuning    0.178   (-0.036)   [233]
+    TE netto                             0.039   (-0.022)   [233]
+    GNSS/INS (Larus design)              0.047   (-0.005)   [233]
+
+as shown in the cockpit: needle movement within 1 s, rms m/s
+    AirMass now                          1.138
+    AirMass, 1st real-flight tuning      0.584
+    AirMass before real-flight tuning    0.538
+    TE netto                             0.857
+    GNSS/INS (Larus design)              2.282

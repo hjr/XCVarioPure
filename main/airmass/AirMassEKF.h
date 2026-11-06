@@ -63,7 +63,11 @@ class AirMassEKF {
         float sigma_pitch = 0.017f; // rad AHRS pitch noise in calm straight flight
         float sigma_energy = 0.5f;  // m/s energy constraint noise (polar error, TAS derivative)
         float energy_tau = 0.5f;    // s low pass for the energy balance terms (acceleration and vertical speed alike)
-        float kinetic_tau = 10.f;   // s, low pass of the airspeed derivative minus the inertial acceleration (attitude error)
+        float kinetic_tau = 8.f;    // s, low pass of the airspeed derivative minus the inertial acceleration: what changes
+                                    // slower is not a gust but an error of the inertial acceleration (attitude, AoA model).
+                                    // Faster follows that error better on real flights (30 s straight: 0.297 m/s rms off
+                                    // the GNSS energy at 10 s, 0.286 at 8 s, 0.270 at 5 s), but also takes part of a long
+                                    // gust for it (simulator gust spike 1.28, 1.40, 1.73 m/s)
         float gust_acc = 1.5f;      // m/s², transient disagreement at which the inertial acceleration takes over (gust)
         float wind_work = 1.f;      // weight of the work of the estimated wind change in the energy balance (va . dW/dt)
         float wind_work_hp = 10.f;  // s, high pass of that term (0: none): only its fast part (gusts); slower, it is mostly
@@ -71,6 +75,11 @@ class AirMassEKF {
         float polar_calibrated = 1.f; // 1: the polar at the calibrated IAS (k_tas), 0: at the measured IAS like S2F
         float blend_hp = 120.f;     // s, high pass of the kinetic blend's gust correction (0: none): a gust is short, what the
                                     // blend keeps correcting for minutes is attitude error
+        float blend_bank = 20.f;    // deg, the kinetic blend fades out around this bank angle (0: at any bank): on real
+                                    // flights it rejects gusts in straight flight, but in circling the inertial acceleration
+                                    // is not good enough for it, AirMass read 0.79 m/s rms off the GNSS energy over 10 s with
+                                    // it against 0.63 without (the simulator does not show this, its cause is not known yet)
+        float blend_bank_width = 10.f; // deg, over which it fades (blend_bank -+ width / 2)
         // The energy balance gets the same weight all the time, ungated: down weighting it in gusts or at high load
         // factors, or gating its innovations, drops it just when the lift comes (turbulence and pull-ups in thermals):
         // on real flights (tools/airmass_sim/analyze_sens.py) the vario then read climbs 0.17 m/s low and wandered 3x

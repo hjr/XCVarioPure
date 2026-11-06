@@ -15,7 +15,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import analyze_sens as A  # noqa: E402
 
 G = 9.80665
-NCOL = 35  # the simulator's 34 columns (0..33) plus the vario stand-in (34)
+NCOL = 37  # the simulator's 36 columns (0..35) plus the vario stand-in (36)
 
 
 def main():
@@ -67,7 +67,7 @@ def main():
             c[30] = (e["lon"] - lon0) * k_e if math.isfinite(e["lon"]) else math.nan
             c[31], c[32] = r["rn"], r["re"]
             c[33] = r["ref"]
-            c[34] = w_gnss[k]
+            c[36] = w_gnss[k]
             f.write(",".join("nan" if isinstance(v, float) and math.isnan(v) else f"{v:.3f}" for v in c) + "\n")
     print(f"{out_path}: {len(rows)} rows")
 

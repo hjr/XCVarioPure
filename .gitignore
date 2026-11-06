@@ -10,3 +10,7 @@ dependencies.lock
 sdkconfig
 sdkconfig.old
 /build_sim
+/flightlogs
+.wrangler/
+__pycache__/
+/tools/airmass_sim/web/airmass.js

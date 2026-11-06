@@ -311,7 +311,11 @@ void AirMassEKF::updateKinetic(const Input& in, const float va[3]) {
     const float d = a_air - _acc_long_f;
     _acc_corr += (d - _acc_corr) * in.dt / (_cfg.kinetic_tau + in.dt);
     const float gust = d - _acc_corr;
-    const float w = std::clamp(std::fabs(gust) / _cfg.gust_acc, 0.f, 1.f);
+    float w = std::clamp(std::fabs(gust) / _cfg.gust_acc, 0.f, 1.f);
+    if (_cfg.blend_bank > 0.f) {
+        const float bank = Units::rad_to_deg(std::fabs(in.roll));
+        w *= std::clamp((_cfg.blend_bank + 0.5f * _cfg.blend_bank_width - bank) / std::max(_cfg.blend_bank_width, 0.1f), 0.f, 1.f);
+    }
     float corr = -w * gust;
     if (_cfg.blend_hp > 0.f) {
         _blend_lp += (corr - _blend_lp) * in.dt / (_cfg.blend_hp + in.dt);

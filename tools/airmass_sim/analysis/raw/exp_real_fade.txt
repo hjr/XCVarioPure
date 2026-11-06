@@ -1,0 +1,22 @@
+
+=== reference with the speed term from pitot TAS (the page's GNSS netto)
+  delays: blend on 2 s, blend off 1.6 s, fade >20° 1.6 s, TE netto 2.4 s
+  10 s windows, rms (mean) m/s:
+    all       blend on 0.655 (0.01)   blend off 0.357 (0.01)   fade >20° 0.487 (0.01)   TE netto 0.309 (-0.02)   [12627 windows]
+    straight  blend on 0.581 (0.01)   blend off 0.373 (0.04)   fade >20° 0.580 (0.01)   TE netto 0.291 (0.01)   [4827 windows]
+    circling  blend on 0.748 (0.01)   blend off 0.340 (-0.02)   fade >20° 0.359 (0.01)   TE netto 0.323 (-0.03)   [4876 windows]
+  30 s windows, rms (mean) m/s:
+    all       blend on 0.290 (0.01)   blend off 0.180 (0.01)   fade >20° 0.247 (0.01)   TE netto 0.127 (-0.02)   [4057 windows]
+    straight  blend on 0.307 (0.02)   blend off 0.213 (0.05)   fade >20° 0.302 (0.02)   TE netto 0.124 (0.01)   [1269 windows]
+    circling  blend on 0.272 (-0.02)   blend off 0.148 (-0.03)   fade >20° 0.177 (-0.02)   TE netto 0.132 (-0.05)   [1486 windows]
+
+=== reference with the speed term from GNSS ground velocity minus a 2 min wind (gust-insensitive)
+  delays: blend on 1.2 s, blend off 2.2 s, fade >20° 2 s, TE netto 2.6 s
+  10 s windows, rms (mean) m/s:
+    all       blend on 0.634 (0.01)   blend off 0.571 (0.01)   fade >20° 0.557 (0.01)   TE netto 0.624 (-0.02)   [12621 windows]
+    straight  blend on 0.472 (-0.01)   blend off 0.514 (0.02)   fade >20° 0.467 (-0.01)   TE netto 0.601 (-0.02)   [4821 windows]
+    circling  blend on 0.790 (0.02)   blend off 0.630 (-0.02)   fade >20° 0.634 (0.01)   TE netto 0.643 (-0.03)   [4876 windows]
+  30 s windows, rms (mean) m/s:
+    all       blend on 0.305 (0.01)   blend off 0.239 (0.00)   fade >20° 0.272 (0.00)   TE netto 0.256 (-0.02)   [4054 windows]
+    straight  blend on 0.302 (-0.01)   blend off 0.250 (0.02)   fade >20° 0.297 (-0.01)   TE netto 0.284 (-0.02)   [1266 windows]
+    circling  blend on 0.281 (-0.01)   blend off 0.203 (-0.02)   fade >20° 0.211 (-0.01)   TE netto 0.206 (-0.04)   [1486 windows]
