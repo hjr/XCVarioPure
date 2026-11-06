@@ -31,6 +31,7 @@
 #include "AirMassFlaps.h"
 #include "AirMassPipeline.h"
 #include "AirMassRecord.h"
+#include "replay_settings.h"
 #include "ins_reference.h"
 #include "stats.h"
 #include "math/Quaternion.h"
@@ -62,6 +63,8 @@ constexpr float ALPHA0 = -0.03f;   // zero lift AoA of the real glider
 struct Knobs {
     float k_tas = 1.05f;      // true TAS = k_tas * indicated
     float mount = 0.02f;      // rad, IMU mounting pitch error
+    float mount_roll = 0.f;   // deg, IMU mounting roll error (residual after the device's IMU calibration)
+    float mount_yaw = 0.f;    // deg, IMU mounting yaw error
     float gyro_bias = 0.002f; // rad/s residual gyro bias (z), half of it on x and y
     float acc_bias = 0.005f;  // g, accelerometer z bias
     float cla_true = 5.5f;    // lift slope of the "real" glider
@@ -97,11 +100,10 @@ struct Knobs {
     float ekf_anchor = -1.f;                            // s, output anchor to the plain energy balance (negative: default)
     float ekf_energy_gate = -1.f, ekf_ktau = -1.f;      // energy balance gate [sigma], slow kinetic correction [s] (negative: default)
     float ekf_ww = -1.f, ekf_ww_hp = -1.f, ekf_blend_hp = -1.f; // wind work weight, its high pass [s], blend high pass [s]
-    float ekf_sigma_pitch = -1.f;                       // rad, the kinematic (pitch) path's noise (negative: default)
 };
 Knobs K;
 const std::pair<const char*, float*> KNOBS[] = {
-    {"k_tas", &K.k_tas}, {"mount", &K.mount}, {"gyro_bias", &K.gyro_bias}, {"acc_bias", &K.acc_bias}, {"cla_true", &K.cla_true},
+    {"k_tas", &K.k_tas}, {"mount", &K.mount}, {"mount_roll", &K.mount_roll}, {"mount_yaw", &K.mount_yaw}, {"gyro_bias", &K.gyro_bias}, {"acc_bias", &K.acc_bias}, {"cla_true", &K.cla_true},
     {"polar_err", &K.polar_err}, {"mass_err", &K.mass_err}, {"tas_noise", &K.tas_noise}, {"wind", &K.wind}, {"turb", &K.turb},
     {"lift", &K.lift}, {"dolphin", &K.dolphin}, {"gps_out", &K.gps_out}, {"gps_out_len", &K.gps_out_len},
     {"flaps", &K.flaps}, {"flap_alpha0", &K.flap_alpha0}, {"flap_aid", &K.flap_aid}, {"flap_pilot", &K.flap_pilot}, {"aoa_nonlin", &K.aoa_nonlin}, {"gyro_gate", &K.gyro_gate},
@@ -110,7 +112,7 @@ const std::pair<const char*, float*> KNOBS[] = {
     {"ekf_lag_static", &K.ekf_lag_static}, {"ekf_lag_pitot", &K.ekf_lag_pitot}, {"degraded_factor", &K.degraded_factor}, {"degraded_time", &K.degraded_time},
     {"ekf_load_w", &K.ekf_load_w}, {"ekf_gust_w", &K.ekf_gust_w}, {"ekf_anchor", &K.ekf_anchor},
     {"ekf_energy_gate", &K.ekf_energy_gate}, {"ekf_ktau", &K.ekf_ktau},
-    {"ekf_ww", &K.ekf_ww}, {"ekf_ww_hp", &K.ekf_ww_hp}, {"ekf_blend_hp", &K.ekf_blend_hp}, {"ekf_sigma_pitch", &K.ekf_sigma_pitch},
+    {"ekf_ww", &K.ekf_ww}, {"ekf_ww_hp", &K.ekf_ww_hp}, {"ekf_blend_hp", &K.ekf_blend_hp},
 };
 constexpr float CY_TRUE = 0.25f;   // side force slope of the "real" glider, the device assumes airmass::CY_BETA
 constexpr float CD_BETA = 0.4f;    // 1/rad², drag increase with sideslip (about +0.3 m/s sink at 8° and 100 km/h)
@@ -310,10 +312,14 @@ void navToBody(float roll, float pitch, float yaw, const float n[3], float b[3])
     b[2] = -sr * y + cr * z2;
 }
 
-// sensor axes misaligned by a pitch angle against the body axes
+// sensor axes misaligned against the body axes: by a pitch angle, then a roll and a yaw angle (small angles, any order)
 vector_f mountRotate(const float b[3]) {
     const float c = std::cos(K.mount), s = std::sin(K.mount);
-    return vector_f(c * b[0] - s * b[2], b[1], s * b[0] + c * b[2]);
+    float x = c * b[0] - s * b[2], y = b[1], z = s * b[0] + c * b[2];
+    const float r = K.mount_roll * D2R, cr = std::cos(r), sr = std::sin(r);
+    const float y1 = cr * y + sr * z, z1 = -sr * y + cr * z;
+    const float yw = K.mount_yaw * D2R, cy = std::cos(yw), sy = std::sin(yw);
+    return vector_f(cy * x + sy * y1, -sy * x + cy * y1, z1);
 }
 
 // ASW 20 flap positions (lever 0..4); a flap deflection shifts the zero lift angle of attack (Knobs::flap_alpha0).
@@ -604,6 +610,7 @@ int main(int argc, char** argv) {
     }
     const std::string which = argv[1];
     FILE* csv = nullptr;
+    airmass::replay::Settings cfg_settings; // --set cfg.<name>=value: estimator settings by name
     const char* csv_name = nullptr;
     const char* record_name = nullptr;
     int lat_err = 0;
@@ -632,6 +639,13 @@ int main(int argc, char** argv) {
             slip_aid = std::atoi(argv[i + 1]) != 0;
         } else if (std::strcmp(argv[i], "--max-wind-valid") == 0) {
             max_wind_valid = std::atof(argv[i + 1]);
+        } else if (std::strcmp(argv[i], "--set") == 0 && std::strncmp(argv[i + 1], "cfg.", 4) == 0) {
+            // an estimator setting by name (AirMassEKF::Config), e.g. --set cfg.gust_acc=1000
+            std::string error;
+            if (!airmass::replay::parseSettings(argv[i + 1] + 4, cfg_settings, &error)) {
+                std::fprintf(stderr, "%s\n", error.c_str());
+                return 2;
+            }
         } else if (std::strcmp(argv[i], "--set") == 0) {
             const char* eq = std::strchr(argv[i + 1], '=');
             bool known = false;
@@ -735,10 +749,10 @@ int main(int argc, char** argv) {
     opts.wind_work_hp = K.ekf_ww_hp >= 0.f ? K.ekf_ww_hp : NAN;
     opts.blend_hp = K.ekf_blend_hp >= 0.f ? K.ekf_blend_hp : NAN;
     pipe.setOptions(opts);
-    if (K.ekf_sigma_pitch >= 0.f) {
-        AirMassEKF::Config c = pipe.ekf().config();
-        c.sigma_pitch = K.ekf_sigma_pitch;
-        pipe.ekf().setConfig(c);
+    std::string unknown;
+    if (!airmass::replay::applySettings(pipe.ekf(), cfg_settings, &unknown)) {
+        std::fprintf(stderr, "unknown estimator setting %s\n", unknown.c_str());
+        return 2;
     }
     airmass::Warm warm_start;
     warm_start.k_tas = warm[0];
@@ -1226,12 +1240,13 @@ int main(int argc, char** argv) {
             }
         }
         if (csv) {
-            std::fprintf(csv, "%.1f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.3f,%.3f,%.3f,%.3f,%.4f,%d,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.1f,%.2f,%.1f,%.1f,%.1f,%d,%.3f,%.4f,%.5f,%.1f,%.1f,%.2f,%.2f,%.3f\n", tr.t, tr.wn, tr.we, ekf.windN(),
+            std::fprintf(csv, "%.1f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.3f,%.3f,%.3f,%.3f,%.4f,%d,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.1f,%.2f,%.1f,%.1f,%.1f,%d,%.3f,%.4f,%.5f,%.1f,%.1f,%.2f,%.2f,%.3f,%.3f,%.4f\n", tr.t, tr.wn, tr.we, ekf.windN(),
                          ekf.windE(), vario_true, am_vario, te_netto, std::remainder(ekf.heading() - tr.psi, 6.2831853f),
                          ekf.kTas(), ekf.pitchOffset(), ekf.accBias(), st, std::sqrt(ekf.sigma(0) * ekf.sigma(0) + ekf.sigma(1) * ekf.sigma(1)),
                          tr.roll / D2R, tr.vg[2], ekf.vDown(), ekf.airmassVario(), (in.roll - tr.roll) / D2R,
                          (in.pitch - tr.pitch) / D2R, tr.v, in.load_factor, tr.h, tr.xa, tr.ya, g_pilot.mode, te + te_polar,
-                         ekf.sigma(AirMassEKF::PSI), ekf.yawRateBias(), tr.gn, tr.ge, ins.windN(), ins.windE(), ins_netto);
+                         ekf.sigma(AirMassEKF::PSI), ekf.yawRateBias(), tr.gn, tr.ge, ins.windN(), ins.windE(), ins_netto,
+                         tas_m, te_polar); // 34, 35: the measured TAS and the polar sink TE netto adds (positive), for references
         }
     }
     if (rec) {

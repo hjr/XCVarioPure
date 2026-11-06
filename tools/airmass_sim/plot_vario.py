@@ -18,7 +18,7 @@ from matplotlib.lines import Line2D  # noqa: E402
 from matplotlib.patches import Patch  # noqa: E402
 
 # columns of the simulator CSV (sim.cpp)
-T, TRUTH, AIRMASS_SHOWN, TE_NETTO, STATUS, ROLL, REF_NETTO, STAND_IN = 0, 5, 6, 7, 12, 14, 33, 34
+T, TRUTH, AIRMASS_SHOWN, TE_NETTO, STATUS, ROLL, REF_NETTO, STAND_IN = 0, 5, 6, 7, 12, 14, 33, 36
 ST_VARIO_VALID = 1
 
 INK, INK_2, GRID, SURFACE, BAND = "#0b0b0b", "#52514e", "#e4e3df", "#fcfcfb", "#efeeea"

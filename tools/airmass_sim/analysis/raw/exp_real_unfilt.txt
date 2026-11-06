@@ -1,0 +1,22 @@
+
+=== reference with the speed term from pitot TAS (the page's GNSS netto)
+  delays: AirMass, blend on 2 s, AirMass, blend off 1.6 s, TE netto 2.4 s
+  10 s windows, rms (mean) m/s:
+    all       AirMass, blend on 0.648 (0.01)   AirMass, blend off 0.346 (0.01)   TE netto 0.316 (-0.02)   [11901 windows]
+    straight  AirMass, blend on 0.567 (0.02)   AirMass, blend off 0.363 (0.04)   TE netto 0.296 (0.00)   [4186 windows]
+    circling  AirMass, blend on 0.738 (0.00)   AirMass, blend off 0.332 (-0.02)   TE netto 0.332 (-0.04)   [4866 windows]
+  30 s windows, rms (mean) m/s:
+    all       AirMass, blend on 0.280 (0.01)   AirMass, blend off 0.170 (0.01)   TE netto 0.129 (-0.02)   [3793 windows]
+    straight  AirMass, blend on 0.292 (0.02)   AirMass, blend off 0.203 (0.05)   TE netto 0.125 (0.01)   [1048 windows]
+    circling  AirMass, blend on 0.267 (-0.02)   AirMass, blend off 0.141 (-0.03)   TE netto 0.133 (-0.05)   [1490 windows]
+
+=== reference with the speed term from GNSS ground velocity minus a 2 min wind (gust-insensitive)
+  delays: AirMass, blend on 1.2 s, AirMass, blend off 2.2 s, TE netto 2.6 s
+  10 s windows, rms (mean) m/s:
+    all       AirMass, blend on 0.628 (0.01)   AirMass, blend off 0.568 (0.01)   TE netto 0.609 (-0.02)   [11895 windows]
+    straight  AirMass, blend on 0.472 (-0.01)   AirMass, blend off 0.512 (0.03)   TE netto 0.578 (-0.02)   [4180 windows]
+    circling  AirMass, blend on 0.767 (0.02)   AirMass, blend off 0.619 (-0.02)   TE netto 0.630 (-0.03)   [4866 windows]
+  30 s windows, rms (mean) m/s:
+    all       AirMass, blend on 0.296 (0.01)   AirMass, blend off 0.233 (0.00)   TE netto 0.247 (-0.03)   [3792 windows]
+    straight  AirMass, blend on 0.302 (-0.01)   AirMass, blend off 0.252 (0.02)   TE netto 0.278 (-0.03)   [1047 windows]
+    circling  AirMass, blend on 0.273 (-0.01)   AirMass, blend off 0.199 (-0.02)   TE netto 0.205 (-0.04)   [1490 windows]

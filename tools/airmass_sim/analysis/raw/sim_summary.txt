@@ -1,0 +1,104 @@
+
+===== gyro gating 0.5 °/s (12 runs, development day 6 seeds + 6 held-out days)
+
+  against the truth: rms m/s over windows
+    all              5 s       10 s       30 s       60 s
+      AirMass raw            0.236      0.193      0.122      0.083
+      AirMass cockpit        0.256      0.210      0.131      0.088
+      TE netto               0.361      0.261      0.138      0.088
+      GNSS/INS (Larus)       0.420      0.321      0.204      0.153
+    straight         5 s       10 s       30 s       60 s
+      AirMass raw            0.241      0.197      0.122      0.069
+      AirMass cockpit        0.260      0.212      0.130      0.075
+      TE netto               0.368      0.277      0.136      0.069
+      GNSS/INS (Larus)       0.252      0.238      0.190      0.142
+    circling         5 s       10 s       30 s       60 s
+      AirMass raw            0.230      0.185      0.117      0.090
+      AirMass cockpit        0.248      0.198      0.121      0.093
+      TE netto               0.355      0.244      0.134      0.098
+      GNSS/INS (Larus)       0.500      0.365      0.185      0.123
+    delay and correlation against the truth
+      AirMass raw       delay  0.50 s  correlation 0.958 (at 0 s 0.957)
+      AirMass cockpit   delay  1.00 s  correlation 0.973 (at 0 s 0.965)
+      TE netto          delay  2.50 s  correlation 0.959 (at 0 s 0.930)
+      GNSS/INS (Larus)  delay  0.50 s  correlation 0.922 (at 0 s 0.921)
+
+  against the GNSS-style reference: rms m/s over windows
+    all              5 s       10 s       30 s       60 s
+      AirMass raw            0.218      0.156      0.080      0.051
+      AirMass cockpit        0.277      0.197      0.101      0.065
+      TE netto               0.323      0.198      0.088      0.054
+      GNSS/INS (Larus)       0.491      0.352      0.188      0.127
+    straight         5 s       10 s       30 s       60 s
+      AirMass raw            0.254      0.180      0.096      0.061
+      AirMass cockpit        0.317      0.223      0.117      0.075
+      TE netto               0.330      0.214      0.102      0.060
+      GNSS/INS (Larus)       0.439      0.342      0.189      0.139
+    circling         5 s       10 s       30 s       60 s
+      AirMass raw            0.181      0.126      0.054      0.035
+      AirMass cockpit        0.236      0.159      0.066      0.043
+      TE netto               0.313      0.175      0.062      0.036
+      GNSS/INS (Larus)       0.524      0.360      0.157      0.084
+    delay and correlation against the GNSS-style reference
+      AirMass raw       delay  0.75 s  correlation 0.956 (at 0 s 0.946)
+      AirMass cockpit   delay  1.25 s  correlation 0.964 (at 0 s 0.930)
+      TE netto          delay  1.75 s  correlation 0.971 (at 0 s 0.909)
+      GNSS/INS (Larus)  delay  1.25 s  correlation 0.869 (at 0 s 0.863)
+
+  needle movement within 1 s, rms m/s
+      AirMass cockpit   0.211
+      TE netto          0.244
+      GNSS/INS (Larus)  0.341
+      truth             0.150
+
+===== gyro gating now °/s (12 runs, development day 6 seeds + 6 held-out days)
+
+  against the truth: rms m/s over windows
+    all              5 s       10 s       30 s       60 s
+      AirMass raw            0.268      0.213      0.128      0.087
+      AirMass cockpit        0.287      0.228      0.136      0.091
+      TE netto               0.361      0.261      0.138      0.088
+      GNSS/INS (Larus)       0.420      0.321      0.204      0.153
+    straight         5 s       10 s       30 s       60 s
+      AirMass raw            0.242      0.196      0.121      0.069
+      AirMass cockpit        0.260      0.211      0.129      0.074
+      TE netto               0.368      0.277      0.136      0.069
+      GNSS/INS (Larus)       0.252      0.238      0.190      0.142
+    circling         5 s       10 s       30 s       60 s
+      AirMass raw            0.282      0.219      0.127      0.095
+      AirMass cockpit        0.298      0.228      0.131      0.098
+      TE netto               0.355      0.244      0.134      0.098
+      GNSS/INS (Larus)       0.500      0.365      0.185      0.123
+    delay and correlation against the truth
+      AirMass raw       delay  0.50 s  correlation 0.939 (at 0 s 0.937)
+      AirMass cockpit   delay  1.25 s  correlation 0.963 (at 0 s 0.954)
+      TE netto          delay  2.50 s  correlation 0.959 (at 0 s 0.930)
+      GNSS/INS (Larus)  delay  0.50 s  correlation 0.922 (at 0 s 0.921)
+
+  against the GNSS-style reference: rms m/s over windows
+    all              5 s       10 s       30 s       60 s
+      AirMass raw            0.201      0.145      0.076      0.050
+      AirMass cockpit        0.266      0.187      0.097      0.063
+      TE netto               0.323      0.198      0.088      0.054
+      GNSS/INS (Larus)       0.491      0.352      0.188      0.127
+    straight         5 s       10 s       30 s       60 s
+      AirMass raw            0.250      0.176      0.095      0.058
+      AirMass cockpit        0.314      0.219      0.116      0.072
+      TE netto               0.330      0.214      0.102      0.060
+      GNSS/INS (Larus)       0.439      0.342      0.189      0.139
+    circling         5 s       10 s       30 s       60 s
+      AirMass raw            0.150      0.104      0.044      0.031
+      AirMass cockpit        0.217      0.141      0.058      0.040
+      TE netto               0.313      0.175      0.062      0.036
+      GNSS/INS (Larus)       0.524      0.360      0.157      0.084
+    delay and correlation against the GNSS-style reference
+      AirMass raw       delay  0.50 s  correlation 0.953 (at 0 s 0.943)
+      AirMass cockpit   delay  1.25 s  correlation 0.969 (at 0 s 0.932)
+      TE netto          delay  1.75 s  correlation 0.971 (at 0 s 0.909)
+      GNSS/INS (Larus)  delay  1.25 s  correlation 0.869 (at 0 s 0.863)
+
+  needle movement within 1 s, rms m/s
+      AirMass cockpit   0.253
+      TE netto          0.244
+      GNSS/INS (Larus)  0.341
+      truth             0.150

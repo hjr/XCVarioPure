@@ -1,0 +1,22 @@
+
+=== reference with the speed term from pitot TAS (the page's GNSS netto)
+  delays: fade, ktau 10 1.6 s, fade, ktau 8 1.6 s, fade, ktau 5 1.6 s, fade, ktau 3 1.8 s, blend off 1.6 s, TE netto 2.4 s
+  10 s windows, rms (mean) m/s:
+    all       fade, ktau 10 0.488 (0.01)   fade, ktau 8 0.475 (0.01)   fade, ktau 5 0.446 (0.01)   fade, ktau 3 0.418 (0.01)   blend off 0.358 (0.01)   TE netto 0.310 (-0.02)   [12613 windows]
+    straight  fade, ktau 10 0.580 (0.01)   fade, ktau 8 0.559 (0.01)   fade, ktau 5 0.515 (0.02)   fade, ktau 3 0.467 (0.03)   blend off 0.374 (0.04)   TE netto 0.293 (0.00)   [4817 windows]
+    circling  fade, ktau 10 0.360 (0.00)   fade, ktau 8 0.359 (0.00)   fade, ktau 5 0.355 (0.00)   fade, ktau 3 0.356 (-0.00)   blend off 0.341 (-0.02)   TE netto 0.324 (-0.03)   [4877 windows]
+  30 s windows, rms (mean) m/s:
+    all       fade, ktau 10 0.247 (0.01)   fade, ktau 8 0.237 (0.01)   fade, ktau 5 0.220 (0.01)   fade, ktau 3 0.205 (0.01)   blend off 0.180 (0.01)   TE netto 0.128 (-0.02)   [4053 windows]
+    straight  fade, ktau 10 0.300 (0.02)   fade, ktau 8 0.286 (0.02)   fade, ktau 5 0.261 (0.03)   fade, ktau 3 0.243 (0.03)   blend off 0.212 (0.05)   TE netto 0.125 (0.01)   [1266 windows]
+    circling  fade, ktau 10 0.178 (-0.02)   fade, ktau 8 0.175 (-0.02)   fade, ktau 5 0.168 (-0.02)   fade, ktau 3 0.161 (-0.02)   blend off 0.148 (-0.03)   TE netto 0.132 (-0.05)   [1489 windows]
+
+=== reference with the speed term from GNSS ground velocity minus a 2 min wind (gust-insensitive)
+  delays: fade, ktau 10 2 s, fade, ktau 8 2 s, fade, ktau 5 2 s, fade, ktau 3 2 s, blend off 2.2 s, TE netto 2.6 s
+  10 s windows, rms (mean) m/s:
+    all       fade, ktau 10 0.557 (0.01)   fade, ktau 8 0.555 (0.01)   fade, ktau 5 0.555 (0.01)   fade, ktau 3 0.559 (0.01)   blend off 0.571 (0.01)   TE netto 0.623 (-0.02)   [12606 windows]
+    straight  fade, ktau 10 0.466 (-0.01)   fade, ktau 8 0.462 (-0.01)   fade, ktau 5 0.461 (-0.00)   fade, ktau 3 0.472 (0.01)   blend off 0.512 (0.02)   TE netto 0.598 (-0.02)   [4810 windows]
+    circling  fade, ktau 10 0.636 (0.01)   fade, ktau 8 0.635 (0.01)   fade, ktau 5 0.635 (0.01)   fade, ktau 3 0.634 (0.00)   blend off 0.632 (-0.02)   TE netto 0.644 (-0.03)   [4877 windows]
+  30 s windows, rms (mean) m/s:
+    all       fade, ktau 10 0.272 (0.00)   fade, ktau 8 0.266 (0.00)   fade, ktau 5 0.256 (0.00)   fade, ktau 3 0.249 (0.01)   blend off 0.239 (0.00)   TE netto 0.256 (-0.03)   [4050 windows]
+    straight  fade, ktau 10 0.297 (-0.01)   fade, ktau 8 0.286 (-0.01)   fade, ktau 5 0.270 (-0.00)   fade, ktau 3 0.259 (0.00)   blend off 0.250 (0.02)   TE netto 0.283 (-0.02)   [1263 windows]
+    circling  fade, ktau 10 0.211 (-0.01)   fade, ktau 8 0.210 (-0.01)   fade, ktau 5 0.208 (-0.01)   fade, ktau 3 0.207 (-0.01)   blend off 0.204 (-0.02)   TE netto 0.206 (-0.04)   [1489 windows]

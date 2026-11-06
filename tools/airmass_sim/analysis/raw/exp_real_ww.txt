@@ -1,0 +1,22 @@
+
+=== reference with the speed term from pitot TAS (the page's GNSS netto)
+  delays: blend on 2 s, blend off 1.6 s, on, no wind work 2 s, off, no wind work 1.6 s, on, kinetic_tau 3 2.2 s, TE netto 2.4 s
+  10 s windows, rms (mean) m/s:
+    all       blend on 0.655 (0.01)   blend off 0.357 (0.01)   on, no wind work 0.664 (0.01)   off, no wind work 0.321 (0.01)   on, kinetic_tau 3 0.489 (0.02)   TE netto 0.309 (-0.02)   [12627 windows]
+    straight  blend on 0.581 (0.01)   blend off 0.373 (0.04)   on, no wind work 0.591 (0.01)   off, no wind work 0.334 (0.04)   on, kinetic_tau 3 0.466 (0.03)   TE netto 0.291 (0.01)   [4827 windows]
+    circling  blend on 0.748 (0.01)   blend off 0.340 (-0.02)   on, no wind work 0.756 (0.01)   off, no wind work 0.313 (-0.01)   on, kinetic_tau 3 0.526 (0.01)   TE netto 0.323 (-0.03)   [4876 windows]
+  30 s windows, rms (mean) m/s:
+    all       blend on 0.290 (0.01)   blend off 0.180 (0.01)   on, no wind work 0.287 (0.01)   off, no wind work 0.158 (0.01)   on, kinetic_tau 3 0.216 (0.02)   TE netto 0.127 (-0.02)   [4057 windows]
+    straight  blend on 0.307 (0.02)   blend off 0.213 (0.05)   on, no wind work 0.300 (0.02)   off, no wind work 0.183 (0.05)   on, kinetic_tau 3 0.245 (0.04)   TE netto 0.124 (0.01)   [1269 windows]
+    circling  blend on 0.272 (-0.02)   blend off 0.148 (-0.03)   on, no wind work 0.273 (-0.02)   off, no wind work 0.134 (-0.03)   on, kinetic_tau 3 0.190 (-0.02)   TE netto 0.132 (-0.05)   [1486 windows]
+
+=== reference with the speed term from GNSS ground velocity minus a 2 min wind (gust-insensitive)
+  delays: blend on 1.2 s, blend off 2.2 s, on, no wind work 1.2 s, off, no wind work 2 s, on, kinetic_tau 3 1.4 s, TE netto 2.6 s
+  10 s windows, rms (mean) m/s:
+    all       blend on 0.634 (0.01)   blend off 0.571 (0.01)   on, no wind work 0.646 (0.01)   off, no wind work 0.599 (0.01)   on, kinetic_tau 3 0.579 (0.02)   TE netto 0.624 (-0.02)   [12621 windows]
+    straight  blend on 0.472 (-0.01)   blend off 0.514 (0.02)   on, no wind work 0.512 (-0.01)   off, no wind work 0.567 (0.03)   on, kinetic_tau 3 0.474 (0.00)   TE netto 0.601 (-0.02)   [4821 windows]
+    circling  blend on 0.790 (0.02)   blend off 0.630 (-0.02)   on, no wind work 0.785 (0.03)   off, no wind work 0.634 (-0.01)   on, kinetic_tau 3 0.682 (0.03)   TE netto 0.643 (-0.03)   [4876 windows]
+  30 s windows, rms (mean) m/s:
+    all       blend on 0.305 (0.01)   blend off 0.239 (0.00)   on, no wind work 0.316 (0.01)   off, no wind work 0.261 (0.01)   on, kinetic_tau 3 0.255 (0.01)   TE netto 0.256 (-0.02)   [4054 windows]
+    straight  blend on 0.302 (-0.01)   blend off 0.250 (0.02)   on, no wind work 0.330 (-0.01)   off, no wind work 0.294 (0.02)   on, kinetic_tau 3 0.261 (0.01)   TE netto 0.284 (-0.02)   [1266 windows]
+    circling  blend on 0.281 (-0.01)   blend off 0.203 (-0.02)   on, no wind work 0.281 (-0.00)   off, no wind work 0.203 (-0.02)   on, kinetic_tau 3 0.220 (-0.00)   TE netto 0.206 (-0.04)   [1486 windows]

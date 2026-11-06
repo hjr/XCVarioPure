@@ -1,0 +1,1286 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AirMass Replay</title>
+<!-- The AirMass replay in the browser: load a flight log, the device's AirMass code (airmass.js, build.sh) replays it.
+     Serve this folder over http (python3 -m http.server -d tools/airmass_sim/web) so the map tiles load. -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="gliders.js"></script>
+<script src="convert.js"></script>
+<script src="replay.js"></script>
+<script src="airmass.js"></script>
+<style>
+:root {
+  --bg: #f3f5f6; --surface: #fcfcfb; --ink: #17212a; --muted: #5b6770; --rule: #d6dde2; --tint: #e8eef3;
+  --accent: #2f6fd0; --am: #2f6fd0; --net: #d9771f; --gnss: #000000; --degraded: #9aa3aa;
+  --grid: #e3e8ec; --danger: #b3261e;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111518; --surface: #1a1a19; --ink: #e4e9ec; --muted: #9aa6ae; --rule: #2c353b; --tint: #222b31;
+    --accent: #5a94e8; --am: #5a94e8; --net: #c9772a; --gnss: #000000; --degraded: #6f787e;
+    --grid: #262e33; --danger: #f2827a; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111518; --surface: #1a1a19; --ink: #e4e9ec; --muted: #9aa6ae; --rule: #2c353b; --tint: #222b31;
+  --accent: #5a94e8; --am: #5a94e8; --net: #c9772a; --gnss: #000000; --degraded: #6f787e;
+  --grid: #262e33; --danger: #f2827a; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body { background: var(--bg); color: var(--ink); font: 13px/1.4 var(--sans); overflow: hidden; }
+button, input, select { font: inherit; color: inherit; }
+/* one screen: top bar, status line, map with the gauges, charts */
+.app { height: 100vh; display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 6px; padding: 6px 10px 8px; position: relative; }
+
+/* top bar */
+.bar { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.bar h1 { font-size: 1rem; margin: 0 4px 0 0; font-weight: 650; letter-spacing: 0.01em; white-space: nowrap; }
+.btn { background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; padding: 5px 10px; cursor: pointer; white-space: nowrap; }
+.btn:hover:not(:disabled) { border-color: var(--accent); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn:disabled { opacity: 0.5; cursor: default; }
+.btn[aria-expanded="true"] { border-color: var(--accent); color: var(--accent); }
+.sel { background-color: var(--surface); border: 1px solid var(--rule); border-radius: 6px; padding: 5px 6px; }
+#glider { max-width: 150px; }
+.bar #slider { flex: 1 1 140px; min-width: 80px; accent-color: var(--accent); }
+.clock { font: 600 0.95rem var(--mono); white-space: nowrap; }
+.soundbox { display: flex; gap: 6px; align-items: center; }
+.soundbox input[type=range] { width: 64px; accent-color: var(--accent); }
+/* progress and errors: a note over the map, gone once a flight is replayed */
+.status { position: absolute; top: 52px; left: 50%; transform: translateX(-50%); max-width: min(720px, calc(100vw - 40px)); z-index: 1200;
+  background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; box-shadow: 0 4px 14px rgba(0,0,0,0.18);
+  padding: 5px 10px; font-size: 0.82rem; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
+.status[hidden] { display: none; }
+.status.error { color: var(--danger); }
+input[type=file] { display: none; }
+/* drop-down selectors: our own arrow, with room to the right edge */
+select { appearance: none; -webkit-appearance: none; padding-right: 26px !important; cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%237d8890' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 9px center; background-size: 10px 6px; }
+
+/* settings: a panel over the page */
+.settings { position: absolute; top: 46px; right: 10px; width: min(760px, calc(100vw - 20px)); max-height: calc(100vh - 60px); overflow: auto;
+  background: var(--surface); border: 1px solid var(--rule); border-radius: 8px; box-shadow: 0 8px 28px rgba(0,0,0,0.22); z-index: 1500; }
+.settings[hidden] { display: none; }
+.form { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px 16px; padding: 12px; }
+.form label { display: grid; gap: 3px; font-size: 0.85rem; color: var(--muted); }
+.form label.wide { grid-column: 1 / -1; }
+.form input[type=text], .form input[type=number], .form select { background-color: var(--bg); border: 1px solid var(--rule); border-radius: 5px; padding: 5px 8px; color: var(--ink); width: 100%; min-width: 0; }
+.form .check { display: flex; align-items: center; gap: 6px; color: var(--ink); }
+.form .warm { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.setfoot { display: flex; gap: 8px; align-items: center; padding: 0 12px 12px; flex-wrap: wrap; }
+.summary { font: 0.78rem/1.5 var(--mono); color: var(--muted); padding: 0 12px 12px; overflow-wrap: anywhere; }
+.hint { color: var(--muted); font-size: 0.8rem; padding: 0 12px 12px; }
+
+/* map and gauges */
+.main { display: grid; grid-template-columns: minmax(0, 1fr) clamp(240px, 22vw, 330px); grid-template-rows: minmax(0, 1fr) clamp(170px, 33vh, 330px);
+  grid-template-areas: "map side" "charts side"; gap: 6px; min-height: 0; }
+.mapwrap { grid-area: map; }
+.side { grid-area: side; }
+.charts { grid-area: charts; }
+.panel { background: var(--surface); border: 1px solid var(--rule); border-radius: 8px; min-width: 0; min-height: 0; position: relative; }
+.panel h2 { position: absolute; top: 6px; left: 10px; margin: 0; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); z-index: 2; pointer-events: none; }
+.mapwrap { display: flex; }
+#map { flex: 1; min-height: 0; border-radius: 8px; z-index: 0; }
+.follow { background: var(--surface); color: var(--ink); border: 1px solid var(--rule); border-radius: 6px; padding: 3px 8px; font-size: 0.78rem; display: flex; gap: 6px; align-items: center; cursor: pointer; }
+.side { display: grid; grid-template-rows: minmax(0, 1.15fr) minmax(0, 1fr); gap: 6px; min-height: 0; }
+.gauge { display: flex; flex-direction: column; gap: 4px; padding: 20px 8px 6px; }
+.gauge canvas { flex: 1 1 0; min-height: 0; width: 100%; display: block; }
+.readouts { display: grid; grid-template-columns: 1fr 1fr; gap: 1px 8px; font-size: 0.78rem; color: var(--muted); }
+.readouts span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.readouts b { color: var(--ink); font: 600 0.85rem var(--mono); }
+.readouts .head { grid-column: 1 / -1; font-size: 0.68rem; letter-spacing: 0.05em; text-transform: uppercase; }
+.key.gnsskey { background: var(--gnss); box-shadow: 0 0 0 1px var(--muted); }
+.key { display: inline-block; width: 12px; height: 3px; border-radius: 2px; vertical-align: middle; margin-right: 4px; }
+.panel .opt { position: absolute; top: 3px; right: 6px; z-index: 2; font-size: 0.75rem; color: var(--muted); display: flex; gap: 4px; align-items: center; }
+
+/* charts */
+.charts { display: flex; flex-direction: column; padding: 2px 8px 4px; }
+.chead { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 2px 2px 1px; min-width: 0; }
+.chead h3 { margin: 0; font-size: 0.7rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
+.legend { display: flex; gap: 10px; font-size: 0.74rem; color: var(--muted); flex-wrap: nowrap; overflow: hidden; justify-content: flex-end; white-space: nowrap; }
+#strip { flex: 1 1 0; min-height: 0; width: 100%; display: block; cursor: crosshair; }
+.tip { position: absolute; pointer-events: none; background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; padding: 6px 8px; font: 0.78rem/1.45 var(--mono); color: var(--ink); box-shadow: 0 2px 8px rgba(0,0,0,0.15); display: none; z-index: 5; white-space: nowrap; }
+
+.drop { position: fixed; inset: 0; background: color-mix(in srgb, var(--accent) 18%, transparent); border: 3px dashed var(--accent); display: none; align-items: center; justify-content: center; font-size: 1.3rem; z-index: 2000; pointer-events: none; }
+.drop.on { display: flex; }
+.empty { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; text-align: center; color: var(--muted); padding: 20px; z-index: 500; pointer-events: none; }
+.empty div { background: var(--surface); border: 1px solid var(--rule); border-radius: 8px; padding: 16px 20px; max-width: 420px; pointer-events: auto; }
+.maplegend { background: var(--surface); color: var(--ink); border: 1px solid var(--rule); border-radius: 6px; padding: 5px 8px; font-size: 0.72rem; line-height: 1.45; }
+.maplegend select { background-color: var(--bg); color: var(--ink); border: 1px solid var(--rule); border-radius: 4px; font-size: 0.72rem; margin: 0 0 3px 4px; padding: 1px 4px; padding-right: 22px !important; background-position: right 7px center; }
+.maplegend i { display: inline-block; width: 18px; height: 4px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
+.maplegend i.dash { height: 0; border-radius: 0; border-top: 2px dashed; background: none !important; }
+.maplegend .sect { margin-top: 4px; font-weight: 600; }
+.leaflet-container { background: var(--tint); font: inherit; }
+.glider-icon svg { overflow: visible; }
+.glider-icon { pointer-events: none; }
+.windlabel { position: absolute; transform: translate(-50%, -50%); white-space: nowrap; font: 600 10.5px var(--mono); background: color-mix(in srgb, var(--surface) 85%, transparent); border-radius: 4px; padding: 0 3px; display: none; }
+.windarrow line, .windarrow path { filter: drop-shadow(0 0 1.5px rgba(255,255,255,0.9)); }
+
+/* narrow screens: one column, the page scrolls */
+@media (max-width: 900px) {
+  body { overflow: auto; }
+  .app { height: auto; grid-template-rows: auto auto auto auto; }
+  .bar { flex-wrap: wrap; }
+  .bar #slider { flex-basis: 100%; order: 10; }
+  .main { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto auto; grid-template-areas: "map" "side" "charts"; }
+  #map { height: 55vh; flex: none; width: 100%; }
+  .side { grid-template-columns: 1fr 1fr; grid-template-rows: 300px; }
+  .charts { height: 380px; }
+}
+@media (max-width: 560px) {
+  .side { grid-template-columns: minmax(0, 1fr); grid-template-rows: 300px 300px; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="bar">
+    <h1>AirMass Replay</h1>
+    <label class="btn primary" for="file" title="An XCVario sensor log ($SENS) or an AirMass recording, plain or .gz; or drop it on the page">Open log…</label>
+    <input type="file" id="file" accept=".nmea,.gz,.txt,.log,.igc">
+    <select id="glider" class="sel" aria-label="Glider" title="The glider's polar and flap speeds for a sensor log, which does not say which glider flew it (an AirMass recording carries the device's own polar); a change replays the flight"></select>
+    <button class="btn" id="playbtn" disabled aria-label="Play" title="Play / pause (Space)">▶</button>
+    <select id="speed" class="sel" aria-label="Playback speed">
+      <option value="1">1×</option><option value="2">2×</option><option value="5">5×</option><option value="10" selected>10×</option>
+      <option value="30">30×</option><option value="60">60×</option><option value="120">120×</option><option value="300">300×</option>
+    </select>
+    <span class="clock" id="clock">--:--:--</span>
+    <input type="range" id="slider" min="0" max="1" step="0.1" value="0" disabled aria-label="Flight time" title="←/→: 10 s, Shift: 1 min. Charts: click to jump, wheel to zoom, drag to pan, double-click for the whole flight">
+    <label class="btn soundbox" title="The XCVario vario tone"><input type="checkbox" id="sound" checked> Sound
+      <input type="range" id="volume" min="0" max="1" step="0.05" value="0.5" aria-label="Volume"></label>
+    <select id="soundsrc" class="sel" aria-label="Sound source" title="What the tone follows">
+      <option value="airmass" selected>Air Mass</option><option value="netto">TE netto</option><option value="te">TE vario</option>
+    </select>
+    <button class="btn" id="settingsbtn" aria-expanded="false" aria-controls="settings">Settings</button>
+  </header>
+  <div class="status" id="status" role="status" hidden></div>
+
+  <div class="settings" id="settings" hidden>
+    <div class="form">
+      <label>Gross mass, kg <input type="number" id="mass" value="-1" min="-1" step="1" title="-1: the ballast logged in the sensor log ($PXCV)"></label>
+      <label>Bugs, % <input type="number" id="bugs" value="-1" min="-1" step="1" title="-1: the setting logged in $PXCV"></label>
+      <label>Vario damping, s <input type="number" id="damping" value="4" min="1" max="10" step="0.5" title="the device's vario delay, 4 s by default"></label>
+      <label class="check" title="The GNSS netto reference gets the device's vario damping, like the TE vario it is compared with; off: undamped. The AirMass and TE netto needles always show what the device shows."><input type="checkbox" id="samesmooth" checked> Damp the GNSS reference like the vario</label>
+      <label class="wide">Estimator settings (AirMassEKF::Config, like airmass_replay --set)
+        <input type="text" id="sets" placeholder="e.g. kinetic_tau=10, blend_bank=0, lag_static=0.3" spellcheck="false">
+      </label>
+      <label>Sound harmonics (the device's Harmonics menu)
+        <select id="harmonics"><option value="0" selected>None</option><option value="7">Some</option><option value="14">More</option><option value="21">Sparky (device default)</option></select>
+      </label>
+      <label class="check"><input type="checkbox" id="clip" checked> Sound clipped like the device</label>
+      <label class="check" title="The vario chart spans half the time a glider at 100 km/h needs to cross the map, around the current moment; it follows the map zoom"><input type="checkbox" id="chartsmap" checked> Chart width follows the map zoom (½ of the map at 100 km/h)</label>
+      <label class="check"><input type="checkbox" id="noflaps"> No flap lever (sensor logs)</label>
+      <label class="check"><input type="checkbox" id="learn" checked> Learn calibration in flight</label>
+      <label class="check"><input type="checkbox" id="warm"> Start with this calibration:</label>
+      <label class="wide" style="margin-top:-6px">k_tas, pitch offset °, AoA scale, GNSS latency offset s
+        <span class="warm"><input type="number" id="w0" value="1" step="0.001"><input type="number" id="w1" value="0" step="0.01"><input type="number" id="w2" value="1" step="0.001"><input type="number" id="w3" value="0" step="0.01"></span>
+      </label>
+    </div>
+    <div class="setfoot">
+      <button class="btn primary" id="rerun" disabled>Replay again</button>
+      <button class="btn" id="export" disabled>Export CSV</button>
+    </div>
+    <div class="summary" id="summary"></div>
+    <div class="hint">Keys: Space play/pause · ←/→ 10 s · Shift+←/→ 1 min. Charts: click to jump, wheel to zoom, drag to pan, double-click for the whole flight.</div>
+  </div>
+
+  <div class="main">
+    <div class="panel mapwrap">
+      <div id="map"></div>
+      <label class="follow" id="followbox"><input type="checkbox" id="follow" checked> Follow the glider</label>
+      <div class="empty" id="empty"><div><b>No flight loaded</b><br>Open an XCVario sensor log or an AirMass recording. The device's AirMass code runs in this page; nothing is uploaded.</div></div>
+    </div>
+    <div class="side">
+      <div class="panel gauge">
+        <h2>Vario</h2>
+        <canvas id="vario" aria-label="Vario gauge"></canvas>
+        <div class="readouts">
+          <span class="head">Average, last 30 s</span>
+          <span><i class="key" style="background:var(--am)"></i>AirMass <b id="v-am">–</b></span>
+          <span><i class="key" style="background:var(--net)"></i>TE netto <b id="v-net">–</b></span>
+          <span><i class="key gnsskey"></i>GNSS <b id="v-gnss">–</b></span>
+        </div>
+      </div>
+      <div class="panel gauge">
+        <h2>Attitude</h2>
+        <label class="opt" title="Pitch of the wing's zero-lift line as AirMass models it: the sensor axis pitch plus the learned pitch offset (it changes with the flaps). The AoA model sees the whole wing, so this is the aerodynamic reference, not exactly the fuselage axis."><input type="checkbox" id="wingpitch" checked> Wing ref.</label>
+        <canvas id="horizon" aria-label="Artificial horizon"></canvas>
+        <div class="readouts">
+          <span>Roll <b id="a-roll">–</b></span><span>Pitch <b id="a-pitch">–</b></span>
+          <span>IAS <b id="v-ias">–</b></span><span>Heading <b id="w-hdg">–</b></span>
+          <span>GS <b id="w-gs">–</b></span>
+        </div>
+      </div>
+    </div>
+    <div class="panel charts" id="charts">
+      <div class="chead"><h3>Vario</h3><div class="legend"><span><i class="key" style="background:var(--am)"></i>Cockpit, Air Mass mode</span><span><i class="key" style="background:var(--net)"></i>TE netto</span><span><i class="key gnsskey"></i>GNSS netto (reference)</span><span id="stripkey">Strip: AirMass vario</span></div></div>
+      <canvas id="strip"></canvas>
+      <div class="tip" id="tip"></div>
+    </div>
+  </div>
+
+</div>
+<div class="drop" id="drop">Drop the flight log</div>
+
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+const modulePromise = AirMassModule();
+
+// ---------- state ----------
+let D = null;            // the loaded flight, see build()
+let fileText = null, fileName = "";
+let T = 0;               // current time, device s
+let playing = false, lastFrame = 0;
+let view = null;         // the vario chart's time window [t0, t1]
+
+// ---------- colors ----------
+let C = {};
+function readColors() {
+  const cs = getComputedStyle(document.documentElement);
+  for (const k of ["surface", "ink", "muted", "rule", "am", "net", "gnss", "degraded", "grid"]) C[k] = cs.getPropertyValue("--" + k).trim();
+  C.dark = cs.colorScheme === "dark";
+  C.font = getComputedStyle(document.body).fontFamily;
+}
+readColors();
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { readColors(); invalidateCharts(); drawAll(); });
+
+// climb colours, diverging: sink blue, neutral grey, lift orange (map track and the strip under the vario chart)
+const CLIMB_BINS = [-2, -1, -0.3, 0.3, 1, 2];
+const CLIMB_COLORS = ["#1f4e85", "#3f7cc0", "#8db4dd", "#a3a8ac", "#f0b27a", "#e07b2e", "#b4461a"];
+const CLIMB_LABELS = ["< −2", "−2 … −1", "−1 … −0.3", "±0.3", "0.3 … 1", "1 … 2", "> 2 m/s"];
+const climbBin = (v) => { let b = 0; while (b < CLIMB_BINS.length && v >= CLIMB_BINS[b]) b++; return b; };
+
+// ---------- settings ----------
+for (const name of Object.keys(AirMassConvert.GLIDERS)) $("glider").add(new Option(name, name));
+$("glider").value = "ASG 29/18"; // the flights of discussion #451; a saved choice replaces it below
+$("glider").addEventListener("change", () => { if (fileText) run(); }); // a new polar: replay
+const SETTINGS_KEY = "airmass-replay-settings";
+const FIELDS = ["harmonics", "clip", "glider", "mass", "bugs", "damping", "samesmooth", "sets", "noflaps", "learn", "warm", "w0", "w1", "w2", "w3", "wingpitch", "follow", "speed", "soundsrc", "chartsmap"];
+try {
+  const s = JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}");
+  for (const k of FIELDS) if (k in s) { const el = $(k); if (el.type === "checkbox") el.checked = s[k]; else el.value = s[k]; }
+} catch (e) { /* no storage */ }
+function saveSettings() {
+  try {
+    const s = {};
+    for (const k of FIELDS) { const el = $(k); s[k] = el.type === "checkbox" ? el.checked : el.value; }
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
+  } catch (e) { /* no storage */ }
+}
+for (const k of FIELDS) $(k).addEventListener("change", saveSettings);
+for (const id of ["samesmooth", "damping"]) $(id).addEventListener("change", () => { if (D) { derive(D); invalidateCharts(); drawAll(); } });
+
+// progress and errors show over the map; done = the flight is replayed: the note goes (the details are in Settings)
+let statusTimer = null;
+function setStatus(text, error = false, done = false) {
+  const el = $("status");
+  clearTimeout(statusTimer);
+  el.textContent = text;
+  el.classList.toggle("error", error);
+  el.hidden = false;
+  if (done) statusTimer = setTimeout(() => (el.hidden = true), 2500);
+}
+const tick = () => new Promise((r) => setTimeout(r, 0));
+
+// ---------- loading ----------
+async function readFile(file) {
+  let stream = file.stream();
+  const head = new Uint8Array(await file.slice(0, 2).arrayBuffer());
+  if (head[0] === 0x1f && head[1] === 0x8b) stream = stream.pipeThrough(new DecompressionStream("gzip"));
+  return await new Response(stream).text();
+}
+
+async function load(file) {
+  try {
+    setStatus(`Reading ${file.name}…`);
+    await tick();
+    fileText = await readFile(file);
+    fileName = file.name.replace(/\.(gz)$/i, "").replace(/\.(nmea|txt|log)$/i, "");
+    await run();
+  } catch (e) {
+    console.error(e);
+    setStatus(`Could not read ${file.name}: ${e.message}`, true);
+  }
+}
+
+// replays share the module's state (am_begin), so they run one at a time: a request during a replay (another log, a new
+// polar) replays again with the latest file and settings when it ends
+let replaying = false, replayAgain = false;
+async function run() {
+  if (!fileText) return;
+  if (replaying) { replayAgain = true; return; }
+  replaying = true;
+  try {
+    do { replayAgain = false; await replayOnce(); } while (replayAgain);
+  } finally {
+    replaying = false;
+  }
+}
+
+async function replayOnce() {
+  pause();
+  $("rerun").disabled = true;
+  try {
+    setStatus("Converting…");
+    await tick();
+    const conv = AirMassConvert.convert(fileText, {
+      glider: $("glider").value, mass: +$("mass").value > 0 ? +$("mass").value : 0 /* -1: the logged ballast */, bugs: $("bugs").value === "" ? -1 : +$("bugs").value, noFlaps: $("noflaps").checked,
+    });
+    if (!conv.frames) throw new Error(conv.track.n ? "no flight found in the log (the replay starts after 10 s above 20 m/s IAS and 15 m/s ground speed)" : "neither $SENS nor AirMass recording sentences found");
+    const M = await modulePromise;
+    const warm = $("warm").checked ? [+$("w0").value, +$("w1").value, +$("w2").value, +$("w3").value] : null;
+    const t0 = performance.now();
+    const rep = await runReplay(M, conv.rec, { settings: $("sets").value, learn: $("learn").checked, warm }, async (f) => {
+      setStatus(`Replaying… ${Math.round(f * 100)} %`);
+      await tick();
+    });
+    const keepT = D && D.name === fileName ? T : null;
+    D = build(conv, rep);
+    derive(D);
+    const s = rep.summary;
+    const hours = (rep.n / 36000).toFixed(2);
+    const result = `${fileName}: ${conv.kind}, ${conv.starts} flight${conv.starts === 1 ? "" : "s"}, ${hours} h replayed in ${((performance.now() - t0) / 1000).toFixed(1)} s`;
+    setStatus(result, false, true);
+    $("summary").textContent = result + ` · cycles ${s.cycles} · GNSS fixes ${s.gnss} · compass ${s.compass} · learned: k_tas ${s.k_tas.toFixed(3)}, pitch offset ${s.pitch_ofs_deg.toFixed(2)}°, ` +
+      `AoA scale ${s.aoa_scale.toFixed(3)}, GNSS latency ${s.latency_ms} ms (offset ${s.latency_ofs_s.toFixed(3)} s), gyro z bias ${s.gyro_z_bias_dps.toFixed(3)}°/s` +
+      (conv.kind.startsWith("XCVario sensor") ? " · sensor logs carry the gated gyro (rates below the gate read 0), which costs AirMass short-term accuracy" : "");
+    $("empty").style.display = "none";
+    for (const id of ["rerun", "export", "playbtn", "slider"]) $(id).disabled = false;
+    $("slider").min = D.t[0];
+    $("slider").max = D.t[D.n - 1];
+    view = [D.t[0], D.t[D.n - 1]];
+    invalidateCharts();
+    drawTrack();
+    seek(keepT ?? D.tStart);
+  } catch (e) {
+    console.error(e);
+    setStatus(e.message, true);
+  } finally {
+    $("rerun").disabled = !fileText;
+  }
+}
+
+// one sample per sensor cycle of the log, AirMass where it ran
+function build(conv, rep) {
+  const tr = conv.track, n = tr.n, c = tr.cols;
+  const t = new Float64Array(n);
+  for (let k = 0; k < n; k++) t[k] = c.t_ms[k] / 1000;
+  const byTime = new Map();
+  for (let i = 0; i < rep.n; i++) byTime.set(rep.t_ms[i], i);
+  const ai = new Int32Array(n);
+  for (let k = 0; k < n; k++) ai[k] = byTime.has(c.t_ms[k]) ? byTime.get(c.t_ms[k]) : -1;
+
+  // GNSS fixes reach the device late (AirMass learns by how much): each fix belongs to its arrival time minus that
+  // latency, and positions and altitudes are interpolated between those times. A replay knows the next fix already.
+  const lat_s = Number.isFinite(rep.summary.latency_ms) && rep.summary.latency_ms > 0 ? rep.summary.latency_ms / 1000 : 0.9;
+  const fixes = [];
+  for (let k = 0; k < n; k++) {
+    const u = c.utc[k];
+    if (Number.isFinite(u) && (!fixes.length || u !== fixes[fixes.length - 1].u)) {
+      fixes.push({ k, u, tm: t[k] - lat_s, lat: c.lat[k], lon: c.lon[k], alt: c.gnss_alt[k] });
+    }
+  }
+  const Dp = { n, t, fixes };
+  const lat = atFixes(Dp, (f) => f.lat, Infinity), lon = atFixes(Dp, (f) => f.lon, Infinity);
+  const galt = atFixes(Dp, (f) => f.alt, 3);
+
+  // the device's TE vario is in the log at 5 Hz in 0.1 m/s steps: interpolated linearly between its entries (one entry
+  // ahead, 0.1 s) instead of held, which only drew a staircase the cockpit never showed
+  const teLog = c.te_vario;
+  const te = new Float64Array(n).fill(NaN);
+  let prevU = -1;
+  for (let k = 0; k < n; k++) {
+    if (!(c.te_new[k] && Number.isFinite(teLog[k]))) continue;
+    if (prevU >= 0 && k - prevU <= 5) {
+      for (let j = prevU; j < k; j++) te[j] = teLog[prevU] + (teLog[k] - teLog[prevU]) * (j - prevU) / (k - prevU);
+    } else if (prevU >= 0) {
+      for (let j = prevU; j < k; j++) te[j] = teLog[prevU];
+    }
+    prevU = k;
+  }
+  if (prevU >= 0) for (let j = prevU; j < n; j++) te[j] = teLog[prevU];
+  c.te_vario = te;
+
+  let tStart = t[0];
+  for (let k = 0; k < n; k++) if (ai[k] >= 0) { tStart = t[k]; break; }
+  let utcOfs = NaN;
+  for (let k = 0; k < n; k++) if (Number.isFinite(c.utc[k])) { utcOfs = c.utc[k] - t[k]; break; }
+  return { name: fileName, kind: conv.kind, n, t, ai, lat, lon, galt, fixes, tr: c, rep, tStart, utcOfs };
+}
+
+// a per-sample series from a value of each fix, interpolated between the fixes' measurement times; held up to
+// maxHold seconds past a fix when the next one is further away or missing
+function atFixes(D, get, maxHold) {
+  const out = new Float64Array(D.n).fill(NaN), F = D.fixes;
+  for (let j = 0, k = 0; k < D.n; k++) {
+    const t = D.t[k];
+    while (j + 1 < F.length && F[j + 1].tm <= t) j++;
+    const a = F[j], b = F[j + 1];
+    if (!a || t < a.tm) continue;
+    const va = get(a), vb = b ? get(b) : NaN;
+    if (!Number.isFinite(va)) continue;
+    if (b && b.tm - a.tm <= 3 && Number.isFinite(vb)) out[k] = va + (vb - va) * (t - a.tm) / (b.tm - a.tm);
+    else if (t - a.tm <= maxHold) out[k] = va;
+  }
+  return out;
+}
+
+// the device's vario damping (VarioFilter, 10 Hz), as tools/airmass_sim/analyze_sens.py
+class Damp {
+  constructor(d) { this.d = d; this.l = null; this.y = null; }
+  reset(x) { this.l = this.y = Number.isFinite(x) ? x : null; } // restart from x (NaN: from the next input)
+  f(x) {
+    if (this.l === null) this.l = this.y = x;
+    this.l += (x - this.l) * 0.1 / (this.d / 3.0 + 0.1);
+    this.y += (this.l - this.y) / Math.max(this.d, 1.0);
+    return this.y;
+  }
+}
+
+// shown values: the AirMass vario and the device's TE netto, both with the device's damping
+function derive(D) {
+  const delay = Math.max(1, +$("damping").value || 4);
+  const n = D.n, c = D.tr, r = D.rep.cols;
+  D.am = new Float32Array(n).fill(NaN);
+  D.amOk = new Uint8Array(n);
+  D.netto = new Float32Array(n).fill(NaN);
+  D.amRaw = new Float32Array(n).fill(NaN);
+  const sinkUp = new Float32Array(n).fill(NaN); // the polar sink in TAS terms, up positive (so negative)
+  // What the cockpit shows in Air Mass mode (airmass::vario, VarioFilter::postProcess): the air mass vario with half
+  // the vario damping (a low pass with tau = D/3, then y += (x - y) / D per 0.1 s cycle, D = max(1, delay / 2)) while
+  // it is valid; otherwise netto, which the damping restarts from when the air mass vario comes back. Netto is the
+  // device's: its damped TE vario minus the polar sink of the moment (TAS terms), the sink not damped.
+  const dAir = Math.max(1, delay * 0.5);
+  const cockpit = new Damp(dAir);
+  const sens = D.kind.startsWith("XCVario sensor");
+  for (let k = 0; k < n; k++) {
+    const i = D.ai[k];
+    if (i < 0) { cockpit.reset(NaN); continue; }
+    D.amRaw[k] = r.vario[i];
+    const ok = r.status[i] & 1;
+    D.amOk[k] = ok;
+    // the polar sink in TAS terms (VarioFilter: getSink(ias) * tas / ias), negative
+    const sink = sens ? c.polar_sink[k] * c.tas[k] / Math.max(c.ias[k], 10) : -r.polar_sink[i];
+    if (Number.isFinite(sink)) sinkUp[k] = sink;
+    const netto = Number.isFinite(c.te_vario[k]) ? c.te_vario[k] - (Number.isFinite(sink) ? sink : 0) : NaN;
+    D.netto[k] = netto;
+    if (ok) {
+      if (cockpit.y === null) cockpit.reset(Number.isFinite(netto) ? netto : r.vario[i]);
+      D.am[k] = cockpit.f(r.vario[i]);
+    } else {
+      cockpit.reset(netto); // the fallback, and where the damping restarts
+      D.am[k] = netto;
+    }
+  }
+  // the GNSS climb: the altitude difference of the fixes before and after each fix over their time difference, at
+  // the time the fix was measured, interpolated in between
+  const fixes = D.fixes;
+  for (let j = 0; j < fixes.length; j++) {
+    const p = fixes[Math.max(0, j - 1)], q = fixes[Math.min(fixes.length - 1, j + 1)];
+    const dt = q.u - p.u;
+    fixes[j].rate = dt > 0.5 && dt < 5 ? (q.alt - p.alt) / dt : NaN;
+  }
+  const gnssRate = atFixes(D, (f) => f.rate, 1.5);
+
+  // GNSS netto, the reference: the energy height change of the fixes before and after each fix (GNSS altitude plus
+  // TAS²/2g, the TAS when they were measured) over their time difference, minus the mean polar sink over that time. It
+  // belongs to the time fix j was measured (its arrival minus the GNSS latency) and is interpolated in between. It uses
+  // the next fix, so no instrument could show it live: it is the air movement at that moment, after the fact.
+  // running sums (S) and counts (N) of the finite values of a series
+  const cum = (val) => {
+    const S = new Float64Array(n + 1), N = new Float64Array(n + 1);
+    for (let k = 0; k < n; k++) { const v = val(k); const ok = Number.isFinite(v); S[k + 1] = S[k] + (ok ? v : 0); N[k + 1] = N[k] + (ok ? 1 : 0); }
+    return { S, N };
+  };
+  const { S: cs, N: cn } = cum((k) => sinkUp[k]);
+  const G = 9.80665;
+  const tasAt = (t) => c.tas[indexAt(t)];
+  const ref = []; // {t, v}
+  for (let j = 1; j + 1 < fixes.length; j++) {
+    const p = fixes[j - 1], q = fixes[j + 1];
+    const dt = q.u - p.u;
+    if (!(dt > 0.5 && dt < 5)) continue;
+    const tp = p.tm, tq = q.tm; // measurement times on the device clock
+    const vp = tasAt(tp), vq = tasAt(tq);
+    const kp = indexAt(tp), kq = indexAt(tq), m = cn[kq + 1] - cn[kp];
+    if (!(m > 0) || !Number.isFinite(vp) || !Number.isFinite(vq)) continue;
+    const sinkMean = (cs[kq + 1] - cs[kp]) / m;
+    ref.push({ t: fixes[j].tm, v: (q.alt - p.alt) / dt + (vq * vq - vp * vp) / (2 * G * dt) - sinkMean });
+  }
+  const gnssNet = new Float32Array(n).fill(NaN);
+  for (let r0 = 0, k = 0; k < n; k++) {
+    const t = D.t[k];
+    while (r0 + 1 < ref.length && ref[r0 + 1].t <= t) r0++;
+    const a = ref[r0], b = ref[r0 + 1];
+    if (!a || !b || t < a.t || b.t - a.t > 3) continue;
+    gnssNet[k] = a.v + (b.v - a.v) * (t - a.t) / (b.t - a.t);
+  }
+  D.gnssNetRaw = gnssNet;
+  const same = $("samesmooth").checked;
+  D.gnss = new Float32Array(n).fill(NaN); // shown: undamped, or with the device's vario damping
+  let dG = null;
+  for (let k = 0; k < n; k++) {
+    const v = gnssNet[k];
+    if (!Number.isFinite(v)) { dG = null; continue; }
+    if (same && !dG) dG = new Damp(delay);
+    D.gnss[k] = same ? dG.f(v) : v;
+  }
+  // running sums for the 30 s averages under the vario gauge
+  D.cum = { am: cum((k) => (D.amOk[k] ? D.amRaw[k] : NaN)), net: cum((k) => D.netto[k]), gnss: cum((k) => D.gnssNetRaw[k]) };
+  // per second, for the map track and the strip under the vario chart: the AirMass vario where valid, the device's TE
+  // vario in flight, the GNSS climb, GNSS netto as the black line (speed compensated) and as SeeYou computes it (not)
+  D.sec = [];
+  let k0 = 0;
+  while (k0 < n) {
+    let k1 = k0;
+    const sum = { airmass: 0, te: 0, gnss: 0, gnssnet: 0, seeyou: 0 }, cnt = { airmass: 0, te: 0, gnss: 0, gnssnet: 0, seeyou: 0 };
+    const add = (key, v) => { if (Number.isFinite(v)) { sum[key] += v; cnt[key]++; } };
+    while (k1 < n && D.t[k1] - D.t[k0] < 1) {
+      if (D.amOk[k1]) add("airmass", D.amRaw[k1]);
+      if (c.running[k1]) {
+        add("te", c.te_vario[k1]);
+        add("gnss", gnssRate[k1]);
+        add("gnssnet", gnssNet[k1]);
+        // netto as flight analysis software computes it from a track: the GNSS climb plus the polar sink at the
+        // airspeed of the moment, no correction for speed changes (a pull-up shows as lift)
+        add("seeyou", gnssRate[k1] - sinkUp[k1]);
+      }
+      k1++;
+    }
+    const v = {};
+    for (const key in sum) v[key] = cnt[key] ? sum[key] / cnt[key] : NaN;
+    D.sec.push({ k: k0, v });
+    k0 = Math.max(k1, k0 + 1);
+  }
+}
+
+// the track colour
+const COLOR_BY = { gnssnet: "GNSS netto, speed compensated", airmass: "AirMass vario", te: "TE vario", gnss: "GNSS altitude change", seeyou: "Netto, SeeYou style" };
+const colorBy = () => $("colorby").value;
+
+// the per-second entry that holds sample k
+function secAt(k) {
+  let lo = 0, hi = D.sec.length - 1;
+  while (lo < hi) { const m = (lo + hi + 1) >> 1; if (D.sec[m].k <= k) lo = m; else hi = m - 1; }
+  return lo;
+}
+
+// the mean over the last 30 s up to sample k (at least half of the window with values)
+const AVG_S = 30;
+function avg30(name, k) {
+  const j = indexAt(D.t[k] - AVG_S), { S, N } = D.cum[name];
+  const cnt = N[k + 1] - N[j + 1];
+  return cnt >= (k - j) / 2 && cnt > 0 ? (S[k + 1] - S[j + 1]) / cnt : NaN;
+}
+function indexAt(t) {
+  let lo = 0, hi = D.n - 1;
+  while (lo < hi) { const m = (lo + hi + 1) >> 1; if (D.t[m] <= t) lo = m; else hi = m - 1; }
+  return lo;
+}
+
+// ---------- map ----------
+const map = L.map("map", { zoomControl: true, attributionControl: true }).setView([52.1, 5.3], 8);
+const layers = {
+  "OpenStreetMap": L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "© OpenStreetMap contributors" }),
+  "Topographic": L.tileLayer("https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png", { maxZoom: 17, attribution: "© OpenStreetMap contributors, SRTM · © OpenTopoMap (CC-BY-SA)" }),
+  "Satellite": L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", { maxZoom: 18, attribution: "Imagery © Esri" }),
+};
+layers["OpenStreetMap"].addTo(map);
+L.control.layers(layers, null, { position: "topright" }).addTo(map);
+const legend = L.control({ position: "bottomleft" });
+legend.onAdd = () => {
+  const d = L.DomUtil.create("div", "maplegend");
+  d.innerHTML = `<label>Colour by <select id="colorby" aria-label="Track colour">${Object.entries(COLOR_BY).map(([k, v]) => `<option value="${k}">${v}</option>`).join("")}</select></label><br>` +
+    CLIMB_COLORS.map((c, i) => `<i style="background:${c}"></i>${CLIMB_LABELS[i]}`).reverse().join("<br>") +
+    `<br><i style="background:${C.degraded}"></i>no value` +
+    `<div class="sect">Wind to the glider, ° km/h</div><i style="background:${C.am}"></i>AirMass instant<br>` +
+    `<i class="dash" style="border-color:${C.muted}"></i>AirMass average`;
+  L.DomEvent.disableClickPropagation(d);
+  L.DomEvent.disableScrollPropagation(d);
+  return d;
+};
+legend.addTo(map);
+$("colorby").value = "gnssnet"; // the default track colour; a saved choice replaces it
+try { const v = localStorage.getItem("airmass-replay-colorby"); if (v && v in COLOR_BY) $("colorby").value = v; } catch (e) { /* no storage */ }
+$("stripkey").textContent = "Strip: " + COLOR_BY[colorBy()];
+$("colorby").addEventListener("change", () => {
+  try { localStorage.setItem("airmass-replay-colorby", colorBy()); } catch (e) { /* no storage */ }
+  $("stripkey").textContent = "Strip: " + COLOR_BY[colorBy()];
+  if (D) { drawTrack(false); invalidateCharts(); drawAll(); }
+});
+const followCtl = L.control({ position: "bottomright" });
+followCtl.onAdd = () => { const el = $("followbox"); L.DomEvent.disableClickPropagation(el); return el; };
+followCtl.addTo(map);
+let trackLayer = null, gliderMarker = null;
+// the wind arrows at the glider: AirMass average, AirMass instant (drawn in this order)
+const WIND_ARROWS = [{ id: "avg", width: 3, head: 5, dash: "5 4" }, { id: "inst", width: 5, head: 7 }];
+// a glider seen from above, nose up: long slender unswept wings (straight leading edge, the taper on the trailing
+// edge), a thin fuselage and a T-tail; a white outline (drawn first, under the fill) keeps it visible on any map
+const GLIDER_PATH = "M0,-10.5 C1.1,-10.5 1.3,-8 1.2,-3.6 L17,-3.6 Q17.6,-3.1 17,-2.5 L1.1,-0.9 L0.55,10 L4.6,10.3 L4.6,11.6 L-4.6,11.6 L-4.6,10.3 L-0.55,10 L-1.1,-0.9 L-17,-2.5 Q-17.6,-3.1 -17,-3.6 L-1.2,-3.6 C-1.3,-8 -1.1,-10.5 0,-10.5 Z";
+const GLIDER_SVG = (color) => `<svg width="36" height="36" viewBox="-18 -18 36 36">
+  <path d="${GLIDER_PATH}" fill="none" stroke="#fff" stroke-width="2.4" stroke-linejoin="round"/>
+  <path d="${GLIDER_PATH}" fill="${color}"/></svg>`;
+
+function drawTrack(fit = true) {
+  if (trackLayer) trackLayer.remove();
+  trackLayer = L.layerGroup().addTo(map);
+  const pts = [], by = colorBy();
+  for (const s of D.sec) if (Number.isFinite(D.lat[s.k])) pts.push({ ll: [D.lat[s.k], D.lon[s.k]], bin: Number.isFinite(s.v[by]) ? climbBin(s.v[by]) : -1, k: s.k });
+  // one polyline per run of the same colour
+  let run = null;
+  for (let i = 0; i < pts.length; i++) {
+    const p = pts[i];
+    if (!run || run.bin !== p.bin) {
+      if (run) { run.ll.push(p.ll); flush(run); }
+      run = { bin: p.bin, ll: [p.ll] };
+    } else run.ll.push(p.ll);
+  }
+  if (run) flush(run);
+  function flush(r) {
+    L.polyline(r.ll, { color: r.bin < 0 ? C.degraded : CLIMB_COLORS[r.bin], weight: r.bin < 0 ? 2 : 3, opacity: 0.95, interactive: false }).addTo(trackLayer);
+  }
+  // click near the track: jump there
+  D.mapPts = pts;
+  if (!fit) return;
+  if (pts.length) map.fitBounds(L.latLngBounds(pts.map((p) => p.ll)), { padding: [20, 20] });
+  if (gliderMarker) gliderMarker.remove();
+  gliderMarker = null;
+  if (!pts.length) { setStatus($("status").textContent + " · no GNSS positions in this log, so no map"); return; }
+  const S = 180, c0 = S / 2;
+  gliderMarker = L.marker(pts[0].ll, { icon: L.divIcon({ className: "glider-icon", iconSize: [S, S], iconAnchor: [c0, c0], html:
+    `<div style="position:relative;width:${S}px;height:${S}px;pointer-events:none">
+      <svg width="${S}" height="${S}" viewBox="${-c0} ${-c0} ${S} ${S}" style="position:absolute;left:0;top:0;overflow:visible">
+        ${WIND_ARROWS.map((w) => `<g id="wa-${w.id}" class="windarrow" style="display:none"><line x1="0" y1="-60" x2="0" y2="-26" stroke-width="${w.width}" stroke-linecap="round"${w.dash ? ` stroke-dasharray="${w.dash}"` : ""}/>
+          <path d="M0,${-19} L${-w.head},${-19 - 2 * w.head} L${w.head},${-19 - 2 * w.head} Z"/></g>`).join("")}</svg>
+      ${WIND_ARROWS.map((w) => `<div id="wl-${w.id}" class="windlabel"></div>`).join("")}
+      <div id="gl" style="position:absolute;left:${c0 - 18}px;top:${c0 - 18}px;width:36px;height:36px;transform-origin:18px 18px">${GLIDER_SVG(C.am)}</div>
+    </div>` }), interactive: false, keyboard: false }).addTo(map);
+}
+map.on("click", (e) => {
+  if (!D || !D.mapPts) return;
+  const p = map.latLngToContainerPoint(e.latlng);
+  let best = null, bd = 400;
+  for (const q of D.mapPts) {
+    const s = map.latLngToContainerPoint(q.ll);
+    const d = (s.x - p.x) ** 2 + (s.y - p.y) ** 2;
+    if (d < bd) { bd = d; best = q; }
+  }
+  if (best) seek(D.t[best.k]);
+});
+
+// ---------- canvases ----------
+function fitCanvas(cv) {
+  const dpr = window.devicePixelRatio || 1;
+  const w = cv.clientWidth, h = cv.clientHeight;
+  if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
+  const ctx = cv.getContext("2d");
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return { ctx, w, h };
+}
+new ResizeObserver(() => { map.invalidateSize({ animate: false }); invalidateCharts(); drawAll(); }).observe(document.body);
+
+const fmtV = (v) => (Number.isFinite(v) ? (v >= 0 ? "+" : "−") + Math.abs(v).toFixed(1) : "–");
+function clockText(t) {
+  if (!D) return "--:--:--";
+  const u = Number.isFinite(D.utcOfs) ? t + D.utcOfs : t;
+  const s = ((Math.floor(u) % 86400) + 86400) % 86400;
+  return [s / 3600, (s / 60) % 60, s % 60].map((x) => String(Math.floor(x)).padStart(2, "0")).join(":");
+}
+const clockSuffix = () => (D && Number.isFinite(D.utcOfs) ? " UTC" : " device");
+
+// vario gauge: 0 at 9 o'clock, lift clockwise over the top, ±5 m/s at ±150°
+function drawVario(k) {
+  const { ctx, w, h } = fitCanvas($("vario"));
+  ctx.clearRect(0, 0, w, h);
+  const cx = w / 2, cy = h / 2, R = Math.min(w, h) / 2 - 6, MAX = 5, SPAN = 150 * Math.PI / 180;
+  const dir = (v) => { const p = Math.max(-1.04, Math.min(1.04, v / MAX)) * SPAN; return [-Math.cos(p), -Math.sin(p)]; };
+  ctx.lineCap = "round";
+  ctx.strokeStyle = C.rule; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(cx, cy, R, Math.PI - SPAN, Math.PI + SPAN, true); ctx.stroke();
+  ctx.fillStyle = C.muted; ctx.font = `${Math.round(R * 0.12)}px ${C.font}`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  for (let v = -MAX; v <= MAX + 1e-6; v += 0.5) {
+    const [dx, dy] = dir(v), major = Math.abs(v % 1) < 1e-6;
+    ctx.strokeStyle = major ? C.muted : C.rule; ctx.lineWidth = major ? 2 : 1.5;
+    ctx.beginPath(); ctx.moveTo(cx + dx * R, cy + dy * R); ctx.lineTo(cx + dx * (R - (major ? R * 0.1 : R * 0.06)), cy + dy * (R - (major ? R * 0.1 : R * 0.06))); ctx.stroke();
+    if (major) ctx.fillText(String(Math.abs(v)), cx + dx * R * 0.76, cy + dy * R * 0.76);
+  }
+  if (!D) return;
+  const ok = D.amOk[k];
+  const needle = (v, color, width, len, outline) => {
+    if (!Number.isFinite(v)) return;
+    const [dx, dy] = dir(v);
+    const path = () => { ctx.beginPath(); ctx.moveTo(cx - dx * R * 0.12, cy - dy * R * 0.12); ctx.lineTo(cx + dx * R * len, cy + dy * R * len); };
+    if (outline) { ctx.strokeStyle = outline; ctx.lineWidth = width + 2.5; path(); ctx.stroke(); }
+    ctx.strokeStyle = color; ctx.lineWidth = width;
+    path(); ctx.stroke();
+  };
+  needle(D.gnss[k], C.gnss, 3, 0.8, C.dark ? C.muted : null);
+  needle(D.netto[k], C.net, 3, 0.86);
+  needle(D.am[k], ok ? C.am : C.net, 5, 0.92); // the cockpit needle: air mass, or the netto fallback
+  ctx.fillStyle = C.surface; ctx.strokeStyle = C.rule; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.arc(cx, cy, R * 0.07, 0, 2 * Math.PI); ctx.fill(); ctx.stroke();
+  // the cockpit value on a plate, below the centre
+  const font = C.font;
+  const px = cx, py = cy + R * 0.41, pw = R * 0.72, ph = R * 0.36;
+  ctx.fillStyle = C.surface; ctx.strokeStyle = C.rule; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.roundRect(px - pw / 2, py - ph / 2, pw, ph, 6); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = C.ink;
+  ctx.font = `600 ${Math.round(R * 0.21)}px ${font}`;
+  ctx.fillText(fmtV(D.am[k]), px, py - R * 0.035);
+  ctx.font = `${Math.round(R * 0.095)}px ${font}`;
+  ctx.fillStyle = C.muted;
+  ctx.fillText(D.ai[k] < 0 ? "not running" : ok ? "m/s air mass" : "m/s netto", px, py + R * 0.12);
+}
+
+// the pitch shown: of the sensor axis, or with "Wing reference" of the wing's zero-lift line as AirMass models it.
+// alpha (body x axis to the air velocity) = aoa_model * k_aoa - pitch_ofs, so the zero-lift line, at aoa_model * k_aoa
+// to the air velocity, is pitched by pitch + pitch_ofs
+function shownPitch(i) {
+  const r = D.rep.cols;
+  return $("wingpitch").checked ? r.pitch_deg[i] + r.pitch_ofs_deg[i] : r.pitch_deg[i];
+}
+$("wingpitch").addEventListener("change", drawAll);
+$("chartsmap").addEventListener("change", () => viewFromMap());
+
+// artificial horizon: the attitude AirMass runs on (its own, gyro propagated and aided by air data), the aircraft fixed
+function drawHorizon(k) {
+  const { ctx, w, h } = fitCanvas($("horizon"));
+  ctx.clearRect(0, 0, w, h);
+  const cx = w / 2, cy = h / 2, R = Math.min(w, h) / 2 - 4;
+  const i = D ? D.ai[k] : -1;
+  const roll = i >= 0 ? D.rep.cols.roll_deg[i] : 0, pitch = i >= 0 ? shownPitch(i) : 0;
+  const ppd = R / 32; // pixels per degree of pitch
+  const font = C.font;
+  const D2R = Math.PI / 180;
+  ctx.save();
+  ctx.beginPath(); ctx.arc(cx, cy, R, 0, 2 * Math.PI); ctx.clip();
+  // the moving card: sky, ground, horizon, pitch ladder
+  ctx.save();
+  ctx.translate(cx, cy); ctx.rotate(-roll * D2R); ctx.translate(0, pitch * ppd);
+  const big = R * 3;
+  ctx.fillStyle = i >= 0 ? "#3d7ec9" : "#7f8e9b"; ctx.fillRect(-big, -big, 2 * big, big);
+  ctx.fillStyle = i >= 0 ? "#8a5a2e" : "#857565"; ctx.fillRect(-big, 0, 2 * big, big);
+  ctx.strokeStyle = "#fff"; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(-big, 0); ctx.lineTo(big, 0); ctx.stroke();
+  ctx.lineWidth = 1.5; ctx.fillStyle = "#fff"; ctx.font = `600 ${Math.round(R * 0.08)}px ${font}`; ctx.textBaseline = "middle";
+  for (let d = -60; d <= 60; d += 5) {
+    if (d === 0 || Math.abs(d - pitch) * ppd > R * 0.62) continue; // keep the ladder clear of the roll scale
+    const y = -d * ppd, half = d % 10 ? R * 0.12 : R * 0.26;
+    ctx.beginPath(); ctx.moveTo(-half, y); ctx.lineTo(half, y); ctx.stroke();
+    if (!(d % 10)) { ctx.textAlign = "right"; ctx.fillText(Math.abs(d), -half - 4, y); ctx.textAlign = "left"; ctx.fillText(Math.abs(d), half + 4, y); }
+  }
+  ctx.restore();
+  // fixed roll scale at the top, the pointer turns with the card
+  ctx.translate(cx, cy);
+  ctx.strokeStyle = "#fff"; ctx.fillStyle = "#fff";
+  for (const d of [-60, -45, -30, -20, -10, 0, 10, 20, 30, 45, 60]) {
+    const a = (d - 90) * D2R, len = d % 30 === 0 ? R * 0.12 : R * 0.07;
+    ctx.lineWidth = d % 30 === 0 ? 2.5 : 1.5;
+    ctx.beginPath(); ctx.moveTo(Math.cos(a) * R, Math.sin(a) * R); ctx.lineTo(Math.cos(a) * (R - len), Math.sin(a) * (R - len)); ctx.stroke();
+  }
+  ctx.save(); ctx.rotate(-roll * D2R);
+  const pr = R * 0.86;
+  ctx.fillStyle = "#ffcc33"; ctx.strokeStyle = "#000"; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(0, -pr); ctx.lineTo(-R * 0.055, -pr + R * 0.09); ctx.lineTo(R * 0.055, -pr + R * 0.09); ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.restore();
+  // the fixed aircraft symbol
+  ctx.strokeStyle = "#000"; ctx.lineWidth = 7; ctx.lineCap = "round"; ctx.lineJoin = "round";
+  const wing = () => { ctx.beginPath(); ctx.moveTo(-R * 0.5, 0); ctx.lineTo(-R * 0.16, 0); ctx.lineTo(-R * 0.08, R * 0.07); ctx.moveTo(R * 0.5, 0); ctx.lineTo(R * 0.16, 0); ctx.lineTo(R * 0.08, R * 0.07); ctx.stroke(); };
+  wing(); ctx.strokeStyle = "#ffcc33"; ctx.lineWidth = 4; wing();
+  ctx.fillStyle = "#ffcc33"; ctx.strokeStyle = "#000"; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.arc(0, 0, R * 0.035, 0, 2 * Math.PI); ctx.fill(); ctx.stroke();
+  ctx.restore();
+  ctx.strokeStyle = C.rule; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(cx, cy, R, 0, 2 * Math.PI); ctx.stroke();
+  if (D && i < 0) { ctx.fillStyle = "#fff"; ctx.textAlign = "center"; ctx.font = `600 ${Math.round(R * 0.1)}px ${font}`; ctx.fillText("not running", cx, cy + R * 0.45); }
+}
+
+let varioCache = null;
+function invalidateCharts() { varioCache = null; }
+function timeTicks(t0, t1, width) {
+  const span = t1 - t0;
+  const stepT = [30, 60, 120, 300, 600, 900, 1800, 3600, 7200].find((s) => span / s <= Math.max(3, width / 90)) || 14400;
+  const ofs = Number.isFinite(D.utcOfs) ? D.utcOfs : 0;
+  const out = [];
+  for (let u = Math.ceil((t0 + ofs) / stepT) * stepT; u <= t1 + ofs; u += stepT) out.push(u - ofs);
+  return { ticks: out, step: stepT };
+}
+// a series over the window: every sample when they are sparse, min/max per pixel column when dense; gaps over 2 s break it
+function drawSeries(o, arr, ok, color, width, X, Y, ka, kb) {
+  o.strokeStyle = color; o.lineWidth = width; o.lineJoin = "round"; o.lineCap = "round"; o.beginPath();
+  let px = null, mn = 0, mx = 0, lastY = null, lastT = -Infinity;
+  const flush = () => {
+    if (px === null) return;
+    const y0 = Y(mx), y1 = Y(mn);
+    if (lastY === null) o.moveTo(px, y0); else o.lineTo(px, y0);
+    if (y1 !== y0) o.lineTo(px, y1);
+    lastY = y1;
+  };
+  for (let j = ka; j <= kb; j++) {
+    const a = arr[j];
+    if (!Number.isFinite(a) || (ok && !ok[j])) continue;
+    const t = D.t[j];
+    if (t - lastT > 2) { flush(); px = null; lastY = null; }
+    lastT = t;
+    const x = Math.round(X(t) * 2) / 2;
+    if (x !== px) { flush(); px = x; mn = mx = a; } else { mn = Math.min(mn, a); mx = Math.max(mx, a); }
+  }
+  flush(); o.stroke();
+}
+function offscreen(cv) {
+  const off = document.createElement("canvas");
+  off.width = cv.width; off.height = cv.height;
+  const o = off.getContext("2d");
+  const dpr = window.devicePixelRatio || 1;
+  o.setTransform(dpr, 0, 0, dpr, 0, 0);
+  o.font = `11px ${C.font}`;
+  return { off, o };
+}
+
+// vario over the time window: the cockpit vario, TE netto, the GNSS and GNSS/INS references; under it the selected
+// climb as a colour strip and the time axis; the current moment as a line
+let chartGeom = null; // of the last chart build: x and y mapping, plot area
+function drawStrip(k) {
+  const cv = $("strip");
+  const { ctx, w, h } = fitCanvas(cv);
+  const L0 = 46, R0 = w - 8, T0 = 6, B0 = h - 32, SB = h - 26, SH = 8;
+  if (!D) { ctx.clearRect(0, 0, w, h); return; }
+  const [t0, t1] = view;
+  const X = (t) => L0 + (t - t0) / (t1 - t0) * (R0 - L0);
+  if (!varioCache || varioCache.w !== cv.width || varioCache.h !== cv.height) {
+    const { off, o } = offscreen(cv);
+    const ka = indexAt(t0), kb = indexAt(t1);
+    // symmetric around zero, to the largest cockpit or TE netto value in the window (at least ±1, at most ±10 m/s)
+    let vmax = 1;
+    for (let j = ka; j <= kb; j++) {
+      const a = D.amOk[j] ? Math.abs(D.am[j]) : 0, b = Math.abs(D.netto[j]);
+      if (a > vmax && a < 10) vmax = a;
+      if (b > vmax && b < 10) vmax = b;
+    }
+    vmax = Math.ceil(vmax); if (vmax > 6) vmax += vmax % 2;
+    const Y = (v) => T0 + (vmax - v) / (2 * vmax) * (B0 - T0);
+    o.fillStyle = C.muted; o.textAlign = "right"; o.textBaseline = "middle";
+    const step = vmax > 6 ? 2 : 1;
+    for (let v = -vmax; v <= vmax; v += step) {
+      o.strokeStyle = v === 0 ? C.muted : C.grid; o.lineWidth = 1;
+      o.beginPath(); o.moveTo(L0, Y(v)); o.lineTo(R0, Y(v)); o.stroke();
+      o.fillText((v > 0 ? "+" : "") + v, L0 - 6, Y(v));
+    }
+    const tt = timeTicks(t0, t1, R0 - L0);
+    o.textAlign = "center"; o.textBaseline = "top";
+    for (const t of tt.ticks) {
+      const x = X(t);
+      o.strokeStyle = C.grid; o.beginPath(); o.moveTo(x, T0); o.lineTo(x, B0); o.stroke();
+      o.fillText(clockText(t).slice(0, tt.step < 60 ? 8 : 5), x, SB + SH + 4);
+    }
+    o.fillStyle = C.grid; o.fillRect(L0, SB, R0 - L0, SH);
+    const by = colorBy(), span = t1 - t0;
+    for (let j = secAt(ka), je = secAt(kb); j <= je; j++) {
+      const sec = D.sec[j], t = D.t[sec.k];
+      if (t < t0 || t > t1 || !Number.isFinite(sec.v[by])) continue;
+      o.fillStyle = CLIMB_COLORS[climbBin(sec.v[by])];
+      o.fillRect(X(t), SB, Math.max(1, (R0 - L0) / span), SH);
+    }
+    o.save(); o.beginPath(); o.rect(L0, T0, R0 - L0, B0 - T0); o.clip();
+    drawSeries(o, D.gnss, null, C.dark ? C.muted : C.gnss, 1.5, X, Y, ka, kb);
+    drawSeries(o, D.netto, null, C.net, 1.5, X, Y, ka, kb);
+    drawSeries(o, D.am, D.amOk, C.am, 2, X, Y, ka, kb);
+    o.restore();
+    varioCache = { off, w: cv.width, h: cv.height };
+    chartGeom = { L0, R0, X, Y, t0, t1 };
+  }
+  ctx.clearRect(0, 0, w, h);
+  ctx.drawImage(varioCache.off, 0, 0, w, h);
+  // the current moment, and the current values on it
+  const x = X(D.t[k]);
+  if (x >= L0 && x <= R0) {
+    ctx.strokeStyle = C.am; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(x, T0); ctx.lineTo(x, SB + SH); ctx.stroke();
+    const dot = (v, color) => {
+      if (!Number.isFinite(v)) return;
+      const y = Math.max(T0, Math.min(B0, chartGeom.Y(v)));
+      ctx.fillStyle = color; ctx.strokeStyle = C.surface; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, 4, 0, 2 * Math.PI); ctx.fill(); ctx.stroke();
+    };
+    dot(D.netto[k], C.net);
+    if (D.amOk[k]) dot(D.am[k], C.am);
+  }
+}
+
+
+function updateReadouts(k) {
+  const r = D.rep.cols, i = D.ai[k];
+  $("v-am").textContent = fmtV(avg30("am", k));
+  $("v-net").textContent = fmtV(avg30("net", k));
+  $("v-gnss").textContent = fmtV(avg30("gnss", k));
+  const kmh = (v) => (Number.isFinite(v) ? (v * 3.6).toFixed(0) + " km/h" : "–");
+  $("v-ias").textContent = kmh(D.tr.ias[k]); // as measured
+  const st = i >= 0 ? r.status[i] : 0;
+  $("w-hdg").textContent = i >= 0 && st & 8 ? Math.round((r.heading_deg[i] + 360) % 360) + "°" : "–";
+  const ro = i >= 0 ? r.roll_deg[i] : NaN, pi = i >= 0 ? shownPitch(i) : NaN;
+  $("a-roll").textContent = Number.isFinite(ro) ? `${Math.abs(ro).toFixed(0)}° ${ro > 0.5 ? "R" : ro < -0.5 ? "L" : ""}`.trim() : "–";
+  $("a-pitch").textContent = Number.isFinite(pi) ? (pi >= 0 ? "+" : "−") + Math.abs(pi).toFixed(1) + "°" + ($("wingpitch").checked ? " wing" : "") : "–";
+  $("w-gs").textContent = Number.isFinite(D.tr.gnss_speed[k]) ? (D.tr.gnss_speed[k] * 3.6).toFixed(0) + " km/h" : "–";
+}
+
+function drawAll() {
+  const k = D ? indexAt(T) : 0;
+  drawVario(k); drawHorizon(k); drawStrip(k);
+  if (!D) return;
+  updateReadouts(k);
+  $("clock").textContent = clockText(D.t[k]) + clockSuffix();
+  $("slider").value = T;
+  if (gliderMarker && Number.isFinite(D.lat[k])) {
+    const ll = [D.lat[k], D.lon[k]];
+    gliderMarker.setLatLng(ll);
+    const i = D.ai[k];
+    const hdg = i >= 0 && (D.rep.cols.status[i] & 8) ? D.rep.cols.heading_deg[i] : D.tr.gnss_track[k];
+    const el = document.getElementById("gl");
+    if (el) el.style.transform = `rotate(${Number.isFinite(hdg) ? hdg : 0}deg)`;
+    drawMapWind(k);
+    if ($("follow").checked) {
+      const p = map.latLngToContainerPoint(ll), s = map.getSize();
+      if (p.x < s.x * 0.2 || p.x > s.x * 0.8 || p.y < s.y * 0.2 || p.y > s.y * 0.8) map.panTo(ll, { animate: false });
+    }
+  }
+}
+
+// The winds at the glider on the map, each an arrow from the upwind side towards it, its length by the speed, with
+// direction and speed at its tail: AirMass's instant wind (grey when degraded) and its average (dashed)
+function drawMapWind(k) {
+  const r = D.rep.cols, i = D.ai[k], st = i >= 0 ? r.status[i] : 0, S = 180;
+  const winds = {
+    inst: st & (2 | 16) ? [r.wind_n[i], r.wind_e[i], st & 2 ? C.am : C.degraded] : null,
+    avg: st & 2 ? [r.avg_wind_n[i], r.avg_wind_e[i], C.muted] : null,
+  };
+  const placed = [];
+  for (const w of WIND_ARROWS) {
+    const g = document.getElementById("wa-" + w.id), lab = document.getElementById("wl-" + w.id);
+    if (!g || !lab) continue;
+    const v = winds[w.id];
+    if (!v || !(Math.hypot(v[0], v[1]) * 3.6 > 0.5)) { g.style.display = "none"; lab.style.display = "none"; continue; }
+    const [wn, we, color] = v, kmh = Math.hypot(wn, we) * 3.6;
+    const from = (Math.atan2(-we, -wn) * 180 / Math.PI + 360) % 360;
+    const tail = 26 + 14 + Math.min(kmh, 60) / 60 * 50;
+    g.style.display = "";
+    g.setAttribute("transform", `rotate(${from})`);
+    const line = g.querySelector("line");
+    line.setAttribute("y1", -tail); line.setAttribute("stroke", color);
+    g.querySelector("path").setAttribute("fill", color);
+    // the label beyond the tail, upright, moved down where it would cover another
+    const a = from * Math.PI / 180, lr = tail + 14;
+    let x = S / 2 + Math.sin(a) * lr, y = S / 2 - Math.cos(a) * lr;
+    while (placed.some(([px, py]) => Math.abs(px - x) < 70 && Math.abs(py - y) < 14)) y += 14;
+    placed.push([x, y]);
+    lab.style.display = "block";
+    lab.textContent = `${String(Math.round(from) % 360).padStart(3, "0")}° ${kmh.toFixed(0)}`;
+    lab.style.left = x + "px";
+    lab.style.top = y + "px";
+    lab.style.color = color;
+  }
+}
+
+// The chart's time window follows the map zoom: half the time a glider at 100 km/h needs to cross the map from side to
+// side (2x zoomed in from that), around the current moment
+const MAP_SPEED = 100 / 3.6; // m/s
+const CHART_ZOOM = 2;
+function viewFromMap() {
+  if (!D || !$("chartsmap").checked) return;
+  const sz = map.getSize();
+  if (!(sz.x > 0)) return;
+  const width = map.distance(map.containerPointToLatLng([0, sz.y / 2]), map.containerPointToLatLng([sz.x, sz.y / 2]));
+  const first = D.t[0], last = D.t[D.n - 1];
+  const span = Math.min(Math.max(10, width / MAP_SPEED / CHART_ZOOM), last - first);
+  let t0 = T - span / 2;
+  t0 = Math.max(first, Math.min(last - span, t0));
+  const t1 = t0 + span;
+  if (view && Math.abs(view[0] - t0) < 0.5 && Math.abs(view[1] - t1) < 0.5) return;
+  view = [t0, t1];
+  invalidateCharts();
+  scheduleDraw();
+}
+map.on("moveend", viewFromMap);
+
+// one draw in the next animation frame, however many events ask for it before
+let drawPending = false;
+function scheduleDraw() {
+  if (drawPending) return;
+  drawPending = true;
+  requestAnimationFrame(() => { drawPending = false; drawAll(); });
+}
+
+// ---------- playback ----------
+function seek(t, draw = drawAll) {
+  if (!D) return;
+  T = Math.max(D.t[0], Math.min(D.t[D.n - 1], t));
+  if (T < view[0] || T > view[1]) { const span = view[1] - view[0]; view = [Math.max(D.t[0], T - span / 2), Math.min(D.t[D.n - 1], T + span / 2)]; invalidateCharts(); }
+  draw();
+}
+function play() {
+  if (!D) return;
+  if (T >= D.t[D.n - 1]) T = D.tStart;
+  playing = true; lastFrame = performance.now();
+  if (audio.ctx && $("sound").checked) soundOn().catch((e) => console.error(e));
+  $("playbtn").textContent = "❚❚"; $("playbtn").setAttribute("aria-label", "Pause");
+  requestAnimationFrame(frame);
+}
+function pause() {
+  playing = false;
+  if (audio.ctx) { clearInterval(audio.timer); audio.ctx.suspend(); }
+  $("playbtn").textContent = "▶"; $("playbtn").setAttribute("aria-label", "Play");
+}
+function frame(now) {
+  if (!playing) return;
+  const dt = Math.min(0.25, (now - lastFrame) / 1000);
+  lastFrame = now;
+  T += dt * +$("speed").value;
+  if (T >= D.t[D.n - 1]) { T = D.t[D.n - 1]; pause(); }
+  seek(T);
+  if (playing) requestAnimationFrame(frame);
+}
+$("playbtn").onclick = () => (playing ? pause() : play());
+// the settings panel: opens over the page, closes on the button, Escape or a click outside
+function showSettings(on) { $("settings").hidden = !on; $("settingsbtn").setAttribute("aria-expanded", on ? "true" : "false"); }
+$("settingsbtn").onclick = () => showSettings($("settings").hidden);
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") showSettings(false); });
+document.addEventListener("pointerdown", (e) => { if (!$("settings").hidden && !e.target.closest("#settings, #settingsbtn")) showSettings(false); });
+$("slider").oninput = () => seek(+$("slider").value, scheduleDraw);
+$("rerun").onclick = run;
+document.addEventListener("keydown", (e) => {
+  if (!D || e.target.closest("input[type=text], input[type=number], select")) return;
+  if (e.code === "Space") { e.preventDefault(); playing ? pause() : play(); }
+  else if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
+    if (e.target.type === "range") return;
+    e.preventDefault();
+    seek(T + (e.key === "ArrowRight" ? 1 : -1) * (e.shiftKey ? 60 : 10));
+  }
+});
+
+// vario chart: click jumps, wheel zooms, drag pans, double-click resets, hover shows the values
+{
+  const cv = $("strip"), tip = $("tip");
+  let drag = null;
+  const tAt = (x) => chartGeom.t0 + (x - chartGeom.L0) / (chartGeom.R0 - chartGeom.L0) * (chartGeom.t1 - chartGeom.t0);
+  const pos = (e) => { const r = cv.getBoundingClientRect(); return e.clientX - r.left; };
+  cv.addEventListener("wheel", (e) => {
+    if (!D || !chartGeom) return;
+    e.preventDefault();
+    const tm = tAt(pos(e)), f = e.deltaY > 0 ? 1.25 : 0.8;
+    const full = [D.t[0], D.t[D.n - 1]];
+    let a = tm - (tm - view[0]) * f, b = tm + (view[1] - tm) * f;
+    if (b - a < 30) return;
+    a = Math.max(full[0], a); b = Math.min(full[1], b);
+    view = [a, b]; invalidateCharts(); scheduleDraw();
+  }, { passive: false });
+  cv.addEventListener("pointerdown", (e) => { if (!D) return; drag = { x: pos(e), v: view.slice(), moved: false }; cv.setPointerCapture(e.pointerId); });
+  cv.addEventListener("pointermove", (e) => {
+    if (!D || !chartGeom) return;
+    const x = pos(e);
+    if (drag) {
+      const dx = x - drag.x;
+      if (Math.abs(dx) > 3) drag.moved = true;
+      if (drag.moved) {
+        const dt = -dx / (chartGeom.R0 - chartGeom.L0) * (drag.v[1] - drag.v[0]);
+        const full = [D.t[0], D.t[D.n - 1]];
+        const sh = Math.max(full[0] - drag.v[0], Math.min(full[1] - drag.v[1], dt));
+        view = [drag.v[0] + sh, drag.v[1] + sh]; invalidateCharts(); scheduleDraw();
+      }
+    }
+    if (x < chartGeom.L0 || x > chartGeom.R0) { tip.style.display = "none"; return; }
+    const k = indexAt(tAt(x));
+    const alt = D.galt[k], pa = D.tr.baro_alt[k];
+    tip.innerHTML = `${clockText(D.t[k])}${clockSuffix()}<br>GNSS ${Number.isFinite(alt) ? alt.toFixed(0) + " m" : "–"} · pressure ${Number.isFinite(pa) ? pa.toFixed(0) + " m" : "–"}<br>` +
+      `cockpit ${fmtV(D.am[k])}${D.amOk[k] ? "" : " (netto)"} · netto ${fmtV(D.netto[k])} · GNSS netto ${fmtV(D.gnss[k])} m/s` +
+      (() => { const sec = D.sec[secAt(k)]; return sec ? `<br>${COLOR_BY[colorBy()]} (1 s) ${fmtV(sec.v[colorBy()])} m/s` : ""; })();
+    tip.style.display = "block";
+    const pr = $("charts").getBoundingClientRect(), cr = cv.getBoundingClientRect();
+    const left = cr.left - pr.left + x + 12;
+    tip.style.left = (left + tip.offsetWidth > pr.width - 8 ? cr.left - pr.left + x - tip.offsetWidth - 12 : left) + "px";
+    tip.style.top = (cr.top - pr.top + 6) + "px";
+  });
+  cv.addEventListener("pointerleave", () => { tip.style.display = "none"; });
+  cv.addEventListener("pointerup", (e) => { if (drag && !drag.moved && chartGeom) seek(tAt(pos(e))); drag = null; });
+  cv.addEventListener("dblclick", () => { if (!D) return; view = [D.t[0], D.t[D.n - 1]]; invalidateCharts(); drawAll(); });
+}
+
+// ---------- files ----------
+$("file").addEventListener("change", (e) => { if (e.target.files[0]) load(e.target.files[0]); e.target.value = ""; });
+let dragDepth = 0;
+window.addEventListener("dragenter", (e) => { e.preventDefault(); dragDepth++; $("drop").classList.add("on"); });
+window.addEventListener("dragleave", () => { if (--dragDepth <= 0) { dragDepth = 0; $("drop").classList.remove("on"); } });
+window.addEventListener("dragover", (e) => e.preventDefault());
+window.addEventListener("drop", (e) => { e.preventDefault(); dragDepth = 0; $("drop").classList.remove("on"); const f = e.dataTransfer.files[0]; if (f) load(f); });
+
+// export the replay as CSV (one row per AirMass cycle, with the track sample of that cycle)
+$("export").onclick = () => {
+  if (!D) return;
+  const r = D.rep.cols, names = Object.keys(r);
+  const out = ["t_s,lat,lon,gnss_alt,baro_alt,te_vario,te_netto,airmass_shown," + names.join(",")];
+  for (let k = 0; k < D.n; k++) {
+    const i = D.ai[k];
+    if (i < 0) continue;
+    const f = (v, d) => (Number.isFinite(v) ? v.toFixed(d) : "");
+    out.push([D.t[k].toFixed(1), f(D.lat[k], 6), f(D.lon[k], 6), f(D.galt[k], 1), f(D.tr.baro_alt[k], 1), f(D.tr.te_vario[k], 2), f(D.netto[k], 3), f(D.am[k], 3)]
+      .concat(names.map((n) => f(r[n][i], n === "status" ? 0 : 4))).join(","));
+  }
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([out.join("\n") + "\n"], { type: "text/csv" }));
+  a.download = (D.name || "replay") + ".airmass.csv";
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+};
+
+// ---------- the XCVario vario tone ----------
+// The device's sound generator (main/driver/audio/ESPAudio.cpp) at its default settings, run sample by sample at the
+// DAC rate: the 128 step sine table on a 32 bit phase accumulator, the vario voice (gain 220/128) and its 5th harmonic
+// (21/128, "Harmonics" high) summed and clipped to the DAC half amplitude, the gain faded one step per 4 table periods,
+// the two step sequence (tone, break), the frequency reloaded at each step. Audio::calculateFrequency at 10 Hz: centre
+// 500 Hz, 2 octaves, range 5 m/s, exponent 1, no deadband (set to 0), lift chopped, sink continuous.
+// It follows the selected source: the cockpit vario in Air Mass mode (AirMass where valid, else netto), TE netto, or
+// the device's TE vario.
+const XCV_WORKLET = `
+const SR = 66150, SPB = 512; // DAC sample rate, samples per DMA buffer
+const SINE = [0, 3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 32, 35, 37, 40, 42, 45, 47, 49, 51, 53, 54, 56, 57, 58, 60, 61, 61, 62,
+  63, 63, 63, 63, 63, 63, 63, 62, 61, 61, 60, 58, 57, 56, 54, 53, 51, 49, 47, 45, 42, 40, 37, 35, 32, 30, 27, 24,
+  21, 18, 15, 12, 9, 6, 3, 0, -3, -6, -9, -12, -15, -18, -21, -24, -27, -30, -32, -35, -37, -40, -42, -45, -47,
+  -49, -51, -53, -54, -56, -57, -58, -60, -61, -61, -62, -63, -63, -63, -63, -63, -63, -63, -62, -61, -61, -60,
+  -58, -57, -56, -54, -53, -51, -49, -47, -45, -42, -40, -37, -35, -32, -30, -27, -24, -21, -18, -15, -12, -9, -6, -3];
+const calcStep = (f) => Math.floor(f * 4294967296 / SR) >>> 0;
+const samples = (ms) => Math.trunc(ms * SR / 1000);
+class Voice {
+  constructor(adj) { this.adj = adj; this.phase = 0; this.step = 0; this.gain = 0; this.target = 0; this.fade = 1; }
+  load(s) { // VOICECMD::fastLoad
+    if (s) {
+      this.step = s;
+      const g = s <= 58434929 ? 128 : 128 - (Math.floor(((47 * (s - 58434929)) >>> 0) / 146087322) & 0xffff);
+      this.target = (g * this.adj) >> 7;
+    } else this.target = 0;
+    this.fade = this.step > 0 ? Math.max(1, Math.floor(134217728 / this.step)) : 1;
+  }
+}
+class XcvVario extends AudioWorkletProcessor {
+  constructor() {
+    super();
+    this.voices = [new Voice(220), new Voice(21)];
+    this.seq = [[0, 0], [0, 0]];   // per voice: tone, break
+    this.tim = [samples(100), samples(50)];
+    this.idx = 0; this.counter = this.tim[0]; this.reload = 0; this.n = 0; this.fadeCnt = 0;
+    this.muted = true; this.volume = 0.5; this.clip = true;
+    this.port.onmessage = (e) => this.message(e.data);
+  }
+  message(m) {
+    if ("volume" in m) this.volume = m.volume;
+    if ("harmonics" in m) this.voices[1].adj = m.harmonics; // the 5th harmonic voice gain, 0/7/14/21 of 128
+    if ("clip" in m) this.clip = m.clip;
+    if (m.off) { this.muted = true; return; }
+    if (!("v" in m)) return;
+    // Audio::calculateFrequency
+    const CENTER = 500, OCT = 2, RANGE = 5, FACTOR = 1, maxf = CENTER * OCT, minf = CENTER / OCT, EXPMAX = Math.pow(2, FACTOR);
+    const val = Math.max(-RANGE, Math.min(RANGE, m.v));
+    const maxVar = val > 0 ? (maxf - CENTER) * 2 : CENTER - minf;
+    const mult = Math.pow(Math.abs(val) / RANGE + 1, FACTOR);
+    const freq = CENTER + ((mult * val) / RANGE) * (maxVar / EXPMAX);
+    if (val > 0) {
+      const tmp = 1000 / (1 + 9 * (val / RANGE));
+      this.tim[0] = samples(Math.trunc(tmp * 0.9) - 40);
+      this.tim[1] = samples(Math.trunc(tmp * 0.1) + 40);
+    } else {
+      this.tim[0] = samples(50); this.tim[1] = samples(50);
+    }
+    // no deadband (the device's deadband set to 0/0: Audio::updateAudioMode makes it empty)
+    this.muted = false;
+    const s = calcStep(freq), h = calcStep(freq * 5);
+    this.seq = val > 0 ? [[s, 0], [h, 0]] : [[s, s], [h, h]]; // chopped lift, continuous sink
+  }
+  loadVoices() { for (let j = 0; j < 2; j++) this.voices[j].load(this.seq[j][this.idx]); }
+  process(inputs, outputs) {
+    const out = outputs[0][0];
+    for (let i = 0; i < out.length; i++) {
+      if (this.n++ % SPB === 0) { // per DMA buffer
+        this.fadeCnt = 0;
+        if (this.counter < this.reload) { this.loadVoices(); this.reload = 0; }
+      }
+      if (this.counter <= 0) { // the next step of the sequence
+        this.idx = (this.idx + 1) % 2;
+        this.counter = this.tim[this.idx];
+        this.reload = this.counter > samples(300) ? Math.floor(this.counter / 2) : 0;
+        this.loadVoices();
+      }
+      this.counter--;
+      this.fadeCnt = (this.fadeCnt + 1) & 0xffff;
+      let sum = 0;
+      for (const v of this.voices) {
+        if (v.gain !== v.target && this.fadeCnt % v.fade === 0) v.gain += v.gain < v.target ? 1 : -1;
+        sum += (SINE[v.phase >>> 25] * v.gain) >> 7;
+        v.phase = (v.phase + v.step) >>> 0;
+      }
+      // two voices: divided by max(1, 2 - 1), clipped to the DAC half amplitude: the main voice peaks at 108 of 64,
+      // the clipping makes a strong 3rd harmonic (-13 dB). Unclipped, the same level without the overtones.
+      const y = this.clip ? Math.max(-64, Math.min(64, sum)) / 64 : sum / 120;
+      out[i] = this.muted ? 0 : y * this.volume;
+    }
+    return true;
+  }
+}
+registerProcessor("xcv-vario", XcvVario);
+`;
+const audio = { ctx: null, node: null, timer: null };
+async function soundOn() {
+  if (!audio.ctx) {
+    audio.ctx = new AudioContext({ sampleRate: 66150 });
+    const url = URL.createObjectURL(new Blob([XCV_WORKLET], { type: "text/javascript" }));
+    await audio.ctx.audioWorklet.addModule(url);
+    URL.revokeObjectURL(url);
+    audio.node = new AudioWorkletNode(audio.ctx, "xcv-vario", { outputChannelCount: [1] });
+    audio.node.connect(audio.ctx.destination);
+  }
+  if (!$("sound").checked) return; // switched off while it was starting
+  await audio.ctx.resume();
+  audio.node.port.postMessage({ volume: +$("volume").value, harmonics: +$("harmonics").value, clip: $("clip").checked });
+  clearInterval(audio.timer);
+  audio.timer = setInterval(() => { // the device updates the tone at 10 Hz
+    if (!D || !playing) { audio.node.port.postMessage({ off: true }); return; }
+    // the device's sound follows its vario (te_vario): Air Mass mode, Netto mode, or the TE vario itself
+    const k = indexAt(T), src = $("soundsrc").value;
+    const v = src === "netto" ? D.netto[k] : src === "te" ? D.tr.te_vario[k] : D.am[k];
+    audio.node.port.postMessage(Number.isFinite(v) ? { v } : { off: true });
+  }, 100);
+}
+function soundOff() {
+  clearInterval(audio.timer);
+  if (audio.node) audio.node.port.postMessage({ off: true });
+  if (audio.ctx) audio.ctx.suspend();
+}
+// on by default: browsers only allow sound after the first click or key press on the page, so it starts then
+function startSoundOnGesture() {
+  const go = () => {
+    window.removeEventListener("pointerdown", go, true);
+    window.removeEventListener("keydown", go, true);
+    if ($("sound").checked) soundOn().catch((e) => console.error(e));
+  };
+  window.addEventListener("pointerdown", go, true);
+  window.addEventListener("keydown", go, true);
+}
+if ($("sound").checked) startSoundOnGesture();
+$("sound").addEventListener("change", () => {
+  if ($("sound").checked) soundOn().catch((e) => { setStatus("Sound: " + e.message, true); $("sound").checked = false; });
+  else soundOff();
+});
+for (const id of ["harmonics", "clip"]) $(id).addEventListener("change", () => {
+  if (audio.node) audio.node.port.postMessage({ harmonics: +$("harmonics").value, clip: $("clip").checked });
+});
+$("volume").addEventListener("input", () => { if (audio.node) audio.node.port.postMessage({ volume: +$("volume").value }); });
+
+drawAll();
+modulePromise.catch((e) => setStatus("The AirMass module did not load: " + e.message + " (run tools/airmass_sim/web/build.sh)", true));
+</script>
+</body>
+</html>
