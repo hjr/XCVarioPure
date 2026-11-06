@@ -1,9 +1,11 @@
 // Shared by the analysis scripts: the browser replay's own code (index.html: build, atFixes, Damp, derive, indexAt)
-// loaded into node, and the helpers the scripts have in common. The page functions read the globals D (the flight
-// being worked on), fileName and $ (the settings), so a script assigns D = build(...) without declaring it.
+// loaded into node, and the helpers the scripts have in common. derive() gives the two GNSS references: D.gnssNetInert
+// (gust-insensitive: GNSS ground velocity minus a 2 min wind) and D.gnssNetPitot (pitot TAS). The page functions read
+// the globals D (the flight being worked on), fileName and $ (the settings), so a script assigns D = build(...) without
+// declaring it.
 const fs = require("fs"), path = require("path");
 
-// REF_SINK=airmass (or { refSink: "airmass" }): the GNSS netto reference subtracts AirMass's polar sink (calibrated
+// REF_SINK=airmass (or { refSink: "airmass" }): the GNSS netto references subtract AirMass's polar sink (calibrated
 // airspeed, its load factor) instead of the device's (measured IAS polar in TAS terms), the one TE netto uses
 function loadPage(web, { refSink = process.env.REF_SINK } = {}) {
   web = path.resolve(web); // a relative path would be taken for a package name by require()
@@ -15,7 +17,9 @@ function loadPage(web, { refSink = process.env.REF_SINK } = {}) {
     for (; j < script.length; j++) { if (script[j] === "{") depth++; else if (script[j] === "}" && --depth === 0) break; }
     return script.slice(i, j + 1);
   };
-  let src = ["function build(conv, rep)", "function atFixes(D, get, maxHold)", "class Damp", "function derive(D)", "function indexAt(t)"].map(grab).join("\n");
+  const names = ["build", "atFixes", "Damp", "derive", "indexAt", "runningSums", "cockpitSeries", "gnssNetFromEnergy"];
+  let src = ["function build(conv, rep)", "function atFixes(D, get, maxHold)", "class Damp", "function derive(D)", "function indexAt(t)",
+    "function runningSums(n, val)", "function cockpitSeries(D, dampAt)", "function gnssNetFromEnergy(D, sinkUp, energyOf)"].map(grab).join("\n");
   if (refSink === "airmass") {
     const patched = src.replace("if (Number.isFinite(sink)) sinkUp[k] = sink;", "if (Number.isFinite(r.polar_sink[i])) sinkUp[k] = -r.polar_sink[i];");
     if (patched === src) throw new Error("REF_SINK patch failed: derive() changed");
@@ -24,7 +28,7 @@ function loadPage(web, { refSink = process.env.REF_SINK } = {}) {
   globalThis.$ = (id) => ({ damping: { value: "4" }, samesmooth: { checked: false } })[id];
   globalThis.D = null;
   globalThis.fileName = "";
-  (0, eval)(src + "\nglobalThis.build = build; globalThis.atFixes = atFixes; globalThis.derive = derive; globalThis.Damp = Damp; globalThis.indexAt = indexAt;");
+  (0, eval)(src + "\n" + names.map((x) => `globalThis.${x} = ${x};`).join(" "));
   return { convert: require(path.join(web, "convert.js")).convert, runReplay: require(path.join(web, "replay.js")).runReplay };
 }
 
@@ -77,52 +81,113 @@ function freeMask(D, extra) {
   return { free, since };
 }
 
-// The gust-insensitive reference: the energy height of the fixes from GNSS altitude and the ground velocity relative to
-// AirMass's averaged wind (smoothed over 2 min), its change over the fixes before and after each fix, minus the mean
-// polar sink; at the fixes' measurement times, interpolated. Uses the global D (indexAt).
-function inertialRef(D) {
-  const G = 9.80665, r = D.rep.cols, c = D.tr, n = D.n, F = D.fixes;
-  const wn = new Float64Array(n).fill(NaN), we = new Float64Array(n).fill(NaN), half = 600;
-  const cn = new Float64Array(n + 1), ce = new Float64Array(n + 1), cc = new Float64Array(n + 1);
-  for (let k = 0; k < n; k++) {
-    const i = D.ai[k], ok = i >= 0 && (r.status[i] & 2);
-    cn[k + 1] = cn[k] + (ok ? r.avg_wind_n[i] : 0); ce[k + 1] = ce[k] + (ok ? r.avg_wind_e[i] : 0); cc[k + 1] = cc[k] + (ok ? 1 : 0);
+// least squares: the coefficients x minimising |X x - y|² (rows of X), by the normal equations and Gaussian
+// elimination; null if singular
+function lsq(X, y) {
+  const m = X[0].length, A = Array.from({ length: m }, () => new Float64Array(m)), b = new Float64Array(m);
+  X.forEach((row, i) => { for (let p = 0; p < m; p++) { b[p] += row[p] * y[i]; for (let q = 0; q < m; q++) A[p][q] += row[p] * row[q]; } });
+  for (let p = 0; p < m; p++) {
+    let piv = p;
+    for (let r = p + 1; r < m; r++) if (Math.abs(A[r][p]) > Math.abs(A[piv][p])) piv = r;
+    [A[p], A[piv]] = [A[piv], A[p]]; [b[p], b[piv]] = [b[piv], b[p]];
+    if (!(Math.abs(A[p][p]) > 1e-12)) return null;
+    for (let r = p + 1; r < m; r++) { const f = A[r][p] / A[p][p]; for (let q = p; q < m; q++) A[r][q] -= f * A[p][q]; b[r] -= f * b[p]; }
   }
-  for (let k = 0; k < n; k++) {
-    const a = Math.max(0, k - half), b = Math.min(n, k + half), m = cc[b] - cc[a];
-    if (m > 300) { wn[k] = (cn[b] - cn[a]) / m; we[k] = (ce[b] - ce[a]) / m; }
+  const x = new Float64Array(m);
+  for (let p = m - 1; p >= 0; p--) { let s = b[p]; for (let q = p + 1; q < m; q++) s -= A[p][q] * x[q]; x[p] = s / A[p][p]; }
+  return x;
+}
+
+// The wind from GNSS alone, per full turn while circling: the ground velocities of the fixes of one turn (360° of
+// track change, the track turning faster than 6°/s the same way) lie on a circle around the wind, its radius the
+// airspeed (taken constant over the turn); a least squares circle fit (Kåsa). Uses neither heading nor airspeed nor
+// AirMass. Returns the turns [{ t (device time of the turn's middle, s), n, e (m/s), tas (the radius), res (rms of
+// the points off the circle) }] and the wind per sample (wn, we), interpolated in time between turns, held before the
+// first and after the last.
+// opts: tas (true: fit |ground velocity - wind| to the measured TAS of each fix times a scale, Gauss-Newton from the
+// circle fit, instead of a constant airspeed: the size of the airspeed only, still no heading and no AirMass), smooth
+// (the number of turns on either side averaged with each turn's wind, within the same circling, default 0)
+function gnssCircleWind(D, opts = {}) {
+  const F = D.fixes, c = D.tr, turns = [];
+  let seg = [], cum = 0, sign = 0, thermalId = 0;
+  const fit = (pts) => {
+    // x² + y² + a x + b y + d = 0, linear in a, b, d
+    const sol = lsq(pts.map(([x, y]) => [x, y, 1]), pts.map(([x, y]) => -(x * x + y * y)));
+    if (!sol) return null;
+    const cx = -sol[0] / 2, cy = -sol[1] / 2, r = Math.sqrt(cx * cx + cy * cy - sol[2]);
+    let res = 0;
+    for (const [x, y] of pts) res += (Math.hypot(x - cx, y - cy) - r) ** 2;
+    return { n: cx, e: cy, tas: r, res: Math.sqrt(res / pts.length) };
+  };
+  for (let j = 1; j < F.length; j++) {
+    const p = F[j - 1], q = F[j], dt = q.u - p.u;
+    const tp = c.gnss_track[p.k], tq = c.gnss_track[q.k], sp = c.gnss_speed[q.k];
+    let rate = NaN;
+    if (dt > 0.5 && dt < 3 && Number.isFinite(tp) && Number.isFinite(tq)) rate = ((((tq - tp) % 360) + 540) % 360 - 180) / dt;
+    if (!(Math.abs(rate) > 6) || (sign && Math.sign(rate) !== sign) || !Number.isFinite(sp)) { if (sign) thermalId++; seg = []; cum = 0; sign = 0; continue; }
+    sign = Math.sign(rate);
+    if (!seg.length) seg.push(p);
+    seg.push(q);
+    cum += Math.abs(rate) * dt;
+    if (cum >= 360) {
+      const pts = seg.map((f) => [c.gnss_speed[f.k] * Math.cos(c.gnss_track[f.k] * Math.PI / 180), c.gnss_speed[f.k] * Math.sin(c.gnss_track[f.k] * Math.PI / 180)]);
+      let w = fit(pts);
+      if (w && opts.tas) {
+        // minimise the sum of (|v_i - W| - s TAS_i)² over W and s
+        const tas = seg.map((f) => c.tas[indexAt(f.tm)]), tasMean = tas.reduce((u, v) => u + v, 0) / tas.length;
+        let x = [w.n, w.e, w.tas / tasMean];
+        for (let it = 0; it < 10; it++) {
+          // Gauss-Newton: the step solves J step = residuals in least squares
+          const J = [], res = [];
+          pts.forEach(([px, py], i) => {
+            const dx = px - x[0], dy = py - x[1], d = Math.hypot(dx, dy) || 1e-6;
+            J.push([-dx / d, -dy / d, -tas[i]]); res.push(d - x[2] * tas[i]);
+          });
+          const step = lsq(J, res);
+          if (!step) break;
+          x = x.map((v, i) => v - step[i]);
+        }
+        let res = 0;
+        pts.forEach(([px, py], i) => { res += (Math.hypot(px - x[0], py - x[1]) - x[2] * tas[i]) ** 2; });
+        w = { n: x[0], e: x[1], tas: x[2] * tasMean, res: Math.sqrt(res / pts.length) };
+      }
+      if (w && w.tas > 15 && w.tas < 70 && w.res < 2.5) turns.push({ t: (seg[0].tm + seg[seg.length - 1].tm) / 2, thermal: thermalId, ...w });
+      seg = [q]; cum = 0;
+    }
   }
-  const sens = D.kind.startsWith("XCVario sensor");
-  const cs = new Float64Array(n + 1), cm = new Float64Array(n + 1);
-  for (let k = 0; k < n; k++) {
-    const i = D.ai[k];
-    const s = i < 0 ? NaN : sens ? c.polar_sink[k] * c.tas[k] / Math.max(c.ias[k], 10) : -r.polar_sink[i];
-    const ok = Number.isFinite(s);
-    cs[k + 1] = cs[k] + (ok ? s : 0); cm[k + 1] = cm[k] + (ok ? 1 : 0);
+  if (opts.smooth > 0) {
+    const raw = turns.map((t) => [t.n, t.e]);
+    turns.forEach((t, i) => {
+      let sn = 0, se = 0, m = 0;
+      for (let j = i - opts.smooth; j <= i + opts.smooth; j++) if (turns[j] && turns[j].thermal === t.thermal) { sn += raw[j][0]; se += raw[j][1]; m++; }
+      t.n = sn / m; t.e = se / m;
+    });
   }
-  const E = F.map((f) => {
-    const k = f.k, spd = c.gnss_speed[k], trk = c.gnss_track[k] * Math.PI / 180, km = indexAt(f.tm);
-    if (!Number.isFinite(spd) || !Number.isFinite(trk) || !Number.isFinite(wn[km])) return NaN;
+  const wn = new Float32Array(D.n).fill(NaN), we = new Float32Array(D.n).fill(NaN);
+  for (let k = 0, i = 0; k < D.n && turns.length; k++) {
+    const t = D.t[k];
+    while (i + 1 < turns.length && turns[i + 1].t <= t) i++;
+    const a = turns[i], b = turns[i + 1];
+    const f = !b || t <= a.t ? 0 : Math.min(1, (t - a.t) / (b.t - a.t));
+    wn[k] = a.n + ((b ? b.n : a.n) - a.n) * f;
+    we[k] = a.e + ((b ? b.e : a.e) - a.e) * f;
+  }
+  return { turns, wn, we };
+}
+
+// The gust-insensitive GNSS netto as derive() computes it (gnssNetFromEnergy, its polar sink D.sinkUp), with the given
+// wind per sample (wn, we) instead of AirMass's averaged one. Uses the global D (indexAt).
+function gnssNetWithWind(D, wn, we) {
+  const G = 9.80665, c = D.tr;
+  return gnssNetFromEnergy(D, D.sinkUp, (f) => {
+    const spd = c.gnss_speed[f.k], trk = c.gnss_track[f.k] * Math.PI / 180, km = indexAt(f.tm);
     const vn = spd * Math.cos(trk) - wn[km], ve = spd * Math.sin(trk) - we[km];
     return f.alt + (vn * vn + ve * ve) / (2 * G);
   });
-  const ref = [];
-  for (let j = 1; j + 1 < F.length; j++) {
-    const p = F[j - 1], q = F[j + 1], dt = q.u - p.u;
-    if (!(dt > 0.5 && dt < 5) || !Number.isFinite(E[j - 1]) || !Number.isFinite(E[j + 1])) continue;
-    const kp = indexAt(p.tm), kq = indexAt(q.tm), m = cm[kq + 1] - cm[kp];
-    if (!(m > 0)) continue;
-    ref.push({ t: F[j].tm, v: (E[j + 1] - E[j - 1]) / dt - (cs[kq + 1] - cs[kp]) / m });
-  }
-  const out = new Float32Array(n).fill(NaN);
-  for (let r0 = 0, k = 0; k < n; k++) {
-    const t = D.t[k];
-    while (r0 + 1 < ref.length && ref[r0 + 1].t <= t) r0++;
-    const a = ref[r0], b = ref[r0 + 1];
-    if (!a || !b || t < a.t || b.t - a.t > 3) continue;
-    out[k] = a.v + (b.v - a.v) * (t - a.t) / (b.t - a.t);
-  }
-  return out;
 }
 
-module.exports = { loadPage, lagOf, dampSeries, freeMask, inertialRef };
+// The converter options of the real-flight scripts: the glider and the weight the log names (CA1, else the ASG 29/18
+// and the logged ballast factor, as the page does), or GLIDER=name, MASS=kg
+const logOptions = () => ({ glider: process.env.GLIDER || "log", mass: +(process.env.MASS || 0) });
+
+module.exports = { loadPage, lagOf, dampSeries, freeMask, lsq, gnssCircleWind, gnssNetWithWind, logOptions };

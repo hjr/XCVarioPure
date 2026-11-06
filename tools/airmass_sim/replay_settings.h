@@ -25,7 +25,7 @@ inline bool applySettings(AirMassEKF& ekf, const Settings& settings, std::string
         {"energy_gust_weight", &c.energy_gust_weight}, {"anchor_tau", &c.anchor_tau},
         {"kcl_min", &c.kcl_min}, {"kcl_max", &c.kcl_max}, {"energy_gate", &c.energy_gate},
         {"wind_work_hp", &c.wind_work_hp}, {"blend_hp", &c.blend_hp}, {"polar_calibrated", &c.polar_calibrated},
-        {"blend_bank", &c.blend_bank}, {"blend_bank_width", &c.blend_bank_width},
+        {"blend_bank", &c.blend_bank}, {"blend_bank_width", &c.blend_bank_width}, {"circling_tau", &c.circling_tau}, {"circling_blend_tau", &c.circling_blend_tau},
     };
     for (const auto& s : settings) {
         bool found = false;

@@ -1,0 +1,35 @@
+### CIRCLE={} (constant airspeed per turn)
+check: the page's reference rebuilt with AirMass's 2 min wind differs by at most 2.4e-6 m/s
+GNSS-only wind: 1160 full turns fitted (median rms off the circle 0.78 m/s)
+AirMass's averaged wind minus the GNSS-only one at 1157 turns: rms 1.86 m/s, mean north 0.34, east 0.24
+  the turns' radius (airspeed from GNSS alone) over AirMass's calibrated TAS: median 1.000
+
+=== reference with AirMass wind (delays: AirMass (cockpit) 0.8 s, TE netto 2.4 s)
+  10 s windows, rms m/s:  straight: AirMass (cockpit) 0.465, TE netto 0.598, refs differ 0.249 [4817]   |   circling: AirMass (cockpit) 0.660, TE netto 0.642, refs differ 0.799 [4877]
+    own errors (three-cornered hat):  straight: AirMass 0.188, TE netto 0.420, the reference itself 0.425   |   circling: AirMass 0.279, TE netto 0.235, the reference itself 0.598
+  30 s windows, rms m/s:  straight: AirMass (cockpit) 0.287, TE netto 0.282, refs differ 0.251 [1265]   |   circling: AirMass (cockpit) 0.220, TE netto 0.205, refs differ 0.197 [1486]
+    own errors (three-cornered hat):  straight: AirMass 0.178, TE netto 0.170, the reference itself 0.226   |   circling: AirMass 0.136, TE netto 0.110, the reference itself 0.173
+
+=== reference with GNSS-only wind (delays: AirMass (cockpit) 0.8 s, TE netto 2.4 s)
+  10 s windows, rms m/s:  straight: AirMass (cockpit) 0.523, TE netto 0.644, refs differ 0.249 [4817]   |   circling: AirMass (cockpit) 0.896, TE netto 0.894, refs differ 0.799 [4877]
+    own errors (three-cornered hat):  straight: AirMass 0.187, TE netto 0.420, the reference itself 0.488   |   circling: AirMass 0.261, TE netto 0.255, the reference itself 0.857
+  30 s windows, rms m/s:  straight: AirMass (cockpit) 0.376, TE netto 0.367, refs differ 0.251 [1265]   |   circling: AirMass (cockpit) 0.279, TE netto 0.265, refs differ 0.197 [1486]
+    own errors (three-cornered hat):  straight: AirMass 0.183, TE netto 0.164, the reference itself 0.328   |   circling: AirMass 0.138, TE netto 0.108, the reference itself 0.242
+
+### CIRCLE={"tas":true}
+check: the page's reference rebuilt with AirMass's 2 min wind differs by at most 2.4e-6 m/s
+GNSS-only wind: 1174 full turns fitted (median rms off the circle 0.89 m/s)
+AirMass's averaged wind minus the GNSS-only one at 1171 turns: rms 1.20 m/s, mean north 0.04, east -0.08
+  the turns' radius (airspeed from GNSS alone) over AirMass's calibrated TAS: median 0.998
+
+=== reference with AirMass wind (delays: AirMass (cockpit) 0.8 s, TE netto 2.4 s)
+  10 s windows, rms m/s:  straight: AirMass (cockpit) 0.465, TE netto 0.598, refs differ 0.224 [4817]   |   circling: AirMass (cockpit) 0.660, TE netto 0.642, refs differ 0.595 [4877]
+    own errors (three-cornered hat):  straight: AirMass 0.188, TE netto 0.420, the reference itself 0.425   |   circling: AirMass 0.279, TE netto 0.235, the reference itself 0.598
+  30 s windows, rms m/s:  straight: AirMass (cockpit) 0.287, TE netto 0.282, refs differ 0.235 [1265]   |   circling: AirMass (cockpit) 0.220, TE netto 0.205, refs differ 0.149 [1486]
+    own errors (three-cornered hat):  straight: AirMass 0.178, TE netto 0.170, the reference itself 0.226   |   circling: AirMass 0.136, TE netto 0.110, the reference itself 0.173
+
+=== reference with GNSS-only wind (delays: AirMass (cockpit) 0.8 s, TE netto 2.4 s)
+  10 s windows, rms m/s:  straight: AirMass (cockpit) 0.511, TE netto 0.633, refs differ 0.224 [4817]   |   circling: AirMass (cockpit) 0.714, TE netto 0.679, refs differ 0.595 [4877]
+    own errors (three-cornered hat):  straight: AirMass 0.190, TE netto 0.419, the reference itself 0.474   |   circling: AirMass 0.302, TE netto 0.205, the reference itself 0.647
+  30 s windows, rms m/s:  straight: AirMass (cockpit) 0.365, TE netto 0.356, refs differ 0.235 [1265]   |   circling: AirMass (cockpit) 0.243, TE netto 0.222, refs differ 0.149 [1486]
+    own errors (three-cornered hat):  straight: AirMass 0.183, TE netto 0.164, the reference itself 0.316   |   circling: AirMass 0.143, TE netto 0.102, the reference itself 0.197

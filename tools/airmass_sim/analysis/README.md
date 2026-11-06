@@ -5,7 +5,9 @@ Results: [RESULTS-2026-11-06.md](RESULTS-2026-11-06.md), raw script outputs in `
 ## Data
 
 The 11 real flights (XCVario `$SENS` sensor logs, ASG 29E, Southern French Alps, from XCVario discussion #451) are in
-`flightlogs/discussion451/` at the repo root (git-ignored, 84 MB). Flying mass 430 kg (`mass: 430`).
+`flightlogs/discussion451/` at the repo root (git-ignored, 84 MB). The scripts replay them with the glider and weight the
+log names, as the page does (`logOptions` in `page.js`): these logs have no CA1 telegram, so the ASG 29/18 at the logged
+ballast factor, 441 kg (450 kg on two flights). `GLIDER=name` and `MASS=kg` set them.
 
 ## Scripts
 
@@ -19,6 +21,12 @@ estimator, the page's `build`/`derive`), so they stay in step with the site. Bui
 | `exp.js` | AirMass variants (`SERIES='[["name","settings"], ...]'`) and TE netto against both GNSS references |
 | `cond.js` | errors binned by bank, IAS, roll rate, TAS change, time since start; least squares fit (`MASS`, `SETTINGS`) |
 | `lag.js` | delay to the reference and needle movement |
+| `needle.js` | (`REALTIME=1`: no delay shift, as the pilot sees it; `PHASE_LAG=1`: each series shifted by its delay in straight flight and circling, fairer for circling) the cockpit needle per variant (`SERIES='[["name","settings",damping], ...]'`, damping `[straight, circling]` for a bank-dependent one): movement within 1 s and 10 s error, straight / circling, and the delay while circling |
+| `wind.js` | the instant wind: deviation from its 60 s mean and movement, straight / circling, the part turning with the glider (heading frame, left / right circles) and locked to the heading |
+| `sim_wind.py` | the same in simulator CSVs, against the true wind at the glider: how much of its movement the estimate follows |
+| `circle_ref.js` | the gust-insensitive reference with a wind from GNSS alone (a circle fit per full turn, `CIRCLE='{"tas":true}'`: fitted to the measured airspeed) against the one with AirMass's wind; AirMass's wind against the GNSS-only one; each series' own error by the three-cornered hat |
+| `shear.js` | per thermal: the wind change rate (GNSS-only per-turn winds) and the once-per-circle part of the vario error against the GNSS-only reference, for AirMass and TE netto; whether the error follows the wind change or the wind |
+| `gusts.js` | horizontal gusts to look at in the web replay: straight flight, steady pitch and vertical air, an IAS jump that TE netto shows as lift or sink; flight, UTC, TE netto and AirMass deviation (`MIN_DIAS`, `MIN_TE`, `TOP`) |
 | `learned.js` | the calibration AirMass learns per flight (`SETTINGS`) |
 | `phase.py` | the IMU acceleration vs airspeed change disagreement and AirMass vs AHRS pitch around the circle (native replays: `airmass_replay --csv` and `sens2rec.py --aux` outputs) |
 | `sim_agree.py` | simulator CSVs (`airmass_sim nl ... --csv`): AirMass, TE netto, GNSS/INS against the truth and a GNSS-style reference |
@@ -29,8 +37,11 @@ W=tools/airmass_sim/web; L=flightlogs/discussion451/*.nmea.gz
 tools/airmass_sim/analysis/build_old.sh
 node tools/airmass_sim/analysis/summary.js $W build_sim/old/tools/airmass_sim/web/airmass_old.js $L
 SERIES='[["blend on","blend_bank=0"],["blend off","gust_acc=1000"]]' node tools/airmass_sim/analysis/exp.js $W $L
-MASS=430 node tools/airmass_sim/analysis/cond.js $W $L
+MASS=430 node tools/airmass_sim/analysis/cond.js $W $L   # at a set weight instead of the logged one
 ```
+
+Errors against a reference include the reference's own: over 10 s it is the larger part (`circle_ref.js`, three-cornered
+hat), so compare series against the same reference, or use the hat's own errors.
 
 The two GNSS references: GNSS netto as on the page (energy height from GNSS altitude and **pitot TAS**, minus the
 polar sink: a horizontal gust counts as air movement, as for TE), and the gust-insensitive one (GNSS altitude and the

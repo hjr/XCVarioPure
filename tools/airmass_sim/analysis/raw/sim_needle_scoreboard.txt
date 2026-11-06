@@ -1,0 +1,384 @@
+=== sb_now
+metric                                                  ours      TE     ref
+nl: cruise rms                                         0.280   0.438   0.338  
+nl: false lift /h                                      0.167   8.000   1.167  
+nl: entry rms                                          0.498   0.592   1.385  
+nl: entry max                                          1.772   1.688   3.283  LOSS
+nl: circling rms                                       0.368   0.420   0.530  
+nl: climb per thermal                                  0.033   0.030   0.060  LOSS
+nl: display lag s                                      1.200   2.400   0.550  LOSS
+nl: wind instant (valid)                               0.595       -   1.065  
+nl: wind instant (all)                                 0.820       -   1.247  
+nl: wind shown (valid+degraded)                        0.722       -   1.203  
+nl: wind not shown %                                   6.000       -       -  
+nl: wind 30s avg                                       0.453       -   1.032  
+nl: avg vs mean, straight                              0.835       -   2.042  
+nl: avg vs mean, circling                              0.843       -   1.340  
+straight: wind rms                                     0.215       -   1.643  
+straight: averaged wind rms                            0.202       -   1.602  
+straight: steady vario rms                             0.113   0.097   0.398  LOSS
+thermal: wind rms                                      0.203       -   1.098  
+thermal: averaged wind rms                             0.128       -   1.052  
+thermal: steady vario rms                              0.097   0.080   0.172  LOSS
+gust: wind rms                                         0.880       -   1.658  
+gust: averaged wind rms                                0.875       -   1.865  
+gust: steady vario rms                                 0.090   0.082   0.190  LOSS
+gust: spike max                                        1.460   3.973   1.085  LOSS
+pullup: wind rms                                       0.310       -   1.783  
+pullup: averaged wind rms                              0.312       -   1.783  
+pullup: steady vario rms                               0.120   0.195   0.282  
+pullup: spike max                                      0.682   0.840   1.785  
+slip: wind rms                                         0.647       -   2.738  
+slip: averaged wind rms                                0.413       -   2.520  
+slip: steady vario rms                                 0.215   0.253   0.490  
+endurance: wind rms                                    0.180       -   1.247  
+endurance: averaged wind rms                           0.115       -   1.063  
+endurance: steady vario rms                            0.150   0.160   0.440  
+losses: 7 of 34
+=== sb_blend
+metric                                                  ours      TE     ref
+nl: cruise rms                                         0.280   0.438   0.338  
+nl: false lift /h                                      0.167   8.000   1.167  
+nl: entry rms                                          0.473   0.592   1.385  
+nl: entry max                                          1.733   1.688   3.283  LOSS
+nl: circling rms                                       0.338   0.420   0.530  
+nl: climb per thermal                                  0.035   0.030   0.060  LOSS
+nl: display lag s                                      1.100   2.400   0.550  LOSS
+nl: wind instant (valid)                               0.595       -   1.065  
+nl: wind instant (all)                                 0.820       -   1.247  
+nl: wind shown (valid+degraded)                        0.720       -   1.203  
+nl: wind not shown %                                   6.000       -       -  
+nl: wind 30s avg                                       0.453       -   1.032  
+nl: avg vs mean, straight                              0.835       -   2.042  
+nl: avg vs mean, circling                              0.843       -   1.340  
+straight: wind rms                                     0.215       -   1.643  
+straight: averaged wind rms                            0.202       -   1.602  
+straight: steady vario rms                             0.105   0.097   0.398  LOSS
+thermal: wind rms                                      0.203       -   1.098  
+thermal: averaged wind rms                             0.128       -   1.052  
+thermal: steady vario rms                              0.093   0.080   0.172  LOSS
+gust: wind rms                                         0.880       -   1.658  
+gust: averaged wind rms                                0.875       -   1.865  
+gust: steady vario rms                                 0.090   0.082   0.190  LOSS
+gust: spike max                                        1.462   3.973   1.085  LOSS
+pullup: wind rms                                       0.310       -   1.783  
+pullup: averaged wind rms                              0.312       -   1.783  
+pullup: steady vario rms                               0.122   0.195   0.282  
+pullup: spike max                                      0.683   0.840   1.785  
+slip: wind rms                                         0.647       -   2.738  
+slip: averaged wind rms                                0.413       -   2.520  
+slip: steady vario rms                                 0.220   0.253   0.490  
+endurance: wind rms                                    0.180       -   1.247  
+endurance: averaged wind rms                           0.115       -   1.063  
+endurance: steady vario rms                            0.142   0.160   0.440  
+losses: 7 of 34
+=== sb_b_t0.5
+metric                                                  ours      TE     ref
+nl: cruise rms                                         0.280   0.438   0.338  
+nl: false lift /h                                      0.667   8.000   1.167  
+nl: entry rms                                          0.500   0.592   1.385  
+nl: entry max                                          1.835   1.688   3.283  LOSS
+nl: circling rms                                       0.340   0.420   0.530  
+nl: climb per thermal                                  0.040   0.030   0.060  LOSS
+nl: display lag s                                      1.300   2.400   0.550  LOSS
+nl: wind instant (valid)                               0.595       -   1.065  
+nl: wind instant (all)                                 0.820       -   1.247  
+nl: wind shown (valid+degraded)                        0.720       -   1.203  
+nl: wind not shown %                                   6.000       -       -  
+nl: wind 30s avg                                       0.453       -   1.032  
+nl: avg vs mean, straight                              0.835       -   2.042  
+nl: avg vs mean, circling                              0.843       -   1.340  
+straight: wind rms                                     0.215       -   1.643  
+straight: averaged wind rms                            0.202       -   1.602  
+straight: steady vario rms                             0.103   0.097   0.398  LOSS
+thermal: wind rms                                      0.203       -   1.098  
+thermal: averaged wind rms                             0.128       -   1.052  
+thermal: steady vario rms                              0.085   0.080   0.172  LOSS
+gust: wind rms                                         0.880       -   1.658  
+gust: averaged wind rms                                0.875       -   1.865  
+gust: steady vario rms                                 0.090   0.082   0.190  LOSS
+gust: spike max                                        1.462   3.973   1.085  LOSS
+pullup: wind rms                                       0.310       -   1.783  
+pullup: averaged wind rms                              0.312       -   1.783  
+pullup: steady vario rms                               0.122   0.195   0.282  
+pullup: spike max                                      0.683   0.840   1.785  
+slip: wind rms                                         0.647       -   2.738  
+slip: averaged wind rms                                0.413       -   2.520  
+slip: steady vario rms                                 0.218   0.253   0.490  
+endurance: wind rms                                    0.180       -   1.247  
+endurance: averaged wind rms                           0.115       -   1.063  
+endurance: steady vario rms                            0.142   0.160   0.440  
+losses: 7 of 34
+=== sb_b_t0.75
+metric                                                  ours      TE     ref
+nl: cruise rms                                         0.282   0.438   0.338  
+nl: false lift /h                                      1.000   8.000   1.167  
+nl: entry rms                                          0.513   0.592   1.385  
+nl: entry max                                          1.882   1.688   3.283  LOSS
+nl: circling rms                                       0.342   0.420   0.530  
+nl: climb per thermal                                  0.040   0.030   0.060  LOSS
+nl: display lag s                                      1.400   2.400   0.550  LOSS
+nl: wind instant (valid)                               0.595       -   1.065  
+nl: wind instant (all)                                 0.820       -   1.247  
+nl: wind shown (valid+degraded)                        0.720       -   1.203  
+nl: wind not shown %                                   6.000       -       -  
+nl: wind 30s avg                                       0.453       -   1.032  
+nl: avg vs mean, straight                              0.835       -   2.042  
+nl: avg vs mean, circling                              0.843       -   1.340  
+straight: wind rms                                     0.215       -   1.643  
+straight: averaged wind rms                            0.202       -   1.602  
+straight: steady vario rms                             0.102   0.097   0.398  LOSS
+thermal: wind rms                                      0.203       -   1.098  
+thermal: averaged wind rms                             0.128       -   1.052  
+thermal: steady vario rms                              0.082   0.080   0.172  LOSS
+gust: wind rms                                         0.880       -   1.658  
+gust: averaged wind rms                                0.875       -   1.865  
+gust: steady vario rms                                 0.090   0.082   0.190  LOSS
+gust: spike max                                        1.462   3.973   1.085  LOSS
+pullup: wind rms                                       0.310       -   1.783  
+pullup: averaged wind rms                              0.312       -   1.783  
+pullup: steady vario rms                               0.122   0.195   0.282  
+pullup: spike max                                      0.683   0.840   1.785  
+slip: wind rms                                         0.647       -   2.738  
+slip: averaged wind rms                                0.413       -   2.520  
+slip: steady vario rms                                 0.218   0.253   0.490  
+endurance: wind rms                                    0.180       -   1.247  
+endurance: averaged wind rms                           0.115       -   1.063  
+endurance: steady vario rms                            0.143   0.160   0.440  
+losses: 7 of 34
+=== sb_b_t1
+metric                                                  ours      TE     ref
+nl: cruise rms                                         0.282   0.438   0.338  
+nl: false lift /h                                      1.333   8.000   1.167  LOSS
+nl: entry rms                                          0.523   0.592   1.385  
+nl: entry max                                          1.913   1.688   3.283  LOSS
+nl: circling rms                                       0.343   0.420   0.530  
+nl: climb per thermal                                  0.042   0.030   0.060  LOSS
+nl: display lag s                                      1.500   2.400   0.550  LOSS
+nl: wind instant (valid)                               0.595       -   1.065  
+nl: wind instant (all)                                 0.820       -   1.247  
+nl: wind shown (valid+degraded)                        0.720       -   1.203  
+nl: wind not shown %                                   6.000       -       -  
+nl: wind 30s avg                                       0.453       -   1.032  
+nl: avg vs mean, straight                              0.835       -   2.042  
+nl: avg vs mean, circling                              0.843       -   1.340  
+straight: wind rms                                     0.215       -   1.643  
+straight: averaged wind rms                            0.202       -   1.602  
+straight: steady vario rms                             0.097   0.097   0.398  tie
+thermal: wind rms                                      0.203       -   1.098  
+thermal: averaged wind rms                             0.128       -   1.052  
+thermal: steady vario rms                              0.082   0.080   0.172  LOSS
+gust: wind rms                                         0.880       -   1.658  
+gust: averaged wind rms                                0.875       -   1.865  
+gust: steady vario rms                                 0.090   0.082   0.190  LOSS
+gust: spike max                                        1.462   3.973   1.085  LOSS
+pullup: wind rms                                       0.310       -   1.783  
+pullup: averaged wind rms                              0.312       -   1.783  
+pullup: steady vario rms                               0.122   0.195   0.282  
+pullup: spike max                                      0.683   0.840   1.785  
+slip: wind rms                                         0.647       -   2.738  
+slip: averaged wind rms                                0.413       -   2.520  
+slip: steady vario rms                                 0.218   0.253   0.490  
+endurance: wind rms                                    0.180       -   1.247  
+endurance: averaged wind rms                           0.115       -   1.063  
+endurance: steady vario rms                            0.150   0.160   0.440  
+losses: 7 of 34
+=== sb_tau
+metric                                                  ours      TE     ref
+nl: cruise rms                                         0.295   0.438   0.338  
+nl: false lift /h                                      2.167   8.000   1.167  LOSS
+nl: entry rms                                          0.578   0.592   1.385  
+nl: entry max                                          1.993   1.688   3.283  LOSS
+nl: circling rms                                       0.370   0.420   0.530  
+nl: climb per thermal                                  0.022   0.030   0.060  
+nl: display lag s                                      2.000   2.400   0.550  LOSS
+nl: wind instant (valid)                               0.595       -   1.065  
+nl: wind instant (all)                                 0.820       -   1.247  
+nl: wind shown (valid+degraded)                        0.722       -   1.203  
+nl: wind not shown %                                   6.000       -       -  
+nl: wind 30s avg                                       0.453       -   1.032  
+nl: avg vs mean, straight                              0.835       -   2.042  
+nl: avg vs mean, circling                              0.843       -   1.340  
+straight: wind rms                                     0.215       -   1.643  
+straight: averaged wind rms                            0.202       -   1.602  
+straight: steady vario rms                             0.095   0.097   0.398  
+thermal: wind rms                                      0.203       -   1.098  
+thermal: averaged wind rms                             0.128       -   1.052  
+thermal: steady vario rms                              0.075   0.080   0.172  
+gust: wind rms                                         0.880       -   1.658  
+gust: averaged wind rms                                0.875       -   1.865  
+gust: steady vario rms                                 0.090   0.082   0.190  LOSS
+gust: spike max                                        1.460   3.973   1.085  LOSS
+pullup: wind rms                                       0.310       -   1.783  
+pullup: averaged wind rms                              0.312       -   1.783  
+pullup: steady vario rms                               0.120   0.195   0.282  
+pullup: spike max                                      0.682   0.840   1.785  
+slip: wind rms                                         0.647       -   2.738  
+slip: averaged wind rms                                0.413       -   2.520  
+slip: steady vario rms                                 0.205   0.253   0.490  
+endurance: wind rms                                    0.180       -   1.247  
+endurance: averaged wind rms                           0.115       -   1.063  
+endurance: steady vario rms                            0.160   0.160   0.440  tie
+losses: 5 of 34
+=== sb_new
+metric                                                  ours      TE     ref
+nl: cruise rms                                         0.288   0.438   0.338  
+nl: false lift /h                                      2.167   8.000   1.167  LOSS
+nl: entry rms                                          0.545   0.592   1.385  
+nl: entry max                                          1.962   1.688   3.283  LOSS
+nl: circling rms                                       0.347   0.420   0.530  
+nl: climb per thermal                                  0.050   0.030   0.060  LOSS
+nl: display lag s                                      1.600   2.400   0.550  LOSS
+nl: wind instant (valid)                               0.595       -   1.065  
+nl: wind instant (all)                                 0.820       -   1.247  
+nl: wind shown (valid+degraded)                        0.720       -   1.203  
+nl: wind not shown %                                   6.000       -       -  
+nl: wind 30s avg                                       0.453       -   1.032  
+nl: avg vs mean, straight                              0.835       -   2.042  
+nl: avg vs mean, circling                              0.843       -   1.340  
+straight: wind rms                                     0.215       -   1.643  
+straight: averaged wind rms                            0.202       -   1.602  
+straight: steady vario rms                             0.095   0.097   0.398  
+thermal: wind rms                                      0.203       -   1.098  
+thermal: averaged wind rms                             0.128       -   1.052  
+thermal: steady vario rms                              0.075   0.080   0.172  
+gust: wind rms                                         0.880       -   1.658  
+gust: averaged wind rms                                0.875       -   1.865  
+gust: steady vario rms                                 0.090   0.082   0.190  LOSS
+gust: spike max                                        1.462   3.973   1.085  LOSS
+pullup: wind rms                                       0.310       -   1.783  
+pullup: averaged wind rms                              0.312       -   1.783  
+pullup: steady vario rms                               0.122   0.195   0.282  
+pullup: spike max                                      0.683   0.840   1.785  
+slip: wind rms                                         0.647       -   2.738  
+slip: averaged wind rms                                0.413       -   2.520  
+slip: steady vario rms                                 0.217   0.253   0.490  
+endurance: wind rms                                    0.180       -   1.247  
+endurance: averaged wind rms                           0.115       -   1.063  
+endurance: steady vario rms                            0.150   0.160   0.440  
+losses: 6 of 34
+=== held-out, old defaults
+metric                                                  ours      TE     ref
+held-out nl: cruise rms                                0.307   0.452   0.338  
+held-out nl: false lift /h                             2.500  10.167   1.333  LOSS
+held-out nl: entry rms                                 0.480   0.577   1.222  
+held-out nl: entry max                                 1.465   1.560   2.997  
+held-out nl: circling rms                              0.380   0.445   0.540  
+held-out nl: climb per thermal                         0.068   0.067   0.098  LOSS
+held-out nl: display lag s                             1.217   2.417   0.333  LOSS
+held-out nl: wind instant (valid)                      0.523       -   1.010  
+held-out nl: wind instant (all)                        0.685       -   1.193  
+held-out nl: wind shown (valid+degraded)               0.647       -   1.168  
+held-out nl: wind not shown %                          4.333       -       -  
+held-out nl: wind 30s avg                              0.425       -   0.965  
+held-out nl: avg vs mean, straight                     0.823       -   1.750  
+held-out nl: avg vs mean, circling                     0.933       -   1.345  
+losses: 3 of 14
+=== held-out, fade 10-50, circling_tau 0.75
+metric                                                  ours      TE     ref
+held-out nl: cruise rms                                0.303   0.452   0.338  
+held-out nl: false lift /h                             2.500  10.167   1.333  LOSS
+held-out nl: entry rms                                 0.480   0.577   1.222  
+held-out nl: entry max                                 1.447   1.560   2.997  
+held-out nl: circling rms                              0.360   0.445   0.540  
+held-out nl: climb per thermal                         0.073   0.067   0.098  LOSS
+held-out nl: display lag s                             1.433   2.417   0.333  LOSS
+held-out nl: wind instant (valid)                      0.525       -   1.010  
+held-out nl: wind instant (all)                        0.685       -   1.193  
+held-out nl: wind shown (valid+degraded)               0.647       -   1.168  
+held-out nl: wind not shown %                          4.333       -       -  
+held-out nl: wind 30s avg                              0.425       -   0.965  
+held-out nl: avg vs mean, straight                     0.823       -   1.750  
+held-out nl: avg vs mean, circling                     0.933       -   1.345  
+losses: 3 of 14
+=== development day, defaults before circling_blend_tau (fade 10-50, circling_tau 0.75)
+metric                                                  ours      TE     ref
+nl: cruise rms                                         0.282   0.438   0.338  
+nl: false lift /h                                      1.000   8.000   1.167  
+nl: entry rms                                          0.513   0.592   1.385  
+nl: entry max                                          1.882   1.688   3.283  LOSS
+nl: circling rms                                       0.342   0.420   0.530  
+nl: climb per thermal                                  0.040   0.030   0.060  LOSS
+nl: display lag s                                      1.400   2.400   0.550  LOSS
+nl: wind instant (valid)                               0.595       -   1.065  
+nl: wind instant (all)                                 0.820       -   1.247  
+nl: wind shown (valid+degraded)                        0.720       -   1.203  
+nl: wind not shown %                                   6.000       -       -  
+nl: wind 30s avg                                       0.453       -   1.032  
+nl: avg vs mean, straight                              0.835       -   2.042  
+nl: avg vs mean, circling                              0.843       -   1.340  
+straight: wind rms                                     0.215       -   1.643  
+straight: averaged wind rms                            0.202       -   1.602  
+straight: steady vario rms                             0.102   0.097   0.398  LOSS
+thermal: wind rms                                      0.203       -   1.098  
+thermal: averaged wind rms                             0.128       -   1.052  
+thermal: steady vario rms                              0.082   0.080   0.172  LOSS
+gust: wind rms                                         0.880       -   1.658  
+gust: averaged wind rms                                0.875       -   1.865  
+gust: steady vario rms                                 0.090   0.082   0.190  LOSS
+gust: spike max                                        1.462   3.973   1.085  LOSS
+pullup: wind rms                                       0.310       -   1.783  
+pullup: averaged wind rms                              0.312       -   1.783  
+pullup: steady vario rms                               0.122   0.195   0.282  
+pullup: spike max                                      0.683   0.840   1.785  
+slip: wind rms                                         0.647       -   2.738  
+slip: averaged wind rms                                0.413       -   2.520  
+slip: steady vario rms                                 0.218   0.253   0.490  
+endurance: wind rms                                    0.180       -   1.247  
+endurance: averaged wind rms                           0.115       -   1.063  
+endurance: steady vario rms                            0.143   0.160   0.440  
+losses: 7 of 34
+=== development day, circling_blend_tau 0.5, circling_tau 0.5 (new defaults)
+metric                                                  ours      TE     ref
+nl: cruise rms                                         0.280   0.438   0.338  
+nl: false lift /h                                      1.000   8.000   1.167  
+nl: entry rms                                          0.493   0.592   1.385  
+nl: entry max                                          1.833   1.688   3.283  LOSS
+nl: circling rms                                       0.340   0.420   0.530  
+nl: climb per thermal                                  0.038   0.030   0.060  LOSS
+nl: display lag s                                      1.300   2.400   0.550  LOSS
+nl: wind instant (valid)                               0.595       -   1.065  
+nl: wind instant (all)                                 0.820       -   1.247  
+nl: wind shown (valid+degraded)                        0.720       -   1.203  
+nl: wind not shown %                                   6.000       -       -  
+nl: wind 30s avg                                       0.453       -   1.032  
+nl: avg vs mean, straight                              0.833       -   2.042  
+nl: avg vs mean, circling                              0.843       -   1.340  
+straight: wind rms                                     0.215       -   1.643  
+straight: averaged wind rms                            0.202       -   1.602  
+straight: steady vario rms                             0.102   0.097   0.398  LOSS
+thermal: wind rms                                      0.203       -   1.098  
+thermal: averaged wind rms                             0.130       -   1.052  
+thermal: steady vario rms                              0.082   0.080   0.172  LOSS
+gust: wind rms                                         0.880       -   1.658  
+gust: averaged wind rms                                0.875       -   1.865  
+gust: steady vario rms                                 0.090   0.082   0.190  LOSS
+gust: spike max                                        1.462   3.973   1.085  LOSS
+pullup: wind rms                                       0.312       -   1.783  
+pullup: averaged wind rms                              0.312       -   1.783  
+pullup: steady vario rms                               0.120   0.195   0.282  
+pullup: spike max                                      0.682   0.840   1.785  
+slip: wind rms                                         0.647       -   2.738  
+slip: averaged wind rms                                0.413       -   2.520  
+slip: steady vario rms                                 0.220   0.253   0.490  
+endurance: wind rms                                    0.180       -   1.247  
+endurance: averaged wind rms                           0.115       -   1.063  
+endurance: steady vario rms                            0.140   0.160   0.440  
+losses: 7 of 34
+=== held-out, circling_blend_tau 0.5, circling_tau 0.5
+metric                                                  ours      TE     ref
+held-out nl: cruise rms                                0.303   0.452   0.338  
+held-out nl: false lift /h                             2.333  10.167   1.333  LOSS
+held-out nl: entry rms                                 0.473   0.577   1.222  
+held-out nl: entry max                                 1.435   1.560   2.997  
+held-out nl: circling rms                              0.353   0.445   0.540  
+held-out nl: climb per thermal                         0.068   0.067   0.098  LOSS
+held-out nl: display lag s                             1.317   2.417   0.333  LOSS
+held-out nl: wind instant (valid)                      0.523       -   1.010  
+held-out nl: wind instant (all)                        0.685       -   1.193  
+held-out nl: wind shown (valid+degraded)               0.647       -   1.168  
+held-out nl: wind not shown %                          4.333       -       -  
+held-out nl: wind 30s avg                              0.425       -   0.965  
+held-out nl: avg vs mean, straight                     0.823       -   1.750  
+held-out nl: avg vs mean, circling                     0.933       -   1.345  
+losses: 3 of 14

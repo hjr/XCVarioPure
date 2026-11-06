@@ -3,7 +3,7 @@
 // netto after the Larus design in RESULTS-2026-11-06.md came from the page, which no longer has it.)
 //   node summary.js <web dir> <old airmass.js> log1.nmea.gz ...
 const fs = require("fs"), zlib = require("zlib"), path = require("path");
-const { loadPage, lagOf, dampSeries, freeMask, inertialRef } = require("./page.js");
+const { loadPage, lagOf, dampSeries, freeMask, logOptions } = require("./page.js");
 const web = path.resolve(process.argv[2]), oldModule = path.resolve(process.argv[3]);
 const { convert, runReplay } = loadPage(web);
 const HZ = 10;
@@ -15,7 +15,7 @@ const HZ = 10;
   let hours = 0;
   for (const log of process.argv.slice(4)) {
     fileName = path.basename(log);
-    const conv = convert(zlib.gunzipSync(fs.readFileSync(log)).toString("latin1"), { glider: "ASG 29/18", mass: 430 });
+    const conv = convert(zlib.gunzipSync(fs.readFileSync(log)).toString("latin1"), logOptions());
     const vs = [];
     for (const [nm, M, st] of variants) {
       D = build(conv, await runReplay(M, conv.rec, { settings: st }));
@@ -24,14 +24,14 @@ const HZ = 10;
     }
     D = vs[0][1]; // the references and TE from the current run (same converter, same track)
     const D0 = D, r = D0.rep.cols, c = D0.tr, n = D0.n;
-    const inert = inertialRef(D0);
-    const { free } = freeMask(D0, (k) => vs.every(([, v]) => v.amOk[k]) && c.ias[k] > 60 / 3.6 && Number.isFinite(D0.gnssNetRaw[k]) &&
+    const inert = D0.gnssNetInert;
+    const { free } = freeMask(D0, (k) => vs.every(([, v]) => v.amOk[k]) && c.ias[k] > 60 / 3.6 && Number.isFinite(D0.gnssNetPitot[k]) &&
       Number.isFinite(inert[k]) && Number.isFinite(D0.netto[k]));
     for (let k = 0; k < n; k++) hours += free[k] / 36000;
     const ser = {}, shown = {};
     for (const [nm, v] of vs) { ser[nm] = dampSeries(v.amRaw, free); shown[nm] = v.am; }
     ser["TE netto"] = D0.netto; shown["TE netto"] = D0.netto;
-    runs.push({ n, free, roll: Float32Array.from({ length: n }, (_, k) => D0.ai[k] >= 0 ? r.roll_deg[D0.ai[k]] : NaN), refs: { pitot: D0.gnssNetRaw, inertial: inert }, ser, shown });
+    runs.push({ n, free, roll: Float32Array.from({ length: n }, (_, k) => D0.ai[k] >= 0 ? r.roll_deg[D0.ai[k]] : NaN), refs: { pitot: D0.gnssNetPitot, inertial: inert }, ser, shown });
     process.stderr.write(fileName + "\n");
   }
   const names = Object.keys(runs[0].ser);

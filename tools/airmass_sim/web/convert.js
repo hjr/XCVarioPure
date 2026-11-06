@@ -11,12 +11,40 @@
   const KNOT = 0.514444;
 
   // the firmware's glider types (components/glider/PolarTable.txt and FlapTable.txt, generated into gliders.js by
-  // make_gliders.py, with the device's default Vne); the ASG 29 as sens2rec.py has it, so both convert alike
+  // make_gliders.py, with the device's default Vne); the ASG 29 with its own Vne, as sens2rec.py has it, so both
+  // convert alike
   const TABLE = typeof module !== "undefined" && module.exports ? require("./gliders.js") : root.GLIDER_TABLE || {};
   const GLIDERS = Object.assign({}, TABLE, {
-    "ASG 29/18": { wingload: 42.9, polar: [[82, -0.47], [132, -0.80], [184, -1.80]], area: 10.5, vne: 280.0, flaps: [180, 142, 110, 94, 57] },
-    "ASG 29/15": { wingload: 47.7, polar: [[86, -0.58], [127, -0.80], [182, -1.80]], area: 9.22, vne: 285.0, flaps: [198, 156, 121, 104, 60] },
+    "ASG 29/18": { ...TABLE["ASG 29/18"], vne: 280.0 },
+    "ASG 29/15": { ...TABLE["ASG 29/15"], vne: 285.0 },
   });
+
+  // the glider of a device glider type (the CA1 telegram), or undefined
+  const gliderById = (id) => Object.keys(GLIDERS).find((name) => GLIDERS[name].id === id);
+  const DEFAULT_GLIDER = "ASG 29/18";
+
+  // What the device logs besides the sensors (main/protocol/nmea/XCVarioMsg.cpp): "!XCV,CA1,glider type,empty weight,
+  // crew weight,ballast,speed cal,QNH", since protocol version 2 "!xcv,empty-weight|crew-weight|bal-water,kg" on
+  // changes, and in a sensor log "!XCV,FLP,lever x 10" when the flap lever moves (FlapsBox: the flap sensor's position
+  // to 0.5, or without a sensor the recommendation). Updates logged (kg, lever) from the line; returns "flap", "setup"
+  // (glider or weights), or false if it is none
+  function parseXcv(line, logged) {
+    const f = fields(line.trim());
+    if (!/^xcv$/i.test(f[0]) || f.length < 3) return false;
+    const num = (x) => (x === "" ? NaN : +x);
+    if (f[1] === "FLP") {
+      if (Number.isFinite(num(f[2]))) logged.flap = num(f[2]) / 10;
+      return "flap";
+    } else if (f[1] === "CA1") {
+      const v = f.slice(2, 6).map(num);
+      if (v.length === 4 && v.every(Number.isFinite)) [logged.type, logged.empty, logged.crew, logged.ballast] = v;
+    } else {
+      const key = { "empty-weight": "empty", "crew-weight": "crew", "bal-water": "ballast" }[f[1]];
+      if (!key) return false;
+      if (Number.isFinite(num(f[2]))) logged[key] = num(f[2]);
+    }
+    return "setup";
+  }
 
   function checksum(body) {
     let cs = 0;
@@ -100,8 +128,12 @@
     }
   }
 
-  // opts: glider (a GLIDERS name, or an object like them), mass [kg] (0: the logged ballast), bugs [%] (<0: logged),
-  // noFlaps. Returns { kind, rec: [recording lines], track, starts, frames, fixes }.
+  // opts: glider (a GLIDERS name, "log": the glider type the log names (CA1), else the ASG 29/18, or an object like
+  // them), mass [kg] (0: from the log: its empty, crew and ballast weights (CA1), else the ballast factor of $PXCV),
+  // bugs [%] (<0: logged), noFlaps. Returns { kind, rec: [recording lines], track, starts, frames, fixes, glider (the
+  // name used), gliderFrom ("set", "log", "default": the log names none), mass [kg, of the last setup], massFrom ("set",
+  // "logged weights", "logged ballast factor"), flapsFrom ("logged": the lever (FLP) from its first telegram on, "the
+  // recommendation", "": none) }.
   function convert(text, opts = {}) {
     const isRecording = /\$PXCVR,/.test(text.slice(0, 4e6)) || (!/\$SENS,/.test(text.slice(0, 4e6)) && text.includes("$PXCVR,"));
     return isRecording ? passRecording(text) : convertSens(text, opts);
@@ -155,8 +187,9 @@
 
   // sens2rec.py
   function convertSens(text, opts) {
-    const g = typeof opts.glider === "object" ? opts.glider : GLIDERS[opts.glider || "ASG 29/18"];
     const mass = opts.mass || 0, bugsOpt = opts.bugs ?? -1, lever = opts.leverArm || 0;
+    const logged = { type: NaN, empty: NaN, crew: NaN, ballast: NaN, flap: NaN };
+    let g = null, gliderName = "", gliderFrom = "", massUsed = NaN, massFrom = "", loggedFlapFrames = 0;
     const rec = [];
     const track = new Track();
     const pxcv = { vario: NaN, bugs: 0.0, ballast: 1.0, roll: 0.0, pitch: 0.0 };
@@ -165,16 +198,32 @@
     let setupLine = null, setupCount = 0, starts = 0, frames = 0, fixes = 0, polar = null, flaps = null, tMs = 0;
 
     const setup = () => {
-      const area = g.area || 10.0;
-      const bf = mass > 0 ? mass / (g.wingload * area) : (pxcv.ballast > 0.5 ? pxcv.ballast : 1.0);
+      // the glider and the weights as logged so far
+      if (typeof opts.glider === "object") { g = opts.glider; gliderName = "custom"; gliderFrom = "set"; }
+      else {
+        const named = opts.glider === "log" ? gliderById(logged.type) : opts.glider;
+        gliderName = named || DEFAULT_GLIDER;
+        gliderFrom = opts.glider !== "log" ? "set" : named ? "log" : "default";
+        g = GLIDERS[gliderName];
+      }
+      const area = g.area || 10.0, ref = g.wingload * area;
+      const loggedMass = logged.empty > 0 ? logged.empty + (logged.crew || 0) + (logged.ballast || 0) : NaN;
+      let bf;
+      [bf, massFrom] = mass > 0 ? [mass / ref, "set"] : loggedMass > 0 ? [loggedMass / ref, "logged weights"] : [pxcv.ballast > 0.5 ? pxcv.ballast : 1.0, "logged ballast factor"];
+      massUsed = bf * ref;
       polar = makePolar(g, bf, bugsOpt >= 0 ? bugsOpt : pxcv.bugs);
       flaps = opts.noFlaps ? null : makeFlaps(g, bf);
-      const m = bf * g.wingload * area;
-      return sentence("PXCVC", [fx(lever, 4), fx(m, 2), fx(area, 4), fg(polar.a0, 8), fg(polar.a1, 8), fg(polar.a2, 8), fx(polar.vStall, 4),
+      return sentence("PXCVC", [fx(lever, 4), fx(massUsed, 2), fx(area, 4), fg(polar.a0, 8), fg(polar.a1, 8), fg(polar.a2, 8), fx(polar.vStall, 4),
         "1", "1.000", "1.000", "100.000"]);
     };
 
     for (const raw of text.split("\n")) {
+      const xcv = raw[0] === "!" && parseXcv(raw, logged);
+      if (xcv) {
+        // a new glider or weight in flight (water ballast dumped): the setup the device sends from now on
+        if (xcv === "setup" && running) setupLine = setup();
+        continue;
+      }
       if (raw.startsWith("$PXCV,")) {
         const f = fields(raw.trim());
         const num = (s) => (s === undefined || s === "" ? NaN : +s);
@@ -229,7 +278,8 @@
         let sink = NaN;
         if (running) {
           const load = 1.0 / Math.max(Math.cos(pxcv.roll * Math.PI / 180), 0.3);
-          const flap = flaps ? Math.round(flaps(ias, load)) : NaN;
+          // the lever as logged (FLP), else the recommendation
+          const flap = opts.noFlaps ? NaN : Number.isFinite(logged.flap) ? (loggedFlapFrames++, logged.flap) : flaps ? Math.round(flaps(ias, load)) : NaN;
           sink = polar.sink(ias, Math.max(-acc[2], 0.3));
           setupCount++;
           if (setupCount % 100 === 0) rec.push(setupLine); // like the device, every 10 s
@@ -251,7 +301,8 @@
       }
     }
     if (running) rec.push(sentence("PXCVX", [String(tMs)]));
-    return { kind: "XCVario sensor log", rec, track: track.done(), starts, frames, fixes };
+    return { kind: "XCVario sensor log", rec, track: track.done(), starts, frames, fixes, glider: gliderName, gliderFrom, mass: massUsed, massFrom,
+      flapsFrom: opts.noFlaps ? "" : loggedFlapFrames ? "logged" : flaps ? "the recommendation" : "" };
   }
 
   const api = { convert, GLIDERS };

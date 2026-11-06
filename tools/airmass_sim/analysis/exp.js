@@ -3,13 +3,13 @@
 // gust does not move it). AirMass (blend on and off) and TE netto against both, each shifted by its own delay.
 //   node exp.js <web dir> log1.nmea.gz ...   (SERIES='[["name","settings"], ...]', REF_SINK=airmass)
 const fs = require("fs"), zlib = require("zlib"), path = require("path");
-const { loadPage, lagOf, dampSeries, freeMask, inertialRef } = require("./page.js");
+const { loadPage, lagOf, dampSeries, freeMask, logOptions } = require("./page.js");
 const web = path.resolve(process.argv[2]);
 const { convert, runReplay } = loadPage(web);
 const HZ = 10;
 async function flight(M, log, settings) {
   fileName = path.basename(log);
-  const conv = convert(zlib.gunzipSync(fs.readFileSync(log)).toString("latin1"), { glider: "ASG 29/18", mass: 430 });
+  const conv = convert(zlib.gunzipSync(fs.readFileSync(log)).toString("latin1"), logOptions());
   D = build(conv, await runReplay(M, conv.rec, { settings }));
   derive(D);
   return { D, am: dampSeries(D.amRaw, D.amOk) };
@@ -24,11 +24,11 @@ async function flight(M, log, settings) {
     for (const [nm, st] of variants) vs.push([nm, await flight(M, log, st)]);
     const on = vs[0][1];
     const D0 = on.D, r = D0.rep.cols, c = D0.tr, n = D0.n;
-    const inert = inertialRef(D0);
-    const { free } = freeMask(D0, (k) => vs.every(([, v]) => v.D.amOk[k]) && c.ias[k] > 60 / 3.6 && Number.isFinite(D0.gnssNetRaw[k]) &&
+    const inert = D0.gnssNetInert;
+    const { free } = freeMask(D0, (k) => vs.every(([, v]) => v.D.amOk[k]) && c.ias[k] > 60 / 3.6 && Number.isFinite(D0.gnssNetPitot[k]) &&
       Number.isFinite(inert[k]) && Number.isFinite(D0.netto[k]));
     const roll = Float32Array.from({ length: n }, (_, k) => (D0.ai[k] >= 0 ? r.roll_deg[D0.ai[k]] : NaN));
-    runs.push({ n, free, roll, refs: { pitot: D0.gnssNetRaw, inertial: inert }, ser: Object.assign(Object.fromEntries(vs.map(([nm, v]) => [nm, v.am])), { "TE netto": D0.netto }) });
+    runs.push({ n, free, roll, refs: { pitot: D0.gnssNetPitot, inertial: inert }, ser: Object.assign(Object.fromEntries(vs.map(([nm, v]) => [nm, v.am])), { "TE netto": D0.netto }) });
     process.stderr.write(path.basename(log) + "\n");
   }
   const cat = (f) => { const out = []; for (const a of runs) for (let k = 0; k < a.n; k++) out.push(f(a, k)); return out; };

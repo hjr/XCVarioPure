@@ -1,9 +1,9 @@
 // Which flight conditions do the errors follow? AirMass (raw, with the TE vario's 4 s damping) and TE netto against
 // the GNSS netto reference, each shifted by its own delay to the reference, in 10 s window means; the conditions per
 // window; binned means and a least squares fit. Same definitions as cond_sim.py.
-//   MASS=430 SETTINGS=... node cond.js <web dir> log1.nmea.gz ...
+//   SETTINGS=... [MASS=kg] node cond.js <web dir> log1.nmea.gz ...
 const fs = require("fs"), zlib = require("zlib"), path = require("path");
-const { loadPage, lagOf, dampSeries, freeMask, inertialRef } = require("./page.js");
+const { loadPage, lagOf, dampSeries, freeMask, logOptions } = require("./page.js");
 const web = path.resolve(process.argv[2]);
 const { convert, runReplay } = loadPage(web);
 const WIN = 10, HZ = 10;
@@ -13,14 +13,14 @@ const rows = []; // one per window
   const all = [];
   for (const log of process.argv.slice(3)) {
     fileName = path.basename(log);
-    const conv = convert(zlib.gunzipSync(fs.readFileSync(log)).toString("latin1"), { glider: "ASG 29/18", mass: +(process.env.MASS || 0) });
+    const conv = convert(zlib.gunzipSync(fs.readFileSync(log)).toString("latin1"), logOptions());
     D = build(conv, await runReplay(M, conv.rec, { settings: process.env.SETTINGS || "" }));
     derive(D);
     const r = D.rep.cols, c = D.tr, n = D.n;
     const am = dampSeries(D.amRaw, D.amOk);
-    const { free, since } = freeMask(D, (k) => D.amOk[k] && c.ias[k] > 60 / 3.6 && Number.isFinite(D.gnssNetRaw[k]) && Number.isFinite(D.netto[k]));
+    const { free, since } = freeMask(D, (k) => D.amOk[k] && c.ias[k] > 60 / 3.6 && Number.isFinite(D.gnssNetPitot[k]) && Number.isFinite(D.netto[k]));
     const roll = Float32Array.from({ length: n }, (_, k) => (D.ai[k] >= 0 ? r.roll_deg[D.ai[k]] : NaN));
-    all.push({ name: fileName, n, am, te: D.netto, ref: D.gnssNetRaw, free, since, roll, c, r, ai: D.ai, t: D.t });
+    all.push({ name: fileName, n, am, te: D.netto, ref: D.gnssNetPitot, free, since, roll, c, r, ai: D.ai, t: D.t });
     process.stderr.write(fileName + "\n");
   }
   // delays over all flights
