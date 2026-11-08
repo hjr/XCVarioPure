@@ -69,8 +69,6 @@ void FlightAHRS::postProcess() {
     float gravity_trust = 1;
     const vector_f& accel = accSensor->getHead();
 
-    // todo track and subtraced soft bias
-    // todo _processed.z -= gyroSensor->getAxD() * imuSensor.getLeverArm(); // compensate the accelerometer mounting position in front of CG
     const vector_f& gyro = gyroSensor->getRef();
     // ESP_LOGI( FNAME, " Accel: %.3f,%.3f,%.3f Gyro: %.3f,%.4f,%.4f dt: %.4f", accel.x, accel.y, accel.z, gyro.x, gyro.y, gyro.z, dt );
     // ESP_LOGI( FNAME, " Accel: %.3f,%.3f,%.3f dt: %.4f TS:%d", accel.x, accel.y, accel.z, dt, imuSensor?imuSensor->getTempStatus():temp_status_t::MPU_T_UNKNOWN);

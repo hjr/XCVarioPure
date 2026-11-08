@@ -135,18 +135,19 @@ void Accelerometer::pushBias(const vector_f& bias) {
 // Post Processing and AHRS fusion code
 /////////////////////////////////////////
 
-
-
 void Accelerometer::postProcess() {
+
+    // todo track and subtraced soft bias
+    // compensate the accelerometer mounting position in front of CG
+    // todo _processed.z -= gyroSensor->getAxD() * imuSensor.getLeverArm();
+
     if (imuSensor) {
         static int count = 0;
         if ( imuSensor->hasHeatCtlr() && ! (++count%10) ) { // every second
             imuSensor->temp_control(); // Call temp regulation
         }
-    }
 
-    // calm status
-    if (imuSensor) {
+        // calm status
         // only needed if we have a real sensor
         detectRest();
     }
