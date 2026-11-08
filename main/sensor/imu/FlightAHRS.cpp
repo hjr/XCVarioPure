@@ -8,13 +8,15 @@
 
 #include "FlightAHRS.h"
 
-#include "Accelerometer.h"
-#include "Gyroscope.h"
+#include "imu/Accelerometer.h"
+#include "imu/Gyroscope.h"
 #include "math/Units.h"
 #include "math/Trigonometry.h"
+#include "math/Quaternion.h"
 #include "vector.h"
 #include "screen/element/ThermalAssist.h"
 #include "logdefnone.h"
+#include "setup/SetupNG.h"
 
 #include <algorithm>
 #include <cmath>
@@ -26,141 +28,158 @@ constexpr int DUTY_CYCLE_MS = 100; // 10Hz
 constexpr size_t HSIZE = SENSOR_HISTORY_DURATION_MS / DUTY_CYCLE_MS;
 static __attribute__((aligned(4))) vector_f ahrs_buffer[ HSIZE + 1 ];
 
-FlightAHRS::FlightAHRS() : 
+FlightAHRS::FlightAHRS() :
     SensorTP<vector_f>(ahrs_buffer, HSIZE, DUTY_CYCLE_MS, 1),
-    _lpf_slip_angle(LowPassFilterT<float>::alphaFromTau(0.3, DUTY_CYCLE_MS / 1000.f))
+    _cfg({})
 {
     _id = SensorId(SensorType::VIRTUAL, 2);
+    ESP_LOGI(FNAME, "FlightAHRS config: maxDtS=%.3f, accelNormGateG=%.3f, innovationGateRad=%.3f, tiltTauS=%.3f, dynamicTauS=%.3f",
+             _cfg.maxDt, _cfg.accelNormGate, _cfg.innovationGate, _cfg.tiltTau, _cfg.dynamicTau);
 }
 FlightAHRS::~FlightAHRS() {
     ahrsSensor = nullptr;
 }
 
 bool FlightAHRS::setup() {
-    return false;
+    assert(accSensor);
+    // specific force to hold against G in NED system (body axes), typically (0,0,-1) at rest
+    vector_f d = accSensor->getRef().get_negated(); // body direction of NED down
+    d.normalize();
+    ESP_LOGI(FNAME, "FlightAHRS reset: specific force direction=(%.3f, %.3f, %.3f)", d.x, d.y, d.z);
+    // Minimal quaternion rotating body 'd' onto nav (0,0,1): yaw set to zero by convention.
+    _q = Quaternion::fromDownVector(d);
+    if ( airborne.get() ) {
+        _calibrating = 7;
+    }
+    ESP_LOGI(FNAME, "FlightAHRS reset: quaternion=(%.3f, %.3f, %.3f, %.3f)", _q._w, _q._x, _q._y, _q._z);
+    return true;
 }
+
+// void FlightAHRS::setConfig(Config c) { _cfg = c; }
+
 
 /////////////////////////////////////////
 // Post Processing and AHRS fusion code
 /////////////////////////////////////////
 
-static void update_fused_vector(vector_f& fused, float gyro_trust, vector_f& petal_force, const Quaternion& omega_step)
-{
-    // move the previos fused attitude by the new omega step
-    vector_f virtual_gravity = omega_step.rotateInv(fused);
-    virtual_gravity.normalize();
-    virtual_gravity *= gyro_trust;
-    // ESP_LOGI(FNAME,"fused/virtual %.4f,%.4f,%.4f/%.4f,%.4f,%.4f", fused.a, fused.b, fused.c, virtual_gravity.a, virtual_gravity.b, virtual_gravity.c);
-
-    // fuse the centripetal and gyro estimation
-    petal_force.normalize();
-    fused = virtual_gravity + petal_force;
-    // ESP_LOGI(FNAME,"fused %.4f,%.4f,%.4f", fused.a, fused.b, fused.c);
-    fused.normalize();
-    // ESP_LOGI(FNAME,"fusedn %.4f,%.4f,%.4f", fused.a, fused.b, fused.c);
-}
-
-
 void FlightAHRS::postProcess() {
-    
-    // AHRS code
-    constexpr const float dt = 0.1f; // seconds, a reasonable assumption
 
-    float gravity_trust = 1;
+    // Body X forward, Y right, Z down
+    // _q is Body -> NAV (NED)
+    // gyro already bias corrected
+
+    // Gyrointegration -> predicted down vector -> reference formation -> Mahony correction
+
+    // todo track and subtraced soft bias
+    // todo _processed.z -= gyroSensor->getAxD() * imuSensor.getLeverArm(); // compensate the accelerometer mounting position in front of CG
     const vector_f& accel = accSensor->getHead();
-
     const vector_f& gyro = gyroSensor->getRef();
-    // ESP_LOGI( FNAME, " Accel: %.3f,%.3f,%.3f Gyro: %.3f,%.4f,%.4f dt: %.4f", accel.x, accel.y, accel.z, gyro.x, gyro.y, gyro.z, dt );
-    // ESP_LOGI( FNAME, " Accel: %.3f,%.3f,%.3f dt: %.4f TS:%d", accel.x, accel.y, accel.z, dt, imuSensor?imuSensor->getTempStatus():temp_status_t::MPU_T_UNKNOWN);
+    uint32_t now = Clock::getMillis();
+    const second_t dt = (now - _prev_time) / 1000.0f;
+    _prev_time = now;
+    ESP_LOGI( FNAME, " Accel: %.3f,%.3f,%.3f Gyro: %.3f,%.4f,%.4f dt: %.4f", accel.x, accel.y, accel.z, gyro.x, gyro.y, gyro.z, dt );
+    
+    // if (!(dt>0.f && dt<=_cfg.maxDt) || !finite(accel) || !finite(gyro)) return;
 
-    // create a gyro base rotation delta
-    Quaternion d_gyro = Quaternion::fromGyro(gyro, dt);
-    // rotation around the nav Z axis (Down direction)
-    vector_f down = _q.rotateInv({0,0,1});
-    circle_omega = gyro.dot(down);
-    vector_f petal;
-    rad_t roll = 0, pitch = 0;
+    // extended Mahoney filter update step
+    const float an = accel.get_norm();
+    const float loadError = std::fabs(an - 1.f);
+    if (!(an>0.1f && an<5.f)) return;
+    
+    // gyro integration
+    // q body->nav: q(t+dt) = q(t) * exp(omega_body*dt/2).
+    _q = _q * Quaternion::fromGyro(gyro, dt);
+    const vector_f predicted = _q.rotateInv({0,0,1});
 
-    if (airborne.get()) {
-        float loadFactor = std::clamp(accel.get_norm(), 0.f, 2.f);
-        // ESP_LOGI(FNAME,"attv: %.3f,%.3f,%.3f - %.3f,%.3f,%.3f - omega %f", down.x, down.y, down.z, z_nav_in_body.x, z_nav_in_body.y, z_nav_in_body.z, circle_omega);
-        // ESP_LOGI(FNAME,"attv: %.3f,%.3f,%.3f - omega %f", down.x, down.y, down.z, circle_omega);
-        // tan(roll):= petal force/G = m w v / m g
-        float tanw = circle_omega * tas.get() / Units::g0;
-        roll = std::atan(tanw);
-        // get pitch from accelerometer
-        pitch = std::atan2(accel.x, -accel.z); // neglecting accel.y, because of minor influence on pitch and more noise
-        // Virtual sum of forces (centrifugaland gravity), serving similar to the accel on the ground 
-        // for this complementary filter
-        petal.x = -sin(pitch);              // Nose up (positive Y turn) results in positive X force
-        petal.y = sin(roll) * cos(pitch);   // Right wing down (or positive X roll) results in negative Y force
-        petal.z = cos(roll) * cos(pitch);   // Any roll or pitch creates a smaller negative Z, gravity Z is negative
-        // trust in gyro at load factors unequal 1 g, trust notches down to "min" at +/-1g
-        gravity_trust = (ahrs_min_gyro_factor.get() + 
-            (ahrs_gyro_factor.get() * (pow(10, abs(loadFactor - 1) * ahrs_dynamic_factor.get()) - 1) ));
-        // ESP_LOGI(FNAME, "Petal: %f/%f/%f Gyro Trust: %f", petal.x, petal.y, petal.z, gravity_trust);
+    // Coordinated-turn estimate
+    // Yaw rate around NED down, expressed using body axes
+    _omega = gyro.dot(predicted);
+    ESP_LOGI("AHRS", "q=(%.3f,%.3f,%.3f,%.3f) down=(%.1f,%.1f,%.1f) omega=%.1f/%.1f", _q._w, _q._x, _q._y, _q._z, 
+        predicted.x, predicted.y, predicted.z, rad2deg(_omega), rad2deg(gyro.get_norm()));
+
+    // Only trust turn model for approximately steady turns.
+    // Avoid interpreting quick roll/pitch maneuvers as steady turns.
+    const bool steadyTurn = (tas.get() > 12.f 
+        && std::fabs(_omega) > Units::deg_to_rad(2.4f) 
+        && std::fabs(gyro.x) < Units::deg_to_rad(6.5f) 
+        && std::fabs(gyro.y) < Units::deg_to_rad(6.5f));
+
+    // Current attitude
+    vector_f measured = accel.get_negated();
+    measured.normalize();
+    const float pitch = pitchRad();
+
+    // Select reference and correction time constant
+    vector_f reference = measured;
+    float tau = _cfg.tiltTau;
+
+    if (_calibrating) {
+        // reference = measured;
+        tau = 0.3f;  // Fast correction during adjustment
+        if (_calibrating > 0) {
+            _calibrating--;
+        }
+    } else if (steadyTurn) {
+        // Coordinated-turn roll estimate
+        const float rollTurn = std::atan2(  tas.get() * _omega, Units::g0);
+        reference = {-std::sin(pitch), std::sin(rollTurn) * std::cos(pitch), std::cos(rollTurn) * std::cos(pitch)};
+        ESP_LOGI(FNAME, "steadyTurn rollTurn=%.1f reference=(%.3f,%.3f,%.3f)", rad2deg(rollTurn), reference.x, reference.y, reference.z);
+    } else if (loadError > _cfg.accelNormGate) {
+        // Unreliable acceleration reference: gyro only
+        tau = 1.0e6f;
     } else {
-        // For still stand centripetal forces are taken from the accelerometer
-        petal = accel.get_negated();
+        // Standard Mahony correction, with innovation gating
+        const float angle = std::acos(std::clamp(predicted.dot(measured),-1.f,1.f));
+        const float dyn = std::max(std::clamp(loadError / _cfg.accelNormGate,0.f,1.f),
+                        std::clamp(angle / _cfg.innovationGate,0.f,1.f));
+        tau = _cfg.tiltTau + (_cfg.dynamicTau - _cfg.tiltTau) * dyn;
     }
-    // ESP_LOGI( FNAME, " ax1:%f ay1:%f az1:%f Gx:%f Gy:%f GZ:%f dT:%f", petal.x, petal.y, petal.z, gyro.x, gyro.y, gyro.z, dt );
-    update_fused_vector(down, gravity_trust, petal, d_gyro);
-    // ESP_LOGI(FNAME,"attv: %.3f %.3f %.3f ProjAccel: %f", down.x, down.y, down.z, accel.dot(down));
-    _q = Quaternion::fromDownVector(down);
-    euler_rad = _q.toEulerRad();
-    // vector_f euler = euler_rad * rad2deg(1.f);
-    // ESP_LOGI(FNAME, "Euler R:%.1f P:%.1f WR:%.1f IMUP:%.1f", euler.Roll(), euler.Pitch(), rad2deg(roll), rad2deg(pitch));
-    // ESP_LOGI("AHRS", "q=%.3f %.3f %.3f %.3f roll=%.1f pitch=%.1f omega=%.1f", att_quat._w, att_quat._x, att_quat._y, att_quat._z, getRollDeg(), getPitchDeg(), rad2deg(circle_omega));
+    const float alpha = -std::expm1f(-dt / tau); // 1.f - std::exp(-dt / tau);
 
-    vector_f ahrs{euler_rad.x, euler_rad.y, circle_omega};
+    // Mahony-style attitude correction:
+    // e = reference x predicted (both in body coordinates).
+    // Right-multiply the body->NED quaternion by a positive correction.
+    const vector_f e = reference.cross(predicted);
+    Quaternion correction = Quaternion(1.f, 0.5f * alpha * e.x, 0.5f * alpha * e.y, 0.5f * alpha * e.z);
+    correction.normalize();
+    _q = _q * correction;
+
+    vector_f ahrs{getRoll(), getPitch(), _omega};
     pushAndPublish(ahrs, Clock::getMillis()); // an artificial attitude vector for the history
 
-    rad_t gyro_heading_step = circle_omega * dt; // gyro heading change in this step (NED)
+    // ESP_LOGI("AHRS", "q=%.3f %.3f %.3f %.3f roll=%.1f pitch=%.1f omega=%.1f", _q._w, _q._x, _q._y, _q._z, getRollDeg(), getPitchDeg(), rad2deg(_omega));
+    ESP_LOGI("AHRS", "turn=%d loadErr=%.2f tau=%.4f alpha=%f roll=%.1f pitch=%.1f", steadyTurn, loadError, tau, alpha, rad2deg(ahrs.x), rad2deg(ahrs.y));
+
+    // a pseudo heading integration using the AHRS omega
+    rad_t gyro_heading_step = _omega * dt; // gyro heading change in this step (NED)
     _circle_footing = Vector::normalizePI2(_circle_footing + gyro_heading_step); // integrate gyro heading change to get the current circle footing
 
-    // rad_t curh = 0;
-    // if (theCompass && theCompass->cur_heading(&curh)) {
-    //     // tuned to plus 7% what gave the best timing swing in response, 2% for compass is far enough
-    //     // gyro and compass are time displaced, gyro comes immediate, compass a second later
-    //     fused_mag_heading += Vector::angleDiff(curh, fused_mag_heading) * 0.02 + gyro_heading_step;
-    //     filtered_mag_heading = Vector::normalizePI2(fused_mag_heading);
-    //     theCompass->setGyroHeading(filtered_mag_heading);
-    //     // ESP_LOGI( FNAME,"cur magn head %.2f gyro yaw: %.4f fused: %.1f Gyro(%.3f/%.3f/%.3f)", curh, gyroYaw, gh, gyroX, gyroY, gyroZ );
-    // } else {
-    //     fused_mag_heading +=  gyro_heading_step;
-    //     Vector::normalizePI2( fused_mag_heading );
-    // }
-
-    // ESP_LOGI( FNAME,"GV-Pitch=%.1f  GV-Roll=%.1f filtered_mag_heading: %.2f curh: %.2f GX:%.3f GY:%.3f GZ:%.3f AX:%.3f AY:%.3f AZ:%.3f  FP:%.1f
-    // FR:%.1f", euler.Pitch(), euler.Roll(), filtered_mag_heading, curh, gyro.a,gyro.b,gyro.c, accel.a, accel.b, accel.c, filterPitch_rad,
-    // filterRoll_rad  );
-
-    // update slip angle and thermal assist
-    if (airborne.get()) {
-        // the slip angle: accel in NED, slip angle in ENU (nav frame)
-        constexpr const float K = rad2deg(4000.f); // airplane constant and Ay correction factor
-        rad_t slip = accel.y * K / (tas.get() * tas.get());
-        slip = std::clamp(slip, -deg2rad(15.f), deg2rad(15.f));
-        slip_angle.set( _lpf_slip_angle.filter( slip ) );  // with atan(x) = x for small x
-        // ESP_LOGI(FNAME,"AS: %f m/s, CURSL: %f°, SLIP: %f", tas.get(), -accel.y*K / (tas.get() * tas.get()), slip_angle.get() );
-
-        if ( thrmAssist ) {
-            thrmAssist->checkHeading(_circle_footing, circle_omega, euler_rad.Roll());
-        }
+    // drive the thermal assistent
+    if ( thrmAssist ) {
+        thrmAssist->checkHeading(_circle_footing, _omega, ahrs.x);
     }
-
 }
 
 void FlightAHRS::startCalibration(int8_t duration) {
     _calibrating = duration;
 }
 
-degree_t FlightAHRS::getRollDeg() const { return rad2deg(euler_rad.Roll()); }
-rad_t FlightAHRS::getRoll() const { return euler_rad.Roll(); }
-degree_t FlightAHRS::getPitchDeg() const { return rad2deg(euler_rad.Pitch()); }
-rad_t FlightAHRS::getPitch() const { return euler_rad.Pitch(); }
-degree_t FlightAHRS::getYawDeg() const { return rad2deg(euler_rad.Yaw()); }
-degree_t FlightAHRS::getMagnHeadingDeg() const { return 0.f; } // rad2deg(filtered_mag_heading); }
-dps_t FlightAHRS::getCircleOmegaENUDeg() const { return rad2deg(-circle_omega); }
+// Conventional NED aerospace roll/pitch, radians. Yaw unobservable without heading source.
+float FlightAHRS::rollRad() const { return std::atan2(2.f*(_q._w * _q._x + _q._y * _q._z), 1.f - 2.f * (_q._x * _q._x + _q._y * _q._y)); }
+float FlightAHRS::pitchRad() const { return std::asin(std::clamp(2.f * (_q._w * _q._y - _q._z * _q._x), -1.f, 1.f)); }
+// Gravity-compensated inertial acceleration in BODY axes (m/s^2).
+// This is NOT necessarily TAS derivative (wind, sideslip, rotations).
+// vector_f FlightAHRS::linearAccelBody(vector_f accelG, float g) const {
+//     const Vec downBody=rotateInv(_q,{0,0,1});
+//     return {g*(accelG.x+downBody.x),g*(accelG.y+downBody.y),g*(accelG.z+downBody.z)};
+// }
+
+degree_t FlightAHRS::getRollDeg() const { return rad2deg(rollRad()); }
+rad_t FlightAHRS::getRoll() const { return rollRad(); }
+degree_t FlightAHRS::getPitchDeg() const { return rad2deg(pitchRad()); }
+rad_t FlightAHRS::getPitch() const { return pitchRad(); }
+degree_t FlightAHRS::getYawDeg() const { return 0.f; }
+degree_t FlightAHRS::getMagnHeadingDeg() const { return 0.f; }
+dps_t FlightAHRS::getCircleOmegaENUDeg() const { return rad2deg(-_omega); }
 Quaternion FlightAHRS::getBody2Nav() const { return _q; }
 Quaternion FlightAHRS::getNav2Body() const { return _q.get_conjugate(); }
