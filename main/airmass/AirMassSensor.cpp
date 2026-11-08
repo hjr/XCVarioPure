@@ -232,14 +232,14 @@ void AirMassSensor::start()
     const float k_tas = speed_ok ? airmass_k_tas.get() : 1.f;
     const float pitch_ofs = pitch_ok ? airmass_pitch_ofs.get() : 0.f;
     const float k_aoa = pitch_ok ? airmass_k_aoa.get() : 1.f;
-    ESP_LOGI(FNAME, "AirMass start, k_tas %.3f%s, pitch ofs %.2f°%s, gnss latency ofs %.2fs", k_tas, speed_ok ? "" : " (reset)",
-             Units::rad_to_deg(pitch_ofs), pitch_ok ? "" : " (reset)", airmass_lat_ofs.get());
+    ESP_LOGI(FNAME, "AirMass start, k_tas %.3f%s, pitch ofs %.2f°%s, gnss latency %.2fs", k_tas, speed_ok ? "" : " (reset)",
+             Units::rad_to_deg(pitch_ofs), pitch_ok ? "" : " (reset)", airmass_latency.get());
     float alt = 0.f;
     readBaroAltitude(alt);
     airmass::Warm warm;
     warm.k_tas = k_tas;
     warm.pitch_ofs = pitch_ofs;
-    warm.lat_ofs = airmass_lat_ofs.get();
+    warm.latency = airmass_latency.get();
     warm.k_aoa = k_aoa;
     for (int i = 0; i < airmass::FlapOffsets::N; ++i) {
         warm.flap_ofs[i] = pitch_ok ? FLAP_OFS[i]->get() : airmass::FlapOffsets::UNKNOWN;
@@ -308,10 +308,10 @@ void AirMassSensor::persistLearned()
         store(airmass_sig_pitch, pitchSignature());
     }
     if (ekf.sigma(AirMassEKF::TAU) < 0.1f) {
-        store(airmass_lat_ofs, ekf.latencyOffset(), 0.01f);
+        store(airmass_latency, ekf.gnssLatency(), 0.01f);
     }
-    ESP_LOGI(FNAME, "AirMass learned k_tas %.3f, pitch ofs %.2f°, gnss latency ofs %.2fs", airmass_k_tas.get(),
-             Units::rad_to_deg(airmass_pitch_ofs.get()), airmass_lat_ofs.get());
+    ESP_LOGI(FNAME, "AirMass learned k_tas %.3f, pitch ofs %.2f°, gnss latency %.2fs", airmass_k_tas.get(),
+             Units::rad_to_deg(airmass_pitch_ofs.get()), airmass_latency.get());
 }
 
 void AirMassSensor::stop()

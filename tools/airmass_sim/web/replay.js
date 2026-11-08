@@ -1,7 +1,7 @@
 // Run a recording (convert.js) through the WebAssembly replay (airmass.js), in chunks so the page stays responsive.
 (function (root) {
   "use strict";
-  // opts: settings ("name=value, ..."), learn (default true), warm: [k_tas, pitch_ofs_deg, aoa_scale, latency_ofs_s] or null.
+  // opts: settings ("name=value, ..."), learn (default true), warm: [k_tas, pitch_ofs_deg, aoa_scale, latency_s] or null.
   // Resolves to { t_ms: Uint32Array, cols: {name: Float32Array}, summary } or rejects with the replay's error.
   async function runReplay(M, rec, opts = {}, onProgress = null) {
     const withString = (s, fn) => {
@@ -11,7 +11,7 @@
       try { return fn(p); } finally { M._free(p); }
     };
     const w = opts.warm;
-    const ok = withString(opts.settings || "", (p) => M._am_begin(p, opts.learn === false ? 0 : 1, w ? 1 : 0, w ? w[0] : 1, w ? w[1] : 0, w ? w[2] : 1, w ? w[3] : 0));
+    const ok = withString(opts.settings || "", (p) => M._am_begin(p, opts.learn === false ? 0 : 1, w ? 1 : 0, w ? w[0] : 1, w ? w[1] : 0, w ? w[2] : 1, w ? w[3] : 0.75));
     if (!ok) throw new Error(M.UTF8ToString(M._am_error()));
     const CHUNK = 20000;
     for (let i = 0; i < rec.length; i += CHUNK) {

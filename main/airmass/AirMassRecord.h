@@ -5,7 +5,8 @@
 // (e.g. the navigation computer's NMEA log). Plain C++, the device and the host tools share it.
 //
 //   $PXCVC,lever,mass,area,a0,a1,a2,vstall,valid,wresp,vresp,teadj   setup (at start, on change, every 10s)
-//   $PXCVS,t,alt,d0,d1,d2,g0,g1,g2,ktas,pitch,lat,kaoa,f0,..,f6        estimator start: AHRS down axis, gyro, warm start
+//   $PXCVS,t,alt,d0,d1,d2,g0,g1,g2,ktas,pitch,lat,kaoa,f0,..,f6,fmt    estimator start: AHRS down axis, gyro, warm start
+//                                                                     fmt 2: lat is the latency; absent: an offset to 0.75 s
 //   $PXCVR,t,fx,fy,fz,gx,gy,gz,ias,tas,alt,lever                      one cycle (10Hz): specific force [g], gyro [rad/s]
 //   $PXCVG,t,vn,ve,sigma,latency,prior,wn0,we0                        GNSS velocity fused (arrival time, nominal latency)
 //   $PXCVH,t,psi,sigma                                                compass heading fused
@@ -90,9 +91,10 @@ inline std::string start(const Start& st) {
     for (float g : st.gyro) appendf(s, "%.6f", g);
     appendf(s, "%.5f", st.warm.k_tas);
     appendf(s, "%.6f", st.warm.pitch_ofs);
-    appendf(s, "%.4f", st.warm.lat_ofs);
+    appendf(s, "%.4f", st.warm.latency);
     appendf(s, "%.5f", st.warm.k_aoa);
     for (float o : st.warm.flap_ofs) appendf(s, "%.6f", o);
+    appendu(s, 2); // format: the absolute latency
     finish(s);
     return s;
 }
@@ -237,7 +239,7 @@ inline bool decode(const Sentence& s, Start& st) {
     }
     st.warm.k_tas = f[8];
     st.warm.pitch_ofs = f[9];
-    st.warm.lat_ofs = f[10];
+    st.warm.latency = s.n > 12 + FlapOffsets::N ? f[10] : f[10] + AirMassEKF::START_LATENCY;
     st.warm.k_aoa = f[11];
     for (int i = 0; i < FlapOffsets::N; ++i) {
         st.warm.flap_ofs[i] = f[12 + i];

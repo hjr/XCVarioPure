@@ -10,7 +10,7 @@ SetupNG<float> 			airmass_vario_resp("AM_VRESP", 1.0, USER_RST, SYNC_NONE, PERSI
 SetupNG<float> 			airmass_te_adjust("AM_TEADJ", 100.f, USER_RST, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(80, 120, 0.1));
 SetupNG<float> 			airmass_k_tas("AM_KTAS", 1.0, USER_RST, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, nullptr, true); // learned
 SetupNG<float> 			airmass_pitch_ofs("AM_PITCH", 0.0, USER_RST, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, nullptr, true); // learned
-SetupNG<float> 			airmass_lat_ofs("AM_LATOFS", 0.0, USER_RST, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, nullptr, true); // learned GNSS latency correction [s]
+SetupNG<float> 			airmass_latency("AM_LAT", 0.75, USER_RST, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, nullptr, true); // learned GNSS latency [s]
 // learned pitch/AoA offset per flap lever position [rad], 1.0: not learned yet
 SetupNG<float> 			airmass_flap_ofs_0("AM_FOFS0", 1.0, USER_RST, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, nullptr, true);
 SetupNG<float> 			airmass_flap_ofs_1("AM_FOFS1", 1.0, USER_RST, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, nullptr, true);

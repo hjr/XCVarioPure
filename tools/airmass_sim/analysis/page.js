@@ -17,8 +17,8 @@ function loadPage(web, { refSink = process.env.REF_SINK } = {}) {
     for (; j < script.length; j++) { if (script[j] === "{") depth++; else if (script[j] === "}" && --depth === 0) break; }
     return script.slice(i, j + 1);
   };
-  const names = ["build", "atFixes", "Damp", "derive", "indexAt", "runningSums", "cockpitSeries", "gnssNetFromEnergy"];
-  let src = ["function build(conv, rep)", "function atFixes(D, get, maxHold)", "class Damp", "function derive(D)", "function indexAt(t)",
+  const names = ["build", "gnssAltDelay", "atFixes", "Damp", "derive", "indexAt", "runningSums", "cockpitSeries", "gnssNetFromEnergy"];
+  let src = ["function build(conv, rep)", "function gnssAltDelay(fixes, t, baro, running)", "function atFixes(D, get, maxHold)", "class Damp", "function derive(D)", "function indexAt(t)",
     "function runningSums(n, val)", "function cockpitSeries(D, dampAt)", "function gnssNetFromEnergy(D, sinkUp, energyOf)"].map(grab).join("\n");
   if (refSink === "airmass") {
     const patched = src.replace("if (Number.isFinite(sink)) sinkUp[k] = sink;", "if (Number.isFinite(r.polar_sink[i])) sinkUp[k] = -r.polar_sink[i];");

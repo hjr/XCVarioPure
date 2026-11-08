@@ -47,24 +47,30 @@ def find_first_nmea_file(flight):
 #
 #Converted:
 #$SENS,3242.043,2908723,955.400,955.395,27.352,17.44,0.1967,-0.1073,0.8429,-1.4391,-0.0000,-4.6402,1185.0690,1188.3779,-7553.8076q
-def flip_25_to_ned(line: str) -> str:
-    parts = line.strip().split(',')
-    if len(parts) < 8 or parts[0] != '$SENS':
+# Logs before 2025 are east-north-up: the telegram !XCV,FMT,SENS,7,1,-1,-1,1,-1,-1,1,-1,-1 says so
+# (from field 7 on, $SENS itself is 0, multiply with the factors); without it IS_ENU assumes this format
+ENU_FORMAT = (7, [1.0, -1.0, -1.0] * 3)
+
+
+def parse_sens_format(line):
+    """!XCV,FMT,SENS,start,factors...*CS -> (start, factors), None if damaged."""
+    fields = line.split("*", 1)[0].split(",")
+    try:
+        return int(fields[3]), [float(x) for x in fields[4:]]
+    except (ValueError, IndexError):
+        return None
+
+
+def apply_sens_format(line: str, sens_format) -> str:
+    start, factors = sens_format
+    body, star, tail = line.strip().partition('*')
+    parts = body.split(',')
+    if parts[0] != '$SENS':
         return line
-    #fixed = parts[:7] # Erste 7 Felder bleiben gleich (Index 0 bis 6)
-    # Ab Index 7: Vorzeichen nach dieser maske umkehren
-    to_flip = [False, True, True, False, True, True , False, True, True]
-    flipped = []
-    for i in range(7, len(parts)):
-        val = parts[i]
-        if to_flip[i-7] == True:
-            num = -float(val)
-            flipped.append(str(num))
-        else:
-            flipped.append(val)  # falls kein Float → unverändert
-    #flipped = [f"{ -float(v):.4f}" if v.lstrip('-+').replace('.','').isdigit() else v
-    #           for v in parts[7:]]
-    return ','.join(parts[:7] + flipped)
+    for i, factor in enumerate(factors):
+        if start + i < len(parts) and parts[start + i] and factor != 1.0:
+            parts[start + i] = str(float(parts[start + i]) * factor)
+    return ','.join(parts) + star + tail
 
 # --- NMEA-Zeilen laden und mit Zeitstempeln versehen ---
 
@@ -595,6 +601,7 @@ def load_flight_data(filepath, verbose=False):
     records = []
     cmn = None
     xcv_config = None
+    sens_format = None
 
     # ---------------------------------------------------------
     # 1. Log vollständig einlesen
@@ -615,7 +622,13 @@ def load_flight_data(filepath, verbose=False):
                 continue
 
             line = line[index:]
-            line = line.replace(";", ",", 1)
+            # alte $SENS Logs trennen auch die Felder mit ';'
+            line = line.replace(";", ",") if line.startswith("$SENS;") else line.replace(";", ",", 1)
+
+            # Format der $SENS Felder, gilt für das ganze Log
+            if line.startswith("!XCV,FMT,SENS,"):
+                sens_format = parse_sens_format(line) or sens_format
+                continue
 
             # Manueller XCV Konfigurations Ersatz
             if line.startswith("!XCV,CMN,"):
@@ -650,10 +663,8 @@ def load_flight_data(filepath, verbose=False):
 
                 if prefix == "$SENS":
 
-                    record["vario_time"] = float(fields[1])
-
-                    if IS_ENU:
-                        record["line"] = flip_25_to_ned(line)
+                    # alte Logs: ganze Millisekunden
+                    record["vario_time"] = float(fields[1]) if "." in fields[1] else float(fields[1]) / 1000.0
 
                 # ---------------------------------------------
                 # GPS-Zeit und Position
@@ -693,6 +704,15 @@ def load_flight_data(filepath, verbose=False):
 
     if not records:
         return []
+
+    # Das FMT Telegramm kann irgendwo im Log stehen
+    if sens_format is None and IS_ENU:
+        sens_format = ENU_FORMAT
+
+    if sens_format is not None:
+        for record in records:
+            if record["line"].startswith("$SENS,"):
+                record["line"] = apply_sens_format(record["line"], sens_format)
 
     # ---------------------------------------------------------
     # 1.5 Uhrensprünge der SENS-Zeitstempel reparieren

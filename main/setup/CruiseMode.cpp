@@ -44,7 +44,9 @@ void CruiseMode::updateCache()
     // set the vario mode cache
     const bool relative = netto_mode.get() == static_cast<int>(e_netto_mode::NETTO_RELATIVE); // Super Netto
     const int vm = vario_mode.get();
-    if (vm == static_cast<int>(e_vario_mode::VARIO_AIRMASS) || (_cmode && vm == static_cast<int>(e_vario_mode::CRUISE_ONLY_AIRMASS))) {
+    if (vm == static_cast<int>(e_vario_mode::VARIO_AIRMASS_GROSS)) {
+        _vmode = MODE_AIRMASS_GROSS; // the air mass movement plus the polar sink
+    } else if (vm == static_cast<int>(e_vario_mode::VARIO_AIRMASS) || (_cmode && vm == static_cast<int>(e_vario_mode::CRUISE_ONLY_AIRMASS))) {
         _vmode = relative ? MODE_REL_AIRMASS : MODE_AIRMASS; // vertical air mass movement
     } else if (vm == static_cast<int>(e_vario_mode::VARIO_NETTO) || (_cmode && vm == static_cast<int>(e_vario_mode::CRUISE_ONLY_NETTO))) {
         _vmode = relative ? MODE_REL_NETTO : MODE_NORMAL_NETTO;

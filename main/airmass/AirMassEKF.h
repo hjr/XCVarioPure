@@ -41,7 +41,7 @@ class AirMassEKF {
     // GNSS velocity observation
     struct GnssVelocity {
         uint32_t time_ms = 0;   // time of arrival
-        uint16_t latency_ms = 0;// nominal age of the observation at arrival, the filter estimates a correction
+        uint16_t latency_ms = 0;// nominal age of the observation at arrival, for the recording; the filter learns the latency
         float vn = 0.f, ve = 0.f;
         float sigma_h = 0.5f;   // m/s, horizontal speed accuracy
     };
@@ -57,7 +57,7 @@ class AirMassEKF {
         float q_vd = 0.25f;         // (m/s)²/s accelerometer noise
         float q_baz = 1e-5f;        // (m/s²)²/s accel bias random walk
         float q_bgz = 1e-8f;        // (rad/s)²/s body z gyro bias random walk (temperature drift)
-        float q_tau = 1e-6f;        // s²/s GNSS latency correction random walk
+        float q_tau = 1e-6f;        // s²/s GNSS latency random walk
         float q_kcl = 1e-8f;        // 1/s angle of attack scale random walk
         float r_baro = 0.09f;       // m² baro altitude noise
         float sigma_pitch = 0.017f; // rad AHRS pitch noise in calm straight flight
@@ -110,7 +110,7 @@ class AirMassEKF {
         float sigma_wind_valid = 1.5f; // m/s horizontal wind validity threshold
         float sigma_psi_valid = 0.17f; // rad heading validity threshold
         float degraded_factor = 2.f;   // degraded wind: up to this times the validity thresholds,
-        float degraded_time = 120.f;   // s, and this long after the wind was valid
+        float degraded_time = 1200.f;  // s, and this long after the wind was valid (about 40 km of glide)
     };
 
     // status bits
@@ -123,7 +123,8 @@ class AirMassEKF {
     const Config& config() const { return _cfg; }
 
     // Start the vertical part, warm start with learned calibration values
-    void reset(float baro_alt, float k_tas = 1.f, float pitch_ofs = 0.f, float latency_ofs = 0.f, float k_aoa = 1.f);
+    static constexpr float START_LATENCY = 0.75f; // s, the GNSS latency before anything was learned (classical Flarm)
+    void reset(float baro_alt, float k_tas = 1.f, float pitch_ofs = 0.f, float latency = START_LATENCY, float k_aoa = 1.f);
     void stop() { _running = false; }
     bool isRunning() const { return _running; }
     bool isAligned() const { return _aligned; }
@@ -158,9 +159,12 @@ class AirMassEKF {
     float accBias() const { return _x[BAZ]; }
     float headingRate() const { return _heading_rate; } // rad/s, the heading rate of the last cycle, without the gyro bias
     float yawRateBias() const { return _x[BGZ]; } // rad/s, body z gyro bias (yaw_rate input minus the true heading rate in level flight)
-    float latencyOffset() const { return _x[TAU]; } // s, learned correction to the nominal GNSS latency
-    float gnssLatency() const { return std::max(_gnss_nominal_ms * 1e-3f + _x[TAU], 0.f); } // s, effective
+    float gnssLatency() const { return _x[TAU]; } // s, age of a GNSS fix at its arrival on the monotone device clock
     float sigma(int i) const { return std::sqrt(_cov(i, i)); }
+    // the wind's uncertainty relative to its validity limits, the larger of wind and heading: valid below 1
+    float windUncertainty() const {
+        return std::max(std::sqrt(_cov(WN, WN) + _cov(WE, WE)) / _cfg.sigma_wind_valid, sigma(PSI) / _cfg.sigma_psi_valid);
+    }
     uint8_t status() const;
     uint32_t gnssAgeMs() const { return _last_time_ms - _last_gnss_ms; }
     uint32_t rejectedGnss() const { return _gnss_rejects; }
@@ -238,7 +242,6 @@ class AirMassEKF {
     float _wind_rate[2] = {};
     uint32_t _last_time_ms = 0;
     uint32_t _last_gnss_ms = 0;
-    uint16_t _gnss_nominal_ms = 0;
     uint32_t _gnss_rejects = 0;
     uint16_t _gnss_consecutive_rejects = 0;
     uint16_t _baro_consecutive_rejects = 0;

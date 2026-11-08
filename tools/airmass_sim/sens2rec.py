@@ -55,6 +55,82 @@ def parse_xcv(line, logged):
     return "flap" if f[1] == "FLP" else "setup"
 
 
+def clean_line(raw):
+    """A logger's text before the sentence, and the ';' separators of old $SENS logs"""
+    line = raw if raw[:1] in ("$", "!") else raw[max(raw.rfind("$"), raw.rfind("!")):] if max(raw.rfind("$"), raw.rfind("!")) >= 0 else ""
+    return line.replace(";", ",") if line.startswith("$SENS;") else line
+
+
+def scan_log(lines):
+    """One pass through the log before the conversion, for what applies to all of it wherever it stands:
+    "!XCV,FMT,SENS,start,factors...": the $SENS fields from index start on (SENS itself is 0) are multiplied by the
+      factors (logs before 2025: east-north-up axes)
+    "!XCV,CMN,glider type,empty weight,crew weight,ballast,speed cal": CA1 without the QNH; a CA1 in the log wins
+    the QNH [hPa]: of CA1, else of $PXCV, else from the GNSS altitude and static pressure of the first fixes on the ground"""
+    out = dict(fmt=None, cmn=None, ca1=False, qnh=math.nan, qnh_from="")
+    pairs = []
+    p, dyn, pxcv = math.nan, math.nan, math.nan
+
+    def number(f, i):
+        try:
+            return float(f[i])
+        except (ValueError, IndexError):
+            return math.nan
+
+    for raw in lines:
+        line = clean_line(raw.strip())
+        if line.startswith("!XCV,"):
+            f = nmea_fields(line)
+            try:
+                if f[1] == "FMT" and f[2] == "SENS":
+                    out["fmt"] = (int(f[3]), [float(x) for x in f[4:]])
+                elif f[1] == "CMN":
+                    out["cmn"] = [float(x) for x in f[2:6]]
+                elif f[1] == "CA1":
+                    out["ca1"] = True
+                    q = float(f[7])
+                    q = q / 100.0 if q > 8e4 else q  # Pa, or hPa
+                    if 800 < q < 1100:
+                        out["qnh"], out["qnh_from"] = q, "CA1"
+            except (ValueError, IndexError):
+                pass
+        elif line.startswith("$PXCV,"):
+            if not math.isfinite(pxcv) and number(nmea_fields(line), 7) > 800:
+                pxcv = number(nmea_fields(line), 7)
+        elif line.startswith("$SENS,"):
+            f = nmea_fields(line)
+            p, dyn = number(f, 3), number(f, 5)
+        elif len(pairs) < 20 and (line.startswith("$GPGGA,") or line.startswith("$GNGGA,")):
+            f = nmea_fields(line)
+            # on the ground only: high up the air is too far from ISA (a log started at 3500 m came out 24 hPa high)
+            if number(f, 6) > 0 and math.isfinite(number(f, 9)) and p > 300 and dyn < 150:
+                pairs.append((p, number(f, 9)))
+    if out["qnh_from"]:
+        return out
+    if math.isfinite(pxcv):
+        out["qnh"], out["qnh_from"] = pxcv, "$PXCV"
+    elif pairs:
+        median = lambda a: sorted(a)[len(a) >> 1]
+        isa = (1.0 - median([x[1] for x in pairs]) / T0DIVL) ** G0DIVRXL
+        out["qnh"], out["qnh_from"] = median([x[0] for x in pairs]) / isa, "GNSS altitude and pressure"
+    return out
+
+
+class StampRepair:
+    """The $SENS time stamp [ms] made monotone: a clock jump (the UTC synchronisation, midnight, a reboot) continues at
+    the sensor cycle; shorter holes are lost log lines (up to 2 s in flight), the time goes on across them. The estimator
+    runs through a reboot in flight: a real log showed it recovers within 30 s, a cold restart here took 2 min"""
+
+    def __init__(self):
+        self.last, self.correction = None, 0
+
+    def __call__(self, raw):
+        if self.last is not None and not 0 <= raw - self.correction - self.last <= 5000:
+            self.correction = raw - self.last - 100
+        self.last = raw - self.correction
+        return self.last
+
+
 def checksum(body):
     cs = 0
     for c in body[1:]:
@@ -154,11 +230,23 @@ def main():
     running, above, below = False, 0, 0
     setup_line, setup_count, starts, frames, fixes = None, 0, 0, 0, 0
     polar = flaps = None
+    with opener(a.log, "rt", errors="replace") as log:
+        lines = list(log)
+    scan = scan_log(lines)
+    monotone = StampRepair()
+    if scan["cmn"] is not None and len(scan["cmn"]) == 4 and not scan["ca1"]:
+        logged["type"], logged["empty"], logged["crew"], logged["ballast"] = scan["cmn"]
+    if scan["qnh_from"]:
+        print(f"QNH {scan['qnh']:.1f} hPa ({scan['qnh_from']})")
 
     def setup():
         nonlocal polar, flaps, g
         # the glider and the weights as logged so far
-        name = next((n for n, x in GLIDERS.items() if x["id"] == logged["type"]), "ASG 29/18") if a.glider == "log" else a.glider
+        name = next((n for n, x in GLIDERS.items() if x["id"] == logged["type"]), None) if a.glider == "log" else a.glider
+        if name is None:
+            if math.isfinite(logged["type"]):
+                print(f"warning: glider type {logged['type']:.0f} of the log is not known here, using the ASG 29/18")
+            name = "ASG 29/18"
         g = GLIDERS[name]
         logged_mass = logged["empty"] + (logged["crew"] if logged["crew"] > 0 else 0) + (logged["ballast"] if logged["ballast"] > 0 else 0) \
             if logged["empty"] > 0 else math.nan
@@ -170,7 +258,8 @@ def main():
                                   fmt(polar.a1, "%.8g"), fmt(polar.a2, "%.8g"), fmt(polar.v_stall, "%.4f"), "1", "1.000", "1.000",
                                   "100.000"])
 
-    for raw in opener(a.log, "rt", errors="replace"):
+    for original in lines:
+        raw = clean_line(original)
         xcv = parse_xcv(raw, logged) if raw.startswith("!") else None
         if xcv:
             # a new glider or weight in flight (water ballast dumped): the setup the device sends from now on
@@ -211,13 +300,20 @@ def main():
             if len(f) < 13:
                 continue
             try:
-                t_ms = int(round(float(f[1]) * 1000.0))
+                if scan["fmt"]:
+                    start, factors = scan["fmt"]
+                    for i, c in enumerate(factors):
+                        if start + i < len(f) and f[start + i]:
+                            f[start + i] = float(f[start + i]) * c + 0.0  # + 0.0: no negative zero
+                stamp = int(round(float(f[1]) * 1000.0)) if "." in f[1] else int(f[1])  # old logs: integer milliseconds
                 age = int(f[2])
+                age = age if 0 <= age <= 2000 else 0  # old logs also hold other values here: the fix counts as just arrived
                 p, q, oat = float(f[3]) * 100.0, float(f[5]), float(f[6])
                 acc = [float(x) for x in f[7:10]]
                 gyro = [math.radians(float(x)) for x in f[10:13]]
             except ValueError:
                 continue
+            t_ms = monotone(stamp)
             ias = math.sqrt(2.0 * q / RHO0) if q > 0.0 else 0.0
             tas = ias * math.sqrt(RHO0 * R_AIR * (oat + 273.15) / p) if p > 0 else 0.0
             alt = T0DIVL * (1.0 - (p / P0) ** (1.0 / G0DIVRXL)) if p > 0 else math.nan
@@ -233,7 +329,7 @@ def main():
                     out.write(setup_line)
                     rr, pp = math.radians(pxcv["roll"]), math.radians(pxcv["pitch"])
                     down = (-math.sin(pp), math.sin(rr) * math.cos(pp), math.cos(rr) * math.cos(pp))
-                    warm = ["1.00000", "0.000000", "0.0000", "1.00000"] + ["1.000000"] * 7  # cold, flap offsets unknown
+                    warm = ["1.00000", "0.000000", "0.7500", "1.00000"] + ["1.000000"] * 7 + ["2"]  # cold, flap offsets unknown, format 2
                     out.write(sentence("PXCVS", [str(t_ms), fmt(alt, "%.2f")] + [fmt(x, "%.6f") for x in down] +
                                        [fmt(x, "%.6f") for x in gyro] + warm))
                     setup_count = 0
