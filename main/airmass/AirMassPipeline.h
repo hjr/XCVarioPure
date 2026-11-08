@@ -52,7 +52,7 @@ struct Setup {
 
 // learned values to start with
 struct Warm {
-    float k_tas = 1.f, pitch_ofs = 0.f, lat_ofs = 0.f, k_aoa = 1.f;
+    float k_tas = 1.f, pitch_ofs = 0.f, latency = AirMassEKF::START_LATENCY, k_aoa = 1.f;
     float flap_ofs[FlapOffsets::N];
     Warm() { std::fill(std::begin(flap_ofs), std::end(flap_ofs), FlapOffsets::UNKNOWN); }
 };
@@ -139,7 +139,7 @@ public:
 
     // start (or restart) with the device AHRS attitude: down axis in body coordinates
     void start(uint32_t time_ms, float baro_alt, const float down[3], const float gyro[3], const Warm& w) {
-        _ekf.reset(baro_alt, w.k_tas, w.pitch_ofs, w.lat_ofs, w.k_aoa);
+        _ekf.reset(baro_alt, w.k_tas, w.pitch_ofs, w.latency, w.k_aoa);
         _flaps.load(w.flap_ofs);
         _att.reset(down);
         for (int i = 0; i < 3; ++i) {

@@ -21,9 +21,11 @@ void airmass::menuVarioModes(SetupMenuSelect* mode)
         return;
     }
     mode->setHelp("Vario indicator considers polar sink (=netto), or not (=gross), or net only in Cruise Mode. Air Mass shows the "
-                  "vertical air movement from the GNSS/IMU estimator and uses it for speed to fly, falls back to netto without it");
+                  "vertical air movement from the GNSS/IMU estimator and uses it for speed to fly, falls back to netto without it. "
+                  "Air Mass Gross adds the polar sink: the climb of the glider with the air mass filter, falls back to gross");
     mode->addEntry("Air Mass", static_cast<int>(e_vario_mode::VARIO_AIRMASS));
     mode->addEntry("Cruise-Air Mass", static_cast<int>(e_vario_mode::CRUISE_ONLY_AIRMASS));
+    mode->addEntry("Air Mass Gross", static_cast<int>(e_vario_mode::VARIO_AIRMASS_GROSS));
 }
 
 static void createMenu(SetupMenu* top)

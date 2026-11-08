@@ -13,6 +13,11 @@ It reads an XCVario sensor log (`$SENS`, converted like `sens2rec.py`) or an Air
 Recording), plain or `.gz`. Settings: the glider polar for sensor logs, the mass, bugs, the vario damping, estimator
 settings as in `airmass_replay --set`, and the start calibration.
 
+Older sensor logs: `!XCV,FMT,SENS,start,factors...` multiplies the `$SENS` fields from index `start` on (`SENS` is 0; logs
+before 2025 are east-north-up), `!XCV,CMN,type,empty,crew,ballast,speedcal` stands in for `CA1`, and `;` separators and
+times in integer milliseconds are accepted. The QNH comes from `CA1`, else `$PXCV`, else the GNSS altitude and static
+pressure on the ground; it only feeds the QNH altitude shown, AirMass uses the ISA pressure altitude.
+
 Files: `airmass_wasm.cpp` (the module, on `replay_core.h` like `airmass_replay`), `convert.js` (log → recording;
 keep in step with `sens2rec.py`), `replay.js` (runs the module), `make_gliders.py` (the glider list from the firmware's tables), `deploy.sh` (publishes only the page files), `check.js` (node: the converter against
 `sens2rec.py`, the replay against `airmass_replay --csv`).

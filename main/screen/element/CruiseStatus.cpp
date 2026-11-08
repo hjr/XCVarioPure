@@ -50,14 +50,14 @@ void CruiseStatus::draw() {
     }
 
     // write netto mode in case set
-    if (CRMOD.isNet()) {
+    if (CRMOD.isNet() || airmass::varioShown()) {
         MYUCG->setColor(COLOR_WGREY);
     } else {
         MYUCG->setColor(COLOR_BLACK);
     }
     const char *s = "  net";
     if (airmass::varioShown()) {
-        s = CRMOD.isRelative() ? " sair" : "  air";
+        s = CRMOD.isGross() ? " gair" : CRMOD.isRelative() ? " sair" : "  air";
     } else if (CRMOD.isRelative()) {
         s = "snet";
     }

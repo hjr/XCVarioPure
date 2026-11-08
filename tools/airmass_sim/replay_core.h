@@ -26,7 +26,7 @@ public:
 
     Settings settings;
     bool override_warm = false;
-    float warm[4] = {1.f, 0.f, 1.f, 0.f}; // k_tas, pitch offset [rad], aoa scale, latency offset [s]
+    float warm[4] = {1.f, 0.f, 1.f, 0.75f}; // k_tas, pitch offset [rad], aoa scale, GNSS latency [s]
 
     long lines = 0, frames = 0, gnss = 0, headings = 0, starts = 0, skipped = 0, bad = 0;
     uint32_t t_first = 0, t_last = 0;
@@ -60,11 +60,21 @@ public:
             _configured = true;
         } else if (rec::decode(_s, _st)) {
             endCycle();
+#ifdef AIRMASS_NO_CONFIG_SETTINGS
+            // an estimator before the absolute latency (analysis/build_old.sh): it starts from an offset to 0.75 s
+            if (_s.n > 12 + FlapOffsets::N) {
+                _st.warm.lat_ofs -= 0.75f;
+            }
+#endif
             if (override_warm) {
                 _st.warm.k_tas = warm[0];
                 _st.warm.pitch_ofs = warm[1];
                 _st.warm.k_aoa = warm[2];
-                _st.warm.lat_ofs = warm[3];
+#ifdef AIRMASS_NO_CONFIG_SETTINGS
+                _st.warm.lat_ofs = warm[3] - 0.75f;
+#else
+                _st.warm.latency = warm[3];
+#endif
                 std::fill(std::begin(_st.warm.flap_ofs), std::end(_st.warm.flap_ofs), FlapOffsets::UNKNOWN); // a new calibration
             }
             _pipe.start(_st.t, _st.alt, _st.down, _st.gyro, _st.warm);

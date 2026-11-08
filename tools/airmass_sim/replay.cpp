@@ -4,7 +4,7 @@
 // e.g. the navigation computer's NMEA log of a flight; other sentences are skipped. Where the log has the device's
 // own $PXCVA output, the replay compares itself with it: with the same firmware it reproduces the device.
 //
-// usage: airmass_replay <log> [--csv file] [--check m/s] [--warm k_tas,pitch_ofs,aoa_scale,latency_ofs] [--no-learn]
+// usage: airmass_replay <log> [--csv file] [--check m/s] [--warm k_tas,pitch_ofs,aoa_scale,latency] [--no-learn]
 //   --csv: per cycle t, air mass vario, wind N/E/D, status, heading, k_tas, pitch offset, latency, averaged wind
 //          N/E, roll, pitch, the device's vario where recorded, the estimator's polar sink (down positive), load
 //          factor, vertical speed (down), acceleration along the air velocity, vertical acceleration (down)
@@ -25,13 +25,13 @@ using Units::rad_to_deg;
 
 int main(int argc, char** argv) {
     if (argc < 2) {
-        std::fprintf(stderr, "usage: %s <log> [--csv file] [--check m/s] [--warm k_tas,pitch_ofs,aoa_scale,latency_ofs] [--no-learn]\n", argv[0]);
+        std::fprintf(stderr, "usage: %s <log> [--csv file] [--check m/s] [--warm k_tas,pitch_ofs,aoa_scale,latency] [--no-learn]\n", argv[0]);
         return 2;
     }
     const char* csv_name = nullptr;
     float check = -1.f;
     bool override_warm = false, learn = true;
-    float warm_override[4] = {1.f, 0.f, 1.f, 0.f};
+    float warm_override[4] = {1.f, 0.f, 1.f, 0.75f};
     airmass::replay::Settings settings;
     for (int i = 2; i < argc; ++i) {
         if (std::strcmp(argv[i], "--no-learn") == 0) {

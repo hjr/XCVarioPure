@@ -166,7 +166,8 @@ void VarioFilter::postProcess()
         ESP_LOGI(FNAME, "Cruise mode changed, restarting running average");
     }
     if (airmass_ok) {
-        pushAndPublish(air + rel_sink, now);
+        // Air Mass Gross: what the glider climbs in this air, like gross vario but with the air mass filter
+        pushAndPublish(air + (CRMOD.isGross() ? _polar_sink : rel_sink), now);
         te_gross.set(te_gr);
     } else if (CRMOD.isGross()) {
         pushAndPublish(te_gr, now); // damp

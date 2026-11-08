@@ -20,7 +20,7 @@
 //   --seed: sensor noise realisation (the scenario's air mass stays the same)
 //   --vario-agility: like the device setting, scales the vertical air movement process noise by its square
 //   --set name=value: change an assumption (see Knobs), e.g. --set k_tas=0.95 --set wind=11
-//   --warm k_tas,pitch_ofs,aoa_scale,latency_ofs: start with these learned values, like the device after a flight
+//   --warm k_tas,pitch_ofs,aoa_scale,latency: start with these learned values, like the device after a flight
 //   --flap-warm o0,..,o4: learned pitch offsets per flap position [rad] of an earlier flight (--set flaps=1)
 //   --no-learn: keep the calibration values as started
 //   --record file: write the estimator inputs like the device's "NMEA Output" Recording, for tools/airmass_sim/replay
@@ -619,7 +619,7 @@ int main(int argc, char** argv) {
     bool slip_aid = true;
     unsigned seed = 4711;
     float vario_agility = 1.f;
-    float warm[4] = {1.f, 0.f, 1.f, 0.f};
+    float warm[4] = {1.f, 0.f, 1.f, 0.75f};
     float flap_warm[airmass::FlapOffsets::N];
     std::fill(std::begin(flap_warm), std::end(flap_warm), airmass::FlapOffsets::UNKNOWN);
     bool learn = true;
@@ -758,7 +758,7 @@ int main(int argc, char** argv) {
     warm_start.k_tas = warm[0];
     warm_start.pitch_ofs = warm[1];
     warm_start.k_aoa = warm[2];
-    warm_start.lat_ofs = warm[3];
+    warm_start.latency = warm[3];
     std::copy(std::begin(flap_warm), std::end(flap_warm), std::begin(warm_start.flap_ofs));
     AirMassEKF& ekf = pipe.ekf();
     FILE* rec = record_name ? std::fopen(record_name, "w") : nullptr;

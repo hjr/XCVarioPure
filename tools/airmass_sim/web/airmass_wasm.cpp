@@ -6,6 +6,7 @@
 
 #include <emscripten/emscripten.h>
 
+#include <algorithm>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -15,8 +16,8 @@
 namespace {
 
 // per cycle, see am_columns()
-enum Col { VARIO, WIND_N, WIND_E, WIND_D, STATUS, HEADING, AVG_N, AVG_E, ROLL, PITCH, K_TAS, PITCH_OFS, LATENCY, POLAR_SINK, NCOLS };
-const char* COLUMNS = "vario,wind_n,wind_e,wind_d,status,heading_deg,avg_wind_n,avg_wind_e,roll_deg,pitch_deg,k_tas,pitch_ofs_deg,latency_ms,polar_sink";
+enum Col { VARIO, WIND_N, WIND_E, WIND_D, STATUS, HEADING, AVG_N, AVG_E, ROLL, PITCH, K_TAS, PITCH_OFS, LATENCY, POLAR_SINK, WIND_FADE, NCOLS };
+const char* COLUMNS = "vario,wind_n,wind_e,wind_d,status,heading_deg,avg_wind_n,avg_wind_e,roll_deg,pitch_deg,k_tas,pitch_ofs_deg,latency_ms,polar_sink,wind_fade";
 
 airmass::replay::Replayer* g_replay = nullptr;
 std::vector<float> g_rows;
@@ -29,7 +30,7 @@ extern "C" {
 
 // start a replay. settings: "name=value" pairs separated by ',' or ';' (AirMassEKF::Config); warm: use the given
 // calibration instead of the recorded one. Returns 0 and the reason in am_error() for an unknown setting.
-EMSCRIPTEN_KEEPALIVE int am_begin(const char* settings, int learn, int warm, float k_tas, float pitch_ofs_deg, float aoa_scale, float lat_ofs_s) {
+EMSCRIPTEN_KEEPALIVE int am_begin(const char* settings, int learn, int warm, float k_tas, float pitch_ofs_deg, float aoa_scale, float latency_s) {
     delete g_replay;
     g_replay = new airmass::replay::Replayer();
     g_rows.clear();
@@ -39,17 +40,23 @@ EMSCRIPTEN_KEEPALIVE int am_begin(const char* settings, int learn, int warm, flo
     g_replay->warm[0] = k_tas;
     g_replay->warm[1] = Units::deg_to_rad(pitch_ofs_deg);
     g_replay->warm[2] = aoa_scale;
-    g_replay->warm[3] = lat_ofs_s;
+    g_replay->warm[3] = latency_s;
     if (!airmass::replay::parseSettings(settings ? settings : "", g_replay->settings, &g_replay->error)) {
         return 0;
     }
     g_replay->on_cycle = [](const airmass::Pipeline& pipe, float) {
         const AirMassEKF& ekf = pipe.ekf();
         const AirMassEKF::Input& i = pipe.input();
+        // the wind's uncertainty from the validity limit (0) to where it is no longer shown (1)
+#ifndef AIRMASS_NO_CONFIG_SETTINGS
+        const float fade = std::clamp((ekf.windUncertainty() - 1.f) / std::max(ekf.config().degraded_factor - 1.f, 0.01f), 0.f, 1.f);
+#else
+        const float fade = 0.f; // an estimator before windUncertainty() (analysis/build_old.sh)
+#endif
         const float row[NCOLS] = {ekf.airmassVario(), ekf.windN(), ekf.windE(), ekf.windD(), static_cast<float>(ekf.status()),
                                   Units::rad_to_deg(ekf.heading()), pipe.avgWind().windN(), pipe.avgWind().windE(), Units::rad_to_deg(i.roll),
                                   Units::rad_to_deg(i.pitch), ekf.kTas(), Units::rad_to_deg(ekf.pitchOffset()), ekf.gnssLatency() * 1000.f,
-                                  i.polar_sink};
+                                  i.polar_sink, fade};
         g_rows.insert(g_rows.end(), row, row + NCOLS);
         g_times.push_back(i.time_ms);
     };
@@ -101,9 +108,9 @@ EMSCRIPTEN_KEEPALIVE const char* am_summary() {
     char buf[512];
     std::snprintf(buf, sizeof(buf),
                   "{\"lines\":%ld,\"cycles\":%ld,\"gnss\":%ld,\"compass\":%ld,\"starts\":%ld,\"skipped\":%ld,\"damaged\":%ld,"
-                  "\"k_tas\":%.4f,\"pitch_ofs_deg\":%.3f,\"aoa_scale\":%.4f,\"latency_ms\":%.0f,\"latency_ofs_s\":%.4f,\"gyro_z_bias_dps\":%.4f}",
+                  "\"k_tas\":%.4f,\"pitch_ofs_deg\":%.3f,\"aoa_scale\":%.4f,\"latency_ms\":%.0f,\"gyro_z_bias_dps\":%.4f}",
                   r.lines, r.frames, r.gnss, r.headings, r.starts, r.skipped, r.bad, ekf.kTas(), Units::rad_to_deg(ekf.pitchOffset()),
-                  ekf.aoaScale(), ekf.gnssLatency() * 1000.f, ekf.latencyOffset(), Units::rad_to_deg(ekf.yawRateBias()));
+                  ekf.aoaScale(), ekf.gnssLatency() * 1000.f, Units::rad_to_deg(ekf.yawRateBias()));
     g_text = buf;
     return g_text.c_str();
 }

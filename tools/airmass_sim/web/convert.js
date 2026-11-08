@@ -46,6 +46,70 @@
     return "setup";
   }
 
+  // a logger's text before the sentence, and the ';' separators of old $SENS logs
+  function cleanLine(raw) {
+    const line = raw[0] === "$" || raw[0] === "!" ? raw : raw.slice(Math.max(raw.lastIndexOf("$"), raw.lastIndexOf("!")));
+    return line.startsWith("$SENS;") ? line.replace(/;/g, ",") : line;
+  }
+
+  // One pass through the log before the conversion, for what applies to all of it wherever it stands:
+  //  "!XCV,FMT,SENS,start,factors...": the $SENS fields from index start on (SENS itself is 0) are multiplied by the
+  //    factors (logs before 2025: east-north-up axes)
+  //  "!XCV,CMN,glider type,empty weight,crew weight,ballast,speed cal": CA1 without the QNH; a CA1 in the log wins
+  //  the QNH [hPa]: of CA1, else of $PXCV, else from the GNSS altitude and static pressure of the first fixes on the ground
+  function scanLog(lines) {
+    const out = { fmt: null, cmn: null, ca1: false, qnh: NaN, qnhFrom: "" };
+    const pairs = [];
+    let p = NaN, q = NaN, pxcv = NaN;
+    for (const raw of lines) {
+      const line = cleanLine(raw.trim());
+      if (line.startsWith("!XCV,")) {
+        const f = fields(line);
+        if (f[1] === "FMT" && f[2] === "SENS") {
+          const factors = f.slice(4).map(Number);
+          if (Number.isInteger(+f[3]) && factors.length && factors.every(Number.isFinite)) out.fmt = { start: +f[3], factors };
+        } else if (f[1] === "CMN") {
+          const v = f.slice(2, 6).map(Number);
+          if (v.length === 4 && v.every(Number.isFinite)) out.cmn = v;
+        } else if (f[1] === "CA1") {
+          out.ca1 = true;
+          const hpa = +f[7] > 8e4 ? +f[7] / 100 : +f[7]; // Pa, or hPa
+          if (hpa > 800 && hpa < 1100) [out.qnh, out.qnhFrom] = [hpa, "CA1"];
+        }
+      } else if (line.startsWith("$PXCV,")) {
+        if (!Number.isFinite(pxcv) && +fields(line)[7] > 800) pxcv = +fields(line)[7];
+      } else if (line.startsWith("$SENS,")) {
+        const f = fields(line);
+        p = +f[3];
+        q = +f[5];
+      } else if (pairs.length < 20 && (line.startsWith("$GPGGA,") || line.startsWith("$GNGGA,"))) {
+        const f = fields(line), h = parseFloat(f[9]);
+        // on the ground only: high up the air is too far from ISA (a log started at 3500 m came out 24 hPa high)
+        if (+f[6] > 0 && Number.isFinite(h) && p > 300 && q < 150) pairs.push([p, h]);
+      }
+    }
+    if (out.qnhFrom) return out;
+    if (Number.isFinite(pxcv)) return Object.assign(out, { qnh: pxcv, qnhFrom: "$PXCV" });
+    if (pairs.length) {
+      const median = (a) => a.sort((x, y) => x - y)[a.length >> 1];
+      const isa = Math.pow(1.0 - median(pairs.map((x) => x[1])) / T0DIVL, G0DIVRXL);
+      Object.assign(out, { qnh: median(pairs.map((x) => x[0])) / isa, qnhFrom: "GNSS altitude and pressure" });
+    }
+    return out;
+  }
+
+  // the $SENS time stamp [ms] made monotone: a clock jump (the UTC synchronisation, midnight, a reboot) continues at the
+  // sensor cycle; shorter holes are lost log lines (up to 2 s in flight), the time goes on across them. The estimator
+  // runs through a reboot in flight: a real log showed it recovers within 30 s, a cold restart here took 2 min
+  function stampRepair() {
+    let last = NaN, correction = 0;
+    return (raw) => {
+      const d = raw - correction - last;
+      if (d < 0 || d > 5000) correction = raw - last - 100;
+      return (last = raw - correction);
+    };
+  }
+
   function checksum(body) {
     let cs = 0;
     for (let i = 1; i < body.length; i++) cs ^= body.charCodeAt(i);
@@ -135,7 +199,7 @@
   // "logged weights", "logged ballast factor"), flapsFrom ("logged": the lever (FLP) from its first telegram on, "the
   // recommendation", "": none) }.
   function convert(text, opts = {}) {
-    const isRecording = /\$PXCVR,/.test(text.slice(0, 4e6)) || (!/\$SENS,/.test(text.slice(0, 4e6)) && text.includes("$PXCVR,"));
+    const isRecording = /\$PXCVR,/.test(text.slice(0, 4e6)) || (!/\$SENS[,;]/.test(text.slice(0, 4e6)) && text.includes("$PXCVR,"));
     return isRecording ? passRecording(text) : convertSens(text, opts);
   }
 
@@ -196,6 +260,9 @@
     let teNew = 0;
     let fix = null, gnssAlt = NaN, pendingFix = null, running = false, above = 0, below = 0;
     let setupLine = null, setupCount = 0, starts = 0, frames = 0, fixes = 0, polar = null, flaps = null, tMs = 0;
+    const lines = text.split("\n");
+    const scan = scanLog(lines), monotone = stampRepair();
+    if (scan.cmn && !scan.ca1) [logged.type, logged.empty, logged.crew, logged.ballast] = scan.cmn;
 
     const setup = () => {
       // the glider and the weights as logged so far
@@ -217,7 +284,8 @@
         "1", "1.000", "1.000", "100.000"]);
     };
 
-    for (const raw of text.split("\n")) {
+    for (const original of lines) {
+      const raw = cleanLine(original);
       const xcv = raw[0] === "!" && parseXcv(raw, logged);
       if (xcv) {
         // a new glider or weight in flight (water ballast dumped): the setup the device sends from now on
@@ -241,12 +309,16 @@
         if (Number.isFinite(v)) gnssAlt = v;
       } else if (raw.startsWith("$SENS,")) {
         const f = fields(raw.trim());
-        if (f.length < 13) continue;
-        const t = Math.round(+f[1] * 1000.0), age = parseInt(f[2], 10);
+        if (f.length < 13 || f.slice(1, 13).includes("")) continue; // cut off by the logger
+        if (scan.fmt) scan.fmt.factors.forEach((c, i) => { if (f[scan.fmt.start + i]) f[scan.fmt.start + i] *= c; });
+        const stamp = Math.round(f[1].includes(".") ? +f[1] * 1000.0 : +f[1]); // old logs: integer milliseconds
+        // the time since the last fix; old logs also hold other values here, the fix then counts as just arrived
+        const ageField = parseInt(f[2], 10), age = ageField >= 0 && ageField <= 2000 ? ageField : Number.isFinite(ageField) ? 0 : NaN;
         const p = +f[3] * 100.0, q = +f[5], oat = +f[6];
         const acc = [+f[7], +f[8], +f[9]];
         const gyro = [+f[10], +f[11], +f[12]].map((x) => x * Math.PI / 180);
-        if (![t, age, p, q, oat, ...acc, ...gyro].every(Number.isFinite)) continue;
+        if (![stamp, age, p, q, oat, ...acc, ...gyro].every(Number.isFinite)) continue;
+        const t = monotone(stamp);
         tMs = t;
         const ias = q > 0.0 ? Math.sqrt(2.0 * q / RHO0) : 0.0;
         const tas = p > 0 ? ias * Math.sqrt(RHO0 * R_AIR * (oat + 273.15) / p) : 0.0;
@@ -263,7 +335,7 @@
             rec.push(setupLine);
             const rr = pxcv.roll * Math.PI / 180, pp = pxcv.pitch * Math.PI / 180;
             const down = [-Math.sin(pp), Math.sin(rr) * Math.cos(pp), Math.cos(rr) * Math.cos(pp)];
-            const warm = ["1.00000", "0.000000", "0.0000", "1.00000"].concat(Array(7).fill("1.000000")); // cold, flap offsets unknown
+            const warm = ["1.00000", "0.000000", "0.7500", "1.00000"].concat(Array(7).fill("1.000000"), "2"); // cold, flap offsets unknown, format 2
             rec.push(sentence("PXCVS", [String(t), fx(alt, 2)].concat(down.map((x) => fx(x, 6)), gyro.map((x) => fx(x, 6)), warm)));
             setupCount = 0;
           }
@@ -302,7 +374,7 @@
     }
     if (running) rec.push(sentence("PXCVX", [String(tMs)]));
     return { kind: "XCVario sensor log", rec, track: track.done(), starts, frames, fixes, glider: gliderName, gliderFrom, mass: massUsed, massFrom,
-      flapsFrom: opts.noFlaps ? "" : loggedFlapFrames ? "logged" : flaps ? "the recommendation" : "" };
+      qnh: scan.qnh, qnhFrom: scan.qnhFrom, flapsFrom: opts.noFlaps ? "" : loggedFlapFrames ? "logged" : flaps ? "the recommendation" : "" };
   }
 
   const api = { convert, GLIDERS };

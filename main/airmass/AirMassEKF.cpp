@@ -8,8 +8,8 @@ constexpr float G0 = Units::g0;
 // plausible ranges of the learned calibration states
 constexpr float KTAS_MIN = 0.8f, KTAS_MAX = 1.25f;
 constexpr float THB_MAX = 0.25f; // rad
-constexpr float TAU_MIN = -0.5f, TAU_MAX = 1.f; // s, GNSS latency correction
-constexpr float TAU_SIGMA0 = 0.3f; // s, initial uncertainty of the latency correction
+constexpr float TAU_MIN = 0.25f, TAU_MAX = 1.75f; // s, GNSS latency
+constexpr float TAU_SIGMA0 = 0.3f; // s, initial uncertainty of the latency
 constexpr float SLIP_ALIGN_MAX = 0.1f; // rad, slipping samples do not go into the turn alignment
 constexpr uint32_t HEADING_AID_AGE_MS = 3000;
 
@@ -25,13 +25,13 @@ AirMassEKF::AirMassEKF() {
     _running = false;
 }
 
-void AirMassEKF::reset(float baro_alt, float k_tas, float pitch_ofs, float latency_ofs, float k_aoa) {
+void AirMassEKF::reset(float baro_alt, float k_tas, float pitch_ofs, float latency, float k_aoa) {
     for (float& v : _x) {
         v = 0.f;
     }
     _x[KTAS] = k_tas;
     _x[THB] = pitch_ofs;
-    _x[TAU] = latency_ofs;
+    _x[TAU] = latency;
     _x[KCL] = k_aoa;
     clampCalibration();
     _x[ALT] = baro_alt;
@@ -546,7 +546,6 @@ void AirMassEKF::fuseGnss(const GnssVelocity& g, bool has_prior, float wn0, floa
     if (!_running) {
         return;
     }
-    _gnss_nominal_ms = g.latency_ms;
     const uint32_t t_obs = g.time_ms - (uint32_t)(gnssLatency() * 1000.f + 0.5f);
     const Snapshot* s = findSnapshot(t_obs);
     if (!s || s->tas < 10.f) {
@@ -669,18 +668,16 @@ uint8_t AirMassEKF::status() const {
 // fix, valid again only clearly below the threshold, so the outputs do not flicker
 void AirMassEKF::updateWindValid() {
     constexpr float RECOVER = 0.9f;
-    const float f = _wind_valid ? 1.f : RECOVER;
-    const float sw = std::sqrt(_cov(WN, WN) + _cov(WE, WE));
+    const float u = windUncertainty();
     const bool ok = _running && _aligned && gnssAgeMs() < 30000;
-    _wind_valid = ok && sw < f * _cfg.sigma_wind_valid && sigma(PSI) < f * _cfg.sigma_psi_valid;
+    _wind_valid = ok && u < (_wind_valid ? 1.f : RECOVER);
     if (_wind_valid) {
         _wind_valid_ms = _last_time_ms;
     }
     // after the wind got invalid (long straight glides: the heading is only checked in turns) the estimate stays
     // better than the last valid wind for a while
-    const float d = _cfg.degraded_factor;
     _wind_degraded = !_wind_valid && ok && _wind_valid_ms != 0 && (_last_time_ms - _wind_valid_ms) * 1e-3f <= _cfg.degraded_time &&
-                     sw < d * _cfg.sigma_wind_valid && sigma(PSI) < d * _cfg.sigma_psi_valid;
+                     u < _cfg.degraded_factor;
 }
 
 bool AirMassEKF::covarianceHealthy() const {

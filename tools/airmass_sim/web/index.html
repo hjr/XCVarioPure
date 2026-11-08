@@ -15,7 +15,7 @@
 <style>
 :root {
   --bg: #f3f5f6; --surface: #fcfcfb; --ink: #17212a; --muted: #5b6770; --rule: #d6dde2; --tint: #e8eef3;
-  --accent: #2f6fd0; --am: #2f6fd0; --net: #d9771f; --gnss: #000000; --degraded: #9aa3aa; --hw: #8e44ad;
+  --accent: #2f6fd0; --am: #2f6fd0; --net: #d9771f; --gnss: #000000; --degraded: #9aa3aa; --hw: #8e44ad; --gross: #15895a;
   --grid: #e3e8ec; --danger: #b3261e;
   --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -23,13 +23,13 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #111518; --surface: #1a1a19; --ink: #e4e9ec; --muted: #9aa6ae; --rule: #2c353b; --tint: #222b31;
-    --accent: #5a94e8; --am: #5a94e8; --net: #c9772a; --gnss: #000000; --degraded: #6f787e; --hw: #b07cd8;
+    --accent: #5a94e8; --am: #5a94e8; --net: #c9772a; --gnss: #000000; --degraded: #6f787e; --hw: #b07cd8; --gross: #4cc38a;
     --grid: #262e33; --danger: #f2827a; color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
   --bg: #111518; --surface: #1a1a19; --ink: #e4e9ec; --muted: #9aa6ae; --rule: #2c353b; --tint: #222b31;
-  --accent: #5a94e8; --am: #5a94e8; --net: #c9772a; --gnss: #000000; --degraded: #6f787e; --hw: #b07cd8;
+  --accent: #5a94e8; --am: #5a94e8; --net: #c9772a; --gnss: #000000; --degraded: #6f787e; --hw: #b07cd8; --gross: #4cc38a;
   --grid: #262e33; --danger: #f2827a; color-scheme: dark;
 }
 * { box-sizing: border-box; }
@@ -122,7 +122,7 @@ select { appearance: none; -webkit-appearance: none; padding-right: 26px !import
 .glider-icon svg { overflow: visible; }
 .glider-icon { pointer-events: none; }
 .windlabel { position: absolute; transform: translate(-50%, -50%); white-space: nowrap; font: 600 10.5px var(--mono); background: color-mix(in srgb, var(--surface) 85%, transparent); border-radius: 4px; padding: 0 3px; display: none; }
-.windarrow line, .windarrow path { filter: drop-shadow(0 0 1.5px rgba(255,255,255,0.9)); }
+.windarrow line, .windarrow path, .windfield { filter: drop-shadow(0 0 1.5px rgba(255,255,255,0.9)); }
 
 /* narrow screens: one column, the page scrolls */
 @media (max-width: 900px) {
@@ -157,7 +157,7 @@ select { appearance: none; -webkit-appearance: none; padding-right: 26px !import
     <label class="btn soundbox" title="The XCVario vario tone"><input type="checkbox" id="sound" checked> Sound
       <input type="range" id="volume" min="0" max="1" step="0.05" value="0.5" aria-label="Volume"></label>
     <select id="soundsrc" class="sel" aria-label="Sound source" title="What the tone follows">
-      <option value="airmass" selected>Air Mass</option><option value="netto">TE netto</option><option value="te">TE vario</option>
+      <option value="airmass" selected>Air Mass</option><option value="gross">Air Mass gross</option><option value="netto">TE netto</option><option value="te">TE vario</option>
     </select>
     <button class="btn" id="settingsbtn" aria-expanded="false" aria-controls="settings">Settings</button>
   </header>
@@ -177,11 +177,14 @@ select { appearance: none; -webkit-appearance: none; padding-right: 26px !import
       </label>
       <label class="check"><input type="checkbox" id="clip" checked> Sound clipped like the device</label>
       <label class="check" title="The vario chart spans half the time a glider at 100 km/h needs to cross the map, around the current moment; it follows the map zoom"><input type="checkbox" id="chartsmap" checked> Chart width follows the map zoom (½ of the map at 100 km/h)</label>
+      <label class="check" title="The device's vario mode Air Mass Gross: the air mass vario plus the polar sink, the climb of the glider with the air mass filter; the TE vario where AirMass is not valid"><input type="checkbox" id="showgross"> Air Mass gross needle and line</label>
+      <label class="check" title="An arrow along the glider's axis: AirMass's instant wind along the heading. The ground speed shows it even in long glides, where the whole wind is not valid"><input type="checkbox" id="showhw"> Headwind / tailwind component on the map</label>
+      <label class="check" title="AirMass's instant wind as arrows along the track, pointing downwind, their length by the speed, fading as the wind gets less certain; spaced on the screen, so zooming in shows more of them"><input type="checkbox" id="windfield"> Wind along the track</label>
       <label class="check"><input type="checkbox" id="noflaps"> No flap lever (sensor logs)</label>
       <label class="check"><input type="checkbox" id="learn" checked> Learn calibration in flight</label>
       <label class="check"><input type="checkbox" id="warm"> Start with this calibration:</label>
-      <label class="wide" style="margin-top:-6px">k_tas, pitch offset °, AoA scale, GNSS latency offset s
-        <span class="warm"><input type="number" id="w0" value="1" step="0.001"><input type="number" id="w1" value="0" step="0.01"><input type="number" id="w2" value="1" step="0.001"><input type="number" id="w3" value="0" step="0.01"></span>
+      <label class="wide" style="margin-top:-6px">k_tas, pitch offset °, AoA scale, GNSS latency s
+        <span class="warm"><input type="number" id="w0" value="1" step="0.001"><input type="number" id="w1" value="0" step="0.01"><input type="number" id="w2" value="1" step="0.001"><input type="number" id="wlat" value="0.75" step="0.01"></span>
       </label>
     </div>
     <div class="setfoot">
@@ -221,7 +224,7 @@ select { appearance: none; -webkit-appearance: none; padding-right: 26px !import
       </div>
     </div>
     <div class="panel charts" id="charts">
-      <div class="chead"><h3>Vario</h3><div class="legend"><span><i class="key" style="background:var(--am)"></i>Cockpit, Air Mass mode</span><span><i class="key" style="background:var(--net)"></i>TE netto</span><span title="GNSS altitude and ground velocity relative to AirMass's 2 min wind, minus the polar sink: the air's vertical movement, which a horizontal gust does not move (pitot TAS until a wind is known). The track colour 'GNSS netto' is the same, per second."><i class="key gnsskey"></i>GNSS netto (reference, gust-insensitive)</span><span id="stripkey">Strip: AirMass vario</span></div></div>
+      <div class="chead"><h3>Vario</h3><div class="legend"><span><i class="key" style="background:var(--am)"></i>Cockpit, Air Mass mode</span><span><i class="key" style="background:var(--net)"></i>TE netto</span><span title="GNSS altitude and ground velocity relative to AirMass's 2 min wind, minus the polar sink: the air's vertical movement, which a horizontal gust does not move (pitot TAS until a wind is known). The track colour 'GNSS netto' is the same, per second."><i class="key gnsskey"></i>GNSS netto (reference, gust-insensitive)</span><span id="grosskey" hidden><i class="key" style="background:var(--gross)"></i>Air Mass gross</span><span id="stripkey">Strip: AirMass vario</span></div></div>
       <canvas id="strip"></canvas>
       <div class="tip" id="tip"></div>
     </div>
@@ -246,7 +249,7 @@ let view = null;         // the vario chart's time window [t0, t1]
 let C = {};
 function readColors() {
   const cs = getComputedStyle(document.documentElement);
-  for (const k of ["surface", "ink", "muted", "rule", "am", "net", "gnss", "degraded", "grid", "hw"]) C[k] = cs.getPropertyValue("--" + k).trim();
+  for (const k of ["surface", "ink", "muted", "rule", "am", "net", "gnss", "degraded", "grid", "hw", "gross"]) C[k] = cs.getPropertyValue("--" + k).trim();
   C.dark = cs.colorScheme === "dark";
   C.font = getComputedStyle(document.body).fontFamily;
 }
@@ -266,7 +269,7 @@ for (const name of Object.keys(AirMassConvert.GLIDERS)) $("glider").add(new Opti
 $("glider").value = "log";
 $("glider").addEventListener("change", () => { if (fileText) run(); }); // a new polar: replay
 const SETTINGS_KEY = "airmass-replay-settings";
-const FIELDS = ["harmonics", "clip", "glider", "mass", "bugs", "damping", "samesmooth", "sets", "noflaps", "learn", "warm", "w0", "w1", "w2", "w3", "wingpitch", "follow", "speed", "soundsrc", "chartsmap"];
+const FIELDS = ["harmonics", "clip", "glider", "mass", "bugs", "damping", "samesmooth", "sets", "noflaps", "learn", "warm", "w0", "w1", "w2", "wlat", "wingpitch", "follow", "speed", "soundsrc", "chartsmap", "showhw", "showgross", "windfield"];
 try {
   const s = JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}");
   for (const k of FIELDS) if (k in s) { const el = $(k); if (el.type === "checkbox") el.checked = s[k]; else el.value = s[k]; }
@@ -339,7 +342,7 @@ async function replayOnce() {
     });
     if (!conv.frames) throw new Error(conv.track.n ? "no flight found in the log (the replay starts after 10 s above 20 m/s IAS and 15 m/s ground speed)" : "neither $SENS nor AirMass recording sentences found");
     const M = await modulePromise;
-    const warm = $("warm").checked ? [+$("w0").value, +$("w1").value, +$("w2").value, +$("w3").value] : null;
+    const warm = $("warm").checked ? [+$("w0").value, +$("w1").value, +$("w2").value, +$("wlat").value] : null;
     const t0 = performance.now();
     const rep = await runReplay(M, conv.rec, { settings: $("sets").value, learn: $("learn").checked, warm }, async (f) => {
       setStatus(`Replaying… ${Math.round(f * 100)} %`);
@@ -351,11 +354,11 @@ async function replayOnce() {
     const s = rep.summary;
     const hours = (rep.n / 36000).toFixed(2);
     const setupUsed = conv.glider ? ` · ${conv.glider}${{ log: " (from the log)", default: " (no glider in the log)" }[conv.gliderFrom] || ""}, ` +
-      `${Math.round(conv.mass)} kg (${conv.massFrom})${conv.flapsFrom ? `, flaps: ${conv.flapsFrom}` : ""}` : "";
+      `${Math.round(conv.mass)} kg (${conv.massFrom})${conv.flapsFrom ? `, flaps: ${conv.flapsFrom}` : ""}${conv.qnh > 0 ? `, QNH ${conv.qnh.toFixed(1)} hPa (${conv.qnhFrom})` : ""}` : "";
     const result = `${fileName}: ${conv.kind}, ${conv.starts} flight${conv.starts === 1 ? "" : "s"}, ${hours} h replayed in ${((performance.now() - t0) / 1000).toFixed(1)} s${setupUsed}`;
     setStatus(result, false, true);
     $("summary").textContent = result + ` · cycles ${s.cycles} · GNSS fixes ${s.gnss} · compass ${s.compass} · learned: k_tas ${s.k_tas.toFixed(3)}, pitch offset ${s.pitch_ofs_deg.toFixed(2)}°, ` +
-      `AoA scale ${s.aoa_scale.toFixed(3)}, GNSS latency ${s.latency_ms} ms (offset ${s.latency_ofs_s.toFixed(3)} s), gyro z bias ${s.gyro_z_bias_dps.toFixed(3)}°/s` +
+      `AoA scale ${s.aoa_scale.toFixed(3)}, GNSS latency ${s.latency_ms} ms (altitude ${Math.round(D.altDelay * 1000)} ms), gyro z bias ${s.gyro_z_bias_dps.toFixed(3)}°/s` +
       (conv.kind.startsWith("XCVario sensor") ? " · sensor logs carry the gated gyro (rates below the gate read 0), which costs AirMass short-term accuracy" : "");
     $("empty").style.display = "none";
     for (const id of ["rerun", "export", "playbtn", "slider"]) $(id).disabled = false;
@@ -393,6 +396,16 @@ function build(conv, rep) {
       fixes.push({ k, u, tm: t[k] - lat_s, lat: c.lat[k], lon: c.lon[k], alt: c.gnss_alt[k] });
     }
   }
+  // the GNSS altitude comes later than the ground velocity AirMass learns the latency of (about 1.6 against 0.9 s): each
+  // fix gets the altitude of its measurement time, from the fixes around where that altitude arrived
+  const altDelay = gnssAltDelay(fixes, t, c.baro_alt, c.running);
+  const arrived = fixes.map((f) => f.alt);
+  for (let j = 0, a = 0; j < fixes.length; j++) {
+    const want = t[fixes[j].k] + altDelay - lat_s;
+    while (a + 1 < fixes.length && t[fixes[a + 1].k] <= want) a++;
+    const ta = t[fixes[a].k], tb = a + 1 < fixes.length ? t[fixes[a + 1].k] : NaN;
+    if (ta <= want && tb - ta <= 3) fixes[j].alt = arrived[a] + (arrived[a + 1] - arrived[a]) * (want - ta) / (tb - ta);
+  }
   const Dp = { n, t, fixes };
   const lat = atFixes(Dp, (f) => f.lat, Infinity), lon = atFixes(Dp, (f) => f.lon, Infinity);
   const galt = atFixes(Dp, (f) => f.alt, 3);
@@ -418,7 +431,28 @@ function build(conv, rep) {
   for (let k = 0; k < n; k++) if (ai[k] >= 0) { tStart = t[k]; break; }
   let utcOfs = NaN;
   for (let k = 0; k < n; k++) if (Number.isFinite(c.utc[k])) { utcOfs = c.utc[k] - t[k]; break; }
-  return { name: fileName, kind: conv.kind, n, t, ai, lat, lon, galt, fixes, tr: c, rep, tStart, utcOfs };
+  return { name: fileName, kind: conv.kind, n, t, ai, lat, lon, galt, fixes, tr: c, rep, tStart, utcOfs, qnh: conv.qnh, altDelay };
+}
+
+// The age of a GNSS altitude at its arrival, s: the delay that lines the climb between fixes up best with the climb of
+// the static pressure altitude, plus the static line's own delay (AirMassEKF::Config::lag_static). 1.6 s, the usual
+// measured value, for a flight too short or too calm to tell.
+function gnssAltDelay(fixes, t, baro, running) {
+  const at = (x) => { let lo = 0, hi = t.length - 1; while (lo < hi) { const m = (lo + hi + 1) >> 1; if (t[m] <= x) lo = m; else hi = m - 1; } return lo; };
+  let best = -2, delay = 1.6;
+  for (let L = 0; L <= 3.001; L += 0.05) {
+    let m = 0, sx = 0, sy = 0, sxx = 0, syy = 0, sxy = 0;
+    for (let j = 2; j < fixes.length; j += 2) {
+      const f = fixes[j], p = fixes[j - 2], dt = t[f.k] - t[p.k];
+      if (!running[f.k] || dt < 1.5 || dt > 2.5) continue;
+      const x = (baro[at(t[f.k] - L)] - baro[at(t[p.k] - L)]) / dt, y = (f.alt - p.alt) / dt;
+      if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
+      m++; sx += x; sy += y; sxx += x * x; syy += y * y; sxy += x * y;
+    }
+    const r = (m * sxy - sx * sy) / Math.sqrt((m * sxx - sx * sx) * (m * syy - sy * sy));
+    if (m >= 100 && r > best) { best = r; delay = L + 0.2; }
+  }
+  return best > 0.8 ? delay : 1.6;
 }
 
 // a per-sample series from a value of each fix, interpolated between the fixes' measurement times; held up to
@@ -525,6 +559,12 @@ function derive(D) {
   }
   const dAir = Math.max(1, delay * 0.5);
   D.am = cockpitSeries(D, () => dAir);
+  // Air Mass Gross (VarioFilter): the cockpit air mass vario plus the polar sink, the sink not damped as for netto; the
+  // TE vario, the device's gross, where AirMass is not valid
+  D.amGross = new Float32Array(n).fill(NaN);
+  for (let k = 0; k < n; k++) {
+    if (D.ai[k] >= 0) D.amGross[k] = D.amOk[k] ? D.am[k] + (Number.isFinite(sinkUp[k]) ? sinkUp[k] : 0) : c.te_vario[k];
+  }
   // the GNSS climb: the altitude difference of the fixes before and after each fix over their time difference, at
   // the time the fix was measured, interpolated in between
   const fixes = D.fixes;
@@ -625,7 +665,7 @@ const layers = {
   "Topographic": L.tileLayer("https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png", { maxZoom: 17, attribution: "© OpenStreetMap contributors, SRTM · © OpenTopoMap (CC-BY-SA)" }),
   "Satellite": L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", { maxZoom: 18, attribution: "Imagery © Esri" }),
 };
-layers["OpenStreetMap"].addTo(map);
+layers["Topographic"].addTo(map);
 L.control.layers(layers, null, { position: "topright" }).addTo(map);
 const legend = L.control({ position: "bottomleft" });
 legend.onAdd = () => {
@@ -633,9 +673,10 @@ legend.onAdd = () => {
   d.innerHTML = `<label>Colour by <select id="colorby" aria-label="Track colour">${Object.entries(COLOR_BY).map(([k, v]) => `<option value="${k}">${v}</option>`).join("")}</select></label><br>` +
     CLIMB_COLORS.map((c, i) => `<i style="background:${c}"></i>${CLIMB_LABELS[i]}`).reverse().join("<br>") +
     `<br><i style="background:${C.degraded}"></i>no value` +
-    `<div class="sect">Wind to the glider, ° km/h</div><i style="background:${C.am}"></i>AirMass instant<br>` +
-    `<i class="dash" style="border-color:${C.muted}"></i>AirMass average<br>` +
-    `<i style="background:${C.hw}"></i>Headwind / tailwind component`;
+    `<div class="sect">Wind to the glider, ° km/h</div><i style="background:linear-gradient(90deg, ${C.am}, ${C.degraded})"></i>AirMass instant, fading as it gets less certain<br>` +
+    `<i class="dash" style="border-color:${C.muted}"></i>AirMass average` +
+    `<span id="hwkey"><br><i style="background:${C.hw}"></i>Headwind / tailwind component</span>` +
+    `<span id="wfkey"><br><i style="background:linear-gradient(90deg, #1b1f24, ${C.degraded})"></i>Wind along the track, downwind</span>`;
   L.DomEvent.disableClickPropagation(d);
   L.DomEvent.disableScrollPropagation(d);
   return d;
@@ -656,6 +697,12 @@ let trackLayer = null, gliderMarker = null;
 // the glider symbol and the wind arrows at it: the scale (1: a 36 px glider), the marker's size and the arrows' tip
 // distance from the glider's centre [px]
 const MARK = 1.5, MARK_SIZE = 320, ARROW_TIP = 19 * MARK;
+// the instant wind arrow fades to grey with the wind's uncertainty (wind_fade: 0 at the validity limit, 1 where AirMass
+// stops showing it)
+const fadeToGrey = (color, f) => {
+  const rgb = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16)), a = rgb(color), b = rgb(C.degraded);
+  return "#" + a.map((x, i) => Math.round(x + (b[i] - x) * f).toString(16).padStart(2, "0")).join("");
+};
 // the wind arrows at the glider: AirMass average, AirMass instant, its headwind component (drawn in this order); width
 // and head half-width at scale 1
 const WIND_ARROWS = [{ id: "avg", width: 3, head: 5, dash: "5 4" }, { id: "inst", width: 5, head: 7 }, { id: "hw", width: 3, head: 5 }];
@@ -686,6 +733,7 @@ function drawTrack(fit = true) {
   }
   // click near the track: jump there
   D.mapPts = pts;
+  drawWindField();
   if (!fit) return;
   if (pts.length) map.fitBounds(L.latLngBounds(pts.map((p) => p.ll)), { padding: [20, 20] });
   if (gliderMarker) gliderMarker.remove();
@@ -761,6 +809,7 @@ function drawVario(k) {
   };
   needle(D.gnss[k], C.gnss, 3, 0.8, C.dark ? C.muted : null);
   needle(D.netto[k], C.net, 3, 0.86);
+  if ($("showgross").checked) needle(D.amGross[k], C.gross, 3, 0.86);
   needle(D.am[k], ok ? C.am : C.net, 5, 0.92); // the cockpit needle: air mass, or the netto fallback
   ctx.fillStyle = C.surface; ctx.strokeStyle = C.rule; ctx.lineWidth = 1.5;
   ctx.beginPath(); ctx.arc(cx, cy, R * 0.07, 0, 2 * Math.PI); ctx.fill(); ctx.stroke();
@@ -786,6 +835,44 @@ function shownPitch(i) {
 }
 $("wingpitch").addEventListener("change", drawAll);
 $("chartsmap").addEventListener("change", () => viewFromMap());
+const showHeadwindKey = () => { $("hwkey").hidden = !$("showhw").checked; };
+showHeadwindKey();
+$("showhw").addEventListener("change", () => { showHeadwindKey(); drawAll(); });
+const showGrossKey = () => { $("grosskey").hidden = !$("showgross").checked; };
+showGrossKey();
+$("showgross").addEventListener("change", () => { showGrossKey(); invalidateCharts(); drawAll(); });
+$("windfield").addEventListener("change", drawWindField);
+map.on("moveend", drawWindField);
+
+// AirMass's instant wind along the track: one arrow every WIND_FIELD_PX on the screen, in view, pointing downwind
+const WIND_FIELD_PX = 20, WIND_FIELD_INK = "#1b1f24"; // dark on the (always light) map tiles, a white halo (CSS)
+let windFieldLayer = null;
+function drawWindField() {
+  $("wfkey").hidden = !$("windfield").checked;
+  if (windFieldLayer) windFieldLayer.remove();
+  windFieldLayer = null;
+  if (!D || !D.mapPts || !$("windfield").checked) return;
+  windFieldLayer = L.layerGroup().addTo(map);
+  const r = D.rep.cols, view = map.getBounds().pad(0.1);
+  let last = null;
+  for (const p of D.mapPts) {
+    const i = D.ai[p.k];
+    if (i < 0 || !(r.status[i] & (2 | 16)) || !view.contains(p.ll)) continue;
+    const at = map.latLngToLayerPoint(p.ll);
+    if (last && at.distanceTo(last) < WIND_FIELD_PX) continue;
+    const kmh = Math.hypot(r.wind_n[i], r.wind_e[i]) * 3.6;
+    if (!(kmh > 0.5)) continue;
+    last = at;
+    // screen x east, y south; the arrow centred on the track, its length by the speed
+    const dx = r.wind_e[i] * 3.6 / kmh, dy = -r.wind_n[i] * 3.6 / kmh, len = 12 + Math.min(kmh, 60) / 60 * 24;
+    const pt = (x, y) => map.layerPointToLatLng(L.point(x, y));
+    const tip = [at.x + dx * len / 2, at.y + dy * len / 2], tail = [at.x - dx * len / 2, at.y - dy * len / 2];
+    const head = (s) => pt(tip[0] - 6 * dx + s * 3.5 * dy, tip[1] - 6 * dy - s * 3.5 * dx);
+    const color = r.status[i] & 2 ? WIND_FIELD_INK : fadeToGrey(WIND_FIELD_INK, r.wind_fade[i]);
+    L.polyline([[pt(...tail), pt(...tip)], [head(1), pt(...tip), head(-1)]], { color, weight: 2, opacity: 0.95, interactive: false, className: "windfield" }).addTo(windFieldLayer);
+  }
+}
+drawWindField();
 
 // artificial horizon: the attitude AirMass runs on (its own, gyro propagated and aided by air data), the aircraft fixed
 function drawHorizon(k) {
@@ -929,6 +1016,7 @@ function drawStrip(k) {
     o.save(); o.beginPath(); o.rect(L0, T0, R0 - L0, B0 - T0); o.clip();
     drawSeries(o, D.gnss, null, C.dark ? C.muted : C.gnss, 1.5, X, Y, ka, kb);
     drawSeries(o, D.netto, null, C.net, 1.5, X, Y, ka, kb);
+    if ($("showgross").checked) drawSeries(o, D.amGross, null, C.gross, 1.5, X, Y, ka, kb);
     drawSeries(o, D.am, D.amOk, C.am, 2, X, Y, ka, kb);
     o.restore();
     varioCache = { off, w: cv.width, h: cv.height };
@@ -947,6 +1035,7 @@ function drawStrip(k) {
       ctx.fillStyle = color; ctx.strokeStyle = C.surface; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, 4, 0, 2 * Math.PI); ctx.fill(); ctx.stroke();
     };
     dot(D.netto[k], C.net);
+    if ($("showgross").checked) dot(D.amGross[k], C.gross);
     if (D.amOk[k]) dot(D.am[k], C.am);
   }
 }
@@ -984,7 +1073,7 @@ function drawAll() {
     const el = document.getElementById("gl");
     if (el) el.style.transform = `rotate(${Number.isFinite(hdg) ? hdg : 0}deg)`;
     drawMapWind(k);
-    if ($("follow").checked) {
+    if ($("follow").checked && playing) {
       const p = map.latLngToContainerPoint(ll), s = map.getSize();
       if (p.x < s.x * 0.2 || p.x > s.x * 0.8 || p.y < s.y * 0.2 || p.y > s.y * 0.8) map.panTo(ll, { animate: false });
     }
@@ -1010,9 +1099,9 @@ function drawMapWind(k) {
   const hw = headwind(k), psi = i >= 0 ? r.heading_deg[i] * Math.PI / 180 : 0;
   // [north, east, colour, label prefix (default: the direction it comes from)]
   const winds = {
-    inst: st & (2 | 16) ? [r.wind_n[i], r.wind_e[i], st & 2 ? C.am : C.degraded] : null,
+    inst: st & (2 | 16) ? [r.wind_n[i], r.wind_e[i], st & 2 ? C.am : fadeToGrey(C.am, r.wind_fade[i])] : null,
     avg: st & 2 ? [r.avg_wind_n[i], r.avg_wind_e[i], C.muted] : null,
-    hw: Number.isFinite(hw) ? [-hw * Math.cos(psi), -hw * Math.sin(psi), C.hw, hw >= 0 ? "HW" : "TW"] : null,
+    hw: $("showhw").checked && Number.isFinite(hw) ? [-hw * Math.cos(psi), -hw * Math.sin(psi), C.hw, hw >= 0 ? "HW" : "TW"] : null,
   };
   const placed = [];
   for (const w of WIND_ARROWS) {
@@ -1027,8 +1116,8 @@ function drawMapWind(k) {
     g.style.display = "";
     g.setAttribute("transform", `rotate(${from})`);
     const line = g.querySelector("line");
-    line.setAttribute("y1", -tail); line.setAttribute("stroke", color);
-    g.querySelector("path").setAttribute("fill", color);
+    line.setAttribute("y1", -tail); line.style.stroke = color;
+    g.querySelector("path").style.fill = color;
     // the label beyond the tail, upright, moved down where it would cover another
     const a = from * Math.PI / 180, lr = tail + 14;
     let x = S / 2 + Math.sin(a) * lr, y = S / 2 - Math.cos(a) * lr;
@@ -1151,7 +1240,10 @@ document.addEventListener("keydown", (e) => {
     if (x < chartGeom.L0 || x > chartGeom.R0) { tip.style.display = "none"; return; }
     const k = indexAt(tAt(x));
     const alt = D.galt[k], pa = D.tr.baro_alt[k];
-    tip.innerHTML = `${clockText(D.t[k])}${clockSuffix()}<br>GNSS ${Number.isFinite(alt) ? alt.toFixed(0) + " m" : "–"} · pressure ${Number.isFinite(pa) ? pa.toFixed(0) + " m" : "–"}<br>` +
+    // the ISA altitude of the same pressure over the QNH of the log
+    const qa = D.qnh > 0 ? 44330.76923 - (44330.76923 - pa) * Math.pow(1013.25 / D.qnh, 1 / 5.25588) : NaN;
+    tip.innerHTML = `${clockText(D.t[k])}${clockSuffix()}<br>GNSS ${Number.isFinite(alt) ? alt.toFixed(0) + " m" : "–"} · pressure ${Number.isFinite(pa) ? pa.toFixed(0) + " m" : "–"}${Number.isFinite(qa) ? ` · QNH ${qa.toFixed(0)} m` : ""}<br>` +
+      ($("showgross").checked ? `Air Mass gross ${fmtV(D.amGross[k])} m/s<br>` : "") +
       `cockpit ${fmtV(D.am[k])}${D.amOk[k] ? "" : " (netto)"} · netto ${fmtV(D.netto[k])} · GNSS netto ${fmtV(D.gnss[k])} m/s` +
       (() => { const sec = D.sec[secAt(k)]; return sec ? `<br>${COLOR_BY[colorBy()]} (1 s) ${fmtV(sec.v[colorBy()])} m/s` : ""; })();
     tip.style.display = "block";
@@ -1198,8 +1290,8 @@ $("export").onclick = () => {
 // (21/128, "Harmonics" high) summed and clipped to the DAC half amplitude, the gain faded one step per 4 table periods,
 // the two step sequence (tone, break), the frequency reloaded at each step. Audio::calculateFrequency at 10 Hz: centre
 // 500 Hz, 2 octaves, range 5 m/s, exponent 1, no deadband (set to 0), lift chopped, sink continuous.
-// It follows the selected source: the cockpit vario in Air Mass mode (AirMass where valid, else netto), TE netto, or
-// the device's TE vario.
+// It follows the selected source: the cockpit vario in Air Mass mode (AirMass where valid, else netto), Air Mass Gross,
+// TE netto, or the device's TE vario.
 const XCV_WORKLET = `
 const SR = 66150, SPB = 512; // DAC sample rate, samples per DMA buffer
 const SINE = [0, 3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 32, 35, 37, 40, 42, 45, 47, 49, 51, 53, 54, 56, 57, 58, 60, 61, 61, 62,
@@ -1304,7 +1396,7 @@ async function soundOn() {
     if (!D || !playing) { audio.node.port.postMessage({ off: true }); return; }
     // the device's sound follows its vario (te_vario): Air Mass mode, Netto mode, or the TE vario itself
     const k = indexAt(T), src = $("soundsrc").value;
-    const v = src === "netto" ? D.netto[k] : src === "te" ? D.tr.te_vario[k] : D.am[k];
+    const v = src === "netto" ? D.netto[k] : src === "te" ? D.tr.te_vario[k] : src === "gross" ? D.amGross[k] : D.am[k];
     audio.node.port.postMessage(Number.isFinite(v) ? { v } : { off: true });
   }, 100);
 }
