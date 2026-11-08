@@ -39,6 +39,7 @@ public:
     bool detectRest();
     void saveBias();
     inline const vector_f& getBias() const { return _bias_estimator.getRef(); }
+    inline vector_f getUngated() const { return getHead() - _bias_estimator.getRef(); }
 
 private:
     void pushBias(vector_f& bias);

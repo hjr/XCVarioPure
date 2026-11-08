@@ -74,7 +74,7 @@ void Gyroscope::postProcess() {
     static bool rest_old = false;
     const vector_f& gyro = getHead();
 
-    _processed = gyro - _bias_estimator.getRef(); // a corrected measurment
+    _processed = getUngated(); // a corrected measurment
     // Gating ignores Gyro drift < 0.5 deg per second (default)
     rps_t gate = Units::deg_to_rad(gyro_gating.get());
     _processed.x = abs(_processed.x) < gate ? 0.0 : _processed.x;

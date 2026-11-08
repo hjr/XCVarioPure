@@ -77,7 +77,7 @@ void NmeaPrtcl::sendSens()
     // optional IMU data
     if (accSensor && gyroSensor) {
         const vector_f& acc = accSensor->getRef();
-        vector_f gyro_deg = gyroSensor->getRef() * rad2deg(1.f);
+        vector_f gyro_deg = gyroSensor->getUngated() * rad2deg(1.f);
         sprintf(tmp, ",%.4f,%.4f,%.4f,%.4f,%.4f,%.4f", acc.x, acc.y, acc.z, gyro_deg.x, gyro_deg.y, gyro_deg.z);
         msg->buffer += tmp;
     } else {
