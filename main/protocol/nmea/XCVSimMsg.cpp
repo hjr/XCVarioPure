@@ -76,15 +76,15 @@ void NmeaPrtcl::sendSens()
 
     // optional IMU data
     if (accSensor && gyroSensor) {
-        const vector_f& acc = accSensor->getRef();
-        vector_f gyro_deg = gyroSensor->getRef() * rad2deg(1.f);
+        const vector_f& acc = accSensor->getHead();
+        vector_f gyro_deg = gyroSensor->getHead() * rad2deg(1.f);
         sprintf(tmp, ",%.4f,%.4f,%.4f,%.4f,%.4f,%.4f", acc.x, acc.y, acc.z, gyro_deg.x, gyro_deg.y, gyro_deg.z);
         msg->buffer += tmp;
     } else {
         msg->buffer += ",,,,,,";
     }
     if (magSensor) {
-        const vector_f& mag = magSensor->getRef();
+        const vector_f& mag = magSensor->getHead();
         sprintf(tmp, ",%.4f,%.4f,%.4f", mag.x, mag.y, mag.z);
         msg->buffer += tmp;
     }
