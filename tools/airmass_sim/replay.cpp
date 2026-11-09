@@ -111,8 +111,12 @@ int main(int argc, char** argv) {
     }
 
     const AirMassEKF& ekf = r.pipeline().ekf();
-    std::printf("%ld lines: %ld cycles (%.0f s), %ld GNSS, %ld compass, %ld starts; %ld cycles before the first start, %ld damaged\n", r.lines, r.frames,
-                (r.t_last - r.t_first) * 1e-3, r.gnss, r.headings, r.starts, r.skipped, r.bad);
+    std::printf("%ld lines: %ld cycles (%.0f s), %ld GNSS, %ld compass, %ld starts; %ld skipped cycles, %ld damaged\n", r.lines, r.frames,
+                r.frames ? (r.t_last - r.t_first) * 1e-3 : 0., r.gnss, r.headings, r.starts, r.skipped, r.bad);
+    if (r.recovered_starts) {
+        std::printf("recovered %ld missing starts (%ld with estimated attitude); initialization is approximate, allow settling\n",
+                    r.recovered_starts, r.estimated_attitude_starts);
+    }
     std::printf("learned: k_tas %.3f, pitch ofs %.2f°, aoa scale %.3f, gnss latency %.0f ms, gyro z bias %.3f°/s\n", ekf.kTas(),
                 rad_to_deg(ekf.pitchOffset()), ekf.aoaScale(), ekf.gnssLatency() * 1000.f, rad_to_deg(ekf.yawRateBias()));
     bool ok = r.frames > 0;

@@ -81,6 +81,7 @@ class SensorConventions:
         self.sensor = self.prev = None
         self.kelvin = self.temperature_pairs = self.ground = self.rates = 0
         self.gravity_declared = self.gravity_corrected = self.rate_declared = self.rate_corrected = 0.0
+        self.quiet_gravity = self.gravity_matches = self.force_matches = 0
 
     @staticmethod
     def number(f, i):
@@ -117,6 +118,16 @@ class SensorConventions:
                 self.gravity_corrected += (-s["a"][j] / norm - force[j])**2
             self.ground += 1
         dt = s["t"] - self.prev[0] if self.prev else 0
+        # Infer missing metadata only from repeated, quiet low-speed attitude agreement plus gyro-rate evidence.
+        if (.15 < dt < .3 and s["q"] < 50 and .85 < norm < 1.15 and abs(roll) < math.pi / 6
+                and abs(pitch) < math.pi / 7 and abs(math.sin(pitch)) > .05
+                and abs(roll - self.prev[2]) / dt < math.pi / 180 and abs(pitch - self.prev[1]) / dt < math.pi / 180):
+            force = [math.sin(pitch), -math.sin(roll)*math.cos(pitch), -math.cos(roll)*math.cos(pitch)]
+            gravity_error = sum((-s["a"][j] / norm - force[j])**2 for j in range(3))
+            force_error = sum((s["a"][j] / norm - force[j])**2 for j in range(3))
+            self.quiet_gravity += 1
+            self.gravity_matches += gravity_error < .01
+            self.force_matches += force_error < .01
         if 0.15 < dt < 0.3 and abs(roll) < math.pi / 3 and abs(pitch) < math.pi / 6 and rate < 1.4:
             measured = (pitch - self.prev[1]) / dt
             predicted = s["g"][1]*math.cos(roll) - s["g"][2]*math.sin(roll)
@@ -124,7 +135,7 @@ class SensorConventions:
                 self.rate_declared += (-predicted - measured)**2
                 self.rate_corrected += (predicted - measured)**2
                 self.rates += 1
-        self.prev = (s["t"], pitch)
+        self.prev = (s["t"], pitch, roll)
 
     def apply(self, out):
         out["temperature_kelvin"] = self.kelvin >= 20 and self.kelvin >= self.temperature_pairs * 0.8
@@ -134,6 +145,11 @@ class SensorConventions:
                 and self.rate_corrected < self.rate_declared * 0.5):
             out["fmt"] = (7, [-1, -1, -1, 1, 1, 1])
             out["axes_corrected"] = True
+        elif (out["fmt"] is None and self.quiet_gravity >= 50 and self.gravity_matches >= self.quiet_gravity * .8
+                and self.force_matches < self.quiet_gravity * .1 and self.rates >= 100
+                and self.rate_corrected < self.rate_declared * .5):
+            out["fmt"] = (7, [-1, -1, -1, 1, 1, 1])
+            out["axes_inferred"] = True
 
 
 def scan_log(lines):
@@ -319,6 +335,8 @@ def main():
     scan = scan_log(lines)
     if scan.get("axes_corrected"):
         print("Corrected inconsistent legacy FMT: gravity-vector acceleration and unchanged body gyros (verified against PXCV attitude)")
+    if scan.get("axes_inferred"):
+        print("Inferred missing sensor axes: gravity-vector acceleration and unchanged body gyros (verified against PXCV attitude)")
     monotone = StampRepair()
     initial_setup = scan["ca1"] or scan["cmn"]
     if initial_setup is not None and len(initial_setup) == 4:
@@ -414,11 +432,10 @@ def main():
                 oat = estimated_temperature(gnss_alt if math.isfinite(gnss_alt) else alt)
                 temperature_estimated_samples += 1
             tas = ias * math.sqrt(RHO0 * R_AIR * (oat + 273.15) / p) if p > 0 else 0.0
-            gnss_speed = fix["speed"] if fix else 0.0
-
-            # airborne: flying speed and moving over ground for 10 s; landed: 30 s slow
+            # Airspeed detects flight without recorded GNSS, including a headwind/low ground speed.
+            # Require 100 flying-speed samples; landed: 300 slow samples.
             if not running:
-                above = above + 1 if (ias > 20.0 and gnss_speed > 15.0) else 0
+                above = above + 1 if ias > 20.0 else 0
                 if above >= 100:
                     running = True
                     starts += 1

@@ -42,6 +42,7 @@ private:
     uint16_t _gnss_epoch = 0;
     uint16_t _count = 0;
     bool _active = false;
+    bool _recording = false;
 };
 
 // NMEA output of the estimator ("NMEA Output"): $PXCVA, with the recording also the input sentences of

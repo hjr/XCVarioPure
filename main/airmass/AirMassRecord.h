@@ -99,6 +99,25 @@ inline std::string start(const Start& st) {
     return s;
 }
 
+// A new recording can join a running estimator. Capture its current calibration/attitude without resetting it;
+// this seeds a new replay, rather than restoring the EKF's complete dynamic state and covariance.
+inline Start snapshot(Pipeline& pipe, const Frame& next) {
+    Start st;
+    st.t = next.time_ms;
+    st.alt = next.baro_alt;
+    for (int i = 0; i < 3; ++i) {
+        st.down[i] = pipe.attitude().down()[i];
+        st.gyro[i] = next.gyro[i];
+    }
+    const AirMassEKF& ekf = pipe.ekf();
+    st.warm.k_tas = ekf.kTas();
+    st.warm.pitch_ofs = ekf.pitchOffset();
+    st.warm.latency = ekf.gnssLatency();
+    st.warm.k_aoa = ekf.aoaScale();
+    for (int i = 0; i < FlapOffsets::N; ++i) st.warm.flap_ofs[i] = pipe.flaps().offset(i);
+    return st;
+}
+
 inline std::string frame(const Frame& f) {
     std::string s = begin("$PXCVR");
     appendu(s, f.time_ms);

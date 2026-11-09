@@ -17,6 +17,21 @@ Opening a new log automatically selects its glider from `CA1` or older `CMN` met
 glider selector. A saved manual choice from a previous log is replaced; you can override the type for the current
 log. Configuration can occur later in the file. Logs with no recognized type use the ASG 29/18 fallback.
 
+Logs can begin airborne. Sensor logs start after 100 consecutive samples above 20 m/s IAS (10 seconds at 10 Hz).
+GNSS is optional: logs without GNSS can replay the instruments and AirMass vario, while wind and the GNSS vario
+reference remain unavailable. A low ground speed in a headwind also does not prevent startup.
+AirMass recordings normally use their `PXCVS` initialization. When it is missing,
+replay waits for a recorded `PXCVC` setup and usable flying-speed sensor data, then starts with default calibration
+(or the selected warm-start override). It uses a recent logged `$PXCV` roll/pitch when available; otherwise it
+estimates gravity after accounting for the coordinated-turn acceleration from gyro rates and TAS. Implausible
+motion references are skipped until usable data arrives. The summary identifies recovered starts and estimated
+attitudes. Early output needs settling and wind still needs heading alignment; recovery cannot reproduce the
+missing estimator history exactly. An explicit `PXCVX` stop requires a new start record.
+
+The device sends a fresh setup and `PXCVS` snapshot if Recording is enabled while AirMass is already running.
+The snapshot carries its current attitude, calibration and flap offsets without resetting the live estimator.
+A logger joining an existing recording stream can still miss the snapshot and use the recovery path above.
+
 Sensor-log temperatures outside −60…+50°C, missing or non-finite values use an estimate: **25°C at sea level,
 decreasing by 6.5°C per kilometre**. Altitude comes from GNSS, falling back to ISA pressure altitude. This estimate
 feeds TAS and the replay; plausible logged temperatures remain unchanged. The replay summary reports how many
@@ -74,7 +89,15 @@ without that evidence retain their declared mapping. Kelvin OAT is recognized by
 readout; other implausible/missing temperatures retain the altitude-based fallback. Applied corrections appear in
 the replay summary. These conversions do not modify the flight log or the live estimator.
 
+If `FMT` is absent, gravity-vector acceleration can also be identified from at least 50 quiet low-speed tilted
+attitudes (at least 80% must agree) and at least 100 pitch-rate comparisons supporting unchanged body gyros.
+This covers older RR logs such as `2026-03-12_10-42_RR.nmea`. Missing metadata is left alone when those checks fail;
+the summary reports inferred axes separately from corrections to an existing declaration.
+
 Run `python3 tools/airmass_sim/conversion_test.py` for the shared JavaScript/Python convention checks.
+`replay_airborne_start` in CTest covers snapshots, banked recovery with both attitude filters, configuration order,
+invalid inputs and stop markers. After rebuilding the web module, run
+`node tools/airmass_sim/web/replay_start_test.js` for converter/WASM/page integration.
 
 Files: `airmass_wasm.cpp` (the module, on `replay_core.h` like `airmass_replay`), `convert.js` (log → recording;
 keep in step with `sens2rec.py`), `replay.js` (runs the module), `make_gliders.py` (the glider list from the firmware's tables), `deploy.sh` (publishes only the page files), `check.js` (node: the converter against

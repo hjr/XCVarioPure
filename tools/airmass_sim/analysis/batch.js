@@ -13,11 +13,16 @@ const clock = (u) => Number.isFinite(u) ? [Math.floor(u / 3600), Math.floor(u / 
 async function evaluate(M, file) {
   const bytes = fs.readFileSync(file);
   const conv = convert((file.endsWith('.gz') ? zlib.gunzipSync(bytes) : bytes).toString('latin1'), { glider: 'log' });
+  const replay = await runReplay(M, conv.rec, {});
+  if (!conv.track.n || !replay.n) return { file: path.basename(file), bytes: bytes.length,
+    sha256: crypto.createHash('sha256').update(bytes).digest('hex'), replayable: false,
+    reason: conv.track.n ? 'No usable airborne initialization' : 'No sensor samples', summary: replay.summary };
   globalThis.fileName = path.basename(file);
-  globalThis.D = build(conv, await runReplay(M, conv.rec, {}));
+  globalThis.D = build(conv, replay);
   derive(D);
   const c = D.tr, r = D.rep.cols, n = D.n;
   const { free } = freeMask(D, k => c.ias[k] > 60 / 3.6 && c.gnss_speed[k] > 10);
+  const airborne = freeMask(D, k => c.ias[k] > 60 / 3.6).free; // availability without a GNSS prerequisite
   const ok = Uint8Array.from(free, (v, k) => v && D.amOk[k] && Number.isFinite(D.netto[k]) && Number.isFinite(D.gnssNetInert[k]));
   const shown = { AirMass: D.am, TE: D.netto }, equal = { AirMass: dampSeries(D.amRaw, ok), TE: D.netto };
   // Score on a time grid: 100 sensor rows are not necessarily ten seconds in these logs.
@@ -81,10 +86,17 @@ async function evaluate(M, file) {
       cockpitUnshifted: score(mask, ref, cockpit, { AirMass: 0, TE: 0 }) };
   }
   const status = { samples: 0, vario: 0, wind: 0, degraded: 0, fresh: 0, aligned: 0 }, windSpeed = [], beta = [];
-  let freeSeconds = 0, scoredSeconds = 0;
+  const airborneStatus = { samples: 0, vario: 0, wind: 0, degraded: 0, fresh: 0, aligned: 0 };
+  let freeSeconds = 0, scoredSeconds = 0, airborneSeconds = 0;
   for (let k = 0; k < n; k++) {
     const dt = k ? Math.min(0.5, Math.max(0, D.t[k] - D.t[k-1])) : 0;
     freeSeconds += free[k] * dt; scoredSeconds += ok[k] * dt;
+    if (airborne[k] && D.ai[k] >= 0) {
+      const s = r.status[D.ai[k]];
+      airborneSeconds += dt;
+      airborneStatus.samples++;
+      for (const [name, bit] of Object.entries({ vario: 1, wind: 2, fresh: 4, aligned: 8, degraded: 16 })) if (s & bit) airborneStatus[name]++;
+    }
     if (!free[k] || D.ai[k] < 0) continue;
     const i = D.ai[k], s = r.status[i]; status.samples++;
     for (const [name, bit] of Object.entries({ vario: 1, wind: 2, fresh: 4, aligned: 8, degraded: 16 })) if (s & bit) status[name]++;
@@ -93,8 +105,11 @@ async function evaluate(M, file) {
   }
   const motion = {};
   for (const [name,s] of Object.entries(shown)) {
+    const gridSeries = name === 'AirMass' ? regular.cockpitAirMass : regular.TE;
     let sum = 0, count = 0;
-    for (let k = 0; k + 10 < n; k += 5) if (ok[k] && ok[k+10] && Number.isFinite(s[k]) && Number.isFinite(s[k+10])) { sum += (s[k+10]-s[k])**2; count++; }
+    for (let k = 0; k + 10 < gridN; k += 5) if (gridOk[k] && gridOk[k+10] && Number.isFinite(gridSeries[k]) && Number.isFinite(gridSeries[k+10])) {
+      sum += (gridSeries[k+10]-gridSeries[k])**2; count++;
+    }
     motion[name] = count ? Math.sqrt(sum/count) : null;
   }
   const circles = gnssCircleWind(D), errors = [], avgErrors = [];
@@ -118,14 +133,17 @@ async function evaluate(M, file) {
     if (i < 0) continue;
     if (i) rejectedGnss += Math.max(0, r.gnss_rejects[i] - r.gnss_rejects[i-1]);
     for (const [name, value] of Object.entries({ raw: r.vario[i], valid: D.amOk[k] ? r.vario[i] : NaN, displayed: D.am[k] })) {
-      if (Number.isFinite(value) && (!extremes[name] || Math.abs(value) > Math.abs(extremes[name].value))) extremes[name] = { utc: clock(c.utc[k]), value, status: r.status[i] };
+      if (Number.isFinite(value) && (!extremes[name] || Math.abs(value) > Math.abs(extremes[name].value))) extremes[name] = {
+        utc: clock(c.utc[k]), elapsedSeconds: D.t[k] - D.tStart, value, status: r.status[i], iasKmh: c.ias[k] * 3.6,
+        tasKmh: c.tas[k] * 3.6, rollDeg: r.roll_deg[i], pitchDeg: r.pitch_deg[i] };
     }
   }
   return { file: path.basename(file), bytes: bytes.length, sha256: crypto.createHash('sha256').update(bytes).digest('hex'),
-    glider: conv.glider, gliderFrom: conv.gliderFrom, mass: conv.mass,
+    replayable: true, glider: conv.glider, gliderFrom: conv.gliderFrom, mass: conv.mass,
     samples: n, hours: (D.t[n-1]-D.t[0])/3600, freeHours: freeSeconds/3600, scoredHours: scoredSeconds/3600,
     temperatureEstimatedSamples: conv.temperatureEstimatedSamples, temperatureKelvinSamples: conv.temperatureKelvinSamples,
-    axesCorrected: conv.axesCorrected, sensorGapsOver300ms: sensorGaps, rejectedGnss, extremes, status, summary: D.rep.summary,
+    axesCorrected: conv.axesCorrected, axesInferred: conv.axesInferred,
+    sensorGapsOver300ms: sensorGaps, rejectedGnss, extremes, status, airborneStatus, airborneHours: airborneSeconds/3600, summary: D.rep.summary,
     gnss: { fixes: D.fixes.length, gapsOver3s: gaps, gapSeconds, maxGap, altitudeJumpsOver30mps: altitudeJumps },
     vario: results, needleMotion1s: motion,
     wind: { validSpeedMedian: quantile(windSpeed,0.5), validSpeedP95: quantile(windSpeed,0.95), independentTurns: errors.length,
@@ -134,13 +152,13 @@ async function evaluate(M, file) {
 }
 (async () => {
   const M = await require(path.join(web,'airmass.js'))();
-  const implementation = Object.fromEntries(['convert.js', 'airmass.js'].map(name => [name,
+  const implementation = Object.fromEntries(['convert.js', 'airmass.js', 'index.html', 'replay.js', '../analysis/page.js', '../analysis/batch.js'].map(name => [name,
     crypto.createHash('sha256').update(fs.readFileSync(path.join(web, name))).digest('hex')]));
   const output = { created: new Date().toISOString(), implementation,
-    notes: 'Default AirMass, Mahony off, logged glider/weight, validated axis/Kelvin corrections and temperature fallback. Same 4 s damping for main scores; each series shifted by its fitted 0–6 s delay. CockpitUnshifted uses displayed AirMass damping without time shifts. Reference is not truth. Free-flight mask is heuristic. Availability includes all eligible measured flight rows; vario scoring requires AirMass-valid reference overlap.', flights: [] };
+    notes: 'Default AirMass, Mahony off, logged glider/weight, validated/inferred axes, Kelvin corrections and temperature fallback. Same 4 s damping for main scores; each series shifted by its fitted 0–6 s delay. CockpitUnshifted uses displayed AirMass damping without time shifts. Reference is not truth. Free-flight mask is heuristic. status retains IAS/GS eligibility for historical comparisons; airborneStatus removes the GNSS requirement. Vario scoring requires AirMass-valid reference overlap. NeedleMotion1s now uses the regular time grid, not row offsets.', flights: [] };
   for (const file of process.argv.slice(3)) {
     const row = await evaluate(M,file); output.flights.push(row);
     fs.writeFileSync(process.argv[2],JSON.stringify(output,null,2)+'\n');
-    console.log(row.file, JSON.stringify({glider: row.glider, hours: row.scoredHours, error10: row.vario.inertial.scores[10].all, wind: row.wind}));
+    console.log(row.file, row.replayable ? JSON.stringify({glider: row.glider, hours: row.scoredHours, error10: row.vario.inertial.scores[10].all, wind: row.wind}) : row.reason);
   }
 })().catch(e => { console.error(e); process.exitCode = 1; });
