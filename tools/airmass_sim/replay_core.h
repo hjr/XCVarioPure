@@ -34,6 +34,7 @@ public:
     long lines = 0, frames = 0, gnss = 0, headings = 0, starts = 0, skipped = 0, bad = 0;
     long recovered_starts = 0, estimated_attitude_starts = 0;
     uint32_t t_first = 0, t_last = 0;
+    double seconds = 0.;
     Stats vario_diff;
     long status_diff = 0, outputs = 0;
     std::string error; // set when a setting is unknown, the replay then stops
@@ -151,20 +152,34 @@ private:
 #ifndef AIRMASS_NO_CONFIG_SETTINGS
         if (_use_mahony) {
             _mahony_q = Quaternion::fromDownVector({st.down[0], st.down[1], st.down[2]});
+            _mahony_supported_q = _mahony_q;
             _mahony_omega = 0.f;
             // The start already supplies gravity. Fast accelerometer leveling would erase a banked start.
             _mahony_calibrating = 0;
             _mahony_time = st.t;
+            _mahony_gyro = {std::isfinite(st.gyro[0]) ? st.gyro[0] : 0.f,
+                            std::isfinite(st.gyro[1]) ? st.gyro[1] : 0.f,
+                            std::isfinite(st.gyro[2]) ? st.gyro[2] : 0.f};
+            _mahony_force = {-st.down[0], -st.down[1], -st.down[2]};
+            _mahony_tas = 0.f;
+            for (auto& clock : _mahony_samples) clock = {};
         }
 #endif
         _running = true;
         _pending_start = false;
         _allow_recovery = true;
+        _cycle_time = st.t;
         if (starts++ == 0) t_first = st.t;
     }
 
     bool recover(const Frame& f) {
         if (!_configured || !_allow_recovery || _pending_start) return false;
+#ifndef AIRMASS_NO_CONFIG_SETTINGS
+        if (f.valid != Frame::ALL) return false;
+        if (f.sample_times) for (uint32_t stamp : f.sample_ms) {
+            if ((uint32_t)(f.time_ms - stamp) > 300) return false;
+        }
+#endif
         if (!std::isfinite(f.baro_alt) || !std::isfinite(f.ias) || !std::isfinite(f.tas) ||
             f.ias < std::max(10.f, _setup.polar.v_stall * 0.8f) || f.tas <= 10.f) return false;
         for (int i = 0; i < 3; ++i) {
@@ -206,13 +221,39 @@ private:
     }
 
     void stepFrame() {
+        if ((int32_t)(_fr.time_ms - _cycle_time) > 0) {
+            seconds += (_fr.time_ms - _cycle_time) * 1e-3;
+            _cycle_time = _fr.time_ms;
+        }
 #ifndef AIRMASS_NO_CONFIG_SETTINGS
         if (_use_mahony) {
-            const float dt = std::clamp((_fr.time_ms - _mahony_time) / 1000.f, 0.05f, 0.3f);
+            const uint32_t elapsed_ms = _fr.time_ms - _mahony_time;
+            const float dt = elapsed_ms ? std::min(elapsed_ms * 1e-3f, 0.3f) : 0.05f;
             _mahony_time = _fr.time_ms;
-            const vector_f gyro{_fr.gyro[0], _fr.gyro[1], _fr.gyro[2]};
-            MahonyAHRS::update(_mahony_q, _mahony_omega, _mahony_calibrating, {},
-                              {_fr.f_body[0], _fr.f_body[1], _fr.f_body[2]}, gyro, _fr.tas, dt);
+            bool accel_ok = _fr.valid & Frame::ACCEL, gyro_ok = _fr.valid & Frame::GYRO;
+            for (int i = 0; i < 3; ++i) {
+                accel_ok = accel_ok && std::isfinite(_fr.f_body[i]);
+                gyro_ok = gyro_ok && std::isfinite(_fr.gyro[i]);
+            }
+            const uint32_t accel_ms = _fr.sample_times ? _fr.sample_ms[0] : _fr.time_ms;
+            const uint32_t gyro_ms = _fr.sample_times ? _fr.sample_ms[1] : _fr.time_ms;
+            const uint32_t airspeed_ms = _fr.sample_times ? _fr.sample_ms[3] : _fr.time_ms;
+            const bool new_accel = _mahony_samples[0].observe(_fr.time_ms, accel_ms, accel_ok);
+            const bool new_gyro = _mahony_samples[1].observe(_fr.time_ms, gyro_ms, gyro_ok);
+            if (new_accel) _mahony_force = {_fr.f_body[0], _fr.f_body[1], _fr.f_body[2]};
+            if (new_gyro) _mahony_gyro = {_fr.gyro[0], _fr.gyro[1], _fr.gyro[2]};
+            if ((new_accel && _mahony_samples[0].interval_ms > 10000) || (new_gyro && _mahony_samples[1].interval_ms > 10000)) {
+                _mahony_q = _mahony_supported_q;
+                _mahony_omega = 0.f;
+            }
+            if (_mahony_samples[2].observe(_fr.time_ms, airspeed_ms, (_fr.valid & Frame::AIRSPEED) && std::isfinite(_fr.tas))) _mahony_tas = _fr.tas;
+            const vector_f& gyro = _mahony_gyro;
+            if (accel_ok && gyro_ok && _mahony_samples[0].age(_fr.time_ms) <= 300 && _mahony_samples[1].age(_fr.time_ms) <= 300) {
+                MahonyAHRS::update(_mahony_q, _mahony_omega, _mahony_calibrating, {}, _mahony_force, gyro, _mahony_tas, dt);
+                _mahony_supported_q = _mahony_q;
+            } else {
+                _mahony_q = _mahony_q * Quaternion::fromGyro(gyro, dt);
+            }
             const vector_f down = _mahony_q.rotateInv({0.f, 0.f, 1.f});
             ExternalAttitude att;
             for (int i = 0; i < 3; ++i) att.down[i] = down[i];
@@ -246,16 +287,20 @@ private:
     Pipeline _pipe;
     bool _use_mahony = false;
 #ifndef AIRMASS_NO_CONFIG_SETTINGS
-    Quaternion _mahony_q;
+    Quaternion _mahony_q, _mahony_supported_q;
     float _mahony_omega = 0.f;
     int8_t _mahony_calibrating = 0;
     uint32_t _mahony_time = 0;
+    vector_f _mahony_force, _mahony_gyro;
+    float _mahony_tas = 0.f;
+    SampleClock _mahony_samples[3];
 #endif
     bool _running = false, _configured = false, _open = false;
     bool _pending_start = false, _allow_recovery = true;
     bool _have_logged_attitude = false, _attitude_timed = false, _have_frame_time = false;
     float _logged_down[3] = {};
     uint32_t _attitude_time = 0, _last_frame_time = 0;
+    uint32_t _cycle_time = 0;
     float _device_vario = NAN;
     airmass::record::Sentence _s;
     Setup _setup;

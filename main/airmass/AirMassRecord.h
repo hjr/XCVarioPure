@@ -7,7 +7,7 @@
 //   $PXCVC,lever,mass,area,a0,a1,a2,vstall,valid,wresp,vresp,teadj   setup (at start, on change, every 10s)
 //   $PXCVS,t,alt,d0,d1,d2,g0,g1,g2,ktas,pitch,lat,kaoa,f0,..,f6,fmt    estimator start: AHRS down axis, gyro, warm start
 //                                                                     fmt 2: lat is the latency; absent: an offset to 0.75 s
-//   $PXCVR,t,fx,fy,fz,gx,gy,gz,ias,tas,alt,lever                      one cycle (10Hz): specific force [g], gyro [rad/s]
+//   $PXCVR,t,fx,fy,fz,gx,gy,gz,ias,tas,alt,lever[,ta,tg,tb,tv,valid]  one poll: optional source times and valid mask
 //   $PXCVG,t,vn,ve,sigma,latency,prior,wn0,we0[,fix_utc_ms]           GNSS velocity (arrival, nominal latency, optional source epoch)
 //   $PXCVH,t,psi,sigma                                                compass heading fused
 //   $PXCVX,t                                                          estimator stopped
@@ -127,6 +127,10 @@ inline std::string frame(const Frame& f) {
     appendf(s, "%.3f", f.tas);
     appendf(s, "%.2f", f.baro_alt);
     appendf(s, "%.3f", f.flap_lever);
+    if (f.sample_times) {
+        for (uint32_t stamp : f.sample_ms) appendu(s, stamp);
+        appendu(s, f.valid);
+    }
     finish(s);
     return s;
 }
@@ -269,6 +273,7 @@ inline bool decode(const Sentence& s, Start& st) {
 
 inline bool decode(const Sentence& s, Frame& fr) {
     if (!s.is("PXCVR", 11)) return false;
+    if (s.n > 11 && s.n < 15) return false;
     const double* f = s.f;
     fr.time_ms = static_cast<uint32_t>(f[0]);
     for (int i = 0; i < 3; ++i) {
@@ -279,6 +284,18 @@ inline bool decode(const Sentence& s, Frame& fr) {
     fr.tas = f[8];
     fr.baro_alt = f[9];
     fr.flap_lever = f[10];
+    fr.sample_times = s.n >= 15;
+    fr.valid = Frame::ALL;
+    if (fr.sample_times) {
+        for (int i = 0; i < 4; ++i) {
+            if (!std::isfinite(f[11 + i]) || f[11 + i] < 0 || f[11 + i] > UINT32_MAX) return false;
+            fr.sample_ms[i] = static_cast<uint32_t>(f[11 + i]);
+        }
+        if (s.n >= 16) {
+            if (!std::isfinite(f[15]) || f[15] < 0 || f[15] > static_cast<unsigned>(Frame::ALL)) return false;
+            fr.valid = static_cast<uint8_t>(f[15]);
+        }
+    }
     return true;
 }
 

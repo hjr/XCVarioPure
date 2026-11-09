@@ -8,6 +8,7 @@
 #include "AirMassEKF.h"
 #include "AirMassFlaps.h"
 #include "AirMassInput.h"
+#include "AirMassSampling.h"
 #include "AirMassWindAverage.h"
 
 #include <algorithm>
@@ -59,12 +60,17 @@ struct Warm {
 
 // the raw measurements of one cycle
 struct Frame {
+    enum : uint8_t { ACCEL = 1, GYRO = 2, BARO = 4, AIRSPEED = 8, ALL = 15 };
     uint32_t time_ms = 0;
     float f_body[3] = {0.f, 0.f, -1.f}; // g, specific force at the IMU, body NED
     float gyro[3] = {};                 // rad/s, body rates (bias corrected, without the gating dead zone)
     float ias = 0.f, tas = 0.f;         // m/s, as measured
     float baro_alt = NAN;               // m, static port altitude (ISA)
     float flap_lever = NAN;             // lever position 0 .. N-1 (fractional between notches), NAN without flaps
+    // Optional source timestamps, in ACCEL/GYRO/BARO/AIRSPEED order. Old logs treat each frame as fresh.
+    uint32_t sample_ms[4] = {};
+    bool sample_times = false;
+    uint8_t valid = ALL;
 };
 
 // Optional attitude supplied by replay experiments instead of the air-data-aided attitude.
@@ -76,7 +82,6 @@ struct ExternalAttitude {
 class Pipeline {
 public:
     static constexpr float GYRO_DOT_TAU = 0.2f; // s, low pass of the differentiated gyro (lever arm)
-    static constexpr float DUTY = 0.1f;         // s, nominal cycle
 
     // simulation experiments
     struct Options {
@@ -145,11 +150,13 @@ public:
 
     // start (or restart) with the device AHRS attitude: down axis in body coordinates
     void start(uint32_t time_ms, float baro_alt, const float down[3], const float gyro[3], const Warm& w) {
+        if (!std::isfinite(baro_alt)) baro_alt = 0.f;
         _ekf.reset(baro_alt, w.k_tas, w.pitch_ofs, w.latency, w.k_aoa);
         _flaps.load(w.flap_ofs);
         _att.reset(down);
+        std::copy(_att.down(), _att.down() + 3, _supported_down);
         for (int i = 0; i < 3; ++i) {
-            _gyro_prev[i] = gyro[i];
+            _gyro_prev[i] = std::isfinite(gyro[i]) ? gyro[i] : 0.f;
             _gyro_dot[i] = 0.f;
         }
         _roll_mem = 0.f;
@@ -158,14 +165,28 @@ public:
         _open = false;
         _have_frame = false;
         _have_attitude = false;
+        for (auto& clock : _samples) clock = {};
+        _values = Frame();
+        _values.baro_alt = baro_alt;
+        for (int i = 0; i < 3; ++i) _values.gyro[i] = _gyro_prev[i];
     }
 
     // one cycle: the estimator update, then the cycle's gnss() and heading(), then endCycle()
-    void step(const Frame& f, const ExternalAttitude* attitude = nullptr) {
+    void step(const Frame& source, const ExternalAttitude* attitude = nullptr) {
+        Frame f = source;
+        if (!f.sample_times) {
+            for (auto& stamp : f.sample_ms) stamp = f.time_ms;
+            f.sample_times = true;
+        }
         endCycle();
         const int32_t elapsed = (int32_t)(f.time_ms - _prev_time);
-        if (_have_frame && elapsed <= 0) return; // duplicate/backward sensor timestamps are not new measurements
-        if (elapsed > 10000) {
+        if (elapsed < 0 || (_have_frame && elapsed == 0)) return;
+        bool source_gap = false;
+        for (int i = 0; i < 2; ++i) {
+            source_gap = source_gap || (_samples[i].have && (f.valid & (1 << i)) &&
+                (int32_t)(f.time_ms - f.sample_ms[i]) >= 0 && (int32_t)(f.sample_ms[i] - _samples[i].time_ms) > 10000);
+        }
+        if (elapsed > 10000 || source_gap) {
             // No usable motion history remains after a long outage. Restart dynamics, retaining calibration
             // and the last attitude; do not integrate seconds of unobserved acceleration as if measured.
             Warm w;
@@ -174,10 +195,10 @@ public:
             w.latency = _ekf.gnssLatency();
             w.k_aoa = _ekf.aoaScale();
             for (int i = 0; i < FlapOffsets::N; ++i) w.flap_ofs[i] = _flaps.offset(i);
-            const float down[3] = {_att.down()[0], _att.down()[1], _att.down()[2]};
+            const float down[3] = {_supported_down[0], _supported_down[1], _supported_down[2]};
             start(f.time_ms, f.baro_alt, down, f.gyro, w);
         }
-        const bool gap = elapsed > 300;
+        const bool gap = elapsed > 300 || source_gap;
         if (gap && elapsed <= 10000) {
             // Causal reconstruction: hold the previous sample through missing time, not the future endpoint.
             // Inferred history is marked unusable for GNSS fusion; trust recovers only on measured cycles.
@@ -200,32 +221,58 @@ private:
         AirMassEKF::Input& in = _in;
         in = AirMassEKF::Input();
         in.time_ms = f.time_ms;
-        in.dt = std::clamp((f.time_ms - _prev_time) / 1000.f, 0.05f, 0.3f);
-        in.continuous = continuous;
+        const uint32_t elapsed_ms = f.time_ms - _prev_time;
+        in.dt = elapsed_ms ? std::min(elapsed_ms * 1e-3f, 0.3f) : 0.05f;
         _prev_time = f.time_ms;
-        in.baro_alt = f.baro_alt;
+        bool fresh[4];
+        uint8_t valid = f.valid;
+        for (int i = 0; i < 3; ++i) {
+            if (!std::isfinite(f.f_body[i])) valid &= ~Frame::ACCEL;
+            if (!std::isfinite(f.gyro[i])) valid &= ~Frame::GYRO;
+        }
+        if (!std::isfinite(f.baro_alt)) valid &= ~Frame::BARO;
+        if (!std::isfinite(f.ias) || !std::isfinite(f.tas)) valid &= ~Frame::AIRSPEED;
+        for (int i = 0; i < 4; ++i) fresh[i] = _samples[i].observe(f.time_ms, f.sample_ms[i], valid & (1 << i));
+        for (int i = 0; i < 3; ++i) {
+            if (fresh[0]) _values.f_body[i] = f.f_body[i];
+            if (fresh[1]) _values.gyro[i] = f.gyro[i];
+        }
+        if (fresh[2]) _values.baro_alt = f.baro_alt;
+        if (fresh[3]) { _values.ias = f.ias; _values.tas = f.tas; }
+        const uint32_t imu_age = std::max(_samples[0].age(f.time_ms), _samples[1].age(f.time_ms));
+        const bool motion = (valid & (Frame::ACCEL | Frame::GYRO)) == (Frame::ACCEL | Frame::GYRO) && imu_age <= 300;
+        const bool airdata = (valid & (Frame::BARO | Frame::AIRSPEED)) == (Frame::BARO | Frame::AIRSPEED) &&
+                             _samples[2].age(f.time_ms) <= 300 && _samples[3].age(f.time_ms) <= 300;
+        in.continuous = continuous && motion && !(fresh[0] && _samples[0].interval_ms > 300) &&
+                        !(fresh[1] && _samples[1].interval_ms > 300);
+        in.imu_age = imu_age == UINT32_MAX ? 10.f : imu_age * 1e-3f;
+        in.baro_fresh = fresh[2] && _samples[2].age(f.time_ms) <= 300;
+        in.kinematic_fresh = fresh[0] || fresh[1] || fresh[3];
+        in.energy_fresh = fresh[3];
+        in.baro_alt = _values.baro_alt;
 
         // the flap position decides the pitch/AoA offset the estimator works with
         _flaps.update(_ekf, f.flap_lever);
 
         // IMU and air data
         Raw raw;
-        const float a = DUTY / (GYRO_DOT_TAU + DUTY);
+        const float gyro_dt = _samples[1].interval_ms ? std::min(_samples[1].interval_ms * 1e-3f, 0.3f) : in.dt;
+        const float a = gyro_dt / (GYRO_DOT_TAU + gyro_dt);
         for (int i = 0; i < 3; ++i) {
-            raw.f_body[i] = f.f_body[i];
-            raw.gyro[i] = f.gyro[i];
-            if (continuous) _gyro_dot[i] += ((f.gyro[i] - _gyro_prev[i]) / in.dt - _gyro_dot[i]) * a;
-            else _gyro_dot[i] = 0.f; // the angular acceleration inside a gap was not measured
-            _gyro_prev[i] = f.gyro[i];
+            raw.f_body[i] = _values.f_body[i];
+            raw.gyro[i] = _values.gyro[i];
+            if (!in.continuous) _gyro_dot[i] = 0.f;
+            else if (fresh[1]) _gyro_dot[i] += ((raw.gyro[i] - _gyro_prev[i]) / gyro_dt - _gyro_dot[i]) * a;
+            if (fresh[1]) _gyro_prev[i] = raw.gyro[i];
             raw.gyro_dot[i] = _gyro_dot[i];
         }
         raw.lever_arm = _setup.lever_arm;
-        raw.ias = f.ias;
-        raw.tas = f.tas;
+        raw.ias = _values.ias;
+        raw.tas = _values.tas;
         raw.mass = _setup.mass;
         raw.wing_area = _setup.wing_area;
         const AirData air = airData(raw, _ekf);
-        raw.polar_sink_ias = _setup.polar.sink(_ekf.config().polar_calibrated > 0.5f ? air.ias : f.ias, air.n_lift);
+        raw.polar_sink_ias = _setup.polar.sink(_ekf.config().polar_calibrated > 0.5f ? air.ias : raw.ias, air.n_lift);
 
         // attitude: aided by the air velocity direction, with the estimator's body z gyro bias (the gravity reference
         // cannot learn it in straight flight)
@@ -235,7 +282,7 @@ private:
             in.yaw_rate = attitude->yaw_rate;
             std::copy(std::begin(attitude->down), std::end(attitude->down), raw.down_body);
         } else {
-            _att.update(raw.gyro, air.f_cg, _ekf.kTas() * raw.tas, air.alpha, in.dt, _ekf.yawRateBias(), continuous);
+            _att.update(raw.gyro, air.f_cg, _ekf.kTas() * raw.tas, air.alpha, in.dt, _ekf.yawRateBias(), in.continuous);
             in.roll = _att.roll();
             in.pitch = _att.pitch();
             in.yaw_rate = _att.yawRate(raw.gyro);
@@ -244,10 +291,11 @@ private:
             }
         }
         fillInput(raw, air, in);
+        if (in.continuous) std::copy(std::begin(raw.down_body), std::end(raw.down_body), _supported_down);
         // Wheel support is not wing lift. Below the flying-speed cutoff the air-vector/AoA
         // model cannot distinguish ground roll from flying; let the caller use TE instead.
-        const float polar_ias = _ekf.config().polar_calibrated > 0.5f ? air.ias : f.ias;
-        in.flying_speed = std::isfinite(polar_ias) && polar_ias >= std::max(10.f, _setup.polar.v_stall * 0.8f);
+        const float polar_ias = _ekf.config().polar_calibrated > 0.5f ? air.ias : raw.ias;
+        in.flying_speed = airdata && std::isfinite(polar_ias) && polar_ias >= std::max(10.f, _setup.polar.v_stall * 0.8f);
         // sideslip while rolling (adverse yaw), the side force shows little of it
         _roll_mem = std::max(std::fabs(raw.gyro[0]), _roll_mem * (1.f - in.dt / ROLL_SLIP_TAU));
         in.slip_sigma = std::min(std::max(in.slip_sigma, ROLL_SLIP * _roll_mem), SLIP_MAX);
@@ -304,6 +352,9 @@ private:
     Frame _last_frame;
     ExternalAttitude _last_attitude;
     bool _have_frame = false, _have_attitude = false;
+    SampleClock _samples[4];
+    Frame _values;
+    float _supported_down[3] = {0.f, 0.f, 1.f};
 };
 
 } // namespace airmass

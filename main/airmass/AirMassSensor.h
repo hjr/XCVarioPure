@@ -40,7 +40,9 @@ private:
     // estimator, own attitude and flap offsets, the same code the host simulation and replay run
     airmass::Pipeline _pipe;
     uint16_t _gnss_epoch = 0;
-    uint16_t _count = 0;
+    airmass::Periodic _setup_timer, _compass_timer, _persist_timer, _output_timer;
+    airmass::Periodic _sync_timer, _wind_timer, _average_timer, _diagnostic_timer;
+    airmass::SampleClock _compass_sample;
     bool _active = false;
     bool _recording = false;
 };
