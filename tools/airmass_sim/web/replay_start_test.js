@@ -22,7 +22,9 @@ function sentence(body) {
   assert.equal(sens.frames, 141);
   assert.equal(sens.track.cols.running.findIndex(v => v), 99);
   const full = await runReplay(M, sens.rec);
-  assert.equal(full.n, 141);
+  assert.equal(full.n, 281);
+  assert.equal(full.summary.prediction_ms, 50);
+  assert(full.t_ms.every((t, i) => !i || t - full.t_ms[i - 1] === 50), "10Hz sensor logs replay with 50ms predictions");
   assert.equal(full.summary.recovered_starts, 0);
 
   // RR-style logs carry sensors/attitude but no navigation sentences at all.
@@ -31,7 +33,7 @@ function sentence(body) {
   assert.equal(noGnss.fixes, 0);
   for (const mahony of [false, true]) {
     const rep = await runReplay(M, noGnss.rec, { mahony });
-    assert.equal(rep.n, 141);
+    assert.equal(rep.n, 281);
     assert(rep.cols.vario.every(Number.isFinite));
     assert(rep.cols.status.every(s => !(s & (2 | 4 | 8))), "missing GNSS cannot invent wind, fixes or heading alignment");
     assert(rep.cols.status.some(s => s & 1), "vario can settle without GNSS");
@@ -53,7 +55,7 @@ function sentence(body) {
     assert.equal(conv.kind, "AirMass recording");
     assert(conv.rec.some(line => line.startsWith("$PXCV,")), "preserve device attitude for shared replay");
     const rep = await runReplay(M, conv.rec, { mahony });
-    assert.equal(rep.n, 141);
+    assert.equal(rep.n, 281);
     assert.equal(rep.summary.recovered_starts, 1);
     assert.equal(rep.summary.estimated_attitude_starts, 0);
     assert(Math.abs(rep.cols.roll_deg[0]) > 10, "initial roll comes from the logged attitude");
@@ -64,7 +66,7 @@ function sentence(body) {
   }
   const withoutAttitude = missingStart.filter(line => !line.startsWith("$PXCV,"));
   const estimated = await runReplay(M, convert(withoutAttitude.join("\n")).rec);
-  assert.equal(estimated.n, 141);
+  assert.equal(estimated.n, 281);
   assert.equal(estimated.summary.estimated_attitude_starts, 1);
   const noSetup = await runReplay(M, missingStart.filter(line => !line.startsWith("$PXCVC,")));
   assert.equal(noSetup.n, 0, "missing setup is not silently replaced by an invented polar");
@@ -90,6 +92,19 @@ function sentence(body) {
     const bad = await runReplay(M, convert(invalid.join("\n")).rec, { mahony });
     assert(!(bad.cols.status[bad.n - 1] & 1), "explicit invalid-source metadata forces fallback");
     assert(bad.cols.vario.every(Number.isFinite));
+
+    const sparse = timed.filter(line => !line.startsWith("$PXCVR,") || +line.split(",")[1] === 50 || +line.split(",")[1] % 100 === 0);
+    const upsampled = await runReplay(M, convert(sparse.join("\n")).rec, { mahony });
+    assert.deepEqual(upsampled.t_ms, rep.t_ms);
+    assert.deepEqual(upsampled.cols, rep.cols, "10Hz inputs plus inserted predictions match recorded 20Hz polls");
+
+    const slow = timed.slice(0, 2);
+    for (let t = 0; t <= 12000; t += 200) slow.push(sentence(`$PXCVR,${t},0,0,-1,0,0,0,30,30,1000,`));
+    const legacy = await runReplay(M, convert(slow.join("\n")).rec, { mahony });
+    assert.equal(legacy.n, 241);
+    assert(legacy.t_ms.every((t, i) => t === i * 50), "5Hz legacy recordings also predict every 50ms");
+    const data = globalThis.build(convert(slow.join("\n")), legacy);
+    assert(data.ai.every(i => i >= 0), "page still maps every measured frame to its replay output");
   }
-  console.log("PASS: no-GNSS/low-ground-speed startup, missing starts with both filters, attitude estimation, page integration, missing setup");
+  console.log("PASS: airborne/no-GNSS recovery, both attitude filters, 20Hz predictions from 5/10Hz logs, source freshness and page integration");
 })().catch(error => { console.error(error); process.exitCode = 1; });

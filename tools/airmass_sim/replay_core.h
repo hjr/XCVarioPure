@@ -40,6 +40,8 @@ public:
     std::string error; // set when a setting is unknown, the replay then stops
 
     void setLearning(bool learn) { _pipe.setLearning(learn); }
+    void setPredictionPeriod(uint32_t ms) { _prediction_ms = ms; }
+    uint32_t predictionPeriod() const { return _prediction_ms; }
     bool setMahony(bool enabled) {
 #ifdef AIRMASS_NO_CONFIG_SETTINGS
         if (enabled) {
@@ -169,6 +171,7 @@ private:
         _pending_start = false;
         _allow_recovery = true;
         _cycle_time = st.t;
+        _have_cycle_frame = false;
         if (starts++ == 0) t_first = st.t;
     }
 
@@ -221,6 +224,34 @@ private:
     }
 
     void stepFrame() {
+        const int32_t elapsed = (int32_t)(_fr.time_ms - _cycle_time);
+        if (elapsed < 0 || (_have_cycle_frame && elapsed == 0)) {
+            skipped++;
+            return;
+        }
+#ifndef AIRMASS_NO_CONFIG_SETTINGS
+        if (_prediction_ms && _have_cycle_frame && elapsed <= 10000) {
+            const Frame next = _fr;
+            _fr = _held_frame;
+            // Hold only past readings. Their source clocks must not advance with the prediction clock.
+            while ((uint32_t)(next.time_ms - _fr.time_ms) > _prediction_ms) {
+                _fr.time_ms += _prediction_ms;
+                stepOnce();
+                endCycle();
+            }
+            _fr = next;
+        }
+        if (_prediction_ms && !_fr.sample_times) {
+            for (auto& stamp : _fr.sample_ms) stamp = _fr.time_ms;
+            _fr.sample_times = true;
+        }
+#endif
+        stepOnce();
+        _held_frame = _fr;
+        _have_cycle_frame = true;
+    }
+
+    void stepOnce() {
         if ((int32_t)(_fr.time_ms - _cycle_time) > 0) {
             seconds += (_fr.time_ms - _cycle_time) * 1e-3;
             _cycle_time = _fr.time_ms;
@@ -301,6 +332,9 @@ private:
     float _logged_down[3] = {};
     uint32_t _attitude_time = 0, _last_frame_time = 0;
     uint32_t _cycle_time = 0;
+    uint32_t _prediction_ms = 0;
+    Frame _held_frame;
+    bool _have_cycle_frame = false;
     float _device_vario = NAN;
     airmass::record::Sentence _s;
     Setup _setup;

@@ -29,11 +29,13 @@ const { runReplay } = require("./replay.js");
   if (nativeCsv) {
     const lines = fs.readFileSync(nativeCsv, "utf8").trim().split("\n");
     const hdr = lines[0].split(",");
-    const iv = hdr.indexOf("vario"), iwn = hdr.indexOf("wind_n"), iwe = hdr.indexOf("wind_e"), ist = hdr.indexOf("status");
+    const it = hdr.indexOf("t_s"), iv = hdr.indexOf("vario"), iwn = hdr.indexOf("wind_n"), iwe = hdr.indexOf("wind_e"), ist = hdr.indexOf("status");
+    const byTime = new Map(Array.from(r.t_ms, (t, i) => [t, i]));
     let n = 0, dv = 0, dw = 0, ds = 0, maxv = 0;
-    for (let i = 1; i < lines.length && i - 1 < r.n; i++) {
+    for (let i = 1; i < lines.length; i++) {
       const f = lines[i].split(",");
-      const k = i - 1;
+      const k = byTime.get(Math.round(+f[it] * 1000));
+      if (k === undefined) continue;
       const ev = r.cols.vario[k] - +f[iv];
       dv += ev * ev;
       maxv = Math.max(maxv, Math.abs(ev));
@@ -41,7 +43,7 @@ const { runReplay } = require("./replay.js");
       ds += r.cols.status[k] !== +f[ist];
       n++;
     }
-    console.log(`against airmass_replay (${lines.length - 1} rows): vario rms ${Math.sqrt(dv / n).toFixed(4)} max ${maxv.toFixed(3)} m/s, ` +
+    console.log(`against airmass_replay (${n} matched timestamps; prediction cadences may differ): vario rms ${Math.sqrt(dv / n).toFixed(4)} max ${maxv.toFixed(3)} m/s, ` +
       `wind rms ${Math.sqrt(dw / n).toFixed(4)} m/s, status differs ${ds} times`);
   }
 })().catch((e) => { console.error(e); process.exit(1); });
