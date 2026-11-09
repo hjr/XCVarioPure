@@ -67,6 +67,12 @@ struct Frame {
     float flap_lever = NAN;             // lever position 0 .. N-1 (fractional between notches), NAN without flaps
 };
 
+// Optional attitude supplied by replay experiments instead of the air-data-aided attitude.
+struct ExternalAttitude {
+    float down[3] = {0.f, 0.f, 1.f};
+    float roll = 0.f, pitch = 0.f, yaw_rate = 0.f;
+};
+
 class Pipeline {
 public:
     static constexpr float GYRO_DOT_TAU = 0.2f; // s, low pass of the differentiated gyro (lever arm)
@@ -150,15 +156,52 @@ public:
         _prev_time = time_ms;
         _avg_wind.reset(0.f, 0.f);
         _open = false;
+        _have_frame = false;
+        _have_attitude = false;
     }
 
     // one cycle: the estimator update, then the cycle's gnss() and heading(), then endCycle()
-    void step(const Frame& f) {
+    void step(const Frame& f, const ExternalAttitude* attitude = nullptr) {
         endCycle();
+        const int32_t elapsed = (int32_t)(f.time_ms - _prev_time);
+        if (_have_frame && elapsed <= 0) return; // duplicate/backward sensor timestamps are not new measurements
+        if (elapsed > 10000) {
+            // No usable motion history remains after a long outage. Restart dynamics, retaining calibration
+            // and the last attitude; do not integrate seconds of unobserved acceleration as if measured.
+            Warm w;
+            w.k_tas = _ekf.kTas();
+            w.pitch_ofs = _ekf.pitchOffset();
+            w.latency = _ekf.gnssLatency();
+            w.k_aoa = _ekf.aoaScale();
+            for (int i = 0; i < FlapOffsets::N; ++i) w.flap_ofs[i] = _flaps.offset(i);
+            const float down[3] = {_att.down()[0], _att.down()[1], _att.down()[2]};
+            start(f.time_ms, f.baro_alt, down, f.gyro, w);
+        }
+        const bool gap = elapsed > 300;
+        if (gap && elapsed <= 10000) {
+            // Causal reconstruction: hold the previous sample through missing time, not the future endpoint.
+            // Inferred history is marked unusable for GNSS fusion; trust recovers only on measured cycles.
+            Frame held = _have_frame ? _last_frame : f;
+            while ((uint32_t)(f.time_ms - _prev_time) > 100) {
+                held.time_ms = _prev_time + 100;
+                stepOnce(held, _have_attitude ? &_last_attitude : nullptr, false);
+                endCycle();
+            }
+        }
+        stepOnce(f, attitude, !gap);
+        _last_frame = f;
+        _have_frame = true;
+        _have_attitude = attitude != nullptr;
+        if (attitude) _last_attitude = *attitude;
+    }
+
+private:
+    void stepOnce(const Frame& f, const ExternalAttitude* attitude, bool continuous) {
         AirMassEKF::Input& in = _in;
         in = AirMassEKF::Input();
         in.time_ms = f.time_ms;
         in.dt = std::clamp((f.time_ms - _prev_time) / 1000.f, 0.05f, 0.3f);
+        in.continuous = continuous;
         _prev_time = f.time_ms;
         in.baro_alt = f.baro_alt;
 
@@ -171,7 +214,8 @@ public:
         for (int i = 0; i < 3; ++i) {
             raw.f_body[i] = f.f_body[i];
             raw.gyro[i] = f.gyro[i];
-            _gyro_dot[i] += ((f.gyro[i] - _gyro_prev[i]) / in.dt - _gyro_dot[i]) * a;
+            if (continuous) _gyro_dot[i] += ((f.gyro[i] - _gyro_prev[i]) / in.dt - _gyro_dot[i]) * a;
+            else _gyro_dot[i] = 0.f; // the angular acceleration inside a gap was not measured
             _gyro_prev[i] = f.gyro[i];
             raw.gyro_dot[i] = _gyro_dot[i];
         }
@@ -185,14 +229,25 @@ public:
 
         // attitude: aided by the air velocity direction, with the estimator's body z gyro bias (the gravity reference
         // cannot learn it in straight flight)
-        _att.update(raw.gyro, air.f_cg, _ekf.kTas() * raw.tas, air.alpha, in.dt, _ekf.yawRateBias());
-        in.roll = _att.roll();
-        in.pitch = _att.pitch();
-        in.yaw_rate = _att.yawRate(raw.gyro);
-        for (int i = 0; i < 3; ++i) {
-            raw.down_body[i] = _att.down()[i];
+        if (attitude) {
+            in.roll = attitude->roll;
+            in.pitch = attitude->pitch;
+            in.yaw_rate = attitude->yaw_rate;
+            std::copy(std::begin(attitude->down), std::end(attitude->down), raw.down_body);
+        } else {
+            _att.update(raw.gyro, air.f_cg, _ekf.kTas() * raw.tas, air.alpha, in.dt, _ekf.yawRateBias(), continuous);
+            in.roll = _att.roll();
+            in.pitch = _att.pitch();
+            in.yaw_rate = _att.yawRate(raw.gyro);
+            for (int i = 0; i < 3; ++i) {
+                raw.down_body[i] = _att.down()[i];
+            }
         }
         fillInput(raw, air, in);
+        // Wheel support is not wing lift. Below the flying-speed cutoff the air-vector/AoA
+        // model cannot distinguish ground roll from flying; let the caller use TE instead.
+        const float polar_ias = _ekf.config().polar_calibrated > 0.5f ? air.ias : f.ias;
+        in.flying_speed = std::isfinite(polar_ias) && polar_ias >= std::max(10.f, _setup.polar.v_stall * 0.8f);
         // sideslip while rolling (adverse yaw), the side force shows little of it
         _roll_mem = std::max(std::fabs(raw.gyro[0]), _roll_mem * (1.f - in.dt / ROLL_SLIP_TAU));
         in.slip_sigma = std::min(std::max(in.slip_sigma, ROLL_SLIP * _roll_mem), SLIP_MAX);
@@ -205,6 +260,7 @@ public:
 
     // the end of the cycle, after its GNSS and compass fusion: the averaged wind follows the valid instant wind
     // (step() ends a cycle left open)
+public:
     void endCycle() {
         if (!_open) {
             return;
@@ -245,6 +301,9 @@ private:
     float _roll_mem = 0.f; // rad/s, recent roll rate
     uint32_t _prev_time = 0;
     bool _learn = true;
+    Frame _last_frame;
+    ExternalAttitude _last_attitude;
+    bool _have_frame = false, _have_attitude = false;
 };
 
 } // namespace airmass

@@ -10,6 +10,7 @@
 // vector (the direction the air moves to), Wd > 0 for sinking air.
 
 #include "math/Matrix.h"
+#include "AirMassGnssTiming.h"
 
 #include <algorithm>
 #include <cmath>
@@ -36,6 +37,9 @@ class AirMassEKF {
         float polar_sink = NAN; // m/s, positive down, polar sink at current TAS and load factor; NAN to skip
         float baro_alt = NAN;   // m, NAN when invalid
         float slip_sigma = 0.f; // rad, uncertainty of the unmodelled sideslip (the air vector assumes coordinated flight)
+        float slip_beta = 0.f;  // rad, signed sideslip from lateral specific force; positive air from the right
+        bool continuous = true; // false: an inferred cycle or the first measured cycle after a sensor gap
+        bool flying_speed = true; // false below the IAS flying-speed cutoff (set by Pipeline)
     };
 
     // GNSS velocity observation
@@ -44,6 +48,7 @@ class AirMassEKF {
         uint16_t latency_ms = 0;// nominal age of the observation at arrival, for the recording; the filter learns the latency
         float vn = 0.f, ve = 0.f;
         float sigma_h = 0.5f;   // m/s, horizontal speed accuracy
+        uint32_t fix_time_ms = airmass::GnssTiming::UNKNOWN; // source UTC milliseconds of day, when available
     };
 
     // tuning
@@ -166,8 +171,10 @@ class AirMassEKF {
         return std::max(std::sqrt(_cov(WN, WN) + _cov(WE, WE)) / _cfg.sigma_wind_valid, sigma(PSI) / _cfg.sigma_psi_valid);
     }
     uint8_t status() const;
-    uint32_t gnssAgeMs() const { return _last_time_ms - _last_gnss_ms; }
+    uint32_t gnssAgeMs() const { return _have_gnss ? _last_time_ms - _last_gnss_ms : UINT32_MAX; }
+    uint32_t gnssReceivedAgeMs() const { return _have_received_gnss ? _last_time_ms - _last_received_gnss_ms : UINT32_MAX; }
     uint32_t rejectedGnss() const { return _gnss_rejects; }
+    float inertialTrust() const { return _inertial_trust; }
     bool covarianceHealthy() const;
 
     // Air velocity in NED (no wind), as used by the filter
@@ -182,8 +189,10 @@ class AirMassEKF {
         float tas, roll, pitch, aoa;
         float psi_gyro; // gyro heading integral at that time
         float slip_sigma;
+        bool continuous;
+        bool flying_speed;
     };
-    static constexpr int HIST = 24; // 2.4s at 10Hz, covers the NMEA GNSS latency plus correction
+    static constexpr int HIST = 64; // 6.4s at 10Hz, including irregular transport delay; never bridge sensor gaps
 
     // air vector and vertical speed at a past time, interpolated between snapshots
     struct Delayed {
@@ -242,6 +251,10 @@ class AirMassEKF {
     float _wind_rate[2] = {};
     uint32_t _last_time_ms = 0;
     uint32_t _last_gnss_ms = 0;
+    uint32_t _last_received_gnss_ms = 0;
+    bool _have_gnss = false, _have_received_gnss = false, _have_input = false;
+    airmass::GnssTiming _gnss_timing;
+    float _inertial_trust = 1.f, _gnss_trust = 0.f;
     uint32_t _gnss_rejects = 0;
     uint16_t _gnss_consecutive_rejects = 0;
     uint16_t _baro_consecutive_rejects = 0;

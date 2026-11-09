@@ -7,6 +7,10 @@ The inputs are derived the way the device derives them (AirMassSensor, SetupNG c
   IAS from the dynamic pressure, TAS with the static pressure and OAT, the ISA altitude of the static pressure, the
   polar of the glider type at the logged ballast factor and bugs, the flap lever from the flap recommendation (no flap
   sensor in the log), the GNSS velocity with its arrival time from the $SENS GPS age field.
+Kelvin OAT is recognized by agreement with PXCV Celsius; inconsistent legacy FMT axes are corrected only when
+stationary gravity and pitch-rate checks against PXCV attitude both support the repair.
+Missing or implausible OAT (outside -60..50°C) is estimated as 25°C at sea level minus 6.5°C/km, using GNSS altitude
+or pressure altitude if GNSS altitude is unavailable, like the browser converter.
 Differences to the device: the $SENS gyro is the processed one, with the "Gyro Gating" dead zone (rates below the gate
 read 0), AirMass on the device takes the gyro without it; the start attitude is the device AHRS of $PXCV; the
 estimator starts cold (no learned calibration), the IMU lever arm is taken as 0.
@@ -21,6 +25,16 @@ import re
 
 RHO0, R_AIR, G0, P0, T0DIVL, G0DIVRXL = 1.225, 287.058, 9.80665, 101325.0, 44330.76923, 5.25588
 KNOT = 0.514444
+
+
+def plausible_temperature(oat):
+    return math.isfinite(oat) and -60 <= oat <= 50
+
+
+def estimated_temperature(alt):
+    """25°C at sea level, standard 6.5°C/km lapse rate (GNSS altitude, else pressure altitude)."""
+    return 25 - 0.0065 * (alt if math.isfinite(alt) else 0)
+
 
 # components/glider/PolarTable.txt and FlapTable.txt
 GLIDERS = {
@@ -61,14 +75,76 @@ def clean_line(raw):
     return line.replace(";", ",") if line.startswith("$SENS;") else line
 
 
+class SensorConventions:
+    """Validate legacy metadata against PXCV attitude/temperature; mirrored in web/convert.js."""
+    def __init__(self):
+        self.sensor = self.prev = None
+        self.kelvin = self.temperature_pairs = self.ground = self.rates = 0
+        self.gravity_declared = self.gravity_corrected = self.rate_declared = self.rate_corrected = 0.0
+
+    @staticmethod
+    def number(f, i):
+        try:
+            return float(f[i])
+        except (ValueError, IndexError):
+            return math.nan
+
+    def sens(self, f):
+        t = self.number(f, 1) / (1 if len(f) > 1 and "." in f[1] else 1000)
+        a = [self.number(f, i) for i in (7, 8, 9)]
+        g = [math.radians(self.number(f, i)) for i in (10, 11, 12)]
+        q = self.number(f, 5)
+        self.sensor = dict(t=t, q=q, oat=self.number(f, 6), a=a, g=g) if all(math.isfinite(v) for v in [t, q] + a + g) else None
+
+    def pxcv(self, f):
+        s = self.sensor
+        if s is None:
+            return
+        temp = self.number(f, 6)
+        if plausible_temperature(s["oat"] - 273.15) and plausible_temperature(temp):
+            self.temperature_pairs += 1
+            self.kelvin += abs(s["oat"] - 273.15 - temp) < 2
+        roll, pitch = (math.radians(self.number(f, i)) for i in (10, 11))
+        if not all(math.isfinite(v) for v in (roll, pitch)):
+            return
+        norm = math.sqrt(sum(v*v for v in s["a"]))
+        rate = math.sqrt(sum(v*v for v in s["g"]))
+        if (s["q"] < 50 and 0.85 < norm < 1.15 and rate < math.radians(3)
+                and abs(roll) < math.pi / 6 and abs(pitch) < math.pi / 7 and abs(math.sin(pitch)) > 0.05):
+            force = [math.sin(pitch), -math.sin(roll)*math.cos(pitch), -math.cos(roll)*math.cos(pitch)]
+            for j in range(3):
+                self.gravity_declared += (s["a"][j] / norm * (1 if j == 0 else -1) - force[j])**2
+                self.gravity_corrected += (-s["a"][j] / norm - force[j])**2
+            self.ground += 1
+        dt = s["t"] - self.prev[0] if self.prev else 0
+        if 0.15 < dt < 0.3 and abs(roll) < math.pi / 3 and abs(pitch) < math.pi / 6 and rate < 1.4:
+            measured = (pitch - self.prev[1]) / dt
+            predicted = s["g"][1]*math.cos(roll) - s["g"][2]*math.sin(roll)
+            if abs(measured) < math.pi / 6:
+                self.rate_declared += (-predicted - measured)**2
+                self.rate_corrected += (predicted - measured)**2
+                self.rates += 1
+        self.prev = (s["t"], pitch)
+
+    def apply(self, out):
+        out["temperature_kelvin"] = self.kelvin >= 20 and self.kelvin >= self.temperature_pairs * 0.8
+        if (out["fmt"] == (7, [1, -1, -1, 1, -1, -1]) and self.ground >= 50 and self.rates >= 100
+                and self.gravity_corrected / self.ground < 0.01
+                and self.gravity_corrected < self.gravity_declared * 0.5
+                and self.rate_corrected < self.rate_declared * 0.5):
+            out["fmt"] = (7, [-1, -1, -1, 1, 1, 1])
+            out["axes_corrected"] = True
+
+
 def scan_log(lines):
     """One pass through the log before the conversion, for what applies to all of it wherever it stands:
     "!XCV,FMT,SENS,start,factors...": the $SENS fields from index start on (SENS itself is 0) are multiplied by the
       factors (logs before 2025: east-north-up axes)
     "!XCV,CMN,glider type,empty weight,crew weight,ballast,speed cal": CA1 without the QNH; a CA1 in the log wins
     the QNH [hPa]: of CA1, else of $PXCV, else from the GNSS altitude and static pressure of the first fixes on the ground"""
-    out = dict(fmt=None, cmn=None, ca1=False, qnh=math.nan, qnh_from="")
+    out = dict(fmt=None, cmn=None, ca1=None, qnh=math.nan, qnh_from="")
     pairs = []
+    conventions = SensorConventions()
     p, dyn, pxcv = math.nan, math.nan, math.nan
 
     def number(f, i):
@@ -87,7 +163,10 @@ def scan_log(lines):
                 elif f[1] == "CMN":
                     out["cmn"] = [float(x) for x in f[2:6]]
                 elif f[1] == "CA1":
-                    out["ca1"] = True
+                    if out["ca1"] is None:
+                        values = [float(x) for x in f[2:6]]
+                        if len(values) == 4 and all(math.isfinite(x) for x in values):
+                            out["ca1"] = values
                     q = float(f[7])
                     q = q / 100.0 if q > 8e4 else q  # Pa, or hPa
                     if 800 < q < 1100:
@@ -95,16 +174,19 @@ def scan_log(lines):
             except (ValueError, IndexError):
                 pass
         elif line.startswith("$PXCV,"):
+            conventions.pxcv(nmea_fields(line))
             if not math.isfinite(pxcv) and number(nmea_fields(line), 7) > 800:
                 pxcv = number(nmea_fields(line), 7)
         elif line.startswith("$SENS,"):
             f = nmea_fields(line)
+            conventions.sens(f)
             p, dyn = number(f, 3), number(f, 5)
         elif len(pairs) < 20 and (line.startswith("$GPGGA,") or line.startswith("$GNGGA,")):
             f = nmea_fields(line)
             # on the ground only: high up the air is too far from ISA (a log started at 3500 m came out 24 hPa high)
             if number(f, 6) > 0 and math.isfinite(number(f, 9)) and p > 300 and dyn < 150:
                 pairs.append((p, number(f, 9)))
+    conventions.apply(out)
     if out["qnh_from"]:
         return out
     if math.isfinite(pxcv):
@@ -229,13 +311,18 @@ def main():
     pending_fix = None    # a fix not yet passed to the estimator (its arrival time comes with the next $SENS)
     running, above, below = False, 0, 0
     setup_line, setup_count, starts, frames, fixes = None, 0, 0, 0, 0
+    temperature_estimated_samples = 0
+    temperature_kelvin_samples = 0
     polar = flaps = None
     with opener(a.log, "rt", errors="replace") as log:
         lines = list(log)
     scan = scan_log(lines)
+    if scan.get("axes_corrected"):
+        print("Corrected inconsistent legacy FMT: gravity-vector acceleration and unchanged body gyros (verified against PXCV attitude)")
     monotone = StampRepair()
-    if scan["cmn"] is not None and len(scan["cmn"]) == 4 and not scan["ca1"]:
-        logged["type"], logged["empty"], logged["crew"], logged["ballast"] = scan["cmn"]
+    initial_setup = scan["ca1"] or scan["cmn"]
+    if initial_setup is not None and len(initial_setup) == 4:
+        logged["type"], logged["empty"], logged["crew"], logged["ballast"] = initial_setup
     if scan["qnh_from"]:
         print(f"QNH {scan['qnh']:.1f} hPa ({scan['qnh_from']})")
 
@@ -308,15 +395,25 @@ def main():
                 stamp = int(round(float(f[1]) * 1000.0)) if "." in f[1] else int(f[1])  # old logs: integer milliseconds
                 age = int(f[2])
                 age = age if 0 <= age <= 2000 else 0  # old logs also hold other values here: the fix counts as just arrived
-                p, q, oat = float(f[3]) * 100.0, float(f[5]), float(f[6])
+                p, q = float(f[3]) * 100.0, float(f[5])
                 acc = [float(x) for x in f[7:10]]
                 gyro = [math.radians(float(x)) for x in f[10:13]]
             except ValueError:
                 continue
+            try:
+                oat = float(f[6])
+            except ValueError:
+                oat = math.nan
+            if scan["temperature_kelvin"] and plausible_temperature(oat - 273.15):
+                oat -= 273.15
+                temperature_kelvin_samples += 1
             t_ms = monotone(stamp)
             ias = math.sqrt(2.0 * q / RHO0) if q > 0.0 else 0.0
-            tas = ias * math.sqrt(RHO0 * R_AIR * (oat + 273.15) / p) if p > 0 else 0.0
             alt = T0DIVL * (1.0 - (p / P0) ** (1.0 / G0DIVRXL)) if p > 0 else math.nan
+            if not plausible_temperature(oat):
+                oat = estimated_temperature(gnss_alt if math.isfinite(gnss_alt) else alt)
+                temperature_estimated_samples += 1
+            tas = ias * math.sqrt(RHO0 * R_AIR * (oat + 273.15) / p) if p > 0 else 0.0
             gnss_speed = fix["speed"] if fix else 0.0
 
             # airborne: flying speed and moving over ground for 10 s; landed: 30 s slow
@@ -357,7 +454,7 @@ def main():
                     trk = math.radians(pending_fix["track"])
                     vn, ve = pending_fix["speed"] * math.cos(trk), pending_fix["speed"] * math.sin(trk)
                     out.write(sentence("PXCVG", [str(t_ms - age), fmt(vn, "%.3f"), fmt(ve, "%.3f"), "0.500", "750", "0",
-                                                 "0.000", "0.000"]))
+                                                 "0.000", "0.000", str(round(pending_fix["utc"] * 1000) % 86400000)]))
                     fixes += 1
                 pending_fix = None
             if aux:
@@ -372,6 +469,10 @@ def main():
     out.close()
     if aux:
         aux.close()
+    if temperature_kelvin_samples:
+        print(f"OAT converted from Kelvin for {temperature_kelvin_samples} sensor samples (verified against PXCV Celsius)")
+    if temperature_estimated_samples:
+        print(f"OAT estimated for {temperature_estimated_samples} sensor samples: 25°C at sea level, −6.5°C/km")
     print(f"{a.out}: {starts} start(s), {frames} cycles ({frames / 36000.0:.2f} h), {fixes} GNSS fixes")
 
 

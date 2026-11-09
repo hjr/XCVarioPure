@@ -13,6 +13,43 @@ constexpr float TAU_SIGMA0 = 0.3f; // s, initial uncertainty of the latency
 constexpr float SLIP_ALIGN_MAX = 0.1f; // rad, slipping samples do not go into the turn alignment
 constexpr uint32_t HEADING_AID_AGE_MS = 3000;
 
+// Gate the complete horizontal observation before changing any state. A bad east component must not
+// partially update the north/wind/calibration states. Joseph covariance update also supports frozen gains.
+bool velocityUpdate(Matrix<AirMassEKF::NX, AirMassEKF::NX>& p, float (&x)[AirMassEKF::NX],
+                    const float h[2][AirMassEKF::NX], const float y[2], const float r[2], float gate, bool freeze) {
+    constexpr int N = AirMassEKF::NX;
+    float ph[N][2] = {}, k[N][2];
+    for (int i = 0; i < N; ++i)
+        for (int a = 0; a < 2; ++a)
+            for (int j = 0; j < N; ++j) ph[i][a] += p(i, j) * h[a][j];
+    float s00 = r[0], s11 = r[1], s01 = 0.f;
+    for (int i = 0; i < N; ++i) {
+        s00 += h[0][i] * ph[i][0];
+        s11 += h[1][i] * ph[i][1];
+        s01 += h[0][i] * ph[i][1];
+    }
+    const float det = s00 * s11 - s01 * s01;
+    if (!(det > 0.f) || !std::isfinite(det)) return false;
+    const float distance = (s11 * y[0] * y[0] - 2.f * s01 * y[0] * y[1] + s00 * y[1] * y[1]) / det;
+    if (!std::isfinite(distance) || (gate > 0.f && distance > gate * gate)) return false;
+    for (int i = 0; i < N; ++i) {
+        const bool frozen = freeze && (i == AirMassEKF::KTAS || i == AirMassEKF::THB || i == AirMassEKF::KCL ||
+                                       i == AirMassEKF::TAU || i == AirMassEKF::BGZ);
+        k[i][0] = frozen ? 0.f : (ph[i][0] * s11 - ph[i][1] * s01) / det;
+        k[i][1] = frozen ? 0.f : (ph[i][1] * s00 - ph[i][0] * s01) / det;
+        x[i] += k[i][0] * y[0] + k[i][1] * y[1];
+    }
+    for (int i = 0; i < N; ++i) {
+        for (int j = i; j < N; ++j) {
+            const float delta = -k[i][0] * ph[j][0] - k[i][1] * ph[j][1] - ph[i][0] * k[j][0] - ph[i][1] * k[j][1] +
+                k[i][0] * (s00 * k[j][0] + s01 * k[j][1]) + k[i][1] * (s01 * k[j][0] + s11 * k[j][1]);
+            p(i, j) += delta;
+            p(j, i) = p(i, j);
+        }
+    }
+    return true;
+}
+
 inline float wrapPi(float a) {
     while (a >= My_PIf) a -= 2.f * My_PIf;
     while (a < -My_PIf) a += 2.f * My_PIf;
@@ -77,6 +114,10 @@ void AirMassEKF::reset(float baro_alt, float k_tas, float pitch_ofs, float laten
     _baro_consecutive_rejects = 0;
     _vertical_settle = 0;
     _last_gnss_ms = _last_time_ms;
+    _have_gnss = _have_received_gnss = _have_input = false;
+    _gnss_timing.reset();
+    _inertial_trust = 1.f;
+    _gnss_trust = 0.f;
     _aligned = false;
     _wind_valid = false;
     _wind_degraded = false;
@@ -219,7 +260,36 @@ void AirMassEKF::update(const Input& in) {
     if (!_running || !(in.dt > 0.f)) {
         return;
     }
+    const bool continuous = in.continuous && (!_have_input || (uint32_t)(in.time_ms - _last_time_ms) <= 300);
+    _have_input = true;
     _last_time_ms = in.time_ms;
+    if (!continuous) {
+        _vertical_settle = 0;
+        _inertial_trust = 0.f;
+        _gnss_trust = 0.f;
+        _wind_rate[0] = _wind_rate[1] = 0.f;
+        _ww_lp = _blend_lp = 0.f;
+        // Unobserved motion is not a quiet-flight measurement. Do not differentiate the endpoint jump as
+        // if it happened in one sensor cycle, and allow the barometer to recover the vertical state.
+        _tas_f = NAN;
+        _cov(PSI, PSI) += 0.01f * in.dt;
+        _cov(VD, VD) += 4.f * in.dt;
+        _cov(WN, WN) += 0.25f * in.dt;
+        _cov(WE, WE) += 0.25f * in.dt;
+    } else {
+        _inertial_trust = std::min(1.f, _inertial_trust + in.dt / 10.f);
+    }
+    const bool flying_speed = in.flying_speed && std::isfinite(in.tas) && in.tas > 10.f;
+    if (!flying_speed) {
+        _vertical_settle = 0;
+        // Do not carry ground braking or a frozen air-mass output into the next takeoff.
+        _tas_f = NAN;
+        _sink_f = _sink_p = NAN;
+        _acc_corr = _acc_corr_c = _acc_kin = _a_air = 0.f;
+        _anchor = _ww_lp = _blend_lp = 0.f;
+        _vario_out = NAN;
+        _wd_energy = _wd_energy_plain = NAN;
+    }
     predict(in);
 
     // remember the raw inputs for delayed GNSS fusion
@@ -235,6 +305,8 @@ void AirMassEKF::update(const Input& in) {
     s.aoa = in.aoa;
     s.psi_gyro = _psi_gyro;
     s.slip_sigma = in.slip_sigma;
+    s.continuous = continuous;
+    s.flying_speed = flying_speed;
 
     if (std::isfinite(in.baro_alt)) {
         // the static pressure error grows with dynamic pressure and fakes climb/sink on speed changes
@@ -242,7 +314,7 @@ void AirMassEKF::update(const Input& in) {
     }
 
     _straight = blendBankWeight(in.roll);
-    if (in.tas > 10.f) {
+    if (flying_speed) {
         float va[3], dalpha[3];
         airVelocity(in.tas, _x[KTAS], in.roll, in.pitch, _x[PSI], alphaOf(in.aoa), va, dalpha);
         fuseKinematic(in, va, dalpha);
@@ -258,7 +330,7 @@ void AirMassEKF::update(const Input& in) {
     const float tau = _cfg.circling_tau * (1.f - _straight);
     _vario_out = std::isnan(_vario_out) ? vario : _vario_out + (vario - _vario_out) * in.dt / (tau + in.dt);
     updateWindValid();
-    if (_running && _vertical_settle < 0xffff) {
+    if (_running && flying_speed && _vertical_settle < 0xffff) {
         _vertical_settle++;
     }
 }
@@ -283,6 +355,7 @@ void AirMassEKF::fuseBaro(float alt) {
 
 // Pitch based air mass vertical velocity: Wd = vd - va_d
 void AirMassEKF::fuseKinematic(const Input& in, const float va[3], const float dalpha[3]) {
+    if (_inertial_trust < 1.f) return; // attitude and its pitch/AoA calibration need continuous motion history
     float h[NX] = {};
     h[WD] = -1.f;
     h[VD] = 1.f;
@@ -321,6 +394,8 @@ void AirMassEKF::updateKinetic(const Input& in, const float va[3]) {
         _ww_lp += (work - _ww_lp) * in.dt / (_cfg.wind_work_hp + in.dt);
         work -= _ww_lp;
     }
+    const float fresh = _have_gnss ? std::clamp((10000.f - gnssAgeMs()) / 5000.f, 0.f, 1.f) : 0.f;
+    work *= _inertial_trust * _gnss_trust * fresh;
     const float a_air = k * _tas_dot_f + work;
     const float d = a_air - _acc_long_f;
     _acc_corr += (d - _acc_corr) * in.dt / (_cfg.kinetic_tau + in.dt);
@@ -335,7 +410,7 @@ void AirMassEKF::updateKinetic(const Input& in, const float va[3]) {
         _blend_lp += (corr - _blend_lp) * in.dt / (_cfg.blend_hp + in.dt);
         corr -= _blend_lp;
     }
-    _acc_kin = a_air + corr;
+    _acc_kin = a_air + _inertial_trust * corr;
     _a_air = a_air;
 }
 
@@ -397,6 +472,8 @@ bool AirMassEKF::delayedState(uint32_t t, Delayed& d) const {
     if (_hist_level < 2) {
         return false;
     }
+    const int oldest = (_hist_head - _hist_level + 1 + HIST) % HIST;
+    if ((int32_t)(t - _hist[oldest].time_ms) < 0 || (int32_t)(t - _hist[_hist_head].time_ms) > 0) return false;
     // newest snapshot not later than t (or the oldest), paired with its successor;
     // beyond the newest snapshot the last pair is used (no extrapolation)
     int i0 = _hist_head;
@@ -409,7 +486,7 @@ bool AirMassEKF::delayedState(uint32_t t, Delayed& d) const {
     const Snapshot& s0 = _hist[i0];
     const Snapshot& s1 = _hist[(i0 + 1) % HIST];
     const float span = (s1.time_ms - s0.time_ms) * 1e-3f;
-    if (!(span > 0.f)) {
+    if (!(span > 0.f) || span > 0.3f || !s1.continuous || !s0.flying_speed || !s1.flying_speed) {
         return false;
     }
     const float f = std::clamp((int32_t)(t - s0.time_ms) * 1e-3f / span, 0.f, 1.f);
@@ -546,13 +623,29 @@ void AirMassEKF::fuseGnss(const GnssVelocity& g, bool has_prior, float wn0, floa
     if (!_running) {
         return;
     }
-    const uint32_t t_obs = g.time_ms - (uint32_t)(gnssLatency() * 1000.f + 0.5f);
+    _last_received_gnss_ms = _last_time_ms;
+    _have_received_gnss = true;
+    uint32_t transport_delay = 0;
+    if (!std::isfinite(g.vn) || !std::isfinite(g.ve) || !std::isfinite(g.sigma_h) || !(g.sigma_h > 0.f) ||
+        std::hypot(g.vn, g.ve) > 150.f || (int32_t)(_last_time_ms - g.time_ms) < 0 ||
+        !_gnss_timing.observe(g.time_ms, g.fix_time_ms, transport_delay)) {
+        ++_gnss_rejects;
+        return;
+    }
+    const uint32_t t_obs = g.time_ms - transport_delay - (uint32_t)(gnssLatency() * 1000.f + 0.5f);
+    Delayed d;
+    if (!delayedState(t_obs, d)) {
+        ++_gnss_rejects;
+        _gnss_trust = 0.f;
+        return;
+    }
     const Snapshot* s = findSnapshot(t_obs);
     if (!s || s->tas < 10.f) {
         return;
     }
-    _last_gnss_ms = g.time_ms;
     if (!_aligned) {
+        if (_inertial_trust < 1.f) return;
+        has_prior = has_prior && std::isfinite(wn0) && std::isfinite(we0);
         if (has_prior) {
             alignFromPrior(g, wn0, we0);
         } else if (_aid.valid && (uint32_t)(_last_time_ms - _aid.time_ms) <= HEADING_AID_AGE_MS) {
@@ -560,37 +653,39 @@ void AirMassEKF::fuseGnss(const GnssVelocity& g, bool has_prior, float wn0, floa
         } else {
             accumulateAlignment(g, *s);
         }
-        return;
-    }
-
-    Delayed d;
-    if (!delayedState(t_obs, d)) {
+        if (_aligned) {
+            _last_gnss_ms = t_obs;
+            _have_gnss = true;
+            _gnss_trust = 0.f;
+        }
         return;
     }
 
     // GNSS noise plus the error of the modelled air vector (airspeed noise, attitude, sideslip)
-    const float sair = _cfg.sigma_air + 0.01f * d.tas;
+    const float sair = _cfg.sigma_air + 0.01f * d.tas + (1.f - _inertial_trust) * 0.1f * d.tas;
     const float sslip = d.tas * d.slip_sigma;
     const float r = std::max(g.sigma_h * g.sigma_h, 0.01f) + sair * sair + sslip * sslip;
     const float meas[2] = {g.vn, g.ve};
-    bool rejected = false;
+    float h[2][NX] = {}, y[2], variance[2];
+    // Source timestamps remove transport jitter. Without them its unknown part must not be fitted as wind
+    // or calibration, especially while turning. Irregular cadence alone does not make a fix invalid.
+    const float time_sigma = g.fix_time_ms == airmass::GnssTiming::UNKNOWN ? 0.1f : 0.05f;
     for (int i = 0; i < 2; ++i) {
-        float h[NX] = {};
-        h[WN + i] = 1.f;
-        h[PSI] = i ? d.va[0] : -d.va[1]; // d(va)/d(psi) = (-va_e, va_n)
-        h[KTAS] = d.va[i] / _x[KTAS];
-        h[THB] = -d.dalpha[i];
-        h[KCL] = d.dalpha[i] * d.aoa;
-        h[TAU] = -d.va_dot[i]; // a larger latency looks further back
-        const float y = meas[i] - (d.va[i] + _x[WN + i]);
-        if (!ekfScalarUpdate(_cov, _x, h, y, r, _cfg.gate)) {
-            rejected = true;
-        }
+        h[i][WN + i] = 1.f;
+        h[i][PSI] = i ? d.va[0] : -d.va[1]; // d(va)/d(psi) = (-va_e, va_n)
+        h[i][KTAS] = d.va[i] / _x[KTAS];
+        h[i][THB] = -d.dalpha[i];
+        h[i][KCL] = d.dalpha[i] * d.aoa;
+        h[i][TAU] = -d.va_dot[i]; // a larger latency looks further back
+        y[i] = meas[i] - (d.va[i] + _x[WN + i]);
+        variance[i] = r + time_sigma * time_sigma * d.va_dot[i] * d.va_dot[i];
     }
+    const bool rejected = !velocityUpdate(_cov, _x, h, y, variance, _cfg.gate, _inertial_trust < 1.f || _gnss_trust < 0.5f);
     wrapPsi();
 
     if (rejected) {
         _gnss_rejects++;
+        _gnss_trust *= 0.5f;
         if (++_gnss_consecutive_rejects > 10) {
             // the filter lost track, align again
             _aligned = false;
@@ -598,6 +693,14 @@ void AirMassEKF::fuseGnss(const GnssVelocity& g, bool has_prior, float wn0, floa
         }
     } else {
         _gnss_consecutive_rejects = 0;
+        if (gnssAgeMs() > 5000) {
+            _gnss_trust = 0.f;
+            _wind_rate[0] = _wind_rate[1] = 0.f;
+            _ww_lp = 0.f;
+        }
+        _last_gnss_ms = t_obs;
+        _have_gnss = true;
+        _gnss_trust = std::min(1.f, _gnss_trust + 0.25f);
     }
     sanitize();
 }

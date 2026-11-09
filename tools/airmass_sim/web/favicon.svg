@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="80 80 864 864" role="img" aria-labelledby="title">
+  <title id="title">AirMass</title>
+  <!-- The original AM mark traced as a single silhouette, with a white outer border.
+       All negative space is transparent; the colored insets have no white border. -->
+  <path fill="#fff" d="
+    M 153 859 L 379 139
+    C 384 120 400 107 420 107
+    C 441 107 457 122 462 143
+    L 541 468 H 664 L 752 140
+    C 758 120 775 107 795 107
+    C 818 107 837 125 839 149
+    L 873 870
+    C 874 894 856 915 831 917
+    C 807 919 786 900 784 878
+    L 762 443 L 639 883
+    C 633 904 616 917 595 917
+    C 574 917 557 903 552 882
+    L 471 556 H 341 L 237 886
+    C 231 906 212 919 191 916
+    C 165 912 145 885 153 859 Z"/>
+  <path fill="#000" stroke="none" d="
+    M 170 864
+    L 396 144
+    C 400 132 408 125 420 125
+    C 433 125 442 134 445 147
+    L 527 486
+    H 677
+    L 769 145
+    C 773 133 782 125 795 125
+    C 808 125 820 136 821 150
+    L 855 871
+    C 856 886 845 898 830 899
+    C 815 900 803 889 802 875
+    L 775 332
+    L 622 878
+    C 618 891 608 899 595 899
+    C 583 899 574 890 570 877
+    L 486 538
+    H 328
+    L 220 881
+    C 216 893 204 900 192 898
+    C 177 895 166 880 170 864
+    Z"/>
+  <path fill="#79eb4e" d="M 417 248 343 486 H 474 Z"/>
+  <path fill="#e42f1c" d="M 539 538 H 663 L 597 777 Z"/>
+</svg>

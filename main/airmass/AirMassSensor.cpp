@@ -134,10 +134,10 @@ static AirMassEKF::GnssVelocity gnss_vel;
 static uint16_t gnss_epoch = 0; // counts the velocities, 0: none yet
 static portMUX_TYPE gnss_mux = portMUX_INITIALIZER_UNLOCKED;
 
-void airmass::gnssVelocity(mps_t speed, rad_t course, uint32_t time_ms, uint16_t latency_ms)
+void airmass::gnssVelocity(mps_t speed, rad_t course, uint32_t time_ms, uint16_t latency_ms, uint32_t fix_time_ms)
 {
     taskENTER_CRITICAL(&gnss_mux);
-    gnss_vel = {time_ms, latency_ms, speed * fast_cos_rad(course), speed * fast_sin_rad(course), NMEA_SPEED_SIGMA};
+    gnss_vel = {time_ms, latency_ms, speed * fast_cos_rad(course), speed * fast_sin_rad(course), NMEA_SPEED_SIGMA, fix_time_ms};
     if (++gnss_epoch == 0) {
         gnss_epoch = 1;
     }

@@ -2,6 +2,13 @@
 
 Results: [RESULTS-2026-11-06.md](RESULTS-2026-11-06.md), raw script outputs in `raw/`.
 
+Latest full batch: [2026-11-09 reevaluation after conversion fixes](RESULTS-2026-11-09-REEVALUATION.md),
+15 logs, including equal-damping scores, cockpit display timing, wind cross-checks and robustness failures.
+
+Downloads/NMEAlogs batch: [2026-11-08 results](RESULTS-2026-11-08-NMEAlogs.md), including sensor-gap availability and corrupted-input failures. `batch.js OUTPUT.json LOG...` accepts plain or gzipped logs and scores current AirMass versus TE on a regular time grid.
+
+New September 15 log: [2026-11-09 results](RESULTS-2026-11-09-NMEAlogs.md), with one RMC solution per epoch and continued sensor-gap recovery problems.
+
 ## Data
 
 The 11 real flights (XCVario `$SENS` sensor logs, ASG 29E, Southern French Alps, from XCVario discussion #451) are in

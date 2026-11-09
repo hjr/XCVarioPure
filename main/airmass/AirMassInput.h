@@ -73,6 +73,13 @@ inline float slipSigma(float f_lat_g, float ias, float mass, float wing_area) {
     return std::min(mass * G0 * std::fabs(f_lat_g) / qs, SLIP_MAX);
 }
 
+// Signed sideslip from lateral aerodynamic side force. Positive beta means air from the right.
+inline float slipBeta(float f_lat_g, float ias, float mass, float wing_area) {
+    const float qs = 0.5f * RHO0 * ias * ias * wing_area * CY_BETA;
+    if (ias < 10.f || qs < 1.f || mass <= 0.f) return 0.f;
+    return std::clamp(-mass * G0 * f_lat_g / qs, -SLIP_MAX, SLIP_MAX);
+}
+
 // Air data from the raw measurements with the estimator's learned calibration, for the attitude and the input
 struct AirData {
     float f_cg[3] = {};  // g, specific force at the CG
@@ -106,6 +113,7 @@ inline void fillInput(const Raw& r, const AirData& a, AirMassEKF::Input& in) {
     in.aoa = a.aoa;
     in.polar_sink = NAN;
     in.slip_sigma = slipSigma(f[1], a.ias, r.mass, r.wing_area);
+    in.slip_beta = slipBeta(f[1], a.ias, r.mass, r.wing_area);
     // the polar is defined on IAS: the true sink scales with TAS/IAS
     if (a.ias > 10.f && r.wing_area > 1.f && r.mass > 0.f && r.polar_sink_ias < 0.f) {
         in.polar_sink = -r.polar_sink_ias * r.tas / r.ias;

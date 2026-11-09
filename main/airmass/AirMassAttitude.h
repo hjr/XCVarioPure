@@ -39,8 +39,10 @@ public:
 
     // gyro: body rates [rad/s], f: specific force [g] at the CG, tas: calibrated true airspeed [m/s],
     // alpha: angle of attack of the body x axis [rad], bias_z: body z gyro bias from the estimator (AirMassEKF BGZ)
-    void update(const float gyro[3], const float f[3], float tas, float alpha, float dt, float bias_z) {
-        if (std::isfinite(_tas_prev)) {
+    void update(const float gyro[3], const float f[3], float tas, float alpha, float dt, float bias_z, bool continuous = true) {
+        if (!continuous) {
+            _tas_dot = _gust_slow = 0.f;
+        } else if (std::isfinite(_tas_prev)) {
             _tas_dot += ((tas - _tas_prev) / dt - _tas_dot) * dt / (TAS_DOT_TAU + dt);
         }
         _tas_prev = tas;
@@ -70,7 +72,7 @@ public:
         const float disagree = _tas_dot - acc_u;
         _gust_slow += (disagree - _gust_slow) * dt / (GUST_TAU + dt);
         const float gust = std::fabs(disagree - _gust_slow);
-        const float trust = norm > 0.1f ? std::clamp(1.f - 4.f * std::fabs(norm - 1.f), 0.f, 1.f) * std::clamp(1.f - gust / GUST_ACC, 0.f, 1.f) : 0.f;
+        const float trust = continuous && norm > 0.1f ? std::clamp(1.f - 4.f * std::fabs(norm - 1.f), 0.f, 1.f) * std::clamp(1.f - gust / GUST_ACC, 0.f, 1.f) : 0.f;
         float e[3] = {};
         if (trust > 0.f) {
             const float r[3] = {ref[0] / norm, ref[1] / norm, ref[2] / norm};

@@ -6,6 +6,9 @@
 #include "AirMassRecord.h"
 #include "replay_settings.h"
 #include "stats.h"
+#ifndef AIRMASS_NO_CONFIG_SETTINGS
+#include "math/MahonyAHRS.h"
+#endif
 
 #include <algorithm>
 #include <cmath>
@@ -35,6 +38,17 @@ public:
     std::string error; // set when a setting is unknown, the replay then stops
 
     void setLearning(bool learn) { _pipe.setLearning(learn); }
+    bool setMahony(bool enabled) {
+#ifdef AIRMASS_NO_CONFIG_SETTINGS
+        if (enabled) {
+            error = "Mahony AHRS is not available in this older estimator";
+            return false;
+        }
+#endif
+        _use_mahony = enabled;
+        return true;
+    }
+    bool usingMahony() const { return _use_mahony; }
     Pipeline& pipeline() { return _pipe; }
 
     // one log line (any NMEA, other sentences are skipped); false after an error
@@ -78,6 +92,14 @@ public:
                 std::fill(std::begin(_st.warm.flap_ofs), std::end(_st.warm.flap_ofs), FlapOffsets::UNKNOWN); // a new calibration
             }
             _pipe.start(_st.t, _st.alt, _st.down, _st.gyro, _st.warm);
+#ifndef AIRMASS_NO_CONFIG_SETTINGS
+            if (_use_mahony) {
+                _mahony_q = Quaternion::fromDownVector({_st.down[0], _st.down[1], _st.down[2]});
+                _mahony_omega = 0.f;
+                _mahony_calibrating = 7; // like FlightAHRS::setup() when airborne
+                _mahony_time = _st.t;
+            }
+#endif
             _running = _configured;
             starts++;
             if (!t_first) {
@@ -87,7 +109,27 @@ public:
             skipped += !std::strcmp(_s.name, "PXCVR"); // the log started in flight: wait for the next start
         } else if (rec::decode(_s, _fr)) {
             endCycle();
-            _pipe.step(_fr);
+#ifndef AIRMASS_NO_CONFIG_SETTINGS
+            if (_use_mahony) {
+                const float dt = std::clamp((_fr.time_ms - _mahony_time) / 1000.f, 0.05f, 0.3f);
+                _mahony_time = _fr.time_ms;
+                const vector_f gyro{_fr.gyro[0], _fr.gyro[1], _fr.gyro[2]};
+                MahonyAHRS::update(_mahony_q, _mahony_omega, _mahony_calibrating, {},
+                                  {_fr.f_body[0], _fr.f_body[1], _fr.f_body[2]}, gyro, _fr.tas, dt);
+                const vector_f down = _mahony_q.rotateInv({0.f, 0.f, 1.f});
+                ExternalAttitude att;
+                for (int i = 0; i < 3; ++i) att.down[i] = down[i];
+                att.roll = std::atan2(down.y, down.z);
+                att.pitch = MahonyAHRS::pitchRad(_mahony_q);
+                // Euler heading rate, as expected by AirMass (not gyro dot down).
+                const float cp2 = down.y * down.y + down.z * down.z;
+                att.yaw_rate = cp2 < 0.01f ? 0.f : (gyro.y * down.y + gyro.z * down.z) / cp2;
+                _pipe.step(_fr, &att);
+            } else
+#endif
+            {
+                _pipe.step(_fr);
+            }
             _open = true;
             _device_vario = NAN;
             frames++;
@@ -127,6 +169,13 @@ private:
     }
 
     Pipeline _pipe;
+    bool _use_mahony = false;
+#ifndef AIRMASS_NO_CONFIG_SETTINGS
+    Quaternion _mahony_q;
+    float _mahony_omega = 0.f;
+    int8_t _mahony_calibrating = 0;
+    uint32_t _mahony_time = 0;
+#endif
     bool _running = false, _configured = false, _open = false;
     float _device_vario = NAN;
     airmass::record::Sentence _s;

@@ -1,0 +1,291 @@
+{
+  "created": "2026-11-09T00:12:36.289Z",
+  "notes": "Default AirMass, Mahony off, logged glider/weight, temperature fallback. Same 4 s damping for scored AirMass and TE; each shifted by its fitted 0–6 s delay. Reference is not truth. Free-flight mask is heuristic.",
+  "flights": [
+    {
+      "file": "2026-09-15_10-39..nmea",
+      "glider": "Ventus CM 17.6",
+      "gliderFrom": "log",
+      "mass": 329,
+      "samples": 126191,
+      "hours": 4.358411388888889,
+      "freeHours": 3.716841388888974,
+      "scoredHours": 0.10834472222221747,
+      "temperatureEstimatedSamples": 0,
+      "status": {
+        "samples": 115680,
+        "vario": 29453,
+        "wind": 8694,
+        "degraded": 64709,
+        "fresh": 95888,
+        "aligned": 101553
+      },
+      "summary": {
+        "lines": 133436,
+        "cycles": 119715,
+        "gnss": 12521,
+        "compass": 0,
+        "starts": 1,
+        "skipped": 0,
+        "damaged": 0,
+        "k_tas": 1.0126,
+        "pitch_ofs_deg": 3.582,
+        "aoa_scale": 0.9733,
+        "latency_ms": 251,
+        "gyro_z_bias_dps": 0.0306,
+        "mahony": false
+      },
+      "gnss": {
+        "fixes": 13233,
+        "gapsOver3s": 369,
+        "gapSeconds": 1630,
+        "maxGap": 16,
+        "altitudeJumpsOver30mps": 0
+      },
+      "vario": {
+        "inertial": {
+          "delay": {
+            "AirMass": 3.8,
+            "TE": 3.6
+          },
+          "scores": {
+            "10": {
+              "all": {
+                "windows": 0,
+                "AirMass": {
+                  "rms": null,
+                  "bias": null
+                },
+                "TE": {
+                  "rms": null,
+                  "bias": null
+                }
+              },
+              "straight": {
+                "windows": 0,
+                "AirMass": {
+                  "rms": null,
+                  "bias": null
+                },
+                "TE": {
+                  "rms": null,
+                  "bias": null
+                }
+              },
+              "circling": {
+                "windows": 0,
+                "AirMass": {
+                  "rms": null,
+                  "bias": null
+                },
+                "TE": {
+                  "rms": null,
+                  "bias": null
+                }
+              }
+            },
+            "30": {
+              "all": {
+                "windows": 0,
+                "AirMass": {
+                  "rms": null,
+                  "bias": null
+                },
+                "TE": {
+                  "rms": null,
+                  "bias": null
+                }
+              },
+              "straight": {
+                "windows": 0,
+                "AirMass": {
+                  "rms": null,
+                  "bias": null
+                },
+                "TE": {
+                  "rms": null,
+                  "bias": null
+                }
+              },
+              "circling": {
+                "windows": 0,
+                "AirMass": {
+                  "rms": null,
+                  "bias": null
+                },
+                "TE": {
+                  "rms": null,
+                  "bias": null
+                }
+              }
+            },
+            "300": {
+              "all": {
+                "windows": 0,
+                "AirMass": {
+                  "rms": null,
+                  "bias": null
+                },
+                "TE": {
+                  "rms": null,
+                  "bias": null
+                }
+              },
+              "straight": {
+                "windows": 0,
+                "AirMass": {
+                  "rms": null,
+                  "bias": null
+                },
+                "TE": {
+                  "rms": null,
+                  "bias": null
+                }
+              },
+              "circling": {
+                "windows": 0,
+                "AirMass": {
+                  "rms": null,
+                  "bias": null
+                },
+                "TE": {
+                  "rms": null,
+                  "bias": null
+                }
+              }
+            },
+            "worst": []
+          }
+        },
+        "pitot": {
+          "delay": {
+            "AirMass": 2.4,
+            "TE": 2
+          },
+          "scores": {
+            "10": {
+              "all": {
+                "windows": 0,
+                "AirMass": {
+                  "rms": null,
+                  "bias": null
+                },
+                "TE": {
+                  "rms": null,
+                  "bias": null
+                }
+              },
+              "straight": {
+                "windows": 0,
+                "AirMass": {
+                  "rms": null,
+                  "bias": null
+                },
+                "TE": {
+                  "rms": null,
+                  "bias": null
+                }
+              },
+              "circling": {
+                "windows": 0,
+                "AirMass": {
+                  "rms": null,
+                  "bias": null
+                },
+                "TE": {
+                  "rms": null,
+                  "bias": null
+                }
+              }
+            },
+            "30": {
+              "all": {
+                "windows": 0,
+                "AirMass": {
+                  "rms": null,
+                  "bias": null
+                },
+                "TE": {
+                  "rms": null,
+                  "bias": null
+                }
+              },
+              "straight": {
+                "windows": 0,
+                "AirMass": {
+                  "rms": null,
+                  "bias": null
+                },
+                "TE": {
+                  "rms": null,
+                  "bias": null
+                }
+              },
+              "circling": {
+                "windows": 0,
+                "AirMass": {
+                  "rms": null,
+                  "bias": null
+                },
+                "TE": {
+                  "rms": null,
+                  "bias": null
+                }
+              }
+            },
+            "300": {
+              "all": {
+                "windows": 0,
+                "AirMass": {
+                  "rms": null,
+                  "bias": null
+                },
+                "TE": {
+                  "rms": null,
+                  "bias": null
+                }
+              },
+              "straight": {
+                "windows": 0,
+                "AirMass": {
+                  "rms": null,
+                  "bias": null
+                },
+                "TE": {
+                  "rms": null,
+                  "bias": null
+                }
+              },
+              "circling": {
+                "windows": 0,
+                "AirMass": {
+                  "rms": null,
+                  "bias": null
+                },
+                "TE": {
+                  "rms": null,
+                  "bias": null
+                }
+              }
+            },
+            "worst": []
+          }
+        }
+      },
+      "needleMotion1s": {
+        "AirMass": 0.79308109511792,
+        "TE": 0.844796730064834
+      },
+      "wind": {
+        "validSpeedMedian": 3.7071630716555912,
+        "validSpeedP95": 5.852484015252582,
+        "independentTurns": 10,
+        "vectorErrorMedian": 0.7392963437436527,
+        "vectorErrorP90": 1.2292052229609067,
+        "avgVectorErrorMedian": 0.8290053488255017
+      },
+      "absoluteSideslipMedian": 1.3157652616500854,
+      "absoluteSideslipP95": 5.213534355163574
+    }
+  ]
+}

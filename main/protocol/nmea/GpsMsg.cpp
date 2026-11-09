@@ -100,18 +100,25 @@ dl_action_t GpsMsg::parseGPRMC(NmeaPlugin *plg)
     }
     ESP_LOGD(FNAME, "parseGPRMC");
 
-    struct tm t;
+    struct tm t = {};
     const char *s = sm->_frame.c_str();
-    int valid_time_scan = sscanf( s + word->at(0), "%02d%02d%02d", &t.tm_hour, &t.tm_min, &t.tm_sec );
+    double seconds = NAN;
+    int valid_time_scan = sscanf( s + word->at(0), "%02d%02d%lf", &t.tm_hour, &t.tm_min, &seconds );
+    const bool time_ok = valid_time_scan == 3 && t.tm_hour >= 0 && t.tm_hour < 24 && t.tm_min >= 0 &&
+        t.tm_min < 60 && std::isfinite(seconds) && seconds >= 0. && seconds < 60.;
+    t.tm_sec = time_ok ? static_cast<int>(seconds) : 0;
+    const uint32_t fix_time_ms = time_ok ? (t.tm_hour * 3600u + t.tm_min * 60u) * 1000u +
+        static_cast<uint32_t>(seconds * 1000.) : UINT32_MAX;
     char warn = *(s + word->at(1));
     float lat, lon;
     bool fix_ok = decodeNMEADegMin( s + word->at(2), *(s + word->at(3)), lat )
         && decodeNMEADegMin( s + word->at(4), *(s + word->at(5)), lon );
-    float tmp;
-    sscanf( s + word->at(6), "%f", &tmp );
-    mps_t gndSpeed = Units::knots_to_mps(tmp);
-    sscanf( s + word->at(7), "%f", &tmp );
-    rad_t gndCourse = Units::deg_to_rad(tmp);
+    float speed_knots = NAN, course_deg = NAN;
+    const bool velocity_ok = sscanf(s + word->at(6), "%f", &speed_knots) == 1 &&
+        sscanf(s + word->at(7), "%f", &course_deg) == 1 && std::isfinite(speed_knots) &&
+        std::isfinite(course_deg) && speed_knots >= 0.f && course_deg >= 0.f && course_deg <= 360.f;
+    mps_t gndSpeed = Units::knots_to_mps(speed_knots);
+    rad_t gndCourse = Units::deg_to_rad(course_deg);
     int valid_date_scan = sscanf( s + word->at(8),"%02d%02d%02d", &t.tm_mday, &t.tm_mon, &t.tm_year );
     // ESP_LOGI(FNAME,"SC: %d/%d/%d %02d:%02d:%02d ", t.tm_year, t.tm_mon, t.tm_mday, t.tm_hour, t.tm_min, t.tm_sec );
 
@@ -120,11 +127,11 @@ dl_action_t GpsMsg::parseGPRMC(NmeaPlugin *plg)
     // ESP_LOGI(FNAME,"GP%s, warn:%c T:%s D:%s", gprmc+3, warn, time, date  );
 
     if ( warn == 'A' ) {
-        if (fix_ok && gpsSensor) {
+        if (fix_ok && velocity_ok && gpsSensor) {
            // valid fix
-           gpsSensor->inject(lat, lon, gndSpeed, gndCourse);
+           gpsSensor->inject(lat, lon, gndSpeed, gndCourse, fix_time_ms);
         }
-        if ( circleWind && BackgroundTaskQueue ) {
+        if (fix_ok && velocity_ok && circleWind && BackgroundTaskQueue) {
             ESP_LOGD(FNAME,"Track: %3.2f, GPRMC: %s", gndCourse, sm->_frame.c_str() );
             circleWind->setNewSample(Vector(gndCourse, gndSpeed));
 
@@ -132,7 +139,7 @@ dl_action_t GpsMsg::parseGPRMC(NmeaPlugin *plg)
             xQueueSend(BackgroundTaskQueue, &job, 0);
         }
         ESP_LOGD(FNAME,"Valid GPS Time info received %d/%d.", valid_date_scan, valid_time_scan );
-        if (valid_time_scan == 3 && valid_date_scan == 3)
+        if (time_ok && valid_date_scan == 3)
         {
             t.tm_year += 2000 - 1900; // NMEA gives only two digit year
             t.tm_mon -= 1; // struct tm month is 0..11

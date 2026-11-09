@@ -42,7 +42,7 @@ GpsVSensor* GpsVSensor::createGpsVSensor() {
     return gpsSensor;
 }
 
-void GpsVSensor::inject(float lat, float lon, mps_t gndSpeed, rad_t gndCourse)
+void GpsVSensor::inject(float lat, float lon, mps_t gndSpeed, rad_t gndCourse, uint32_t fix_time_ms)
 {
     // only the position goes into the sensor history
     vector_f v;
@@ -59,7 +59,7 @@ void GpsVSensor::inject(float lat, float lon, mps_t gndSpeed, rad_t gndCourse)
     // publish current speed an course through blackboard for other consumers, e.g. wind calc
     gnd_speed.set(gndSpeed);
     gnd_course.set(gndCourse);
-    airmass::gnssVelocity(gndSpeed, gndCourse, time, _latency_ms);
+    airmass::gnssVelocity(gndSpeed, gndCourse, time, _latency_ms, fix_time_ms);
 }
 
 void GpsVSensor::setExternalAltitude(float alt) {
