@@ -8,12 +8,15 @@
 
 #pragma once
 
+#include "driver/time/ClockIntf.h"
+
 #include <freertos/FreeRTOS.h>
 #include <freertos/queue.h>
 
-// when set the wind task wants to be feed with new data.
+// when set the bg task wants to be feed with new jobs
 extern QueueHandle_t BackgroundTaskQueue;
-// Calculation is then triggered by events on the queue
+
+// calculations are triggered by events on the queue
 struct CalkTaskJob
 {
     enum { CALK_TASK_NONE,
@@ -21,7 +24,8 @@ struct CalkTaskJob
             CALK_TASK_EVENT_NUMSAT,
             CALK_TASK_SEND_SENS,
             CALK_TASK_THERMAL_STATS,
-            CALK_TASK_TOY_FEED
+            CALK_TASK_TOY_FEED,
+            CALK_1S_CACHE
     };
 
     uint16_t raw;
@@ -34,11 +38,14 @@ struct CalkTaskJob
 };
 
 
-class WindCalcTask
+// todo rename class
+class WindCalcTask : public Clock_I
 {
 public:
     WindCalcTask();
     ~WindCalcTask();
+
+    bool tick() override;
 
     // API
     static void createWindResources();

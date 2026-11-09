@@ -9,6 +9,8 @@
 #include "WindCalcTask.h"
 #include "CircleWind.h"
 #include "StraightWind.h"
+#include "driver/gpio/S2fSwitch.h"
+#include "Atmosphere.h"
 #include "protocol/NMEA.h"
 #include "AverageVario.h"
 #include "setup/SetupCommon.h"
@@ -31,6 +33,7 @@ static void wind_calc_task(void *arg)
     ESP_LOGI(FNAME, "Background task queue created %p", BackgroundTaskQueue);
     CalkTaskJob job(CalkTaskJob::CALK_TASK_NONE);
     TickType_t timeout = pdMS_TO_TICKS(3000);
+    Clock::start((WindCalcTask*)arg);
 
     while (true)
     {
@@ -114,6 +117,12 @@ static void wind_calc_task(void *arg)
                 }
                 break;
             }
+            case CalkTaskJob::CALK_1S_CACHE:
+                if (S2FSWITCH) {
+                    S2FSWITCH->checkCruiseMode();
+                }
+                Atmosphere::cacheTasPerIas();
+                break;
             default:
                 ESP_LOGE(FNAME, "Unknown job type %d", job.getJobTyp() );
                 break;
@@ -131,6 +140,7 @@ static void wind_calc_task(void *arg)
             // if ( straightWind ) { straightWind->tick(); }
         }
     }
+    Clock::stop((WindCalcTask*)arg);
     vQueueDelete(BackgroundTaskQueue);
     BackgroundTaskQueue = nullptr;
     ESP_LOGW(FNAME, "Background task exiting");
@@ -139,9 +149,10 @@ static void wind_calc_task(void *arg)
 
 
 // more or less just a guard to the background task
-WindCalcTask::WindCalcTask()
+WindCalcTask::WindCalcTask() :
+    Clock_I(100)
 {
-    xTaskCreate(wind_calc_task, "background", 4000, NULL, 1, nullptr); // least priority
+    xTaskCreate(wind_calc_task, "background", 4000, this, 1, nullptr); // least priority
 }
 
 
@@ -188,3 +199,12 @@ void WindCalcTask::createWindResources()
     }
 
 }
+
+
+bool WindCalcTask::tick()
+{
+    CalkTaskJob job(CalkTaskJob::CALK_1S_CACHE);
+    xQueueSend(BackgroundTaskQueue, &job, 0);
+    return false;
+}
+

@@ -222,6 +222,7 @@ extern SetupNG<meter_t>  	altitude;
 extern SetupNG<meter_t>  	altitude_isa;
 extern SetupNG<mps_t>       ias;
 extern SetupNG<mps_t>  		tas;
+extern SetupNG<float>  		tas_per_ias;
 extern SetupNG<mps_t>  		gnd_speed;
 extern SetupNG<rad_t>  		gnd_course;
 extern SetupNG<mps_t>  		te_vario;

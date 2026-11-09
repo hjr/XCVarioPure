@@ -274,14 +274,6 @@ void readSensors(void *pvParameters)
             }
         }
 
-        // every second todo convert into a sensor
-        if ( !(count%20) ) {
-            // Check auto s2f mode filter every second
-            if (S2FSWITCH) {
-                S2FSWITCH->checkCruiseMode();
-            }
-        }
-
         // MinMax tracking
         if ( !(count%2) ) {
             if (accSensor) {
