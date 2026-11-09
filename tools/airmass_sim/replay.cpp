@@ -4,7 +4,7 @@
 // e.g. the navigation computer's NMEA log of a flight; other sentences are skipped. Where the log has the device's
 // own $PXCVA output, the replay compares itself with it: with the same firmware it reproduces the device.
 //
-// usage: airmass_replay <log> [--csv file] [--check m/s] [--warm k_tas,pitch_ofs,aoa_scale,latency] [--no-learn]
+// usage: airmass_replay <log> [--csv file] [--check m/s] [--warm k_tas,pitch_ofs,aoa_scale,latency] [--no-learn] [--mahony]
 //   --csv: per cycle t, air mass vario, wind N/E/D, status, heading, k_tas, pitch offset, latency, averaged wind
 //          N/E, roll, pitch, the device's vario where recorded, the estimator's polar sink (down positive), load
 //          factor, vertical speed (down), acceleration along the air velocity, vertical acceleration (down)
@@ -25,17 +25,19 @@ using Units::rad_to_deg;
 
 int main(int argc, char** argv) {
     if (argc < 2) {
-        std::fprintf(stderr, "usage: %s <log> [--csv file] [--check m/s] [--warm k_tas,pitch_ofs,aoa_scale,latency] [--no-learn]\n", argv[0]);
+        std::fprintf(stderr, "usage: %s <log> [--csv file] [--check m/s] [--warm k_tas,pitch_ofs,aoa_scale,latency] [--no-learn] [--mahony]\n", argv[0]);
         return 2;
     }
     const char* csv_name = nullptr;
     float check = -1.f;
-    bool override_warm = false, learn = true;
+    bool override_warm = false, learn = true, mahony = false;
     float warm_override[4] = {1.f, 0.f, 1.f, 0.75f};
     airmass::replay::Settings settings;
     for (int i = 2; i < argc; ++i) {
         if (std::strcmp(argv[i], "--no-learn") == 0) {
             learn = false;
+        } else if (std::strcmp(argv[i], "--mahony") == 0) {
+            mahony = true;
         } else if (i + 1 < argc && std::strcmp(argv[i], "--csv") == 0) {
             csv_name = argv[++i];
         } else if (i + 1 < argc && std::strcmp(argv[i], "--check") == 0) {
@@ -65,11 +67,15 @@ int main(int argc, char** argv) {
     }
     if (csv) {
         std::fprintf(csv, "t_s,vario,wind_n,wind_e,wind_d,status,heading_deg,k_tas,pitch_ofs_deg,latency_ms,avg_wind_n,avg_wind_e,roll_deg,pitch_deg,device_vario,"
-                          "polar_sink,load_factor,vd,acc_long,acc_down,wd_energy,wd_energy_plain\n");
+                          "polar_sink,load_factor,vd,acc_long,acc_down,wd_energy,wd_energy_plain,gnss_age_ms,gnss_received_age_ms,gnss_rejects,inertial_trust\n");
     }
 
     airmass::replay::Replayer r;
     r.setLearning(learn);
+    if (!r.setMahony(mahony)) {
+        std::fprintf(stderr, "%s\n", r.error.c_str());
+        return 2;
+    }
     r.settings = settings;
     r.override_warm = override_warm;
     std::copy(std::begin(warm_override), std::end(warm_override), r.warm);
@@ -87,8 +93,8 @@ int main(int argc, char** argv) {
             std::fprintf(csv, "%.2f", device_vario);
         }
         // the estimator's inputs and vertical speed, for diagnostics
-        std::fprintf(csv, ",%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f\n", i.polar_sink, i.load_factor, ekf.vDown(), i.acc_long, i.acc_down, ekf.energyWd(),
-                     ekf.energyWdPlain());
+        std::fprintf(csv, ",%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%u,%u,%u,%.3f\n", i.polar_sink, i.load_factor, ekf.vDown(), i.acc_long, i.acc_down, ekf.energyWd(),
+                     ekf.energyWdPlain(), ekf.gnssAgeMs(), ekf.gnssReceivedAgeMs(), ekf.rejectedGnss(), ekf.inertialTrust());
     };
 
     char line[512];

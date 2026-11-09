@@ -13,10 +13,68 @@ It reads an XCVario sensor log (`$SENS`, converted like `sens2rec.py`) or an Air
 Recording), plain or `.gz`. Settings: the glider polar for sensor logs, the mass, bugs, the vario damping, estimator
 settings as in `airmass_replay --set`, and the start calibration.
 
+Opening a new log automatically selects its glider from `CA1` or older `CMN` metadata, and shows the type in the
+glider selector. A saved manual choice from a previous log is replaced; you can override the type for the current
+log. Configuration can occur later in the file. Logs with no recognized type use the ASG 29/18 fallback.
+
+Sensor-log temperatures outside −60…+50°C, missing or non-finite values use an estimate: **25°C at sea level,
+decreasing by 6.5°C per kilometre**. Altitude comes from GNSS, falling back to ISA pressure altitude. This estimate
+feeds TAS and the replay; plausible logged temperatures remain unchanged. The replay summary reports how many
+samples used the estimate. `sens2rec.py` uses the same rule. AirMass recordings already contain TAS and pass through.
+
+GNSS timing uses each RMC fix's source UTC as well as its arrival time. New recordings retain source UTC as an
+optional ninth `PXCVG` field; older recordings remain readable. Repeated/backward source epochs and invalid
+velocities are rejected. Source/arrival intervals distinguish irregular fix cadence from extra transport delay,
+including queued bursts and UTC midnight. The constant receiver latency is still learned: source UTC alone cannot
+establish the absolute delay of the first fix. Without source epochs, arrival ordering and innovation checks still
+apply, with additional allowance for timing uncertainty.
+
+Delayed GNSS fusion requires measured sensor history bracketing its observation time; the history holds about
+6.4 seconds at 10 Hz. It never clamps an old fix to a history endpoint or interpolates through an IMU gap. A rejected
+fix does not refresh accepted-GNSS age, and the entire horizontal observation is gated before any state changes.
+
+Sensor gaps over 0.3 seconds are propagated in small steps holding the preceding measurement, with increased
+uncertainty and inferred history excluded from GNSS fusion. Gaps over 10 seconds restart the dynamics while keeping
+calibration. After a gap, vertical validity settles for about 5 seconds (TE fallback), and the inertial gust
+correction regains full trust over 10 seconds of continuous data. Pitch/AoA kinematic fusion and GNSS calibration
+learning wait for adequate input quality; wind-work correction fades with accepted-fix age and GNSS quality.
+Sparse logs can consequently spend much of the replay on TE fallback. Exported native/WASM columns
+`gnss_age_ms`, `gnss_received_age_ms`, `gnss_rejects`, and `inertial_trust` expose this behavior; GNSS age is the age
+of the last accepted observation, received age is the time since the last fusion attempt, and `UINT32_MAX` means none.
+
+`sensor_gnss_robustness` in the host CTest suite covers delayed/irregular fixes, transport jitter, out-of-order and
+duplicate epochs, outages, outliers, midnight/clock wrap, unsupported history, whole-fix rejection and sensor gaps.
+
+**Gross mode for all varios** switches the three needles, chart lines, 30 s averages and selected sound source
+together. AirMass gross includes the polar sink and falls back to TE gross; TE gross is the logged TE vario;
+GNSS gross is the total-energy climb before subtracting the polar sink. The GNSS damping option applies to both
+modes. The switch takes effect immediately and is saved in the browser; the map's named colour sources keep their
+own meanings.
+
+Below the flying-speed cutoff (80% of the polar's stall-speed reference, with a 10 m/s minimum), AirMass invalidates
+its vario and stops using the wing air-vector model. The dashed blue needle follows TE through landing and ground
+roll; it returns to AirMass after five seconds of supported flying-speed samples. This policy runs in the shared
+device/replay pipeline, including a separate 10 m/s TAS floor for direct EKF inputs.
+
+**Use Mahony AHRS** switches the estimator and attitude display to the device's extended Mahony filter, including
+its coordinated-turn reference. It is off by default; the usual AirMass air-data-aided attitude remains the default.
+Changing the checkbox replays the loaded flight and saves the choice in this browser. Each flight starts from the
+recorded attitude. The native replay has the same option as `airmass_replay --mahony`. Rebuild `airmass.js` after
+updating the sources so the browser can run the new filter.
+
 Older sensor logs: `!XCV,FMT,SENS,start,factors...` multiplies the `$SENS` fields from index `start` on (`SENS` is 0; logs
 before 2025 are east-north-up), `!XCV,CMN,type,empty,crew,ballast,speedcal` stands in for `CA1`, and `;` separators and
 times in integer milliseconds are accepted. The QNH comes from `CA1`, else `$PXCV`, else the GNSS altitude and static
 pressure on the ground; it only feeds the QNH altitude shown, AirMass uses the ISA pressure altitude.
+
+The converters validate the legacy `FMT,SENS,7,1,-1,-1,1,-1,-1` declaration against the logged `$PXCV` attitude.
+They repair it to gravity-vector acceleration (negated on all axes) and unchanged body gyros only when both
+stationary tilted samples and pitch-rate comparisons provide sufficient evidence. Valid declarations and logs
+without that evidence retain their declared mapping. Kelvin OAT is recognized by agreement with `$PXCV`'s Celsius
+readout; other implausible/missing temperatures retain the altitude-based fallback. Applied corrections appear in
+the replay summary. These conversions do not modify the flight log or the live estimator.
+
+Run `python3 tools/airmass_sim/conversion_test.py` for the shared JavaScript/Python convention checks.
 
 Files: `airmass_wasm.cpp` (the module, on `replay_core.h` like `airmass_replay`), `convert.js` (log → recording;
 keep in step with `sens2rec.py`), `replay.js` (runs the module), `make_gliders.py` (the glider list from the firmware's tables), `deploy.sh` (publishes only the page files), `check.js` (node: the converter against

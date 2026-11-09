@@ -2,6 +2,7 @@
 (function (root) {
   "use strict";
   // opts: settings ("name=value, ..."), learn (default true), warm: [k_tas, pitch_ofs_deg, aoa_scale, latency_s] or null.
+  // mahony: use the device's extended Mahony AHRS for the estimator attitude (default false).
   // Resolves to { t_ms: Uint32Array, cols: {name: Float32Array}, summary } or rejects with the replay's error.
   async function runReplay(M, rec, opts = {}, onProgress = null) {
     const withString = (s, fn) => {
@@ -11,8 +12,12 @@
       try { return fn(p); } finally { M._free(p); }
     };
     const w = opts.warm;
-    const ok = withString(opts.settings || "", (p) => M._am_begin(p, opts.learn === false ? 0 : 1, w ? 1 : 0, w ? w[0] : 1, w ? w[1] : 0, w ? w[2] : 1, w ? w[3] : 0.75));
+    const ok = withString(opts.settings || "", (p) => M._am_begin(p, opts.learn === false ? 0 : 1, w ? 1 : 0, w ? w[0] : 1, w ? w[1] : 0, w ? w[2] : 1, w ? w[3] : 0.75, opts.mahony ? 1 : 0));
     if (!ok) throw new Error(M.UTF8ToString(M._am_error()));
+    // Older cached modules ignore the new argument: do not silently replay with the wrong attitude filter.
+    if (opts.mahony && !JSON.parse(M.UTF8ToString(M._am_summary())).mahony) {
+      throw new Error("Mahony AHRS needs the updated replay module. Rebuild airmass.js and reload the page.");
+    }
     const CHUNK = 20000;
     for (let i = 0; i < rec.length; i += CHUNK) {
       if (!withString(rec.slice(i, i + CHUNK).join("\n"), (p) => M._am_feed(p))) throw new Error(M.UTF8ToString(M._am_error()));

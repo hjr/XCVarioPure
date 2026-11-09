@@ -41,7 +41,7 @@ public:
     rps_t getOmega() const { return _omega; }
 
     // Injection API
-    void inject(float lat, float lon, mps_t gndSpeed, rad_t gndCourse);
+    void inject(float lat, float lon, mps_t gndSpeed, rad_t gndCourse, uint32_t fix_time_ms = UINT32_MAX);
     void setExternalAltitude(float);
 
 private:

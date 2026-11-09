@@ -20,7 +20,7 @@ namespace airmass {
 void startup();
 
 // GNSS: a new ground velocity (protocol task)
-void gnssVelocity(mps_t speed, rad_t course, uint32_t time_ms, uint16_t latency_ms);
+void gnssVelocity(mps_t speed, rad_t course, uint32_t time_ms, uint16_t latency_ms, uint32_t fix_time_ms = UINT32_MAX);
 // GNSS: true heading and wind correction angle from the estimator; false while it has none
 bool heading(rad_t track);
 

@@ -10,6 +10,11 @@
   const RHO0 = 1.225, R_AIR = 287.058, G0 = 9.80665, P0 = 101325.0, T0DIVL = 44330.76923, G0DIVRXL = 5.25588;
   const KNOT = 0.514444;
 
+  // Bad/missing OAT (some logs are stuck at 84.9°C): 25°C at sea level, standard 6.5°C/km lapse rate.
+  // Use altitude above sea level, falling back to pressure altitude when GNSS altitude is unavailable.
+  const plausibleTemperature = (oat) => Number.isFinite(oat) && oat >= -60 && oat <= 50;
+  const estimatedTemperature = (alt) => 25 - 0.0065 * (Number.isFinite(alt) ? alt : 0);
+
   // the firmware's glider types (components/glider/PolarTable.txt and FlapTable.txt, generated into gliders.js by
   // make_gliders.py, with the device's default Vne); the ASG 29 with its own Vne, as sens2rec.py has it, so both
   // convert alike
@@ -52,14 +57,74 @@
     return line.startsWith("$SENS;") ? line.replace(/;/g, ",") : line;
   }
 
+  // Check legacy metadata against independent PXCV attitude/temperature readings. Some logs declare
+  // an ENU conversion although their acceleration is gravity (not specific force) and gyros are body rates.
+  class SensorConventions {
+    constructor() {
+      this.sensor = this.prev = null;
+      this.kelvin = this.temperaturePairs = this.ground = this.rates = 0;
+      this.gravityDeclared = this.gravityCorrected = this.rateDeclared = this.rateCorrected = 0;
+    }
+    sens(f) {
+      const num = (i) => f[i] === undefined || f[i] === "" ? NaN : +f[i];
+      const t = f[1]?.includes(".") ? num(1) : num(1) / 1000;
+      const a = [7, 8, 9].map(num), g = [10, 11, 12].map(i => num(i) * Math.PI / 180);
+      this.sensor = [t, num(5), ...a, ...g].every(Number.isFinite) ? { t, q: num(5), oat: num(6), a, g } : null;
+    }
+    pxcv(f) {
+      const s = this.sensor;
+      if (!s) return;
+      const temp = f[6] === "" ? NaN : +f[6];
+      if (plausibleTemperature(s.oat - 273.15) && plausibleTemperature(temp)) {
+        this.temperaturePairs++;
+        if (Math.abs(s.oat - 273.15 - temp) < 2) this.kelvin++;
+      }
+      const roll = f[10] === "" ? NaN : +f[10] * Math.PI / 180;
+      const pitch = f[11] === "" ? NaN : +f[11] * Math.PI / 180;
+      if (![roll, pitch].every(Number.isFinite)) return;
+      const norm = Math.hypot(...s.a), rate = Math.hypot(...s.g);
+      if (s.q < 50 && norm > 0.85 && norm < 1.15 && rate < 3 * Math.PI / 180 &&
+          Math.abs(roll) < Math.PI / 6 && Math.abs(pitch) < Math.PI / 7 && Math.abs(Math.sin(pitch)) > 0.05) {
+        const force = [Math.sin(pitch), -Math.sin(roll) * Math.cos(pitch), -Math.cos(roll) * Math.cos(pitch)];
+        for (let j = 0; j < 3; j++) {
+          this.gravityDeclared += (s.a[j] / norm * (j === 0 ? 1 : -1) - force[j]) ** 2;
+          this.gravityCorrected += (-s.a[j] / norm - force[j]) ** 2;
+        }
+        this.ground++;
+      }
+      const dt = this.prev ? s.t - this.prev.t : 0;
+      if (dt > 0.15 && dt < 0.3 && Math.abs(roll) < Math.PI / 3 && Math.abs(pitch) < Math.PI / 6 && rate < 1.4) {
+        const measured = (pitch - this.prev.pitch) / dt;
+        const predicted = s.g[1] * Math.cos(roll) - s.g[2] * Math.sin(roll);
+        if (Math.abs(measured) < Math.PI / 6) {
+          this.rateDeclared += (-predicted - measured) ** 2;
+          this.rateCorrected += (predicted - measured) ** 2;
+          this.rates++;
+        }
+      }
+      this.prev = { t: s.t, pitch };
+    }
+    apply(out) {
+      out.temperatureKelvin = this.kelvin >= 20 && this.kelvin >= this.temperaturePairs * 0.8;
+      const f = out.fmt;
+      if (f?.start === 7 && f.factors.join(",") === "1,-1,-1,1,-1,-1" && this.ground >= 50 && this.rates >= 100 &&
+          this.gravityCorrected / this.ground < 0.01 && this.gravityCorrected < this.gravityDeclared * 0.5 &&
+          this.rateCorrected < this.rateDeclared * 0.5) {
+        out.fmt = { start: 7, factors: [-1, -1, -1, 1, 1, 1] };
+        out.axesCorrected = true;
+      }
+    }
+  }
+
   // One pass through the log before the conversion, for what applies to all of it wherever it stands:
   //  "!XCV,FMT,SENS,start,factors...": the $SENS fields from index start on (SENS itself is 0) are multiplied by the
   //    factors (logs before 2025: east-north-up axes)
   //  "!XCV,CMN,glider type,empty weight,crew weight,ballast,speed cal": CA1 without the QNH; a CA1 in the log wins
   //  the QNH [hPa]: of CA1, else of $PXCV, else from the GNSS altitude and static pressure of the first fixes on the ground
   function scanLog(lines) {
-    const out = { fmt: null, cmn: null, ca1: false, qnh: NaN, qnhFrom: "" };
+    const out = { fmt: null, cmn: null, ca1: null, qnh: NaN, qnhFrom: "" };
     const pairs = [];
+    const conventions = new SensorConventions();
     let p = NaN, q = NaN, pxcv = NaN;
     for (const raw of lines) {
       const line = cleanLine(raw.trim());
@@ -72,14 +137,17 @@
           const v = f.slice(2, 6).map(Number);
           if (v.length === 4 && v.every(Number.isFinite)) out.cmn = v;
         } else if (f[1] === "CA1") {
-          out.ca1 = true;
+          const v = f.slice(2, 6).map(x => x === "" ? NaN : Number(x));
+          if (!out.ca1 && v.length === 4 && v.every(Number.isFinite)) out.ca1 = v;
           const hpa = +f[7] > 8e4 ? +f[7] / 100 : +f[7]; // Pa, or hPa
           if (hpa > 800 && hpa < 1100) [out.qnh, out.qnhFrom] = [hpa, "CA1"];
         }
       } else if (line.startsWith("$PXCV,")) {
+        conventions.pxcv(fields(line));
         if (!Number.isFinite(pxcv) && +fields(line)[7] > 800) pxcv = +fields(line)[7];
       } else if (line.startsWith("$SENS,")) {
         const f = fields(line);
+        conventions.sens(f);
         p = +f[3];
         q = +f[5];
       } else if (pairs.length < 20 && (line.startsWith("$GPGGA,") || line.startsWith("$GNGGA,"))) {
@@ -88,6 +156,7 @@
         if (+f[6] > 0 && Number.isFinite(h) && p > 300 && q < 150) pairs.push([p, h]);
       }
     }
+    conventions.apply(out);
     if (out.qnhFrom) return out;
     if (Number.isFinite(pxcv)) return Object.assign(out, { qnh: pxcv, qnhFrom: "$PXCV" });
     if (pairs.length) {
@@ -96,6 +165,13 @@
       Object.assign(out, { qnh: median(pairs.map((x) => x[0])) / isa, qnhFrom: "GNSS altitude and pressure" });
     }
     return out;
+  }
+
+  // Detect the initial logged type even when the configuration telegram occurs later in the file.
+  function gliderFromLog(text) {
+    const scan = scanLog(text.split("\n"));
+    const setup = scan.ca1 || scan.cmn;
+    return setup ? gliderById(setup[0]) : undefined;
   }
 
   // the $SENS time stamp [ms] made monotone: a clock jump (the UTC synchronisation, midnight, a reboot) continues at the
@@ -197,7 +273,7 @@
   // bugs [%] (<0: logged), noFlaps. Returns { kind, rec: [recording lines], track, starts, frames, fixes, glider (the
   // name used), gliderFrom ("set", "log", "default": the log names none), mass [kg, of the last setup], massFrom ("set",
   // "logged weights", "logged ballast factor"), flapsFrom ("logged": the lever (FLP) from its first telegram on, "the
-  // recommendation", "": none) }.
+  // recommendation", "": none), temperatureEstimatedSamples (sensor samples using the OAT estimate) }.
   function convert(text, opts = {}) {
     const isRecording = /\$PXCVR,/.test(text.slice(0, 4e6)) || (!/\$SENS[,;]/.test(text.slice(0, 4e6)) && text.includes("$PXCVR,"));
     return isRecording ? passRecording(text) : convertSens(text, opts);
@@ -260,9 +336,11 @@
     let teNew = 0;
     let fix = null, gnssAlt = NaN, pendingFix = null, running = false, above = 0, below = 0;
     let setupLine = null, setupCount = 0, starts = 0, frames = 0, fixes = 0, polar = null, flaps = null, tMs = 0;
+    let temperatureEstimatedSamples = 0, temperatureKelvinSamples = 0;
     const lines = text.split("\n");
     const scan = scanLog(lines), monotone = stampRepair();
-    if (scan.cmn && !scan.ca1) [logged.type, logged.empty, logged.crew, logged.ballast] = scan.cmn;
+    const initialSetup = scan.ca1 || scan.cmn;
+    if (initialSetup) [logged.type, logged.empty, logged.crew, logged.ballast] = initialSetup;
 
     const setup = () => {
       // the glider and the weights as logged so far
@@ -309,20 +387,26 @@
         if (Number.isFinite(v)) gnssAlt = v;
       } else if (raw.startsWith("$SENS,")) {
         const f = fields(raw.trim());
-        if (f.length < 13 || f.slice(1, 13).includes("")) continue; // cut off by the logger
+        if (f.length < 13 || f.slice(1, 13).some((v, i) => i !== 5 && v === "")) continue; // OAT may be missing
         if (scan.fmt) scan.fmt.factors.forEach((c, i) => { if (f[scan.fmt.start + i]) f[scan.fmt.start + i] *= c; });
         const stamp = Math.round(f[1].includes(".") ? +f[1] * 1000.0 : +f[1]); // old logs: integer milliseconds
         // the time since the last fix; old logs also hold other values here, the fix then counts as just arrived
         const ageField = parseInt(f[2], 10), age = ageField >= 0 && ageField <= 2000 ? ageField : Number.isFinite(ageField) ? 0 : NaN;
-        const p = +f[3] * 100.0, q = +f[5], oat = +f[6];
+        const p = +f[3] * 100.0, q = +f[5];
+        let oat = String(f[6]).trim() === "" ? NaN : Number(f[6]);
+        if (scan.temperatureKelvin && plausibleTemperature(oat - 273.15)) { oat -= 273.15; temperatureKelvinSamples++; }
         const acc = [+f[7], +f[8], +f[9]];
         const gyro = [+f[10], +f[11], +f[12]].map((x) => x * Math.PI / 180);
-        if (![stamp, age, p, q, oat, ...acc, ...gyro].every(Number.isFinite)) continue;
+        if (![stamp, age, p, q, ...acc, ...gyro].every(Number.isFinite)) continue;
         const t = monotone(stamp);
         tMs = t;
         const ias = q > 0.0 ? Math.sqrt(2.0 * q / RHO0) : 0.0;
-        const tas = p > 0 ? ias * Math.sqrt(RHO0 * R_AIR * (oat + 273.15) / p) : 0.0;
         const alt = p > 0 ? T0DIVL * (1.0 - Math.pow(p / P0, 1.0 / G0DIVRXL)) : NaN;
+        if (!plausibleTemperature(oat)) {
+          oat = estimatedTemperature(Number.isFinite(gnssAlt) ? gnssAlt : alt);
+          temperatureEstimatedSamples++;
+        }
+        const tas = p > 0 ? ias * Math.sqrt(RHO0 * R_AIR * (oat + 273.15) / p) : 0.0;
         const gs = fix ? fix.speed : 0.0;
 
         // airborne: flying speed and moving over ground for 10 s; landed: 30 s slow
@@ -361,7 +445,7 @@
           if (pendingFix && pendingFix.speed > 1.0 && Number.isFinite(pendingFix.track)) {
             const trk = pendingFix.track * Math.PI / 180;
             rec.push(sentence("PXCVG", [String(t - age), fx(pendingFix.speed * Math.cos(trk), 3), fx(pendingFix.speed * Math.sin(trk), 3),
-              "0.500", "750", "0", "0.000", "0.000"]));
+              "0.500", "750", "0", "0.000", "0.000", String(Math.round(pendingFix.utc * 1000) % 86400000)]));
             fixes++;
           }
           pendingFix = null;
@@ -374,10 +458,11 @@
     }
     if (running) rec.push(sentence("PXCVX", [String(tMs)]));
     return { kind: "XCVario sensor log", rec, track: track.done(), starts, frames, fixes, glider: gliderName, gliderFrom, mass: massUsed, massFrom,
-      qnh: scan.qnh, qnhFrom: scan.qnhFrom, flapsFrom: opts.noFlaps ? "" : loggedFlapFrames ? "logged" : flaps ? "the recommendation" : "" };
+      qnh: scan.qnh, qnhFrom: scan.qnhFrom, temperatureEstimatedSamples, temperatureKelvinSamples, axesCorrected: !!scan.axesCorrected,
+      flapsFrom: opts.noFlaps ? "" : loggedFlapFrames ? "logged" : flaps ? "the recommendation" : "" };
   }
 
-  const api = { convert, GLIDERS };
+  const api = { convert, GLIDERS, gliderFromLog };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.AirMassConvert = api;
 })(typeof globalThis !== "undefined" ? globalThis : this);

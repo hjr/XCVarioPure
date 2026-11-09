@@ -8,7 +8,7 @@
 //   $PXCVS,t,alt,d0,d1,d2,g0,g1,g2,ktas,pitch,lat,kaoa,f0,..,f6,fmt    estimator start: AHRS down axis, gyro, warm start
 //                                                                     fmt 2: lat is the latency; absent: an offset to 0.75 s
 //   $PXCVR,t,fx,fy,fz,gx,gy,gz,ias,tas,alt,lever                      one cycle (10Hz): specific force [g], gyro [rad/s]
-//   $PXCVG,t,vn,ve,sigma,latency,prior,wn0,we0                        GNSS velocity fused (arrival time, nominal latency)
+//   $PXCVG,t,vn,ve,sigma,latency,prior,wn0,we0[,fix_utc_ms]           GNSS velocity (arrival, nominal latency, optional source epoch)
 //   $PXCVH,t,psi,sigma                                                compass heading fused
 //   $PXCVX,t                                                          estimator stopped
 // t: device milliseconds. An empty field is NAN (no baro, no flap lever).
@@ -129,6 +129,7 @@ inline std::string gnss(const Gnss& g) {
     s += g.prior ? ",1" : ",0";
     appendf(s, "%.3f", g.wn0);
     appendf(s, "%.3f", g.we0);
+    if (g.v.fix_time_ms != GnssTiming::UNKNOWN) appendu(s, g.v.fix_time_ms);
     finish(s);
     return s;
 }
@@ -273,6 +274,8 @@ inline bool decode(const Sentence& s, Gnss& g) {
     g.prior = f[5] != 0.;
     g.wn0 = f[6];
     g.we0 = f[7];
+    g.v.fix_time_ms = s.n < 9 ? GnssTiming::UNKNOWN :
+        std::isfinite(f[8]) && f[8] >= 0. && f[8] < GnssTiming::DAY_MS ? static_cast<uint32_t>(f[8]) : GnssTiming::DAY_MS;
     return true;
 }
 

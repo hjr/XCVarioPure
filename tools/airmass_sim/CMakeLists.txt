@@ -13,6 +13,9 @@ set(REPO ${CMAKE_CURRENT_SOURCE_DIR}/../..)
 
 # the device AHRS math (quaternions) comes from the firmware sources
 set(UTIL_MATH ${REPO}/components/util/math)
+set(AHRS_MATH_SOURCES
+    ${UTIL_MATH}/Quaternion.cpp ${UTIL_MATH}/vector_3d.cpp
+    ${UTIL_MATH}/Trigonometry.cpp ${UTIL_MATH}/Floats.cpp ${UTIL_MATH}/Units.cpp)
 add_executable(airmass_sim
     sim.cpp
     ${REPO}/main/airmass/AirMassEKF.cpp
@@ -39,8 +42,8 @@ target_compile_options(input_test PRIVATE -Wall -Wextra -fsingle-precision-const
     -include ${CMAKE_CURRENT_SOURCE_DIR}/stub/host_compat.h)
 
 # replay of recorded flights (main/airmass/AirMassRecord.h) through the same pipeline
-add_executable(airmass_replay replay.cpp ${REPO}/main/airmass/AirMassEKF.cpp ${REPO}/main/protocol/nmea_util.cpp)
-target_include_directories(airmass_replay PRIVATE ${REPO}/main/airmass ${REPO}/components/util ${REPO}/main)
+add_executable(airmass_replay replay.cpp ${REPO}/main/airmass/AirMassEKF.cpp ${REPO}/main/protocol/nmea_util.cpp ${AHRS_MATH_SOURCES})
+target_include_directories(airmass_replay PRIVATE ${REPO}/main/airmass ${REPO}/components/util ${REPO}/main ${CMAKE_CURRENT_SOURCE_DIR}/stub)
 target_compile_options(airmass_replay PRIVATE -Wall -Wextra -fsingle-precision-constant
     -include ${CMAKE_CURRENT_SOURCE_DIR}/stub/host_compat.h)
 
@@ -49,6 +52,16 @@ add_executable(ref_replay ref_replay.cpp)
 target_compile_options(ref_replay PRIVATE -Wall -Wextra -fsingle-precision-constant)
 
 enable_testing()
+add_executable(robustness_test robustness_test.cpp ${REPO}/main/airmass/AirMassEKF.cpp ${REPO}/main/protocol/nmea_util.cpp)
+target_include_directories(robustness_test PRIVATE ${REPO}/main/airmass ${REPO}/components/util ${REPO}/main ${CMAKE_CURRENT_SOURCE_DIR}/stub)
+target_compile_options(robustness_test PRIVATE -Wall -Wextra -fsingle-precision-constant
+    -include ${CMAKE_CURRENT_SOURCE_DIR}/stub/host_compat.h)
+add_test(NAME sensor_gnss_robustness COMMAND robustness_test)
+add_executable(mahony_test mahony_test.cpp ${REPO}/main/airmass/AirMassEKF.cpp ${REPO}/main/protocol/nmea_util.cpp ${AHRS_MATH_SOURCES})
+target_include_directories(mahony_test PRIVATE ${REPO}/main/airmass ${REPO}/components/util ${REPO}/main ${CMAKE_CURRENT_SOURCE_DIR}/stub)
+target_compile_options(mahony_test PRIVATE -Wall -Wextra -fsingle-precision-constant
+    -include ${CMAKE_CURRENT_SOURCE_DIR}/stub/host_compat.h)
+add_test(NAME mahony_ahrs COMMAND mahony_test)
 add_test(NAME input_conversion COMMAND input_test)
 foreach(scenario straight thermal gust pullup slip nl endurance)
     add_test(NAME ${scenario} COMMAND airmass_sim ${scenario})

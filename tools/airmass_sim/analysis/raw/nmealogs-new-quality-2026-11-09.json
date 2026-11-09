@@ -1,0 +1,50 @@
+{
+  "file": "2026-09-15_10-39..nmea",
+  "size": 26732716,
+  "sensorRows": 126189,
+  "rawSpanHours": 4.362316111111112,
+  "backwardTimestamps": 0,
+  "sensorGapsOver300ms": 3631,
+  "sensorGapModes": [
+    [
+      0.8,
+      643
+    ],
+    [
+      0.9,
+      584
+    ],
+    [
+      0.7,
+      346
+    ],
+    [
+      0.4,
+      345
+    ],
+    [
+      0.5,
+      320
+    ],
+    [
+      1.0,
+      275
+    ],
+    [
+      0.6,
+      216
+    ],
+    [
+      1.3,
+      115
+    ]
+  ],
+  "rmcMessages": 13237,
+  "uniqueRmcEpochs": 13237,
+  "repeatedEpochs": 0,
+  "differingSolutionsAtRepeatedEpochs": 0,
+  "pairedSpeedDiffKmh": null,
+  "pairedTrackDiffDeg": null,
+  "pairedAltitudeDiffM": null,
+  "example": null
+}
