@@ -32,6 +32,7 @@ public:
     float warm[4] = {1.f, 0.f, 1.f, 0.75f}; // k_tas, pitch offset [rad], aoa scale, GNSS latency [s]
 
     long lines = 0, frames = 0, gnss = 0, headings = 0, starts = 0, skipped = 0, bad = 0;
+    long recovered_starts = 0, estimated_attitude_starts = 0;
     uint32_t t_first = 0, t_last = 0;
     Stats vario_diff;
     long status_diff = 0, outputs = 0;
@@ -72,77 +73,50 @@ public:
                 return false;
             }
             _configured = true;
+            if (_pending_start) begin(_st);
         } else if (rec::decode(_s, _st)) {
+#ifdef AIRMASS_NO_CONFIG_SETTINGS
+            if (_s.n > 12 + FlapOffsets::N) _st.warm.lat_ofs -= 0.75f;
+#endif
+            // A logger can catch the start before the next repeated configuration telegram.
+            _pending_start = true;
+            if (_configured) begin(_st);
+        } else if (_s.is("PXCV", 11)) {
+            const float roll = Units::deg_to_rad(_s.f[9]), pitch = Units::deg_to_rad(_s.f[10]);
+            _have_logged_attitude = std::isfinite(roll) && std::isfinite(pitch) &&
+                                    std::fabs(_s.f[9]) <= 180.f && std::fabs(_s.f[10]) <= 90.f;
+            if (_have_logged_attitude) {
+                _logged_down[0] = -std::sin(pitch);
+                _logged_down[1] = std::sin(roll) * std::cos(pitch);
+                _logged_down[2] = std::cos(roll) * std::cos(pitch);
+                _attitude_time = _last_frame_time;
+                _attitude_timed = _have_frame_time;
+            }
+        } else if (!std::strcmp(_s.name, "PXCVX")) {
             endCycle();
-#ifdef AIRMASS_NO_CONFIG_SETTINGS
-            // an estimator before the absolute latency (analysis/build_old.sh): it starts from an offset to 0.75 s
-            if (_s.n > 12 + FlapOffsets::N) {
-                _st.warm.lat_ofs -= 0.75f;
-            }
-#endif
-            if (override_warm) {
-                _st.warm.k_tas = warm[0];
-                _st.warm.pitch_ofs = warm[1];
-                _st.warm.k_aoa = warm[2];
-#ifdef AIRMASS_NO_CONFIG_SETTINGS
-                _st.warm.lat_ofs = warm[3] - 0.75f;
-#else
-                _st.warm.latency = warm[3];
-#endif
-                std::fill(std::begin(_st.warm.flap_ofs), std::end(_st.warm.flap_ofs), FlapOffsets::UNKNOWN); // a new calibration
-            }
-            _pipe.start(_st.t, _st.alt, _st.down, _st.gyro, _st.warm);
-#ifndef AIRMASS_NO_CONFIG_SETTINGS
-            if (_use_mahony) {
-                _mahony_q = Quaternion::fromDownVector({_st.down[0], _st.down[1], _st.down[2]});
-                _mahony_omega = 0.f;
-                _mahony_calibrating = 7; // like FlightAHRS::setup() when airborne
-                _mahony_time = _st.t;
-            }
-#endif
-            _running = _configured;
-            starts++;
-            if (!t_first) {
-                t_first = _st.t;
-            }
-        } else if (!_running) {
-            skipped += !std::strcmp(_s.name, "PXCVR"); // the log started in flight: wait for the next start
+            _running = _pending_start = _have_logged_attitude = false;
+            _allow_recovery = false; // an explicit stop is not a missing start
         } else if (rec::decode(_s, _fr)) {
             endCycle();
-#ifndef AIRMASS_NO_CONFIG_SETTINGS
-            if (_use_mahony) {
-                const float dt = std::clamp((_fr.time_ms - _mahony_time) / 1000.f, 0.05f, 0.3f);
-                _mahony_time = _fr.time_ms;
-                const vector_f gyro{_fr.gyro[0], _fr.gyro[1], _fr.gyro[2]};
-                MahonyAHRS::update(_mahony_q, _mahony_omega, _mahony_calibrating, {},
-                                  {_fr.f_body[0], _fr.f_body[1], _fr.f_body[2]}, gyro, _fr.tas, dt);
-                const vector_f down = _mahony_q.rotateInv({0.f, 0.f, 1.f});
-                ExternalAttitude att;
-                for (int i = 0; i < 3; ++i) att.down[i] = down[i];
-                att.roll = std::atan2(down.y, down.z);
-                att.pitch = MahonyAHRS::pitchRad(_mahony_q);
-                // Euler heading rate, as expected by AirMass (not gyro dot down).
-                const float cp2 = down.y * down.y + down.z * down.z;
-                att.yaw_rate = cp2 < 0.01f ? 0.f : (gyro.y * down.y + gyro.z * down.z) / cp2;
-                _pipe.step(_fr, &att);
-            } else
-#endif
-            {
-                _pipe.step(_fr);
+            if (_have_logged_attitude && !_attitude_timed) {
+                _attitude_time = _fr.time_ms;
+                _attitude_timed = true;
             }
-            _open = true;
-            _device_vario = NAN;
-            frames++;
-            t_last = _fr.time_ms;
+            _last_frame_time = _fr.time_ms;
+            _have_frame_time = true;
+            if (!_running && !recover(_fr)) {
+                skipped++;
+                return true;
+            }
+            stepFrame();
+        } else if (!_running) {
+            return true;
         } else if (rec::decode(_s, _g)) {
             _pipe.gnss(_g.v, _g.prior, _g.wn0, _g.we0);
             gnss++;
         } else if (rec::decode(_s, _h)) {
             _pipe.heading(_h.psi, _h.sigma);
             headings++;
-        } else if (!std::strcmp(_s.name, "PXCVX")) {
-            endCycle();
-            _running = false;
         } else if (rec::decode(_s, _out)) {
             // the device's output for the cycle before
             const AirMassEKF& ekf = _pipe.ekf();
@@ -157,6 +131,107 @@ public:
     void finish() { endCycle(); }
 
 private:
+    void overrideWarm(Warm& w) const {
+        if (!override_warm) return;
+        w.k_tas = warm[0];
+        w.pitch_ofs = warm[1];
+#ifdef AIRMASS_NO_CONFIG_SETTINGS
+        w.lat_ofs = warm[3] - 0.75f;
+#else
+        w.latency = warm[3];
+#endif
+        w.k_aoa = warm[2];
+        std::fill(std::begin(w.flap_ofs), std::end(w.flap_ofs), FlapOffsets::UNKNOWN);
+    }
+
+    void begin(record::Start st) {
+        endCycle();
+        overrideWarm(st.warm);
+        _pipe.start(st.t, st.alt, st.down, st.gyro, st.warm);
+#ifndef AIRMASS_NO_CONFIG_SETTINGS
+        if (_use_mahony) {
+            _mahony_q = Quaternion::fromDownVector({st.down[0], st.down[1], st.down[2]});
+            _mahony_omega = 0.f;
+            // The start already supplies gravity. Fast accelerometer leveling would erase a banked start.
+            _mahony_calibrating = 0;
+            _mahony_time = st.t;
+        }
+#endif
+        _running = true;
+        _pending_start = false;
+        _allow_recovery = true;
+        if (starts++ == 0) t_first = st.t;
+    }
+
+    bool recover(const Frame& f) {
+        if (!_configured || !_allow_recovery || _pending_start) return false;
+        if (!std::isfinite(f.baro_alt) || !std::isfinite(f.ias) || !std::isfinite(f.tas) ||
+            f.ias < std::max(10.f, _setup.polar.v_stall * 0.8f) || f.tas <= 10.f) return false;
+        for (int i = 0; i < 3; ++i) {
+            if (!std::isfinite(f.f_body[i]) || !std::isfinite(f.gyro[i])) return false;
+        }
+        record::Start st;
+        st.t = f.time_ms;
+        st.alt = f.baro_alt;
+        std::copy(std::begin(f.gyro), std::end(f.gyro), st.gyro);
+        const bool logged = _have_logged_attitude && (uint32_t)(f.time_ms - _attitude_time) <= 2000;
+        if (logged) {
+            std::copy(std::begin(_logged_down), std::end(_logged_down), st.down);
+        } else {
+            // In a coordinated turn, apparent gravity points along the lift, not down. Subtract the
+            // air-path centripetal acceleration (omega x air velocity), as the attitude filter does.
+            Raw raw;
+            raw.lever_arm = _setup.lever_arm;
+            std::copy(std::begin(f.gyro), std::end(f.gyro), raw.gyro);
+            std::copy(std::begin(f.f_body), std::end(f.f_body), raw.f_body);
+            float force[3];
+            forceAtCg(raw, force);
+            Warm w;
+            overrideWarm(w);
+            const float ias = f.ias * w.k_tas, tas = f.tas * w.k_tas;
+            const float alpha = aoaModel(std::max(-force[2], 0.3f), ias, _setup.mass, _setup.wing_area) * w.k_aoa - w.pitch_ofs;
+            const float vx = tas * std::cos(alpha), vz = tas * std::sin(alpha);
+            st.down[0] = f.gyro[1] * vz / G0 - force[0];
+            st.down[1] = (f.gyro[2] * vx - f.gyro[0] * vz) / G0 - force[1];
+            st.down[2] = -f.gyro[1] * vx / G0 - force[2];
+            const float norm = std::sqrt(st.down[0] * st.down[0] + st.down[1] * st.down[1] + st.down[2] * st.down[2]);
+            // An unmodelled manoeuvre cannot supply a useful initial gravity reference. Wait for another frame.
+            if (!std::isfinite(norm) || norm < 0.75f || norm > 1.25f || st.down[2] <= 0.f) return false;
+            for (float& d : st.down) d /= norm;
+        }
+        begin(st);
+        recovered_starts++;
+        estimated_attitude_starts += !logged;
+        return true;
+    }
+
+    void stepFrame() {
+#ifndef AIRMASS_NO_CONFIG_SETTINGS
+        if (_use_mahony) {
+            const float dt = std::clamp((_fr.time_ms - _mahony_time) / 1000.f, 0.05f, 0.3f);
+            _mahony_time = _fr.time_ms;
+            const vector_f gyro{_fr.gyro[0], _fr.gyro[1], _fr.gyro[2]};
+            MahonyAHRS::update(_mahony_q, _mahony_omega, _mahony_calibrating, {},
+                              {_fr.f_body[0], _fr.f_body[1], _fr.f_body[2]}, gyro, _fr.tas, dt);
+            const vector_f down = _mahony_q.rotateInv({0.f, 0.f, 1.f});
+            ExternalAttitude att;
+            for (int i = 0; i < 3; ++i) att.down[i] = down[i];
+            att.roll = std::atan2(down.y, down.z);
+            att.pitch = MahonyAHRS::pitchRad(_mahony_q);
+            // Euler heading rate, as expected by AirMass (not gyro dot down).
+            const float cp2 = down.y * down.y + down.z * down.z;
+            att.yaw_rate = cp2 < 0.01f ? 0.f : (gyro.y * down.y + gyro.z * down.z) / cp2;
+            _pipe.step(_fr, &att);
+        } else
+#endif
+        {
+            _pipe.step(_fr);
+        }
+        _open = true;
+        _device_vario = NAN;
+        frames++;
+        t_last = _fr.time_ms;
+    }
     void endCycle() {
         if (!_open) {
             return;
@@ -177,6 +252,10 @@ private:
     uint32_t _mahony_time = 0;
 #endif
     bool _running = false, _configured = false, _open = false;
+    bool _pending_start = false, _allow_recovery = true;
+    bool _have_logged_attitude = false, _attitude_timed = false, _have_frame_time = false;
+    float _logged_down[3] = {};
+    uint32_t _attitude_time = 0, _last_frame_time = 0;
     float _device_vario = NAN;
     airmass::record::Sentence _s;
     Setup _setup;

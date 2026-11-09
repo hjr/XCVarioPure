@@ -64,6 +64,7 @@
       this.sensor = this.prev = null;
       this.kelvin = this.temperaturePairs = this.ground = this.rates = 0;
       this.gravityDeclared = this.gravityCorrected = this.rateDeclared = this.rateCorrected = 0;
+      this.quietGravity = this.gravityMatches = this.forceMatches = 0;
     }
     sens(f) {
       const num = (i) => f[i] === undefined || f[i] === "" ? NaN : +f[i];
@@ -93,6 +94,21 @@
         this.ground++;
       }
       const dt = this.prev ? s.t - this.prev.t : 0;
+      // Some older logs have no FMT tag and carry gravity instead of specific force. Use repeated low-speed,
+      // steady logged attitudes to identify the sign; gyro bias must not disqualify these quiet samples.
+      if (dt > 0.15 && dt < 0.3 && s.q < 50 && norm > 0.85 && norm < 1.15 &&
+          Math.abs(roll) < Math.PI / 6 && Math.abs(pitch) < Math.PI / 7 && Math.abs(Math.sin(pitch)) > 0.05 &&
+          Math.abs(roll - this.prev.roll) / dt < Math.PI / 180 && Math.abs(pitch - this.prev.pitch) / dt < Math.PI / 180) {
+        const force = [Math.sin(pitch), -Math.sin(roll) * Math.cos(pitch), -Math.cos(roll) * Math.cos(pitch)];
+        let gravityError = 0, forceError = 0;
+        for (let j = 0; j < 3; j++) {
+          gravityError += (-s.a[j] / norm - force[j]) ** 2;
+          forceError += (s.a[j] / norm - force[j]) ** 2;
+        }
+        this.quietGravity++;
+        this.gravityMatches += gravityError < 0.01;
+        this.forceMatches += forceError < 0.01;
+      }
       if (dt > 0.15 && dt < 0.3 && Math.abs(roll) < Math.PI / 3 && Math.abs(pitch) < Math.PI / 6 && rate < 1.4) {
         const measured = (pitch - this.prev.pitch) / dt;
         const predicted = s.g[1] * Math.cos(roll) - s.g[2] * Math.sin(roll);
@@ -102,7 +118,7 @@
           this.rates++;
         }
       }
-      this.prev = { t: s.t, pitch };
+      this.prev = { t: s.t, roll, pitch };
     }
     apply(out) {
       out.temperatureKelvin = this.kelvin >= 20 && this.kelvin >= this.temperaturePairs * 0.8;
@@ -112,6 +128,10 @@
           this.rateCorrected < this.rateDeclared * 0.5) {
         out.fmt = { start: 7, factors: [-1, -1, -1, 1, 1, 1] };
         out.axesCorrected = true;
+      } else if (!f && this.quietGravity >= 50 && this.gravityMatches >= this.quietGravity * 0.8 &&
+          this.forceMatches < this.quietGravity * 0.1 && this.rates >= 100 && this.rateCorrected < this.rateDeclared * 0.5) {
+        out.fmt = { start: 7, factors: [-1, -1, -1, 1, 1, 1] };
+        out.axesInferred = true;
       }
     }
   }
@@ -313,6 +333,7 @@
           teNew = 0;
         }
       } else if (line.startsWith("$PXCV,")) {
+        rec.push(line); // initial roll/pitch for a recording whose PXCVS was missed by the logger
         const v = parseFloat(fields(line)[1]);
         if (Number.isFinite(v)) { te = v; teNew = 1; }
       } else if (line.startsWith("$GPRMC,") || line.startsWith("$GNRMC,")) {
@@ -407,11 +428,10 @@
           temperatureEstimatedSamples++;
         }
         const tas = p > 0 ? ias * Math.sqrt(RHO0 * R_AIR * (oat + 273.15) / p) : 0.0;
-        const gs = fix ? fix.speed : 0.0;
-
-        // airborne: flying speed and moving over ground for 10 s; landed: 30 s slow
+        // Airspeed detects flight even when GNSS is not recorded or a headwind makes ground speed small.
+        // Require 100 flying-speed samples; landed: 300 slow samples.
         if (!running) {
-          above = ias > 20.0 && gs > 15.0 ? above + 1 : 0;
+          above = ias > 20.0 ? above + 1 : 0;
           if (above >= 100) {
             running = true;
             starts++;
@@ -459,6 +479,7 @@
     if (running) rec.push(sentence("PXCVX", [String(tMs)]));
     return { kind: "XCVario sensor log", rec, track: track.done(), starts, frames, fixes, glider: gliderName, gliderFrom, mass: massUsed, massFrom,
       qnh: scan.qnh, qnhFrom: scan.qnhFrom, temperatureEstimatedSamples, temperatureKelvinSamples, axesCorrected: !!scan.axesCorrected,
+      axesInferred: !!scan.axesInferred,
       flapsFrom: opts.noFlaps ? "" : loggedFlapFrames ? "logged" : flaps ? "the recommendation" : "" };
   }
 

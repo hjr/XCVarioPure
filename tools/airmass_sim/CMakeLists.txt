@@ -62,6 +62,11 @@ target_include_directories(mahony_test PRIVATE ${REPO}/main/airmass ${REPO}/comp
 target_compile_options(mahony_test PRIVATE -Wall -Wextra -fsingle-precision-constant
     -include ${CMAKE_CURRENT_SOURCE_DIR}/stub/host_compat.h)
 add_test(NAME mahony_ahrs COMMAND mahony_test)
+add_executable(replay_start_test replay_start_test.cpp ${REPO}/main/airmass/AirMassEKF.cpp ${REPO}/main/protocol/nmea_util.cpp ${AHRS_MATH_SOURCES})
+target_include_directories(replay_start_test PRIVATE ${REPO}/main/airmass ${REPO}/components/util ${REPO}/main ${CMAKE_CURRENT_SOURCE_DIR}/stub)
+target_compile_options(replay_start_test PRIVATE -Wall -Wextra -fsingle-precision-constant
+    -include ${CMAKE_CURRENT_SOURCE_DIR}/stub/host_compat.h)
+add_test(NAME replay_airborne_start COMMAND replay_start_test)
 add_test(NAME input_conversion COMMAND input_test)
 foreach(scenario straight thermal gust pullup slip nl endurance)
     add_test(NAME ${scenario} COMMAND airmass_sim ${scenario})

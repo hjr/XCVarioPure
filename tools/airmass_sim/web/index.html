@@ -366,7 +366,7 @@ async function replayOnce() {
     const conv = AirMassConvert.convert(fileText, {
       glider: $("glider").value, mass: +$("mass").value > 0 ? +$("mass").value : 0 /* -1: the logged ballast */, bugs: $("bugs").value === "" ? -1 : +$("bugs").value, noFlaps: $("noflaps").checked,
     });
-    if (!conv.frames) throw new Error(conv.track.n ? "no flight found in the log (the replay starts after 10 s above 20 m/s IAS and 15 m/s ground speed)" : "neither $SENS nor AirMass recording sentences found");
+    if (!conv.frames) throw new Error(conv.track.n ? "No flight found: replay needs 100 consecutive sensor samples above 72 km/h IAS." : "neither $SENS nor AirMass recording sentences found");
     const M = await modulePromise;
     const warm = $("warm").checked ? [+$("w0").value, +$("w1").value, +$("w2").value, +$("wlat").value] : null;
     const t0 = performance.now();
@@ -374,6 +374,7 @@ async function replayOnce() {
       setStatus(`Replaying… ${Math.round(f * 100)} %`);
       await tick();
     });
+    if (!rep.n) throw new Error("Could not initialize replay. The recording needs glider configuration and either a recorded start or usable airborne sensor data.");
     const keepT = D && D.name === fileName ? T : null;
     D = build(conv, rep);
     derive(D);
@@ -382,13 +383,16 @@ async function replayOnce() {
     const setupUsed = conv.glider ? ` · ${conv.glider}${{ log: " (from the log)", default: " (no glider in the log)" }[conv.gliderFrom] || ""}, ` +
       `${Math.round(conv.mass)} kg (${conv.massFrom})${conv.flapsFrom ? `, flaps: ${conv.flapsFrom}` : ""}${conv.qnh > 0 ? `, QNH ${conv.qnh.toFixed(1)} hPa (${conv.qnhFrom})` : ""}` : "";
     const attitudeUsed = rep.summary.mahony ? "Mahony AHRS" : "AirMass attitude";
-    const result = `${fileName}: ${conv.kind}, ${conv.starts} flight${conv.starts === 1 ? "" : "s"}, ${hours} h replayed in ${((performance.now() - t0) / 1000).toFixed(1)} s${setupUsed}`;
+    const result = `${fileName}: ${conv.kind}, ${s.starts} flight${s.starts === 1 ? "" : "s"}, ${hours} h replayed in ${((performance.now() - t0) / 1000).toFixed(1)} s${setupUsed}`;
     setStatus(result, false, true);
     $("summary").textContent = result + ` · ${attitudeUsed} · cycles ${s.cycles} · GNSS fixes ${s.gnss} · compass ${s.compass} · learned: k_tas ${s.k_tas.toFixed(3)}, pitch offset ${s.pitch_ofs_deg.toFixed(2)}°, ` +
       `AoA scale ${s.aoa_scale.toFixed(3)}, GNSS latency ${s.latency_ms} ms (altitude ${Math.round(D.altDelay * 1000)} ms), gyro z bias ${s.gyro_z_bias_dps.toFixed(3)}°/s` +
       (conv.temperatureEstimatedSamples ? ` · OAT estimated for ${conv.temperatureEstimatedSamples} samples: 25°C at sea level, −6.5°C/km` : "") +
       (conv.temperatureKelvinSamples ? ` · OAT converted from Kelvin for ${conv.temperatureKelvinSamples} samples` : "") +
       (conv.axesCorrected ? " · inconsistent sensor-axis metadata corrected using the logged attitude" : "") +
+      (conv.axesInferred ? " · missing sensor-axis metadata inferred from logged attitude and gyro rates" : "") +
+      (s.recovered_starts ? ` · ${s.recovered_starts} missing starts recovered (${s.estimated_attitude_starts} with estimated attitude); approximate initialization, allow settling` : "") +
+      (!conv.fixes ? " · no GNSS velocity recorded: wind and GNSS vario reference unavailable" : "") +
       (conv.kind.startsWith("XCVario sensor") ? " · sensor logs carry the gated gyro (rates below the gate read 0), which costs AirMass short-term accuracy" : "");
     $("empty").style.display = "none";
     for (const id of ["rerun", "export", "playbtn", "slider"]) $(id).disabled = false;
@@ -415,6 +419,8 @@ function build(conv, rep) {
   for (let i = 0; i < rep.n; i++) byTime.set(rep.t_ms[i], i);
   const ai = new Int32Array(n);
   for (let k = 0; k < n; k++) ai[k] = byTime.has(c.t_ms[k]) ? byTime.get(c.t_ms[k]) : -1;
+  // A recording may start after its PXCVS. The replay's recovered cycles determine where it actually ran.
+  if (conv.kind === "AirMass recording") for (let k = 0; k < n; k++) c.running[k] = ai[k] >= 0 ? 1 : 0;
 
   // GNSS fixes reach the device late (AirMass learns by how much): each fix belongs to its arrival time minus that
   // latency, and positions and altitudes are interpolated between those times. A replay knows the next fix already.

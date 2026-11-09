@@ -257,7 +257,8 @@ void AirMassSensor::start()
     st.warm = warm;
     applyConfig();
     _pipe.start(st.t, st.alt, st.down, st.gyro, st.warm);
-    if (recording()) {
+    _recording = recording();
+    if (_recording) {
         queueLine(airmass::record::start(st));
     }
     AirMassEKF::GnssVelocity g;
@@ -374,6 +375,12 @@ void AirMassSensor::postProcess()
     f.tas = tas.get();
     f.baro_alt = baro_alt;
     f.flap_lever = flapLever(_pipe.attitude().roll());
+    if (rec && !_recording) {
+        // Recording was enabled after the estimator started: send everything a replay needs to join now.
+        queueLine(airmass::record::setup(_pipe.setup()));
+        queueLine(airmass::record::start(airmass::record::snapshot(_pipe, f)));
+    }
+    _recording = rec;
     _pipe.step(f);
     if (rec) {
         queueLine(airmass::record::frame(f));
