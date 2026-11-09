@@ -84,6 +84,7 @@ struct Knobs {
     float flap_pilot = 0.f;   // 0: the pilot's own flap schedule, 1: follows the flap recommendation, 2 s late
     float aoa_nonlin = 0.f;   // rad per CL², lift curve bending towards the stall (above CL 0.9, flaps shift that up)
     float gyro_gate = 0.f;    // °/s, experiment: the estimator on a gyro with the device's "Gyro Gating" dead zone (the device bypasses it, AirMassSensor's gyroRates)
+    float predict_hz = 10.f;  // 10 or 20: prediction cadence with the same 10Hz physical observations
     // realism of the truth model and the air data (assumptions, to be calibrated with recorded flights)
     float gust_resp = 1.f;    // 1: a vertical gust first changes the angle of attack, the lift then accelerates the glider
                               // (plunge time constant 2m / (rho V S CLa), ~0.4 s); 0: the glider rides the air instantly
@@ -103,6 +104,7 @@ struct Knobs {
 };
 Knobs K;
 const std::pair<const char*, float*> KNOBS[] = {
+    {"predict_hz", &K.predict_hz},
     {"k_tas", &K.k_tas}, {"mount", &K.mount}, {"mount_roll", &K.mount_roll}, {"mount_yaw", &K.mount_yaw}, {"gyro_bias", &K.gyro_bias}, {"acc_bias", &K.acc_bias}, {"cla_true", &K.cla_true},
     {"polar_err", &K.polar_err}, {"mass_err", &K.mass_err}, {"tas_noise", &K.tas_noise}, {"wind", &K.wind}, {"turb", &K.turb},
     {"lift", &K.lift}, {"dolphin", &K.dolphin}, {"gps_out", &K.gps_out}, {"gps_out_len", &K.gps_out_len},
@@ -683,6 +685,10 @@ int main(int argc, char** argv) {
         }
     }
 
+    if (K.predict_hz != 10.f && K.predict_hz != 20.f) {
+        std::fprintf(stderr, "predict_hz must be 10 or 20\n");
+        return 2;
+    }
     Scenario sc;
     bool found = false;
     for (auto& s : scenarios()) {
@@ -771,6 +777,7 @@ int main(int argc, char** argv) {
     // raw IMU into the device AHRS, whose attitude starts the estimator
     DeviceAhrs ahrs;
     bool ekf_started = false;
+    airmass::Frame held_frame;
     float prev_vg[3] = {NAN, NAN, NAN};
     float prev_att[3] = {NAN, NAN, NAN};
     vector_f f_sum, w_sum;
@@ -1039,6 +1046,12 @@ int main(int argc, char** argv) {
         }
 
         if (step % sensor_div != 0) {
+            if (K.predict_hz == 20.f && ekf_started && ekf.isRunning() && step % (sensor_div / 2) == 0) {
+                held_frame.time_ms = (uint32_t)step * 10u;
+                pipe.step(held_frame);
+                pipe.endCycle();
+                if (rec) std::fputs(airmass::record::frame(held_frame).c_str(), rec);
+            }
             continue;
         }
 
@@ -1090,6 +1103,10 @@ int main(int argc, char** argv) {
         }
         airmass::Frame frame;
         frame.time_ms = now;
+        if (K.predict_hz == 20.f) {
+            frame.sample_times = true;
+            for (auto& stamp : frame.sample_ms) stamp = now;
+        }
         for (int i = 0; i < 3; ++i) {
             frame.f_body[i] = accel[i];
             frame.gyro[i] = gyro[i];
@@ -1109,6 +1126,7 @@ int main(int argc, char** argv) {
             frame.flap_lever = lever;
         }
         pipe.step(frame);
+        held_frame = frame;
         if (rec) {
             std::fputs(airmass::record::frame(frame).c_str(), rec);
         }

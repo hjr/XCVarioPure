@@ -379,7 +379,7 @@ async function replayOnce() {
     D = build(conv, rep);
     derive(D);
     const s = rep.summary;
-    const hours = (rep.n / 36000).toFixed(2);
+    const hours = ((s.seconds ?? (rep.t_ms[rep.n - 1] - rep.t_ms[0]) / 1000) / 3600).toFixed(2);
     const setupUsed = conv.glider ? ` · ${conv.glider}${{ log: " (from the log)", default: " (no glider in the log)" }[conv.gliderFrom] || ""}, ` +
       `${Math.round(conv.mass)} kg (${conv.massFrom})${conv.flapsFrom ? `, flaps: ${conv.flapsFrom}` : ""}${conv.qnh > 0 ? `, QNH ${conv.qnh.toFixed(1)} hPa (${conv.qnhFrom})` : ""}` : "";
     const attitudeUsed = rep.summary.mahony ? "Mahony AHRS" : "AirMass attitude";

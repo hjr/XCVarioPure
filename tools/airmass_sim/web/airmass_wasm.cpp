@@ -113,9 +113,10 @@ EMSCRIPTEN_KEEPALIVE const char* am_summary() {
     char buf[768];
     std::snprintf(buf, sizeof(buf),
                   "{\"lines\":%ld,\"cycles\":%ld,\"gnss\":%ld,\"compass\":%ld,\"starts\":%ld,\"skipped\":%ld,\"damaged\":%ld,"
-                  "\"recovered_starts\":%ld,\"estimated_attitude_starts\":%ld,"
+                  "\"recovered_starts\":%ld,\"estimated_attitude_starts\":%ld,\"seconds\":%.3f,"
                   "\"k_tas\":%.4f,\"pitch_ofs_deg\":%.3f,\"aoa_scale\":%.4f,\"latency_ms\":%.0f,\"gyro_z_bias_dps\":%.4f,\"mahony\":%s}",
                   r.lines, r.frames, r.gnss, r.headings, r.starts, r.skipped, r.bad, r.recovered_starts, r.estimated_attitude_starts,
+                  r.seconds,
                   ekf.kTas(), Units::rad_to_deg(ekf.pitchOffset()),
                   ekf.aoaScale(), ekf.gnssLatency() * 1000.f, Units::rad_to_deg(ekf.yawRateBias()), r.usingMahony() ? "true" : "false");
     g_text = buf;

@@ -67,6 +67,11 @@ target_include_directories(replay_start_test PRIVATE ${REPO}/main/airmass ${REPO
 target_compile_options(replay_start_test PRIVATE -Wall -Wextra -fsingle-precision-constant
     -include ${CMAKE_CURRENT_SOURCE_DIR}/stub/host_compat.h)
 add_test(NAME replay_airborne_start COMMAND replay_start_test)
+add_executable(sampling_test sampling_test.cpp ${REPO}/main/airmass/AirMassEKF.cpp ${REPO}/main/protocol/nmea_util.cpp ${AHRS_MATH_SOURCES})
+target_include_directories(sampling_test PRIVATE ${REPO}/main/airmass ${REPO}/components/util ${REPO}/main ${CMAKE_CURRENT_SOURCE_DIR}/stub)
+target_compile_options(sampling_test PRIVATE -Wall -Wextra -fsingle-precision-constant
+    -include ${CMAKE_CURRENT_SOURCE_DIR}/stub/host_compat.h)
+add_test(NAME sensor_freshness_20hz COMMAND sampling_test)
 add_test(NAME input_conversion COMMAND input_test)
 foreach(scenario straight thermal gust pullup slip nl endurance)
     add_test(NAME ${scenario} COMMAND airmass_sim ${scenario})
@@ -112,3 +117,12 @@ add_test(NAME record_nl COMMAND airmass_sim nl --set flaps=1 --compass 2 --recor
 set_tests_properties(record_nl PROPERTIES FIXTURES_SETUP nl_record)
 add_test(NAME replay_nl COMMAND airmass_replay ${CMAKE_CURRENT_BINARY_DIR}/nl_record.nmea --check 0.02)
 set_tests_properties(replay_nl PROPERTIES FIXTURES_REQUIRED nl_record)
+
+# The same physical observations and truth, with prediction-only ticks between 10Hz measurements.
+foreach(scenario straight thermal gust nl)
+    add_test(NAME ${scenario}_predict20 COMMAND airmass_sim ${scenario} --set predict_hz=20)
+endforeach()
+add_test(NAME record_predict20 COMMAND airmass_sim nl --set predict_hz=20 --compass 2 --record ${CMAKE_CURRENT_BINARY_DIR}/predict20_record.nmea)
+set_tests_properties(record_predict20 PROPERTIES FIXTURES_SETUP predict20_record)
+add_test(NAME replay_predict20 COMMAND airmass_replay ${CMAKE_CURRENT_BINARY_DIR}/predict20_record.nmea --check 0.02)
+set_tests_properties(replay_predict20 PROPERTIES FIXTURES_REQUIRED predict20_record)

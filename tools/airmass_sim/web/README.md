@@ -32,6 +32,24 @@ The device sends a fresh setup and `PXCVS` snapshot if Recording is enabled whil
 The snapshot carries its current attitude, calibration and flap offsets without resetting the live estimator.
 A logger joining an existing recording stream can still miss the snapshot and use the recovery path above.
 
+The target polls AirMass every 50 ms (20 Hz). Each tick predicts the state; barometer, kinematic and energy
+corrections consume only new source timestamps. IMU and pressure/pitot freshness are tracked separately, so a
+barometer can update while other readings are held. Held IMU data carry increasing prediction uncertainty;
+stale/invalid data cannot maintain vario validity. Settling remains five seconds and delayed GNSS support 6.4
+seconds, independent of poll rate. Kinematic/energy model-constraint noise is normalized by correction interval.
+Output synchronization stays at 5 Hz, wind at 2 Hz, average wind at 1 Hz, and setup/compass/save periods use
+elapsed time. This changes the estimator scheduler only; it does not increase physical sensor sampling rates.
+
+New `PXCVR` frames append acceleration, gyro, barometer and airspeed source timestamps, then a valid-source
+bitmask (1/2/4/8). Native and web replay preserve these fields, including prediction-only ticks. Legacy frames
+without them still treat each recorded sensor frame as new data at its recorded cadence. Displayed replay
+duration is computed from timestamps rather than assuming ten frames per second. Rebuild `airmass.js` to use
+the updated core. `sensor_freshness_20hz` covers independent updates, held values, outages, scheduling, history
+duration, rollover and device/replay equivalence.
+The native simulator accepts `--set predict_hz=20` to insert held-input prediction ticks between the same 10 Hz
+physical measurements (default: 10). CTest also runs straight, thermal, gust and cross-country scenarios and an
+exact recording/replay check at this mixed rate.
+
 Sensor-log temperatures outside −60…+50°C, missing or non-finite values use an estimate: **25°C at sea level,
 decreasing by 6.5°C per kilometre**. Altitude comes from GNSS, falling back to ISA pressure altitude. This estimate
 feeds TAS and the replay; plausible logged temperatures remain unchanged. The replay summary reports how many

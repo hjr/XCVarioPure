@@ -112,7 +112,7 @@ int main(int argc, char** argv) {
 
     const AirMassEKF& ekf = r.pipeline().ekf();
     std::printf("%ld lines: %ld cycles (%.0f s), %ld GNSS, %ld compass, %ld starts; %ld skipped cycles, %ld damaged\n", r.lines, r.frames,
-                r.frames ? (r.t_last - r.t_first) * 1e-3 : 0., r.gnss, r.headings, r.starts, r.skipped, r.bad);
+                r.seconds, r.gnss, r.headings, r.starts, r.skipped, r.bad);
     if (r.recovered_starts) {
         std::printf("recovered %ld missing starts (%ld with estimated attitude); initialization is approximate, allow settling\n",
                     r.recovered_starts, r.estimated_attitude_starts);

@@ -7,6 +7,7 @@
 #include "sensor/imu/Gyroscope.h"
 #include "sensor/imu/ImuSensor.h"
 #include "sensor/imu/FlightAHRS.h"
+#include "sensor/mag/MagVSensor.h"
 #include "sensor/pressure/PressureSensor.h"
 #include "sensor/press_diff/AirspeedSensor.h"
 #include "sensor/SensorMgr.h"
@@ -29,16 +30,16 @@
 AirMassSensor *airmassSensor = nullptr;
 
 constexpr int SENSOR_HISTORY_DURATION_MS = 500; // nobody evaluates the wind history so far
-constexpr int DUTY_CYCLE_MS = 100;              // 10Hz
+constexpr int DUTY_CYCLE_MS = 50;               // 20Hz prediction; corrections follow source timestamps
 constexpr size_t HSIZE = SENSOR_HISTORY_DURATION_MS / DUTY_CYCLE_MS;
 static __attribute__((aligned(4))) vector_f airmass_buffer[HSIZE + 1];
 
 constexpr float NMEA_SPEED_SIGMA = 0.5f;      // m/s, speed accuracy of the NMEA (Flarm) ground velocity
 constexpr float COMPASS_SIGMA = 0.15f;        // rad, compass heading incl. deviation, correlated over time
-constexpr int COMPASS_CYCLES = 100;           // fuse the compass every 10s, its errors are not white
+constexpr uint32_t COMPASS_MS = 10000;        // compass errors are correlated
 constexpr float COMPASS_MAX_ROLL = 0.17f;     // rad, the compass is only trusted in straight flight
-constexpr uint16_t PERSIST_CYCLES = 3000;     // save the learned calibration every 5 minutes in flight
-constexpr uint16_t SETUP_CYCLES = 100;        // repeat the recorded setup every 10s, for logs started in flight
+constexpr uint32_t PERSIST_MS = 300000;       // save the learned calibration every 5 minutes in flight
+constexpr uint32_t SETUP_MS = 10000;          // repeat the recorded setup every 10s
 
 // "NMEA Output" (airmass_nmea)
 enum : int { NMEA_OFF = 0, NMEA_OUTPUT = 1, NMEA_RECORD = 2 };
@@ -257,6 +258,9 @@ void AirMassSensor::start()
     st.warm = warm;
     applyConfig();
     _pipe.start(st.t, st.alt, st.down, st.gyro, st.warm);
+    _setup_timer = _compass_timer = _persist_timer = _output_timer = {};
+    _sync_timer = _wind_timer = _average_timer = _diagnostic_timer = {};
+    _compass_sample = {};
     _recording = recording();
     if (_recording) {
         queueLine(airmass::record::start(st));
@@ -341,30 +345,22 @@ void AirMassSensor::postProcess()
     if (!active) {
         return;
     }
-    float baro_alt = NAN;
-    if (!tas.getValid() || !readBaroAltitude(baro_alt)) {
-        // no air data: invalidate the outputs, the vario falls back to netto
-        if (airmass_status.get() != 0) {
-            airmass_status.set(0);
-            airmass_inst_wind.set(WindData().data());
-        }
-        return;
-    }
     if (!_pipe.ekf().isRunning()) {
         ESP_LOGW(FNAME, "AirMass estimator restart");
         start();
     }
     // settings, ballast and the polar can change in flight
     const bool rec = recording();
+    const uint32_t now = Clock::getMillis();
     if (currentSetup() != _pipe.setup()) {
         applyConfig();
-    } else if (rec && !(_count % SETUP_CYCLES)) {
+    } else if (rec && _setup_timer.due(now, SETUP_MS)) {
         queueLine(airmass::record::setup(_pipe.setup())); // for logs started in flight
     }
 
     // the raw measurements of this cycle
     airmass::Frame f;
-    f.time_ms = Clock::getMillis();
+    f.time_ms = now;
     const vector_f& f_body = accSensor->getHead(); // specific force in g, body NED
     const vector_f gyro = gyroRates();             // rad/s, body
     for (int i = 0; i < 3; ++i) {
@@ -373,21 +369,34 @@ void AirMassSensor::postProcess()
     }
     f.ias = ias.get();
     f.tas = tas.get();
-    f.baro_alt = baro_alt;
+    const bool baro_ok = readBaroAltitude(f.baro_alt);
+    f.sample_times = true;
+    f.sample_ms[0] = accSensor->getLastUpdateTimeMs();
+    f.sample_ms[1] = gyroSensor->getLastUpdateTimeMs();
+    f.sample_ms[2] = baroSensor ? baroSensor->getLastUpdateTimeMs() : 0;
+    f.sample_ms[3] = asSensor ? asSensor->getLastUpdateTimeMs() : 0;
+    f.valid = 0;
+    if (accSensor->getHeadValid()) f.valid |= airmass::Frame::ACCEL;
+    if (gyroSensor->getHeadValid()) f.valid |= airmass::Frame::GYRO;
+    if (baro_ok) f.valid |= airmass::Frame::BARO;
+    if (tas.getValid() && ias.getValid() && asSensor && asSensor->getHeadValid()) f.valid |= airmass::Frame::AIRSPEED;
     f.flap_lever = flapLever(_pipe.attitude().roll());
-    if (rec && !_recording) {
+    if (rec && !_recording && f.valid == airmass::Frame::ALL && std::isfinite(f.baro_alt)) {
         // Recording was enabled after the estimator started: send everything a replay needs to join now.
         queueLine(airmass::record::setup(_pipe.setup()));
         queueLine(airmass::record::start(airmass::record::snapshot(_pipe, f)));
+        _recording = true;
     }
-    _recording = rec;
+    if (!rec) _recording = false;
     _pipe.step(f);
     if (rec) {
         queueLine(airmass::record::frame(f));
     }
 
     // compass: absolute heading in straight flight, aligns the wind before the first turn
-    if (!(_count % COMPASS_CYCLES) && heading_mag.getValid() && std::fabs(_pipe.input().roll) < COMPASS_MAX_ROLL) {
+    if (_compass_timer.due(now, COMPASS_MS) && heading_mag.getValid() && magSensor &&
+        std::fabs(_pipe.input().roll) < COMPASS_MAX_ROLL &&
+        _compass_sample.observe(now, magSensor->getLastUpdateTimeMs(), magSensor->getHeadValid())) {
         const airmass::record::Heading h{f.time_ms, Vector::normalizePI(heading_mag.get() + Units::deg_to_rad(compass_declination.get())),
                                          COMPASS_SIGMA};
         _pipe.heading(h.psi, h.sigma);
@@ -417,12 +426,12 @@ void AirMassSensor::postProcess()
     _pipe.endCycle();
     publish();
     // the estimator output at 5Hz, after the cycle it belongs to
-    if (airmass_nmea.get() != NMEA_OFF && !(_count % 2)) {
+    if (airmass_nmea.get() != NMEA_OFF && _output_timer.due(now, 200)) {
         queueLine(airmass::record::output(_pipe.ekf()));
     }
 
     // a power cut before the landing detection must not lose the whole flight
-    if (!(_count % PERSIST_CYCLES)) {
+    if (_persist_timer.due(now, PERSIST_MS)) {
         persistLearned();
     }
 }
@@ -434,10 +443,11 @@ void AirMassSensor::publish()
     const vector_f wind(ekf.windN(), ekf.windE(), ekf.windD());
     pushAndPublish(wind, now);
     const uint8_t st = ekf.status();
-    _count++;
 
     // vertical air mass movement at 5Hz to the second seat, the vario filter reads it locally every cycle
-    airmass_vario.set(ekf.airmassVario(), !(_count % 2));
+    airmass_vario.set(ekf.airmassVario(), _sync_timer.due(now, 200));
+    const bool wind_due = _wind_timer.due(now, 500);
+    const bool average_due = _average_timer.due(now, 1000);
     // volatile entries stay dirty once set, so every set() would sync: only set on change
     auto setChanged = [](SetupNG<int>& var, int val) {
         if (val != var.get()) {
@@ -448,15 +458,15 @@ void AirMassSensor::publish()
 
     if (st & AirMassEKF::ST_WIND_VALID) {
         const vector_f avg(_pipe.avgWind().windN(), _pipe.avgWind().windE(), 0.f);
-        if (!(_count % 5)) {
+        if (wind_due) {
             setChanged(airmass_inst_wind, windFromVector(wind).data());
         }
-        if (!(_count % 10)) {
+        if (average_due) {
             setChanged(airmass_avg_wind, windFromVector(avg).data());
         }
     } else if (st & AirMassEKF::ST_WIND_DEGRADED) {
         // not valid any more, the estimate is still the best instant wind there is: shown marked, no average
-        if (!(_count % 5)) {
+        if (wind_due) {
             setChanged(airmass_inst_wind, windFromVector(wind).data());
         }
         setChanged(airmass_avg_wind, WindData().data());
@@ -465,7 +475,7 @@ void AirMassSensor::publish()
         setChanged(airmass_inst_wind, WindData().data());
         setChanged(airmass_avg_wind, WindData().data());
     }
-    if (!(_count % 50)) {
+    if (_diagnostic_timer.due(now, 5000)) {
         ESP_LOGI(FNAME, "AirMass st %x wind %.1f/%.1f/%.2f psi %.1f° k %.3f thb %.2f° baz %.3f bgz %.3f°/s lat %.0fms", st, wind.x, wind.y,
                  wind.z, Units::rad_to_deg(ekf.heading()), ekf.kTas(), Units::rad_to_deg(ekf.pitchOffset()), ekf.accBias(),
                  Units::rad_to_deg(ekf.yawRateBias()), ekf.gnssLatency() * 1000.f);

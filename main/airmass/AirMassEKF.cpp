@@ -111,8 +111,9 @@ void AirMassEKF::reset(float baro_alt, float k_tas, float pitch_ofs, float laten
     _acc_mem = 0.f;
     _gnss_rejects = 0;
     _gnss_consecutive_rejects = 0;
-    _baro_consecutive_rejects = 0;
-    _vertical_settle = 0;
+    _baro_reject_ms = 0;
+    _baro_clock = _kinematic_clock = _energy_clock = {};
+    _vertical_settle_ms = 0;
     _last_gnss_ms = _last_time_ms;
     _have_gnss = _have_received_gnss = _have_input = false;
     _gnss_timing.reset();
@@ -214,7 +215,8 @@ void AirMassEKF::predict(const Input& in) {
     _cov(WN, WN) += _cfg.q_wind_h * dt;
     _cov(WE, WE) += _cfg.q_wind_h * dt;
     _cov(WD, WD) += _cfg.q_wind_v * dt;
-    _cov(PSI, PSI) += _cfg.q_psi * dt;
+    const float held_noise = 1.f + std::clamp(in.imu_age, 0.f, 10.f) / 0.1f;
+    _cov(PSI, PSI) += _cfg.q_psi * dt * held_noise;
     if (_cfg.learn_calibration) {
         _cov(KTAS, KTAS) += _cfg.q_ktas * dt;
         _cov(THB, THB) += _cfg.q_thb * dt;
@@ -222,7 +224,7 @@ void AirMassEKF::predict(const Input& in) {
         _cov(KCL, KCL) += _cfg.q_kcl * dt;
     }
     _cov(ALT, ALT) += _cfg.q_alt * dt;
-    _cov(VD, VD) += _cfg.q_vd * dt;
+    _cov(VD, VD) += _cfg.q_vd * dt * held_noise;
     _cov(BAZ, BAZ) += _cfg.q_baz * dt;
     _cov(BGZ, BGZ) += _cfg.q_bgz * dt;
 
@@ -264,7 +266,7 @@ void AirMassEKF::update(const Input& in) {
     _have_input = true;
     _last_time_ms = in.time_ms;
     if (!continuous) {
-        _vertical_settle = 0;
+        _vertical_settle_ms = 0;
         _inertial_trust = 0.f;
         _gnss_trust = 0.f;
         _wind_rate[0] = _wind_rate[1] = 0.f;
@@ -281,7 +283,7 @@ void AirMassEKF::update(const Input& in) {
     }
     const bool flying_speed = in.flying_speed && std::isfinite(in.tas) && in.tas > 10.f;
     if (!flying_speed) {
-        _vertical_settle = 0;
+        _vertical_settle_ms = 0;
         // Do not carry ground braking or a frozen air-mass output into the next takeoff.
         _tas_f = NAN;
         _sink_f = _sink_p = NAN;
@@ -308,16 +310,17 @@ void AirMassEKF::update(const Input& in) {
     s.continuous = continuous;
     s.flying_speed = flying_speed;
 
-    if (std::isfinite(in.baro_alt)) {
+    if (in.baro_fresh && std::isfinite(in.baro_alt) && _baro_clock.observe(in.time_ms, in.time_ms, true)) {
         // the static pressure error grows with dynamic pressure and fakes climb/sink on speed changes
-        fuseBaro(in.baro_alt + (_cfg.static_comp - 1.f) * in.tas * in.tas / (2.f * G0));
+        const float sample_dt = _baro_clock.interval_ms ? _baro_clock.interval_ms * 1e-3f : in.dt;
+        fuseBaro(in.baro_alt + (_cfg.static_comp - 1.f) * in.tas * in.tas / (2.f * G0), sample_dt);
     }
 
     _straight = blendBankWeight(in.roll);
-    if (flying_speed) {
+    if (flying_speed && continuous) {
         float va[3], dalpha[3];
         airVelocity(in.tas, _x[KTAS], in.roll, in.pitch, _x[PSI], alphaOf(in.aoa), va, dalpha);
-        fuseKinematic(in, va, dalpha);
+        if (in.kinematic_fresh && _kinematic_clock.observe(in.time_ms, in.time_ms, true)) fuseKinematic(in, va, dalpha);
         updateKinetic(in, va);
         if (std::isfinite(in.polar_sink)) {
             fuseEnergy(in);
@@ -330,26 +333,26 @@ void AirMassEKF::update(const Input& in) {
     const float tau = _cfg.circling_tau * (1.f - _straight);
     _vario_out = std::isnan(_vario_out) ? vario : _vario_out + (vario - _vario_out) * in.dt / (tau + in.dt);
     updateWindValid();
-    if (_running && flying_speed && _vertical_settle < 0xffff) {
-        _vertical_settle++;
+    if (_running && flying_speed && continuous) {
+        _vertical_settle_ms = std::min<uint32_t>(5000, _vertical_settle_ms + (uint32_t)(in.dt * 1000.f + 0.5f));
     }
 }
 
-void AirMassEKF::fuseBaro(float alt) {
+void AirMassEKF::fuseBaro(float alt, float sample_dt) {
     float h[NX] = {};
     h[ALT] = 1.f;
     // the static line delays the reading: it shows the altitude of lag_static ago, alt + lag * vd
     h[VD] = _cfg.lag_static;
     if (ekfScalarUpdate(_cov, _x, h, alt - (_x[ALT] + _cfg.lag_static * _x[VD]), _cfg.r_baro, _cfg.gate * 2.f)) {
-        _baro_consecutive_rejects = 0;
-    } else if (++_baro_consecutive_rejects > 20) {
+        _baro_reject_ms = 0;
+    } else if ((_baro_reject_ms += (uint32_t)(std::clamp(sample_dt, 0.001f, 0.3f) * 1000.f + 0.5f)) > 2000) {
         // disruptive altitude change (e.g. simulator jump), restart the vertical channel
         _x[ALT] = alt;
         _x[VD] = 0.f;
         _cov(ALT, ALT) = 1.f;
         _cov(VD, VD) = 1.f;
-        _baro_consecutive_rejects = 0;
-        _vertical_settle = 0;
+        _baro_reject_ms = 0;
+        _vertical_settle_ms = 0;
     }
 }
 
@@ -369,7 +372,10 @@ void AirMassEKF::fuseKinematic(const Input& in, const float va[3], const float d
     const float sv = in.tas * sig;
     // sideslip in a bank tilts the air vector vertically by V * beta * sin(roll)
     const float ss = in.tas * in.slip_sigma * std::fabs(std::sin(in.roll));
-    ekfScalarUpdate(_cov, _x, h, y, sv * sv + ss * ss + 0.01f, _cfg.gate);
+    // These model constraints have correlated noise. Keep their information per second stable across rates.
+    const float sample_dt = _kinematic_clock.interval_ms ? _kinematic_clock.interval_ms * 1e-3f : in.dt;
+    const float rate_scale = 0.1f / std::clamp(sample_dt, 0.001f, 0.3f);
+    ekfScalarUpdate(_cov, _x, h, y, (sv * sv + ss * ss + 0.01f) * rate_scale, _cfg.gate);
 }
 
 float AirMassEKF::blendBankWeight(float roll) const {
@@ -436,7 +442,11 @@ void AirMassEKF::fuseEnergy(const Input& in) {
     // airspeed changes not explained by inertial acceleration indicate horizontal gusts
     const float gust = std::fabs(k * _tas_dot_f - in.acc_long);
     const float sig = _cfg.sigma_energy * (1.f + _cfg.energy_load_weight * std::fabs(in.load_factor - 1.f) + _cfg.energy_gust_weight * gust);
-    ekfScalarUpdate(_cov, _x, h, y, sig * sig, _cfg.energy_gate);
+    if (in.energy_fresh && _energy_clock.observe(in.time_ms, in.time_ms, true)) {
+        const float sample_dt = _energy_clock.interval_ms ? _energy_clock.interval_ms * 1e-3f : in.dt;
+        const float rate_scale = 0.1f / std::clamp(sample_dt, 0.001f, 0.3f);
+        ekfScalarUpdate(_cov, _x, h, y, sig * sig * rate_scale, _cfg.energy_gate);
+    }
 
     // The energy balance is down weighted in gusts and at high load factors, which come with the lift in thermals: on
     // its own the estimate then reads low over minutes. The output follows the plain energy balance (the airspeed
@@ -469,6 +479,7 @@ const AirMassEKF::Snapshot* AirMassEKF::findSnapshot(uint32_t t) const {
 // current calibration states. The heading at that time is the current heading minus the gyro increment
 // since then. The rates between the snapshots give the derivatives by the GNSS latency.
 bool AirMassEKF::delayedState(uint32_t t, Delayed& d) const {
+    if ((uint32_t)(_last_time_ms - t) > HISTORY_MS) return false;
     if (_hist_level < 2) {
         return false;
     }
@@ -749,7 +760,7 @@ uint8_t AirMassEKF::status() const {
         return 0;
     }
     uint8_t st = 0;
-    if (_vertical_settle >= 50) {
+    if (_vertical_settle_ms >= 5000) {
         st |= ST_VARIO_VALID;
     }
     if (_aligned) {

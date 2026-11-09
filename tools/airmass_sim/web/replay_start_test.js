@@ -69,5 +69,27 @@ function sentence(body) {
   const noSetup = await runReplay(M, missingStart.filter(line => !line.startsWith("$PXCVC,")));
   assert.equal(noSetup.n, 0, "missing setup is not silently replaced by an invented polar");
   assert.equal(noSetup.summary.skipped, 141);
+
+  // New device recordings include source timestamps: 20Hz polls with physical readings at 10Hz.
+  const timed = [sens.rec.find(line => line.startsWith("$PXCVC,")),
+    sentence("$PXCVS,0,1000,0,0,1,0,0,0,1,0,0.75,1,1,1,1,1,1,1,1,2")];
+  for (let t = 50; t <= 12000; t += 50) {
+    const stamp = Math.floor(t / 100) * 100;
+    const held = t > 50 && t % 100 !== 0;
+    // Different values with unchanged source timestamps must be ignored, including by Mahony.
+    timed.push(sentence(`$PXCVR,${t},0,0,-1,${held ? 2 : 0},0,0,${held ? 90 : 30},${held ? 90 : 30},${held ? 2000 : 1000},,${stamp},${stamp},${stamp},${stamp},15`));
+  }
+  for (const mahony of [false, true]) {
+    const rep = await runReplay(M, convert(timed.join("\n")).rec, { mahony });
+    assert.equal(rep.n, 240);
+    assert.equal(rep.summary.seconds, 12, "reported duration is elapsed time, independent of frame rate");
+    assert(rep.cols.roll_deg.every(v => Math.abs(v) < 0.001), "held-stamp gyro changes cannot tilt either attitude filter");
+    assert(rep.cols.status.slice(0, 99).every(s => !(s & 1)), "20Hz still needs five seconds of settling");
+    assert(rep.cols.status[99] & 1);
+    const invalid = [...timed, sentence("$PXCVR,12050,,,,,,,,,,,12050,12050,12050,12050,0")];
+    const bad = await runReplay(M, convert(invalid.join("\n")).rec, { mahony });
+    assert(!(bad.cols.status[bad.n - 1] & 1), "explicit invalid-source metadata forces fallback");
+    assert(bad.cols.vario.every(Number.isFinite));
+  }
   console.log("PASS: no-GNSS/low-ground-speed startup, missing starts with both filters, attitude estimation, page integration, missing setup");
 })().catch(error => { console.error(error); process.exitCode = 1; });

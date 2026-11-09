@@ -11,6 +11,7 @@
 
 #include "math/Matrix.h"
 #include "AirMassGnssTiming.h"
+#include "AirMassSampling.h"
 
 #include <algorithm>
 #include <cmath>
@@ -22,7 +23,7 @@ class AirMassEKF {
     // KCL scales the modelled angle of attack (lift slope error), THB is the offset of the body x axis
     enum : uint8_t { WN = 0, WE, WD, PSI, KTAS, THB, ALT, VD, BAZ, BGZ, TAU, KCL, NX };
 
-    // per cycle input (10Hz typical)
+    // per prediction cycle input (20Hz on target; legacy replay may use 10Hz)
     struct Input {
         uint32_t time_ms = 0;
         float dt = 0.1f;        // s
@@ -40,6 +41,10 @@ class AirMassEKF {
         float slip_beta = 0.f;  // rad, signed sideslip from lateral specific force; positive air from the right
         bool continuous = true; // false: an inferred cycle or the first measured cycle after a sensor gap
         bool flying_speed = true; // false below the IAS flying-speed cutoff (set by Pipeline)
+        bool baro_fresh = true;
+        bool kinematic_fresh = true;
+        bool energy_fresh = true;
+        float imu_age = 0.f; // seconds since the older of the latest acceleration/gyro samples
     };
 
     // GNSS velocity observation
@@ -192,7 +197,8 @@ class AirMassEKF {
         bool continuous;
         bool flying_speed;
     };
-    static constexpr int HIST = 64; // 6.4s at 10Hz, including irregular transport delay; never bridge sensor gaps
+    static constexpr int HIST = 130; // retain at least 6.4s at 20Hz, including interpolation endpoints
+    static constexpr uint32_t HISTORY_MS = 6400; // same duration for lower-rate legacy replays
 
     // air vector and vertical speed at a past time, interpolated between snapshots
     struct Delayed {
@@ -203,7 +209,7 @@ class AirMassEKF {
     };
 
     void predict(const Input& in);
-    void fuseBaro(float alt);
+    void fuseBaro(float alt, float sample_dt);
     void fuseKinematic(const Input& in, const float va[3], const float dalpha[3]);
     void updateKinetic(const Input& in, const float va[3]);
     // the weight of the kinetic blend at this roll angle: 1 in straight flight, fading to 0 around blend_bank
@@ -257,7 +263,8 @@ class AirMassEKF {
     float _inertial_trust = 1.f, _gnss_trust = 0.f;
     uint32_t _gnss_rejects = 0;
     uint16_t _gnss_consecutive_rejects = 0;
-    uint16_t _baro_consecutive_rejects = 0;
+    uint32_t _baro_reject_ms = 0;
+    airmass::SampleClock _baro_clock, _kinematic_clock, _energy_clock;
     // least squares alignment: v_gnss = W + Rz(psi_gyro) * [c -s; s c] * u_air
     struct Alignment {
         float ata[4][4];
@@ -273,7 +280,7 @@ class AirMassEKF {
         uint32_t time_ms;
         bool valid;
     } _aid = {};
-    uint16_t _vertical_settle = 0;
+    uint32_t _vertical_settle_ms = 0;
     bool _running = false;
     bool _aligned = false;
     bool _wind_valid = false;
