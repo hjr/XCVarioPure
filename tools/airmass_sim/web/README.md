@@ -41,11 +41,16 @@ Output synchronization stays at 5 Hz, wind at 2 Hz, average wind at 1 Hz, and se
 elapsed time. This changes the estimator scheduler only; it does not increase physical sensor sampling rates.
 
 New `PXCVR` frames append acceleration, gyro, barometer and airspeed source timestamps, then a valid-source
-bitmask (1/2/4/8). Native and web replay preserve these fields, including prediction-only ticks. Legacy frames
-without them still treat each recorded sensor frame as new data at its recorded cadence. Displayed replay
-duration is computed from timestamps rather than assuming ten frames per second. Rebuild `airmass.js` to use
-the updated core. `sensor_freshness_20hz` covers independent updates, held values, outages, scheduling, history
-duration, rollover and device/replay equivalence.
+bitmask (1/2/4/8). Native and web replay preserve these fields, including prediction-only ticks. The web replay
+also inserts 50 ms prediction ticks between frames of older recordings and converted `$SENS` logs. Inserted
+ticks hold the previous readings and their original source timestamps; corrections still run only for new
+measurements, including with Mahony enabled. Already recorded 20 Hz ticks are preserved. A new flight waits
+for its first measured frame, and gaps longer than ten seconds use the existing dynamics reset instead of
+fabricated history. The native recording checker keeps the original recorded cadence for exact comparisons.
+Displayed replay duration is computed from timestamps. Map/chart sensor data keep their logged cadence;
+estimator output includes the additional prediction ticks. Rebuild `airmass.js` to use the updated core.
+`sensor_freshness_20hz` covers independent updates, held values, outages, scheduling, history duration, rollover,
+device/replay equivalence and upsampling equivalence. The WASM integration test covers 5/10 Hz logs at 20 Hz.
 The native simulator accepts `--set predict_hz=20` to insert held-input prediction ticks between the same 10 Hz
 physical measurements (default: 10). CTest also runs straight, thermal, gust and cross-country scenarios and an
 exact recording/replay check at this mixed rate.

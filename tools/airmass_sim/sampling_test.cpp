@@ -245,6 +245,74 @@ void recording() {
     }
     check(rejected, "incomplete source metadata cannot masquerade as fresh legacy measurements");
 }
+
+void predictionReplay() {
+    namespace rec = airmass::record;
+    for (bool mahony : {false, true}) for (bool legacy : {false, true}) {
+        airmass::replay::Replayer sparse, dense;
+        sparse.setPredictionPeriod(50);
+        for (auto* replay : {&sparse, &dense}) {
+            replay->setMahony(mahony);
+            replay->line(rec::setup({}).c_str());
+            rec::Start st;
+            st.alt = 1000.f;
+            replay->line(rec::start(st).c_str());
+        }
+        int ticks = 0, barometers = 0, energies = 0;
+        bool cadence = true, equal = true;
+        sparse.on_cycle = [&](const airmass::Pipeline& p, float) {
+            cadence = cadence && p.input().time_ms == static_cast<uint32_t>(ticks * 50);
+            ++ticks;
+            barometers += p.input().baro_fresh;
+            energies += p.input().energy_fresh;
+        };
+        airmass::Frame held;
+        for (uint32_t t = 0; t <= 12000; t += 50) {
+            if (t % 100 == 0) {
+                held = frame(t);
+                held.baro_alt -= t * 0.0005f;
+                held.ias = held.tas = 30.f + std::sin(t * 0.001f);
+                held.gyro[2] = 0.02f;
+                auto source = held;
+                source.sample_times = !legacy;
+                sparse.line(rec::frame(source).c_str());
+            }
+            auto f = held;
+            f.time_ms = t;
+            dense.line(rec::frame(f).c_str());
+            if (t % 1000 == 0 && t >= 1000) {
+                rec::Gnss g;
+                g.v = {t, 750, 30.f, 0.f, 0.5f};
+                const auto line = rec::gnss(g);
+                sparse.line(line.c_str());
+                dense.line(line.c_str());
+            }
+            if (t % 100 == 0) {
+                const auto& a = sparse.pipeline().ekf();
+                const auto& b = dense.pipeline().ekf();
+                equal = equal && near(a.airmassVario(), b.airmassVario()) && near(a.heading(), b.heading()) && a.status() == b.status();
+                for (int i = 0; i < AirMassEKF::NX; ++i) equal = equal && near(a.sigma(i), b.sigma(i));
+            }
+        }
+        sparse.finish();
+        dense.finish();
+        check(cadence && ticks == 241 && barometers == 121 && energies == 121 && sparse.gnss == 12,
+              "web cadence adds 50ms predictions without repeating sensor or GNSS corrections");
+        check(equal && sparse.frames == dense.frames && near(sparse.seconds, dense.seconds),
+              "upsampled legacy/new logs match a recorded 20Hz flight with either attitude filter");
+        sparse.line(rec::frame(frame(23000)).c_str());
+        sparse.finish();
+        check(sparse.frames == 242 && !(sparse.pipeline().ekf().status() & AirMassEKF::ST_VARIO_VALID),
+              "a long outage resets instead of inventing prediction history");
+        rec::Start st;
+        st.t = 30000;
+        st.alt = 1000.f;
+        sparse.line(rec::start(st).c_str());
+        sparse.line(rec::frame(frame(30100)).c_str());
+        sparse.finish();
+        check(sparse.frames == 243, "a new flight waits for its first actual sensor frame");
+    }
+}
 } // namespace
 int main() {
     clocks();
@@ -255,5 +323,6 @@ int main() {
     history();
     longSourceOutage();
     recording();
+    predictionReplay();
     return failures ? 1 : 0;
 }

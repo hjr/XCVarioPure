@@ -34,6 +34,9 @@ extern "C" {
 EMSCRIPTEN_KEEPALIVE int am_begin(const char* settings, int learn, int warm, float k_tas, float pitch_ofs_deg, float aoa_scale, float latency_s, int mahony) {
     delete g_replay;
     g_replay = new airmass::replay::Replayer();
+#ifndef AIRMASS_NO_CONFIG_SETTINGS
+    g_replay->setPredictionPeriod(50);
+#endif
     g_rows.clear();
     g_times.clear();
     if (!g_replay->setMahony(mahony != 0)) {
@@ -113,10 +116,10 @@ EMSCRIPTEN_KEEPALIVE const char* am_summary() {
     char buf[768];
     std::snprintf(buf, sizeof(buf),
                   "{\"lines\":%ld,\"cycles\":%ld,\"gnss\":%ld,\"compass\":%ld,\"starts\":%ld,\"skipped\":%ld,\"damaged\":%ld,"
-                  "\"recovered_starts\":%ld,\"estimated_attitude_starts\":%ld,\"seconds\":%.3f,"
+                  "\"recovered_starts\":%ld,\"estimated_attitude_starts\":%ld,\"seconds\":%.3f,\"prediction_ms\":%lu,"
                   "\"k_tas\":%.4f,\"pitch_ofs_deg\":%.3f,\"aoa_scale\":%.4f,\"latency_ms\":%.0f,\"gyro_z_bias_dps\":%.4f,\"mahony\":%s}",
                   r.lines, r.frames, r.gnss, r.headings, r.starts, r.skipped, r.bad, r.recovered_starts, r.estimated_attitude_starts,
-                  r.seconds,
+                  r.seconds, static_cast<unsigned long>(r.predictionPeriod()),
                   ekf.kTas(), Units::rad_to_deg(ekf.pitchOffset()),
                   ekf.aoaScale(), ekf.gnssLatency() * 1000.f, Units::rad_to_deg(ekf.yawRateBias()), r.usingMahony() ? "true" : "false");
     g_text = buf;
