@@ -72,19 +72,42 @@ select { appearance: none; -webkit-appearance: none; padding-right: 26px !import
   background-repeat: no-repeat; background-position: right 9px center; background-size: 10px 6px; }
 
 /* settings: a panel over the page */
-.settings { position: absolute; top: 46px; right: 10px; width: min(760px, calc(100vw - 20px)); max-height: calc(100vh - 60px); overflow: auto;
+.settings { position: absolute; top: 46px; right: 10px; width: min(820px, calc(100vw - 20px)); max-height: calc(100vh - 60px); overflow: auto;
   background: var(--surface); border: 1px solid var(--rule); border-radius: 8px; box-shadow: 0 8px 28px rgba(0,0,0,0.22); z-index: 1500; }
 .settings[hidden] { display: none; }
-.form { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px 16px; padding: 12px; }
-.form label { display: grid; gap: 3px; font-size: 0.85rem; color: var(--muted); }
-.form label.wide { grid-column: 1 / -1; }
-.form input[type=text], .form input[type=number], .form select { background-color: var(--bg); border: 1px solid var(--rule); border-radius: 5px; padding: 5px 8px; color: var(--ink); width: 100%; min-width: 0; }
-.form .check { display: flex; align-items: center; gap: 6px; color: var(--ink); }
-.form .warm { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
-.form .vario-settings { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 16px; }
-.setfoot { display: flex; gap: 8px; align-items: center; padding: 0 12px 12px; flex-wrap: wrap; }
-.summary { font: 0.78rem/1.5 var(--mono); color: var(--muted); padding: 0 12px 12px; overflow-wrap: anywhere; }
-.hint { color: var(--muted); font-size: 0.8rem; padding: 0 12px 12px; }
+.sethead { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 8px 8px 8px 14px; background: var(--surface); border-bottom: 1px solid var(--rule); }
+.sethead h2 { margin: 0; font-size: 0.95rem; font-weight: 650; }
+.xbtn { background: none; border: 0; border-radius: 6px; width: 28px; height: 28px; font-size: 1.1rem; line-height: 1; color: var(--muted); cursor: pointer; }
+.xbtn:hover { background: var(--tint); color: var(--ink); }
+/* the settings in sections */
+.setgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; padding: 12px; align-items: start; }
+.setcol { display: grid; gap: 10px; align-content: start; min-width: 0; }
+.group { margin: 0; min-width: 0; border: 1px solid var(--rule); border-radius: 6px; padding: 8px 12px 12px; display: grid; gap: 8px; }
+.group.wide { grid-column: 1 / -1; }
+.group legend { padding: 0 4px; margin-left: -4px; font-size: 0.7rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.group label { display: grid; gap: 3px; font-size: 0.85rem; color: var(--muted); }
+.group input[type=text], .group input[type=number], .group select { background-color: var(--bg); border: 1px solid var(--rule); border-radius: 5px; padding: 5px 8px; color: var(--ink); width: 100%; min-width: 0; }
+.group input:disabled { opacity: 0.5; }
+.group .check { display: flex; align-items: center; gap: 6px; color: var(--ink); }
+.group .row { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px; align-items: end; }
+.group .row4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.group .row4 label { font-size: 0.78rem; }
+.serialrow { display: flex; gap: 8px; align-items: end; flex-wrap: wrap; }
+.serialrow label { width: 170px; }
+.note { color: var(--muted); font-size: 0.78rem; margin: 0; }
+.serialstatus { font-weight: 600; color: var(--ink); }
+.setfoot { display: grid; gap: 10px; padding: 0 12px 12px; }
+.actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.summary { font: 0.76rem/1.55 var(--mono); color: var(--muted); overflow-wrap: anywhere; white-space: pre-line; border-left: 2px solid var(--rule); padding-left: 10px; }
+.summary:empty { display: none; }
+.keys { color: var(--muted); font-size: 0.8rem; }
+.keys summary { cursor: pointer; width: max-content; }
+.keys p { margin: 4px 0 0; }
+@media (max-width: 700px) {
+  .setgrid { grid-template-columns: minmax(0, 1fr); }
+  .group .row4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
 
 /* map and gauges */
 .main { display: grid; grid-template-columns: minmax(0, 1fr) clamp(240px, 22vw, 330px); grid-template-rows: minmax(0, 1fr) clamp(170px, 33vh, 330px);
@@ -171,48 +194,90 @@ select { appearance: none; -webkit-appearance: none; padding-right: 26px !import
   <div class="status" id="status" role="status" hidden></div>
 
   <div class="settings" id="settings" hidden>
-    <div class="form">
-      <label>Serial baud rate
-        <select id="baud"><option>9600</option><option>19200</option><option>38400</option><option>57600</option><option selected>115200</option><option>230400</option><option>460800</option><option>921600</option></select>
-      </label>
-      <label>Instrument replay <button class="btn" id="serialbtn" disabled>Connect serial…</button></label>
-      <label class="wide"><span id="serialstatus" role="status">Disconnected</span>
-        <span id="serialhint">Open a $SENS log to stream it to an XCVario. Serial playback starts at 1×.</span>
-        <span>Seeks and playback changes reset instrument settling; its estimator history differs from the offline replay. Restart the instrument to leave simulation mode. Browser estimator/polar overrides apply to the offline display; serial sends the logged setup.</span>
-      </label>
-      <label>Gross mass, kg <input type="number" id="mass" value="-1" min="-1" step="1" title="-1: from the log: its empty, crew and ballast weights (CA1, newer logs), else its ballast factor ($PXCV)"></label>
-      <label>Bugs, % <input type="number" id="bugs" value="-1" min="-1" step="1" title="-1: the setting logged in $PXCV"></label>
-      <div class="vario-settings">
-        <label>Vario damping, s <input type="number" id="damping" value="4" min="1" max="10" step="0.5" title="the device's vario delay, 4 s by default"></label>
-        <label>Vario averager, s <input type="number" id="averager" value="30" min="7" max="50" step="1" title="Trailing averaging window for the AirMass, TE and GNSS numeric readouts"></label>
+    <div class="sethead">
+      <h2>Settings</h2>
+      <button type="button" class="xbtn" id="settingsclose" aria-label="Close settings" title="Close (Esc)">✕</button>
+    </div>
+    <div class="setgrid">
+      <!-- left: what the flight is replayed with (a change replays it at the current position); right: how it is shown -->
+      <div class="setcol">
+        <fieldset class="group">
+          <legend>Glider &amp; loading</legend>
+          <div class="row">
+            <label>Gross mass, kg <input type="number" id="mass" value="-1" min="-1" step="1" title="-1: from the log: its empty, crew and ballast weights (CA1, newer logs), else its ballast factor ($PXCV)"></label>
+            <label>Bugs, % <input type="number" id="bugs" value="-1" min="-1" step="1" title="-1: the setting logged in $PXCV"></label>
+          </div>
+          <label class="check"><input type="checkbox" id="noflaps"> No flap lever (sensor logs)</label>
+          <p class="note">−1: from the log. The glider type is in the top bar.</p>
+        </fieldset>
+        <fieldset class="group">
+          <legend>Estimator</legend>
+          <label class="check" title="Use the device’s extended Mahony filter for AirMass and the attitude display, including its coordinated-turn correction. Off: AirMass’s air-data-aided attitude."><input type="checkbox" id="mahony"> Use Mahony AHRS</label>
+          <label class="check"><input type="checkbox" id="learn" checked> Learn calibration in flight</label>
+          <label title="AirMassEKF::Config fields, name=value separated by commas, as airmass_replay --set takes them">Config overrides (like airmass_replay --set)
+            <input type="text" id="sets" placeholder="e.g. kinetic_tau=10, blend_bank=0, lag_static=0.3" spellcheck="false">
+          </label>
+        </fieldset>
+        <fieldset class="group">
+          <legend>Start calibration</legend>
+          <label class="check" title="Off: the calibration the log starts with (PXCVS), else the defaults"><input type="checkbox" id="warm"> Start with this calibration</label>
+          <div class="row4">
+            <label>k_tas <input type="number" id="w0" value="1" step="0.001"></label>
+            <label>Pitch ofs, ° <input type="number" id="w1" value="0" step="0.01"></label>
+            <label title="Held at 1 unless the config overrides give kcl_min/kcl_max a range">AoA scale <input type="number" id="w2" value="1" step="0.001"></label>
+            <label>GNSS lat., s <input type="number" id="wlat" value="0.75" step="0.01"></label>
+          </div>
+        </fieldset>
       </div>
-      <label class="check" title="The GNSS reference gets the device's vario damping; off: undamped. Applies in gross and netto mode."><input type="checkbox" id="samesmooth" checked> Damp the GNSS reference like the vario</label>
-      <label class="wide">Estimator settings (AirMassEKF::Config, like airmass_replay --set)
-        <input type="text" id="sets" placeholder="e.g. kinetic_tau=10, blend_bank=0, lag_static=0.3" spellcheck="false">
-      </label>
-      <label>Sound harmonics (the device's Harmonics menu)
-        <select id="harmonics"><option value="0" selected>None</option><option value="7">Some</option><option value="14">More</option><option value="21">Sparky (device default)</option></select>
-      </label>
-      <label class="check"><input type="checkbox" id="clip" checked> Sound clipped like the device</label>
-      <label class="check" title="The vario chart spans half the time a glider at 100 km/h needs to cross the map, around the current moment; it follows the map zoom"><input type="checkbox" id="chartsmap" checked> Chart width follows the map zoom (½ of the map at 100 km/h)</label>
-      <label class="check" title="Switch all three vario needles, chart lines, averages and sound to gross total-energy climb, including the glider's polar sink. Off: netto air movement."><input type="checkbox" id="showgross"> Gross mode for all varios</label>
-      <label class="check" title="An arrow along the glider's axis: AirMass's instant wind along the heading. The ground speed shows it even in long glides, where the whole wind is not valid"><input type="checkbox" id="showhw"> Headwind / tailwind component on the map</label>
-      <label class="check" title="AirMass's instant wind as arrows along the track, pointing downwind, their length by the speed, fading as the wind gets less certain; spaced on the screen, so zooming in shows more of them"><input type="checkbox" id="windfield"> Wind along the track</label>
-      <label class="check"><input type="checkbox" id="noflaps"> No flap lever (sensor logs)</label>
-      <label class="check" title="Use the device’s extended Mahony filter for AirMass and the attitude display, including its coordinated-turn correction. Off: AirMass’s air-data-aided attitude."><input type="checkbox" id="mahony"> Use Mahony AHRS</label>
-      <label class="check"><input type="checkbox" id="learn" checked> Learn calibration in flight</label>
-      <label class="check"><input type="checkbox" id="warm"> Start with this calibration:</label>
-      <label class="wide" style="margin-top:-6px">k_tas, pitch offset °, AoA scale, GNSS latency s
-        <span class="warm"><input type="number" id="w0" value="1" step="0.001"><input type="number" id="w1" value="0" step="0.01"><input type="number" id="w2" value="1" step="0.001"><input type="number" id="wlat" value="0.75" step="0.01"></span>
-      </label>
+      <div class="setcol">
+        <fieldset class="group">
+          <legend>Vario</legend>
+          <div class="row">
+            <label>Damping, s <input type="number" id="damping" value="4" min="1" max="10" step="0.5" title="the device's vario delay, 4 s by default"></label>
+            <label>Averager, s <input type="number" id="averager" value="30" min="7" max="50" step="1" title="Trailing averaging window for the AirMass, TE and GNSS numeric readouts"></label>
+          </div>
+          <label class="check" title="Switch all three vario needles, chart lines, averages and sound to gross total-energy climb, including the glider's polar sink. Off: netto air movement."><input type="checkbox" id="showgross"> Gross mode for all varios</label>
+          <label class="check" title="The GNSS reference gets the device's vario damping; off: undamped. Applies in gross and netto mode."><input type="checkbox" id="samesmooth" checked> Damp the GNSS reference like the vario</label>
+        </fieldset>
+        <fieldset class="group">
+          <legend>Sound</legend>
+          <label>Harmonics (the device's Harmonics menu)
+            <select id="harmonics"><option value="0" selected>None</option><option value="7">Some</option><option value="14">More</option><option value="21">Sparky (device default)</option></select>
+          </label>
+          <label class="check"><input type="checkbox" id="clip" checked> Clipped like the device</label>
+        </fieldset>
+        <fieldset class="group">
+          <legend>Map &amp; charts</legend>
+          <label class="check" title="An arrow along the glider's axis: AirMass's instant wind along the heading. The ground speed shows it even in long glides, where the whole wind is not valid"><input type="checkbox" id="showhw"> Headwind / tailwind component</label>
+          <label class="check" title="AirMass's instant wind as arrows along the track, pointing downwind, their length by the speed, fading as the wind gets less certain; spaced on the screen, so zooming in shows more of them"><input type="checkbox" id="windfield"> Wind along the track</label>
+          <label class="check" title="The vario chart spans half the time a glider at 100 km/h needs to cross the map, around the current moment; it follows the map zoom"><input type="checkbox" id="chartsmap" checked> Chart width follows the map zoom</label>
+        </fieldset>
+      </div>
+      <fieldset class="group wide">
+        <legend>Instrument replay</legend>
+        <div class="serialrow">
+          <label>Serial baud rate
+            <select id="baud"><option>9600</option><option>19200</option><option>38400</option><option>57600</option><option selected>115200</option><option>230400</option><option>460800</option><option>921600</option></select>
+          </label>
+          <button class="btn" id="serialbtn" disabled>Connect serial…</button>
+        </div>
+        <span class="serialstatus" id="serialstatus" role="status">Disconnected</span>
+        <span class="note" id="serialhint">Open a $SENS log to stream it to an XCVario. Serial playback starts at 1×.</span>
+        <p class="note">Seeks and playback changes reset instrument settling; its estimator history differs from the offline replay. Restart the instrument to leave simulation mode. Serial sends the logged setup: the browser's glider, loading and estimator overrides apply to the offline display only. It pauses while the flight replays, then resumes if it was playing.</p>
+      </fieldset>
     </div>
     <div class="setfoot">
-      <button class="btn primary" id="rerun" disabled>Recalculate</button>
-      <button class="btn" id="export" disabled>Export CSV</button>
+      <div class="actions">
+        <button class="btn primary" id="rerun" disabled>Recalculate</button>
+        <button class="btn" id="export" disabled>Export CSV</button>
+      </div>
+      <div class="summary" id="summary"></div>
+      <details class="keys">
+        <summary>Keyboard and mouse</summary>
+        <p>Space play/pause · 1–8 replay speed (1×, 2×, 5×, 10×, 30×, 60×, 120×, 300×) · Q W E R T track colour (GNSS netto, AirMass, TE, GNSS altitude, SeeYou netto) · ←/→ 10 s · Shift+←/→ 1 min.</p>
+        <p>Charts: click to jump, wheel to zoom, drag to pan, double-click for the whole flight.</p>
+      </details>
     </div>
-    <div class="hint">Display and sound settings apply immediately. Glider, loading and estimator changes recalculate automatically at the current position. Instrument replay pauses during recalculation, then resumes if it was playing.</div>
-    <div class="summary" id="summary"></div>
-    <div class="hint">Keys: Space play/pause · 1–8 replay speed (1×, 2×, 5×, 10×, 30×, 60×, 120×, 300×) · Q W E R T track colour (GNSS netto, AirMass, TE, GNSS altitude, SeeYou netto) · ←/→ 10 s · Shift+←/→ 1 min. Charts: click to jump, wheel to zoom, drag to pan, double-click for the whole flight.</div>
   </div>
 
   <div class="main">
@@ -335,6 +400,10 @@ for (const id of ["glider", "mass", "bugs", "sets", "noflaps", "mahony", "learn"
 for (const id of ["w0", "w1", "w2", "wlat"]) {
   $(id).addEventListener("change", () => { if (fileLog && $("warm").checked) run(); });
 }
+// the start calibration's values only count with its checkbox on
+function warmInputs() { for (const id of ["w0", "w1", "w2", "wlat"]) $(id).disabled = !$("warm").checked; }
+warmInputs();
+$("warm").addEventListener("change", warmInputs);
 
 // progress and errors show over the map; done = the flight is replayed: the note goes (the details are in Settings)
 let statusTimer = null;
@@ -434,8 +503,9 @@ async function load(file) {
 function selectLogGlider(log) {
   const name = AirMassConvert.gliderFromLog(log);
   const select = $("glider");
-  select.options[0].textContent = name ? `${name} (from log)` : "Glider from the log";
-  select.value = "log";
+  // no type in the log: keep the glider picked by hand before, else ask for one (until then the replay uses the ASG 29/18)
+  select.options[0].textContent = name || "Select glider";
+  if (name) select.value = "log";
   saveSettings();
 }
 
@@ -499,16 +569,22 @@ async function replayOnce() {
     const attitudeUsed = rep.summary.mahony ? "Mahony AHRS" : "AirMass attitude";
     const result = `${fileName}: ${conv.kind}, ${s.starts} flight${s.starts === 1 ? "" : "s"}, ${hours} h replayed in ${((performance.now() - t0) / 1000).toFixed(1)} s${setupUsed}`;
     setStatus(result, false, true);
-    $("summary").textContent = result + ` · ${attitudeUsed} · cycles ${s.cycles} · GNSS fixes ${s.gnss} · compass ${s.compass} · learned: k_tas ${s.k_tas.toFixed(3)}, pitch offset ${s.pitch_ofs_deg.toFixed(2)}°, ` +
-      `AoA scale ${s.aoa_scale.toFixed(3)}, GNSS latency ${s.latency_ms} ms (altitude ${Math.round(D.altDelay * 1000)} ms), gyro z bias ${s.gyro_z_bias_dps.toFixed(3)}°/s` +
-      (conv.temperatureEstimatedSamples ? ` · OAT estimated for ${conv.temperatureEstimatedSamples} samples: 25°C at sea level, −6.5°C/km` : "") +
-      (conv.temperatureKelvinSamples ? ` · OAT converted from Kelvin for ${conv.temperatureKelvinSamples} samples` : "") +
-      (conv.timestampRecoveredSamples ? ` · timing recovered for ${conv.timestampRecoveredSamples} samples with frozen timestamps` : "") +
-      (conv.axesCorrected ? " · inconsistent sensor-axis metadata corrected using the logged attitude" : "") +
-      (conv.axesInferred ? " · missing sensor-axis metadata inferred from logged attitude and gyro rates" : "") +
-      (s.recovered_starts ? ` · ${s.recovered_starts} missing starts recovered (${s.estimated_attitude_starts} with estimated attitude); approximate initialization, allow settling` : "") +
-      (!conv.fixes ? " · no GNSS velocity recorded: wind and GNSS vario reference unavailable" : "") +
-      (conv.kind.startsWith("XCVario sensor") ? " · sensor logs carry the gated gyro (rates below the gate read 0), which costs AirMass short-term accuracy" : "");
+    // one fact per line (.summary is white-space: pre-line)
+    $("summary").textContent = [
+      `${fileName}: ${conv.kind}, ${s.starts} flight${s.starts === 1 ? "" : "s"}, ${hours} h replayed in ${((performance.now() - t0) / 1000).toFixed(1)} s`,
+      setupUsed.slice(3),
+      `${attitudeUsed} · cycles ${s.cycles} · GNSS fixes ${s.gnss} · compass ${s.compass}`,
+      `learned: k_tas ${s.k_tas.toFixed(3)}, pitch offset ${s.pitch_ofs_deg.toFixed(2)}°, AoA scale ${s.aoa_scale.toFixed(3)}, ` +
+        `GNSS latency ${s.latency_ms} ms (altitude ${Math.round(D.altDelay * 1000)} ms), gyro z bias ${s.gyro_z_bias_dps.toFixed(3)}°/s`,
+      conv.temperatureEstimatedSamples && `OAT estimated for ${conv.temperatureEstimatedSamples} samples: 25°C at sea level, −6.5°C/km`,
+      conv.temperatureKelvinSamples && `OAT converted from Kelvin for ${conv.temperatureKelvinSamples} samples`,
+      conv.timestampRecoveredSamples && `timing recovered for ${conv.timestampRecoveredSamples} samples with frozen timestamps`,
+      conv.axesCorrected && "inconsistent sensor-axis metadata corrected using the logged attitude",
+      conv.axesInferred && "missing sensor-axis metadata inferred from logged attitude and gyro rates",
+      s.recovered_starts && `${s.recovered_starts} missing starts recovered (${s.estimated_attitude_starts} with estimated attitude); approximate initialization, allow settling`,
+      !conv.fixes && "no GNSS velocity recorded: wind and GNSS vario reference unavailable",
+      conv.kind.startsWith("XCVario sensor") && "sensor logs carry the gated gyro (rates below the gate read 0), which costs AirMass short-term accuracy",
+    ].filter(Boolean).join("\n");
     $("empty").style.display = "none";
     for (const id of ["rerun", "export", "playbtn", "slider"]) $(id).disabled = false;
     $("slider").min = D.t[0];
@@ -1502,6 +1578,7 @@ for (const name of ["pointerup", "pointercancel", "blur"]) $("slider").addEventL
 // the settings panel: opens over the page, closes on the button, Escape or a click outside
 function showSettings(on) { $("settings").hidden = !on; $("settingsbtn").setAttribute("aria-expanded", on ? "true" : "false"); }
 $("settingsbtn").onclick = () => showSettings($("settings").hidden);
+$("settingsclose").onclick = () => showSettings(false);
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") showSettings(false); });
 document.addEventListener("pointerdown", (e) => { if (!$("settings").hidden && !e.target.closest("#settings, #settingsbtn")) showSettings(false); });
 $("rerun").onclick = run;

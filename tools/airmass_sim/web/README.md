@@ -14,8 +14,9 @@ Recording), plain or `.gz`. Settings: the glider polar for sensor logs, the mass
 settings as in `airmass_replay --set`, and the start calibration.
 
 Opening a new log automatically selects its glider from `CA1` or older `CMN` metadata, and shows the type in the
-glider selector. A saved manual choice from a previous log is replaced; you can override the type for the current
-log. Configuration can occur later in the file. Logs with no recognized type use the ASG 29/18 fallback.
+glider selector, replacing a manual choice from a previous log; you can override the type for the current log.
+Configuration can occur later in the file. A log with no recognized type keeps the glider picked by hand before
+(also saved across visits); without one the selector shows "Select glider" and the replay uses the ASG 29/18 fallback.
 
 Logs can begin airborne. Sensor logs start after 100 consecutive samples above 20 m/s IAS (10 seconds at 10 Hz).
 GNSS is optional: logs without GNSS can replay the instruments and AirMass vario, while wind and the GNSS vario
@@ -94,7 +95,7 @@ of the last accepted observation, received age is the time since the last fusion
 `sensor_gnss_robustness` in the host CTest suite covers delayed/irregular fixes, transport jitter, out-of-order and
 duplicate epochs, outages, outliers, midnight/clock wrap, unsupported history, whole-fix rejection and sensor gaps.
 
-**Vario averager**, beside Vario damping in Settings, controls the trailing averaging window for the AirMass,
+**Averager**, beside Damping in **Settings → Vario**, controls the trailing averaging window for the AirMass,
 TE and GNSS numeric readouts. It defaults to 30 seconds and accepts 7–50 seconds, matching the device's range.
 Changes update the readouts and their period label immediately and are saved in this browser.
 The vario damping runs the device's 10 Hz cycles on the frame timestamps, each cycle reading the latest frame, so
