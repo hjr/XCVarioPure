@@ -25,6 +25,7 @@ add_executable(airmass_sim
     ${UTIL_MATH}/Floats.cpp
     ${UTIL_MATH}/Units.cpp
     ${REPO}/main/protocol/nmea_util.cpp
+    ${REPO}/main/sensor/Filters.cpp
 )
 target_include_directories(airmass_sim PRIVATE
     ${REPO}/main/airmass

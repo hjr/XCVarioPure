@@ -41,7 +41,8 @@ VarioFilter::VarioFilter() :
     SensorTP<float>(vario_buffer, HSIZE, DUTY_CYCLE_MS, 1),
     _Gact(15.f, DUTY_CYCLE_MS / 1000.f),
     _Goptimal(15.f, DUTY_CYCLE_MS / 1000.f),
-    _vario_lpf(LowPassFilterT<float>::alphaFromTau(4.f, 0.1f)),
+    _te_damper(4.f, DUTY_CYCLE_MS / 1000.f),
+    _air_damper(4.f, DUTY_CYCLE_MS / 1000.f),
     _avg_vario(LowPassFilterT<float>::alphaFromTau(1.f, 0.1f))
 {
     _id = SensorId(SensorType::VARIOMETER, 10); // prio right after the te_alt doRead filter
@@ -57,8 +58,6 @@ VarioFilter::VarioFilter() :
 bool VarioFilter::setup() {
     float alt = altitude.get();
     ESP_LOGI(FNAME, "VarioFilter setup with alt %f", alt);
-    // vario needle damping
-    _vario_lpf.setTau( vario_delay.get() / 3, .1f);
     averageAlt = alt;
     Altitude = alt;
     predictAlt = alt;
@@ -75,7 +74,6 @@ bool VarioFilter::setup() {
 void VarioFilter::postProcess()
 {
     static float _errorval = 1.6;
-    static mps_t te_gr = 0.f;
     int now = Clock::getMillis();
     const second_t dt = (now - _prev_time) / 1000.0f;
     _prev_time = now;
@@ -124,9 +122,10 @@ void VarioFilter::postProcess()
     meter_t altDiff = Altitude - lastAltitude;
     // ESP_LOGI(FNAME," altDiff %0.1f diff %0.1f", TE, diff);
     lastAltitude = Altitude;
-    mps_t TEAVG = _vario_lpf.filter(altDiff / dt);  // in m/s
-    predictAlt = Altitude + (TEAVG * dt);
-    te_gr += ((TEAVG - te_gr)) / vario_delay.get();
+    // vario needle damping
+    _te_damper.setDamping(vario_delay.get());
+    const mps_t te_gr = _te_damper.filter(altDiff / dt);
+    predictAlt = Altitude + (_te_damper.lowPass() * dt);
     _got_positive = te_gr > .0f && te_vario.get() < .0f;
 
     // the polar is over IAS: at altitude the same IAS (same lift coefficient and glide ratio) flies faster, the sink
@@ -156,12 +155,18 @@ void VarioFilter::postProcess()
     const mps_t rel_sink = CRMOD.isRelative() ? Speed2Fly.getCirclingSink() : 0.f;
     te_netto.set(te_ne);
 
-    // Air Mass mode: vertical air mass movement of the estimator, falls back to netto
-    mps_t air;
-    bool air_changed;
-    const bool airmass_ok = airmass::vario(te_ne, air, air_changed);
+    // Air Mass mode: the damped vertical air mass movement of the estimator, falls back to netto while it has none
+    mps_t air = 0.f;
+    CRMOD.setAirMassAvailable(airmass::rawVario(air));
+    const bool airmass_ok = CRMOD.isAirMass();
+    if (airmass_ok) {
+        _air_damper.setDamping(airmass::varioDamping(vario_delay.get()));
+        air = _air_damper.filter(air);
+    } else {
+        _air_damper.reset(te_ne); // start from netto when it gets valid
+    }
 
-    if ( CRMOD.getChanged() || air_changed ) {
+    if ( CRMOD.getChanged() ) {
         restartRunningAvg(); // restart the running average when the cruise mode changes, avoid smeared data
         ESP_LOGI(FNAME, "Cruise mode changed, restarting running average");
     }
