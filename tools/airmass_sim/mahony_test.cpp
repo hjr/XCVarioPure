@@ -1,16 +1,11 @@
 // Physical tilt/turn cases and replay selection/restart checks for the shared device AHRS.
 #include "replay_core.h"
+#include "test_util.h"
 
 #include <cmath>
 #include <cstdio>
 
 namespace {
-int failures = 0;
-void expect(const char* name, float value, float wanted, float tolerance) {
-    const bool ok = std::isfinite(value) && std::fabs(value - wanted) <= tolerance;
-    std::printf("%s: %s (%.6f, expected %.6f)\n", ok ? "ok" : "FAIL", name, value, wanted);
-    failures += !ok;
-}
 float roll(const Quaternion& q) {
     const vector_f d = q.rotateInv({0.f, 0.f, 1.f});
     return std::atan2(d.y, d.z);

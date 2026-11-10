@@ -7,21 +7,12 @@
 #include "AirMassFlaps.h"
 #include "AirMassPipeline.h"
 #include "AirMassWindAverage.h"
+#include "test_util.h"
 
 #include <cmath>
 #include <cstdio>
 
 namespace {
-
-int failures = 0;
-
-void expect(const char* what, float got, float want, float tol) {
-    const bool ok = std::fabs(got - want) <= tol;
-    std::printf("  %-48s %9.4f (expected %9.4f) %s\n", what, got, want, ok ? "ok" : "FAIL");
-    if (!ok) {
-        failures++;
-    }
-}
 
 constexpr float D2R = Units::rad_per_deg;
 constexpr float G = airmass::G0;

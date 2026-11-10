@@ -1,5 +1,6 @@
 // Mid-flight recording joins, including a banked start without a logged initialization or attitude.
 #include "replay_core.h"
+#include "test_util.h"
 
 #include <cmath>
 #include <cstdio>
@@ -7,12 +8,6 @@
 namespace {
 namespace rec = airmass::record;
 using airmass::replay::Replayer;
-int failures = 0;
-void check(bool ok, const char* name) {
-    std::printf("%s: %s\n", ok ? "PASS" : "FAIL", name);
-    failures += !ok;
-}
-bool near(float a, float b, float tolerance = 1e-5f) { return std::isfinite(a) && std::fabs(a - b) <= tolerance; }
 
 airmass::Setup setup() {
     airmass::Setup s;

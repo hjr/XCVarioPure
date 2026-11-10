@@ -1,6 +1,7 @@
 // Deterministic timing faults against known flight/wind, independent of the GNSS-derived replay reference.
 #include "AirMassPipeline.h"
 #include "AirMassRecord.h"
+#include "test_util.h"
 
 #include <algorithm>
 #include <cmath>
@@ -8,11 +9,6 @@
 #include <vector>
 
 namespace {
-int failures = 0;
-void check(bool ok, const char* what) {
-    std::printf("  %s: %s\n", what, ok ? "PASS" : "FAIL");
-    failures += !ok;
-}
 
 AirMassEKF::Input input(uint32_t now, float& psi) {
     AirMassEKF::Input in;
