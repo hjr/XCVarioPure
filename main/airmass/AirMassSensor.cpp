@@ -414,7 +414,7 @@ void AirMassSensor::postProcess()
     }
 
     // compass: absolute heading in straight flight, aligns the wind before the first turn
-    if (_compass_timer.due(now, COMPASS_MS) && heading_mag.getValid() && magSensor &&
+    if (_compass_timer.due(now, COMPASS_MS) && compass_calibrated.get() && heading_mag.getValid() && magSensor &&
         std::fabs(_pipe.input().roll) < COMPASS_MAX_ROLL &&
         _compass_sample.observe(now, magSensor->getLastUpdateTimeMs(), magSensor->getHeadValid())) {
         const airmass::record::Heading h{f.time_ms, Vector::normalizePI(heading_mag.get() + Units::deg_to_rad(compass_declination.get())),
