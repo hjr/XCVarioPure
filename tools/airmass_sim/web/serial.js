@@ -3,8 +3,10 @@
 // a write already handed to the OS can finish, but no later stale sentence can start.
 (function (root) {
   "use strict";
-  const { checksum } = typeof module !== "undefined" && module.exports ? require("./convert.js") : root.AirMassConvert;
-  const command = (speed) => checksum("$PFLAX,S" + (speed === undefined ? "" : "," + speed));
+  // Simulation mode and clock speed as tools/replay_nmea.py sends them: "$PFLAX,S,<speed>" without a checksum. The
+  // firmware takes the command only from a sentence of exactly two fields and counts a checksum as one, so it ignores
+  // "$PFLAX,S,1*21" and reads "$PFLAX,S*3c" as speed atoi("3c") = 3: a 1x stream then runs 3x fast on the device.
+  const command = (speed) => "$PFLAX,S," + speed;
   const speeds = [1, 2, 5, 10]; // conservative target ceiling; never send the offline 300x option to uint8_t firmware
   function allowedSpeeds(timeline, baud) {
     return timeline?.events.length ? speeds.filter(s => timeline.peakBytes * s <= baud / 10 * 0.7) : [];
@@ -123,7 +125,7 @@
       this.index = state.index;
       this.notify(initialize ? "Initializing instrument…" : "Restoring replay position…");
       return this.enqueue(g, async () => {
-        if (!await this.send(command(initialize ? undefined : 0), g)) return;
+        if (!await this.send(command(0), g)) return; // enters simulation mode, clock stopped
         if (initialize) {
           await new Promise(resolve => this.setTimer(resolve, 1000));
           if (g !== this.generation) return;

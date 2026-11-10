@@ -266,7 +266,7 @@ test("initialization waits one second, config precedes samples and starts paused
   assert.equal(h.calls.length, 0, "no automatic permission request");
   const connected = h.replay.connect();
   await h.clock.advance(999);
-  assert.deepEqual(h.sent.map(s => s.line), ["$PFLAX,S*3c"]);
+  assert.deepEqual(h.sent.map(s => s.line), ["$PFLAX,S,0"]);
   assert.equal(h.replay.ready, false);
   await h.clock.advance(1); await connected;
   assert.equal(h.calls[1].baudRate, 115200);

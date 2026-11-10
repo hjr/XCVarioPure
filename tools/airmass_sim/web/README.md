@@ -137,7 +137,7 @@ over HTTPS or localhost. Permission is requested only when you click Connect. Th
 Disconnect button are in Settings. `$PXCVR` recordings cannot supply the full hardware sensor payload;
 serial playback currently requires `$SENS` logs.
 
-Connection enters simulation mode with `$PFLAX,S`, waits one second, restores the logged glider/loading
+Connection enters simulation mode with `$PFLAX,S,0`, waits one second, restores the logged glider/loading
 configuration and flap position at the selected time, and stays paused. Play starts at 1×. The normal Play/Pause,
 speed selector and all seek controls drive the instrument and display from one clock. Untimed navigation and
 configuration sentences are interpolated in file order between the repaired `$SENS` timestamps. TE pressure and
