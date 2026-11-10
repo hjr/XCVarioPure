@@ -85,7 +85,7 @@ int main(int argc, char** argv) {
         }
         const AirMassEKF& ekf = pipe.ekf();
         const AirMassEKF::Input& i = pipe.input();
-        std::fprintf(csv, "%.1f,%.3f,%.3f,%.3f,%.3f,%u,%.1f,%.4f,%.3f,%.0f,%.3f,%.3f,%.2f,%.2f,", i.time_ms * 1e-3, ekf.airmassVario(), ekf.windN(),
+        std::fprintf(csv, "%.3f,%.3f,%.3f,%.3f,%.3f,%u,%.1f,%.4f,%.3f,%.0f,%.3f,%.3f,%.2f,%.2f,", i.time_ms * 1e-3, ekf.airmassVario(), ekf.windN(),
                      ekf.windE(), ekf.windD(), static_cast<unsigned>(ekf.status()), rad_to_deg(ekf.heading()), ekf.kTas(),
                      rad_to_deg(ekf.pitchOffset()), ekf.gnssLatency() * 1000.f, pipe.avgWind().windN(), pipe.avgWind().windE(), rad_to_deg(i.roll),
                      rad_to_deg(i.pitch));

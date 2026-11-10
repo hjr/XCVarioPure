@@ -70,7 +70,9 @@ def apply_sens_format(line: str, sens_format) -> str:
     for i, factor in enumerate(factors):
         if start + i < len(parts) and parts[start + i] and factor != 1.0:
             parts[start + i] = str(float(parts[start + i]) * factor)
-    return ','.join(parts) + star + tail
+    body = ','.join(parts)
+    # the fields changed: the old checksum would get the sentence rejected
+    return f"{body}*{nmea_checksum(body)}" if star else body
 
 # --- NMEA-Zeilen laden und mit Zeitstempeln versehen ---
 
