@@ -81,74 +81,14 @@ void FlightAHRS::postProcess() {
     
     // if (!(dt>0.f && dt<=_cfg.maxDt) || !finite(accel) || !finite(gyro)) return;
 
-    // extended Mahoney filter update step
-    const float an = accel.get_norm();
-    const float loadError = std::fabs(an - 1.f);
-    if (!(an>0.1f && an<5.f)) return;
-    
-    // gyro integration
-    // q body->nav: q(t+dt) = q(t) * exp(omega_body*dt/2).
-    _q = _q * Quaternion::fromGyro(gyro, dt);
-    const vector_f predicted = _q.rotateInv({0,0,1});
-
-    // Coordinated-turn estimate
-    // Yaw rate around NED down, expressed using body axes
-    _omega = gyro.dot(predicted);
-    ESP_LOGI("AHRS", "q=(%.3f,%.3f,%.3f,%.3f) down=(%.1f,%.1f,%.1f) omega=%.1f/%.1f", _q._w, _q._x, _q._y, _q._z, 
-        predicted.x, predicted.y, predicted.z, rad2deg(_omega), rad2deg(gyro.get_norm()));
-
-    // Only trust turn model for approximately steady turns.
-    // Avoid interpreting quick roll/pitch maneuvers as steady turns.
-    const bool steadyTurn = (tas.get() > 12.f 
-        && std::fabs(_omega) > Units::deg_to_rad(2.4f) 
-        && std::fabs(gyro.x) < Units::deg_to_rad(6.5f) 
-        && std::fabs(gyro.y) < Units::deg_to_rad(6.5f));
-
-    // Current attitude
-    vector_f measured = accel.get_negated();
-    measured.normalize();
-    const float pitch = pitchRad();
-
-    // Select reference and correction time constant
-    vector_f reference = measured;
-    float tau = _cfg.tiltTau;
-
-    if (_calibrating) {
-        // reference = measured;
-        tau = 0.3f;  // Fast correction during adjustment
-        if (_calibrating > 0) {
-            _calibrating--;
-        }
-    } else if (steadyTurn) {
-        // Coordinated-turn roll estimate
-        const float rollTurn = std::atan2(  tas.get() * _omega, Units::g0);
-        reference = {-std::sin(pitch), std::sin(rollTurn) * std::cos(pitch), std::cos(rollTurn) * std::cos(pitch)};
-        ESP_LOGI(FNAME, "steadyTurn rollTurn=%.1f reference=(%.3f,%.3f,%.3f)", rad2deg(rollTurn), reference.x, reference.y, reference.z);
-    } else if (loadError > _cfg.accelNormGate) {
-        // Unreliable acceleration reference: gyro only
-        tau = 1.0e6f;
-    } else {
-        // Standard Mahony correction, with innovation gating
-        const float angle = std::acos(std::clamp(predicted.dot(measured),-1.f,1.f));
-        const float dyn = std::max(std::clamp(loadError / _cfg.accelNormGate,0.f,1.f),
-                        std::clamp(angle / _cfg.innovationGate,0.f,1.f));
-        tau = _cfg.tiltTau + (_cfg.dynamicTau - _cfg.tiltTau) * dyn;
+    if (!MahonyAHRS::update(_q, _omega, _calibrating, _cfg, accel, gyro, tas.get(), dt)) {
+        return;
     }
-    const float alpha = -std::expm1f(-dt / tau); // 1.f - std::exp(-dt / tau);
-
-    // Mahony-style attitude correction:
-    // e = reference x predicted (both in body coordinates).
-    // Right-multiply the body->NED quaternion by a positive correction.
-    const vector_f e = reference.cross(predicted);
-    Quaternion correction = Quaternion(1.f, 0.5f * alpha * e.x, 0.5f * alpha * e.y, 0.5f * alpha * e.z);
-    correction.normalize();
-    _q = _q * correction;
 
     vector_f ahrs{getRoll(), getPitch(), _omega};
     pushAndPublish(ahrs, Clock::getMillis()); // an artificial attitude vector for the history
 
     // ESP_LOGI("AHRS", "q=%.3f %.3f %.3f %.3f roll=%.1f pitch=%.1f omega=%.1f", _q._w, _q._x, _q._y, _q._z, getRollDeg(), getPitchDeg(), rad2deg(_omega));
-    ESP_LOGI("AHRS", "turn=%d loadErr=%.2f tau=%.4f alpha=%f roll=%.1f pitch=%.1f", steadyTurn, loadError, tau, alpha, rad2deg(ahrs.x), rad2deg(ahrs.y));
 
     // a pseudo heading integration using the AHRS omega
     rad_t gyro_heading_step = _omega * dt; // gyro heading change in this step (NED)

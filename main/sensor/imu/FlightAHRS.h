@@ -11,14 +11,7 @@
 #include "sensor/SensorBase.h"
 #include "math/vector_3d.h"
 #include "math/Quaternion.h"
-
-struct Config {
-    second_t tiltTau = 12.f;         // low-dynamics tilt correction time constant (sec)
-    second_t dynamicTau = 60.f;      // weak correction during suspected acceleration
-    gee_t    accelNormGate = 0.12f;  // deviation from 1g considered dynamic
-    rad_t    innovationGate = 0.18f; // ~10deg accel/gyro disagreement
-    second_t maxDt = 0.3f;
-};
+#include "math/MahonyAHRS.h"
 
 // Compact 6-axis tilt AHRS, no heap or dependencies.
 // NED, body X forward Y right Z down;
@@ -57,7 +50,7 @@ public:
     Quaternion getNav2Body() const;
 
 private:
-    Config _cfg = {};
+    MahonyAHRS::Config _cfg = {};
     Quaternion _q = {};
     rad_t _circle_footing = 0.f; // a relative heading (ENU) w/o north reference
     rps_t _omega = 0.f;
