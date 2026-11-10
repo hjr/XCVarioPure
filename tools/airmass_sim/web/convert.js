@@ -36,7 +36,6 @@
   function parseXcv(line, logged) {
     const f = fields(line.trim());
     if (!/^xcv$/i.test(f[0]) || f.length < 3) return false;
-    const num = (x) => (x === "" ? NaN : +x);
     if (f[1] === "FLP") {
       if (Number.isFinite(num(f[2]))) logged.flap = num(f[2]) / 10;
       return "flap";
@@ -50,6 +49,10 @@
     }
     return "setup";
   }
+
+  // a field's number: NaN if it is missing or empty; trimmedNum also if it is blank
+  const num = (s) => (s === undefined || s === "" ? NaN : +s);
+  const trimmedNum = (s) => (s === undefined || String(s).trim() === "" ? NaN : +s);
 
   // a logger's text before the sentence, and the ';' separators of old $SENS logs
   function cleanLine(raw) {
@@ -67,21 +70,21 @@
       this.quietGravity = this.gravityMatches = this.forceMatches = 0;
     }
     sens(f) {
-      const num = (i) => f[i] === undefined || f[i] === "" ? NaN : +f[i];
-      const t = f[1]?.includes(".") ? num(1) : num(1) / 1000;
-      const a = [7, 8, 9].map(num), g = [10, 11, 12].map(i => num(i) * Math.PI / 180);
-      this.sensor = [t, num(5), ...a, ...g].every(Number.isFinite) ? { t, q: num(5), oat: num(6), a, g } : null;
+      const at = (i) => num(f[i]);
+      const t = f[1]?.includes(".") ? at(1) : at(1) / 1000;
+      const a = [7, 8, 9].map(at), g = [10, 11, 12].map(i => at(i) * Math.PI / 180);
+      this.sensor = [t, at(5), ...a, ...g].every(Number.isFinite) ? { t, q: at(5), oat: at(6), a, g } : null;
     }
     pxcv(f) {
       const s = this.sensor;
       if (!s) return;
-      const temp = f[6] === "" ? NaN : +f[6];
+      const temp = num(f[6]);
       if (plausibleTemperature(s.oat - 273.15) && plausibleTemperature(temp)) {
         this.temperaturePairs++;
         if (Math.abs(s.oat - 273.15 - temp) < 2) this.kelvin++;
       }
-      const roll = f[10] === "" ? NaN : +f[10] * Math.PI / 180;
-      const pitch = f[11] === "" ? NaN : +f[11] * Math.PI / 180;
+      const roll = num(f[10]) * Math.PI / 180;
+      const pitch = num(f[11]) * Math.PI / 180;
       if (![roll, pitch].every(Number.isFinite)) return;
       const norm = Math.hypot(...s.a), rate = Math.hypot(...s.g);
       if (s.q < 50 && norm > 0.85 && norm < 1.15 && rate < 3 * Math.PI / 180 &&
@@ -141,8 +144,9 @@
   //    factors (logs before 2025: east-north-up axes)
   //  "!XCV,CMN,glider type,empty weight,crew weight,ballast,speed cal": CA1 without the QNH; a CA1 in the log wins
   //  the QNH [hPa]: of CA1, else of $PXCV, else from the GNSS altitude and static pressure of the first fixes on the ground
+  //  ca1Fields, cmnFields: the fields of the first complete CA1 (with its QNH) and CMN, for the serial replay (setupValues)
   function scanLog(lines) {
-    const out = { fmt: null, cmn: null, ca1: null, qnh: NaN, qnhFrom: "" };
+    const out = { fmt: null, cmn: null, ca1: null, ca1Fields: null, cmnFields: null, qnh: NaN, qnhFrom: "" };
     const pairs = [];
     const conventions = new SensorConventions();
     let p = NaN, q = NaN, pxcv = NaN;
@@ -156,9 +160,11 @@
         } else if (f[1] === "CMN") {
           const v = f.slice(2, 6).map(Number);
           if (v.length === 4 && v.every(Number.isFinite)) out.cmn = v;
+          if (!out.cmnFields && setupValues(f)) out.cmnFields = f;
         } else if (f[1] === "CA1") {
-          const v = f.slice(2, 6).map(x => x === "" ? NaN : Number(x));
+          const v = f.slice(2, 6).map(num);
           if (!out.ca1 && v.length === 4 && v.every(Number.isFinite)) out.ca1 = v;
+          if (!out.ca1Fields && setupValues(f) && trimmedNum(f[7]) > 0) out.ca1Fields = f;
           const hpa = +f[7] > 8e4 ? +f[7] / 100 : +f[7]; // Pa, or hPa
           if (hpa > 800 && hpa < 1100) [out.qnh, out.qnhFrom] = [hpa, "CA1"];
         }
@@ -188,9 +194,25 @@
     return out;
   }
 
+  // glider type, empty, crew and ballast weights and speed cal of a CA1/CMN telegram's fields, or null if incomplete
+  function setupValues(f) {
+    const v = f.slice(2, 7).map(trimmedNum);
+    return v.length === 5 && v.every(Number.isFinite) ? v : null;
+  }
+
+  // A log split into lines and scanned (scanLog) once, for gliderFromLog, convert and serialTimeline, which take the
+  // text or this. None of it depends on the settings, so a replay with new settings reuses it. Scanned when first
+  // needed (an AirMass recording is converted without).
+  function prepare(text) {
+    if (typeof text !== "string") return text;
+    const lines = text.split("\n");
+    let scan = null;
+    return { text, lines, get scan() { return (scan ||= scanLog(lines)); } };
+  }
+
   // Detect the initial logged type even when the configuration telegram occurs later in the file.
-  function gliderFromLog(text) {
-    const scan = scanLog(text.split("\n"));
+  function gliderFromLog(log) {
+    const { scan } = prepare(log);
     const setup = scan.ca1 || scan.cmn;
     return setup ? gliderById(setup[0]) : undefined;
   }
@@ -306,9 +328,11 @@
   // name used), gliderFrom ("set", "log", "default": the log names none), mass [kg, of the last setup], massFrom ("set",
   // "logged weights", "logged ballast factor"), flapsFrom ("logged": the lever (FLP) from its first telegram on, "the
   // recommendation", "": none), temperatureEstimatedSamples (sensor samples using the OAT estimate) }.
+  // Also utcDay: the UTC date of the first dated RMC fix [ms since 1970], NaN if none. text: the log or prepare()'s.
   function convert(text, opts = {}) {
-    const isRecording = /\$PXCVR,/.test(text.slice(0, 4e6)) || (!/\$SENS[,;]/.test(text.slice(0, 4e6)) && text.includes("$PXCVR,"));
-    return isRecording ? passRecording(text) : convertSens(text, opts);
+    const log = prepare(text), head = log.text.slice(0, 4e6);
+    const isRecording = /\$PXCVR,/.test(head) || (!/\$SENS[,;]/.test(head) && log.text.includes("$PXCVR,"));
+    return isRecording ? passRecording(log) : convertSens(log, opts);
   }
 
   function parseRmc(f) {
@@ -323,12 +347,20 @@
     return null;
   }
 
+  // the UTC date [ms since 1970] of an RMC fix (ddmmyy), NaN if it has none or it is invalid
+  function rmcDay(f) {
+    if (f[2] !== "A" || !/^\d{6}(?:\.\d+)?$/.test(f[1]) || !/^\d{6}$/.test(f[9])) return NaN;
+    const yy = +f[9].slice(4), year = yy + (yy >= 80 ? 1900 : 2000), month = +f[9].slice(2, 4), date = +f[9].slice(0, 2);
+    const ms = Date.UTC(year, month - 1, date), d = new Date(ms);
+    return d.getUTCFullYear() === year && d.getUTCMonth() === month - 1 && d.getUTCDate() === date ? ms : NaN;
+  }
+
   // an AirMass recording: our sentences pass through, the track from the frames and the navigation sentences
-  function passRecording(text) {
+  function passRecording(log) {
     const rec = [];
     const track = new Track();
-    let fix = null, gnssAlt = NaN, te = NaN, teNew = 0, running = false, starts = 0, frames = 0, fixes = 0;
-    for (const raw of text.split("\n")) {
+    let fix = null, gnssAlt = NaN, te = NaN, teNew = 0, running = false, starts = 0, frames = 0, fixes = 0, utcDay = NaN;
+    for (const raw of log.lines) {
       const line = raw.trim();
       if (line.startsWith("$PXCV") && line[5] !== ",") {
         rec.push(line);
@@ -349,13 +381,15 @@
         const v = parseFloat(fields(line)[1]);
         if (Number.isFinite(v)) { te = v; teNew = 1; }
       } else if (line.startsWith("$GPRMC,") || line.startsWith("$GNRMC,")) {
-        fix = parseRmc(fields(line)) || fix;
+        const f = fields(line);
+        fix = parseRmc(f) || fix;
+        if (!Number.isFinite(utcDay)) utcDay = rmcDay(f);
       } else if (line.startsWith("$GPGGA,") || line.startsWith("$GNGGA,")) {
         const v = parseFloat(fields(line)[9]);
         if (Number.isFinite(v)) gnssAlt = v;
       }
     }
-    return { kind: "AirMass recording", rec, track: track.done(), starts, frames, fixes };
+    return { kind: "AirMass recording", rec, track: track.done(), starts, frames, fixes, utcDay };
   }
 
   // Shared sensor normalization for the offline converter and hardware replay. Keep timestamp repairs,
@@ -386,29 +420,22 @@
   // A hardware timeline contains only logged samples, never the offline estimator's prediction ticks.
   // Untimed supported sentences are interpolated in file order between repaired sensor timestamps.
   function serialTimeline(text) {
-    const lines = text.split("\n"), scan = scanLog(lines), normalize = sensorNormalizer(scan);
+    const { lines, scan } = prepare(text), normalize = sensorNormalizer(scan);
     const events = [], sensors = [];
     let gnssAlt = NaN, gnssUtc = NaN, skippedSensors = 0, skippedPressureSensors = 0, validSensors = 0;
     let timestampRecoveredSamples = 0;
-    const num = x => x === undefined || String(x).trim() === "" ? NaN : +x;
+    const num = trimmedNum;
     const validPressure = f => [3, 4, 5].every(i => Number.isFinite(num(f[i]))) && num(f[3]) > 0 && num(f[4]) > 0;
-    const configFields = line => {
-      const f = fields(line), v = f.slice(2, 7).map(num);
-      if (v.length !== 5 || !v.every(Number.isFinite)) return null;
+    const configFields = f => {
+      const v = setupValues(f);
+      if (!v) return null;
       const qnh = f[1] === "CMN" ? (scan.qnh > 0 ? scan.qnh * 100 : 101325) : num(f[7]);
       if (!(qnh > 0)) return null;
       return [...v, qnh < 2000 ? qnh * 100 : qnh];
     };
     // Like the converter, use the first CA1 even if it was logged after the first sensors.
-    let config = null;
-    for (const original of lines) {
-      const line = cleanLine(original.trim());
-      if (line.startsWith("!XCV,CA1,")) { config = configFields(line); if (config) break; }
-    }
-    if (!config) for (const original of lines) {
-      const line = cleanLine(original.trim());
-      if (line.startsWith("!XCV,CMN,")) { config = configFields(line); if (config) break; }
-    }
+    const initial = scan.ca1Fields || scan.cmnFields;
+    let config = initial ? configFields(initial) : null;
     const makeConfig = v => checksum("!XCV,CA1," + v.join(","));
     const initialConfig = config ? makeConfig(config) : null;
     for (const original of lines) {
@@ -437,7 +464,7 @@
       } else if (/^!xcv,/i.test(line)) {
         kind = "config";
         if (f[1] === "CA1" || f[1] === "CMN") {
-          const v = configFields(line);
+          const v = configFields(f);
           if (v) { config = v; output = makeConfig(config); }
         } else if (f[1] === "FLP" && Number.isFinite(num(f[2]))) {
           output = checksum("!XCV,FLP," + f[2]); kind = "flap";
@@ -491,7 +518,7 @@
   }
 
   // sens2rec.py
-  function convertSens(text, opts) {
+  function convertSens(log, opts) {
     const mass = opts.mass || 0, bugsOpt = opts.bugs ?? -1, lever = opts.leverArm || 0;
     const logged = { type: NaN, empty: NaN, crew: NaN, ballast: NaN, flap: NaN };
     let g = null, gliderName = "", gliderFrom = "", massUsed = NaN, massFrom = "", loggedFlapFrames = 0;
@@ -501,9 +528,8 @@
     let teNew = 0;
     let fix = null, gnssAlt = NaN, pendingFix = null, running = false, above = 0, below = 0;
     let setupLine = null, setupCount = 0, starts = 0, frames = 0, fixes = 0, polar = null, flaps = null, tMs = 0;
-    let temperatureEstimatedSamples = 0, temperatureKelvinSamples = 0, timestampRecoveredSamples = 0;
-    const lines = text.split("\n");
-    const scan = scanLog(lines), normalize = sensorNormalizer(scan);
+    let temperatureEstimatedSamples = 0, temperatureKelvinSamples = 0, timestampRecoveredSamples = 0, utcDay = NaN;
+    const { lines, scan } = log, normalize = sensorNormalizer(scan);
     const initialSetup = scan.ca1 || scan.cmn;
     if (initialSetup) [logged.type, logged.empty, logged.crew, logged.ballast] = initialSetup;
 
@@ -537,7 +563,6 @@
       }
       if (raw.startsWith("$PXCV,")) {
         const f = fields(raw.trim());
-        const num = (s) => (s === undefined || s === "" ? NaN : +s);
         if (Number.isFinite(num(f[1]))) { pxcv.vario = num(f[1]); teNew = 1; }
         if (Number.isFinite(num(f[3]))) pxcv.bugs = num(f[3]);
         else if (f[3] === "") pxcv.bugs = 0.0;
@@ -545,8 +570,9 @@
         if (f.length > 11 && Number.isFinite(num(f[10]))) pxcv.roll = num(f[10]);
         if (f.length > 11 && Number.isFinite(num(f[11]))) pxcv.pitch = num(f[11]);
       } else if (raw.startsWith("$GPRMC,") || raw.startsWith("$GNRMC,")) {
-        const r = parseRmc(fields(raw.trim()));
+        const f = fields(raw.trim()), r = parseRmc(f);
         if (r) { fix = r; pendingFix = r; }
+        if (!Number.isFinite(utcDay)) utcDay = rmcDay(f);
       } else if (raw.startsWith("$GPGGA,") || raw.startsWith("$GNGGA,")) {
         const v = parseFloat(fields(raw.trim())[9]);
         if (Number.isFinite(v)) gnssAlt = v;
@@ -612,11 +638,11 @@
     if (running) rec.push(sentence("PXCVX", [String(tMs)]));
     return { kind: "XCVario sensor log", rec, track: track.done(), starts, frames, fixes, glider: gliderName, gliderFrom, mass: massUsed, massFrom,
       qnh: scan.qnh, qnhFrom: scan.qnhFrom, temperatureEstimatedSamples, temperatureKelvinSamples, axesCorrected: !!scan.axesCorrected,
-      axesInferred: !!scan.axesInferred, timestampRecoveredSamples,
+      axesInferred: !!scan.axesInferred, timestampRecoveredSamples, utcDay,
       flapsFrom: opts.noFlaps ? "" : loggedFlapFrames ? "logged" : flaps ? "the recommendation" : "" };
   }
 
-  const api = { convert, GLIDERS, gliderFromLog, serialTimeline };
+  const api = { convert, GLIDERS, gliderFromLog, serialTimeline, prepare, checksum };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.AirMassConvert = api;
 })(typeof globalThis !== "undefined" ? globalThis : this);
