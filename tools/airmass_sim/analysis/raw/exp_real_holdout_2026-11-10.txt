@@ -1,0 +1,22 @@
+
+=== reference with the speed term from pitot TAS (the page's GNSS netto)
+  delays: default 2.6 s, combo 2.4 s, combo+kin5 2.4 s, TE netto 2.2 s
+  10 s windows, rms (mean) m/s:
+    all       default 0.611 (-0.01)   combo 0.577 (-0.01)   combo+kin5 0.552 (-0.01)   TE netto 0.472 (-0.01)   [7746 windows]
+    straight  default 0.641 (-0.08)   combo 0.602 (-0.07)   combo+kin5 0.570 (-0.06)   TE netto 0.477 (-0.02)   [3247 windows]
+    circling  default 0.560 (0.03)   combo 0.545 (0.02)   combo+kin5 0.532 (0.02)   TE netto 0.472 (-0.02)   [2787 windows]
+  30 s windows, rms (mean) m/s:
+    all       default 0.284 (-0.00)   combo 0.261 (-0.01)   combo+kin5 0.247 (-0.01)   TE netto 0.185 (-0.01)   [2418 windows]
+    straight  default 0.301 (-0.06)   combo 0.278 (-0.05)   combo+kin5 0.263 (-0.04)   TE netto 0.193 (0.00)   [860 windows]
+    circling  default 0.246 (0.02)   combo 0.231 (0.01)   combo+kin5 0.221 (0.01)   TE netto 0.177 (-0.05)   [848 windows]
+
+=== reference with the speed term from GNSS ground velocity minus a 2 min wind (gust-insensitive)
+  delays: default 2.4 s, combo 2.4 s, combo+kin5 2.4 s, TE netto 2.2 s
+  10 s windows, rms (mean) m/s:
+    all       default 0.762 (-0.00)   combo 0.752 (-0.01)   combo+kin5 0.753 (-0.01)   TE netto 0.805 (-0.01)   [7750 windows]
+    straight  default 0.543 (-0.09)   combo 0.542 (-0.09)   combo+kin5 0.548 (-0.08)   TE netto 0.672 (-0.03)   [3251 windows]
+    circling  default 0.972 (0.09)   combo 0.963 (0.08)   combo+kin5 0.961 (0.08)   TE netto 0.958 (0.04)   [2787 windows]
+  30 s windows, rms (mean) m/s:
+    all       default 0.325 (0.00)   combo 0.307 (-0.00)   combo+kin5 0.298 (-0.00)   TE netto 0.314 (-0.01)   [2420 windows]
+    straight  default 0.296 (-0.08)   combo 0.279 (-0.07)   combo+kin5 0.273 (-0.06)   TE netto 0.317 (-0.01)   [861 windows]
+    circling  default 0.323 (0.05)   combo 0.311 (0.04)   combo+kin5 0.305 (0.04)   TE netto 0.290 (-0.02)   [848 windows]

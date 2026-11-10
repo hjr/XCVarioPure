@@ -2,6 +2,10 @@
 
 Results: [RESULTS-2026-11-06.md](RESULTS-2026-11-06.md), raw script outputs in `raw/`.
 
+Latest: [2026-11-10, all 34 logs of ~/Downloads/NMEAlogs](RESULTS-2026-11-10.md): new defaults `sigma_pitch` 0.03 and
+`kinetic_tau` 5 s (AirMass now beats TE netto over 30 s too), plausibility guards against garbled readings, the covariance
+fixes behind two blow-ups, and the bias decomposition by bank (`decomp.js`). `table.js` tabulates `batch.js` outputs.
+
 Latest full batch: [2026-11-09 reevaluation after conversion fixes](RESULTS-2026-11-09-REEVALUATION.md),
 15 logs, including equal-damping scores, cockpit display timing, wind cross-checks and robustness failures.
 
@@ -37,6 +41,8 @@ estimator, the page's `build`/`derive`), so they stay in step with the site. Bui
 | `learned.js` | the calibration AirMass learns per flight (`SETTINGS`) |
 | `phase.py` | the IMU acceleration vs airspeed change disagreement and AirMass vs AHRS pitch around the circle (native replays: `airmass_replay --csv` and `sens2rec.py --aux` outputs) |
 | `sim_agree.py` | simulator CSVs (`airmass_sim nl ... --csv`): AirMass, TE netto, GNSS/INS against the truth and a GNSS-style reference |
+| `table.js` | per-flight table and pooled 10 s / 30 s / cockpit scores from `batch.js` outputs (`EXCLUDE=file,...` leaves logs out of the pools) |
+| `decomp.js` | per-sample means of AirMass, its energy, plain-energy and pitch paths, TE netto and both references, binned by bank (left / right) and by time since circling; `--print` merges outputs |
 | `build_old.sh` | builds the estimator before real-flight tuning (a833f536, with the replay tools of 323f5a9c) as `build_sim/old/tools/airmass_sim/web/airmass_old.js` |
 
 ```sh

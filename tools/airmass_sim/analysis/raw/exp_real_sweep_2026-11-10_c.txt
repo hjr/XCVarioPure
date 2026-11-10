@@ -1,0 +1,22 @@
+
+=== reference with the speed term from pitot TAS (the page's GNSS netto)
+  delays: default 2.4 s, sigp.03 2.4 s, etau1 2.6 s, wwhp30 2.4 s, TE netto 2.4 s
+  10 s windows, rms (mean) m/s:
+    all       default 0.505 (0.02)   sigp.03 0.483 (0.02)   etau1 0.489 (0.01)   wwhp30 0.499 (0.02)   TE netto 0.276 (-0.02)   [12551 windows]
+    straight  default 0.559 (-0.00)   sigp.03 0.530 (-0.01)   etau1 0.535 (-0.01)   wwhp30 0.548 (-0.00)   TE netto 0.261 (-0.02)   [4771 windows]
+    circling  default 0.441 (0.05)   sigp.03 0.426 (0.05)   etau1 0.439 (0.05)   wwhp30 0.443 (0.05)   TE netto 0.293 (-0.00)   [4855 windows]
+  30 s windows, rms (mean) m/s:
+    all       default 0.244 (0.02)   sigp.03 0.228 (0.02)   etau1 0.234 (0.02)   wwhp30 0.251 (0.02)   TE netto 0.119 (-0.02)   [4013 windows]
+    straight  default 0.290 (0.01)   sigp.03 0.267 (0.02)   etau1 0.277 (0.01)   wwhp30 0.292 (0.02)   TE netto 0.119 (0.00)   [1244 windows]
+    circling  default 0.191 (0.01)   sigp.03 0.181 (0.01)   etau1 0.186 (-0.00)   wwhp30 0.202 (0.01)   TE netto 0.121 (-0.04)   [1481 windows]
+
+=== reference with the speed term from GNSS ground velocity minus a 2 min wind (gust-insensitive)
+  delays: default 2.2 s, sigp.03 2.4 s, etau1 2.6 s, wwhp30 2.4 s, TE netto 2.4 s
+  10 s windows, rms (mean) m/s:
+    all       default 0.554 (0.02)   sigp.03 0.541 (0.02)   etau1 0.539 (0.01)   wwhp30 0.558 (0.02)   TE netto 0.584 (-0.02)   [12551 windows]
+    straight  default 0.471 (-0.05)   sigp.03 0.452 (-0.04)   etau1 0.452 (-0.05)   wwhp30 0.462 (-0.04)   TE netto 0.546 (-0.06)   [4771 windows]
+    circling  default 0.637 (0.09)   sigp.03 0.628 (0.09)   etau1 0.626 (0.08)   wwhp30 0.649 (0.08)   TE netto 0.621 (0.03)   [4855 windows]
+  30 s windows, rms (mean) m/s:
+    all       default 0.272 (0.02)   sigp.03 0.257 (0.02)   etau1 0.261 (0.01)   wwhp30 0.277 (0.02)   TE netto 0.249 (-0.02)   [4013 windows]
+    straight  default 0.294 (-0.03)   sigp.03 0.272 (-0.03)   etau1 0.282 (-0.03)   wwhp30 0.286 (-0.03)   TE netto 0.278 (-0.04)   [1244 windows]
+    circling  default 0.216 (0.02)   sigp.03 0.208 (0.02)   etau1 0.207 (0.02)   wwhp30 0.229 (0.02)   TE netto 0.196 (-0.02)   [1481 windows]
