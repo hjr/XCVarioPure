@@ -193,6 +193,40 @@ void longSourceOutage() {
           "long source outage resets dynamics and restores supported attitude while polling continued");
 }
 
+// An instrument replay returning from a faster speed to real time moves the clock back, a pause or a long outage
+// forward: the estimate restarts on the new clock instead of being held, still flagged valid, until it catches up.
+void clockJumps() {
+    airmass::Pipeline p;
+    start(p);
+    auto fly = [&p](uint32_t from, uint32_t to) {
+        for (uint32_t t = from; t <= to; t += 50) {
+            p.step(frame(t));
+            if (t % 1000 == 0) p.gnss({t, 750, 30.f, 0.f, 0.5f}, true, 0.f, 0.f);
+            p.endCycle();
+        }
+    };
+    // the wind (valid or degraded) needs the alignment
+    constexpr uint8_t VALID = AirMassEKF::ST_VARIO_VALID | AirMassEKF::ST_ALIGNED;
+    constexpr uint8_t ANY = VALID | AirMassEKF::ST_WIND_VALID | AirMassEKF::ST_WIND_DEGRADED | AirMassEKF::ST_GNSS_FRESH;
+    fly(50, 60000);
+    check((p.ekf().status() & VALID) == VALID, "clock-jump fixture starts with valid vario and aligned wind");
+    const float ktas = p.ekf().kTas();
+    p.step(frame(30000));
+    p.endCycle();
+    check(!(p.ekf().status() & ANY) && p.input().time_ms == 30000 && near(p.ekf().kTas(), ktas),
+          "a clock going back restarts on the new clock, keeping the calibration");
+    fly(30050, 34950);
+    check(p.input().time_ms == 34950 && !(p.ekf().status() & AirMassEKF::ST_VARIO_VALID),
+          "predictions run on the new clock and the restart settles again");
+    fly(35000, 59950);
+    check((p.ekf().status() & VALID) == VALID, "valid again long before the old clock is reached");
+    p.step(frame(120000));
+    p.endCycle();
+    check(!(p.ekf().status() & ANY) && p.input().time_ms == 120000, "a clock jumping ahead restarts as well");
+    fly(120050, 150000);
+    check((p.ekf().status() & VALID) == VALID, "valid again after the forward jump");
+}
+
 void recording() {
     namespace rec = airmass::record;
     airmass::Pipeline live;
@@ -317,6 +351,7 @@ int main() {
     invalidStartup();
     history();
     longSourceOutage();
+    clockJumps();
     recording();
     predictionReplay();
     return failures ? 1 : 0;

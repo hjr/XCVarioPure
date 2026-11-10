@@ -6,6 +6,7 @@
 #include "math/vector_3d.h"
 #include "wind/Wind.h"
 
+#include <atomic>
 #include <cmath>
 #include <string>
 
@@ -27,6 +28,8 @@ public:
     void postProcess() override;
 
     const AirMassEKF& getEKF() const { return _pipe.ekf(); }
+    // instrument replay: restart for a disruptive jump of the replayed flight (any task)
+    void prepareForSimJump() { _jump = true; }
 
 private:
     airmass::Setup currentSetup() const;
@@ -45,6 +48,8 @@ private:
     airmass::SampleClock _compass_sample;
     bool _active = false;
     bool _recording = false;
+    uint32_t _last_ms = 0; // the clock of the last cycle
+    std::atomic<bool> _jump{false}; // a replay jump requested
 };
 
 // NMEA output of the estimator ("NMEA Output"): $PXCVA, with the recording also the input sentences of

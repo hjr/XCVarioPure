@@ -181,6 +181,13 @@ bool airmass::supported()
     return SetupCommon::isMaster() && ahrsSensor && imuSensor && baroSensor && asSensor;
 }
 
+void airmass::prepareForSimJump()
+{
+    if (airmassSensor) {
+        airmassSensor->prepareForSimJump();
+    }
+}
+
 void airmass::startup()
 {
     // a disabled estimator takes no memory, enabling it restarts the device
@@ -265,6 +272,8 @@ void AirMassSensor::start()
     airmass::record::Start st;
     st.t = Clock::getMillis();
     st.alt = alt;
+    _last_ms = st.t;
+    _jump = false;
     const vector_f down = ahrsSensor->getBody2Nav().rotateInv(vector_f(0.f, 0.f, 1.f));
     const vector_f gyro = gyroSensor ? gyroRates() : vector_f();
     for (int i = 0; i < 3; ++i) {
@@ -368,10 +377,16 @@ void AirMassSensor::postProcess()
     if (!_pipe.ekf().isRunning()) {
         ESP_LOGW(FNAME, "AirMass estimator restart");
         start();
+    } else if (_jump.exchange(false) || (int32_t)(Clock::getMillis() - _last_ms) < 0) {
+        // A replay jump, or the clock going back when a faster replay returns to real time: restart (recorded, so
+        // the replay of the recording restarts too) rather than hold the estimate until the clock catches up.
+        ESP_LOGI(FNAME, "AirMass restart after a jump");
+        start();
     }
     // settings, ballast and the polar can change in flight
     const bool rec = recording();
     const uint32_t now = Clock::getMillis();
+    _last_ms = now;
     if (currentSetup() != _pipe.setup()) {
         applyConfig();
     } else if (rec && _setup_timer.due(now, SETUP_MS)) {

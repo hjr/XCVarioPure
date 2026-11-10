@@ -24,6 +24,7 @@
 #include "comm/DeviceMgr.h"
 #include "comm/OneWireBus.h"
 #include "setup/SetupNG.h"
+#include "airmass/AirMass.h"
 
 #include "logdefnone.h"
 
@@ -252,6 +253,8 @@ dl_action_t FlarmMsg::parsePFLAX(NmeaPlugin *plg)
             if (ahrsSensor) {
                 ahrsSensor->setup();
             }
+            // and AirMass
+            airmass::prepareForSimJump();
         }
     }
 
