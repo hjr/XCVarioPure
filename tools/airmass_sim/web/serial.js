@@ -3,12 +3,8 @@
 // a write already handed to the OS can finish, but no later stale sentence can start.
 (function (root) {
   "use strict";
-  function command(speed) {
-    const body = "$PFLAX,S" + (speed === undefined ? "" : "," + speed);
-    let sum = 0;
-    for (const c of body.slice(1)) sum ^= c.charCodeAt(0);
-    return body + "*" + sum.toString(16).padStart(2, "0");
-  }
+  const { checksum } = typeof module !== "undefined" && module.exports ? require("./convert.js") : root.AirMassConvert;
+  const command = (speed) => checksum("$PFLAX,S" + (speed === undefined ? "" : "," + speed));
   const speeds = [1, 2, 5, 10]; // conservative target ceiling; never send the offline 300x option to uint8_t firmware
   function allowedSpeeds(timeline, baud) {
     return timeline?.events.length ? speeds.filter(s => timeline.peakBytes * s <= baud / 10 * 0.7) : [];

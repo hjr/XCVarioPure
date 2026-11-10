@@ -4,10 +4,10 @@
 // (Δk ≈ along / TAS), across it a heading or sideslip offset (same sign in left and right circles) or a GNSS timing
 // error (sign flips with the turn direction: V·ω·Δt).
 //   node wind.js <web dir> log1.nmea.gz ...   (SETTINGS="name=value,...")
-const fs = require("fs"), zlib = require("zlib"), path = require("path");
-const { loadPage, freeMask, logOptions } = require("./page.js");
+const path = require("path");
+const { loadPage, freeMask } = require("./page.js");
 const web = path.resolve(process.argv[2]);
-const { convert, runReplay } = loadPage(web);
+const { runReplay, loadFlight } = loadPage(web);
 const HZ = 10, HALF = 30 * HZ;
 
 (async () => {
@@ -17,7 +17,7 @@ const HZ = 10, HALF = 30 * HZ;
   const perFlight = [], hb = {};
   for (const log of process.argv.slice(3)) {
     fileName = path.basename(log);
-    const conv = convert(zlib.gunzipSync(fs.readFileSync(log)).toString("latin1"), logOptions());
+    const conv = loadFlight(log);
     D = build(conv, await runReplay(M, conv.rec, { settings: process.env.SETTINGS || "" }));
     derive(D);
     const r = D.rep.cols, c = D.tr, n = D.n;

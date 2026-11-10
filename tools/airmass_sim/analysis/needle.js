@@ -8,10 +8,10 @@
 //   series shifted by its delay in that phase
 //   SERIES='[["name","settings",dampAir], ...]' (dampAir: the cockpit damping in s, default 2 = half the 4 s TE damping;
 //   [straight, circling]: blended between 15° and 25° bank)
-const fs = require("fs"), zlib = require("zlib"), path = require("path");
-const { loadPage, lagOf, freeMask, logOptions } = require("./page.js");
+const path = require("path");
+const { loadPage, cat, lagOf, freeMask } = require("./page.js");
 const web = path.resolve(process.argv[2]);
-const { convert, runReplay } = loadPage(web);
+const { runReplay, loadFlight } = loadPage(web);
 const HZ = 10;
 
 // the cockpit damping dAir: a number, or [straight, circling] blended between 15° and 25° bank
@@ -27,7 +27,7 @@ const dampOf = (D, dAir) => {
   const runs = [];
   for (const log of process.argv.slice(3)) {
     fileName = path.basename(log);
-    const conv = convert(zlib.gunzipSync(fs.readFileSync(log)).toString("latin1"), logOptions());
+    const conv = loadFlight(log);
     const reps = {}, ser = {};
     let D0 = null;
     for (const [nm, st, dAir] of variants) {
@@ -45,11 +45,10 @@ const dampOf = (D, dAir) => {
     process.stderr.write(fileName + "\n");
   }
   const names = Object.keys(runs[0].ser);
-  const cat = (f) => { const out = []; for (const a of runs) for (let k = 0; k < a.n; k++) out.push(f(a, k)); return out; };
-  const ok = cat((a, k) => a.free[k]), ref = cat((a, k) => a.ref[k]);
-  const all = Object.fromEntries(names.map((s) => [s, cat((a, k) => a.ser[s][k])]));
+  const ok = cat(runs, (a, k) => a.free[k]), ref = cat(runs, (a, k) => a.ref[k]);
+  const all = Object.fromEntries(names.map((s) => [s, cat(runs, (a, k) => a.ser[s][k])]));
   // the delays: over the whole flight, straight (bank under 10°), circling (over 25°)
-  const okS = cat((a, k) => a.free[k] && Math.abs(a.roll[k]) < 10), okC = cat((a, k) => a.free[k] && Math.abs(a.roll[k]) > 25);
+  const okS = cat(runs, (a, k) => a.free[k] && Math.abs(a.roll[k]) < 10), okC = cat(runs, (a, k) => a.free[k] && Math.abs(a.roll[k]) > 25);
   const lags = {}, lagsS = {}, lagsC = {};
   for (const s of names) { lags[s] = lagOf(all[s], ref, ok); lagsS[s] = lagOf(all[s], ref, okS); lagsC[s] = lagOf(all[s], ref, okC); }
   const phase = (b) => (b < 10 ? "straight" : b > 25 ? "circling" : "mixed");

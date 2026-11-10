@@ -1,19 +1,10 @@
 // node --test tools/airmass_sim/web/settings_test.js
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
-const fs = require("node:fs");
 const vm = require("node:vm");
-const script = fs.readFileSync(__dirname + "/index.html", "utf8").split("<script>")[1].split("</script>")[0];
-function grab(name) {
-  const start = script.indexOf(name);
-  assert(start >= 0, name);
-  let i = script.indexOf("{", start), depth = 0;
-  for (; i < script.length; i++) {
-    if (script[i] === "{") depth++;
-    else if (script[i] === "}" && --depth === 0) break;
-  }
-  return script.slice(start, i + 1);
-}
+const page = require("../analysis/page.js");
+const script = page.pageScript(__dirname);
+const grab = name => page.grab(script, name);
 function elements() {
   const values = { averager: "30", damping: "4", speed: "5", glider: "log", mass: "-1", bugs: "-1", w0: "1", w1: "0", w2: "1", wlat: ".75" };
   const all = {};

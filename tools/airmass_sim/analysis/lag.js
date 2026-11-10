@@ -2,10 +2,10 @@
 // from the cross-correlation at 2 Hz. Less noisy? how much the needle moves within a second (rms of the 1 s change),
 // and how much of the series is not in the reference (rms of the difference at that best delay, 2 s means).
 //   node lag.js <web dir> log1.nmea.gz ...
-const fs = require("fs"), zlib = require("zlib"), path = require("path");
-const { loadPage, dampSeries, freeMask, logOptions } = require("./page.js");
+const path = require("path");
+const { loadPage, dampSeries, freeMask } = require("./page.js");
 const web = path.resolve(process.argv[2]);
-const { convert, runReplay } = loadPage(web);
+const { runReplay, loadFlight } = loadPage(web);
 const LAGS = []; for (let l = -2; l <= 10.001; l += 0.25) LAGS.push(+l.toFixed(2));
 const SER = ["AirMass (raw)", "AirMass cockpit (half damping)", "AirMass with TE's damping", "TE netto (device)"];
 const xc = {}; for (const s of SER) xc[s] = LAGS.map(() => ({ n: 0, sx: 0, sy: 0, sxx: 0, syy: 0, sxy: 0 }));
@@ -16,7 +16,7 @@ const resid = {}; // series -> lag -> {n, s2} on 2 s means
   const M = await require(path.join(web, "airmass.js"))();
   for (const log of process.argv.slice(3)) {
     fileName = path.basename(log);
-    const conv = convert(zlib.gunzipSync(fs.readFileSync(log)).toString("latin1"), logOptions());
+    const conv = loadFlight(log);
     D = build(conv, await runReplay(M, conv.rec, {}));
     derive(D);
     const r = D.rep.cols, c = D.tr, n = D.n;

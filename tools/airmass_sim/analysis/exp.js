@@ -2,14 +2,14 @@
 // and an inertial one (the speed term from the GNSS ground velocity relative to a slowly varying wind: a horizontal
 // gust does not move it). AirMass (blend on and off) and TE netto against both, each shifted by its own delay.
 //   node exp.js <web dir> log1.nmea.gz ...   (SERIES='[["name","settings"], ...]', REF_SINK=airmass)
-const fs = require("fs"), zlib = require("zlib"), path = require("path");
-const { loadPage, lagOf, dampSeries, freeMask, logOptions } = require("./page.js");
+const path = require("path");
+const { loadPage, cat, lagOf, dampSeries, freeMask } = require("./page.js");
 const web = path.resolve(process.argv[2]);
-const { convert, runReplay } = loadPage(web);
+const { runReplay, loadFlight } = loadPage(web);
 const HZ = 10;
 async function flight(M, log, settings) {
   fileName = path.basename(log);
-  const conv = convert(zlib.gunzipSync(fs.readFileSync(log)).toString("latin1"), logOptions());
+  const conv = loadFlight(log);
   D = build(conv, await runReplay(M, conv.rec, { settings }));
   derive(D);
   return { D, am: dampSeries(D.amRaw, D.amOk) };
@@ -31,13 +31,12 @@ async function flight(M, log, settings) {
     runs.push({ n, free, roll, refs: { pitot: D0.gnssNetPitot, inertial: inert }, ser: Object.assign(Object.fromEntries(vs.map(([nm, v]) => [nm, v.am])), { "TE netto": D0.netto }) });
     process.stderr.write(path.basename(log) + "\n");
   }
-  const cat = (f) => { const out = []; for (const a of runs) for (let k = 0; k < a.n; k++) out.push(f(a, k)); return out; };
-  const ok = cat((a, k) => a.free[k]);
+  const ok = cat(runs, (a, k) => a.free[k]);
   for (const refName of ["pitot", "inertial"]) {
-    const ref = cat((a, k) => a.refs[refName][k]);
+    const ref = cat(runs, (a, k) => a.refs[refName][k]);
     console.log(`\n=== reference with the speed term from ${refName === "pitot" ? "pitot TAS (the page's GNSS netto)" : "GNSS ground velocity minus a 2 min wind (gust-insensitive)"}`);
     const lags = {};
-    for (const s in runs[0].ser) lags[s] = lagOf(cat((a, k) => a.ser[s][k]), ref, ok);
+    for (const s in runs[0].ser) lags[s] = lagOf(cat(runs, (a, k) => a.ser[s][k]), ref, ok);
     console.log("  delays: " + Object.entries(lags).map(([s, l]) => `${s} ${l / HZ} s`).join(", "));
     for (const W of [10, 30]) {
       const acc = {};
