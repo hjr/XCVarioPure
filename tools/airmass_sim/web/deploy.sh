@@ -4,7 +4,7 @@
 #   tools/airmass_sim/web/deploy.sh
 set -e
 HERE=$(cd "$(dirname "$0")" && pwd)
-SCRIPTS="gliders.js convert.js replay.js airmass.js" # loaded by index.html
+SCRIPTS="gliders.js convert.js serial.js replay.js airmass.js" # loaded by index.html
 FILES="index.html favicon.svg favicon.ico favicon.png $SCRIPTS"
 for f in $FILES; do
     [ -f "$HERE/$f" ] || { echo "missing $HERE/$f (run build.sh for airmass.js)" >&2; exit 1; }

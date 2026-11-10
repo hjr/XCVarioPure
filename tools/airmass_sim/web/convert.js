@@ -194,16 +194,27 @@
     return setup ? gliderById(setup[0]) : undefined;
   }
 
-  // the $SENS time stamp [ms] made monotone: a clock jump (the UTC synchronisation, midnight, a reboot) continues at the
-  // sensor cycle; shorter holes are lost log lines (up to 2 s in flight), the time goes on across them. The estimator
-  // runs through a reboot in flight: a real log showed it recovers within 30 s, a cold restart here took 2 min
+  // Keep forward sensor gaps when elapsed GNSS time confirms them (allowing two seconds for fix cadence/arrival).
+  // Other large jumps (UTC synchronization) and backward jumps (midnight/reboot) continue at the sensor cycle.
+  // A frozen timestamp can advance using the independent GNSS-age counter when its stale values still tick.
+  // Use the same repair for offline and serial replay, and in sens2rec.py.
   function stampRepair() {
-    let last = NaN, correction = 0;
-    return (raw) => {
+    let last = NaN, lastRaw = NaN, lastUtc = NaN, lastAge = NaN, correction = 0, recovering = false;
+    const repair = (raw, utc = NaN, age = NaN) => {
       const d = raw - correction - last;
-      if (d < 0 || d > 5000) correction = raw - last - 100;
+      const elapsedUtc = ((utc - lastUtc + 86400) % 86400) * 1000;
+      const sensorGap = Number.isFinite(elapsedUtc) && Math.abs(d - elapsedUtc) <= 2000;
+      const ageDelta = age - lastAge;
+      const ageTicks = age > 2000 && lastAge > 2000 && ageDelta > 0 && ageDelta <= 2000;
+      repair.recovered = d === 0 && raw === lastRaw && ageTicks;
+      // Align the first resumed clock sample with the counter too, so a catching-up clock cannot count the gap twice.
+      if (repair.recovered || (recovering && raw !== lastRaw && ageTicks)) correction = raw - last - ageDelta;
+      else if (d < 0 || (d > 5000 && !sensorGap)) correction = raw - last - 100;
+      recovering = repair.recovered || (recovering && raw === lastRaw);
+      lastRaw = raw; lastUtc = utc; lastAge = age;
       return (last = raw - correction);
     };
+    return repair;
   }
 
   function checksum(body) {
@@ -346,6 +357,138 @@
     return { kind: "AirMass recording", rec, track: track.done(), starts, frames, fixes };
   }
 
+  // Shared sensor normalization for the offline converter and hardware replay. Keep timestamp repairs,
+  // convention evidence and the OAT fallback identical; retain TE pressure and optional magnetometer fields.
+  function sensorNormalizer(scan) {
+    const monotone = stampRepair();
+    return (input, gnssAlt, utc = NaN) => {
+      const f = input.slice();
+      if (f.length < 13 || f.slice(1, 13).some((v, i) => i !== 5 && v === "")) return null;
+      if (scan.fmt) scan.fmt.factors.forEach((c, i) => { if (f[scan.fmt.start + i]) f[scan.fmt.start + i] *= c; });
+      const stamp = Math.round(String(f[1]).includes(".") ? +f[1] * 1000 : +f[1]);
+      const ageField = parseInt(f[2], 10), age = ageField >= 0 && ageField <= 2000 ? ageField : Number.isFinite(ageField) ? 0 : NaN;
+      const p = +f[3] * 100, q = +f[5];
+      let oat = String(f[6]).trim() === "" ? NaN : Number(f[6]);
+      const kelvin = scan.temperatureKelvin && plausibleTemperature(oat - 273.15);
+      if (kelvin) oat -= 273.15;
+      const acc = [+f[7], +f[8], +f[9]], gyro = [+f[10], +f[11], +f[12]].map(x => x * Math.PI / 180);
+      if (![stamp, age, p, q, ...acc, ...gyro].every(Number.isFinite)) return null;
+      const t = monotone(stamp, utc, ageField);
+      const alt = p > 0 ? T0DIVL * (1 - Math.pow(p / P0, 1 / G0DIVRXL)) : NaN;
+      const estimated = !plausibleTemperature(oat);
+      if (estimated) oat = estimatedTemperature(Number.isFinite(gnssAlt) ? gnssAlt : alt);
+      f[6] = oat;
+      return { f, t, age, p, q, oat, acc, gyro, alt, kelvin, estimated, timeRecovered: monotone.recovered };
+    };
+  }
+
+  // A hardware timeline contains only logged samples, never the offline estimator's prediction ticks.
+  // Untimed supported sentences are interpolated in file order between repaired sensor timestamps.
+  function serialTimeline(text) {
+    const lines = text.split("\n"), scan = scanLog(lines), normalize = sensorNormalizer(scan);
+    const events = [], sensors = [];
+    let gnssAlt = NaN, gnssUtc = NaN, skippedSensors = 0, skippedPressureSensors = 0, validSensors = 0;
+    let timestampRecoveredSamples = 0;
+    const num = x => x === undefined || String(x).trim() === "" ? NaN : +x;
+    const validPressure = f => [3, 4, 5].every(i => Number.isFinite(num(f[i]))) && num(f[3]) > 0 && num(f[4]) > 0;
+    const configFields = line => {
+      const f = fields(line), v = f.slice(2, 7).map(num);
+      if (v.length !== 5 || !v.every(Number.isFinite)) return null;
+      const qnh = f[1] === "CMN" ? (scan.qnh > 0 ? scan.qnh * 100 : 101325) : num(f[7]);
+      if (!(qnh > 0)) return null;
+      return [...v, qnh < 2000 ? qnh * 100 : qnh];
+    };
+    // Like the converter, use the first CA1 even if it was logged after the first sensors.
+    let config = null;
+    for (const original of lines) {
+      const line = cleanLine(original.trim());
+      if (line.startsWith("!XCV,CA1,")) { config = configFields(line); if (config) break; }
+    }
+    if (!config) for (const original of lines) {
+      const line = cleanLine(original.trim());
+      if (line.startsWith("!XCV,CMN,")) { config = configFields(line); if (config) break; }
+    }
+    const makeConfig = v => checksum("!XCV,CA1," + v.join(","));
+    const initialConfig = config ? makeConfig(config) : null;
+    for (const original of lines) {
+      const line = cleanLine(original.trim()), f = fields(line);
+      let output = null, kind = "navigation", t = null;
+      if (f[0] === "SENS") {
+        const s = normalize(f, gnssAlt, gnssUtc);
+        if (!s) {
+          if (!validPressure(f)) skippedPressureSensors++;
+          else skippedSensors++;
+          continue;
+        }
+        // Normalize before checking pressure so clock repairs stay identical to offline replay.
+        // Keep rejected samples as timing anchors until untimed sentences have been positioned.
+        if (s.timeRecovered) timestampRecoveredSamples++;
+        if (!validPressure(s.f)) {
+          skippedPressureSensors++;
+          sensors.push(events.length);
+          events.push({ t: s.t / 1000, line: null, kind: "sensor" });
+          continue;
+        }
+        validSensors++;
+        if (s.f.length > 13 && (s.f.length < 16 || !s.f.slice(13, 16).every(x => Number.isFinite(num(x))))) s.f.length = 13;
+        output = sentence("SENS", s.f.slice(1)); t = s.t / 1000; kind = "sensor";
+        sensors.push(events.length);
+      } else if (/^!xcv,/i.test(line)) {
+        kind = "config";
+        if (f[1] === "CA1" || f[1] === "CMN") {
+          const v = configFields(line);
+          if (v) { config = v; output = makeConfig(config); }
+        } else if (f[1] === "FLP" && Number.isFinite(num(f[2]))) {
+          output = checksum("!XCV,FLP," + f[2]); kind = "flap";
+        } else {
+          const j = { "empty-weight": 1, "crew-weight": 2, "bal-water": 3 }[f[1]];
+          if (j !== undefined && config && Number.isFinite(num(f[2]))) { config[j] = +f[2]; output = makeConfig(config); }
+        }
+      } else if (/^\$(?:G[PN](?:GGA|GSA|RMC)|PGRMZ|PFLA[UAL]),/.test(line)) {
+        if (/^G[PN]RMC$/.test(f[0])) {
+          const fix = parseRmc(f);
+          if (fix) gnssUtc = fix.utc;
+        }
+        if (/^G[PN]GGA$/.test(f[0]) && Number.isFinite(parseFloat(f[9]))) gnssAlt = parseFloat(f[9]);
+        output = sentence(f[0], f.slice(1));
+      }
+      if (output) events.push({ t, line: output, kind });
+    }
+    const skipped = [skippedPressureSensors ? `${skippedPressureSensors} $SENS sample${skippedPressureSensors === 1 ? "" : "s"} with invalid pressure skipped.` : "",
+      skippedSensors ? `${skippedSensors} malformed $SENS lines ignored by the shared importer.` : ""].filter(Boolean).join(" ");
+    if (!validSensors) return { events: [], initialConfig, skippedSensors, skippedPressureSensors, reason: skipped ?
+      `No complete $SENS samples found. ${skipped}` :
+      "Serial replay requires a $SENS sensor log. $PXCVR recordings lack the complete hardware sensor payload." };
+    const first = sensors[0], last = sensors[sensors.length - 1];
+    for (let i = 0; i < first; i++) events[i].t = events[first].t;
+    for (let k = 1; k < sensors.length; k++) {
+      const a = sensors[k - 1], b = sensors[k];
+      for (let i = a + 1; i < b; i++) events[i].t = events[a].t + (events[b].t - events[a].t) * (i - a) / (b - a);
+    }
+    for (let i = last + 1; i < events.length; i++) events[i].t = events[last].t;
+    const start = events[0].t, end = events[events.length - 1].t;
+    // Navigation outside sensor coverage has no replayable sensor state. Do not collapse minutes of it onto an edge.
+    let excludedNavigation = 0;
+    const outgoing = events.filter((e, i) => {
+      if (e.kind === "navigation" && (i < first || i > last)) { excludedNavigation++; return false; }
+      return e.line !== null;
+    });
+    // Peak bytes in a rolling second, 8N1 on the wire; reserve headroom for control messages/USB scheduling.
+    let bytes = 0, peakBytes = 0, a = 0;
+    for (let i = 0; i < outgoing.length; i++) {
+      outgoing[i].bytes = outgoing[i].line.length + 2;
+      bytes += outgoing[i].bytes;
+      while (a < i && outgoing[a].t <= outgoing[i].t - 1) bytes -= outgoing[a++].bytes;
+      peakBytes = Math.max(peakBytes, bytes);
+    }
+    return { events: outgoing, initialConfig, start, end, peakBytes, skippedSensors, skippedPressureSensors,
+      excludedNavigation, timestampRecoveredSamples,
+      warning: [initialConfig ? "" : "No logged glider/loading configuration; the instrument's current setup is used.",
+        skipped,
+        excludedNavigation ? `${excludedNavigation} navigation messages outside the sensor recording ignored.` : "",
+        timestampRecoveredSamples ? `Timing recovered for ${timestampRecoveredSamples} samples with frozen timestamps.` : ""].filter(Boolean).join(" ") };
+  }
+
   // sens2rec.py
   function convertSens(text, opts) {
     const mass = opts.mass || 0, bugsOpt = opts.bugs ?? -1, lever = opts.leverArm || 0;
@@ -357,9 +500,9 @@
     let teNew = 0;
     let fix = null, gnssAlt = NaN, pendingFix = null, running = false, above = 0, below = 0;
     let setupLine = null, setupCount = 0, starts = 0, frames = 0, fixes = 0, polar = null, flaps = null, tMs = 0;
-    let temperatureEstimatedSamples = 0, temperatureKelvinSamples = 0;
+    let temperatureEstimatedSamples = 0, temperatureKelvinSamples = 0, timestampRecoveredSamples = 0;
     const lines = text.split("\n");
-    const scan = scanLog(lines), monotone = stampRepair();
+    const scan = scanLog(lines), normalize = sensorNormalizer(scan);
     const initialSetup = scan.ca1 || scan.cmn;
     if (initialSetup) [logged.type, logged.empty, logged.crew, logged.ballast] = initialSetup;
 
@@ -408,25 +551,14 @@
         if (Number.isFinite(v)) gnssAlt = v;
       } else if (raw.startsWith("$SENS,")) {
         const f = fields(raw.trim());
-        if (f.length < 13 || f.slice(1, 13).some((v, i) => i !== 5 && v === "")) continue; // OAT may be missing
-        if (scan.fmt) scan.fmt.factors.forEach((c, i) => { if (f[scan.fmt.start + i]) f[scan.fmt.start + i] *= c; });
-        const stamp = Math.round(f[1].includes(".") ? +f[1] * 1000.0 : +f[1]); // old logs: integer milliseconds
-        // the time since the last fix; old logs also hold other values here, the fix then counts as just arrived
-        const ageField = parseInt(f[2], 10), age = ageField >= 0 && ageField <= 2000 ? ageField : Number.isFinite(ageField) ? 0 : NaN;
-        const p = +f[3] * 100.0, q = +f[5];
-        let oat = String(f[6]).trim() === "" ? NaN : Number(f[6]);
-        if (scan.temperatureKelvin && plausibleTemperature(oat - 273.15)) { oat -= 273.15; temperatureKelvinSamples++; }
-        const acc = [+f[7], +f[8], +f[9]];
-        const gyro = [+f[10], +f[11], +f[12]].map((x) => x * Math.PI / 180);
-        if (![stamp, age, p, q, ...acc, ...gyro].every(Number.isFinite)) continue;
-        const t = monotone(stamp);
+        const sensor = normalize(f, gnssAlt, fix ? fix.utc : NaN);
+        if (!sensor) continue;
+        const { t, age, p, q, oat, acc, gyro, alt } = sensor;
+        if (sensor.kelvin) temperatureKelvinSamples++;
+        if (sensor.estimated) temperatureEstimatedSamples++;
+        if (sensor.timeRecovered) timestampRecoveredSamples++;
         tMs = t;
         const ias = q > 0.0 ? Math.sqrt(2.0 * q / RHO0) : 0.0;
-        const alt = p > 0 ? T0DIVL * (1.0 - Math.pow(p / P0, 1.0 / G0DIVRXL)) : NaN;
-        if (!plausibleTemperature(oat)) {
-          oat = estimatedTemperature(Number.isFinite(gnssAlt) ? gnssAlt : alt);
-          temperatureEstimatedSamples++;
-        }
         const tas = p > 0 ? ias * Math.sqrt(RHO0 * R_AIR * (oat + 273.15) / p) : 0.0;
         // Airspeed detects flight even when GNSS is not recorded or a headwind makes ground speed small.
         // Require 100 flying-speed samples; landed: 300 slow samples.
@@ -479,11 +611,11 @@
     if (running) rec.push(sentence("PXCVX", [String(tMs)]));
     return { kind: "XCVario sensor log", rec, track: track.done(), starts, frames, fixes, glider: gliderName, gliderFrom, mass: massUsed, massFrom,
       qnh: scan.qnh, qnhFrom: scan.qnhFrom, temperatureEstimatedSamples, temperatureKelvinSamples, axesCorrected: !!scan.axesCorrected,
-      axesInferred: !!scan.axesInferred,
+      axesInferred: !!scan.axesInferred, timestampRecoveredSamples,
       flapsFrom: opts.noFlaps ? "" : loggedFlapFrames ? "logged" : flaps ? "the recommendation" : "" };
   }
 
-  const api = { convert, GLIDERS, gliderFromLog };
+  const api = { convert, GLIDERS, gliderFromLog, serialTimeline };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.AirMassConvert = api;
 })(typeof globalThis !== "undefined" ? globalThis : this);

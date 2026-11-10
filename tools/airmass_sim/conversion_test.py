@@ -10,7 +10,7 @@ import sys
 import tempfile
 import unittest
 
-from sens2rec import nmea_fields, scan_log
+from sens2rec import nmea_fields, scan_log, StampRepair
 
 
 def log_fixture(*, gravity=False, kelvin=False, temperature=None, rates=True, flat=False, samples=220, gyro_bias_z=0):
@@ -89,6 +89,61 @@ console.log(JSON.stringify({axes: !!(c.axesCorrected || c.axesInferred), kelvin:
             with self.subTest(args=args):
                 _, js = self.inspect(log_fixture(gravity=True, **args))
                 self.assertFalse(js["axes"])
+
+
+class TimestampTests(unittest.TestCase):
+    def test_stalled_timestamps_use_age_counter_in_both_converters(self):
+        cases = [
+            ([(1027000, 1700259), (1027000, 1700359), (1027000, 1700559), (1027400, 1700659)],
+             [1027000, 1027100, 1027300, 1027400], 2),
+            ([(1027000, 1700259), (1027000, 1700359), (7682, 7590)], [1027000, 1027100, 1027200], 1),
+            ([(1027000, 0), (1027000, 100)], [1027000, 1027000], 0),
+            ([(1027000, 1700000), (1027000, 1710000)], [1027000, 1027000], 0),
+        ]
+        script = """
+const fs = require('fs'), {convert} = require('./web/convert.js');
+const c = convert(fs.readFileSync(0, 'utf8'));
+console.log(JSON.stringify({times: [...c.track.cols.t_ms], recovered: c.timestampRecoveredSamples}));
+"""
+        for samples, expected, count in cases:
+            with self.subTest(samples=samples):
+                repair, times, recovered = StampRepair(), [], 0
+                for t, age in samples:
+                    times.append(repair(t, age=age))
+                    recovered += int(repair.recovered)
+                self.assertEqual(times, expected)
+                self.assertEqual(recovered, count)
+                text = "\n".join(f"$SENS,{t / 1000:.3f},{age},900,899,500,15,0,0,-1,0,0,0" for t, age in samples)
+                js = json.loads(subprocess.check_output(["node", "-e", script], input=text.encode(), cwd=Path(__file__).parent))
+                self.assertEqual(js, dict(times=expected, recovered=count))
+
+    def test_confirmed_gaps_and_clock_repairs_match_javascript(self):
+        cases = [
+            ([(42550388, 42550.388), (42663961, 42663.961)], [42550388, 42663961]),
+            ([(86399900, 86399.9), (86513473, 113.473)], [86399900, 86513473]),
+            ([(10000, 43200), (43200100, 43200.1), (1000, 43200.2)], [10000, 10100, 10200]),
+            ([(10000, None), (43200000, 43200)], [10000, 10100]),
+            ([(10000, 43200), (43200000, 43200)], [10000, 10100]),
+        ]
+        script = """
+const fs = require('fs'), {convert} = require('./web/convert.js');
+const c = convert(fs.readFileSync(0, 'utf8'));
+console.log(JSON.stringify([...c.track.cols.t_ms]));
+"""
+        for samples, expected in cases:
+            with self.subTest(samples=samples):
+                repair = StampRepair()
+                self.assertEqual([repair(t, utc if utc is not None else math.nan) for t, utc in samples], expected)
+                lines = []
+                for stamp, utc in samples:
+                    if utc is not None:
+                        u = utc % 86400
+                        time = f"{int(u // 3600):02d}{int(u // 60) % 60:02d}{u % 60:06.3f}"
+                        lines.append(f"$GPRMC,{time},A,4800,N,01100,E,60,90,091126,,,A")
+                    lines.append(f"$SENS,{stamp / 1000:.3f},0,900,899,500,15,0,0,-1,0,0,0")
+                js = json.loads(subprocess.check_output(["node", "-e", script], input="\n".join(lines).encode(),
+                                                       cwd=Path(__file__).parent))
+                self.assertEqual(js, expected)
 
 
 class FlightDetectionTests(unittest.TestCase):

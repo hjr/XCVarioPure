@@ -122,6 +122,58 @@ Run `python3 tools/airmass_sim/conversion_test.py` for the shared JavaScript/Pyt
 invalid inputs and stop markers. After rebuilding the web module, run
 `node tools/airmass_sim/web/replay_start_test.js` for converter/WASM/page integration.
 
+To replay into an XCVario, open a sensor log, then open **Settings → Instrument replay → Connect serial…**.
+Choose the baud rate used by the instrument's NMEA input (115200 by default) and select its port in the browser
+chooser. This requires [Web Serial in desktop Chrome](https://developer.chrome.com/docs/capabilities/serial)
+over HTTPS or localhost. Permission is requested only when you click Connect. The connection status and
+Disconnect button are in Settings. `$PXCVR` recordings cannot supply the full hardware sensor payload;
+serial playback currently requires `$SENS` logs.
+
+Connection enters simulation mode with `$PFLAX,S`, waits one second, restores the logged glider/loading
+configuration and flap position at the selected time, and stays paused. Play starts at 1×. The normal Play/Pause,
+speed selector and all seek controls drive the instrument and display from one clock. Untimed navigation and
+configuration sentences are interpolated in file order between the repaired `$SENS` timestamps. TE pressure and
+optional magnetometer data are retained; sensor conventions and temperature corrections use the same normalization
+as offline import. Offline 20 Hz estimator predictions are never transmitted as additional sensor readings.
+Forward sensor gaps longer than five seconds keep their duration when elapsed RMC UTC agrees within two seconds
+(including UTC midnight). Navigation/setup messages remain spread across the gap. Browser and command-line
+conversion use the same rule; clock synchronization jumps and resets retain the existing timestamp repair.
+Navigation messages before the first or after the last imported sensor sample are excluded from serial playback
+and counted in the connection hint. Their minutes of GPS/traffic data cannot be replayed with sensor state and
+must not be collapsed onto the first/last sensor timestamp. Logged setup at the start is still restored.
+Malformed sensor lines filtered by the shared importer are counted in the connection hint. Serial replay also
+skips samples with missing/nonfinite pressure values or nonpositive static/TE pressure, and reports their count
+in the hint. Valid samples keep their logged pressures and timing; no replacement pressures are invented.
+Rejected samples accepted by the offline importer still anchor timestamp repairs and intervening navigation/setup
+sentences. A log with no usable sensor samples remains unavailable for serial replay.
+Legacy CMN becomes CA1 with the importer's QNH estimate (101325 Pa if unavailable), and modern weight updates
+become complete CA1 messages. When no glider/loading configuration was logged, Settings explains that the
+instrument's current setup will be used. Browser polar, mass, flap and estimator overrides affect the offline
+display; the serial replay sends logged setup and flap changes.
+
+Serial speeds are restricted to 1×, 2×, 5× and 10×, further limited by the log's peak bytes in a rolling second
+and 70% of the selected 8N1 port capacity. The 10× ceiling is conservative, not a claim of hardware validation;
+reduce speed if the instrument cannot keep up. Offline replay retains its full speed selection. Connection is
+blocked if the sensor replay interval cannot fit at 1×. Frozen timestamps are recovered only when the logged
+GNSS-age counter is stale (over two seconds) and continues advancing by at most two seconds per sample. Its
+measured increments supply the elapsed time; browser and Python converters report the recovered sample count.
+Without that evidence, coincident samples are retained and can still exceed every baud rate.
+Writes are serialized and await stream backpressure. More than 250 ms of scheduling/write lag pauses playback without
+dropping samples or starting a catch-up burst; a two-second write/backpressure timeout closes the connection.
+Hiding the tab pauses serial replay, and returning to it requires Play. A write already handed to the OS can
+finish after Pause/Seek, but pending stale sentences are canceled. Loading another log or rerunning the estimator
+pauses transmission; replacing the timeline restores setup and resets serial speed to 1×.
+
+Seeks notify the instrument of a disruptive jump and restore the applicable configuration and flap position.
+The firmware also resets vario/AHRS settling on pause, resume and speed commands. The instrument must settle
+again; it cannot receive the offline estimator's accumulated history. Disconnect freezes the simulation clock;
+restart the instrument to leave simulation mode. Device replies are not used as acknowledgments, so connection
+status describes the browser transport, not proof that the instrument accepted the replay.
+
+Run `node --test tools/airmass_sim/web/serial_test.js` for deterministic fake-clock/fake-writer tests of protocol
+ordering, timing, initialization, pause/resume, seeks, speed limits, lag, backpressure, failures and reconnects.
+These tests do not replace validation with a connected instrument.
+
 Files: `airmass_wasm.cpp` (the module, on `replay_core.h` like `airmass_replay`), `convert.js` (log → recording;
-keep in step with `sens2rec.py`), `replay.js` (runs the module), `make_gliders.py` (the glider list from the firmware's tables), `deploy.sh` (publishes only the page files), `check.js` (node: the converter against
+keep in step with `sens2rec.py`), `serial.js` (serial clock/transport), `replay.js` (runs the module), `make_gliders.py` (the glider list from the firmware's tables), `deploy.sh` (publishes only the page files), `check.js` (node: the converter against
 `sens2rec.py`, the replay against `airmass_replay --csv`).

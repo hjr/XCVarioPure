@@ -215,16 +215,30 @@ def scan_log(lines):
 
 
 class StampRepair:
-    """The $SENS time stamp [ms] made monotone: a clock jump (the UTC synchronisation, midnight, a reboot) continues at
-    the sensor cycle; shorter holes are lost log lines (up to 2 s in flight), the time goes on across them. The estimator
-    runs through a reboot in flight: a real log showed it recovers within 30 s, a cold restart here took 2 min"""
+    """Keep forward sensor gaps confirmed by elapsed GNSS time, allowing two seconds for fix cadence/arrival.
+    Other large jumps (UTC synchronization) and backward jumps (midnight/reboot) continue at the sensor cycle.
+    Frozen timestamps use measured increments of an independently advancing, stale GNSS-age counter.
+    Mirrored in web/convert.js for offline and serial replay."""
 
     def __init__(self):
-        self.last, self.correction = None, 0
+        self.last, self.last_utc, self.correction = None, math.nan, 0
+        self.last_raw, self.last_age, self.recovered, self.recovering = None, math.nan, False, False
 
-    def __call__(self, raw):
-        if self.last is not None and not 0 <= raw - self.correction - self.last <= 5000:
-            self.correction = raw - self.last - 100
+    def __call__(self, raw, utc=math.nan, age=math.nan):
+        self.recovered = False
+        if self.last is not None:
+            delta = raw - self.correction - self.last
+            elapsed_utc = ((utc - self.last_utc) % 86400) * 1000
+            sensor_gap = math.isfinite(elapsed_utc) and abs(delta - elapsed_utc) <= 2000
+            age_delta = age - self.last_age
+            age_ticks = age > 2000 and self.last_age > 2000 and 0 < age_delta <= 2000
+            self.recovered = delta == 0 and raw == self.last_raw and age_ticks
+            if self.recovered or (self.recovering and raw != self.last_raw and age_ticks):
+                self.correction = raw - self.last - age_delta
+            elif delta < 0 or (delta > 5000 and not sensor_gap):
+                self.correction = raw - self.last - 100
+            self.recovering = self.recovered or (self.recovering and raw == self.last_raw)
+        self.last_raw, self.last_utc, self.last_age = raw, utc, age
         self.last = raw - self.correction
         return self.last
 
@@ -329,6 +343,7 @@ def main():
     setup_line, setup_count, starts, frames, fixes = None, 0, 0, 0, 0
     temperature_estimated_samples = 0
     temperature_kelvin_samples = 0
+    timestamp_recovered_samples = 0
     polar = flaps = None
     with opener(a.log, "rt", errors="replace") as log:
         lines = list(log)
@@ -411,7 +426,7 @@ def main():
                         if start + i < len(f) and f[start + i]:
                             f[start + i] = float(f[start + i]) * c + 0.0  # + 0.0: no negative zero
                 stamp = int(round(float(f[1]) * 1000.0)) if "." in f[1] else int(f[1])  # old logs: integer milliseconds
-                age = int(f[2])
+                raw_age = age = int(f[2])
                 age = age if 0 <= age <= 2000 else 0  # old logs also hold other values here: the fix counts as just arrived
                 p, q = float(f[3]) * 100.0, float(f[5])
                 acc = [float(x) for x in f[7:10]]
@@ -425,7 +440,9 @@ def main():
             if scan["temperature_kelvin"] and plausible_temperature(oat - 273.15):
                 oat -= 273.15
                 temperature_kelvin_samples += 1
-            t_ms = monotone(stamp)
+            t_ms = monotone(stamp, fix["utc"] if fix else math.nan, raw_age)
+            if monotone.recovered:
+                timestamp_recovered_samples += 1
             ias = math.sqrt(2.0 * q / RHO0) if q > 0.0 else 0.0
             alt = T0DIVL * (1.0 - (p / P0) ** (1.0 / G0DIVRXL)) if p > 0 else math.nan
             if not plausible_temperature(oat):
@@ -490,6 +507,8 @@ def main():
         print(f"OAT converted from Kelvin for {temperature_kelvin_samples} sensor samples (verified against PXCV Celsius)")
     if temperature_estimated_samples:
         print(f"OAT estimated for {temperature_estimated_samples} sensor samples: 25°C at sea level, −6.5°C/km")
+    if timestamp_recovered_samples:
+        print(f"Timing recovered for {timestamp_recovered_samples} samples with frozen timestamps (advancing GNSS-age counter)")
     print(f"{a.out}: {starts} start(s), {frames} cycles ({frames / 36000.0:.2f} h), {fixes} GNSS fixes")
 
 
