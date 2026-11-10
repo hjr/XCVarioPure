@@ -93,7 +93,7 @@ void SensorTest::draw()
     int16_t line = 1;
     char buf[120];
     if ( baroSensor ) {
-        sprintf(buf, "%.1f %s ", AltUnit->apply(baroSensor->getHeadValid() ? altitude_isa.get() : 0.f), AltUnit->getName());
+        sprintf(buf, "%.1f %s ", baroSensor->getHeadValid() ? AltUnit->apply(altitude_isa.get()) : 0.f, AltUnit->getName());
         menuPrintLn(buf, line, 42);
         if (baroSensor && SetupCommon::isMaster()) {
             sprintf(buf, "%7.1f Pa  ", baroSensor->getHead());
@@ -102,7 +102,7 @@ void SensorTest::draw()
     }
     line++;
     if ( teSensor ) {
-        sprintf(buf, "%.1f m ", Units::calcAltitudeISA(teSensor->getHeadValid() ? teSensor->get() : 0.f));
+        sprintf(buf, "%.1f m ", teSensor->getHeadValid() ? Units::calcAltitudeISA(teSensor->get()) : 0.f);
         menuPrintLn(buf, line, 42);
         if (SetupCommon::isMaster()) {
             sprintf(buf, "%7.1f Pa  ", teSensor->getHead());
