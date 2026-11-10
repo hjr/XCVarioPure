@@ -200,9 +200,15 @@ dl_action_t FlarmMsg::parsePFLAX(NmeaPlugin *plg)
     NmeaPrtcl &nmea = plg->getNMEA();
     ProtocolState *sm = nmea.getSM();
     const std::vector<int> *word = &sm->_word_start;
+    // the number of fields without the checksum, the parser starts a word after the '*' as well
+    int fields = word->size();
+    if ( fields > 0 && sm->_frame[word->back() - 1] == '*' ) {
+        fields--;
+    }
 
-    if ( word->size() == 2 ) {
-        if ( *(sm->_frame.c_str() + word->at(0)) == 'A' ) {
+    if ( fields == 1 || fields == 2 ) {
+        const char cmd = sm->_frame[word->at(0)];
+        if ( cmd == 'A' && fields == 1 ) {
             // this is the confirmation from flarm to go binary
             ESP_LOGI(FNAME,"confirmed");
             DataLink *host = DEVMAN->getFlarmBPInitiator();
@@ -218,7 +224,7 @@ dl_action_t FlarmMsg::parsePFLAX(NmeaPlugin *plg)
                 hostfb->setPeer(devfb);
             }
         }
-        else if ( *(sm->_frame.c_str() + word->at(0)) == 'S' ) {
+        else if ( cmd == 'S' ) {
             if ( SetupCommon::isMaster() && !gflags.inSimulationMode ) {
                 // XCV extension to switch to simulation mode
                 ESP_LOGI(FNAME,"enter SIMULATION MODE");
@@ -236,13 +242,11 @@ dl_action_t FlarmMsg::parsePFLAX(NmeaPlugin *plg)
                 gflags.inSimulationMode = true;
                 MBOX->pushMessage(1, "Simulation Mode");
             }
-            if ( gflags.inSimulationMode) {
+            if ( gflags.inSimulationMode && fields == 2 ) {
                 // time jump, reset clock
-                if ( word->size() >= 2 ) {
-                    int speed = atoi(sm->_frame.c_str() + word->at(1));
-                    ESP_LOGI(FNAME,"Set SIM speed %d", speed);
-                    Clock::setSimSpeed(speed);
-                }
+                int speed = atoi(sm->_frame.c_str() + word->at(1));
+                ESP_LOGI(FNAME,"Set SIM speed %d", speed);
+                Clock::setSimSpeed(speed);
             }
             // always prepare vario for disruptive jump
             varioSensor->prepareForSimJump();
