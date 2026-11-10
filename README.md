@@ -93,7 +93,7 @@ The ESP32 integrates Bluetooth, Wi-Fi, and multiple serial interfaces, allowing 
   - while rolling the pitch based estimate is trusted less: adverse yaw sideslips the glider more than the side force shows
   - averaged wind: a 30 s low pass in straight flight, while circling an average over heading sectors, so every heading counts the same also in an unevenly flown circle
   - optional `$PXCVA` NMEA output for evaluation, and "Wind to Navi" sends the averaged wind to the navigation computer (`$WIMWV`, Cambridge `!w`)
-  - "NMEA Output" Recording adds the estimator inputs (about 1.3 kB/s, use Wi-Fi or Bluetooth): a flight in the navigation computer's NMEA log can be replayed on a PC with `tools/airmass_sim` (`airmass_replay <log> --csv out.csv`), through the same code the device runs; the replay checks itself against the recorded `$PXCVA` output
+  - "NMEA Output" Recording adds the estimator inputs (20 Hz, about 3 kB/s, use Wi-Fi or Bluetooth): a flight in the navigation computer's NMEA log can be replayed on a PC with `tools/airmass_sim` (`airmass_replay <log> --csv out.csv`), through the same code the device runs; the replay checks itself against the recorded `$PXCVA` output
   - "Pull-up Comp." compensates the static port error like the TE eAdjustment: tune it in calm air until pull-ups show neither false climb nor sink
 * Bluetooth, Wi-Fi, and two serial interfaces for external devices (XCSoar, LK8000, FLARM, Anemoi, other sensors …)
 * Complete support for a secondary variometer (two-seater) with automatic routing to all connected devices

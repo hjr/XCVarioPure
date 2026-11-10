@@ -48,8 +48,8 @@ private:
 };
 
 // NMEA output of the estimator ("NMEA Output"): $PXCVA, with the recording also the input sentences of
-// AirMassRecord.h, queued by the sensor loop in the order they happened. Pops the next line, false when empty.
-bool airmassNmeaPop(std::string& line);
+// AirMassRecord.h, queued by the sensor loop in the order they happened. Appends the queued lines, false when empty.
+bool airmassNmeaDrain(std::string& lines);
 
 extern AirMassSensor *airmassSensor;
 

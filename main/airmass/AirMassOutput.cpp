@@ -61,11 +61,8 @@ static bool naviWind(WindData& w)
 void airmass::nmeaFeed(NmeaPrtcl* nmea, bool slow)
 {
     // the queued lines in one message; no NMEA in binary mode, the queue is drained anyway
-    std::string lines, line;
-    while (airmassNmeaPop(line)) {
-        lines += line;
-    }
-    if (!lines.empty() && !nmea->getDL()->isBinActive()) {
+    std::string lines;
+    if (airmassNmeaDrain(lines) && !nmea->getDL()->isBinActive()) {
         Message* msg = nmea->newMessage();
         msg->buffer = std::move(lines);
         DEV::Send(msg);

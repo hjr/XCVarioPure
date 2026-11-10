@@ -24,7 +24,6 @@
 
 #include <algorithm>
 #include <cmath>
-#include <cstring>
 #include <initializer_list>
 
 AirMassSensor *airmassSensor = nullptr;
@@ -46,28 +45,36 @@ enum : int { NMEA_OFF = 0, NMEA_OUTPUT = 1, NMEA_RECORD = 2 };
 
 // lines for the NMEA output, from the sensor loop to the NMEA feed (5Hz), created with the first line
 constexpr int QUEUE_LINES = 20;
-constexpr int QUEUE_LEN = 224; // the longest sentence ($PXCVS) has about 190 characters
 static QueueHandle_t nmea_queue = nullptr;
 
-static void queueLine(const std::string& line)
+// Queues the sentence a record:: writer formats. With the queue full it is not even formatted: dropped, the replay
+// sees a gap.
+template <typename Format>
+static void queueLine(Format format)
 {
     if (!nmea_queue) {
-        nmea_queue = xQueueCreate(QUEUE_LINES, QUEUE_LEN);
+        nmea_queue = xQueueCreate(QUEUE_LINES, airmass::record::Line::SIZE);
     }
-    if (nmea_queue && line.size() < QUEUE_LEN) {
-        char buf[QUEUE_LEN]; // the queue copies whole items
-        std::memcpy(buf, line.c_str(), line.size() + 1);
-        xQueueSend(nmea_queue, buf, 0); // full: dropped, the replay sees a gap
+    if (!nmea_queue || uxQueueSpacesAvailable(nmea_queue) == 0) {
+        return;
+    }
+    const airmass::record::Line line = format();
+    if (!line.empty()) {
+        xQueueSend(nmea_queue, line.buf, 0); // the queue copies whole items
     }
 }
 
-bool airmassNmeaPop(std::string& line)
+bool airmassNmeaDrain(std::string& lines)
 {
-    char buf[QUEUE_LEN];
-    if (!nmea_queue || xQueueReceive(nmea_queue, buf, 0) != pdTRUE) {
+    const UBaseType_t n = nmea_queue ? uxQueueMessagesWaiting(nmea_queue) : 0;
+    if (n == 0) {
         return false;
     }
-    line = buf;
+    lines.reserve(lines.size() + n * airmass::record::Line::SIZE); // one allocation
+    char buf[airmass::record::Line::SIZE];
+    for (UBaseType_t i = 0; i < n && xQueueReceive(nmea_queue, buf, 0) == pdTRUE; ++i) {
+        lines += buf;
+    }
     return true;
 }
 
@@ -211,7 +218,7 @@ void AirMassSensor::applyConfig()
 {
     _pipe.configure(currentSetup());
     if (recording()) {
-        queueLine(airmass::record::setup(_pipe.setup()));
+        queueLine([this] { return airmass::record::setup(_pipe.setup()); });
     }
 }
 
@@ -263,7 +270,7 @@ void AirMassSensor::start()
     _compass_sample = {};
     _recording = recording();
     if (_recording) {
-        queueLine(airmass::record::start(st));
+        queueLine([&st] { return airmass::record::start(st); });
     }
     AirMassEKF::GnssVelocity g;
     _gnss_epoch = latestGnss(g); // only fresh epochs
@@ -328,7 +335,7 @@ void AirMassSensor::stop()
     persistLearned();
     _pipe.ekf().stop();
     if (recording()) {
-        queueLine(airmass::record::stop(Clock::getMillis()));
+        queueLine([] { return airmass::record::stop(Clock::getMillis()); });
     }
     airmass_status.set(0);
     airmass_inst_wind.set(WindData().data());
@@ -359,7 +366,7 @@ void AirMassSensor::postProcess()
     if (currentSetup() != _pipe.setup()) {
         applyConfig();
     } else if (rec && _setup_timer.due(now, SETUP_MS)) {
-        queueLine(airmass::record::setup(_pipe.setup())); // for logs started in flight
+        queueLine([this] { return airmass::record::setup(_pipe.setup()); }); // for logs started in flight
     }
 
     // the raw measurements of this cycle
@@ -387,14 +394,14 @@ void AirMassSensor::postProcess()
     f.flap_lever = flapLever(_pipe.attitude().roll());
     if (rec && !_recording && f.valid == airmass::Frame::ALL && std::isfinite(f.baro_alt)) {
         // Recording was enabled after the estimator started: send everything a replay needs to join now.
-        queueLine(airmass::record::setup(_pipe.setup()));
-        queueLine(airmass::record::start(airmass::record::snapshot(_pipe, f)));
+        queueLine([this] { return airmass::record::setup(_pipe.setup()); });
+        queueLine([this, &f] { return airmass::record::start(airmass::record::snapshot(_pipe, f)); });
         _recording = true;
     }
     if (!rec) _recording = false;
     _pipe.step(f);
     if (rec) {
-        queueLine(airmass::record::frame(f));
+        queueLine([&f] { return airmass::record::frame(f); });
     }
 
     // compass: absolute heading in straight flight, aligns the wind before the first turn
@@ -405,7 +412,7 @@ void AirMassSensor::postProcess()
                                          COMPASS_SIGMA};
         _pipe.heading(h.psi, h.sigma);
         if (rec) {
-            queueLine(airmass::record::heading(h));
+            queueLine([&h] { return airmass::record::heading(h); });
         }
     }
 
@@ -423,7 +430,7 @@ void AirMassSensor::postProcess()
         }
         _pipe.gnss(g.v, g.prior, g.wn0, g.we0);
         if (rec) {
-            queueLine(airmass::record::gnss(g));
+            queueLine([&g] { return airmass::record::gnss(g); });
         }
     }
 
@@ -431,7 +438,7 @@ void AirMassSensor::postProcess()
     publish();
     // the estimator output at 5Hz, after the cycle it belongs to
     if (airmass_nmea.get() != NMEA_OFF && _output_timer.due(now, 200)) {
-        queueLine(airmass::record::output(_pipe.ekf()));
+        queueLine([this] { return airmass::record::output(_pipe.ekf()); });
     }
 
     // a power cut before the landing detection must not lose the whole flight
