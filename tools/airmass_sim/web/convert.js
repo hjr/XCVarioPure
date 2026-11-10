@@ -227,7 +227,7 @@
   const fg = (v, p) => (Number.isFinite(v) ? String(parseFloat(v.toPrecision(p))) : "");
   const sentence = (name, fields) => checksum("$" + name + (fields.length ? "," + fields.join(",") : ""));
 
-  // S2F::recalculatePolar and getSink
+  // S2F::recalculatePolar and glider::Polar::sink (components/glider/include/glider/PolarModel.h)
   function makePolar(g, ballastFactor, bugs) {
     const [[v1, w1], [v2, w2], [v3, w3]] = g.polar.map(([v, w]) => [v / 3.6, w]);
     const d = v1 * v1 * (v2 - v3) + v2 * v2 * (v3 - v1) + v3 * v3 * (v1 - v2);

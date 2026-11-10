@@ -86,8 +86,8 @@ void S2F::setPolar(int gldr_idx)
 	polar_wingload.set( p.wingload, true, false );
 	// set default min speed as estimated stall_speed * 1.05 )
 	// Vstall := sqrt( (2 * W/S * g) / ( rho * Clmax ) ) [m/s]
-	_stall_speed = std::sqrt( ( 2.f * polar_wingload.get() * Units::g0) / (Units::rho0 * 1.4f ) ) * 1.05f;
-	polar_stall_speed.set(Units::mps_to_kmh(_stall_speed), true, false);
+	_polar.v_stall = std::sqrt( ( 2.f * polar_wingload.get() * Units::g0) / (Units::rho0 * 1.4f ) ) * 1.05f;
+	polar_stall_speed.set(Units::mps_to_kmh(_polar.v_stall), true, false);
 	ESP_LOGI(FNAME,"Estimated stall speed: %.1f km/h", polar_stall_speed.get());
 	polar_max_ballast.set( p.max_ballast, true, false );
 	polar_wingarea.set( p.wingarea, true, false );
@@ -163,7 +163,7 @@ mps_t S2F::calculate(mps_t netto_vario, bool circling)
     // if (!std::isfinite(a0) || !std::isfinite(a2) || a2 <= 0.0f) {
     //     return _min_sink_speed;
     // }
-    mps_t climb = a0 - MC.get();
+    mps_t climb = _polar.a0 - MC.get();
     // ESP_LOGI(FNAME, "S2F::calculate() a0: %.3f a2: %.6f MC: %.3f climb: %.3f", a0, a2, MC.get(), climb);
 
     if (!s2f_blockspeed.get()) {
@@ -172,7 +172,7 @@ mps_t S2F::calculate(mps_t netto_vario, bool circling)
     }
 
     // radicand check
-    float arg = climb / a2;
+    float arg = climb / _polar.a2;
     if (!std::isfinite(arg) || arg <= 0.0f) {
         ESP_LOGI(FNAME, "S2F::calculate() invalid radicand: %.6f", arg);
         return _min_sink_speed;
@@ -189,19 +189,7 @@ mps_t S2F::calculate(mps_t netto_vario, bool circling)
 // v_in : [m/s]
 // sink rate at given airspeed and current load factor
 mps_t S2F::getSink( mps_t v_in ) {
-	return getSink( v_in, getLoadFactor() );
-}
-
-mps_t S2F::getSink( mps_t v_in, float n ) {
-	float v_stall = _stall_speed * 0.9;
-	if ( v_in < v_stall || !_valid ){
-		// ESP_LOGI(FNAME,"S2F::sink, warning, airspeed %.1f below minimum speed %.1f km/h", v_in, v_stall );
-		return 0.0;
-	}
-	float sqn = std::sqrt(n);
-	mps_t s = a0*n*sqn + a1*v_in*n + a2*v_in*v_in*sqn;
-	// ESP_LOGI(FNAME,"S2F::sink() V:%0.1f sink:%2.2f G-Load:%1.2f", v_in, s, n );
-	return s;
+	return _polar.sink( v_in, getLoadFactor() );
 }
 
 // min sink at current load factor
@@ -246,6 +234,7 @@ void S2F::recalculatePolar()
 	// w= a0 + a1*v + a2*v^2   from ilec
 	// w=  c +  b*v +  a*v^2   from wiki
 	float d = v1 * v1 * (v2 - v3) + v2 * v2 * (v3 - v1) + v3 * v3 * (v1 - v2);
+	float a0, a1, a2;
 	a2 = d == 0. ? 0. : ((v2 - v3) * (w1 - w3) + (v3 - v1) * (w2 - w3)) / d;
 	d = v2 - v3;
 	a1 = d == 0. ? 0. : (w2 - w3 - a2 * (v2 * v2 - v3 * v3)) / d;
@@ -256,7 +245,10 @@ void S2F::recalculatePolar()
 	a0 = a0 * ((bugs.get() + 100.0) / 100.0);
 	a1 = a1 * ((bugs.get() + 100.0) / 100.0);
 	a2 = a2 * ((bugs.get() + 100.0) / 100.0);
-    _valid = calcValidPolar();
+	_polar.a0 = a0;
+	_polar.a1 = a1;
+	_polar.a2 = a2;
+    _polar.valid = calcValidPolar();
 	ESP_LOGI(FNAME, "bugs:%d balo:%.1f%% a0=%f a1=%f  a2=%f s(80)=%f, s(160)=%f", (int)bugs.get(), myballast, a0, a1, a2, getSink(80), getSink(160));
 }
 
@@ -270,24 +262,24 @@ void S2F::calculateOverweight()
 
 // minimum sink, circling sink, best circling speed
 void S2F::recalcSinkNSpeeds() {
-    if (!_valid) {
+    if (!_polar.valid) {
         _min_sink_speed = _min_sink = _circling_speed = _circling_sink = 0.;
         return;
     }
     // 2*a2*v + a1 = 0
-    _min_sink_speed = -a1 / (2 * a2);
+    _min_sink_speed = -_polar.a1 / (2 * _polar.a2);
     _min_sink = getSink(_min_sink_speed);
     _circling_speed = 1.2 * _min_sink_speed;
     _circling_sink = getSink(_circling_speed);
     // use user defined/confirmed stall speed
     const float loading_factor = std::sqrt(myballast);
-    _stall_speed = Units::kmh_to_mps(polar_stall_speed.get()) * std::sqrt(loading_factor);
+    _polar.v_stall = Units::kmh_to_mps(polar_stall_speed.get()) * std::sqrt(loading_factor);
 
     ESP_LOGI(FNAME, "Airspeed @ min Sink =%3.1f kmh", Units::mps_to_kmh(_min_sink_speed));
     ESP_LOGI(FNAME, "          min Sink  =%2.3f m/s", _min_sink);
     ESP_LOGI(FNAME, "Circling Speed      =%3.1f kmh", Units::mps_to_kmh(_circling_speed));
     ESP_LOGI(FNAME, "Stall    Speed      =%2.3f km/h", polar_stall_speed.get());
-    ESP_LOGI(FNAME, "Stall warn @        =%2.3f", Units::mps_to_kmh(_stall_speed));
+    ESP_LOGI(FNAME, "Stall warn @        =%2.3f", Units::mps_to_kmh(_polar.v_stall));
 }
 
 float S2F::getLoadFactor() {
@@ -312,7 +304,7 @@ float S2F::getLoadFactor() {
 // }
 
 bool S2F::calcValidPolar() {
-    return (a2 < 0 && a1 > 0 && a0 < 0);
+    return (_polar.a2 < 0 && _polar.a1 > 0 && _polar.a0 < 0);
 }
 
 #ifdef S2F_Test

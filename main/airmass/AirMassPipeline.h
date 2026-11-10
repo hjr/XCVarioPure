@@ -10,6 +10,7 @@
 #include "AirMassInput.h"
 #include "AirMassSampling.h"
 #include "AirMassWindAverage.h"
+#include "glider/PolarModel.h"
 
 #include <algorithm>
 #include <cmath>
@@ -17,22 +18,8 @@
 
 namespace airmass {
 
-// the glider polar like S2F::getSink: sink at the IAS and load factor, negative = sink, 0 below the stall speed
-struct Polar {
-    float a0 = 0.f, a1 = 0.f, a2 = 0.f;
-    float v_stall = 0.f; // m/s
-    bool valid = false;
-
-    float sink(float v, float n) const {
-        const float vs = v_stall * 0.9f;
-        if (v < vs || !valid) {
-            return 0.f;
-        }
-        const float sqn = std::sqrt(n);
-        return a0 * n * sqn + a1 * v * n + a2 * v * v * sqn;
-    }
-    bool operator==(const Polar& o) const { return a0 == o.a0 && a1 == o.a1 && a2 == o.a2 && v_stall == o.v_stall && valid == o.valid; }
-};
+// the device's glider polar (S2F): sink at the IAS and load factor
+using Polar = glider::Polar;
 
 // installation and settings
 struct Setup {

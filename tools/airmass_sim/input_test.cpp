@@ -39,7 +39,7 @@ void fill(const airmass::Raw& r, AirMassEKF::Input& in, const AirMassEKF& ekf = 
 }
 
 // a glider of 400kg on 10.5m², IMU 1m ahead of the CG
-airmass::Raw glider(float ias) {
+airmass::Raw gliderRaw(float ias) {
     airmass::Raw r;
     r.ias = ias;
     r.tas = ias * 1.1f;
@@ -64,7 +64,7 @@ int main() {
 
     std::printf("steady glide, 6° nose down (gravity only)\n");
     {
-        airmass::Raw r = glider(25.f);
+        airmass::Raw r = gliderRaw(25.f);
         downAxis(0.f, -6.f * D2R, r.down_body);
         for (int i = 0; i < 3; ++i) r.f_body[i] = -r.down_body[i];
         fill(r, in);
@@ -78,7 +78,7 @@ int main() {
 
     std::printf("coordinated 30° bank turn\n");
     {
-        airmass::Raw r = glider(25.f);
+        airmass::Raw r = gliderRaw(25.f);
         const float roll = 30.f * D2R;
         downAxis(roll, 0.f, r.down_body);
         // lift of 1/cos(roll) perpendicular to the air velocity: the body z axis reads it with cos(alpha)
@@ -97,7 +97,7 @@ int main() {
 
     std::printf("level, accelerating upwards with 2 m/s² and forward with 1 m/s²\n");
     {
-        airmass::Raw r = glider(25.f);
+        airmass::Raw r = gliderRaw(25.f);
         r.f_body[0] = 1.f / G;
         r.f_body[2] = -1.f - 2.f / G;
         fill(r, in);
@@ -108,7 +108,7 @@ int main() {
 
     std::printf("pull-up: pitch acceleration 2 rad/s², pitch rate 0.3 rad/s at the CG level flight\n");
     {
-        airmass::Raw r = glider(25.f);
+        airmass::Raw r = gliderRaw(25.f);
         const float q = 0.3f, qdot = 2.f;
         r.gyro[1] = q;
         r.gyro_dot[1] = qdot;
@@ -123,7 +123,7 @@ int main() {
 
     std::printf("coordinated 40° bank turn with thermal flaps: fuselage 6° below the AoA model\n");
     {
-        airmass::Raw r = glider(25.f);
+        airmass::Raw r = gliderRaw(25.f);
         AirMassEKF flaps = fresh();
         flaps.setPitchOffset(6.f * D2R, 0.01f);
         const float roll = 40.f * D2R;
@@ -147,7 +147,7 @@ int main() {
 
     std::printf("air data model at 25 m/s IAS, 1g\n");
     {
-        airmass::Raw r = glider(25.f);
+        airmass::Raw r = gliderRaw(25.f);
         fill(r, in);
         const float cl = 2.f * in.load_factor * 400.f * G / (airmass::RHO0 * 10.5f * 25.f * 25.f);
         expect("angle of attack from the lift coefficient [rad]", in.aoa, cl / airmass::CL_ALPHA, 1e-5f);
@@ -160,7 +160,7 @@ int main() {
 
     std::printf("sideslip from the lateral force\n");
     {
-        airmass::Raw r = glider(25.f);
+        airmass::Raw r = gliderRaw(25.f);
         r.f_body[1] = -0.05f;
         fill(r, in);
         const float qs = 0.5f * airmass::RHO0 * 25.f * 25.f * 10.5f * airmass::CY_BETA;

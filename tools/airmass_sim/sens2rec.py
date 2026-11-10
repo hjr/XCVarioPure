@@ -21,7 +21,12 @@ specific force [g, body]."""
 import argparse
 import gzip
 import math
+import os
 import re
+import sys
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "web"))
+from make_gliders import gliders  # noqa: E402
 
 RHO0, R_AIR, G0, P0, T0DIVL, G0DIVRXL = 1.225, 287.058, 9.80665, 101325.0, 44330.76923, 5.25588
 KNOT = 0.514444
@@ -36,13 +41,8 @@ def estimated_temperature(alt):
     return 25 - 0.0065 * (alt if math.isfinite(alt) else 0)
 
 
-# components/glider/PolarTable.txt and FlapTable.txt
-GLIDERS = {
-    "ASG 29/18": dict(id=1032, wingload=42.9, polar=((82, -0.47), (132, -0.80), (184, -1.80)), area=10.5, vne=280.0,
-                      flaps=(180, 142, 110, 94, 57)),
-    "ASG 29/15": dict(id=1033, wingload=47.7, polar=((86, -0.58), (127, -0.80), (182, -1.80)), area=9.22, vne=285.0,
-                      flaps=(198, 156, 121, 104, 60)),
-}
+# components/glider/PolarTable.txt and FlapTable.txt, as the browser converter has them (gliders.js)
+GLIDERS = gliders()
 
 
 def parse_xcv(line, logged):
@@ -259,7 +259,7 @@ def sentence(name, fields):
 
 
 class Polar:
-    """S2F::recalculatePolar and getSink"""
+    """S2F::recalculatePolar and glider::Polar::sink (components/glider/include/glider/PolarModel.h)"""
 
     def __init__(self, g, ballast_factor, bugs):
         (v1, w1), (v2, w2), (v3, w3) = [(v / 3.6, w) for v, w in g["polar"]]
@@ -316,8 +316,9 @@ def main():
     ap.add_argument("log")
     ap.add_argument("out")
     ap.add_argument("--aux")
-    ap.add_argument("--glider", default="ASG 29/18", choices=sorted(GLIDERS) + ["log"],
-                    help="log: the glider type the log names (CA1) if known here, else the ASG 29/18")
+    ap.add_argument("--glider", default="ASG 29/18", choices=sorted(GLIDERS) + ["log"], metavar="NAME",
+                    help="a glider type of components/glider/PolarTable.txt, or log: the glider type the log names (CA1) "
+                         "if known, else the ASG 29/18")
     ap.add_argument("--lever-arm", type=float, default=0.0)
     ap.add_argument("--mass", type=float, default=0.0,
                     help="gross weight [kg], instead of the logged weights (CA1) or else the logged ballast factor")
@@ -372,7 +373,7 @@ def main():
             if logged["empty"] > 0 else math.nan
         ref = g["wingload"] * g["area"]
         bf = a.mass / ref if a.mass > 0 else logged_mass / ref if logged_mass > 0 else (pxcv["ballast"] if pxcv["ballast"] > 0.5 else 1.0)
-        polar, flaps = Polar(g, bf, a.bugs if a.bugs >= 0 else pxcv["bugs"]), Flaps(g, bf)
+        polar, flaps = Polar(g, bf, a.bugs if a.bugs >= 0 else pxcv["bugs"]), Flaps(g, bf) if g.get("flaps") else None
         mass = bf * ref
         return sentence("PXCVC", [fmt(a.lever_arm, "%.4f"), fmt(mass, "%.2f"), fmt(g["area"], "%.4f"), fmt(polar.a0, "%.8g"),
                                   fmt(polar.a1, "%.8g"), fmt(polar.a2, "%.8g"), fmt(polar.v_stall, "%.4f"), "1", "1.000", "1.000",
@@ -472,10 +473,10 @@ def main():
             flap, sink = math.nan, math.nan
             if running:
                 load = 1.0 / max(math.cos(math.radians(pxcv["roll"])), 0.3)
-                opt = flaps.optimum(ias, load)
+                opt = flaps.optimum(ias, load) if flaps else math.nan
                 # the lever as logged (FLP), else the recommendation
                 flap = math.nan if a.no_flaps else logged["flap"] if math.isfinite(logged["flap"]) \
-                    else (opt if a.flap_fractional else float(round(opt)))
+                    else (opt if a.flap_fractional or not flaps else float(round(opt)))
                 sink = polar.sink(ias, max(-acc[2], 0.3))
                 setup_count += 1
                 if setup_count % 100 == 0:
