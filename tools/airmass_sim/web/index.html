@@ -54,7 +54,9 @@ button, input, select { font: inherit; color: inherit; }
 .sel { background-color: var(--surface); border: 1px solid var(--rule); border-radius: 6px; padding: 5px 6px; }
 #glider { max-width: 150px; }
 .bar #slider { flex: 1 1 140px; min-width: 80px; accent-color: var(--accent); }
-.clock { font: 600 0.95rem var(--mono); white-space: nowrap; }
+.clock { font: 600 0.95rem var(--mono); white-space: nowrap; background: none; border: 0; padding: 0; cursor: copy; }
+.clock:disabled { cursor: default; }
+.clock:hover:not(:disabled) { color: var(--accent); }
 .soundbox { display: flex; gap: 6px; align-items: center; }
 .soundbox input[type=range] { width: 64px; accent-color: var(--accent); }
 /* progress and errors: a note over the map, gone once a flight is replayed */
@@ -156,7 +158,7 @@ select { appearance: none; -webkit-appearance: none; padding-right: 26px !import
       <option value="1">1×</option><option value="2">2×</option><option value="5">5×</option><option value="10" selected>10×</option>
       <option value="30">30×</option><option value="60">60×</option><option value="120">120×</option><option value="300">300×</option>
     </select>
-    <span class="clock" id="clock">--:--:--</span>
+    <button type="button" class="clock" id="clock" disabled title="Copy date and time" aria-label="Copy replay date and time">--:--:--</button>
     <input type="range" id="slider" min="0" max="1" step="0.1" value="0" disabled aria-label="Flight time" title="←/→: 10 s, Shift: 1 min. Charts: click to jump, wheel to zoom, drag to pan, double-click for the whole flight">
     <label class="btn soundbox" title="The XCVario vario tone"><input type="checkbox" id="sound" checked> Sound
       <input type="range" id="volume" min="0" max="1" step="0.05" value="0.5" aria-label="Volume"></label>
@@ -451,6 +453,7 @@ async function replayOnce() {
     if (!rep.n) throw new Error("Could not initialize replay. The recording needs glider configuration and either a recorded start or usable airborne sensor data.");
     const keepT = D && D.name === fileName ? T : null;
     D = build(conv, rep);
+    D.clockDate = logDate(sourceText, sourceName);
     derive(D);
     let timeline;
     try { timeline = AirMassConvert.serialTimeline(sourceText); }
@@ -924,6 +927,42 @@ function clockText(t) {
 }
 const clockSuffix = () => (D && Number.isFinite(D.utcOfs) ? " UTC" : " device");
 
+function logDate(text, name) {
+  const day = (year, month, date) => {
+    const ms = Date.UTC(year, month - 1, date), d = new Date(ms);
+    return d.getUTCFullYear() === year && d.getUTCMonth() === month - 1 && d.getUTCDate() === date ? ms : NaN;
+  };
+  // Prefer the recorded UTC date; sensor-only logs normally carry their date in the filename.
+  for (const match of text.matchAll(/\$G[PN]RMC,([^\r\n*]+)/g)) {
+    const f = match[1].split(",");
+    if (f[1] !== "A" || !/^\d{6}(?:\.\d+)?$/.test(f[0]) || !/^\d{6}$/.test(f[8])) continue;
+    const year = +f[8].slice(4), ms = day(year + (year >= 80 ? 1900 : 2000), +f[8].slice(2, 4), +f[8].slice(0, 2));
+    if (Number.isFinite(ms)) return { day: ms, utc: true };
+  }
+  const match = name.match(/(?:^|\D)(\d{4})-(\d{2})-(\d{2})(?!\d)/);
+  return { day: match ? day(+match[1], +match[2], +match[3]) : NaN, utc: false };
+}
+
+function dateTimeText(t) {
+  const time = clockText(t) + clockSuffix();
+  if (!D || !Number.isFinite(D.clockDate?.day)) return time;
+  const offset = Number.isFinite(D.utcOfs) ? D.utcOfs : 0;
+  const firstDay = D.clockDate.utc ? 0 : Math.floor((D.t[0] + offset) / 86400);
+  const day = D.clockDate.day + (Math.floor((t + offset) / 86400) - firstDay) * 86400000;
+  return new Date(day).toISOString().slice(0, 10) + " " + time;
+}
+
+$("clock").onclick = async () => {
+  if (!D) return;
+  const text = $("clock").textContent;
+  try {
+    await navigator.clipboard.writeText(text);
+    setStatus(`Copied ${text}`, false, true);
+  } catch (e) {
+    setStatus(`Could not copy date and time: ${e.message}`, true);
+  }
+};
+
 // vario gauge: 0 at 9 o'clock, lift clockwise over the top, ±5 m/s at ±150°
 function drawVario(k) {
   const { ctx, w, h } = fitCanvas($("vario"));
@@ -1240,11 +1279,12 @@ function updateReadouts(k) {
 }
 
 function drawAll() {
+  $("clock").disabled = !D;
   const k = D ? indexAt(T) : 0;
   drawVario(k); drawHorizon(k); drawStrip(k);
   if (!D) return;
   updateReadouts(k);
-  $("clock").textContent = clockText(D.t[k]) + clockSuffix();
+  $("clock").textContent = dateTimeText(D.t[k]);
   $("slider").value = T;
   if (gliderMarker && Number.isFinite(D.lat[k])) {
     const ll = [D.lat[k], D.lon[k]];
@@ -1400,7 +1440,7 @@ document.addEventListener("pointerdown", (e) => { if (!$("settings").hidden && !
 $("slider").oninput = () => seek(+$("slider").value, scheduleDraw);
 $("rerun").onclick = run;
 document.addEventListener("keydown", (e) => {
-  if (e.ctrlKey || e.metaKey || e.altKey || e.isComposing || e.target.closest("input[type=text], input[type=number], select, textarea, [contenteditable]")) return;
+  if (e.ctrlKey || e.metaKey || e.altKey || e.isComposing || e.target.closest("#clock, input[type=text], input[type=number], select, textarea, [contenteditable]")) return;
   const speed = $("speed");
   const option = /^[1-9]$/.test(e.key) ? speed.options[Number(e.key) - 1] : null;
   if (option && !option.disabled) {
