@@ -163,8 +163,9 @@
           if (hpa > 800 && hpa < 1100) [out.qnh, out.qnhFrom] = [hpa, "CA1"];
         }
       } else if (line.startsWith("$PXCV,")) {
-        conventions.pxcv(fields(line));
-        if (!Number.isFinite(pxcv) && +fields(line)[7] > 800) pxcv = +fields(line)[7];
+        const f = fields(line);
+        conventions.pxcv(f);
+        if (!Number.isFinite(pxcv) && +f[7] > 800) pxcv = +f[7];
       } else if (line.startsWith("$SENS,")) {
         const f = fields(line);
         conventions.sens(f);

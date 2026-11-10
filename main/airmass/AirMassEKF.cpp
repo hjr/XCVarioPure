@@ -453,8 +453,7 @@ void AirMassEKF::fuseEnergy(const Input& in) {
     // its own the estimate then reads low over minutes. The output follows the plain energy balance (the airspeed
     // derivative, equal weight) over anchor_tau, the estimator keeps the fast part (gust rejection, pull-ups).
     if (_cfg.anchor_tau > 0.f) {
-        const float wd_plain = -(_sink_f + v * _a_air / G0) + _vd_f;
-        _anchor += (wd_plain - _x[WD] - _anchor) * in.dt / (_cfg.anchor_tau + in.dt);
+        _anchor += (_wd_energy_plain - _x[WD] - _anchor) * in.dt / (_cfg.anchor_tau + in.dt);
     }
 }
 

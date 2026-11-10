@@ -456,24 +456,18 @@ void AirMassSensor::publish()
     };
     setChanged(airmass_status, st);
 
-    if (st & AirMassEKF::ST_WIND_VALID) {
-        const vector_f avg(_pipe.avgWind().windN(), _pipe.avgWind().windE(), 0.f);
-        if (wind_due) {
-            setChanged(airmass_inst_wind, windFromVector(wind).data());
-        }
-        if (average_due) {
-            setChanged(airmass_avg_wind, windFromVector(avg).data());
-        }
-    } else if (st & AirMassEKF::ST_WIND_DEGRADED) {
-        // not valid any more, the estimate is still the best instant wind there is: shown marked, no average
-        if (wind_due) {
-            setChanged(airmass_inst_wind, windFromVector(wind).data());
-        }
-        setChanged(airmass_avg_wind, WindData().data());
-    } else {
-        // no stale wind for consumers that do not check the status
+    // a degraded wind is still the best instant wind there is: shown marked, but no average.
+    // No stale wind for consumers that do not check the status.
+    if (!(st & (AirMassEKF::ST_WIND_VALID | AirMassEKF::ST_WIND_DEGRADED))) {
         setChanged(airmass_inst_wind, WindData().data());
+    } else if (wind_due) {
+        setChanged(airmass_inst_wind, windFromVector(wind).data());
+    }
+    if (!(st & AirMassEKF::ST_WIND_VALID)) {
         setChanged(airmass_avg_wind, WindData().data());
+    } else if (average_due) {
+        const vector_f avg(_pipe.avgWind().windN(), _pipe.avgWind().windE(), 0.f);
+        setChanged(airmass_avg_wind, windFromVector(avg).data());
     }
     if (_diagnostic_timer.due(now, 5000)) {
         ESP_LOGI(FNAME, "AirMass st %x wind %.1f/%.1f/%.2f psi %.1f° k %.3f thb %.2f° baz %.3f bgz %.3f°/s lat %.0fms", st, wind.x, wind.y,

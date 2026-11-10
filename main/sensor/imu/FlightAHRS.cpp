@@ -106,7 +106,7 @@ void FlightAHRS::startCalibration(int8_t duration) {
 
 // Conventional NED aerospace roll/pitch, radians. Yaw unobservable without heading source.
 float FlightAHRS::rollRad() const { return std::atan2(2.f*(_q._w * _q._x + _q._y * _q._z), 1.f - 2.f * (_q._x * _q._x + _q._y * _q._y)); }
-float FlightAHRS::pitchRad() const { return std::asin(std::clamp(2.f * (_q._w * _q._y - _q._z * _q._x), -1.f, 1.f)); }
+float FlightAHRS::pitchRad() const { return MahonyAHRS::pitchRad(_q); }
 // Gravity-compensated inertial acceleration in BODY axes (m/s^2).
 // This is NOT necessarily TAS derivative (wind, sideslip, rotations).
 // vector_f FlightAHRS::linearAccelBody(vector_f accelG, float g) const {

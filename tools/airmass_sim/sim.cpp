@@ -95,12 +95,6 @@ struct Knobs {
     float static_cl = 0.01f;  // static port error per lift coefficient (pressure coefficient, around CL 0.6): changes
                               // with the angle of attack, so the pull-up compensation cannot cancel it
     float day = 0.f;          // Dutch day air mass realisation (thermal positions, turbulence), held-out days for the scoreboard
-    float ekf_lag_static = -1.f, ekf_lag_pitot = -1.f; // s, the lags the estimator assumes (negative: its defaults)
-    float degraded_factor = -1.f, degraded_time = -1.f; // the degraded wind range (negative: the estimator's defaults)
-    float ekf_load_w = -1.f, ekf_gust_w = -1.f;         // energy balance noise growth (negative: the estimator's defaults)
-    float ekf_anchor = -1.f;                            // s, output anchor to the plain energy balance (negative: default)
-    float ekf_energy_gate = -1.f, ekf_ktau = -1.f;      // energy balance gate [sigma], slow kinetic correction [s] (negative: default)
-    float ekf_ww = -1.f, ekf_ww_hp = -1.f, ekf_blend_hp = -1.f; // wind work weight, its high pass [s], blend high pass [s]
 };
 Knobs K;
 const std::pair<const char*, float*> KNOBS[] = {
@@ -111,10 +105,6 @@ const std::pair<const char*, float*> KNOBS[] = {
     {"flaps", &K.flaps}, {"flap_alpha0", &K.flap_alpha0}, {"flap_aid", &K.flap_aid}, {"flap_pilot", &K.flap_pilot}, {"aoa_nonlin", &K.aoa_nonlin}, {"gyro_gate", &K.gyro_gate},
     {"gust_resp", &K.gust_resp}, {"adverse_yaw", &K.adverse_yaw}, {"yaw_tau", &K.yaw_tau}, {"lag_static", &K.lag_static},
     {"lag_pitot", &K.lag_pitot}, {"static_cl", &K.static_cl}, {"day", &K.day},
-    {"ekf_lag_static", &K.ekf_lag_static}, {"ekf_lag_pitot", &K.ekf_lag_pitot}, {"degraded_factor", &K.degraded_factor}, {"degraded_time", &K.degraded_time},
-    {"ekf_load_w", &K.ekf_load_w}, {"ekf_gust_w", &K.ekf_gust_w}, {"ekf_anchor", &K.ekf_anchor},
-    {"ekf_energy_gate", &K.ekf_energy_gate}, {"ekf_ktau", &K.ekf_ktau},
-    {"ekf_ww", &K.ekf_ww}, {"ekf_ww_hp", &K.ekf_ww_hp}, {"ekf_blend_hp", &K.ekf_blend_hp},
 };
 constexpr float CY_TRUE = 0.25f;   // side force slope of the "real" glider, the device assumes airmass::CY_BETA
 constexpr float CD_BETA = 0.4f;    // 1/rad², drag increase with sideslip (about +0.3 m/s sink at 8° and 100 km/h)
@@ -742,18 +732,6 @@ int main(int argc, char** argv) {
     pipe.configure(setup);
     airmass::Pipeline::Options opts;
     opts.slip_aid = slip_aid;
-    opts.lag_static = K.ekf_lag_static >= 0.f ? K.ekf_lag_static : NAN;
-    opts.lag_pitot = K.ekf_lag_pitot >= 0.f ? K.ekf_lag_pitot : NAN;
-    opts.degraded_factor = K.degraded_factor >= 0.f ? K.degraded_factor : NAN;
-    opts.degraded_time = K.degraded_time >= 0.f ? K.degraded_time : NAN;
-    opts.energy_load_weight = K.ekf_load_w >= 0.f ? K.ekf_load_w : NAN;
-    opts.energy_gust_weight = K.ekf_gust_w >= 0.f ? K.ekf_gust_w : NAN;
-    opts.anchor_tau = K.ekf_anchor >= 0.f ? K.ekf_anchor : NAN;
-    opts.energy_gate = K.ekf_energy_gate >= 0.f ? K.ekf_energy_gate : NAN;
-    opts.kinetic_tau = K.ekf_ktau >= 0.f ? K.ekf_ktau : NAN;
-    opts.wind_work = K.ekf_ww >= 0.f ? K.ekf_ww : NAN;
-    opts.wind_work_hp = K.ekf_ww_hp >= 0.f ? K.ekf_ww_hp : NAN;
-    opts.blend_hp = K.ekf_blend_hp >= 0.f ? K.ekf_blend_hp : NAN;
     pipe.setOptions(opts);
     std::string unknown;
     if (!airmass::replay::applySettings(pipe.ekf(), cfg_settings, &unknown)) {
@@ -772,7 +750,7 @@ int main(int argc, char** argv) {
         std::fprintf(stderr, "cannot write %s\n", record_name);
         return 2;
     }
-    unsigned rec_count = 0; // like AirMassSensor's cycle count, for the 5Hz output
+    unsigned rec_count = 0; // the 5Hz output, like AirMassSensor's 200 ms output timer
 
     // raw IMU into the device AHRS, whose attitude starts the estimator
     DeviceAhrs ahrs;

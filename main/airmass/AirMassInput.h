@@ -64,16 +64,8 @@ inline float liftLoadFactor(const float f[3], float ias, float mass, float wing_
     return n;
 }
 
-// Sideslip from the lateral specific force, side force = q * S * CY_BETA * beta
-inline float slipSigma(float f_lat_g, float ias, float mass, float wing_area) {
-    const float qs = 0.5f * RHO0 * ias * ias * wing_area * CY_BETA;
-    if (ias < 10.f || qs < 1.f || mass <= 0.f) {
-        return 0.f;
-    }
-    return std::min(mass * G0 * std::fabs(f_lat_g) / qs, SLIP_MAX);
-}
-
-// Signed sideslip from lateral aerodynamic side force. Positive beta means air from the right.
+// Signed sideslip from the lateral specific force, side force = q * S * CY_BETA * beta.
+// Positive beta means air from the right.
 inline float slipBeta(float f_lat_g, float ias, float mass, float wing_area) {
     const float qs = 0.5f * RHO0 * ias * ias * wing_area * CY_BETA;
     if (ias < 10.f || qs < 1.f || mass <= 0.f) return 0.f;
@@ -112,8 +104,8 @@ inline void fillInput(const Raw& r, const AirData& a, AirMassEKF::Input& in) {
     in.tas = r.tas; // the estimator applies its airspeed scale itself
     in.aoa = a.aoa;
     in.polar_sink = NAN;
-    in.slip_sigma = slipSigma(f[1], a.ias, r.mass, r.wing_area);
     in.slip_beta = slipBeta(f[1], a.ias, r.mass, r.wing_area);
+    in.slip_sigma = std::fabs(in.slip_beta);
     // the polar is defined on IAS: the true sink scales with TAS/IAS
     if (a.ias > 10.f && r.wing_area > 1.f && r.mass > 0.f && r.polar_sink_ias < 0.f) {
         in.polar_sink = -r.polar_sink_ias * r.tas / r.ias;
