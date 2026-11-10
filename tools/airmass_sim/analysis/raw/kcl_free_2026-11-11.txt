@@ -1,0 +1,80 @@
+== AoA scale free (kcl_min=0.2,kcl_max=2), coordinated
+2024-09-21_10-38.nmea      DG 800B/18     kcl 0.650 thb 3.30° k_tas 0.981 lat 250 ms | beta straight -2.15° left -4.59° right -2.62° | beta/sin(roll) left 7.46 right -5.01 | n 8656 12199
+2025-04-16_06-02.nmea      DG 800B/18     kcl 0.370 thb -3.73° k_tas 0.942 lat 250 ms | beta straight -0.95° left -3.86° right -1.50° | beta/sin(roll) left 6.58 right -2.58 | n 4872 17786
+2025-05-16_11-09.nmea      DG 800B/18     kcl 0.587 thb 2.74° k_tas 0.915 lat 255 ms | beta straight 0.78° left -0.91° right 2.92° | beta/sin(roll) left 1.54 right 5.24 | n 3917 13706
+2025-06-09_09-40.nmea      DG 800B/18     kcl 0.874 thb 3.54° k_tas 0.955 lat 250 ms | beta straight 0.38° left -2.05° right 1.71° | beta/sin(roll) left 3.70 right 3.41 | n 6549 10230
+2025-07-04_10-36.nmea      Arcus          kcl 0.685 thb -1.07° k_tas 0.991 lat 250 ms | beta straight 0.79° left 0.63° right 3.48° | beta/sin(roll) left -0.90 right 5.64 | n 14848 25420
+2025-07-05_10-13.nmea      Arcus          kcl 0.735 thb -1.44° k_tas 0.985 lat 250 ms | beta straight 0.64° left 0.13° right 2.05° | beta/sin(roll) left -0.07 right 3.62 | n 8413 14841
+2025-07-08_06-46.nmea      Arcus          kcl 0.510 thb -3.07° k_tas 0.981 lat 254 ms | beta straight 1.00° left 0.96° right 2.17° | beta/sin(roll) left -1.71 right 4.14 | n 6152 11829
+2025-07-10_10-04.nmea      Arcus          kcl 0.569 thb 0.83° k_tas 0.989 lat 250 ms | beta straight 0.89° left 0.96° right 3.35° | beta/sin(roll) left -1.50 right 5.54 | n 31089 20140
+2025-07-11_09-24.nmea      Arcus          kcl 0.636 thb -0.09° k_tas 0.989 lat 250 ms | beta straight 0.77° left 0.69° right 3.11° | beta/sin(roll) left -1.05 right 5.30 | n 17205 22344
+2025-07-12_09-05.nmea      Arcus          kcl 0.672 thb 0.18° k_tas 0.998 lat 251 ms | beta straight 0.88° left 0.78° right 2.81° | beta/sin(roll) left -1.25 right 4.71 | n 19198 34175
+2026-03-03_12-49.nmea      DG 800B/18     kcl 0.744 thb -1.54° k_tas 0.980 lat 250 ms | beta straight 0.83° left -0.16° right 3.03° | beta/sin(roll) left 0.35 right 6.10 | n 4667 2933
+2026-08-22_09-38.nmea      ASG 29/18      kcl 0.889 thb -3.00° k_tas 1.005 lat 921 ms | beta straight 1.55° left 1.40° right 3.39° | beta/sin(roll) left -2.46 right 5.92 | n 23254 20002
+2026-08-24_12-01.nmea      ASG 29/18      kcl 0.251 thb -6.04° k_tas 1.014 lat 263 ms | beta straight 1.66° left 1.05° right 3.18° | beta/sin(roll) left -1.87 right 5.77 | n 28598 7697
+2026-08-25_12-10.nmea      ASG 29/18      kcl 0.352 thb -9.21° k_tas 1.017 lat 264 ms | beta straight 1.28° left 2.04° right 3.78° | beta/sin(roll) left -3.66 right 6.87 | n 28305 16501
+2026-08-30_10-03.nmea      ASG 29/18      kcl 0.903 thb -3.83° k_tas 1.028 lat 264 ms | beta straight 1.04° left 0.61° right 3.83° | beta/sin(roll) left -1.10 right 6.69 | n 41033 41452
+2026-08-31_09-35.nmea      ASG 29/18      kcl 0.455 thb -5.35° k_tas 1.005 lat 297 ms | beta straight 0.63° left 0.82° right 3.16° | beta/sin(roll) left -1.40 right 5.36 | n 43500 20900
+2026-09-01_09-30.nmea      ASG 29/18      kcl 0.321 thb -7.96° k_tas 1.010 lat 250 ms | beta straight 1.29° left 1.49° right 4.29° | beta/sin(roll) left -2.61 right 7.14 | n 27042 26041
+2026-09-02_09-52.nmea.gz   ASG 29/18      kcl 0.905 thb -0.49° k_tas 1.003 lat 709 ms | beta straight 1.05° left 0.69° right 3.02° | beta/sin(roll) left -1.31 right 4.89 | n 5233 14039
+2026-09-02_10-15.nmea      ASG 29/18      kcl 1.061 thb 2.83° k_tas 1.018 lat 741 ms | beta straight 1.68° left 5.32° right 0.99° | beta/sin(roll) left -9.14 right 1.84 | n 97 1552
+2026-09-02_11-01.nmea      ASG 29/18      kcl 0.725 thb -2.17° k_tas 1.018 lat 254 ms | beta straight 0.84° left 0.99° right 3.39° | beta/sin(roll) left -1.79 right 5.37 | n 22320 20669
+2026-09-02_12-05.nmea.gz   ASG 29/18      kcl 0.723 thb 1.15° k_tas 1.018 lat 254 ms | beta straight 0.86° left 1.15° right 3.86° | beta/sin(roll) left -2.06 right 5.98 | n 16955 8181
+2026-09-05_10-50.nmea      ASG 29/18      kcl 0.765 thb -5.01° k_tas 1.014 lat 257 ms | beta straight 0.81° left 0.11° right 2.57° | beta/sin(roll) left -0.12 right 4.55 | n 23952 19306
+2026-09-05_16-16.nmea.gz   ASG 29/18      kcl 0.829 thb -5.02° k_tas 1.013 lat 524 ms | beta straight 0.57° left -0.10° right 0.08° | beta/sin(roll) left 0.26 right 0.04 | n 1021 213
+2026-09-06_11-02.nmea.gz   ASG 29/18      kcl 0.200 thb -7.41° k_tas 1.019 lat 314 ms | beta straight 0.87° left 0.41° right 3.38° | beta/sin(roll) left -0.69 right 5.85 | n 37190 38708
+2026-09-07_11-17.nmea      ASG 29/18      kcl 0.828 thb -4.36° k_tas 1.024 lat 253 ms | beta straight 0.66° left -0.17° right 3.15° | beta/sin(roll) left 0.37 right 5.24 | n 21664 24093
+
+== free, sideslip in the air vector (slip_vector=1)
+2024-09-21_10-38.nmea      DG 800B/18     kcl 0.656 thb 3.39° k_tas 0.981 lat 264 ms | beta straight -2.17° left -4.59° right -2.64° | beta/sin(roll) left 7.45 right -5.03 | n 8667 12186
+2025-04-16_06-02.nmea      DG 800B/18     kcl 0.376 thb -3.75° k_tas 0.941 lat 252 ms | beta straight -0.95° left -3.84° right -1.49° | beta/sin(roll) left 6.55 right -2.57 | n 4885 17763
+2025-05-16_11-09.nmea      DG 800B/18     kcl 0.563 thb 2.70° k_tas 0.932 lat 263 ms | beta straight 0.78° left -0.92° right 2.94° | beta/sin(roll) left 1.57 right 5.26 | n 3923 13758
+2025-06-09_09-40.nmea      DG 800B/18     kcl 0.856 thb 3.47° k_tas 0.955 lat 335 ms | beta straight 0.38° left -2.04° right 1.71° | beta/sin(roll) left 3.67 right 3.40 | n 6567 10262
+2025-07-04_10-36.nmea      Arcus          kcl 0.647 thb -1.20° k_tas 1.022 lat 322 ms | beta straight 0.81° left 0.67° right 3.54° | beta/sin(roll) left -0.95 right 5.69 | n 14912 25516
+2025-07-05_10-13.nmea      Arcus          kcl 0.718 thb -1.30° k_tas 0.965 lat 526 ms | beta straight 0.66° left 0.14° right 2.11° | beta/sin(roll) left -0.10 right 3.70 | n 8495 14889
+2025-07-08_06-46.nmea      Arcus          kcl 0.502 thb -3.02° k_tas 0.973 lat 262 ms | beta straight 1.02° left 0.99° right 2.21° | beta/sin(roll) left -1.78 right 4.22 | n 6111 11798
+2025-07-10_10-04.nmea      Arcus          kcl 0.572 thb 0.71° k_tas 1.020 lat 618 ms | beta straight 0.91° left 0.97° right 3.42° | beta/sin(roll) left -1.50 right 5.62 | n 31001 20224
+2025-07-11_09-24.nmea      Arcus          kcl 0.618 thb 0.35° k_tas 0.971 lat 428 ms | beta straight 0.82° left 0.69° right 3.20° | beta/sin(roll) left -1.04 right 5.43 | n 17190 22372
+2025-07-12_09-05.nmea      Arcus          kcl 0.654 thb -0.03° k_tas 1.014 lat 459 ms | beta straight 0.91° left 0.83° right 2.89° | beta/sin(roll) left -1.34 right 4.81 | n 19233 34244
+2026-03-03_12-49.nmea      DG 800B/18     kcl 0.740 thb -1.58° k_tas 0.980 lat 806 ms | beta straight 0.84° left -0.16° right 3.04° | beta/sin(roll) left 0.36 right 6.10 | n 4668 2951
+2026-08-22_09-38.nmea      ASG 29/18      kcl 0.866 thb -3.05° k_tas 1.004 lat 724 ms | beta straight 1.55° left 1.40° right 3.38° | beta/sin(roll) left -2.45 right 5.90 | n 23264 20073
+2026-08-24_12-01.nmea      ASG 29/18      kcl 0.244 thb -6.00° k_tas 1.013 lat 264 ms | beta straight 1.65° left 1.03° right 3.15° | beta/sin(roll) left -1.84 right 5.72 | n 28620 7711
+2026-08-25_12-10.nmea      ASG 29/18      kcl 0.308 thb -9.36° k_tas 1.017 lat 341 ms | beta straight 1.28° left 2.04° right 3.80° | beta/sin(roll) left -3.67 right 6.89 | n 28250 16574
+2026-08-30_10-03.nmea      ASG 29/18      kcl 0.836 thb -4.00° k_tas 1.031 lat 287 ms | beta straight 1.04° left 0.61° right 3.82° | beta/sin(roll) left -1.10 right 6.68 | n 41113 41602
+2026-08-31_09-35.nmea      ASG 29/18      kcl 0.447 thb -5.36° k_tas 1.004 lat 314 ms | beta straight 0.63° left 0.82° right 3.16° | beta/sin(roll) left -1.40 right 5.36 | n 43510 20955
+2026-09-01_09-30.nmea      ASG 29/18      kcl 0.279 thb -8.15° k_tas 1.004 lat 252 ms | beta straight 1.29° left 1.49° right 4.28° | beta/sin(roll) left -2.60 right 7.11 | n 27071 26095
+2026-09-02_09-52.nmea.gz   ASG 29/18      kcl 0.845 thb -0.76° k_tas 0.998 lat 808 ms | beta straight 1.05° left 0.69° right 3.01° | beta/sin(roll) left -1.30 right 4.87 | n 5228 14070
+2026-09-02_10-15.nmea      ASG 29/18      kcl 1.031 thb 2.74° k_tas 1.014 lat 902 ms | beta straight 1.69° left 5.35° right 0.99° | beta/sin(roll) left -9.18 right 1.84 | n 97 1555
+2026-09-02_11-01.nmea      ASG 29/18      kcl 0.694 thb -2.21° k_tas 1.016 lat 506 ms | beta straight 0.84° left 0.99° right 3.40° | beta/sin(roll) left -1.79 right 5.37 | n 22271 20698
+2026-09-02_12-05.nmea.gz   ASG 29/18      kcl 0.730 thb 1.27° k_tas 1.016 lat 507 ms | beta straight 0.87° left 1.15° right 3.87° | beta/sin(roll) left -2.05 right 5.97 | n 16906 8186
+2026-09-05_10-50.nmea      ASG 29/18      kcl 0.696 thb -5.18° k_tas 1.011 lat 259 ms | beta straight 0.81° left 0.10° right 2.57° | beta/sin(roll) left -0.12 right 4.55 | n 24019 19340
+2026-09-05_16-16.nmea.gz   ASG 29/18      kcl 0.834 thb -5.02° k_tas 1.016 lat 622 ms | beta straight 0.57° left -0.11° right 0.05° | beta/sin(roll) left 0.28 right -0.03 | n 1023 214
+2026-09-06_11-02.nmea.gz   ASG 29/18      kcl 0.200 thb -7.51° k_tas 1.021 lat 706 ms | beta straight 0.87° left 0.41° right 3.37° | beta/sin(roll) left -0.69 right 5.82 | n 37175 38761
+2026-09-07_11-17.nmea      ASG 29/18      kcl 0.823 thb -4.44° k_tas 1.024 lat 329 ms | beta straight 0.67° left -0.17° right 3.14° | beta/sin(roll) left 0.37 right 5.22 | n 21699 24132
+
+== free, kinematic_learn=0
+2024-09-21_10-38.nmea      DG 800B/18     kcl 0.602 thb 10.93° k_tas 0.993 lat 368 ms | beta straight -2.11° left -4.48° right -2.52° | beta/sin(roll) left 7.19 right -4.74 | n 8863 12748
+2025-04-16_06-02.nmea      DG 800B/18     kcl 0.946 thb 9.15° k_tas 0.956 lat 315 ms | beta straight -0.92° left -3.64° right -1.45° | beta/sin(roll) left 6.18 right -2.47 | n 5137 18265
+2025-05-16_11-09.nmea      DG 800B/18     kcl 0.206 thb 11.20° k_tas 0.935 lat 259 ms | beta straight 0.76° left -0.91° right 2.94° | beta/sin(roll) left 1.54 right 5.26 | n 3947 13761
+2025-06-09_09-40.nmea      DG 800B/18     kcl 0.213 thb 14.14° k_tas 0.960 lat 250 ms | beta straight 0.37° left -2.04° right 1.70° | beta/sin(roll) left 3.65 right 3.38 | n 6621 10457
+2025-07-04_10-36.nmea      Arcus          kcl 0.200 thb 14.32° k_tas 1.030 lat 250 ms | beta straight 0.74° left 0.57° right 3.24° | beta/sin(roll) left -0.78 right 5.08 | n 15421 26086
+2025-07-05_10-13.nmea      Arcus          kcl 0.200 thb 13.87° k_tas 1.008 lat 250 ms | beta straight 0.61° left 0.10° right 1.96° | beta/sin(roll) left -0.04 right 3.36 | n 8829 15212
+2025-07-08_06-46.nmea      Arcus          kcl 0.415 thb 14.32° k_tas 0.998 lat 265 ms | beta straight 0.95° left 0.83° right 2.06° | beta/sin(roll) left -1.46 right 3.84 | n 6909 12532
+2025-07-10_10-04.nmea      Arcus          kcl 0.201 thb 14.32° k_tas 1.026 lat 250 ms | beta straight 0.83° left 0.86° right 3.11° | beta/sin(roll) left -1.31 right 5.05 | n 32223 20776
+2025-07-11_09-24.nmea      Arcus          kcl 0.200 thb 13.17° k_tas 1.012 lat 250 ms | beta straight 0.73° left 0.59° right 3.00° | beta/sin(roll) left -0.86 right 4.99 | n 17944 22683
+2025-07-12_09-05.nmea      Arcus          kcl 0.201 thb 14.32° k_tas 1.016 lat 256 ms | beta straight 0.83° left 0.70° right 2.69° | beta/sin(roll) left -1.11 right 4.40 | n 19822 34950
+2026-03-03_12-49.nmea      DG 800B/18     kcl 0.332 thb 13.36° k_tas 0.997 lat 722 ms | beta straight 0.82° left -0.13° right 2.95° | beta/sin(roll) left 0.28 right 5.89 | n 4937 3100
+2026-08-22_09-38.nmea      ASG 29/18      kcl 1.138 thb -6.28° k_tas 1.006 lat 705 ms | beta straight 1.54° left 1.39° right 3.35° | beta/sin(roll) left -2.44 right 5.87 | n 23025 19826
+2026-08-24_12-01.nmea      ASG 29/18      kcl 0.806 thb 5.75° k_tas 1.018 lat 661 ms | beta straight 1.62° left 1.02° right 3.06° | beta/sin(roll) left -1.80 right 5.51 | n 29740 8035
+2026-08-25_12-10.nmea      ASG 29/18      kcl 1.009 thb 9.98° k_tas 1.019 lat 351 ms | beta straight 1.26° left 2.00° right 3.76° | beta/sin(roll) left -3.57 right 6.76 | n 29018 16946
+2026-08-30_10-03.nmea      ASG 29/18      kcl 0.661 thb 10.99° k_tas 1.043 lat 588 ms | beta straight 1.00° left 0.57° right 3.72° | beta/sin(roll) left -1.01 right 6.39 | n 42938 42490
+2026-08-31_09-35.nmea      ASG 29/18      kcl 0.754 thb 13.20° k_tas 1.010 lat 330 ms | beta straight 0.62° left 0.80° right 3.14° | beta/sin(roll) left -1.36 right 5.26 | n 44408 21143
+2026-09-01_09-30.nmea      ASG 29/18      kcl 0.429 thb 14.29° k_tas 1.021 lat 524 ms | beta straight 1.25° left 1.41° right 4.16° | beta/sin(roll) left -2.45 right 6.78 | n 28133 26450
+2026-09-02_09-52.nmea.gz   ASG 29/18      kcl 1.069 thb 1.12° k_tas 0.999 lat 792 ms | beta straight 1.05° left 0.68° right 3.00° | beta/sin(roll) left -1.29 right 4.88 | n 5229 13883
+2026-09-02_10-15.nmea      ASG 29/18      kcl 0.745 thb 4.15° k_tas 1.017 lat 689 ms | beta straight 1.68° left 5.31° right 0.96° | beta/sin(roll) left -9.17 right 1.80 | n 97 1531
+2026-09-02_11-01.nmea      ASG 29/18      kcl 0.472 thb 2.86° k_tas 1.023 lat 614 ms | beta straight 0.83° left 0.97° right 3.36° | beta/sin(roll) left -1.75 right 5.31 | n 22710 20573
+2026-09-02_12-05.nmea.gz   ASG 29/18      kcl 0.493 thb 7.25° k_tas 1.024 lat 615 ms | beta straight 0.85° left 1.11° right 3.79° | beta/sin(roll) left -1.99 right 5.77 | n 17424 8246
+2026-09-05_10-50.nmea      ASG 29/18      kcl 0.311 thb 8.14° k_tas 1.028 lat 880 ms | beta straight 0.78° left 0.06° right 2.52° | beta/sin(roll) left -0.05 right 4.41 | n 25643 20005
+2026-09-05_16-16.nmea.gz   ASG 29/18      kcl 0.866 thb 0.00° k_tas 1.013 lat 410 ms | beta straight 0.57° left -0.14° right 0.05° | beta/sin(roll) left 0.34 right -0.02 | n 1047 216
+2026-09-06_11-02.nmea.gz   ASG 29/18      kcl 0.534 thb 2.06° k_tas 1.027 lat 535 ms | beta straight 0.87° left 0.40° right 3.36° | beta/sin(roll) left -0.69 right 5.79 | n 37731 38897
+2026-09-07_11-17.nmea      ASG 29/18      kcl 0.325 thb 7.61° k_tas 1.028 lat 337 ms | beta straight 0.66° left -0.18° right 3.11° | beta/sin(roll) left 0.39 right 5.17 | n 22302 24211

@@ -98,6 +98,9 @@ void AirMassEKF::reset(float baro_alt, float k_tas, float pitch_ofs, float laten
             _cov(i, i) = 0.f; // sanitize() keeps them at their floor
         }
     }
+    if (!learnsAoaScale()) {
+        _cov(KCL, KCL) = 0.f;
+    }
     _aid = {};
     _hist_head = -1;
     _hist_level = 0;
@@ -231,7 +234,7 @@ void AirMassEKF::predict(const Input& in, const Tilt& tilt) {
         _cov(KTAS, KTAS) += _cfg.q_ktas * dt;
         _cov(THB, THB) += _cfg.q_thb * dt;
         _cov(TAU, TAU) += _cfg.q_tau * dt;
-        _cov(KCL, KCL) += _cfg.q_kcl * dt;
+        if (learnsAoaScale()) _cov(KCL, KCL) += _cfg.q_kcl * dt;
     }
     _cov(ALT, ALT) += _cfg.q_alt * dt;
     _cov(VD, VD) += _cfg.q_vd * dt * held_noise;
