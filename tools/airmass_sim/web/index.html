@@ -267,7 +267,7 @@ const modulePromise = AirMassModule();
 
 // ---------- state ----------
 let D = null;            // the loaded flight, see build()
-let fileText = null, fileName = "";
+let fileLog = null, fileName = "";  // the open log, split and scanned once (AirMassConvert.prepare)
 let T = 0;               // current time, device s
 let playing = false, lastFrame = 0;
 let playbackFrame = null, loading = false, loadGeneration = 0;
@@ -330,10 +330,10 @@ $("damping").addEventListener("input", () => {
   if (D && $("damping").checkValidity()) { deriveDamping(D); invalidateCharts(); drawAll(); }
 });
 for (const id of ["glider", "mass", "bugs", "sets", "noflaps", "mahony", "learn", "warm"]) {
-  $(id).addEventListener("change", () => { if (fileText) run(); });
+  $(id).addEventListener("change", () => { if (fileLog) run(); });
 }
 for (const id of ["w0", "w1", "w2", "wlat"]) {
-  $(id).addEventListener("change", () => { if (fileText && $("warm").checked) run(); });
+  $(id).addEventListener("change", () => { if (fileLog && $("warm").checked) run(); });
 }
 
 // progress and errors show over the map; done = the flight is replayed: the note goes (the details are in Settings)
@@ -419,9 +419,9 @@ async function load(file) {
     await tick();
     const text = await readFile(file);
     if (generation !== loadGeneration) return;
-    fileText = text;
+    fileLog = AirMassConvert.prepare(text);
     fileName = file.name.replace(/\.(gz)$/i, "").replace(/\.(nmea|txt|log)$/i, "");
-    selectLogGlider(fileText);
+    selectLogGlider(fileLog);
     await run();
   } catch (e) {
     console.error(e);
@@ -431,8 +431,8 @@ async function load(file) {
   }
 }
 
-function selectLogGlider(text) {
-  const name = AirMassConvert.gliderFromLog(text);
+function selectLogGlider(log) {
+  const name = AirMassConvert.gliderFromLog(log);
   const select = $("glider");
   select.options[0].textContent = name ? `${name} (from log)` : "Glider from the log";
   select.value = "log";
@@ -443,7 +443,7 @@ function selectLogGlider(text) {
 // polar) replays again with the latest file and settings when it ends
 let replaying = false, replayAgain = false;
 async function run() {
-  if (!fileText) return;
+  if (!fileLog) return;
   if (replaying) { replayAgain = true; return; }
   const resume = playing, generation = loadGeneration, port = serial.port;
   const wasConnected = serial.connected;
@@ -460,13 +460,13 @@ async function run() {
 }
 
 async function replayOnce() {
-  const sourceText = fileText, sourceName = fileName, sourceGeneration = loadGeneration;
+  const sourceLog = fileLog, sourceName = fileName, sourceGeneration = loadGeneration;
   pause();
   $("rerun").disabled = true;
   try {
     setStatus("Converting…");
     await tick();
-    const conv = AirMassConvert.convert(sourceText, {
+    const conv = AirMassConvert.convert(sourceLog, {
       glider: $("glider").value, mass: +$("mass").value > 0 ? +$("mass").value : 0 /* -1: the logged ballast */, bugs: $("bugs").value === "" ? -1 : +$("bugs").value, noFlaps: $("noflaps").checked,
     });
     if (!conv.frames) throw new Error(conv.track.n ? "No flight found: replay needs 100 consecutive sensor samples above 72 km/h IAS." : "neither $SENS nor AirMass recording sentences found");
@@ -477,16 +477,16 @@ async function replayOnce() {
       setStatus(`Replaying… ${Math.round(f * 100)} %`);
       await tick();
     });
-    if (fileText !== sourceText || fileName !== sourceName || loadGeneration !== sourceGeneration) return;
+    if (fileLog !== sourceLog || fileName !== sourceName || loadGeneration !== sourceGeneration) return;
     if (!rep.n) throw new Error("Could not initialize replay. The recording needs glider configuration and either a recorded start or usable airborne sensor data.");
     const sameLog = D && D.sourceGeneration === sourceGeneration;
     const keepT = sameLog ? T : null, keepView = sameLog && view ? view.slice() : null;
     D = build(conv, rep);
     D.sourceGeneration = sourceGeneration;
-    D.clockDate = logDate(sourceText, sourceName);
+    D.clockDate = logDate(conv, sourceName);
     derive(D);
     let timeline;
-    try { timeline = sameLog && serial.timeline ? serial.timeline : AirMassConvert.serialTimeline(sourceText); }
+    try { timeline = sameLog && serial.timeline ? serial.timeline : AirMassConvert.serialTimeline(sourceLog); }
     catch (e) { timeline = { events: [], reason: e.message }; }
     if (timeline.events.length && (D.t[0] < timeline.start - .001 || D.t[D.n - 1] > timeline.end + .001)) {
       timeline = { events: [], reason: "The recording and $SENS timestamps do not match. Open a sensor-only log for synchronized serial replay." };
@@ -523,7 +523,7 @@ async function replayOnce() {
     setStatus(e.message, true);
     return false;
   } finally {
-    $("rerun").disabled = !fileText;
+    $("rerun").disabled = !fileLog;
   }
 }
 
@@ -961,18 +961,13 @@ function clockText(t) {
 }
 const clockSuffix = () => (D && Number.isFinite(D.utcOfs) ? " UTC" : " device");
 
-function logDate(text, name) {
+function logDate(conv, name) {
   const day = (year, month, date) => {
     const ms = Date.UTC(year, month - 1, date), d = new Date(ms);
     return d.getUTCFullYear() === year && d.getUTCMonth() === month - 1 && d.getUTCDate() === date ? ms : NaN;
   };
-  // Prefer the recorded UTC date; sensor-only logs normally carry their date in the filename.
-  for (const match of text.matchAll(/\$G[PN]RMC,([^\r\n*]+)/g)) {
-    const f = match[1].split(",");
-    if (f[1] !== "A" || !/^\d{6}(?:\.\d+)?$/.test(f[0]) || !/^\d{6}$/.test(f[8])) continue;
-    const year = +f[8].slice(4), ms = day(year + (year >= 80 ? 1900 : 2000), +f[8].slice(2, 4), +f[8].slice(0, 2));
-    if (Number.isFinite(ms)) return { day: ms, utc: true };
-  }
+  // Prefer the recorded UTC date (the converter's first dated RMC); sensor-only logs normally carry their date in the filename.
+  if (Number.isFinite(conv.utcDay)) return { day: conv.utcDay, utc: true };
   const match = name.match(/(?:^|\D)(\d{4})-(\d{2})-(\d{2})(?!\d)/);
   return { day: match ? day(+match[1], +match[2], +match[3]) : NaN, utc: false };
 }

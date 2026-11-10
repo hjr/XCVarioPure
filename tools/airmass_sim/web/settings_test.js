@@ -26,7 +26,7 @@ function harness({ connected = false, playing = true } = {}) {
   const $ = elements(), timeline = { events: [{ t: 300 }, { t: 400 }], start: 300, end: 400 };
   const calls = { pause: 0, play: 0, draw: 0, derive: 0, damping: 0, labels: 0, timeline: 0, trackFit: [] };
   const context = vm.createContext({ $, D: { sourceGeneration: 3 }, T: 320, view: [310, 330], playing,
-    fileText: "flight source", fileName: "flight", loadGeneration: 3, loading: false,
+    fileLog: "flight source", fileName: "flight", loadGeneration: 3, loading: false,
     serial: { connected, port: connected ? {} : null, ready: true, speed: 5, timeline },
     localStorage: { getItem: () => "{}", setItem() {} }, performance: { now: () => 100 },
     modulePromise: Promise.resolve({}), tick: async () => {},
@@ -91,7 +91,7 @@ test("failed estimator updates retain prior data and remain paused", async () =>
 
 test("new file or a lost/replaced serial port prevents automatic resume", async () => {
   for (const mutate of [
-    c => { c.loadGeneration++; c.fileText = "another flight"; },
+    c => { c.loadGeneration++; c.fileLog = "another flight"; },
     c => { c.serial.connected = false; c.serial.ready = false; c.serial.port = null; },
     c => { c.serial.port = {}; },
   ]) {

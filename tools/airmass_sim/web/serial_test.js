@@ -4,7 +4,7 @@ const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const vm = require("node:vm");
-const { serialTimeline, convert } = require("./convert.js");
+const { serialTimeline, convert, prepare, gliderFromLog } = require("./convert.js");
 const { SerialReplay, command, allowedSpeeds, stateAt } = require("./serial.js");
 const sens = (t, extra = "") => `$SENS,${t.toFixed(3)},0,900,899,500,15,0,0,-1,0,0,0${extra}`;
 const rmc = t => {
@@ -244,6 +244,20 @@ test("configuration/flap restoration and modern weight updates are chronological
   assert.match(late.lines[1], /!XCV,FLP,33\*/);
   assert.equal(timeline.events[late.index].kind, "sensor");
   assert.equal(serialTimeline(sens(1)).warning.startsWith("No logged"), true);
+});
+
+test("a prepared log converts like its text; the initial setup is the first complete CA1, else CMN", () => {
+  const prepared = prepare(log);
+  assert.deepEqual(serialTimeline(prepared), serialTimeline(log));
+  assert.deepEqual(convert(prepared), convert(log));
+  assert.equal(gliderFromLog(prepared), gliderFromLog(log));
+  const incomplete = "!XCV,CA1,2305,324,100,0,0,", cmn = "!XCV,CMN,2305,300,90,0,0";
+  assert.match(serialTimeline([incomplete, sens(300), cmn, ca1, sens(300.1)].join("\n")).initialConfig, /,324,100,0,0,102000\*/);
+  assert.match(serialTimeline([incomplete, sens(300), cmn, sens(300.1)].join("\n")).initialConfig, /,300,90,0,0,\d+\*/);
+  // the UTC date of the first dated fix, for the page's clock
+  assert.equal(convert(log).utcDay, Date.UTC(2026, 10, 9));
+  assert(Number.isNaN(convert(sens(300)).utcDay));
+  assert.equal(convert(["$GPRMC,120000,A,4800,N,01100,E,60,90,311226,,,A", "$PXCVR,1000,0,0,-1"].join("\n")).utcDay, Date.UTC(2026, 11, 31));
 });
 
 test("initialization waits one second, config precedes samples and starts paused at 1x", async () => {
