@@ -71,6 +71,14 @@ Delayed GNSS fusion requires measured sensor history bracketing its observation 
 6.4 seconds at 10 Hz. It never clamps an old fix to a history endpoint or interpolates through an IMU gap. A rejected
 fix does not refresh accepted-GNSS age, and the entire horizontal observation is gated before any state changes.
 
+Implausible readings are held out like a missing sample (`Plausibility` in `AirMassPipeline.h`): an airspeed above
+150 m/s, a pressure altitude outside −1000..15000 m, more than 8 g or 8 rad/s, or a step of more than 15 m/s, 25 m,
+4 g or 5 rad/s between consecutive samples (the limit scales with the sample interval up to three times; real logs stay
+below half of it). A reading that steps and stays is taken over at the third agreeing sample. The held-out counts per
+channel are in the native simulator's summary (`held out`). The vertical constraints also reject innovations beyond
+20 m/s and the kinetic disagreement is clamped at 20 m/s², so a garbled `$SENS` line (the May 2025 logs) can no longer
+drive the vario to hundreds of m/s while marked valid.
+
 Sensor gaps over 0.3 seconds are propagated in small steps holding the preceding measurement, with increased
 uncertainty and inferred history excluded from GNSS fusion. Gaps over 10 seconds restart the dynamics while keeping
 calibration. After a gap, vertical validity settles for about 5 seconds (TE fallback), and the inertial gust

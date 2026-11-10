@@ -171,6 +171,93 @@ void gaps() {
           "held gyro propagates full elapsed time, rather than clipping the gap to 0.3s");
 }
 
+// a garbled or glitched reading (the May 2025 logs: a pressure, airspeed or acceleration field off by orders of
+// magnitude for one sample) must neither reach the estimate nor its slow corrections; a reading that steps and stays
+// is taken over
+void glitches() {
+    std::printf("implausible readings\n");
+    airmass::Pipeline p;
+    airmass::Setup setup;
+    setup.mass = 400.f;
+    setup.wing_area = 10.5f;
+    setup.polar = {-0.5f, 0.f, -0.0005f, 20.f, true};
+    p.configure(setup);
+    const float down[3] = {0.f, 0.f, 1.f}, gyro[3] = {};
+    p.start(1000, 1000.f, down, gyro, {});
+    airmass::Frame f;
+    f.ias = f.tas = 30.f;
+    f.baro_alt = 1000.f;
+    f.f_body[2] = -1.f;
+    const auto fly = [&](uint32_t until) {
+        for (; f.time_ms <= until; f.time_ms += 100) {
+            airmass::Frame g = f;
+            g.baro_alt = 1000.f - (f.time_ms - 1000) * 0.001f;
+            p.step(g);
+        }
+    };
+    f.time_ms = 1100;
+    fly(20000);
+    const float settled = p.ekf().airmassVario();
+    check(p.ekf().status() & AirMassEKF::ST_VARIO_VALID, "steady glide settles before the glitches");
+    float worst = 0.f;
+    bool valid = true, trusted = true;
+    const auto glitch = [&](const char* name, airmass::Frame bad) {
+        bad.time_ms = f.time_ms;
+        bad.baro_alt = std::isfinite(bad.baro_alt) && bad.baro_alt > -1e4f && bad.baro_alt < 1e4f ? 1000.f - (f.time_ms - 1000) * 0.001f : bad.baro_alt;
+        p.step(bad);
+        f.time_ms += 100;
+        const float held = p.input().tas;
+        fly(f.time_ms + 5000);
+        for (uint32_t t = f.time_ms - 5000; t < f.time_ms; t += 100) {
+        }
+        worst = std::max(worst, std::fabs(p.ekf().airmassVario() - settled));
+        valid = valid && (p.ekf().status() & AirMassEKF::ST_VARIO_VALID);
+        trusted = trusted && p.ekf().inertialTrust() == 1.f;
+        std::printf("  %-28s vario %+.3f (settled %+.3f), held tas %.1f, status %d, trust %.2f, held out %u %u %u %u\n", name,
+                    p.ekf().airmassVario(), settled, held, p.ekf().status(), p.ekf().inertialTrust(), p.heldOut(0), p.heldOut(1), p.heldOut(2), p.heldOut(3));
+    };
+    airmass::Frame bad = f;
+    bad.tas = 5.9f; // a static pressure field garbled to 30000 hPa: TAS 5.9 m/s at IAS 36.7
+    bad.ias = 36.7f;
+    glitch("airspeed one sample", bad);
+    bad = f;
+    bad.baro_alt = -46243.f;
+    glitch("pressure altitude -46 km", bad);
+    bad = f;
+    bad.baro_alt = 1200.f; // 200 m in one sample
+    glitch("pressure altitude +200 m", bad);
+    bad = f;
+    bad.f_body[2] = -80.f;
+    glitch("acceleration 80 g", bad);
+    bad = f;
+    bad.f_body[0] = 3.5f;
+    glitch("acceleration 3.5 g along x", bad);
+    bad = f;
+    bad.gyro[1] = 14.f; // 800 deg/s
+    glitch("gyro 800 deg/s", bad);
+    std::printf("  worst vario deviation after the glitches %.3f m/s\n", worst);
+    check(worst < 0.3f, "one-sample glitches do not move the vario");
+    check(valid && trusted, "one-sample glitches keep the vario valid and the motion trusted");
+
+    // the airspeed steps and stays (a pitot sensor change): taken over at the third sample
+    f.ias = f.tas = 50.f;
+    airmass::Frame g = f;
+    g.baro_alt = 1000.f - (f.time_ms - 1000) * 0.001f;
+    p.step(g);
+    check(p.input().tas == 30.f, "a step is held out at first");
+    f.time_ms += 100;
+    g.time_ms = f.time_ms;
+    p.step(g);
+    check(p.input().tas == 30.f, "and at the second sample");
+    f.time_ms += 100;
+    g.time_ms = f.time_ms;
+    p.step(g);
+    check(p.input().tas == 50.f, "a step that stays is the new reading at the third sample");
+    f.time_ms += 100;
+    fly(f.time_ms + 3000);
+    check(p.input().tas == 50.f && p.ekf().covarianceHealthy(), "the estimator runs on with the new reading");
+}
+
 void recording() {
     airmass::record::Sentence s;
     airmass::record::Gnss g, decoded;
@@ -234,8 +321,8 @@ void landing() {
         premature |= pipe.ekf().status() & AirMassEKF::ST_VARIO_VALID;
     }
     check(pipe.input().flying_speed && !premature, "return to flying speed waits for settling before leaving TE");
-    f.time_ms = 55000;
-    pipe.step(f, &att);
+    // the airspeed step from 0 to 27 m/s in one sample is held out as implausible for two samples (Plausibility)
+    for (f.time_ms = 55000; f.time_ms <= 55300; f.time_ms += 100) pipe.step(f, &att);
     check(pipe.ekf().status() & AirMassEKF::ST_VARIO_VALID, "sustained flying speed restores AirMass after settling");
 
     AirMassEKF ekf;
@@ -296,6 +383,7 @@ int main() {
     timing();
     rejection();
     gaps();
+    glitches();
     recording();
     landing();
     turningPriorAlignment();

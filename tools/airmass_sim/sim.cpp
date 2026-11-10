@@ -569,7 +569,8 @@ std::vector<Scenario> scenarios() {
             wn = -4.f + 2.f * std::sin(t / 1800.f);
             we = 3.f + 2.f * std::cos(t / 2400.f);
         };
-        c.air.vertical = [](float t) { return 1.2f * std::sin(t / 47.f) * std::sin(t / 13.f); };
+        // lift (Wd < 0) about the glider's sink: three hours at altitude, not 10 km below sea level (Plausibility::ALT_MIN)
+        c.air.vertical = [](float t) { return -1.f + 1.2f * std::sin(t / 47.f) * std::sin(t / 13.f); };
         c.eval_wind_after = 300.f;
         c.max_wind_rms = 0.4f;   // 0.16 (0.25 with a latency error); 1.0 with a 2% clock error past one hour
         c.steady = {{600, 10800}};
@@ -1260,10 +1261,10 @@ int main(int argc, char** argv) {
     const int lat_est_err = (int)std::lround(ekf.gnssLatency() * 1000.f) - (gnss_latency + lat_err);
     std::printf("[%s] wind valid after %.0fs, wind rms %.2f m/s (max %.2f), vario rms %.2f m/s (TE netto %.2f), "
                 "spike max %.2f m/s (TE netto %.2f), k_tas %.3f (err %.3f), pitch ofs %.3f rad, aoa scale %.3f (true %.3f), acc bias %.3f, "
-                "gnss rejects %u, restarts %d\n",
+                "gnss rejects %u, held out %u/%u/%u/%u, restarts %d\n",
                 sc.name.c_str(), t_wind_valid, wind_err.rms(), wind_err.maxabs, vario_err.rms(), te_err.rms(),
                 spike_err.maxabs, te_spike_err.maxabs, ekf.kTas(), k_err, ekf.pitchOffset(), ekf.aoaScale(), CLA_MODEL / K.cla_true, ekf.accBias(),
-                ekf.rejectedGnss(), restarts);
+                ekf.rejectedGnss(), pipe.heldOut(0), pipe.heldOut(1), pipe.heldOut(2), pipe.heldOut(3), restarts);
 
     std::printf("  reference (GNSS/INS): wind rms %.2f m/s, averaged wind rms %.2f, vario rms %.2f, spike max %.2f m/s\n", ins_wind_err.rms(),
                 ins_avg_wind_err.rms(), ins_vario_err.rms(), ins_spike_err.maxabs);

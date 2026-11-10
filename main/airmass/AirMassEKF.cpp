@@ -12,6 +12,12 @@ constexpr float TAU_MIN = 0.25f, TAU_MAX = 1.75f; // s, GNSS latency
 constexpr float TAU_SIGMA0 = 0.3f; // s, initial uncertainty of the latency
 constexpr float SLIP_ALIGN_MAX = 0.1f; // rad, slipping samples do not go into the turn alignment
 constexpr uint32_t HEADING_AID_AGE_MS = 3000;
+// m/s, no air moves faster vertically: a larger innovation of the vertical constraints is a corrupt input, whatever
+// the uncertainty (a sigma gate opens as the uncertainty grows while the input stays corrupt)
+constexpr float WD_INNOVATION_MAX = 20.f;
+// m/s², the disagreement of the airspeed derivative and the inertial acceleration cannot exceed a horizontal gust plus
+// the attitude error; a glitch beyond it must not be learned as attitude error for kinetic_tau
+constexpr float KINETIC_DISAGREE_MAX = 20.f;
 
 // Gate the complete horizontal observation before changing any state. A bad east component must not
 // partially update the north/wind/calibration states. Joseph covariance update also supports frozen gains.
@@ -22,12 +28,15 @@ bool velocityUpdate(Matrix<AirMassEKF::NX, AirMassEKF::NX>& p, float (&x)[AirMas
     for (int i = 0; i < N; ++i)
         for (int a = 0; a < 2; ++a)
             for (int j = 0; j < N; ++j) ph[i][a] += p(i, j) * h[a][j];
-    float s00 = r[0], s11 = r[1], s01 = 0.f;
+    float s00 = 0.f, s11 = 0.f, s01 = 0.f;
     for (int i = 0; i < N; ++i) {
         s00 += h[0][i] * ph[i][0];
         s11 += h[1][i] * ph[i][1];
         s01 += h[0][i] * ph[i][1];
     }
+    // the gain must not exceed the measurement's own noise (a negative variance along h is rounding)
+    s00 = r[0] + std::max(s00, 0.f);
+    s11 = r[1] + std::max(s11, 0.f);
     const float det = s00 * s11 - s01 * s01;
     if (!(det > 0.f) || !std::isfinite(det)) return false;
     const float distance = (s11 * y[0] * y[0] - 2.f * s01 * y[0] * y[1] + s00 * y[1] * y[1]) / det;
@@ -106,12 +115,13 @@ void AirMassEKF::reset(float baro_alt, float k_tas, float pitch_ofs, float laten
     _a_air = 0.f;
     _anchor = 0.f;
     _vario_out = NAN;
-    _wd_energy = _wd_energy_plain = NAN;
+    _wd_energy = _wd_energy_plain = _wd_kinematic = NAN;
     _ww_lp = _blend_lp = 0.f;
     _acc_mem = 0.f;
     _gnss_rejects = 0;
     _gnss_consecutive_rejects = 0;
     _baro_reject_ms = 0;
+    _energy_reject_ms = 0;
     _baro_clock = _kinematic_clock = _energy_clock = {};
     _vertical_settle_ms = 0;
     _last_gnss_ms = _last_time_ms;
@@ -290,7 +300,7 @@ void AirMassEKF::update(const Input& in) {
         _acc_corr = _acc_corr_c = _acc_kin = _a_air = 0.f;
         _anchor = _ww_lp = _blend_lp = 0.f;
         _vario_out = NAN;
-        _wd_energy = _wd_energy_plain = NAN;
+        _wd_energy = _wd_energy_plain = _wd_kinematic = NAN;
     }
     const Tilt tilt(in.roll, in.pitch);
     predict(in, tilt);
@@ -333,6 +343,7 @@ void AirMassEKF::update(const Input& in) {
     if (flying_speed && continuous) {
         float va[3], dalpha[3];
         airVelocity(in.tas, _x[KTAS], tilt, _x[PSI], alphaOf(in.aoa), va, dalpha);
+        _wd_kinematic = _x[VD] - va[2];
         if (in.kinematic_fresh && _kinematic_clock.observe(in.time_ms, in.time_ms, true)) fuseKinematic(in, tilt, va, dalpha);
         updateKinetic(in, va);
         if (std::isfinite(in.polar_sink)) {
@@ -379,6 +390,7 @@ void AirMassEKF::fuseKinematic(const Input& in, const Tilt& tilt, const float va
     h[THB] = dalpha[2]; // d(-va_d)/d(thb), alpha = aoa * kcl - thb
     h[KCL] = -dalpha[2] * in.aoa;
     const float y = 0.f - (_x[VD] - va[2] - _x[WD]);
+    if (std::fabs(y) > WD_INNOVATION_MAX) return;
     // attitude and angle of attack are less certain in turns and after sustained longitudinal acceleration;
     // the gyro propagated attitude (AirMassAttitude.h) needs no extra margin for the load factor
     const float sig = _cfg.sigma_pitch * (1.f + 2.f * std::fabs(tilt.sp) + 0.7f * _acc_mem);
@@ -416,7 +428,7 @@ void AirMassEKF::updateKinetic(const Input& in, const float va[3]) {
     const float fresh = _have_gnss ? std::clamp((10000.f - gnssAgeMs()) / 5000.f, 0.f, 1.f) : 0.f;
     work *= _inertial_trust * _gnss_trust * fresh;
     const float a_air = k * _tas_dot_f + work;
-    const float d = a_air - _acc_long_f;
+    const float d = std::clamp(a_air - _acc_long_f, -KINETIC_DISAGREE_MAX, KINETIC_DISAGREE_MAX);
     _acc_corr += (d - _acc_corr) * in.dt / (_cfg.kinetic_tau + in.dt);
     const float gust = d - _acc_corr;
     const float w = std::clamp(std::fabs(gust) / _cfg.gust_acc, 0.f, 1.f) * _straight;
@@ -455,7 +467,22 @@ void AirMassEKF::fuseEnergy(const Input& in) {
     // airspeed changes not explained by inertial acceleration indicate horizontal gusts
     const float gust = std::fabs(k * _tas_dot_f - in.acc_long);
     const float sig = _cfg.sigma_energy * (1.f + _cfg.energy_load_weight * std::fabs(in.load_factor - 1.f) + _cfg.energy_gust_weight * gust);
-    if (in.energy_fresh && _energy_clock.observe(in.time_ms, in.time_ms, true)) {
+    if (std::fabs(y) > WD_INNOVATION_MAX) {
+        // the estimate is off by more than any air moves: after 2 s of that it restarts from the energy balance (the
+        // innovation limit would otherwise keep a wrong estimate wrong), invalid until settled again
+        if ((_energy_reject_ms += (uint32_t)(in.dt * 1000.f + 0.5f)) > 2000) {
+            _x[WD] = z + _vd_f;
+            for (int i = 0; i < NX; ++i) {
+                _cov(WD, i) = _cov(i, WD) = 0.f;
+            }
+            _cov(WD, WD) = 1.f;
+            _anchor = 0.f;
+            _vario_out = NAN;
+            _energy_reject_ms = 0;
+            _vertical_settle_ms = 0;
+        }
+    } else if (in.energy_fresh && _energy_clock.observe(in.time_ms, in.time_ms, true)) {
+        _energy_reject_ms = 0;
         const float sample_dt = _energy_clock.interval_ms ? _energy_clock.interval_ms * 1e-3f : in.dt;
         const float rate_scale = 0.1f / std::clamp(sample_dt, 0.001f, 0.3f);
         ekfScalarUpdate(_cov, _x, h, y, sig * sig * rate_scale, _cfg.energy_gate);
@@ -849,6 +876,20 @@ void AirMassEKF::sanitize() {
                 _cov(i, j) = _cov(j, i) = 0.f;
             }
             _cov(i, i) = pmin[i];
+        }
+    }
+    // No pair of states correlated beyond what their variances allow: in float arithmetic the energy and kinematic
+    // constraints, which observe Wd - vd while the barometer alone bounds vd, drove the Wd/vd correlation past 1 after
+    // a sensor gap had inflated vd; the next constraint then saw a vanishing innovation variance and threw both
+    // states by 200 m/s (a gap-heavy real log).
+    constexpr float RHO_MAX2 = 0.998f;
+    for (int i = 0; i < NX; ++i) {
+        for (int j = i + 1; j < NX; ++j) {
+            const float pij = _cov(i, j), lim2 = RHO_MAX2 * _cov(i, i) * _cov(j, j);
+            if (pij * pij > lim2) {
+                const float v = std::copysign(std::sqrt(std::max(lim2, 0.f)), pij);
+                _cov(i, j) = _cov(j, i) = v;
+            }
         }
     }
 }

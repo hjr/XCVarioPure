@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <cmath>
 #include <cstddef>
 
@@ -64,10 +65,13 @@ bool ekfScalarUpdate(Matrix<N, N>& P, float (&x)[N], const float (&h)[N], float 
         }
         pht[i] = acc;
     }
-    float s = r;
+    float hph = 0.f;
     for (size_t k = 0; k < n; ++k) {
-        s += h[nz[k]] * pht[nz[k]];
+        hph += h[nz[k]] * pht[nz[k]];
     }
+    // a negative variance along h is rounding in a nearly degenerate covariance (e.g. two states observed only in
+    // their difference): the gain must not grow beyond the measurement's own noise
+    const float s = r + std::max(hph, 0.f);
     if (!(s > 0.f) || !std::isfinite(y)) {
         return false;
     }

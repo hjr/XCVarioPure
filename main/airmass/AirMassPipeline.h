@@ -70,6 +70,52 @@ struct ExternalAttitude {
     float roll = 0.f, pitch = 0.f, yaw_rate = 0.f;
 };
 
+// Implausible readings (a garbled log line, a sensor glitch) are held out like a missing sample: the previous value
+// stays and the channel's source clock does not advance. A reading that steps and stays (three samples in a row that
+// agree) is the sensor's new value. The step limits are per 100 ms and scale with the sample interval up to three times;
+// real flights stay well below them (airspeed 7 m/s, altitude 9 m, 2 g, 190 °/s between 10 Hz samples).
+struct Plausibility {
+    static constexpr float TAS_MAX = 150.f, TAS_STEP = 15.f;                     // m/s
+    static constexpr float ALT_MIN = -1000.f, ALT_MAX = 15000.f, ALT_STEP = 25.f; // m
+    static constexpr float F_MAX = 8.f, F_STEP = 4.f;                            // g
+    static constexpr float GYRO_MAX = 8.f, GYRO_STEP = 5.f;                      // rad/s
+
+    struct Guard {
+        float last[3] = {}, raw[3] = {}; // the last accepted and the last seen values
+        uint32_t raw_ms = 0;
+        uint8_t rejects = 0;
+        bool have = false;
+
+        void reset() {
+            have = false;
+            rejects = 0;
+        }
+        // v[n] sampled at stamp_ms: false to hold the sample out
+        bool accept(const float* v, int n, float step, uint32_t stamp_ms) {
+            bool jump = false, same = rejects > 0;
+            if (have) {
+                // the sample interval (missing samples widen the step), not the time since the last accepted one:
+                // held out samples must not widen it
+                const float lim = step * std::clamp((stamp_ms - raw_ms) * 0.01f, 1.f, 3.f);
+                for (int i = 0; i < n; ++i) {
+                    if (std::fabs(v[i] - last[i]) > lim) jump = true;
+                    if (std::fabs(v[i] - raw[i]) > step) same = false;
+                }
+            }
+            std::copy(v, v + n, raw);
+            raw_ms = stamp_ms;
+            if (jump && !(same && rejects >= 2)) {
+                rejects = std::min<uint8_t>(rejects + 1, 10);
+                return false;
+            }
+            std::copy(v, v + n, last);
+            have = true;
+            rejects = 0;
+            return true;
+        }
+    };
+};
+
 class Pipeline {
 public:
     static constexpr float GYRO_DOT_TAU = 0.2f; // s, low pass of the differentiated gyro (lever arm)
@@ -115,6 +161,7 @@ public:
         _have_frame = false;
         _have_attitude = false;
         for (auto& clock : _samples) clock = {};
+        for (auto& guard : _guards) guard.reset();
         _values = Frame();
         _values.baro_alt = baro_alt;
         for (int i = 0; i < 3; ++i) _values.gyro[i] = _gyro_prev[i];
@@ -184,17 +231,27 @@ private:
         }
         if (!std::isfinite(f.baro_alt)) valid &= ~Frame::BARO;
         if (!std::isfinite(f.ias) || !std::isfinite(f.tas)) valid &= ~Frame::AIRSPEED;
-        for (int i = 0; i < 4; ++i) fresh[i] = _samples[i].observe(f.time_ms, f.sample_ms[i], valid & (1 << i));
+        for (int i = 0; i < 4; ++i) {
+            const uint8_t bit = 1 << i;
+            // a new source sample (not a held reading polled again) has to be plausible
+            const bool is_new = (valid & bit) && (int32_t)(f.time_ms - f.sample_ms[i]) >= 0 &&
+                                (!_samples[i].have || (int32_t)(f.sample_ms[i] - _samples[i].time_ms) > 0);
+            if (is_new && !plausible(i, f)) {
+                valid &= ~bit;
+                ++_held_out[i];
+            }
+            fresh[i] = _samples[i].observe(f.time_ms, f.sample_ms[i], valid & bit);
+        }
         for (int i = 0; i < 3; ++i) {
             if (fresh[0]) _values.f_body[i] = f.f_body[i];
             if (fresh[1]) _values.gyro[i] = f.gyro[i];
         }
         if (fresh[2]) _values.baro_alt = f.baro_alt;
         if (fresh[3]) { _values.ias = f.ias; _values.tas = f.tas; }
+        // a reading missing or held out for one cycle is bridged by the held one, like a slower sensor polled at 20 Hz
         const uint32_t imu_age = std::max(_samples[0].age(f.time_ms), _samples[1].age(f.time_ms));
-        const bool motion = (valid & (Frame::ACCEL | Frame::GYRO)) == (Frame::ACCEL | Frame::GYRO) && imu_age <= 300;
-        const bool airdata = (valid & (Frame::BARO | Frame::AIRSPEED)) == (Frame::BARO | Frame::AIRSPEED) &&
-                             _samples[2].age(f.time_ms) <= 300 && _samples[3].age(f.time_ms) <= 300;
+        const bool motion = imu_age <= 300;
+        const bool airdata = _samples[2].age(f.time_ms) <= 300 && _samples[3].age(f.time_ms) <= 300;
         in.continuous = continuous && motion && !(fresh[0] && _samples[0].interval_ms > 300) &&
                         !(fresh[1] && _samples[1].interval_ms > 300);
         in.imu_age = imu_age == UINT32_MAX ? 10.f : imu_age * 1e-3f;
@@ -258,6 +315,25 @@ private:
         _open = true;
     }
 
+    // the reading of a channel (Frame::ACCEL .. AIRSPEED bit index) is within range and not a one-off jump
+    bool plausible(int channel, const Frame& f) {
+        using P = Plausibility;
+        switch (channel) {
+            case 0:
+                for (float v : f.f_body) if (std::fabs(v) > P::F_MAX) return false;
+                return _guards[0].accept(f.f_body, 3, P::F_STEP, f.sample_ms[0]);
+            case 1:
+                for (float v : f.gyro) if (std::fabs(v) > P::GYRO_MAX) return false;
+                return _guards[1].accept(f.gyro, 3, P::GYRO_STEP, f.sample_ms[1]);
+            case 2:
+                if (f.baro_alt < P::ALT_MIN || f.baro_alt > P::ALT_MAX) return false;
+                return _guards[2].accept(&f.baro_alt, 1, P::ALT_STEP, f.sample_ms[2]);
+            default:
+                if (f.ias < 0.f || f.tas < 0.f || f.ias > P::TAS_MAX || f.tas > P::TAS_MAX) return false;
+                return _guards[3].accept(&f.tas, 1, P::TAS_STEP, f.sample_ms[3]);
+        }
+    }
+
     // the end of the cycle, after its GNSS and compass fusion: the averaged wind follows the valid instant wind
     // (step() ends a cycle left open)
 public:
@@ -285,6 +361,8 @@ public:
     const AirMassEKF::Input& input() const { return _in; } // the estimator input of the last cycle
     const Setup& setup() const { return _setup; }
     const WindAverage& avgWind() const { return _avg_wind; } // low pass, heading sectors while circling
+    // readings held out as implausible since the start, per channel (Frame::ACCEL .. AIRSPEED bit index)
+    uint32_t heldOut(int channel) const { return _held_out[channel]; }
 
 private:
     AirMassEKF _ekf;
@@ -305,6 +383,8 @@ private:
     ExternalAttitude _last_attitude;
     bool _have_frame = false, _have_attitude = false;
     SampleClock _samples[4];
+    Plausibility::Guard _guards[4];
+    uint32_t _held_out[4] = {};
     Frame _values;
     float _supported_down[3] = {0.f, 0.f, 1.f};
 };
