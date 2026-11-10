@@ -109,7 +109,8 @@ public:
     virtual bool update(uint32_t now_ms) = 0;
     virtual void postProcess() {};
     virtual bool isResting() const { return false; } // whether the sensor is in a calm state
-    uint16_t getDutyCycleMS() const { return (uint16_t)_lpf_interval.get(); }
+    uint16_t getNominalDutyCycleMS() const { return _duty_cycle_ms; } // read loop schedule
+    uint16_t getDutyCycleMS() const { return (uint16_t)_lpf_interval.get(); } // measured update interval
     float getDutyCycleS() const { return _lpf_interval.get() / 1000.0f; }
     uint16_t getProcessInterval() const { return _process_interval_ms; }
     inline int getLastUpdateTimeMs() const { return _last_update_time_ms; }
@@ -119,7 +120,8 @@ public:
     inline SensorId getId() const { return _id; }
 
 protected:
-    LowPassFilterT<float> _lpf_interval; ///< Expected update interval
+    LowPassFilterT<float> _lpf_interval; ///< Measured update interval
+    uint16_t _duty_cycle_ms;        ///< Nominal update interval, schedules the read loop
     uint16_t _process_interval_ms;  ///< a multiple of the update interval for post processing, or "0" if not used
     uint16_t _latency_ms;           ///< Sensor conversion/acquisition latency
     uint32_t _last_update_time_ms;  ///< Time the update got registered
@@ -175,7 +177,11 @@ public:
 
     // The sensor bypass to fill the history directly (e.g. from group read)
     void pushToHistory(const T& value, uint32_t now_ms) {
-        _lpf_interval.filter(now_ms - _latency_ms);
+        // track the interval between updates, skip the first one and gaps of stale data
+        uint32_t dt = now_ms - _last_update_time_ms;
+        if (_last_update_time_ms != 0 && dt > 0 && dt <= _valid_time_ms) {
+            _lpf_interval.filter(dt);
+        }
         _last_update_time_ms = now_ms;
         _history.push(value);
         if (_running_avg_count >= 0) {

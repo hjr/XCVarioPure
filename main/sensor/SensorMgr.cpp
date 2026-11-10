@@ -88,7 +88,7 @@ void SensorRegistry::updateCycleTimes(SensorBase* s)
 
     SensorEntry *entry = find(s->getId().type);
     if (entry && entry->sensor == s) {
-        entry->dutycycle = (uint16_t)(s->getDutyCycleMS() / SENSOR_LOOP_ATOMIC_CYCLE);
+        entry->dutycycle = (uint16_t)(s->getNominalDutyCycleMS() / SENSOR_LOOP_ATOMIC_CYCLE);
         entry->postproccycle = (uint16_t)(s->getProcessInterval() / SENSOR_LOOP_ATOMIC_CYCLE);
     }
 }
@@ -144,7 +144,7 @@ bool SensorRegistry::addSensor(SensorBase* s)
             if (existing->id.prio == id.prio) {
                 ESP_LOGW(FNAME, "Sensor %s already registered, replacing it", idmemo[id.type]);
                 SensorBase *old_sensor = existing->sensor;
-                *existing = { id, s, (uint16_t)(s->getDutyCycleMS() / SENSOR_LOOP_ATOMIC_CYCLE), (uint16_t)(s->getProcessInterval() / SENSOR_LOOP_ATOMIC_CYCLE) };
+                *existing = { id, s, (uint16_t)(s->getNominalDutyCycleMS() / SENSOR_LOOP_ATOMIC_CYCLE), (uint16_t)(s->getProcessInterval() / SENSOR_LOOP_ATOMIC_CYCLE) };
                 delete old_sensor;
                 return true;
             } else {
@@ -174,7 +174,7 @@ bool SensorRegistry::addSensor(SensorBase* s)
         }
         *e = { id, 
             s, 
-            (uint16_t)(s->getDutyCycleMS() / SENSOR_LOOP_ATOMIC_CYCLE), 
+            (uint16_t)(s->getNominalDutyCycleMS() / SENSOR_LOOP_ATOMIC_CYCLE), 
             (uint16_t)(s->getProcessInterval() / SENSOR_LOOP_ATOMIC_CYCLE)
         }; // store dutycycle in 50ms units
 

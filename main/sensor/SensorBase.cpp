@@ -15,6 +15,7 @@
 
 SensorBase::SensorBase(int ums, int process_multiple) :
     _lpf_interval(0.1),
+    _duty_cycle_ms(ums),
     _process_interval_ms(process_multiple * ums),
     _latency_ms(0),
     _last_update_time_ms(0),
