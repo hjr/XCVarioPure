@@ -20,7 +20,7 @@
 #include "logdefnone.h"
 
 #include <freertos/FreeRTOS.h>
-#include <freertos/queue.h>
+#include <freertos/ringbuf.h>
 
 #include <algorithm>
 #include <cmath>
@@ -43,39 +43,42 @@ constexpr uint32_t SETUP_MS = 10000;          // repeat the recorded setup every
 // "NMEA Output" (airmass_nmea)
 enum : int { NMEA_OFF = 0, NMEA_OUTPUT = 1, NMEA_RECORD = 2 };
 
-// lines for the NMEA output, from the sensor loop to the NMEA feed (5Hz), created with the first line
-constexpr int QUEUE_LINES = 20;
-static QueueHandle_t nmea_queue = nullptr;
+// Lines for the NMEA output, from the sensor loop to the NMEA feed (5Hz), created with the first line. A ring buffer
+// holds them at their length (about 130 bytes, a queue would take the longest one for each): Recording queues about
+// 700 bytes per feed cycle, this holds three cycles.
+constexpr size_t RING_BYTES = 2048;
+static RingbufHandle_t nmea_ring = nullptr;
 
-// Queues the sentence a record:: writer formats. With the queue full it is not even formatted: dropped, the replay
+// Queues the sentence a record:: writer formats. Without room it is not even formatted: dropped, the replay
 // sees a gap.
 template <typename Format>
 static void queueLine(Format format)
 {
-    if (!nmea_queue) {
-        nmea_queue = xQueueCreate(QUEUE_LINES, airmass::record::Line::SIZE);
+    if (!nmea_ring) {
+        nmea_ring = xRingbufferCreate(RING_BYTES, RINGBUF_TYPE_NOSPLIT);
     }
-    if (!nmea_queue || uxQueueSpacesAvailable(nmea_queue) == 0) {
+    if (!nmea_ring || xRingbufferGetCurFreeSize(nmea_ring) < airmass::record::Line::SIZE) {
         return;
     }
     const airmass::record::Line line = format();
     if (!line.empty()) {
-        xQueueSend(nmea_queue, line.buf, 0); // the queue copies whole items
+        xRingbufferSend(nmea_ring, line.buf, line.size(), 0);
     }
 }
 
 bool airmassNmeaDrain(std::string& lines)
 {
-    const UBaseType_t n = nmea_queue ? uxQueueMessagesWaiting(nmea_queue) : 0;
-    if (n == 0) {
+    if (!nmea_ring) {
         return false;
     }
-    lines.reserve(lines.size() + n * airmass::record::Line::SIZE); // one allocation
-    char buf[airmass::record::Line::SIZE];
-    for (UBaseType_t i = 0; i < n && xQueueReceive(nmea_queue, buf, 0) == pdTRUE; ++i) {
-        lines += buf;
+    bool any = false;
+    size_t size = 0;
+    while (char* item = static_cast<char*>(xRingbufferReceive(nmea_ring, &size, 0))) {
+        lines.append(item, size);
+        vRingbufferReturnItem(nmea_ring, item);
+        any = true;
     }
-    return true;
+    return any;
 }
 
 static bool recording()
@@ -172,10 +175,16 @@ bool airmass::heading(rad_t track)
     return true;
 }
 
-void airmass::startup()
+bool airmass::supported()
 {
     // master only, needs the local IMU and air data
-    if (SetupCommon::isMaster() && ahrsSensor && imuSensor && baroSensor && asSensor) {
+    return SetupCommon::isMaster() && ahrsSensor && imuSensor && baroSensor && asSensor;
+}
+
+void airmass::startup()
+{
+    // a disabled estimator takes no memory, enabling it restarts the device
+    if (supported() && airmass_enable.get()) {
         airmassSensor = new AirMassSensor();
         airmassSensor->setup();
         SensorRegistry::registerSensor(airmassSensor);

@@ -16,8 +16,10 @@ union WindData;
 
 namespace airmass {
 
-// system startup: create the estimator (master with IMU and air data)
+// system startup: create the estimator if enabled and supported
 void startup();
+// the estimator can run here: the master with IMU and air data
+bool supported();
 
 // GNSS: a new ground velocity (protocol task)
 void gnssVelocity(mps_t speed, rad_t course, uint32_t time_ms, uint16_t latency_ms, uint32_t fix_time_ms = UINT32_MAX);

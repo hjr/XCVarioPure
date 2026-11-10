@@ -12,7 +12,7 @@
 // the estimator runs on the master, a second seat shows its values
 static bool available()
 {
-    return SetupCommon::isMaster() ? airmassSensor != nullptr : XcvCaps::haveCap(XcvCaps::AHRS_CAP);
+    return SetupCommon::isMaster() ? airmass::supported() : XcvCaps::haveCap(XcvCaps::AHRS_CAP);
 }
 
 void airmass::menuVarioModes(SetupMenuSelect* mode)
@@ -38,8 +38,9 @@ static void createMenu(SetupMenu* top)
     if (!SetupCommon::isMaster()) {
         return; // the estimator settings belong to the master
     }
-    SetupMenuSelect* amena = new SetupMenuSelect("Estimator", RST_NONE, nullptr, &airmass_enable);
-    amena->setHelp("GNSS/IMU fusion for the vertical air mass movement (vario mode Air Mass) and instant wind. When disabled, the Air Mass vario modes show netto");
+    SetupMenuSelect* amena = new SetupMenuSelect("Estimator", RST_ON_EXIT, nullptr, &airmass_enable);
+    amena->setHelp("GNSS/IMU fusion for the vertical air mass movement (vario mode Air Mass) and instant wind. When disabled, the Air Mass vario modes show netto "
+                   "and the estimator takes no memory. Changes restart the device");
     amena->mkEnable();
     top->addEntry(amena);
 

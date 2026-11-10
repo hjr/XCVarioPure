@@ -208,8 +208,11 @@ class AirMassEKF {
         bool continuous;
         bool flying_speed;
     };
-    static constexpr int HIST = 130; // retain at least 6.4s at 20Hz, including interpolation endpoints
-    static constexpr uint32_t HISTORY_MS = 6400; // same duration for lower-rate legacy replays
+    static constexpr uint32_t HISTORY_MS = 6400; // the oldest GNSS fix the delayed fusion takes
+    // A snapshot every cycle, but faster ticks (20Hz) share one: the newest replaces the head until it is this far from
+    // the one before, so the history keeps 6.4s in less memory; the delayed fusion interpolates between them anyway
+    static constexpr uint32_t HIST_STEP_MS = 90;
+    static constexpr int HIST = HISTORY_MS / HIST_STEP_MS + 3; // and the interpolation endpoints
 
     // air vector and vertical speed at a past time, interpolated between snapshots
     struct Delayed {
