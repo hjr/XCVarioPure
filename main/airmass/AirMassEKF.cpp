@@ -8,7 +8,11 @@ constexpr float G0 = Units::g0;
 // plausible ranges of the learned calibration states
 constexpr float KTAS_MIN = 0.8f, KTAS_MAX = 1.25f;
 constexpr float THB_MAX = 0.25f; // rad
-constexpr float TAU_MIN = 0.25f, TAU_MAX = 1.75f; // s, GNSS latency
+// s, GNSS latency: the age of a fix at its arrival relative to the air data (the airspeed is filtered and the pitot line
+// lags too). Since the source epochs separate the fixes that arrive a second late (GnssTiming), the constant part learned
+// on 25 real flights is 0-60 ms for most Flarms (134-920 ms on three days); a 0.25 s floor clamped it and made the
+// circling wind wobble 4% more (RESULTS-2026-11-10.md addendum)
+constexpr float TAU_MIN = 0.f, TAU_MAX = 1.75f;
 constexpr float TAU_SIGMA0 = 0.3f; // s, initial uncertainty of the latency
 constexpr float SLIP_ALIGN_MAX = 0.1f; // rad, slipping samples do not go into the turn alignment
 constexpr uint32_t HEADING_AID_AGE_MS = 3000;

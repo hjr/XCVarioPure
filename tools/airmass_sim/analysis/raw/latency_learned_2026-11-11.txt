@@ -1,0 +1,14 @@
+2026-08-24_12-01.nmea.gz   ASG 29/18 441 kg (logged ballast factor)  k_tas 1.015  pitch ofs -4.34°  AoA scale 1.000  latency 60 ms  gyro z bias -0.128°/s
+2026-08-25_12-10.nmea.gz   ASG 29/18 441 kg (logged ballast factor)  k_tas 1.018  pitch ofs -8.20°  AoA scale 1.000  latency 50 ms  gyro z bias 0.030°/s
+2026-08-30_10-03.nmea.gz   ASG 29/18 441 kg (logged ballast factor)  k_tas 1.028  pitch ofs -4.00°  AoA scale 1.000  latency 11 ms  gyro z bias 0.126°/s
+2026-08-31_09-35.nmea.gz   ASG 29/18 441 kg (logged ballast factor)  k_tas 1.006  pitch ofs -3.83°  AoA scale 1.000  latency 16 ms  gyro z bias -0.158°/s
+2026-09-01_09-30.nmea.gz   ASG 29/18 441 kg (logged ballast factor)  k_tas 1.012  pitch ofs -6.41°  AoA scale 1.000  latency 22 ms  gyro z bias -0.270°/s
+2026-09-02_09-52.nmea.gz   ASG 29/18 441 kg (logged ballast factor)  k_tas 1.003  pitch ofs 0.01°  AoA scale 1.000  latency 708 ms  gyro z bias 0.217°/s
+2026-09-02_12-05.nmea.gz   ASG 29/18 450 kg (logged ballast factor)  k_tas 1.018  pitch ofs 2.10°  AoA scale 1.000  latency 134 ms  gyro z bias 0.458°/s
+2026-09-05_10-50.nmea.gz   ASG 29/18 441 kg (logged ballast factor)  k_tas 1.018  pitch ofs -0.13°  AoA scale 1.000  latency 20 ms  gyro z bias -0.004°/s
+2026-09-05_16-16.nmea.gz   ASG 29/18 450 kg (logged ballast factor)  k_tas 1.014  pitch ofs -4.91°  AoA scale 1.000  latency 537 ms  gyro z bias 0.074°/s
+2026-09-06_11-02.nmea.gz   ASG 29/18 441 kg (logged ballast factor)  k_tas 1.020  pitch ofs -5.16°  AoA scale 1.000  latency 310 ms  gyro z bias 0.011°/s
+2026-09-07_11-17.nmea.gz   ASG 29/18 441 kg (logged ballast factor)  k_tas 1.025  pitch ofs -3.97°  AoA scale 1.000  latency 28 ms  gyro z bias -0.171°/s
+2025-07-10_10-04.nmea      Arcus 808 kg (logged weights)  k_tas 0.992  pitch ofs 2.02°  AoA scale 1.000  latency 8 ms  gyro z bias -0.151°/s
+2024-09-21_10-38.nmea      DG 800B/18 460 kg (logged weights)  k_tas 0.982  pitch ofs 4.93°  AoA scale 1.000  latency 4 ms  gyro z bias 0.003°/s
+2026-03-03_12-49.nmea      DG 800B/18 460 kg (logged weights)  k_tas 0.981  pitch ofs -0.84°  AoA scale 1.000  latency 23 ms  gyro z bias 0.057°/s

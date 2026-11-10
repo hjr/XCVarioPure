@@ -1,0 +1,51 @@
+== wind.js, TAU_MIN 0.25
+instant wind minus its 60 s centred mean, in the heading frame (along: + = more tailwind than the mean along the heading)
+phase            samples  rms dev  moves in 10 s   mean along  mean across   rms along  rms across   left after removing the means
+straight          358129   0.85     1.07            0.13        0.07       0.68       0.51        0.84
+circling          474550   0.83     1.18            0.05        0.08       0.58       0.60        0.83
+circling left     264123   0.87     1.20            0.04        0.13       0.60       0.64        0.86
+circling right    210427   0.78     1.14            0.07        0.02       0.56       0.55        0.78
+
+moves within 2 s: straight 0.31, circling 0.42
+circling, share of the deviation's variance locked to the heading (30° bins per flight): absolute 3 %, relative to the wind 2 % (rms 0.14 / 0.12 m/s)
+
+per flight, circling left / right: mean along, across (m/s); learned k_tas, GNSS latency
+2026-08-24_12-01.nmea.gz     L  0.02  0.07   R  0.13 -0.04   k_tas 1.014  latency 262 ms
+2026-08-25_12-10.nmea.gz     L -0.02  0.08   R  0.06 -0.03   k_tas 1.017  latency 261 ms
+2026-08-30_10-03.nmea.gz     L  0.06  0.06   R  0.09  0.00   k_tas 1.028  latency 265 ms
+2026-08-31_09-35.nmea.gz     L  0.03  0.15   R  0.05  0.03   k_tas 1.005  latency 295 ms
+2026-09-01_09-30.nmea.gz     L  0.12  0.04   R  0.13  0.15   k_tas 1.011  latency 250 ms
+2026-09-02_09-52.nmea.gz     L  0.07  0.21   R  0.08 -0.04   k_tas 1.003  latency 708 ms
+2026-09-02_12-05.nmea.gz     L  0.04  0.16   R  0.04  0.15   k_tas 1.018  latency 253 ms
+2026-09-05_10-50.nmea.gz     L  0.07  0.23   R  0.04  0.04   k_tas 1.018  latency 252 ms
+2026-09-05_16-16.nmea.gz     L  0.36  0.33   R -0.00 -0.43   k_tas 1.014  latency 537 ms
+2026-09-06_11-02.nmea.gz     L  0.01  0.17   R  0.04  0.00   k_tas 1.020  latency 310 ms
+2026-09-07_11-17.nmea.gz     L  0.00  0.23   R  0.06  0.00   k_tas 1.024  latency 252 ms
+== wind.js, TAU_MIN 0
+instant wind minus its 60 s centred mean, in the heading frame (along: + = more tailwind than the mean along the heading)
+phase            samples  rms dev  moves in 10 s   mean along  mean across   rms along  rms across   left after removing the means
+straight          356409   0.82     1.03            0.11        0.06       0.67       0.48        0.81
+circling          474799   0.80     1.13            0.05        0.08       0.55       0.58        0.79
+circling left     264389   0.84     1.17            0.04        0.13       0.57       0.62        0.83
+circling right    210410   0.73     1.07            0.06        0.01       0.52       0.52        0.73
+
+moves within 2 s: straight 0.30, circling 0.40
+circling, share of the deviation's variance locked to the heading (30° bins per flight): absolute 3 %, relative to the wind 2 % (rms 0.13 / 0.11 m/s)
+
+per flight, circling left / right: mean along, across (m/s); learned k_tas, GNSS latency
+2026-08-24_12-01.nmea.gz     L  0.02  0.07   R  0.12 -0.06   k_tas 1.015  latency 60 ms
+2026-08-25_12-10.nmea.gz     L -0.01  0.08   R  0.05 -0.06   k_tas 1.018  latency 50 ms
+2026-08-30_10-03.nmea.gz     L  0.06  0.06   R  0.07 -0.02   k_tas 1.028  latency 11 ms
+2026-08-31_09-35.nmea.gz     L  0.03  0.15   R  0.03  0.00   k_tas 1.006  latency 16 ms
+2026-09-01_09-30.nmea.gz     L  0.09  0.07   R  0.07  0.08   k_tas 1.012  latency 22 ms
+2026-09-02_09-52.nmea.gz     L  0.07  0.21   R  0.08 -0.04   k_tas 1.003  latency 708 ms
+2026-09-02_12-05.nmea.gz     L  0.04  0.16   R  0.04  0.15   k_tas 1.018  latency 134 ms
+2026-09-05_10-50.nmea.gz     L  0.06  0.23   R  0.04  0.03   k_tas 1.018  latency 20 ms
+2026-09-05_16-16.nmea.gz     L  0.36  0.33   R -0.00 -0.43   k_tas 1.014  latency 537 ms
+2026-09-06_11-02.nmea.gz     L  0.01  0.17   R  0.04  0.00   k_tas 1.020  latency 310 ms
+2026-09-07_11-17.nmea.gz     L  0.01  0.23   R  0.05  0.00   k_tas 1.025  latency 28 ms
+== needle.js, TAU_MIN 0
+series                               needle 1 s (all / straight / circling)   delay (circling)   10 s error (all / straight / circling)   own error: 10 s (straight / circling)  30 s
+latency learned down to 0            0.750 / 0.606 / 0.918            1.6 s (1.6 s)        0.543 / 0.458 / 0.629              0.117 / 0.203     0.108 / 0.104
+TE netto                             0.853 / 0.870 / 0.853            2.4 s (2.2 s)        0.591 / 0.555 / 0.631              0.335 / 0.211     0.157 / 0.093
+the reference's own error: 10 s 0.443 / 0.595, 30 s 0.231 / 0.173 (from latency learned down to 0, TE netto and the reference)
