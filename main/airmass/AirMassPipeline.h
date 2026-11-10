@@ -83,15 +83,9 @@ class Pipeline {
 public:
     static constexpr float GYRO_DOT_TAU = 0.2f; // s, low pass of the differentiated gyro (lever arm)
 
-    // simulation experiments
+    // simulation experiments; estimator settings go by name (tools/airmass_sim/replay_settings.h)
     struct Options {
         bool slip_aid = true; // sideslip uncertainty from the lateral acceleration
-        float lag_static = NAN, lag_pitot = NAN; // s, pneumatic lags the estimator assumes (NAN: its defaults)
-        float degraded_factor = NAN, degraded_time = NAN; // the degraded wind range (NAN: the estimator's defaults)
-        float energy_load_weight = NAN, energy_gust_weight = NAN; // energy balance noise growth (NAN: the defaults)
-        float anchor_tau = NAN; // s, output anchor to the plain energy balance (NAN: the default)
-        float energy_gate = NAN, kinetic_tau = NAN; // energy balance gate [sigma], slow kinetic correction [s]
-        float wind_work = NAN, wind_work_hp = NAN, blend_hp = NAN; // wind work weight and high pass [s], blend high pass [s]
     };
 
     void configure(const Setup& s) {
@@ -101,42 +95,6 @@ public:
         cfg.q_wind_v *= s.vario_resp * s.vario_resp;
         cfg.static_comp = s.te_adjust / 100.f;
         cfg.learn_calibration = _learn;
-        if (std::isfinite(_opt.lag_static)) {
-            cfg.lag_static = _opt.lag_static;
-        }
-        if (std::isfinite(_opt.lag_pitot)) {
-            cfg.lag_pitot = _opt.lag_pitot;
-        }
-        if (std::isfinite(_opt.degraded_factor)) {
-            cfg.degraded_factor = _opt.degraded_factor;
-        }
-        if (std::isfinite(_opt.degraded_time)) {
-            cfg.degraded_time = _opt.degraded_time;
-        }
-        if (std::isfinite(_opt.energy_load_weight)) {
-            cfg.energy_load_weight = _opt.energy_load_weight;
-        }
-        if (std::isfinite(_opt.energy_gust_weight)) {
-            cfg.energy_gust_weight = _opt.energy_gust_weight;
-        }
-        if (std::isfinite(_opt.anchor_tau)) {
-            cfg.anchor_tau = _opt.anchor_tau;
-        }
-        if (std::isfinite(_opt.energy_gate)) {
-            cfg.energy_gate = _opt.energy_gate;
-        }
-        if (std::isfinite(_opt.kinetic_tau)) {
-            cfg.kinetic_tau = _opt.kinetic_tau;
-        }
-        if (std::isfinite(_opt.wind_work)) {
-            cfg.wind_work = _opt.wind_work;
-        }
-        if (std::isfinite(_opt.wind_work_hp)) {
-            cfg.wind_work_hp = _opt.wind_work_hp;
-        }
-        if (std::isfinite(_opt.blend_hp)) {
-            cfg.blend_hp = _opt.blend_hp;
-        }
         _ekf.setConfig(cfg);
     }
     void setOptions(const Options& o) {
