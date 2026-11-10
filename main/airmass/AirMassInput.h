@@ -79,6 +79,7 @@ struct AirData {
     float n_lift = 1.f;  // g, lift load factor
     float aoa = 0.f;     // rad, AoA model, from the zero lift line
     float alpha = 0.f;   // rad, body x axis off the air velocity
+    float ca = 1.f, sa = 0.f; // cos(alpha), sin(alpha)
 };
 
 inline AirData airData(const Raw& r, const AirMassEKF& ekf) {
@@ -90,6 +91,8 @@ inline AirData airData(const Raw& r, const AirMassEKF& ekf) {
     a.n_lift = liftLoadFactor(a.f_cg, a.ias, r.mass, r.wing_area, ekf);
     a.aoa = aoaModel(a.n_lift, a.ias, r.mass, r.wing_area);
     a.alpha = ekf.alphaOf(a.aoa);
+    a.ca = std::cos(a.alpha);
+    a.sa = std::sin(a.alpha);
     return a;
 }
 
@@ -112,8 +115,7 @@ inline void fillInput(const Raw& r, const AirData& a, AirMassEKF::Input& in) {
     }
     // along the air velocity u = (cos(alpha), 0, sin(alpha)), where it compares to the airspeed change: the body x
     // axis would pick up the centripetal acceleration w x (V u) in turns (wy V sin(alpha), ~1 m/s² at 40° bank)
-    const float ca = std::cos(a.alpha), sa = std::sin(a.alpha);
-    in.acc_long = ((f[0] + dn[0]) * ca + (f[2] + dn[2]) * sa) * G0;
+    in.acc_long = ((f[0] + dn[0]) * a.ca + (f[2] + dn[2]) * a.sa) * G0;
 }
 
 } // namespace airmass

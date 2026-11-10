@@ -184,9 +184,18 @@ class AirMassEKF {
 
     // Air velocity in NED (no wind), as used by the filter
     // dalpha (optional) receives the derivative by alpha; the derivative by psi is (-out[1], out[0], 0)
-    static void airVelocity(float tas, float k, float roll, float pitch, float psi, float alpha, float out[3], float dalpha[3]);
+    static void airVelocity(float tas, float k, float roll, float pitch, float psi, float alpha, float out[3], float dalpha[3]) {
+        airVelocity(tas, k, Tilt(roll, pitch), psi, alpha, out, dalpha);
+    }
 
    private:
+    // sine and cosine of roll (sp, cp) and pitch (st, ct), taken once per cycle
+    struct Tilt {
+        float sp, cp, st, ct;
+        Tilt(float roll, float pitch) : sp(std::sin(roll)), cp(std::cos(roll)), st(std::sin(pitch)), ct(std::cos(pitch)) {}
+    };
+    static void airVelocity(float tas, float k, const Tilt& tilt, float psi, float alpha, float out[3], float dalpha[3]);
+
     friend struct AirMassFlapHistoryTest; // host regression access to delayed flap geometry
     // raw inputs of one cycle; the delayed air vector gets re-evaluated with the current
     // calibration states, the heading through the uncorrected gyro integral
@@ -210,9 +219,9 @@ class AirMassEKF {
         float slip_sigma;
     };
 
-    void predict(const Input& in);
+    void predict(const Input& in, const Tilt& tilt);
     void fuseBaro(float alt, float sample_dt);
-    void fuseKinematic(const Input& in, const float va[3], const float dalpha[3]);
+    void fuseKinematic(const Input& in, const Tilt& tilt, const float va[3], const float dalpha[3]);
     void updateKinetic(const Input& in, const float va[3]);
     // the weight of the kinetic blend at this roll angle: 1 in straight flight, fading to 0 around blend_bank
     float blendBankWeight(float roll) const;

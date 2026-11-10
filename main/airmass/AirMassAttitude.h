@@ -40,6 +40,10 @@ public:
     // gyro: body rates [rad/s], f: specific force [g] at the CG, tas: calibrated true airspeed [m/s],
     // alpha: angle of attack of the body x axis [rad], bias_z: body z gyro bias from the estimator (AirMassEKF BGZ)
     void update(const float gyro[3], const float f[3], float tas, float alpha, float dt, float bias_z, bool continuous = true) {
+        update(gyro, f, tas, std::cos(alpha), std::sin(alpha), dt, bias_z, continuous);
+    }
+    // the same with cos(alpha) and sin(alpha)
+    void update(const float gyro[3], const float f[3], float tas, float ca, float sa, float dt, float bias_z, bool continuous) {
         if (!continuous) {
             _tas_dot = _gust_slow = 0.f;
         } else if (std::isfinite(_tas_prev)) {
@@ -58,7 +62,6 @@ public:
 
         // gravity reference: g = a - f, with the flight path acceleration a = V' u + w x (V u),
         // u = (cos alpha, 0, sin alpha) the air velocity direction in body axes (constant wind)
-        const float ca = std::cos(alpha), sa = std::sin(alpha);
         const float a[3] = {_tas_dot * ca + w[1] * tas * sa, w[2] * tas * ca - w[0] * tas * sa, _tas_dot * sa - w[1] * tas * ca};
         const float ref[3] = {a[0] / G0 - f[0], a[1] / G0 - f[1], a[2] / G0 - f[2]};
         const float norm = std::sqrt(ref[0] * ref[0] + ref[1] * ref[1] + ref[2] * ref[2]);
