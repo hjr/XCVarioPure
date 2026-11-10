@@ -355,7 +355,7 @@ const serial = new AirMassSerial.SerialReplay({ onChange: s => {
   $("serialbtn").textContent = s.connected ? "Disconnect serial" : "Connect serial…";
   $("baud").disabled = s.connected || s.connecting;
   if (s.connected || serialWasConnected) {
-    T = s.time();
+    if (!scrubbing) T = s.time(); // a dragged slider holds the page's time (endScrub)
     const wasPlaying = playing;
     playing = s.running;
     playbackButton();
@@ -1448,8 +1448,7 @@ function pause() {
 function frame(now) {
   if (!playing) return;
   if (serial.connected) {
-    T = serial.time();
-    displayTime(T);
+    if (!scrubbing) { T = serial.time(); displayTime(T); }
     if (playing) nextFrame();
     return;
   }
@@ -1461,12 +1460,27 @@ function frame(now) {
   if (playing) nextFrame();
 }
 $("playbtn").onclick = () => (playing ? pause() : play());
+// While the slider is dragged with the instrument connected only the page follows it: the instrument seeks once, where
+// the slider is let go (each seek resends the whole configuration). Letting go ends the drag even without a change.
+let scrubbing = false;
+function endScrub() {
+  if (!scrubbing) return;
+  scrubbing = false;
+  seek(+$("slider").value, scheduleDraw);
+}
+$("slider").oninput = () => {
+  if (!D || loading || replaying) return;
+  if (!serial.connected) { seek(+$("slider").value, scheduleDraw); return; }
+  scrubbing = true;
+  displayTime(+$("slider").value, scheduleDraw);
+};
+$("slider").onchange = endScrub;
+for (const name of ["pointerup", "pointercancel", "blur"]) $("slider").addEventListener(name, endScrub);
 // the settings panel: opens over the page, closes on the button, Escape or a click outside
 function showSettings(on) { $("settings").hidden = !on; $("settingsbtn").setAttribute("aria-expanded", on ? "true" : "false"); }
 $("settingsbtn").onclick = () => showSettings($("settings").hidden);
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") showSettings(false); });
 document.addEventListener("pointerdown", (e) => { if (!$("settings").hidden && !e.target.closest("#settings, #settingsbtn")) showSettings(false); });
-$("slider").oninput = () => seek(+$("slider").value, scheduleDraw);
 $("rerun").onclick = run;
 document.addEventListener("keydown", (e) => {
   if (e.ctrlKey || e.metaKey || e.altKey || e.isComposing || e.target.closest("#clock, input[type=text], input[type=number], select, textarea, [contenteditable]")) return;
