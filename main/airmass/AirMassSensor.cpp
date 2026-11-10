@@ -300,9 +300,13 @@ void AirMassSensor::persistLearned()
     if (flaps.active()) {
         // flapped glider: an offset per lever position
         flaps.keep(ekf);
+        // offsets of another installation must not survive the new signature
+        const bool same_installation = airmass_sig_pitch.get() == pitchSignature();
         for (int i = 0; i < airmass::FlapOffsets::N; ++i) {
             if (flaps.sigma(i) < PITCH_SIGMA) {
                 store(*FLAP_OFS[i], flaps.offset(i), 1e-3f);
+            } else if (!same_installation) {
+                store(*FLAP_OFS[i], airmass::FlapOffsets::UNKNOWN, 1e-3f);
             }
         }
         store(airmass_k_aoa, ekf.aoaScale(), 1e-3f);
