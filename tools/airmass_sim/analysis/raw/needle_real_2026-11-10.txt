@@ -1,0 +1,24 @@
+series                               needle 1 s (all / straight / circling)   delay (circling)   10 s error (all / straight / circling)   own error: 10 s (straight / circling)  30 s
+default                              0.700 / 0.548 / 0.871            1.6 s (1.6 s)        0.550 / 0.465 / 0.633              0.248 / 0.257     0.187 / 0.134
+sigp.03                              0.727 / 0.581 / 0.899            1.6 s (1.6 s)        0.544 / 0.453 / 0.632              0.224 / 0.253     0.152 / 0.126
+gust2.5                              0.781 / 0.674 / 0.915            1.6 s (1.6 s)        0.540 / 0.457 / 0.624              0.232 / 0.233     0.168 / 0.122
+TE netto                             0.856 / 0.876 / 0.853            2.4 s (2.4 s)        0.584 / 0.546 / 0.621              0.379 / 0.225     0.163 / 0.098
+the reference's own error: 10 s 0.394 / 0.579, 30 s 0.225 / 0.169 (from default, TE netto and the reference)
+series                               needle 1 s (all / straight / circling)   delay (circling)   10 s error (all / straight / circling)   own error: 10 s (straight / circling)  30 s
+default                              0.700 / 0.548 / 0.871            1.6 s (1.6 s)        0.550 / 0.465 / 0.633              0.248 / 0.257     0.187 / 0.134
+combo                                0.833 / 0.755 / 0.948            1.6 s (1.6 s)        0.535 / 0.444 / 0.624              0.206 / 0.235     0.130 / 0.114
+combo+kin5                           0.853 / 0.777 / 0.963            1.6 s (1.6 s)        0.535 / 0.445 / 0.623              0.209 / 0.232     0.106 / 0.105
+TE netto                             0.856 / 0.876 / 0.853            2.4 s (2.4 s)        0.584 / 0.546 / 0.621              0.379 / 0.225     0.163 / 0.098
+the reference's own error: 10 s 0.394 / 0.579, 30 s 0.225 / 0.169 (from default, TE netto and the reference)
+series                               needle 1 s (all / straight / circling)   delay (circling)   10 s error (all / straight / circling)   own error: 10 s (straight / circling)  30 s
+default                              0.700 / 0.548 / 0.871            1.6 s (1.6 s)        0.550 / 0.465 / 0.633              0.248 / 0.257     0.187 / 0.134
+sp.03+k5                             0.751 / 0.608 / 0.918            1.6 s (1.6 s)        0.538 / 0.446 / 0.628              0.209 / 0.244     0.115 / 0.113
+sp.04+g2.5+k5                        0.870 / 0.804 / 0.974            1.6 s (1.6 s)        0.538 / 0.448 / 0.625              0.215 / 0.237     0.095 / 0.105
+TE netto                             0.856 / 0.876 / 0.853            2.4 s (2.4 s)        0.584 / 0.546 / 0.621              0.379 / 0.225     0.163 / 0.098
+the reference's own error: 10 s 0.394 / 0.579, 30 s 0.225 / 0.169 (from default, TE netto and the reference)
+series                               needle 1 s (all / straight / circling)   delay (circling)   10 s error (all / straight / circling)   own error: 10 s (straight / circling)  30 s
+default                              0.700 / 0.548 / 0.871            1.6 s (1.6 s)        0.550 / 0.465 / 0.633              0.248 / 0.257     0.187 / 0.134
+combo+k5+ct.7                        0.823 / 0.777 / 0.899            1.6 s (1.8 s)        0.534 / 0.445 / 0.620              0.209 / 0.223     0.106 / 0.104
+sp.03+g2+k5                          0.799 / 0.690 / 0.940            1.6 s (1.6 s)        0.536 / 0.445 / 0.625              0.208 / 0.237     0.111 / 0.109
+TE netto                             0.856 / 0.876 / 0.853            2.4 s (2.4 s)        0.584 / 0.546 / 0.621              0.379 / 0.225     0.163 / 0.098
+the reference's own error: 10 s 0.394 / 0.579, 30 s 0.225 / 0.169 (from default, TE netto and the reference)
