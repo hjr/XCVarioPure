@@ -231,7 +231,7 @@ class AirMassEKF {
     // the vario output before the circling low pass (circling_tau): up positive, anchored to the plain energy balance
     float rawVario() const { return -(_x[WD] + _anchor); }
     void fuseEnergy(const Input& in);
-    void alignFromPrior(const GnssVelocity& g, float wn0, float we0);
+    void alignFromPrior(const GnssVelocity& g, const Delayed& d, float wn0, float we0);
     void alignFromHeading(const GnssVelocity& g, const Snapshot& s);
     void accumulateAlignment(const GnssVelocity& g, const Snapshot& s);
     void commitAlignment(float wn, float we, float psi, float var_wind, float var_psi);

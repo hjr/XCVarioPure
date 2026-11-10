@@ -533,13 +533,16 @@ bool AirMassEKF::delayedState(uint32_t t, Delayed& d) const {
     return true;
 }
 
-// heading from the air vector, given a trusted prior wind
-void AirMassEKF::alignFromPrior(const GnssVelocity& g, float wn0, float we0) {
+// heading from the air vector, given a trusted prior wind. The bearing of the air vector belongs to the observation
+// time and differs from the heading in banked flight (angle of attack). The delayed air vector of the current heading
+// estimate has both, the gyro carries it to now: the alignment turns the heading by the bearing difference.
+void AirMassEKF::alignFromPrior(const GnssVelocity& g, const Delayed& d, float wn0, float we0) {
     const float an = g.vn - wn0, ae = g.ve - we0;
     if (an * an + ae * ae < 100.f) {
         return; // too slow for a reliable track
     }
-    commitAlignment(wn0, we0, std::atan2(ae, an), 4.f, 0.05f);
+    const float turn = wrapPi(std::atan2(ae, an) - std::atan2(d.va[1], d.va[0]));
+    commitAlignment(wn0, we0, _x[PSI] + turn, 4.f, 0.05f);
 }
 
 // heading from an absolute heading source (compass), the wind follows from the GNSS velocity
@@ -670,7 +673,7 @@ void AirMassEKF::fuseGnss(const GnssVelocity& g, bool has_prior, float wn0, floa
         if (_inertial_trust < 1.f) return;
         has_prior = has_prior && std::isfinite(wn0) && std::isfinite(we0);
         if (has_prior) {
-            alignFromPrior(g, wn0, we0);
+            alignFromPrior(g, d, wn0, we0);
         } else if (_aid.valid && (uint32_t)(_last_time_ms - _aid.time_ms) <= HEADING_AID_AGE_MS) {
             alignFromHeading(g, *s);
         } else {
