@@ -151,8 +151,8 @@ void VarioFilter::postProcess()
     // ESP_LOGI(FNAME, "Varioscore TE: %.3f, sink: %.3f, Gact: %.3f, Gmax: %.3f, tp: %.3f", vkf.v, _polar_sink, _Gact.get(), _Goptimal.get(), tp);
     thermal_score.set(tp);
 
-    // Super Netto shows the climb as if circling here: netto (or air mass) plus the circling sink
-    const mps_t rel_sink = CRMOD.isRelative() ? Speed2Fly.getCirclingSink() : 0.f;
+    // Super Netto shows the climb as if circling here: netto (or air mass) plus the circling sink, TAS terms as well
+    const mps_t rel_sink = CRMOD.isRelative() ? Speed2Fly.getCirclingSink() * tas_per_ias : 0.f;
     te_netto.set(te_ne);
 
     // Air Mass mode: the damped vertical air mass movement of the estimator, falls back to netto while it has none

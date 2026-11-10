@@ -114,9 +114,14 @@ dl_action_t GpsMsg::parseGPRMC(NmeaPlugin *plg)
     bool fix_ok = decodeNMEADegMin( s + word->at(2), *(s + word->at(3)), lat )
         && decodeNMEADegMin( s + word->at(4), *(s + word->at(5)), lon );
     float speed_knots = NAN, course_deg = NAN;
-    const bool velocity_ok = sscanf(s + word->at(6), "%f", &speed_knots) == 1 &&
-        sscanf(s + word->at(7), "%f", &course_deg) == 1 && std::isfinite(speed_knots) &&
-        std::isfinite(course_deg) && speed_knots >= 0.f && course_deg >= 0.f && course_deg <= 360.f;
+    const bool speed_ok = sscanf(s + word->at(6), "%f", &speed_knots) == 1 && std::isfinite(speed_knots) && speed_knots >= 0.f;
+    const bool course_ok = sscanf(s + word->at(7), "%f", &course_deg) == 1 && std::isfinite(course_deg) &&
+        course_deg >= 0.f && course_deg <= 360.f;
+    // standing still, receivers leave the course empty: a zero velocity needs none
+    const bool velocity_ok = speed_ok && (course_ok || speed_knots < 0.5f);
+    if (!course_ok) {
+        course_deg = 0.f;
+    }
     mps_t gndSpeed = Units::knots_to_mps(speed_knots);
     rad_t gndCourse = Units::deg_to_rad(course_deg);
     int valid_date_scan = sscanf( s + word->at(8),"%02d%02d%02d", &t.tm_mday, &t.tm_mon, &t.tm_year );
