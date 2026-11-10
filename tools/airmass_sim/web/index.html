@@ -704,7 +704,7 @@ function derive(D) {
     const i = D.ai[k];
     if (i < 0) continue;
     D.amRaw[k] = r.vario[i];
-    D.amOk[k] = r.status[i] & 1;
+    D.amOk[k] = r.status[i] & STATUS.VARIO_VALID;
     // the polar sink in TAS terms (VarioFilter: getSink(ias) * tas / ias), negative
     const sink = sens ? c.polar_sink[k] * c.tas[k] / Math.max(c.ias[k], 10) : -r.polar_sink[i];
     if (Number.isFinite(sink)) sinkUp[k] = sink;
@@ -729,7 +729,7 @@ function derive(D) {
   //    horizontal gust counts as air movement, as for TE netto.
   const G = 9.80665;
   // AirMass's averaged wind, where valid, as a 2 min centred mean (at least half of it valid)
-  const valid = (k) => D.ai[k] >= 0 && r.status[D.ai[k]] & 2;
+  const valid = (k) => D.ai[k] >= 0 && r.status[D.ai[k]] & STATUS.WIND_VALID;
   const { S: wnS, N: wN } = runningSums(n, (k) => (valid(k) ? r.avg_wind_n[D.ai[k]] : NaN)), { S: weS } = runningSums(n, (k) => (valid(k) ? r.avg_wind_e[D.ai[k]] : NaN));
   const HALF_2MIN = 600;
   const pitotEnergy = (f) => { const tas = c.tas[indexAt(f.tm)]; return f.alt + tas * tas / (2 * G); };
@@ -1082,7 +1082,7 @@ function drawWindField() {
   let last = null;
   for (const p of D.mapPts) {
     const i = D.ai[p.k];
-    if (i < 0 || !(r.status[i] & (2 | 16)) || !view.contains(p.ll)) continue;
+    if (i < 0 || !(r.status[i] & (STATUS.WIND_VALID | STATUS.WIND_DEGRADED)) || !view.contains(p.ll)) continue;
     const at = map.latLngToLayerPoint(p.ll);
     if (last && at.distanceTo(last) < WIND_FIELD_PX) continue;
     const kmh = Math.hypot(r.wind_n[i], r.wind_e[i]) * 3.6;
@@ -1093,7 +1093,7 @@ function drawWindField() {
     const pt = (x, y) => map.layerPointToLatLng(L.point(x, y));
     const tip = [at.x + dx * len / 2, at.y + dy * len / 2], tail = [at.x - dx * len / 2, at.y - dy * len / 2];
     const head = (s) => pt(tip[0] - 6 * dx + s * 3.5 * dy, tip[1] - 6 * dy - s * 3.5 * dx);
-    const color = r.status[i] & 2 ? WIND_FIELD_INK : fadeToGrey(WIND_FIELD_INK, r.wind_fade[i]);
+    const color = r.status[i] & STATUS.WIND_VALID ? WIND_FIELD_INK : fadeToGrey(WIND_FIELD_INK, r.wind_fade[i]);
     L.polyline([[pt(...tail), pt(...tip)], [head(1), pt(...tip), head(-1)]], { color, weight: 2, opacity: 0.95, interactive: false, className: "windfield" }).addTo(windFieldLayer);
   }
 }
@@ -1291,7 +1291,6 @@ function updateReadouts(k) {
   const kmh = (v) => (Number.isFinite(v) ? (v * 3.6).toFixed(0) + " km/h" : "–");
   $("v-ias").textContent = kmh(D.tr.ias[k]); // as measured
   $("v-tas").textContent = kmh(D.tr.tas[k]); // density-corrected from the log's OAT, with altitude-based fallback when implausible
-  const st = i >= 0 ? r.status[i] : 0;
   const track = D.tr.gnss_track[k], slip = estimatedFuselageSlip(k);
   if (Number.isFinite(track)) {
     const base = Math.round((track + 360) % 360);
@@ -1320,7 +1319,7 @@ function drawAll() {
     const ll = [D.lat[k], D.lon[k]];
     gliderMarker.setLatLng(ll);
     const i = D.ai[k];
-    const hdg = i >= 0 && (D.rep.cols.status[i] & 8) ? D.rep.cols.heading_deg[i] : D.tr.gnss_track[k];
+    const hdg = i >= 0 && (D.rep.cols.status[i] & STATUS.ALIGNED) ? D.rep.cols.heading_deg[i] : D.tr.gnss_track[k];
     const el = document.getElementById("gl");
     if (el) el.style.transform = `rotate(${Number.isFinite(hdg) ? hdg : 0}deg)`;
     drawMapWind(k);
@@ -1337,7 +1336,7 @@ function drawAll() {
 // wind was valid, degraded or neither
 function headwind(k) {
   const r = D.rep.cols, i = D.ai[k];
-  if (i < 0 || !(r.status[i] & 8)) return NaN;
+  if (i < 0 || !(r.status[i] & STATUS.ALIGNED)) return NaN;
   const psi = r.heading_deg[i] * Math.PI / 180;
   return -(r.wind_n[i] * Math.cos(psi) + r.wind_e[i] * Math.sin(psi));
 }
@@ -1350,8 +1349,8 @@ function drawMapWind(k) {
   const hw = headwind(k), psi = i >= 0 ? r.heading_deg[i] * Math.PI / 180 : 0;
   // [north, east, colour, label prefix (default: the direction it comes from)]
   const winds = {
-    inst: st & (2 | 16) ? [r.wind_n[i], r.wind_e[i], st & 2 ? C.am : fadeToGrey(C.am, r.wind_fade[i])] : null,
-    avg: st & 2 ? [r.avg_wind_n[i], r.avg_wind_e[i], C.muted] : null,
+    inst: st & (STATUS.WIND_VALID | STATUS.WIND_DEGRADED) ? [r.wind_n[i], r.wind_e[i], st & STATUS.WIND_VALID ? C.am : fadeToGrey(C.am, r.wind_fade[i])] : null,
+    avg: st & STATUS.WIND_VALID ? [r.avg_wind_n[i], r.avg_wind_e[i], C.muted] : null,
     hw: $("showhw").checked && Number.isFinite(hw) ? [-hw * Math.cos(psi), -hw * Math.sin(psi), C.hw, hw >= 0 ? "HW" : "TW"] : null,
   };
   const placed = [];

@@ -5,6 +5,7 @@ const crypto = require('crypto');
 const { loadPage, lagOf, dampSeries, freeMask, gnssCircleWind } = require('./page.js');
 const web = path.resolve(__dirname, '../web');
 const { convert, runReplay } = loadPage(web);
+const STATUS_COUNTS = { vario: STATUS.VARIO_VALID, wind: STATUS.WIND_VALID, fresh: STATUS.GNSS_FRESH, aligned: STATUS.ALIGNED, degraded: STATUS.WIND_DEGRADED };
 const quantile = (v, p) => {
   const a = v.filter(Number.isFinite).sort((x, y) => x - y);
   return a.length ? a[Math.floor((a.length - 1) * p)] : null;
@@ -95,12 +96,12 @@ async function evaluate(M, file) {
       const s = r.status[D.ai[k]];
       airborneSeconds += dt;
       airborneStatus.samples++;
-      for (const [name, bit] of Object.entries({ vario: 1, wind: 2, fresh: 4, aligned: 8, degraded: 16 })) if (s & bit) airborneStatus[name]++;
+      for (const [name, bit] of Object.entries(STATUS_COUNTS)) if (s & bit) airborneStatus[name]++;
     }
     if (!free[k] || D.ai[k] < 0) continue;
     const i = D.ai[k], s = r.status[i]; status.samples++;
-    for (const [name, bit] of Object.entries({ vario: 1, wind: 2, fresh: 4, aligned: 8, degraded: 16 })) if (s & bit) status[name]++;
-    if (s & 2) windSpeed.push(Math.hypot(r.wind_n[i], r.wind_e[i]));
+    for (const [name, bit] of Object.entries(STATUS_COUNTS)) if (s & bit) status[name]++;
+    if (s & STATUS.WIND_VALID) windSpeed.push(Math.hypot(r.wind_n[i], r.wind_e[i]));
     beta.push(Math.abs(r.slip_beta_deg[i]));
   }
   const motion = {};
@@ -115,7 +116,7 @@ async function evaluate(M, file) {
   const circles = gnssCircleWind(D), errors = [], avgErrors = [];
   for (const turn of circles.turns) {
     const k = indexAt(turn.t), i = D.ai[k];
-    if (i < 0 || !free[k] || !(r.status[i]&2) || turn.res > 1) continue;
+    if (i < 0 || !free[k] || !(r.status[i] & STATUS.WIND_VALID) || turn.res > 1) continue;
     errors.push(Math.hypot(turn.n - r.wind_n[i], turn.e - r.wind_e[i]));
     avgErrors.push(Math.hypot(turn.n - r.avg_wind_n[i], turn.e - r.avg_wind_e[i]));
   }

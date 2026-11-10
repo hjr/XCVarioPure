@@ -21,7 +21,7 @@ const HZ = 10, HALF = 30 * HZ;
     D = build(conv, await runReplay(M, conv.rec, { settings: process.env.SETTINGS || "" }));
     derive(D);
     const r = D.rep.cols, c = D.tr, n = D.n;
-    const ok = (k) => D.ai[k] >= 0 && (r.status[D.ai[k]] & 2) && c.ias[k] > 60 / 3.6;
+    const ok = (k) => D.ai[k] >= 0 && (r.status[D.ai[k]] & STATUS.WIND_VALID) && c.ias[k] > 60 / 3.6;
     const { free } = freeMask(D, ok);
     const wn = (k) => r.wind_n[D.ai[k]], we = (k) => r.wind_e[D.ai[k]];
     // centred 60 s means over the free samples

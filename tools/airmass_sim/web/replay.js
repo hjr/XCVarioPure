@@ -36,6 +36,8 @@
     });
     return { n, t_ms, cols, summary: JSON.parse(M.UTF8ToString(M._am_summary())) };
   }
-  if (typeof module !== "undefined" && module.exports) module.exports = { runReplay };
-  else root.runReplay = runReplay;
+  // the bits of the replay's status column: AirMassEKF::ST_* (main/airmass/AirMassEKF.h)
+  const STATUS = Object.freeze({ VARIO_VALID: 1, WIND_VALID: 2, GNSS_FRESH: 4, ALIGNED: 8, WIND_DEGRADED: 16 });
+  if (typeof module !== "undefined" && module.exports) module.exports = { runReplay, STATUS };
+  else Object.assign(root, { runReplay, STATUS });
 })(typeof globalThis !== "undefined" ? globalThis : this);

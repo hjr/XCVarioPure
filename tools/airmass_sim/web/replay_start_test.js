@@ -2,6 +2,7 @@
 // Run after build.sh: node tools/airmass_sim/web/replay_start_test.js
 const assert = require("node:assert/strict");
 const { loadPage } = require("../analysis/page.js");
+const { STATUS } = require("./replay.js");
 const { convert, runReplay } = loadPage(__dirname);
 function sentence(body) {
   let sum = 0;
@@ -44,8 +45,8 @@ function sentence(body) {
     assert(after > 0, "the recorded gap reaches WASM");
     assert.equal(gapReplay.t_ms[after] - gapReplay.t_ms[after - 1], 113673);
     assert(gapReplay.n <= full.n, "no prediction ticks are fabricated through the outage");
-    assert(gapReplay.cols.status[after - 1] & 1, "the vario settled before the outage");
-    assert(!(gapReplay.cols.status[after] & 1), "the estimator must settle again after the gap");
+    assert(gapReplay.cols.status[after - 1] & STATUS.VARIO_VALID, "the vario settled before the outage");
+    assert(!(gapReplay.cols.status[after] & STATUS.VARIO_VALID), "the estimator must settle again after the gap");
   }
 
   // RR-style logs carry sensors/attitude but no navigation sentences at all.
@@ -67,8 +68,8 @@ function sentence(body) {
     const rep = await runReplay(M, noGnss.rec, { mahony });
     assert.equal(rep.n, 281);
     assert(rep.cols.vario.every(Number.isFinite));
-    assert(rep.cols.status.every(s => !(s & (2 | 4 | 8))), "missing GNSS cannot invent wind, fixes or heading alignment");
-    assert(rep.cols.status.some(s => s & 1), "vario can settle without GNSS");
+    assert(rep.cols.status.every(s => !(s & (STATUS.WIND_VALID | STATUS.GNSS_FRESH | STATUS.ALIGNED))), "missing GNSS cannot invent wind, fixes or heading alignment");
+    assert(rep.cols.status.some(s => s & STATUS.VARIO_VALID), "vario can settle without GNSS");
     const recovered = await runReplay(M, recoveredClock.rec, { mahony });
     assert.deepEqual(recovered.t_ms, rep.t_ms, "recovered clock preserves measured/predicted replay cadence");
     assert.deepEqual(recovered.cols, rep.cols, "recovered clock yields the same estimator output as correctly timestamped input");
@@ -121,11 +122,11 @@ function sentence(body) {
     assert.equal(rep.n, 240);
     assert.equal(rep.summary.seconds, 12, "reported duration is elapsed time, independent of frame rate");
     assert(rep.cols.roll_deg.every(v => Math.abs(v) < 0.001), "held-stamp gyro changes cannot tilt either attitude filter");
-    assert(rep.cols.status.slice(0, 99).every(s => !(s & 1)), "20Hz still needs five seconds of settling");
-    assert(rep.cols.status[99] & 1);
+    assert(rep.cols.status.slice(0, 99).every(s => !(s & STATUS.VARIO_VALID)), "20Hz still needs five seconds of settling");
+    assert(rep.cols.status[99] & STATUS.VARIO_VALID);
     const invalid = [...timed, sentence("$PXCVR,12050,,,,,,,,,,,12050,12050,12050,12050,0")];
     const bad = await runReplay(M, convert(invalid.join("\n")).rec, { mahony });
-    assert(!(bad.cols.status[bad.n - 1] & 1), "explicit invalid-source metadata forces fallback");
+    assert(!(bad.cols.status[bad.n - 1] & STATUS.VARIO_VALID), "explicit invalid-source metadata forces fallback");
     assert(bad.cols.vario.every(Number.isFinite));
 
     const sparse = timed.filter(line => !line.startsWith("$PXCVR,") || +line.split(",")[1] === 50 || +line.split(",")[1] % 100 === 0);
