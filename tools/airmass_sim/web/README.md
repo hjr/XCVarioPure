@@ -10,7 +10,7 @@ the page.
     tools/airmass_sim/web/deploy.sh                         # publish to Cloudflare (airmass-replay.<subdomain>.workers.dev)
 
 It reads an XCVario sensor log (`$SENS`, converted like `sens2rec.py`) or an AirMass recording ("NMEA Output" →
-Recording), plain or `.gz`. Settings: the glider polar for sensor logs, the mass, bugs, the vario damping, estimator
+Recording), plain or `.gz`. Settings: the glider polar for sensor logs, the mass, bugs, the vario damping and averager, estimator
 settings as in `airmass_replay --set`, and the start calibration.
 
 Opening a new log automatically selects its glider from `CA1` or older `CMN` metadata, and shows the type in the
@@ -83,7 +83,15 @@ of the last accepted observation, received age is the time since the last fusion
 `sensor_gnss_robustness` in the host CTest suite covers delayed/irregular fixes, transport jitter, out-of-order and
 duplicate epochs, outages, outliers, midnight/clock wrap, unsupported history, whole-fix rejection and sensor gaps.
 
-**Gross mode for all varios** switches the three needles, chart lines, 30 s averages and selected sound source
+**Vario averager**, beside Vario damping in Settings, controls the trailing averaging window for the AirMass,
+TE and GNSS numeric readouts. It defaults to 30 seconds and accepts 7–50 seconds, matching the device's range.
+Changes update the readouts and their period label immediately and are saved in this browser.
+Display, damping and sound settings apply during playback using the cached flight output. Glider, loading,
+flap, calibration and estimator settings recalculate automatically while retaining the current position,
+chart view, playback speed and running/paused state. Instrument transmission pauses during recalculation;
+the same log keeps its serial timeline and resumes at the selected speed after a successful update.
+
+**Gross mode for all varios** switches the three needles, chart lines, numeric averages and selected sound source
 together. AirMass gross includes the polar sink and falls back to TE gross; TE gross is the logged TE vario;
 GNSS gross is the total-energy climb before subtracting the polar sink. The GNSS damping option applies to both
 modes. The switch takes effect immediately and is saved in the browser; the map's named colour sources keep their

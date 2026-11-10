@@ -81,6 +81,7 @@ select { appearance: none; -webkit-appearance: none; padding-right: 26px !import
 .form input[type=text], .form input[type=number], .form select { background-color: var(--bg); border: 1px solid var(--rule); border-radius: 5px; padding: 5px 8px; color: var(--ink); width: 100%; min-width: 0; }
 .form .check { display: flex; align-items: center; gap: 6px; color: var(--ink); }
 .form .warm { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.form .vario-settings { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 16px; }
 .setfoot { display: flex; gap: 8px; align-items: center; padding: 0 12px 12px; flex-wrap: wrap; }
 .summary { font: 0.78rem/1.5 var(--mono); color: var(--muted); padding: 0 12px 12px; overflow-wrap: anywhere; }
 .hint { color: var(--muted); font-size: 0.8rem; padding: 0 12px 12px; }
@@ -181,7 +182,10 @@ select { appearance: none; -webkit-appearance: none; padding-right: 26px !import
       </label>
       <label>Gross mass, kg <input type="number" id="mass" value="-1" min="-1" step="1" title="-1: from the log: its empty, crew and ballast weights (CA1, newer logs), else its ballast factor ($PXCV)"></label>
       <label>Bugs, % <input type="number" id="bugs" value="-1" min="-1" step="1" title="-1: the setting logged in $PXCV"></label>
-      <label>Vario damping, s <input type="number" id="damping" value="4" min="1" max="10" step="0.5" title="the device's vario delay, 4 s by default"></label>
+      <div class="vario-settings">
+        <label>Vario damping, s <input type="number" id="damping" value="4" min="1" max="10" step="0.5" title="the device's vario delay, 4 s by default"></label>
+        <label>Vario averager, s <input type="number" id="averager" value="30" min="7" max="50" step="1" title="Trailing averaging window for the AirMass, TE and GNSS numeric readouts"></label>
+      </div>
       <label class="check" title="The GNSS reference gets the device's vario damping; off: undamped. Applies in gross and netto mode."><input type="checkbox" id="samesmooth" checked> Damp the GNSS reference like the vario</label>
       <label class="wide">Estimator settings (AirMassEKF::Config, like airmass_replay --set)
         <input type="text" id="sets" placeholder="e.g. kinetic_tau=10, blend_bank=0, lag_static=0.3" spellcheck="false">
@@ -203,9 +207,10 @@ select { appearance: none; -webkit-appearance: none; padding-right: 26px !import
       </label>
     </div>
     <div class="setfoot">
-      <button class="btn primary" id="rerun" disabled>Replay again</button>
+      <button class="btn primary" id="rerun" disabled>Recalculate</button>
       <button class="btn" id="export" disabled>Export CSV</button>
     </div>
+    <div class="hint">Display and sound settings apply immediately. Glider, loading and estimator changes recalculate automatically at the current position. Instrument replay pauses during recalculation, then resumes if it was playing.</div>
     <div class="summary" id="summary"></div>
     <div class="hint">Keys: Space play/pause · 1–8 replay speed (1×, 2×, 5×, 10×, 30×, 60×, 120×, 300×) · ←/→ 10 s · Shift+←/→ 1 min. Charts: click to jump, wheel to zoom, drag to pan, double-click for the whole flight.</div>
   </div>
@@ -221,7 +226,7 @@ select { appearance: none; -webkit-appearance: none; padding-right: 26px !import
         <h2 id="variotitle">Vario · netto</h2>
         <canvas id="vario" aria-label="Vario gauge"></canvas>
         <div class="readouts">
-          <span class="head">Average, last 30 s</span>
+          <span class="head" id="averagerlabel">Average, last 30 s</span>
           <span><i class="key" style="background:var(--am)"></i><span id="label-am">AirMass netto</span> <b id="v-am">–</b></span>
           <span><i class="key" style="background:var(--net)"></i><span id="label-te">TE netto</span> <b id="v-net">–</b></span>
           <span><i class="key gnsskey"></i><span id="label-gnss">GNSS netto</span> <b id="v-gnss">–</b></span>
@@ -290,10 +295,8 @@ $("glider").add(new Option("Glider from the log", "log"));
 for (const name of Object.keys(AirMassConvert.GLIDERS)) $("glider").add(new Option(name, name));
 // Each newly loaded log selects its own type; manual overrides apply to the current log.
 $("glider").value = "log";
-$("glider").addEventListener("change", () => { if (fileText) run(); }); // a new polar: replay
-$("mahony").addEventListener("change", () => { if (fileText) run(); });
 const SETTINGS_KEY = "airmass-replay-settings";
-const FIELDS = ["harmonics", "clip", "glider", "mass", "bugs", "damping", "samesmooth", "sets", "noflaps", "mahony", "learn", "warm", "w0", "w1", "w2", "wlat", "wingpitch", "follow", "speed", "soundsrc", "chartsmap", "showhw", "showgross", "windfield"];
+const FIELDS = ["harmonics", "clip", "glider", "mass", "bugs", "damping", "averager", "samesmooth", "sets", "noflaps", "mahony", "learn", "warm", "w0", "w1", "w2", "wlat", "wingpitch", "follow", "speed", "soundsrc", "chartsmap", "showhw", "showgross", "windfield"];
 try {
   const s = JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}");
   // Old sound sources selected gross independently; the gross switch now controls every vario.
@@ -310,8 +313,28 @@ function saveSettings() {
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
   } catch (e) { /* no storage */ }
 }
+$("averager").value = averagingSeconds();
+$("averager").addEventListener("change", () => {
+  $("averager").value = averagingSeconds();
+  updateVarioLabels();
+  if (D) drawAll();
+});
+$("averager").addEventListener("input", () => {
+  if (!$("averager").checkValidity()) return;
+  updateVarioLabels();
+  if (D) drawAll();
+});
 for (const k of FIELDS) $(k).addEventListener("change", saveSettings);
-for (const id of ["samesmooth", "damping"]) $(id).addEventListener("change", () => { if (D) { derive(D); invalidateCharts(); drawAll(); } });
+for (const id of ["samesmooth", "damping"]) $(id).addEventListener("change", () => { if (D) { deriveDamping(D); invalidateCharts(); drawAll(); } });
+$("damping").addEventListener("input", () => {
+  if (D && $("damping").checkValidity()) { deriveDamping(D); invalidateCharts(); drawAll(); }
+});
+for (const id of ["glider", "mass", "bugs", "sets", "noflaps", "mahony", "learn", "warm"]) {
+  $(id).addEventListener("change", () => { if (fileText) run(); });
+}
+for (const id of ["w0", "w1", "w2", "wlat"]) {
+  $(id).addEventListener("change", () => { if (fileText && $("warm").checked) run(); });
+}
 
 // progress and errors show over the map; done = the flight is replayed: the note goes (the details are in Settings)
 let statusTimer = null;
@@ -422,12 +445,17 @@ let replaying = false, replayAgain = false;
 async function run() {
   if (!fileText) return;
   if (replaying) { replayAgain = true; return; }
+  const resume = playing, generation = loadGeneration, port = serial.port;
+  const wasConnected = serial.connected;
+  let applied = false;
   replaying = true;
   try {
-    do { replayAgain = false; await replayOnce(); } while (replayAgain);
+    do { replayAgain = false; applied = await replayOnce(); } while (replayAgain);
   } finally {
     replaying = false;
     serialControls();
+    if (applied && resume && generation === loadGeneration && !loading &&
+        (!wasConnected || (serial.connected && serial.port === port && serial.ready))) play();
   }
 }
 
@@ -451,17 +479,19 @@ async function replayOnce() {
     });
     if (fileText !== sourceText || fileName !== sourceName || loadGeneration !== sourceGeneration) return;
     if (!rep.n) throw new Error("Could not initialize replay. The recording needs glider configuration and either a recorded start or usable airborne sensor data.");
-    const keepT = D && D.name === fileName ? T : null;
+    const sameLog = D && D.sourceGeneration === sourceGeneration;
+    const keepT = sameLog ? T : null, keepView = sameLog && view ? view.slice() : null;
     D = build(conv, rep);
+    D.sourceGeneration = sourceGeneration;
     D.clockDate = logDate(sourceText, sourceName);
     derive(D);
     let timeline;
-    try { timeline = AirMassConvert.serialTimeline(sourceText); }
+    try { timeline = sameLog && serial.timeline ? serial.timeline : AirMassConvert.serialTimeline(sourceText); }
     catch (e) { timeline = { events: [], reason: e.message }; }
     if (timeline.events.length && (D.t[0] < timeline.start - .001 || D.t[D.n - 1] > timeline.end + .001)) {
       timeline = { events: [], reason: "The recording and $SENS timestamps do not match. Open a sensor-only log for synchronized serial replay." };
     }
-    await serial.setTimeline(timeline, keepT ?? D.tStart);
+    if (timeline !== serial.timeline) await serial.setTimeline(timeline, keepT ?? D.tStart);
     const s = rep.summary;
     const hours = ((s.seconds ?? (rep.t_ms[rep.n - 1] - rep.t_ms[0]) / 1000) / 3600).toFixed(2);
     const setupUsed = conv.glider ? ` · ${conv.glider}${{ log: " (from the log)", default: " (no glider in the log)" }[conv.gliderFrom] || ""}, ` +
@@ -483,13 +513,15 @@ async function replayOnce() {
     for (const id of ["rerun", "export", "playbtn", "slider"]) $(id).disabled = false;
     $("slider").min = D.t[0];
     $("slider").max = D.t[D.n - 1];
-    view = [D.t[0], D.t[D.n - 1]];
+    view = keepView || [D.t[0], D.t[D.n - 1]];
     invalidateCharts();
-    drawTrack();
+    drawTrack(!sameLog);
     displayTime(keepT ?? D.tStart);
+    return true;
   } catch (e) {
     console.error(e);
     setStatus(e.message, true);
+    return false;
   } finally {
     $("rerun").disabled = !fileText;
   }
@@ -661,7 +693,6 @@ function gnssNetFromEnergy(D, sinkUp, energyOf) {
 
 // shown values: the AirMass vario and the device's TE netto, both with the device's damping
 function derive(D) {
-  const delay = Math.max(1, +$("damping").value || 4);
   const n = D.n, c = D.tr, r = D.rep.cols;
   D.amOk = new Uint8Array(n);
   D.netto = new Float32Array(n).fill(NaN);
@@ -678,14 +709,6 @@ function derive(D) {
     const sink = sens ? c.polar_sink[k] * c.tas[k] / Math.max(c.ias[k], 10) : -r.polar_sink[i];
     if (Number.isFinite(sink)) sinkUp[k] = sink;
     D.netto[k] = Number.isFinite(c.te_vario[k]) ? c.te_vario[k] - (Number.isFinite(sink) ? sink : 0) : NaN;
-  }
-  const dAir = Math.max(1, delay * 0.5);
-  D.am = cockpitSeries(D, () => dAir);
-  // Air Mass Gross (VarioFilter): the cockpit air mass vario plus the polar sink, the sink not damped as for netto; the
-  // TE vario, the device's gross, where AirMass is not valid
-  D.amGross = new Float32Array(n).fill(NaN);
-  for (let k = 0; k < n; k++) {
-    if (D.ai[k] >= 0) D.amGross[k] = D.amOk[k] ? D.am[k] + (Number.isFinite(sinkUp[k]) ? sinkUp[k] : 0) : c.te_vario[k];
   }
   // the GNSS climb: the altitude difference of the fixes before and after each fix over their time difference, at
   // the time the fix was measured, interpolated in between
@@ -723,25 +746,7 @@ function derive(D) {
   const grossInert = gnssNetFromEnergy(D, null, inertialEnergy);
   D.gnssGrossRaw = grossInert.map((v, k) => (Number.isFinite(v) ? v : grossPitot[k]));
   const gnssNet = D.gnssNet = D.gnssNetInert.map((v, k) => (Number.isFinite(v) ? v : D.gnssNetPitot[k]));
-  const same = $("samesmooth").checked;
-  D.gnss = new Float32Array(n).fill(NaN); // shown: undamped, or with the device's vario damping
-  D.gnssGross = new Float32Array(n).fill(NaN);
-  let dG = null, dGross = null;
-  for (let k = 0; k < n; k++) {
-    const v = gnssNet[k];
-    if (!Number.isFinite(v)) dG = null;
-    else {
-      if (same && !dG) dG = new Damp(delay);
-      D.gnss[k] = same ? dG.f(v) : v;
-    }
-    const gross = D.gnssGrossRaw[k];
-    if (!Number.isFinite(gross)) dGross = null;
-    else {
-      if (same && !dGross) dGross = new Damp(delay);
-      D.gnssGross[k] = same ? dGross.f(gross) : gross;
-    }
-  }
-  // running sums for the 30 s averages under the vario gauge
+  // running sums for the configurable averages under the vario gauge
   D.cum = { am: runningSums(n, (k) => (D.amOk[k] ? D.amRaw[k] : NaN)), net: runningSums(n, (k) => D.netto[k]), gnss: runningSums(n, (k) => gnssNet[k]) };
   D.cum.amGross = runningSums(n, (k) => D.amOk[k] ? D.amRaw[k] + (Number.isFinite(sinkUp[k]) ? sinkUp[k] : 0) : NaN);
   D.cum.teGross = runningSums(n, (k) => c.te_vario[k]);
@@ -771,6 +776,31 @@ function derive(D) {
     D.sec.push({ k: k0, v });
     k0 = Math.max(k1, k0 + 1);
   }
+  deriveDamping(D);
+}
+
+// Presentation filters use the cached estimator/reference output, so changing damping does not replay the flight.
+function deriveDamping(D) {
+  const delay = Math.max(1, +$("damping").value || 4), same = $("samesmooth").checked, n = D.n;
+  D.am = cockpitSeries(D, () => Math.max(1, delay * .5));
+  D.amGross = new Float32Array(n).fill(NaN);
+  D.gnss = new Float32Array(n).fill(NaN);
+  D.gnssGross = new Float32Array(n).fill(NaN);
+  let dG = null, dGross = null;
+  for (let k = 0; k < n; k++) {
+    if (D.ai[k] >= 0) D.amGross[k] = D.amOk[k] ? D.am[k] + (Number.isFinite(D.sinkUp[k]) ? D.sinkUp[k] : 0) : D.tr.te_vario[k];
+    const v = D.gnssNet[k], gross = D.gnssGrossRaw[k];
+    if (!Number.isFinite(v)) dG = null;
+    else {
+      if (same && !dG) dG = new Damp(delay);
+      D.gnss[k] = same ? dG.f(v) : v;
+    }
+    if (!Number.isFinite(gross)) dGross = null;
+    else {
+      if (same && !dGross) dGross = new Damp(delay);
+      D.gnssGross[k] = same ? dGross.f(gross) : gross;
+    }
+  }
 }
 
 // All vario displays and the tone use the same mode; the map's explicitly named colour sources stay independent.
@@ -791,10 +821,14 @@ function secAt(k) {
   return lo;
 }
 
-// the mean over the last 30 s up to sample k (at least half of the window with values)
-const AVG_S = 30;
-function avg30(name, k) {
-  const j = indexAt(D.t[k] - AVG_S), { S, N } = D.cum[name];
+function averagingSeconds() {
+  const value = +$("averager").value;
+  return Number.isFinite(value) && value > 0 ? Math.max(7, Math.min(50, Math.round(value))) : 30;
+}
+
+// the mean over the selected period up to sample k (at least half of the window with values)
+function varioAverage(name, k) {
+  const j = indexAt(D.t[k] - averagingSeconds()), { S, N } = D.cum[name];
   const cnt = N[k + 1] - N[j + 1];
   return cnt >= (k - j) / 2 && cnt > 0 ? (S[k + 1] - S[j + 1]) / cnt : NaN;
 }
@@ -1027,6 +1061,7 @@ showHeadwindKey();
 $("showhw").addEventListener("change", () => { showHeadwindKey(); drawAll(); });
 function updateVarioLabels() {
   const mode = $("showgross").checked ? "gross" : "netto";
+  $("averagerlabel").textContent = `Average, last ${averagingSeconds()} s`;
   $("variotitle").textContent = `Vario · ${mode}`;
   for (const [key, name] of [["am", "AirMass"], ["te", "TE"], ["gnss", "GNSS"]]) {
     $("label-" + key).textContent = $("legend-" + key).textContent = `${name} ${mode}`;
@@ -1255,9 +1290,9 @@ function drawStrip(k) {
 function updateReadouts(k) {
   const r = D.rep.cols, i = D.ai[k];
   const keys = varioSeries(D).averages;
-  $("v-am").textContent = fmtV(avg30(keys[0], k));
-  $("v-net").textContent = fmtV(avg30(keys[1], k));
-  $("v-gnss").textContent = fmtV(avg30(keys[2], k));
+  $("v-am").textContent = fmtV(varioAverage(keys[0], k));
+  $("v-net").textContent = fmtV(varioAverage(keys[1], k));
+  $("v-gnss").textContent = fmtV(varioAverage(keys[2], k));
   const kmh = (v) => (Number.isFinite(v) ? (v * 3.6).toFixed(0) + " km/h" : "–");
   $("v-ias").textContent = kmh(D.tr.ias[k]); // as measured
   $("v-tas").textContent = kmh(D.tr.tas[k]); // density-corrected from the log's OAT, with altitude-based fallback when implausible
