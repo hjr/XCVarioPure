@@ -2,10 +2,10 @@
 // the GNSS netto reference, each shifted by its own delay to the reference, in 10 s window means; the conditions per
 // window; binned means and a least squares fit. Same definitions as cond_sim.py.
 //   SETTINGS=... [MASS=kg] node cond.js <web dir> log1.nmea.gz ...
-const fs = require("fs"), zlib = require("zlib"), path = require("path");
-const { loadPage, lagOf, dampSeries, freeMask, logOptions } = require("./page.js");
+const path = require("path");
+const { loadPage, cat, lagOf, dampSeries, freeMask } = require("./page.js");
 const web = path.resolve(process.argv[2]);
-const { convert, runReplay } = loadPage(web);
+const { runReplay, loadFlight } = loadPage(web);
 const WIN = 10, HZ = 10;
 const rows = []; // one per window
 (async () => {
@@ -13,7 +13,7 @@ const rows = []; // one per window
   const all = [];
   for (const log of process.argv.slice(3)) {
     fileName = path.basename(log);
-    const conv = convert(zlib.gunzipSync(fs.readFileSync(log)).toString("latin1"), logOptions());
+    const conv = loadFlight(log);
     D = build(conv, await runReplay(M, conv.rec, { settings: process.env.SETTINGS || "" }));
     derive(D);
     const r = D.rep.cols, c = D.tr, n = D.n;
@@ -24,9 +24,8 @@ const rows = []; // one per window
     process.stderr.write(fileName + "\n");
   }
   // delays over all flights
-  const cat = (f) => { const out = []; for (const a of all) for (let k = 0; k < a.n; k++) out.push(f(a, k)); return out; };
-  const ok = cat((a, k) => a.free[k]), ref = cat((a, k) => a.ref[k]);
-  const lagAm = lagOf(cat((a, k) => a.am[k]), ref, ok), lagTe = lagOf(cat((a, k) => a.te[k]), ref, ok);
+  const ok = cat(all, (a, k) => a.free[k]), ref = cat(all, (a, k) => a.ref[k]);
+  const lagAm = lagOf(cat(all, (a, k) => a.am[k]), ref, ok), lagTe = lagOf(cat(all, (a, k) => a.te[k]), ref, ok);
   console.log(`delays to the reference: AirMass (4 s damping) ${lagAm / HZ} s, TE netto ${lagTe / HZ} s`);
   for (const a of all) {
     const fi = all.indexOf(a);

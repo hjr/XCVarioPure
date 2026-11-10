@@ -3,23 +3,28 @@
 // (gust-insensitive: GNSS ground velocity minus a 2 min wind) and D.gnssNetPitot (pitot TAS). The page functions read
 // the globals D (the flight being worked on), fileName, $ (the settings) and STATUS (the status bits, replay.js), so a
 // script assigns D = build(...) without declaring it.
-const fs = require("fs"), path = require("path");
+const fs = require("fs"), path = require("path"), zlib = require("zlib");
+
+// the page's script (index.html in the web dir), and one of its functions or classes in it: from its head (the text
+// it starts with) to the matching brace. Also for the page's tests.
+const pageScript = (web) => fs.readFileSync(path.join(web, "index.html"), "utf8").split("<script>")[1].split("</script>")[0];
+function grab(script, name) {
+  const i = script.indexOf(name);
+  if (i < 0) throw new Error("index.html has no " + name);
+  let j = script.indexOf("{", i), depth = 0;
+  for (; j < script.length; j++) { if (script[j] === "{") depth++; else if (script[j] === "}" && --depth === 0) break; }
+  return script.slice(i, j + 1);
+}
 
 // REF_SINK=airmass (or { refSink: "airmass" }): the GNSS netto references subtract AirMass's polar sink (calibrated
-// airspeed, its load factor) instead of the device's (measured IAS polar in TAS terms), the one TE netto uses
+// airspeed, its load factor) instead of the device's (measured IAS polar in TAS terms), the one TE netto uses.
+// Returns the web dir's convert and runReplay, and loadFlight(log, opts = logOptions()): a log (.gz or plain) converted.
 function loadPage(web, { refSink = process.env.REF_SINK } = {}) {
   web = path.resolve(web); // a relative path would be taken for a package name by require()
-  const script = fs.readFileSync(path.join(web, "index.html"), "utf8").split("<script>")[1].split("</script>")[0];
-  const grab = (name) => {
-    const i = script.indexOf(name);
-    if (i < 0) throw new Error("index.html has no " + name);
-    let j = script.indexOf("{", i), depth = 0;
-    for (; j < script.length; j++) { if (script[j] === "{") depth++; else if (script[j] === "}" && --depth === 0) break; }
-    return script.slice(i, j + 1);
-  };
+  const script = pageScript(web);
   const names = ["build", "gnssAltDelay", "atFixes", "Damp", "derive", "deriveDamping", "indexAt", "runningSums", "cockpitSeries", "gnssNetFromEnergy"];
   let src = ["function build(conv, rep)", "function gnssAltDelay(fixes, t, baro, running)", "function atFixes(D, get, maxHold)", "class Damp", "function derive(D)", "function deriveDamping(D)", "function indexAt(t)",
-    "function runningSums(n, val)", "function cockpitSeries(D, dampAt)", "function gnssNetFromEnergy(D, sinkUp, energyOf)"].map(grab).join("\n");
+    "function runningSums(n, val)", "function cockpitSeries(D, dampAt)", "function gnssNetFromEnergy(D, sinkUp, energyOf)"].map((name) => grab(script, name)).join("\n");
   if (refSink === "airmass") {
     const patched = src.replace("if (Number.isFinite(sink)) sinkUp[k] = sink;", "if (Number.isFinite(r.polar_sink[i])) sinkUp[k] = -r.polar_sink[i];");
     if (patched === src) throw new Error("REF_SINK patch failed: derive() changed");
@@ -31,7 +36,19 @@ function loadPage(web, { refSink = process.env.REF_SINK } = {}) {
   globalThis.fileName = "";
   globalThis.STATUS = STATUS;
   (0, eval)(src + "\n" + names.map((x) => `globalThis.${x} = ${x};`).join(" "));
-  return { convert: require(path.join(web, "convert.js")).convert, runReplay };
+  const { convert } = require(path.join(web, "convert.js"));
+  const loadFlight = (log, opts = logOptions()) => {
+    const bytes = fs.readFileSync(log);
+    return convert((log.endsWith(".gz") ? zlib.gunzipSync(bytes) : bytes).toString("latin1"), opts);
+  };
+  return { convert, runReplay, loadFlight };
+}
+
+// f(run, k) of every sample k of all runs ({ n, ... }), in one array
+function cat(runs, f) {
+  const out = [];
+  for (const a of runs) for (let k = 0; k < a.n; k++) out.push(f(a, k));
+  return out;
 }
 
 // the delay (in 10 Hz samples, 0..6 s) at which x matches y best (cross-correlation), on the samples where ok
@@ -192,4 +209,4 @@ function gnssNetWithWind(D, wn, we) {
 // and the logged ballast factor, as the page does), or GLIDER=name, MASS=kg
 const logOptions = () => ({ glider: process.env.GLIDER || "log", mass: +(process.env.MASS || 0) });
 
-module.exports = { loadPage, lagOf, dampSeries, freeMask, lsq, gnssCircleWind, gnssNetWithWind, logOptions };
+module.exports = { loadPage, pageScript, grab, cat, lagOf, dampSeries, freeMask, lsq, gnssCircleWind, gnssNetWithWind, logOptions };

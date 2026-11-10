@@ -5,10 +5,10 @@
 // (page.js gnssCircleWind), and the once-per-circle part of the vario error against the GNSS-only reference,
 // err = c + a cos(psi) + b sin(psi). Across thermals: (a, b) against dW/dt, for AirMass and for TE netto (no attitude).
 //   node shear.js <web dir> log1.nmea.gz ...   (SETTINGS="name=value,...")
-const fs = require("fs"), zlib = require("zlib"), path = require("path");
-const { loadPage, lagOf, freeMask, lsq, gnssCircleWind, gnssNetWithWind, logOptions } = require("./page.js");
+const path = require("path");
+const { loadPage, lagOf, freeMask, lsq, gnssCircleWind, gnssNetWithWind } = require("./page.js");
 const web = path.resolve(process.argv[2]);
-const { convert, runReplay } = loadPage(web);
+const { runReplay, loadFlight } = loadPage(web);
 const HZ = 10, MIN_S = 90;
 
 (async () => {
@@ -16,7 +16,7 @@ const HZ = 10, MIN_S = 90;
   const thermals = [];
   for (const log of process.argv.slice(3)) {
     fileName = path.basename(log);
-    const conv = convert(zlib.gunzipSync(fs.readFileSync(log)).toString("latin1"), logOptions());
+    const conv = loadFlight(log);
     D = build(conv, await runReplay(M, conv.rec, { settings: process.env.SETTINGS || "" }));
     derive(D);
     const r = D.rep.cols, c = D.tr, n = D.n;

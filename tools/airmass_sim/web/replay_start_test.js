@@ -3,12 +3,8 @@
 const assert = require("node:assert/strict");
 const { loadPage } = require("../analysis/page.js");
 const { STATUS } = require("./replay.js");
+const { checksum: sentence } = require("./convert.js");
 const { convert, runReplay } = loadPage(__dirname);
-function sentence(body) {
-  let sum = 0;
-  for (const c of body.slice(1)) sum ^= c.charCodeAt(0);
-  return `${body}*${sum.toString(16).padStart(2, "0")}`;
-}
 
 (async () => {
   const M = await require("./airmass.js")();

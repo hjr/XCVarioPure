@@ -6,6 +6,7 @@ const fs = require("node:fs");
 const vm = require("node:vm");
 const { serialTimeline, convert, prepare, gliderFromLog } = require("./convert.js");
 const { SerialReplay, command, allowedSpeeds, stateAt } = require("./serial.js");
+const { pageScript, grab } = require("../analysis/page.js");
 const sens = (t, extra = "") => `$SENS,${t.toFixed(3)},0,900,899,500,15,0,0,-1,0,0,0${extra}`;
 const rmc = t => {
   const u = ((t % 86400) + 86400) % 86400;
@@ -424,7 +425,7 @@ test("page controls connect at the selected offline time, render from serial tim
   element("baud").value = "115200";
   element("speed").value = "10";
   element("speed").options = [1, 2, 5, 10, 30, 60, 120, 300].map(value => ({ value: String(value), disabled: false }));
-  const html = fs.readFileSync(__dirname + "/index.html", "utf8"), script = html.split("<script>")[1].split("</script>")[0];
+  const script = pageScript(__dirname);
   const setup = script.slice(script.indexOf("let serialWasConnected"), script.indexOf("// ---------- loading ----------"));
   const playback = script.slice(script.indexOf("function seek("), script.indexOf("// the settings panel:"));
   const context = vm.createContext({
@@ -453,10 +454,9 @@ test("page controls connect at the selected offline time, render from serial tim
 });
 
 test("page hooks keep serial time separate from offline frame advancement; assets include serial", () => {
-  const html = fs.readFileSync(__dirname + "/index.html", "utf8");
-  const script = html.split("<script>")[1].split("</script>")[0];
+  const script = pageScript(__dirname);
   new vm.Script(script);
-  const functionText = name => script.slice(script.indexOf(`function ${name}(`), script.indexOf(`\nfunction `, script.indexOf(`function ${name}(`) + 1));
+  const functionText = name => grab(script, `function ${name}(`);
   assert.match(functionText("frame"), /T = serial.time\(\)/);
   assert(!functionText("frame").split("const dt")[0].includes("seek(T)"), "drawing does not issue a hardware seek");
   assert.match(script, /visibilitychange[\s\S]*?document.hidden && serial.connected\) serial.pause/);

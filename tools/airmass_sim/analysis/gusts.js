@@ -4,10 +4,10 @@
 // change, and the largest deviation from the reference within 0 .. +4 s of TE netto and the cockpit AirMass vario, each
 // at its delay. Sorted by how much less AirMass deviates.
 //   node gusts.js <web dir> log1.nmea.gz ...   (MIN_DIAS km/h, default 8; MIN_TE m/s, default 1.5; TOP, default 15)
-const fs = require("fs"), zlib = require("zlib"), path = require("path");
-const { loadPage, lagOf, freeMask, logOptions } = require("./page.js");
+const path = require("path");
+const { loadPage, cat, lagOf, freeMask } = require("./page.js");
 const web = path.resolve(process.argv[2]);
-const { convert, runReplay } = loadPage(web);
+const { runReplay, loadFlight } = loadPage(web);
 const HZ = 10, MIN_DIAS = +(process.env.MIN_DIAS || 8), MIN_TE = +(process.env.MIN_TE || 1.5), TOP = +(process.env.TOP || 15);
 const hms = (s) => [s / 3600, (s / 60) % 60, s % 60].map((x) => String(Math.floor(x)).padStart(2, "0")).join(":");
 
@@ -16,7 +16,7 @@ const hms = (s) => [s / 3600, (s / 60) % 60, s % 60].map((x) => String(Math.floo
   const runs = [];
   for (const log of process.argv.slice(3)) {
     fileName = path.basename(log);
-    const conv = convert(zlib.gunzipSync(fs.readFileSync(log)).toString("latin1"), logOptions());
+    const conv = loadFlight(log);
     D = build(conv, await runReplay(M, conv.rec, {}));
     derive(D);
     const r = D.rep.cols, c = D.tr;
@@ -27,9 +27,8 @@ const hms = (s) => [s / 3600, (s / 60) % 60, s % 60].map((x) => String(Math.floo
       roll: Float32Array.from({ length: D.n }, (_, k) => at(r.roll_deg, k)), pitch: Float32Array.from({ length: D.n }, (_, k) => at(r.pitch_deg, k)) });
     process.stderr.write(fileName + "\n");
   }
-  const cat = (f) => { const o = []; for (const a of runs) for (let k = 0; k < a.n; k++) o.push(f(a, k)); return o; };
-  const ok = cat((a, k) => a.free[k]), ref = cat((a, k) => a.ref[k]);
-  const lag = { am: lagOf(cat((a, k) => a.am[k]), ref, ok), te: lagOf(cat((a, k) => a.te[k]), ref, ok) };
+  const ok = cat(runs, (a, k) => a.free[k]), ref = cat(runs, (a, k) => a.ref[k]);
+  const lag = { am: lagOf(cat(runs, (a, k) => a.am[k]), ref, ok), te: lagOf(cat(runs, (a, k) => a.te[k]), ref, ok) };
   const found = [];
   for (const a of runs) {
     let lastT = -1e9;

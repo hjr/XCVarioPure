@@ -1,10 +1,10 @@
 // Current browser replay on plain or gzipped logs; per-flight comparisons and data quality.
 // node batch.js OUTPUT.json LOG...
-const fs = require('fs'), path = require('path'), zlib = require('zlib');
+const fs = require('fs'), path = require('path');
 const crypto = require('crypto');
 const { loadPage, lagOf, dampSeries, freeMask, gnssCircleWind } = require('./page.js');
 const web = path.resolve(__dirname, '../web');
-const { convert, runReplay } = loadPage(web);
+const { runReplay, loadFlight } = loadPage(web);
 const STATUS_COUNTS = { vario: STATUS.VARIO_VALID, wind: STATUS.WIND_VALID, fresh: STATUS.GNSS_FRESH, aligned: STATUS.ALIGNED, degraded: STATUS.WIND_DEGRADED };
 const quantile = (v, p) => {
   const a = v.filter(Number.isFinite).sort((x, y) => x - y);
@@ -13,7 +13,7 @@ const quantile = (v, p) => {
 const clock = (u) => Number.isFinite(u) ? [Math.floor(u / 3600), Math.floor(u / 60) % 60, Math.floor(u) % 60].map(x => String(x).padStart(2, '0')).join(':') : null;
 async function evaluate(M, file) {
   const bytes = fs.readFileSync(file);
-  const conv = convert((file.endsWith('.gz') ? zlib.gunzipSync(bytes) : bytes).toString('latin1'), { glider: 'log' });
+  const conv = loadFlight(file, { glider: 'log' }); // the logged glider and weight, not GLIDER/MASS
   const replay = await runReplay(M, conv.rec, {});
   if (!conv.track.n || !replay.n) return { file: path.basename(file), bytes: bytes.length,
     sha256: crypto.createHash('sha256').update(bytes).digest('hex'), replayable: false,
