@@ -873,7 +873,7 @@ $("colorby").addEventListener("change", () => {
 const followCtl = L.control({ position: "bottomright" });
 followCtl.onAdd = () => { const el = $("followbox"); L.DomEvent.disableClickPropagation(el); return el; };
 followCtl.addTo(map);
-let trackLayer = null, gliderMarker = null;
+let trackLayer = null, gliderMarker = null, markerParts = null;
 // the glider symbol and the wind arrows at it: the scale (1: a 36 px glider), the marker's size and the arrows' tip
 // distance from the glider's centre [px]
 const MARK = 1.5, MARK_SIZE = 320, ARROW_TIP = 19 * MARK;
@@ -917,7 +917,7 @@ function drawTrack(fit = true) {
   if (!fit) return;
   if (pts.length) map.fitBounds(L.latLngBounds(pts.map((p) => p.ll)), { padding: [20, 20] });
   if (gliderMarker) gliderMarker.remove();
-  gliderMarker = null;
+  gliderMarker = markerParts = null;
   if (!pts.length) { setStatus($("status").textContent + " · no GNSS positions in this log, so no map"); return; }
   const S = MARK_SIZE, c0 = S / 2, gs = 36 * MARK;
   gliderMarker = L.marker(pts[0].ll, { icon: L.divIcon({ className: "glider-icon", iconSize: [S, S], iconAnchor: [c0, c0], html:
@@ -928,6 +928,10 @@ function drawTrack(fit = true) {
       ${WIND_ARROWS.map((w) => `<div id="wl-${w.id}" class="windlabel"></div>`).join("")}
       <div id="gl" style="position:absolute;left:${c0 - gs / 2}px;top:${c0 - gs / 2}px;width:${gs}px;height:${gs}px;transform-origin:${gs / 2}px ${gs / 2}px">${GLIDER_SVG(C.am, gs)}</div>
     </div>` }), interactive: false, keyboard: false }).addTo(map);
+  // the elements drawAll and drawMapWind update every frame
+  const icon = gliderMarker.getElement(), part = (selector) => icon.querySelector(selector);
+  markerParts = { glider: part("#gl"), arrows: Object.fromEntries(WIND_ARROWS.map((w) => [w.id,
+    { g: part(`#wa-${w.id}`), line: part(`#wa-${w.id} line`), path: part(`#wa-${w.id} path`), label: part(`#wl-${w.id}`) }])) };
 }
 map.on("click", (e) => {
   if (!D || !D.mapPts) return;
@@ -1067,18 +1071,18 @@ function updateVarioLabels() {
 updateVarioLabels();
 $("showgross").addEventListener("change", () => { updateVarioLabels(); invalidateCharts(); drawAll(); });
 $("windfield").addEventListener("change", drawWindField);
-map.on("moveend", drawWindField);
 
 // AirMass's instant wind along the track: one arrow every WIND_FIELD_PX on the screen, in view, pointing downwind
 const WIND_FIELD_PX = 20, WIND_FIELD_INK = "#1b1f24"; // dark on the (always light) map tiles, a white halo (CSS)
-let windFieldLayer = null;
+let windFieldLayer = null, windFieldArea = null; // the arrows, and the zoom and bounds they were built for
 function drawWindField() {
   $("wfkey").hidden = !$("windfield").checked;
   if (windFieldLayer) windFieldLayer.remove();
-  windFieldLayer = null;
+  windFieldLayer = windFieldArea = null;
   if (!D || !D.mapPts || !$("windfield").checked) return;
   windFieldLayer = L.layerGroup().addTo(map);
-  const r = D.rep.cols, view = map.getBounds().pad(0.1);
+  const r = D.rep.cols, view = map.getBounds().pad(0.5);
+  windFieldArea = { zoom: map.getZoom(), bounds: view };
   let last = null;
   for (const p of D.mapPts) {
     const i = D.ai[p.k];
@@ -1098,6 +1102,10 @@ function drawWindField() {
   }
 }
 drawWindField();
+// built for an area around the view: rebuilt on zooming, or when a pan (following the glider) leaves that area
+map.on("moveend", () => {
+  if (!windFieldArea || windFieldArea.zoom !== map.getZoom() || !windFieldArea.bounds.contains(map.getBounds())) drawWindField();
+});
 
 // Display fuselage yaw relative to the air path (+ nose right, − nose left).
 // Aerodynamic beta is positive for air from the right (nose left), so negate it here.
@@ -1320,8 +1328,7 @@ function drawAll() {
     gliderMarker.setLatLng(ll);
     const i = D.ai[k];
     const hdg = i >= 0 && (D.rep.cols.status[i] & STATUS.ALIGNED) ? D.rep.cols.heading_deg[i] : D.tr.gnss_track[k];
-    const el = document.getElementById("gl");
-    if (el) el.style.transform = `rotate(${Number.isFinite(hdg) ? hdg : 0}deg)`;
+    markerParts.glider.style.transform = `rotate(${Number.isFinite(hdg) ? hdg : 0}deg)`;
     drawMapWind(k);
     if ($("follow").checked && playing) {
       const p = map.latLngToContainerPoint(ll), s = map.getSize();
@@ -1355,8 +1362,7 @@ function drawMapWind(k) {
   };
   const placed = [];
   for (const w of WIND_ARROWS) {
-    const g = document.getElementById("wa-" + w.id), lab = document.getElementById("wl-" + w.id);
-    if (!g || !lab) continue;
+    const { g, line, path, label: lab } = markerParts.arrows[w.id];
     const v = winds[w.id];
     if (!v || !(Math.hypot(v[0], v[1]) * 3.6 > 0.5)) { g.style.display = "none"; lab.style.display = "none"; continue; }
     const [wn, we, color, prefix] = v, kmh = Math.hypot(wn, we) * 3.6;
@@ -1365,9 +1371,8 @@ function drawMapWind(k) {
     const tail = ARROW_TIP + 2 * w.head * MARK + Math.min(kmh, 60) / 60 * 50 * MARK;
     g.style.display = "";
     g.setAttribute("transform", `rotate(${from})`);
-    const line = g.querySelector("line");
     line.setAttribute("y1", -tail); line.style.stroke = color;
-    g.querySelector("path").style.fill = color;
+    path.style.fill = color;
     // the label beyond the tail, upright, moved down where it would cover another
     const a = from * Math.PI / 180, lr = tail + 14;
     let x = S / 2 + Math.sin(a) * lr, y = S / 2 - Math.cos(a) * lr;
