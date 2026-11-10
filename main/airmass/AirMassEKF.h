@@ -70,14 +70,20 @@ class AirMassEKF {
         float q_tau = 1e-6f;        // s²/s GNSS latency random walk
         float q_kcl = 1e-8f;        // 1/s angle of attack scale random walk
         float r_baro = 0.09f;       // m² baro altitude noise
-        float sigma_pitch = 0.017f; // rad AHRS pitch noise in calm straight flight
+        float sigma_pitch = 0.03f;  // rad, the attitude's pitch error in calm straight flight: the weight of the pitch path
+                                    // (Wd = vd - va_d) against the energy balance. 0.017 rad fits the simulator's attitude,
+                                    // the real one (gated gyros, flaps, the AoA model) is worse: on 22 real flights 0.03
+                                    // takes the vario's own error (three-cornered hat, 10 s) from 0.25 to 0.22 m/s straight
+                                    // and 0.26 to 0.25 circling, over 30 s from 0.19 to 0.15 m/s; simulator cruise rms
+                                    // 0.28 to 0.33 (TE netto 0.44), false lift 1.3 to 2.2 /h
         float sigma_energy = 0.5f;  // m/s energy constraint noise (polar error, TAS derivative)
         float energy_tau = 0.5f;    // s low pass for the energy balance terms (acceleration and vertical speed alike)
-        float kinetic_tau = 8.f;    // s, low pass of the airspeed derivative minus the inertial acceleration: what changes
+        float kinetic_tau = 5.f;    // s, low pass of the airspeed derivative minus the inertial acceleration: what changes
                                     // slower is not a gust but an error of the inertial acceleration (attitude, AoA model).
                                     // Faster follows that error better on real flights (30 s straight: 0.297 m/s rms off
-                                    // the GNSS energy at 10 s, 0.286 at 8 s, 0.270 at 5 s), but also takes part of a long
-                                    // gust for it (simulator gust spike 1.28, 1.40, 1.73 m/s)
+                                    // the GNSS energy at 10 s, 0.286 at 8 s, 0.270 at 5 s; with sigma_pitch 0.03 the own
+                                    // error over 30 s 0.152 at 8 s, 0.115 at 5 s), but also takes part of a long gust for
+                                    // it (simulator gust spike 1.28, 1.40, 1.73 m/s; 2.1 with sigma_pitch 0.03)
         float gust_acc = 1.5f;      // m/s², transient disagreement at which the inertial acceleration takes over (gust)
         float wind_work = 1.f;      // weight of the work of the estimated wind change in the energy balance (va . dW/dt)
         float wind_work_hp = 10.f;  // s, high pass of that term (0: none): only its fast part (gusts); slower, it is mostly
