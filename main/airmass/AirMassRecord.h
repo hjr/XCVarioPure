@@ -29,36 +29,89 @@
 
 namespace airmass::record {
 
-inline std::string begin(const char* name) {
-    std::string s;
-    s.reserve(200); // the longest sentence ($PXCVS) has about 190 characters
-    s = name;
-    return s;
+// One sentence, formatted in place without heap allocations: the device queues the buffer as it is. A sentence that
+// does not fit (absurd values only) comes out empty, it is dropped.
+struct Line {
+    static constexpr int SIZE = 224; // the longest sentence ($PXCVS) has about 180 characters
+    char buf[SIZE];
+    int len; // SIZE: did not fit
+
+    explicit Line(const char* name) : len(static_cast<int>(std::strlen(name))) { std::memcpy(buf, name, len + 1); }
+    const char* c_str() const { return buf; }
+    int size() const { return len; }
+    bool empty() const { return len == 0; }
+
+    // room for n more characters and the terminating zero, else the sentence is lost
+    bool fits(int n) {
+        if (len + n < SIZE) return true;
+        len = SIZE;
+        return false;
+    }
+    void append(const char* text) {
+        const int n = static_cast<int>(std::strlen(text));
+        if (fits(n)) {
+            std::memcpy(buf + len, text, n);
+            len += n;
+        }
+    }
+};
+
+// "*hh\r\n" for the sentence in s (starting with '$'), the checksum as NMEA::CheckSum
+inline void finish(Line& s) {
+    if (!s.fits(5)) {
+        s.len = 0;
+        s.buf[0] = 0;
+        return;
+    }
+    unsigned crc = 0;
+    for (int i = 0; i < s.len; ++i) {
+        const char c = s.buf[i];
+        if (c != '$' && c != '!') crc ^= static_cast<unsigned char>(c);
+    }
+    static constexpr char HEX[] = "0123456789abcdef";
+    char* p = s.buf + s.len;
+    *p++ = '*';
+    *p++ = HEX[(crc >> 4) & 15];
+    *p++ = HEX[crc & 15];
+    *p++ = '\r';
+    *p++ = '\n';
+    *p = 0;
+    s.len += 5;
 }
 
-// "*hh\r\n" for the sentence in s (starting with '$')
+// the same for other sentences in a std::string (host tools)
 inline void finish(std::string& s) {
     s += '*';
     s += NMEA::CheckSum(s.c_str());
     s += "\r\n";
 }
 
-inline void appendf(std::string& s, const char* fmt, float v) {
-    s += ',';
+inline void appendf(Line& s, const char* fmt, float v) {
+    if (!s.fits(1)) return;
+    s.buf[s.len++] = ',';
     if (std::isfinite(v)) {
-        char buf[24];
-        std::snprintf(buf, sizeof(buf), fmt, v);
-        s += buf;
+        const int n = std::snprintf(s.buf + s.len, Line::SIZE - s.len, fmt, v);
+        if (n >= 0 && s.fits(n)) {
+            s.len += n;
+        } else {
+            s.len = Line::SIZE;
+        }
     }
 }
-inline void appendu(std::string& s, uint32_t v) {
-    char buf[16];
-    std::snprintf(buf, sizeof(buf), ",%lu", static_cast<unsigned long>(v));
-    s += buf;
+inline void appendu(Line& s, uint32_t v) {
+    char digits[10];
+    int n = 0;
+    do {
+        digits[n++] = static_cast<char>('0' + v % 10);
+        v /= 10;
+    } while (v);
+    if (!s.fits(n + 1)) return;
+    s.buf[s.len++] = ',';
+    while (n) s.buf[s.len++] = digits[--n];
 }
 
-inline std::string setup(const Setup& c) {
-    std::string s = begin("$PXCVC");
+inline Line setup(const Setup& c) {
+    Line s("$PXCVC");
     appendf(s, "%.4f", c.lever_arm);
     appendf(s, "%.2f", c.mass);
     appendf(s, "%.4f", c.wing_area);
@@ -66,7 +119,7 @@ inline std::string setup(const Setup& c) {
     appendf(s, "%.8g", c.polar.a1);
     appendf(s, "%.8g", c.polar.a2);
     appendf(s, "%.4f", c.polar.v_stall);
-    s += c.polar.valid ? ",1" : ",0";
+    s.append(c.polar.valid ? ",1" : ",0");
     appendf(s, "%.3f", c.wind_resp);
     appendf(s, "%.3f", c.vario_resp);
     appendf(s, "%.3f", c.te_adjust);
@@ -83,8 +136,8 @@ struct Start {
     Warm warm;
 };
 
-inline std::string start(const Start& st) {
-    std::string s = begin("$PXCVS");
+inline Line start(const Start& st) {
+    Line s("$PXCVS");
     appendu(s, st.t);
     appendf(s, "%.2f", st.alt);
     for (float d : st.down) appendf(s, "%.6f", d);
@@ -118,8 +171,8 @@ inline Start snapshot(Pipeline& pipe, const Frame& next) {
     return st;
 }
 
-inline std::string frame(const Frame& f) {
-    std::string s = begin("$PXCVR");
+inline Line frame(const Frame& f) {
+    Line s("$PXCVR");
     appendu(s, f.time_ms);
     for (float v : f.f_body) appendf(s, "%.5f", v);
     for (float v : f.gyro) appendf(s, "%.6f", v);
@@ -142,14 +195,14 @@ struct Gnss {
     float wn0 = 0.f, we0 = 0.f;
 };
 
-inline std::string gnss(const Gnss& g) {
-    std::string s = begin("$PXCVG");
+inline Line gnss(const Gnss& g) {
+    Line s("$PXCVG");
     appendu(s, g.v.time_ms);
     appendf(s, "%.3f", g.v.vn);
     appendf(s, "%.3f", g.v.ve);
     appendf(s, "%.3f", g.v.sigma_h);
     appendu(s, g.v.latency_ms);
-    s += g.prior ? ",1" : ",0";
+    s.append(g.prior ? ",1" : ",0");
     appendf(s, "%.3f", g.wn0);
     appendf(s, "%.3f", g.we0);
     if (g.v.fix_time_ms != GnssTiming::UNKNOWN) appendu(s, g.v.fix_time_ms);
@@ -163,8 +216,8 @@ struct Heading {
     float psi = 0.f, sigma = 0.f;
 };
 
-inline std::string heading(const Heading& h) {
-    std::string s = begin("$PXCVH");
+inline Line heading(const Heading& h) {
+    Line s("$PXCVH");
     appendu(s, h.t);
     appendf(s, "%.5f", h.psi);
     appendf(s, "%.4f", h.sigma);
@@ -172,22 +225,23 @@ inline std::string heading(const Heading& h) {
     return s;
 }
 
-inline std::string stop(uint32_t t) {
-    std::string s = begin("$PXCVX");
+inline Line stop(uint32_t t) {
+    Line s("$PXCVX");
     appendu(s, t);
     finish(s);
     return s;
 }
 
 // the estimator output $PXCVA (vario up positive, wind direction it blows from [deg], speed [km/h], ...)
-inline std::string output(const AirMassEKF& ekf) {
+inline Line output(const AirMassEKF& ekf) {
     const float wn = ekf.windN(), we = ekf.windE();
     int wdir = static_cast<int>(std::lround(Units::rad_to_deg(std::atan2(-we, -wn))));
     wdir = (wdir % 360 + 360) % 360;
-    char str[96];
-    std::snprintf(str, sizeof(str), "$PXCVA,%.2f,%d,%.1f,%.2f,%.3f,%.2f,%.0f,%X", ekf.airmassVario(), wdir, Units::mps_to_kmh(std::hypot(wn, we)),
-                  ekf.windD(), ekf.kTas(), Units::rad_to_deg(ekf.pitchOffset()), ekf.gnssLatency() * 1000.f, static_cast<unsigned>(ekf.status()));
-    std::string s = str;
+    Line s("");
+    const int n = std::snprintf(s.buf, Line::SIZE, "$PXCVA,%.2f,%d,%.1f,%.2f,%.3f,%.2f,%.0f,%X", ekf.airmassVario(), wdir,
+                                Units::mps_to_kmh(std::hypot(wn, we)), ekf.windD(), ekf.kTas(), Units::rad_to_deg(ekf.pitchOffset()),
+                                ekf.gnssLatency() * 1000.f, static_cast<unsigned>(ekf.status()));
+    s.len = n >= 0 && n < Line::SIZE ? n : Line::SIZE;
     finish(s);
     return s;
 }

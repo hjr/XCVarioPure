@@ -73,6 +73,12 @@ target_include_directories(sampling_test PRIVATE ${REPO}/main/airmass ${REPO}/co
 target_compile_options(sampling_test PRIVATE -Wall -Wextra -fsingle-precision-constant
     -include ${CMAKE_CURRENT_SOURCE_DIR}/stub/host_compat.h)
 add_test(NAME sensor_freshness_20hz COMMAND sampling_test)
+# the in place recording formatter writes the same bytes as the former std::string one
+add_executable(record_format_test record_format_test.cpp ${REPO}/main/airmass/AirMassEKF.cpp ${REPO}/main/protocol/nmea_util.cpp ${AHRS_MATH_SOURCES})
+target_include_directories(record_format_test PRIVATE ${REPO}/main/airmass ${REPO}/components/util ${REPO}/main ${CMAKE_CURRENT_SOURCE_DIR}/stub)
+target_compile_options(record_format_test PRIVATE -Wall -Wextra -fsingle-precision-constant
+    -include ${CMAKE_CURRENT_SOURCE_DIR}/stub/host_compat.h)
+add_test(NAME record_format COMMAND record_format_test)
 add_test(NAME input_conversion COMMAND input_test)
 foreach(scenario straight thermal gust pullup slip nl endurance)
     add_test(NAME ${scenario} COMMAND airmass_sim ${scenario})
