@@ -14,7 +14,6 @@ namespace airmass::replay {
 using Settings = std::vector<std::pair<std::string, float>>;
 
 // estimator settings for experiments (name=value, AirMassEKF::Config), applied after every setup; false on an unknown name
-#ifndef AIRMASS_NO_CONFIG_SETTINGS
 inline bool applySettings(AirMassEKF& ekf, const Settings& settings, std::string* unknown = nullptr) {
     AirMassEKF::Config c = ekf.config();
     const std::pair<const char*, float*> known[] = {
@@ -46,14 +45,6 @@ inline bool applySettings(AirMassEKF& ekf, const Settings& settings, std::string
     ekf.setConfig(c);
     return true;
 }
-#else // an estimator without settings by name (analysis/build_old.sh): none accepted
-inline bool applySettings(AirMassEKF&, const Settings& settings, std::string* unknown = nullptr) {
-    if (!settings.empty() && unknown) {
-        *unknown = settings.front().first;
-    }
-    return settings.empty();
-}
-#endif
 
 // "name=value" pairs separated by ',' or ';' (spaces allowed) appended to out; false and the bad item in error
 inline bool parseSettings(const std::string& text, Settings& out, std::string* error = nullptr) {

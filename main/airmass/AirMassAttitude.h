@@ -101,19 +101,24 @@ public:
     }
 
     const float* down() const { return _d; }
-    float roll() const { return std::atan2(_d[1], _d[2]); }
+    float roll() const { return roll(_d); }
     float pitch() const { return std::asin(std::clamp(-_d[0], -1.f, 1.f)); }
-    // heading (Euler yaw) rate, clockwise positive: (q sin(roll) + r cos(roll)) / cos(pitch). The rotation
-    // around the nav down axis (gyro . down) differs by roll rate * sin(pitch), which shifts the heading in
-    // every roll in/out. Without the pitch gyro bias, which the gravity reference learns in straight flight and
-    // which enters in turns with sin(roll); the body z bias it cannot observe there, the estimator tracks it (BGZ).
-    float yawRate(const float gyro[3]) const {
-        const float cp = std::sqrt(_d[1] * _d[1] + _d[2] * _d[2]); // cos(pitch)
+    // Without the pitch gyro bias, which the gravity reference learns in straight flight and which enters in turns
+    // with sin(roll); the body z bias it cannot observe there, the estimator tracks it (BGZ).
+    float yawRate(const float gyro[3]) const { return yawRate(_d, gyro[1] - _bias[1], gyro[2]); }
+
+    // the roll of a down vector in body coordinates
+    static float roll(const float d[3]) { return std::atan2(d[1], d[2]); }
+    // heading (Euler yaw) rate, clockwise positive, from the down vector in body coordinates and the body pitch (q)
+    // and yaw (r) rates: (q sin(roll) + r cos(roll)) / cos(pitch). The rotation around the nav down axis
+    // (gyro . down) differs by roll rate * sin(pitch), which shifts the heading in every roll in/out.
+    static float yawRate(const float d[3], float q, float r) {
+        const float cp = std::sqrt(d[1] * d[1] + d[2] * d[2]); // cos(pitch)
         if (cp < 0.1f) {
             return 0.f;
         }
         // sin(roll) = d1 / cos(pitch), cos(roll) = d2 / cos(pitch)
-        return ((gyro[1] - _bias[1]) * _d[1] + gyro[2] * _d[2]) / (cp * cp);
+        return (q * d[1] + r * d[2]) / (cp * cp);
     }
 
 private:

@@ -72,10 +72,7 @@ int main(int argc, char** argv) {
 
     airmass::replay::Replayer r;
     r.setLearning(learn);
-    if (!r.setMahony(mahony)) {
-        std::fprintf(stderr, "%s\n", r.error.c_str());
-        return 2;
-    }
+    r.setMahony(mahony);
     r.settings = settings;
     r.override_warm = override_warm;
     std::copy(std::begin(warm_override), std::end(warm_override), r.warm);
