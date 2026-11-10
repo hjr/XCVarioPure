@@ -212,7 +212,7 @@ select { appearance: none; -webkit-appearance: none; padding-right: 26px !import
     </div>
     <div class="hint">Display and sound settings apply immediately. Glider, loading and estimator changes recalculate automatically at the current position. Instrument replay pauses during recalculation, then resumes if it was playing.</div>
     <div class="summary" id="summary"></div>
-    <div class="hint">Keys: Space play/pause · 1–8 replay speed (1×, 2×, 5×, 10×, 30×, 60×, 120×, 300×) · ←/→ 10 s · Shift+←/→ 1 min. Charts: click to jump, wheel to zoom, drag to pan, double-click for the whole flight.</div>
+    <div class="hint">Keys: Space play/pause · 1–8 replay speed (1×, 2×, 5×, 10×, 30×, 60×, 120×, 300×) · Q W E R T track colour (GNSS netto, AirMass, TE, GNSS altitude, SeeYou netto) · ←/→ 10 s · Shift+←/→ 1 min. Charts: click to jump, wheel to zoom, drag to pan, double-click for the whole flight.</div>
   </div>
 
   <div class="main">
@@ -833,6 +833,8 @@ function varioSeries(D) {
 // the track colour
 const COLOR_BY = { gnssnet: "GNSS netto", airmass: "AirMass vario", te: "TE vario", gnss: "GNSS altitude change", seeyou: "Netto, SeeYou style" };
 const colorBy = () => $("colorby").value;
+// keyboard shortcuts for the track colour, in the order of COLOR_BY
+const COLOR_KEYS = "qwert";
 
 // the per-second entry that holds sample k
 function secAt(k) {
@@ -870,7 +872,7 @@ L.control.layers(layers, null, { position: "topright" }).addTo(map);
 const legend = L.control({ position: "bottomleft" });
 legend.onAdd = () => {
   const d = L.DomUtil.create("div", "maplegend");
-  d.innerHTML = `<label>Colour by <select id="colorby" aria-label="Track colour">${Object.entries(COLOR_BY).map(([k, v]) => `<option value="${k}">${v}</option>`).join("")}</select></label><br>` +
+  d.innerHTML = `<label>Colour by <select id="colorby" aria-label="Track colour" title="Colour shortcuts: ${Object.values(COLOR_BY).map((v, i) => `${COLOR_KEYS[i].toUpperCase()} = ${v}`).join(", ")}">${Object.entries(COLOR_BY).map(([k, v]) => `<option value="${k}">${v}</option>`).join("")}</select></label><br>` +
     CLIMB_COLORS.map((c, i) => `<i style="background:${c}"></i>${CLIMB_LABELS[i]}`).reverse().join("<br>") +
     `<br><i style="background:${C.degraded}"></i>no value` +
     `<div class="sect">Wind to the glider, ° km/h</div><i style="background:linear-gradient(90deg, ${C.am}, ${C.degraded})"></i>AirMass instant, fading as it gets less certain<br>` +
@@ -1511,6 +1513,14 @@ document.addEventListener("keydown", (e) => {
     e.preventDefault();
     speed.value = option.value;
     speed.dispatchEvent(new Event("change")); // save the choice just like a dropdown change
+    return;
+  }
+  const colorKey = e.shiftKey ? -1 : COLOR_KEYS.indexOf(e.key.toLowerCase());
+  if (colorKey >= 0 && e.key.length === 1) {
+    e.preventDefault();
+    const sel = $("colorby");
+    sel.value = Object.keys(COLOR_BY)[colorKey];
+    sel.dispatchEvent(new Event("change")); // save and redraw just like a dropdown change
     return;
   }
   if (!D) return;
