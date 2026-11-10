@@ -156,6 +156,12 @@ skips samples with missing/nonfinite pressure values or nonpositive static/TE pr
 in the hint. Valid samples keep their logged pressures and timing; no replacement pressures are invented.
 Rejected samples accepted by the offline importer still anchor timestamp repairs and intervening navigation/setup
 sentences. A log with no usable sensor samples remains unavailable for serial replay.
+Every sentence is sent with a new checksum, so navigation and setup lines a logger damaged (a failed logged
+checksum, or another sentence starting inside one without a checksum) are not sent; the hint counts them.
+The device drops a sentence longer than its 128 character frame (`ProtocolItf::MAX_LEN`), and a logged `$SENS`
+with magnetometer data plus a checksum often is. `$SENS` values go without trailing zeros, values the
+normalization changed get the decimals the device logs, and the time stamp stays as logged; a sample still too long
+gets the magnetometer with 1 decimal. Two samples merged into one line are not sent; the hint counts them.
 Legacy CMN becomes CA1 with the importer's QNH estimate (101325 Pa if unavailable), and modern weight updates
 become complete CA1 messages. When no glider/loading configuration was logged, Settings explains that the
 instrument's current setup will be used. Browser polar, mass, flap and estimator overrides affect the offline

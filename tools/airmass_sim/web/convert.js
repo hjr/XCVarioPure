@@ -248,6 +248,32 @@
   const fx = (v, d) => (Number.isFinite(v) ? v.toFixed(d) : "");
   const fg = (v, p) => (Number.isFinite(v) ? String(parseFloat(v.toPrecision(p))) : "");
   const sentence = (name, fields) => checksum("$" + name + (fields.length ? "," + fields.join(",") : ""));
+  const MAX_FRAME = 128; // ProtocolItf::MAX_LEN: the device drops a longer sentence, the checksum included
+  // A logged sentence a logger damaged, e.g. cut off by the next one: its checksum fails, or without one, another
+  // sentence starts inside it. A forwarded sentence gets a new checksum, the device would take it as valid.
+  function damaged(line) {
+    const star = line.indexOf("*");
+    if (star < 0) return /[$!]/.test(line.slice(1));
+    return checksum(line.slice(0, star)).slice(star + 1) !== line.slice(star + 1).trim().toLowerCase();
+  }
+  // A $SENS sentence the device takes within its frame, null if none. The time stamp stays as logged, values the
+  // normalizer changed (axis signs, Kelvin, an estimated OAT) get the decimals the device logs (XCVSimMsg::sendSens),
+  // the sensor values go without trailing zeros. If it is still too long, the magnetometer gets 1 decimal (the 4 the
+  // device logs are below its noise).
+  function sensSentence(f) {
+    const v = f.slice(1).map((x, j) => j < 2 ? String(x) :
+      noTrailingZeros(typeof x === "number" ? x.toFixed(j < 5 ? 3 : j === 5 ? 2 : 4) : String(x)));
+    let line = sentence("SENS", v);
+    if (line.length > MAX_FRAME && v.length === 15) {
+      for (let i = 12; i < 15; i++) v[i] = noTrailingZeros((+v[i]).toFixed(1));
+      line = sentence("SENS", v);
+    }
+    return line.length > MAX_FRAME ? null : line;
+  }
+  function noTrailingZeros(s) {
+    if (s.includes(".")) s = s.replace(/0+$/, "").replace(/\.$/, "");
+    return s === "-0" ? "0" : s;
+  }
 
   // S2F::recalculatePolar and glider::Polar::sink (components/glider/include/glider/PolarModel.h)
   function makePolar(g, ballastFactor, bugs) {
@@ -427,7 +453,7 @@
     const { lines, scan } = prepare(text), normalize = sensorNormalizer(scan);
     const events = [], sensors = [];
     let gnssAlt = NaN, gnssUtc = NaN, skippedSensors = 0, skippedPressureSensors = 0, validSensors = 0;
-    let timestampRecoveredSamples = 0;
+    let timestampRecoveredSamples = 0, damagedLines = 0;
     const validPressure = f => [3, 4, 5].every(i => Number.isFinite(trimmedNum(f[i]))) && trimmedNum(f[3]) > 0 && trimmedNum(f[4]) > 0;
     const configFields = f => {
       const v = setupValues(f);
@@ -460,10 +486,21 @@
           events.push({ t: s.t / 1000, line: null, kind: "sensor" });
           continue;
         }
-        validSensors++;
+        // two samples a logger merged into one line (more than the 15 values), or one too long for the device
         if (s.f.length > 13 && (s.f.length < 16 || !s.f.slice(13, 16).every(x => Number.isFinite(trimmedNum(x))))) s.f.length = 13;
-        output = sentence("SENS", s.f.slice(1)); t = s.t / 1000; kind = "sensor";
+        output = s.f.length > 16 ? null : sensSentence(s.f);
+        if (!output) {
+          damagedLines++;
+          sensors.push(events.length);
+          events.push({ t: s.t / 1000, line: null, kind: "sensor" });
+          continue;
+        }
+        validSensors++;
+        t = s.t / 1000; kind = "sensor";
         sensors.push(events.length);
+      } else if ((/^!xcv,/i.test(line) || /^\$(?:G[PN](?:GGA|GSA|RMC)|PGRMZ|PFLA[UAL]),/.test(line)) && damaged(line)) {
+        damagedLines++;
+        continue;
       } else if (/^!xcv,/i.test(line)) {
         kind = "config";
         if (f[1] === "CA1" || f[1] === "CMN") {
@@ -513,10 +550,11 @@
       peakBytes = Math.max(peakBytes, bytes);
     }
     return { events: outgoing, initialConfig, start, end, peakBytes, skippedSensors, skippedPressureSensors,
-      excludedNavigation, timestampRecoveredSamples,
+      excludedNavigation, timestampRecoveredSamples, damagedLines,
       warning: [initialConfig ? "" : "No logged glider/loading configuration; the instrument's current setup is used.",
         skipped,
         excludedNavigation ? `${excludedNavigation} navigation messages outside the sensor recording ignored.` : "",
+        damagedLines ? `${damagedLines} damaged log line${damagedLines === 1 ? "" : "s"} (failed checksum, merged sentences or too long for the instrument) not sent.` : "",
         timestampRecoveredSamples ? `Timing recovered for ${timestampRecoveredSamples} samples with frozen timestamps.` : ""].filter(Boolean).join(" ") };
   }
 

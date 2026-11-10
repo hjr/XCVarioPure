@@ -59,7 +59,7 @@ test("timeline preserves original cadence, navigation, TE/magnetometer and repai
   assert.deepEqual(sensors.map(e => e.t * 1000), [...offline.track.cols.t_ms]);
   assert.deepEqual(sensors.map(e => e.t), [1, 1.1, 1.2, 1.3]);
   assert.match(sensors[0].line, /,900,899,500,[\d.]+,0,0,-1,2,-3,-4,5,-6,-7\*/);
-  assert(Math.abs(+sensors[0].line.split(",")[6] - 18.57474971364874) < 1e-10);
+  assert.equal(sensors[0].line.split(",")[6], "18.57"); // the estimated OAT, 18.57474971364874 offline
   assert(timeline.events.some(e => e.line.startsWith("$GNGGA,")));
   assert(timeline.events.every((e, i, arr) => !i || e.t >= arr[i - 1].t));
   assert.match(timeline.initialConfig, /^!XCV,CA1,2305,324,100,0,0,10/);
@@ -229,10 +229,41 @@ test("serial sensors share inferred/corrected axes and Kelvin evidence with offl
     assert(declared ? offline.axesCorrected : offline.axesInferred);
     assert.equal(offline.temperatureKelvinSamples, 220);
     const f = serialTimeline(text).events[0].line.split("*")[0].split(",");
-    assert(Math.abs(+f[6] - 12.44) < 1e-10);
-    for (let i = 0; i < 6; i++) assert(Math.abs(+f[i + 7] - expected[i]) < 1e-10);
+    assert.equal(f[6], "12.44");
+    for (let i = 0; i < 6; i++) assert(Math.abs(+f[i + 7] - expected[i]) <= 5e-5); // the device's 4 decimals
     assert.deepEqual(f.slice(13), ["4", "5", "6"]);
   }
+});
+
+test("$SENS fits the device's 128 character frame, changed values with the device's decimals", () => {
+  const logged = "$SENS,38986.558,620,953.238,953.360,708.809,25.24,0.2170,0.0531,-1.0766,0.5360,0.5466,-1.8711," +
+    "1693.0000,-4313.0000,6427.0000";
+  const timeline = serialTimeline(["!XCV,FMT,SENS,7,1,-1,-1,1,-1,-1,1,-1,-1", logged].join("\n"));
+  const line = timeline.events[0].line;
+  assert.equal(line.split("*")[0], "$SENS,38986.558,620,953.238,953.36,708.809,25.24,0.217,-0.0531,1.0766,0.536,-0.5466," +
+    "1.8711,1693,4313,-6427");
+  assert(line.length <= 128, `${line.length} characters`);
+  // a sample that doesn't fit gets the magnetometer with 1 decimal, two samples merged into one line are not sent
+  const long = "$SENS,53059.981,1000,888.125,883.139,544.583,13.34,-0.0178,-0.0057,-1.2172,-14.9991,18.2742,16.2047," +
+    "-2815.5532,-461.0957,1784.8845";
+  const merged = "$SENS,52023.466,410,907.803,902.866,571.232,18.69,52023.565,-509,-907.826,902.928,-565.972,-11.3," +
+    "0.0752,0.0388,-0.8858,4.12,1.6404,-2.4491,-2429.5254,-909.4894,-7049.5522";
+  const fitted = serialTimeline([long, merged, sens(53060.2)].join("\n"));
+  assert.match(fitted.events[0].line, /,16\.2047,-2815\.6,-461\.1,1784\.9\*/);
+  assert.equal(fitted.events.length, 2);
+  assert.equal(fitted.damagedLines, 1);
+});
+
+test("damaged log lines are not sent with a new checksum", () => {
+  const good = "$GPRMC,082633.00,A,4843.84409,N,01013.84177,E,48.150,206.42,180525,,,A*57";
+  const text = [sens(300), good, good.replace("206.42", "206.43"), "$GPRMC,11362$HCHDM,100.1,M*29",
+    "$GPGGA,155814.00,4859.53926,N,01138.22785,E,1,09,0.89,1693.3,M,4$WIND;25298;274.8*39",
+    "$PGRMZ,1234,F,2", "!XCV,FLP,33", "!XCV,FLP,3!XCV,FLP,40", sens(300.1)].join("\n");
+  const timeline = serialTimeline(text);
+  assert.deepEqual(timeline.events.filter(e => e.kind !== "sensor").map(e => e.line.split("*")[0]),
+    [good.split("*")[0], "$PGRMZ,1234,F,2", "!XCV,FLP,33"]);
+  assert.equal(timeline.damagedLines, 4);
+  assert.match(timeline.warning, /4 damaged log lines/);
 });
 
 test("configuration/flap restoration and modern weight updates are chronological", () => {
