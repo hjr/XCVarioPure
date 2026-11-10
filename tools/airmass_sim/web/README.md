@@ -71,6 +71,9 @@ Delayed GNSS fusion requires measured sensor history bracketing its observation 
 6.4 seconds at 10 Hz. It never clamps an old fix to a history endpoint or interpolates through an IMU gap. A rejected
 fix does not refresh accepted-GNSS age, and the entire horizontal observation is gated before any state changes.
 
+The angle of attack scale (`aoa_scale` in the summary, `kcl_min`/`kcl_max`) stays at 1 unless the settings give it a
+range: learned, it is not observable beside the per-flap pitch offsets and ran to its limit.
+
 Implausible readings are held out like a missing sample (`Plausibility` in `AirMassPipeline.h`): an airspeed above
 150 m/s, a pressure altitude outside −1000..15000 m, more than 8 g or 8 rad/s, or a step of more than 15 m/s, 25 m,
 4 g or 5 rad/s between consecutive samples (the limit scales with the sample interval up to three times; real logs stay

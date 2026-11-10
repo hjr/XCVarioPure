@@ -110,7 +110,13 @@ class AirMassEKF {
                                     // the above the needle moves 0.86 m/s within 1 s while circling, as TE netto (0.85)
         float energy_load_weight = 0.f; // energy balance noise growth with the load factor deviation |n - 1|
         float energy_gust_weight = 0.f; // energy balance noise growth with the airspeed/inertia disagreement [per m/s²]
-        float kcl_min = 0.8f, kcl_max = 1.25f; // range of the angle of attack scale
+        float kcl_min = 1.f, kcl_max = 1.f; // range of the angle of attack scale; equal: not learned, the wing's lift slope
+                                    // (CL_ALPHA) is taken as it is. With the pitch offset learned per flap position the scale is
+                                    // not observable: within one flap setting the modelled angle of attack hardly varies, and
+                                    // between settings the offsets take the difference. Learned, it ran to its 0.8 limit on most
+                                    // of 25 real flights (all flapped gliders), freed it wandered from 0.2 to 1.1 with the offset
+                                    // following it to -9°, and the vario did not change with it pinned at 1 (own error 0.112
+                                    // against 0.114 m/s over 10 s on 11 flights)
         float anchor_tau = 0.f;     // s, the vario output follows the plain energy balance over this time (0: off)
         float sigma_air = 0.25f;    // m/s air vector model error in the GNSS fusion (plus 1% of TAS)
         // pneumatic lags (lines and sensors), not measured yet: 0.2 s each has the smallest worst case pull-up error
@@ -144,6 +150,7 @@ class AirMassEKF {
     void stop() { _running = false; }
     bool isRunning() const { return _running; }
     bool isAligned() const { return _aligned; }
+    bool learnsAoaScale() const { return _cfg.learn_calibration && _cfg.kcl_min < _cfg.kcl_max; }
 
     // Main cycle: prediction plus baro, kinematic and energy fusion
     void update(const Input& in);
