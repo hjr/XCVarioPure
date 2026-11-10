@@ -295,10 +295,21 @@ void AirMassEKF::update(const Input& in) {
     const Tilt tilt(in.roll, in.pitch);
     predict(in, tilt);
 
-    // remember the raw inputs for delayed GNSS fusion
-    _hist_head = (_hist_head + 1) % HIST;
-    if (_hist_level < HIST) {
-        _hist_level++;
+    // remember the raw inputs for delayed GNSS fusion; a head younger than HIST_STEP_MS than the one before is replaced,
+    // the span from the one before is only continuous (and flying) if the replaced part was
+    bool replace = false;
+    if (_hist_level >= 2) {
+        const Snapshot& head = _hist[_hist_head];
+        const Snapshot& before = _hist[(_hist_head - 1 + HIST) % HIST];
+        replace = head.time_ms - before.time_ms < HIST_STEP_MS;
+    }
+    const bool merged_continuous = !replace || _hist[_hist_head].continuous;
+    const bool merged_flying = !replace || _hist[_hist_head].flying_speed;
+    if (!replace) {
+        _hist_head = (_hist_head + 1) % HIST;
+        if (_hist_level < HIST) {
+            _hist_level++;
+        }
     }
     Snapshot& s = _hist[_hist_head];
     s.time_ms = in.time_ms;
@@ -309,8 +320,8 @@ void AirMassEKF::update(const Input& in) {
     s.alpha_shift = 0.f;
     s.psi_gyro = _psi_gyro;
     s.slip_sigma = in.slip_sigma;
-    s.continuous = continuous;
-    s.flying_speed = flying_speed;
+    s.continuous = continuous && merged_continuous;
+    s.flying_speed = flying_speed && merged_flying;
 
     if (in.baro_fresh && std::isfinite(in.baro_alt) && _baro_clock.observe(in.time_ms, in.time_ms, true)) {
         // the static pressure error grows with dynamic pressure and fakes climb/sink on speed changes
