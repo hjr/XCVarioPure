@@ -126,3 +126,10 @@ add_test(NAME record_predict20 COMMAND airmass_sim nl --set predict_hz=20 --comp
 set_tests_properties(record_predict20 PROPERTIES FIXTURES_SETUP predict20_record)
 add_test(NAME replay_predict20 COMMAND airmass_replay ${CMAKE_CURRENT_BINARY_DIR}/predict20_record.nmea --check 0.02)
 set_tests_properties(replay_predict20 PROPERTIES FIXTURES_REQUIRED predict20_record)
+
+# Regression for flap offsets in the delayed GNSS history.
+add_executable(flap_history_test flap_history_test.cpp ${REPO}/main/airmass/AirMassEKF.cpp)
+target_include_directories(flap_history_test PRIVATE ${REPO}/main/airmass ${REPO}/components/util)
+target_compile_options(flap_history_test PRIVATE -Wall -Wextra -fsingle-precision-constant
+    -include ${CMAKE_CURRENT_SOURCE_DIR}/stub/host_compat.h)
+add_test(NAME flap_history_geometry COMMAND flap_history_test)
