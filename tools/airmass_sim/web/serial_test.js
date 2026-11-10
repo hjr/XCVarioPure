@@ -448,6 +448,19 @@ test("page controls connect at the selected offline time, render from serial tim
   vm.runInContext("frame(performance.now());", context);
   assert.equal(context.T, h.replay.time());
   assert.equal(h.replay.generation, generation, "animation never seeks the hardware");
+  // dragging the slider moves the page only; the instrument seeks once, where the slider is let go
+  for (const value of ["300.3", "300.35"]) { element("slider").value = value; element("slider").oninput(); }
+  assert.equal(h.replay.generation, generation, "dragging does not seek the hardware");
+  assert.equal(context.T, 300.35);
+  await h.clock.advance(20); vm.runInContext("frame(performance.now());", context);
+  assert.equal(context.T, 300.35, "serial time does not move a dragged slider");
+  element("slider").onchange();
+  assert.equal(h.replay.generation, generation + 1);
+  assert.equal(h.replay.position, 300.35);
+  vm.runInContext("endScrub();", context);
+  assert.equal(h.replay.generation, generation + 1, "letting go after the change does not seek again");
+  await h.clock.advance(50); vm.runInContext("frame(performance.now());", context);
+  assert.equal(context.T, h.replay.time(), "the page follows the instrument again");
   context.document.hidden = true; events.visibilitychange(); await flush();
   assert.equal(h.replay.running, false); assert.equal(context.playing, false);
   assert.match(element("serialstatus").textContent, /hidden/);
