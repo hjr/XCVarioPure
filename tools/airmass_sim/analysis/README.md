@@ -37,7 +37,7 @@ estimator, the page's `build`/`derive`), so they stay in step with the site. Bui
 | `learned.js` | the calibration AirMass learns per flight (`SETTINGS`) |
 | `phase.py` | the IMU acceleration vs airspeed change disagreement and AirMass vs AHRS pitch around the circle (native replays: `airmass_replay --csv` and `sens2rec.py --aux` outputs) |
 | `sim_agree.py` | simulator CSVs (`airmass_sim nl ... --csv`): AirMass, TE netto, GNSS/INS against the truth and a GNSS-style reference |
-| `build_old.sh` | builds the estimator before real-flight tuning (a833f536) as `build_sim/old/tools/airmass_sim/web/airmass_old.js` |
+| `build_old.sh` | builds the estimator before real-flight tuning (a833f536, with the replay tools of 323f5a9c) as `build_sim/old/tools/airmass_sim/web/airmass_old.js` |
 
 ```sh
 W=tools/airmass_sim/web; L=flightlogs/discussion451/*.nmea.gz
