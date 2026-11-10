@@ -3,14 +3,11 @@
 #include "AirMass.h"
 #include "AirMassSensor.h"
 
-#include "sensor/Filters.h"
-#include "setup/CruiseMode.h"
 #include "protocol/NMEA.h"
 #include "protocol/nmea_util.h"
 #include "comm/DataLink.h"
 #include "comm/Messages.h"
 #include "wind/Wind.h"
-#include "IpsDisplay.h"
 
 #include <algorithm>
 #include <cstdio>
@@ -18,36 +15,16 @@
 // The air mass vario does not take horizontal gusts for lift, so it gets half the damping: just as calm,
 // and a thermal entry shows about a second earlier.
 constexpr float AIRMASS_DAMPING = 0.5f;
-constexpr float VARIO_DT = 0.1f; // s, vario filter cycle
 
-// the damping chain of the TE vario (VarioFilter): a low pass with tau = D/3, then y += (x - y) / D per cycle
-static LowPassFilterT<mps_t> vario_lpf(LowPassFilterT<mps_t>::alphaFromTau(4.f, VARIO_DT));
-static mps_t vario_damped = 0.f;
-static bool vario_shown = false;
-
-bool airmass::vario(mps_t netto, mps_t& air, bool& changed)
+second_t airmass::varioDamping(second_t te_damping)
 {
-    const bool ok = CRMOD.isAirMass() && (airmass_status.get() & AirMassEKF::ST_VARIO_VALID) && airmass_vario.getValid();
-    if (ok) {
-        const float damping = std::max(1.f, vario_delay.get() * AIRMASS_DAMPING);
-        vario_lpf.setTau(damping / 3.f, VARIO_DT);
-        vario_damped += (vario_lpf.filter(airmass_vario.get()) - vario_damped) / damping;
-    } else {
-        vario_lpf.reset(netto);
-        vario_damped = netto;
-    }
-    changed = ok != vario_shown;
-    if (changed) {
-        vario_shown = ok;
-        IpsDisplay::setCruiseChanged(); // refresh the mode label
-    }
-    air = vario_damped;
-    return ok;
+    return std::max(1.f, te_damping * AIRMASS_DAMPING);
 }
 
-bool airmass::varioShown()
+bool airmass::rawVario(mps_t& air)
 {
-    return CRMOD.isAirMass() && vario_shown;
+    air = airmass_vario.get();
+    return (airmass_status.get() & AirMassEKF::ST_VARIO_VALID) && airmass_vario.getValid();
 }
 
 void airmass::displayWind(WindData& synoptic, WindData& instant, bool& degraded)

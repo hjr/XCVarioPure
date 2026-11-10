@@ -35,6 +35,7 @@
 #include "ins_reference.h"
 #include "stats.h"
 #include "math/Quaternion.h"
+#include "sensor/Filters.h"
 #include "math/vector_3d.h"
 
 #include <algorithm>
@@ -352,19 +353,7 @@ int flapRecommendation(float ias, float load) {
     return i;
 }
 
-// the device's vario damping (VarioFilter): a low pass with tau = D/3, then y += (x - y) / D per 10 Hz cycle
-struct DeviceDamp {
-    float D, l = NAN, y = NAN;
-    explicit DeviceDamp(float d) : D(d) {}
-    float f(float x) {
-        if (std::isnan(l)) {
-            l = y = x;
-        }
-        l += (x - l) * 0.1f / (D / 3.f + 0.1f);
-        y += (l - y) / std::max(D, 1.f);
-        return y;
-    }
-};
+// the device's vario damping (VarioFilter, VarioDamper)
 constexpr float DAMPING = 4.f;         // vario_delay default (TE netto)
 constexpr float AIRMASS_DAMPING = 2.f; // half of it for the air mass vario
 
@@ -759,7 +748,8 @@ int main(int argc, char** argv) {
     float prev_vg[3] = {NAN, NAN, NAN};
     float prev_att[3] = {NAN, NAN, NAN};
     vector_f f_sum, w_sum;
-    DeviceDamp am_display(AIRMASS_DAMPING), te_lpf(DAMPING);
+    VarioDamper am_display(AIRMASS_DAMPING), te_damp(DAMPING);
+    bool am_started = false;
     Lpf te_alt(0.5f, 0.1f);
     float prev_te_alt = NAN;
     struct GnssSample { uint32_t t_obs; float vn, ve; };
@@ -1141,14 +1131,18 @@ int main(int argc, char** argv) {
         prev_te_alt = te_h;
         // the device netto uses its polar (S2F) at the raw IAS and the body z g load (S2F::getSink(ias))
         const float te_polar = -setup.polar.sink(tas_m, std::max(-accel.z, 0.3f));
-        const float te_netto = te_lpf.f(te) + te_polar;
+        const float te_netto = te_damp.filter(te) + te_polar;
         // the reference's total energy vario as netto, with the same polar as TE netto
         const float ins_netto = ins.vario() + te_polar;
 
         // evaluation
         const uint8_t st = ekf.status();
         const float vario_true = -tr.wd;
-        const float am_vario = am_display.f(ekf.airmassVario()); // as displayed
+        if (!am_started) { // the needle starts at the first estimate
+            am_display.reset(ekf.airmassVario());
+            am_started = true;
+        }
+        const float am_vario = am_display.filter(ekf.airmassVario()); // as displayed
         if ((st & AirMassEKF::ST_WIND_VALID) && t_wind_valid < 0.f) {
             t_wind_valid = tr.t;
         }
