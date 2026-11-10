@@ -53,16 +53,30 @@ def mean(v):
 
 
 class Damp:
-    """the device's vario damping (VarioFilter), 10 Hz"""
+    """the device's vario damping (VarioFilter), 10 Hz: f(x) is one cycle of the device, at(t, x) the cycles due by a
+    sample at time t [s] with input x, for samples at any rate (as the browser replay's Damp)"""
 
     def __init__(self, d):
-        self.d, self.l, self.y = d, None, None
+        self.d, self.l, self.y, self.last, self.x = d, None, None, None, math.nan
 
     def f(self, x):
         if self.l is None:
             self.l = self.y = x
         self.l += (x - self.l) * 0.1 / (self.d / 3.0 + 0.1)
         self.y += (self.l - self.y) / max(self.d, 1.0)
+        return self.y
+
+    def at(self, t, x):
+        """the device's cycles since the last one, each reading the latest sample: one per 0.1 s (from 75 ms on), the
+        last on the sample at time t (x), those before it on the sample before; a sample with a cycle is where the next
+        0.1 s count from. The output then."""
+        n = 1 if self.last is None else math.floor((t - self.last + 0.025) / 0.1)
+        if n > 0:
+            for _ in range(n - 1):
+                self.f(self.x)
+            self.f(x)
+            self.last = t
+        self.x = x
         return self.y
 
 
@@ -126,8 +140,8 @@ def load_flight(base, vario_delay):
         te = num(x["te_vario"])
         y = ref.get(int(round(float(r["t_s"]) * 10.0)))
         sink_now = sink if math.isfinite(sink) else 0.0
-        rows.append(dict(t=t_ms / 1000.0, utc=num(x["utc_s"]), st=st, free=int(round(float(r["t_s"]) * 10.0)) in free, am_raw=am, am=am_damp.f(am),
-                         netto=te - sink_damp.f(sink_now), te=te, ias=num(x["ias"]),
+        rows.append(dict(t=t_ms / 1000.0, utc=num(x["utc_s"]), st=st, free=int(round(float(r["t_s"]) * 10.0)) in free, am_raw=am, am=am_damp.at(t_ms / 1000.0, am),
+                         netto=te - sink_damp.at(t_ms / 1000.0, sink_now), te=te, ias=num(x["ias"]),
                          ref=(num(y["vario"]) - sink_now) if y else math.nan,
                          rn=num(y["wind_n"]) if y else math.nan, re=num(y["wind_e"]) if y else math.nan,
                          roll=num(x["roll_deg"]), wn=float(r["wind_n"]), we=float(r["wind_e"]), an=float(r["avg_wind_n"]),

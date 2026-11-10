@@ -111,7 +111,7 @@ test("rapid estimator edits serialize and resume only after the latest recalcula
 
 test("live damping updates cached display series while retaining estimator/reference/average data", () => {
   const $ = elements(), n = 200;
-  const data = { n, ai: Int32Array.from({ length: n }, (_, i) => i), amOk: new Uint8Array(n).fill(1),
+  const data = { n, t: Float64Array.from({ length: n }, (_, i) => i / 10), ai: Int32Array.from({ length: n }, (_, i) => i), amOk: new Uint8Array(n).fill(1),
     amRaw: Float32Array.from({ length: n }, (_, i) => i < 100 ? 0 : 4), netto: new Float32Array(n).fill(2),
     sinkUp: new Float32Array(n).fill(-1), gnssNet: Float32Array.from({ length: n }, (_, i) => i < 100 ? 0 : 3),
     gnssGrossRaw: Float32Array.from({ length: n }, (_, i) => i < 100 ? 0 : 5),
@@ -129,4 +129,46 @@ test("live damping updates cached display series while retaining estimator/refer
   $("samesmooth").checked = false; context.deriveDamping(data);
   assert.equal(data.gnss[120], 3); assert.equal(data.gnssGross[120], 5);
   assert.deepEqual([data.rep, data.tr, data.cum, data.amRaw, data.gnssNet, data.gnssGrossRaw], retained);
+});
+
+test("the needle damping runs the device's 10 Hz cycles whatever the frame rate", () => {
+  const context = vm.createContext({});
+  // the damping before, one device cycle per frame
+  const perFrame = `function perFrame(D, dampAt) {
+    const out = new Float32Array(D.n).fill(NaN), f = new Damp(1);
+    for (let k = 0; k < D.n; k++) {
+      if (D.ai[k] < 0) { f.reset(NaN); continue; }
+      f.d = dampAt(k);
+      if (D.amOk[k]) {
+        if (f.y === null) f.reset(Number.isFinite(D.netto[k]) ? D.netto[k] : D.amRaw[k]);
+        out[k] = f.f(D.amRaw[k]);
+      } else { f.reset(D.netto[k]); out[k] = D.netto[k]; }
+    }
+    return out;
+  }`;
+  vm.runInContext(["class Damp", "function cockpitSeries(D, dampAt)"].map(grab).join("\n") + "\n" + perFrame, context);
+  // netto until 1 s, then a step of the air mass vario from 0 to 4 m/s at 3 s; 10 Hz frames 10 ms early and late in
+  // turn, as in the logs
+  const flight = hz => {
+    const n = 20 * hz, nominal = i => i / hz;
+    return { n, nominal: Float64Array.from({ length: n }, (_, i) => nominal(i)),
+      t: Float64Array.from({ length: n }, (_, i) => nominal(i) + (hz === 10 ? (i % 2 ? 0.01 : -0.01) : 0)),
+      ai: Int32Array.from({ length: n }, (_, i) => i), amOk: Uint8Array.from({ length: n }, (_, i) => nominal(i) >= 1 ? 1 : 0),
+      amRaw: Float32Array.from({ length: n }, (_, i) => nominal(i) >= 3 ? 4 : 0), netto: new Float32Array(n).fill(1) };
+  };
+  const damp = () => 2, at = (D, s, time) => s[D.nominal.findIndex(x => Math.abs(x - time) < 1e-9)];
+  const runs = [5, 10, 20].map(hz => { const D = flight(hz); return { D, s: context.cockpitSeries(D, damp), before: context.perFrame(D, damp) }; });
+  const [r5, r10, r20] = runs;
+  assert.deepEqual(r10.s, r10.before, "10 Hz frames are damped as before");
+  let worst5 = 0, worst20 = 0;
+  for (let i = 0; i < 100; i++) {
+    const time = i / 5, ref = at(r10.D, r10.s, time);
+    assert(Math.abs(at(r5.D, r5.s, time) - ref) < 1e-6, `5 Hz at ${time} s`);
+    assert(Math.abs(at(r20.D, r20.s, time) - ref) < 1e-6, `20 Hz at ${time} s`);
+    worst5 = Math.max(worst5, Math.abs(at(r5.D, r5.before, time) - ref));
+    worst20 = Math.max(worst20, Math.abs(at(r20.D, r20.before, time) - ref));
+  }
+  assert(worst5 > 0.5 && worst20 > 0.5, "a cycle per frame damped 5 and 20 Hz frames differently");
+  for (let k = 1; k < r20.D.n; k += 2) assert.equal(r20.s[k], r20.s[k - 1], "the needle holds between cycles");
+  assert(r20.s[r20.D.n - 1] > 3.9, "the needle settles on the step");
 });

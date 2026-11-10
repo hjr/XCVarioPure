@@ -86,6 +86,8 @@ duplicate epochs, outages, outliers, midnight/clock wrap, unsupported history, w
 **Vario averager**, beside Vario damping in Settings, controls the trailing averaging window for the AirMass,
 TE and GNSS numeric readouts. It defaults to 30 seconds and accepts 7–50 seconds, matching the device's range.
 Changes update the readouts and their period label immediately and are saved in this browser.
+The vario damping runs the device's 10 Hz cycles on the frame timestamps, each cycle reading the latest frame, so
+5 Hz logs and 20 Hz recordings are damped like 10 Hz ones; between cycles the needle holds.
 Display, damping and sound settings apply during playback using the cached flight output. Glider, loading,
 flap, calibration and estimator settings recalculate automatically while retaining the current position,
 chart view, playback speed and running/paused state. Instrument transmission pauses during recalculation;
