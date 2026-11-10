@@ -7,8 +7,12 @@ import sys
 
 import numpy as np
 
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
+from analyze_sens import ST_VARIO, sim_columns  # noqa: E402
+
 G = 9.80665
-T, TRUTH, AM_SHOWN, TE_NETTO, STATUS, ROLL, AM_RAW, H, TAS, POLAR, INS = 0, 5, 6, 7, 12, 14, 17, 22, 34, 35, 33
+T, TRUTH, AM_SHOWN, TE_NETTO, STATUS, ROLL, AM_RAW, H, TAS, POLAR, INS = sim_columns(
+    "t", "true_vario", "vario_shown", "te_netto", "status", "true_roll", "vario", "true_h", "tas", "te_polar", "ins_netto")
 W = [5, 10, 30, 60]
 
 
@@ -28,7 +32,7 @@ def reference(d):
 def load(path):
     d = np.loadtxt(path, delimiter=",")
     ref = reference(d)
-    free = (d[:, T] > 300) & ((d[:, STATUS].astype(int) & 1) == 1) & np.isfinite(ref)
+    free = (d[:, T] > 300) & ((d[:, STATUS].astype(int) & ST_VARIO) == ST_VARIO) & np.isfinite(ref)
     series = {"AirMass raw": d[:, AM_RAW], "AirMass cockpit": d[:, AM_SHOWN], "TE netto": d[:, TE_NETTO], "GNSS/INS (Larus)": d[:, INS]}
     return d, ref, free, series
 

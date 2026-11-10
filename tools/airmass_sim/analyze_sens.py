@@ -20,6 +20,26 @@ import re
 
 ST_VARIO, ST_WIND, ST_DEGRADED = 1, 2, 16
 
+# The columns of the simulator CSV (sim.cpp --csv, no header), in order; real2plot.py writes a real flight like it, with
+# the vario stand-in after them. true_*: the simulated truth, pos_n/e: the ground track [m], ins_*: the GNSS/INS
+# reference, te_polar: the polar sink TE netto adds.
+SIM_COLUMNS = ("t", "true_wind_n", "true_wind_e", "wind_n", "wind_e", "true_vario", "vario_shown", "te_netto",
+               "heading_error", "k_tas", "pitch_offset", "acc_bias", "status", "wind_sigma", "true_roll", "true_vz", "v_down",
+               "vario", "roll_error", "pitch_error", "true_v", "load_factor", "true_h", "true_xa", "true_ya", "pilot_mode",
+               "te_vario", "heading_sigma", "yaw_rate_bias", "pos_n", "pos_e", "ins_wind_n", "ins_wind_e", "ins_netto",
+               "tas", "te_polar", "stand_in")
+
+
+def sim_columns(*names):
+    """the indices of the named simulator CSV columns"""
+    return [SIM_COLUMNS.index(n) for n in names]
+
+
+def load_sim_csv(path):
+    """the rows of a simulator CSV, as floats"""
+    with open(path) as f:
+        return [[float(x) for x in row] for row in csv.reader(f) if row]
+
 
 def rms(v):
     return math.sqrt(sum(x * x for x in v) / len(v)) if v else math.nan

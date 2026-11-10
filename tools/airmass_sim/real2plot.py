@@ -15,7 +15,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import analyze_sens as A  # noqa: E402
 
 G = 9.80665
-NCOL = 37  # the simulator's 36 columns (0..35) plus the vario stand-in (36)
+COL = {name: i for i, name in enumerate(A.SIM_COLUMNS)}  # the simulator's columns plus the vario stand-in
 
 
 def main():
@@ -53,21 +53,21 @@ def main():
 
     with open(out_path, "w") as f:
         for k, r in enumerate(rows):
-            c = [0.0] * NCOL
-            c[0] = r["t"]
-            c[1], c[2] = drift_n[k], drift_e[k]
-            c[3], c[4] = r["wn"], r["we"]
-            c[5] = math.nan  # no truth
-            c[6] = r["am"]
-            c[7] = r["netto"]
-            c[12] = r["st"]
-            c[14] = r["roll"]
+            c = [0.0] * len(COL)
+            c[COL["t"]] = r["t"]
+            c[COL["true_wind_n"]], c[COL["true_wind_e"]] = drift_n[k], drift_e[k]
+            c[COL["wind_n"]], c[COL["wind_e"]] = r["wn"], r["we"]
+            c[COL["true_vario"]] = math.nan  # no truth
+            c[COL["vario_shown"]] = r["am"]
+            c[COL["te_netto"]] = r["netto"]
+            c[COL["status"]] = r["st"]
+            c[COL["true_roll"]] = r["roll"]
             e = ext[k]
-            c[29] = (e["lat"] - lat0) * 111195.0 if math.isfinite(e["lat"]) else math.nan
-            c[30] = (e["lon"] - lon0) * k_e if math.isfinite(e["lon"]) else math.nan
-            c[31], c[32] = r["rn"], r["re"]
-            c[33] = r["ref"]
-            c[36] = w_gnss[k]
+            c[COL["pos_n"]] = (e["lat"] - lat0) * 111195.0 if math.isfinite(e["lat"]) else math.nan
+            c[COL["pos_e"]] = (e["lon"] - lon0) * k_e if math.isfinite(e["lon"]) else math.nan
+            c[COL["ins_wind_n"]], c[COL["ins_wind_e"]] = r["rn"], r["re"]
+            c[COL["ins_netto"]] = r["ref"]
+            c[COL["stand_in"]] = w_gnss[k]
             f.write(",".join("nan" if isinstance(v, float) and math.isnan(v) else f"{v:.3f}" for v in c) + "\n")
     print(f"{out_path}: {len(rows)} rows")
 
