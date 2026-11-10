@@ -625,14 +625,30 @@ function atFixes(D, get, maxHold) {
   return out;
 }
 
-// the device's vario damping (VarioFilter, 10 Hz), as tools/airmass_sim/analyze_sens.py
+// the device's vario damping (VarioFilter, 10 Hz), as tools/airmass_sim/analyze_sens.py: f(x) is one cycle of the
+// device, at(t, x) the cycles due by a frame at time t [s] with input x, for frames at any rate
 class Damp {
-  constructor(d) { this.d = d; this.l = null; this.y = null; }
-  reset(x) { this.l = this.y = Number.isFinite(x) ? x : null; } // restart from x (NaN: from the next input)
+  constructor(d) { this.d = d; this.l = null; this.y = null; this.last = null; this.x = NaN; }
+  // restart from x (NaN: from the next input, and the cycles with it)
+  reset(x) { this.l = this.y = Number.isFinite(x) ? x : null; if (this.y === null) this.last = null; }
   f(x) {
     if (this.l === null) this.l = this.y = x;
     this.l += (x - this.l) * 0.1 / (this.d / 3.0 + 0.1);
     this.y += (this.l - this.y) / Math.max(this.d, 1.0);
+    return this.y;
+  }
+  // The device's cycles since the last one, each reading the latest frame: one per 0.1 s (from 75 ms on), the last on
+  // the frame at time t (x), those before it on the frame before; a frame with a cycle is where the next 0.1 s count
+  // from, as the device's cycles make the frames of a log. Frames at 10 Hz (jittered) get one cycle each, at 20 Hz
+  // every other frame one, at 5 Hz two; the first frame one. The output then.
+  at(t, x) {
+    const n = this.last === null ? 1 : Math.floor((t - this.last + 0.025) / 0.1);
+    if (n > 0) {
+      for (let i = 1; i < n; i++) this.f(this.x);
+      this.f(x);
+      this.last = t;
+    }
+    this.x = x;
     return this.y;
   }
 }
@@ -646,7 +662,8 @@ function runningSums(n, val) {
 
 // What the cockpit shows in Air Mass mode (airmass::vario, VarioFilter::postProcess): the air mass vario damped (a low
 // pass with tau = d/3, then y += (x - y) / d per 0.1 s cycle; the device's d = max(1, vario delay / 2); dampAt(k)) while
-// it is valid, otherwise netto, which the damping restarts from when the air mass vario comes back
+// it is valid, otherwise netto, which the damping restarts from when the air mass vario comes back. The device's
+// 10 Hz cycles (Damp.at) run on frames at any rate; between them the needle holds.
 function cockpitSeries(D, dampAt) {
   const out = new Float32Array(D.n).fill(NaN), f = new Damp(1);
   for (let k = 0; k < D.n; k++) {
@@ -654,8 +671,9 @@ function cockpitSeries(D, dampAt) {
     f.d = dampAt(k);
     if (D.amOk[k]) {
       if (f.y === null) f.reset(Number.isFinite(D.netto[k]) ? D.netto[k] : D.amRaw[k]);
-      out[k] = f.f(D.amRaw[k]);
+      out[k] = f.at(D.t[k], D.amRaw[k]);
     } else {
+      f.at(D.t[k], D.netto[k]); // the cycles go on
       f.reset(D.netto[k]); // the fallback, and where the damping restarts
       out[k] = D.netto[k];
     }
@@ -793,12 +811,12 @@ function deriveDamping(D) {
     if (!Number.isFinite(v)) dG = null;
     else {
       if (same && !dG) dG = new Damp(delay);
-      D.gnss[k] = same ? dG.f(v) : v;
+      D.gnss[k] = same ? dG.at(D.t[k], v) : v;
     }
     if (!Number.isFinite(gross)) dGross = null;
     else {
       if (same && !dGross) dGross = new Damp(delay);
-      D.gnssGross[k] = same ? dGross.f(gross) : gross;
+      D.gnssGross[k] = same ? dGross.at(D.t[k], gross) : gross;
     }
   }
 }

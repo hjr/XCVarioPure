@@ -68,14 +68,14 @@ function lagOf(x, y, ok) {
   return bl;
 }
 
-// x with the device's vario damping (4 s), restarted where ok is false
-function dampSeries(x, ok, d = 4) {
+// x with the device's vario damping (4 s) in its 10 Hz cycles at the sample times t [s], restarted where ok is false
+function dampSeries(x, ok, d = 4, t = D.t) {
   const y = new Float32Array(x.length).fill(NaN);
   let f = null;
   for (let k = 0; k < x.length; k++) {
     if (!ok[k] || !Number.isFinite(x[k])) { f = null; continue; }
     f ||= new Damp(d);
-    y[k] = f.f(x[k]);
+    y[k] = f.at(t[k], x[k]);
   }
   return y;
 }
