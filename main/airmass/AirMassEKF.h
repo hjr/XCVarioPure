@@ -187,11 +187,13 @@ class AirMassEKF {
     static void airVelocity(float tas, float k, float roll, float pitch, float psi, float alpha, float out[3], float dalpha[3]);
 
    private:
+    friend struct AirMassFlapHistoryTest; // host regression access to delayed flap geometry
     // raw inputs of one cycle; the delayed air vector gets re-evaluated with the current
     // calibration states, the heading through the uncorrected gyro integral
     struct Snapshot {
         uint32_t time_ms;
         float tas, roll, pitch, aoa;
+        float alpha_shift; // flap offset changes since this snapshot, independent of the lift slope
         float psi_gyro; // gyro heading integral at that time
         float slip_sigma;
         bool continuous;

@@ -305,6 +305,7 @@ void AirMassEKF::update(const Input& in) {
     s.roll = in.roll;
     s.pitch = in.pitch;
     s.aoa = in.aoa;
+    s.alpha_shift = 0.f;
     s.psi_gyro = _psi_gyro;
     s.slip_sigma = in.slip_sigma;
     s.continuous = continuous;
@@ -508,7 +509,7 @@ bool AirMassEKF::delayedState(uint32_t t, Delayed& d) const {
     float* da[2] = {da0, da1};
     for (int k = 0; k < 2; ++k) {
         const float psi_then = wrapPi(_x[PSI] - wrapPi(_psi_gyro - sn[k]->psi_gyro));
-        airVelocity(sn[k]->tas, _x[KTAS], sn[k]->roll, sn[k]->pitch, psi_then, alphaOf(sn[k]->aoa), va[k], da[k]);
+        airVelocity(sn[k]->tas, _x[KTAS], sn[k]->roll, sn[k]->pitch, psi_then, alphaOf(sn[k]->aoa) + sn[k]->alpha_shift, va[k], da[k]);
     }
     for (int i = 0; i < 3; ++i) {
         d.va[i] = va0[i] + f * (va1[i] - va0[i]);
@@ -536,7 +537,7 @@ void AirMassEKF::alignFromHeading(const GnssVelocity& g, const Snapshot& s) {
     const float psi_then = wrapPi(_aid.psi - wrapPi(_aid.psi_gyro - s.psi_gyro));
     const float psi_now = wrapPi(_aid.psi + wrapPi(_psi_gyro - _aid.psi_gyro));
     float va[3];
-    airVelocity(s.tas, _x[KTAS], s.roll, s.pitch, psi_then, alphaOf(s.aoa), va, nullptr);
+    airVelocity(s.tas, _x[KTAS], s.roll, s.pitch, psi_then, alphaOf(s.aoa) + s.alpha_shift, va, nullptr);
     const float v = _x[KTAS] * s.tas;
     const float sair = _cfg.sigma_air + 0.01f * s.tas;
     const float var_psi = _aid.sigma * _aid.sigma;
@@ -586,7 +587,7 @@ void AirMassEKF::accumulateAlignment(const GnssVelocity& g, const Snapshot& s) {
     _al.psi_max = std::max(_al.psi_max, _al.psi_unwrapped);
 
     float u[3];
-    airVelocity(s.tas, _x[KTAS], s.roll, s.pitch, s.psi_gyro, alphaOf(s.aoa), u, nullptr);
+    airVelocity(s.tas, _x[KTAS], s.roll, s.pitch, s.psi_gyro, alphaOf(s.aoa) + s.alpha_shift, u, nullptr);
     const float rows[2][4] = {{1.f, 0.f, u[0], -u[1]}, {0.f, 1.f, u[1], u[0]}};
     const float z[2] = {g.vn, g.ve};
     for (int r = 0; r < 2; ++r) {
@@ -726,9 +727,9 @@ void AirMassEKF::clampCalibration() {
 void AirMassEKF::setPitchOffset(float thb, float sigma) {
     thb = std::clamp(thb, -THB_MAX, THB_MAX);
     // the snapshots for the delayed GNSS fusion were taken with the old offset (flaps): keep their angle of attack
-    const float shift = (thb - _x[THB]) / _x[KCL];
+    const float shift = thb - _x[THB];
     for (int i = 0; i < _hist_level; ++i) {
-        _hist[i].aoa += shift; // the ring fills from index 0
+        _hist[i].alpha_shift += shift; // retain the original AoA and its scale derivative
     }
     _x[THB] = thb;
     for (int i = 0; i < NX; ++i) {
