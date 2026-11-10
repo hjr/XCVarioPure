@@ -6,8 +6,9 @@ and the GNSS/INS reference, each with its display damping, and their errors belo
 
 AirMass is drawn while its vario is valid (the device falls back to netto otherwise). Needs matplotlib."""
 import argparse
-import csv
 import math
+import os
+import sys
 
 import matplotlib
 
@@ -17,21 +18,14 @@ from matplotlib import transforms  # noqa: E402
 from matplotlib.lines import Line2D  # noqa: E402
 from matplotlib.patches import Patch  # noqa: E402
 
-# columns of the simulator CSV (sim.cpp)
-T, TRUTH, AIRMASS_SHOWN, TE_NETTO, STATUS, ROLL, REF_NETTO, STAND_IN = 0, 5, 6, 7, 12, 14, 33, 36
-ST_VARIO_VALID = 1
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from analyze_sens import ST_VARIO, load_sim_csv, rms, sim_columns  # noqa: E402
+
+T, TRUTH, AIRMASS_SHOWN, TE_NETTO, STATUS, ROLL, REF_NETTO, STAND_IN = sim_columns(
+    "t", "true_vario", "vario_shown", "te_netto", "status", "true_roll", "ins_netto", "stand_in")
 
 INK, INK_2, GRID, SURFACE, BAND = "#0b0b0b", "#52514e", "#e4e3df", "#fcfcfb", "#efeeea"
 AIRMASS, REFERENCE, TE = "#2a78d6", "#eb6834", "#1baf7a"  # categorical slots 1, 2, 3
-
-
-def load(path):
-    with open(path) as f:
-        return [[float(x) for x in row] for row in csv.reader(f) if row]
-
-
-def rms(v):
-    return math.sqrt(sum(x * x for x in v) / len(v)) if v else float("nan")
 
 
 def main():
@@ -43,14 +37,14 @@ def main():
     ap.add_argument("--to", dest="t1", type=float, default=1e9)
     a = ap.parse_args()
 
-    rows = [r for r in load(a.csv) if a.t0 <= r[T] <= a.t1]
+    rows = [r for r in load_sim_csv(a.csv) if a.t0 <= r[T] <= a.t1]
     t = [r[T] for r in rows]
     truth = [r[TRUTH] for r in rows]
     # a real flight (real2plot.py) has no truth: one panel, the GNSS altitude energy (20 s) as a slow stand-in
     real = not any(math.isfinite(x) for x in truth)
     if real:
         return plot_real(a, rows, t)
-    am = [r[AIRMASS_SHOWN] if int(r[STATUS]) & ST_VARIO_VALID else math.nan for r in rows]
+    am = [r[AIRMASS_SHOWN] if int(r[STATUS]) & ST_VARIO else math.nan for r in rows]
     series = [  # label, values, color, z
         ("GNSS/INS reference", [r[REF_NETTO] for r in rows], REFERENCE, 3),
         ("TE netto", [r[TE_NETTO] for r in rows], TE, 4),
@@ -111,7 +105,7 @@ def plot_real(a, rows, t):
     series = [  # label, values, color, z
         ("GNSS/INS reference after Larus (1 Hz GNSS)", [r[REF_NETTO] for r in rows], REFERENCE, 3),
         ("device TE netto (with the TAS/IAS polar fix)", [r[TE_NETTO] for r in rows], TE, 4),
-        ("AirMass", [r[AIRMASS_SHOWN] if int(r[STATUS]) & ST_VARIO_VALID else math.nan for r in rows], AIRMASS, 5),
+        ("AirMass", [r[AIRMASS_SHOWN] if int(r[STATUS]) & ST_VARIO else math.nan for r in rows], AIRMASS, 5),
     ]
     fig, ax = plt.subplots(figsize=(11, 5.2), dpi=150)
     fig.patch.set_facecolor(SURFACE)

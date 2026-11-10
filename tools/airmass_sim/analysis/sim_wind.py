@@ -1,18 +1,16 @@
 """The instant wind in the simulator, as wind.js on the real flights: how much the estimate and the true wind at the glider
 move in straight flight and while circling, the estimate's error, and the share of it locked to the heading.
   python3 sim_wind.py out/dev_s1.csv ...   (airmass_sim nl ... --csv)"""
-import csv
 import math
+import os
 import sys
 
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
+from analyze_sens import load_sim_csv, sim_columns  # noqa: E402
+
 HZ, HALF = 10, 300
-# simulator CSV columns
-T, WN, WE, EWN, EWE, ST, ROLL, GN, GE = 0, 1, 2, 3, 4, 12, 14, 29, 30
-
-
-def rows(path):
-    with open(path) as f:
-        return [[float(x) for x in r] for r in csv.reader(f)]
+T, WN, WE, EWN, EWE, ST, ROLL, GN, GE = sim_columns(
+    "t", "true_wind_n", "true_wind_e", "wind_n", "wind_e", "status", "true_roll", "pos_n", "pos_e")
 
 
 acc = {}
@@ -27,7 +25,7 @@ def add(p, key, v):
 heading_locked, corr = 0.0, {}
 tot_err = [0, 0.0]
 for path in sys.argv[1:]:
-    R = rows(path)
+    R = load_sim_csv(path)
     n = len(R)
     ok = [int(r[ST]) & 2 and r[T] > 600 for r in R]
     series = {"estimate": (EWN, EWE), "truth": (WN, WE)}

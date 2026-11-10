@@ -14,8 +14,9 @@ The truth is smoothed over 5 s (what an estimator can follow, like the simulator
 its wind is shown: solid while valid, dashed while degraded (not valid any more, drawn grey on the device), no arrow
 while not shown. Needs matplotlib."""
 import argparse
-import csv
 import math
+import os
+import sys
 
 import matplotlib
 
@@ -25,19 +26,16 @@ from matplotlib import transforms  # noqa: E402
 from matplotlib.lines import Line2D  # noqa: E402
 from matplotlib.patches import Patch  # noqa: E402
 
-# columns of the simulator CSV (sim.cpp)
-T, TRUE_N, TRUE_E, AM_N, AM_E, STATUS, ROLL, GN, GE, REF_N, REF_E = 0, 1, 2, 3, 4, 12, 14, 29, 30, 31, 32
-ST_WIND_VALID, ST_WIND_DEGRADED = 2, 16
-SHOWN = ST_WIND_VALID | ST_WIND_DEGRADED
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from analyze_sens import ST_DEGRADED, ST_WIND, load_sim_csv, rms, sim_columns  # noqa: E402
+
+T, TRUE_N, TRUE_E, AM_N, AM_E, STATUS, ROLL, GN, GE, REF_N, REF_E = sim_columns(
+    "t", "true_wind_n", "true_wind_e", "wind_n", "wind_e", "status", "true_roll", "pos_n", "pos_e", "ins_wind_n", "ins_wind_e")
+SHOWN = ST_WIND | ST_DEGRADED
 
 INK, INK_2, MUTED, GRID, SURFACE, BAND = "#0b0b0b", "#52514e", "#8a8984", "#e4e3df", "#fcfcfb", "#efeeea"
 AIRMASS, REFERENCE = "#2a78d6", "#eb6834"  # categorical slots 1, 2
 DASHED = (0, (3, 2))
-
-
-def load(path):
-    with open(path) as f:
-        return [[float(x) for x in row] for row in csv.reader(f) if row]
 
 
 def smooth(rows, col, half):
@@ -47,10 +45,6 @@ def smooth(rows, col, half):
         pre.append(pre[-1] + r[col])
     n = len(rows)
     return [(pre[min(n, i + half + 1)] - pre[max(0, i - half)]) / (min(n, i + half + 1) - max(0, i - half)) for i in range(n)]
-
-
-def rms(v):
-    return math.sqrt(sum(x * x for x in v) / len(v)) if v else float("nan")
 
 
 def heading_turned(rows, idx):
@@ -91,7 +85,7 @@ def main():
     ap.add_argument("--to", dest="t1", type=float, default=1e9)
     a = ap.parse_args()
 
-    rows = load(a.csv)
+    rows = load_sim_csv(a.csv)
     dt = rows[1][T] - rows[0][T]
     # a real flight (real2plot.py) has no truth, the circle drift stands in for it while circling
     real = sum(math.isfinite(r[TRUE_N]) for r in rows) < 0.98 * len(rows)
@@ -153,7 +147,7 @@ def main():
             for label, fn, fe, color, lw, z in sources:
                 if (label == "AirMass" and not st & SHOWN) or not fin(fn(i)):
                     continue
-                ls = DASHED if label == "AirMass" and not st & ST_WIND_VALID else "-"
+                ls = DASHED if label == "AirMass" and not st & ST_WIND else "-"
                 arrow(ax, x, y, fe(i) * scale, fn(i) * scale, color, lw, ls, z)
         ax.set_xlim(min(tips_x) - pad, max(tips_x) + pad)
         ax.set_ylim(min(tips_y) - pad, max(tips_y) + pad)
@@ -190,7 +184,7 @@ def main():
                 st = int(rows[i][STATUS])
                 if (label == "AirMass" and not st & SHOWN) or not fin(fn(i)):
                     continue
-                ls = DASHED if label == "AirMass" and not st & ST_WIND_VALID else "-"
+                ls = DASHED if label == "AirMass" and not st & ST_WIND else "-"
                 arrow(ax, rows[i][T], y0, fe(i) * scale, fn(i) * scale, color, lw, ls, z)
         ax.set_xlim(t_a - 0.02 * span, t_b + 0.06 * span)
         ax.set_ylim(base["AirMass"] - down - gap / 2, up + gap / 2)
