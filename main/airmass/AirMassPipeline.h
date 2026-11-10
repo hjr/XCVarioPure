@@ -240,7 +240,7 @@ private:
             in.yaw_rate = attitude->yaw_rate;
             std::copy(std::begin(attitude->down), std::end(attitude->down), raw.down_body);
         } else {
-            _att.update(raw.gyro, air.f_cg, _ekf.kTas() * raw.tas, air.alpha, in.dt, _ekf.yawRateBias(), in.continuous);
+            _att.update(raw.gyro, air.f_cg, _ekf.kTas() * raw.tas, air.ca, air.sa, in.dt, _ekf.yawRateBias(), in.continuous);
             in.roll = _att.roll();
             in.pitch = _att.pitch();
             in.yaw_rate = _att.yawRate(raw.gyro);

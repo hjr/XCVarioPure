@@ -47,15 +47,26 @@ class Matrix {
 // Returns false if the measurement got rejected by the gate (state untouched).
 template <size_t N>
 bool ekfScalarUpdate(Matrix<N, N>& P, float (&x)[N], const float (&h)[N], float y, float r, float gate = 0.f) {
+    // h has a few non-zero entries: the zero ones add only +-0 to the (finite) sums, skipping them in
+    // index order gives the same results as the dense products
+    size_t nz[N];
+    size_t n = 0;
+    for (size_t j = 0; j < N; ++j) {
+        if (h[j] != 0.f) {
+            nz[n++] = j;
+        }
+    }
     float pht[N];
-    float s = r;
     for (size_t i = 0; i < N; ++i) {
         float acc = 0.f;
-        for (size_t j = 0; j < N; ++j) {
-            acc += P(i, j) * h[j];
+        for (size_t k = 0; k < n; ++k) {
+            acc += P(i, nz[k]) * h[nz[k]];
         }
         pht[i] = acc;
-        s += h[i] * acc;
+    }
+    float s = r;
+    for (size_t k = 0; k < n; ++k) {
+        s += h[nz[k]] * pht[nz[k]];
     }
     if (!(s > 0.f) || !std::isfinite(y)) {
         return false;

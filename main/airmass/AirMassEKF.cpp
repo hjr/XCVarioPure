@@ -159,9 +159,9 @@ bool solve4(float a[4][4], float b[4], float x[4]) {
 }
 } // namespace
 
-void AirMassEKF::airVelocity(float tas, float k, float roll, float pitch, float psi, float alpha, float out[3], float dalpha[3]) {
-    const float sp = std::sin(roll), cp = std::cos(roll);
-    const float st = std::sin(pitch), ct = std::cos(pitch);
+void AirMassEKF::airVelocity(float tas, float k, const Tilt& tilt, float psi, float alpha, float out[3], float dalpha[3]) {
+    const float sp = tilt.sp, cp = tilt.cp;
+    const float st = tilt.st, ct = tilt.ct;
     const float ss = std::sin(psi), cs = std::cos(psi);
     const float sa = std::sin(alpha), ca = std::cos(alpha);
     const float v = k * tas;
@@ -184,13 +184,13 @@ void AirMassEKF::airVelocity(float tas, float k, float roll, float pitch, float 
     }
 }
 
-void AirMassEKF::predict(const Input& in) {
+void AirMassEKF::predict(const Input& in, const Tilt& tilt) {
     const float dt = in.dt;
     const float acc = in.acc_down - _x[BAZ];
 
     // BGZ is the body z gyro bias, it enters the heading rate with cos(roll) / cos(pitch): a single yaw rate bias
     // learned while circling would be off in straight flight
-    const float cb = std::cos(in.roll) / std::max(std::cos(in.pitch), 0.1f);
+    const float cb = tilt.cp / std::max(tilt.ct, 0.1f);
     _heading_rate = in.yaw_rate - cb * _x[BGZ];
     _x[PSI] += _heading_rate * dt;
     wrapPsi();
@@ -292,7 +292,8 @@ void AirMassEKF::update(const Input& in) {
         _vario_out = NAN;
         _wd_energy = _wd_energy_plain = NAN;
     }
-    predict(in);
+    const Tilt tilt(in.roll, in.pitch);
+    predict(in, tilt);
 
     // remember the raw inputs for delayed GNSS fusion
     _hist_head = (_hist_head + 1) % HIST;
@@ -320,8 +321,8 @@ void AirMassEKF::update(const Input& in) {
     _straight = blendBankWeight(in.roll);
     if (flying_speed && continuous) {
         float va[3], dalpha[3];
-        airVelocity(in.tas, _x[KTAS], in.roll, in.pitch, _x[PSI], alphaOf(in.aoa), va, dalpha);
-        if (in.kinematic_fresh && _kinematic_clock.observe(in.time_ms, in.time_ms, true)) fuseKinematic(in, va, dalpha);
+        airVelocity(in.tas, _x[KTAS], tilt, _x[PSI], alphaOf(in.aoa), va, dalpha);
+        if (in.kinematic_fresh && _kinematic_clock.observe(in.time_ms, in.time_ms, true)) fuseKinematic(in, tilt, va, dalpha);
         updateKinetic(in, va);
         if (std::isfinite(in.polar_sink)) {
             fuseEnergy(in);
@@ -358,7 +359,7 @@ void AirMassEKF::fuseBaro(float alt, float sample_dt) {
 }
 
 // Pitch based air mass vertical velocity: Wd = vd - va_d
-void AirMassEKF::fuseKinematic(const Input& in, const float va[3], const float dalpha[3]) {
+void AirMassEKF::fuseKinematic(const Input& in, const Tilt& tilt, const float va[3], const float dalpha[3]) {
     if (_inertial_trust < 1.f) return; // attitude and its pitch/AoA calibration need continuous motion history
     float h[NX] = {};
     h[WD] = -1.f;
@@ -369,10 +370,10 @@ void AirMassEKF::fuseKinematic(const Input& in, const float va[3], const float d
     const float y = 0.f - (_x[VD] - va[2] - _x[WD]);
     // attitude and angle of attack are less certain in turns and after sustained longitudinal acceleration;
     // the gyro propagated attitude (AirMassAttitude.h) needs no extra margin for the load factor
-    const float sig = _cfg.sigma_pitch * (1.f + 2.f * std::fabs(std::sin(in.roll)) + 0.7f * _acc_mem);
+    const float sig = _cfg.sigma_pitch * (1.f + 2.f * std::fabs(tilt.sp) + 0.7f * _acc_mem);
     const float sv = in.tas * sig;
     // sideslip in a bank tilts the air vector vertically by V * beta * sin(roll)
-    const float ss = in.tas * in.slip_sigma * std::fabs(std::sin(in.roll));
+    const float ss = in.tas * in.slip_sigma * std::fabs(tilt.sp);
     // These model constraints have correlated noise. Keep their information per second stable across rates.
     const float sample_dt = _kinematic_clock.interval_ms ? _kinematic_clock.interval_ms * 1e-3f : in.dt;
     const float rate_scale = 0.1f / std::clamp(sample_dt, 0.001f, 0.3f);
