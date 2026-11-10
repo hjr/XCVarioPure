@@ -129,13 +129,16 @@ public:
         }
         endCycle();
         const int32_t elapsed = (int32_t)(f.time_ms - _prev_time);
-        if (elapsed < 0 || (_have_frame && elapsed == 0)) return;
+        if (_have_frame && elapsed == 0) return;
         bool source_gap = false;
         for (int i = 0; i < 2; ++i) {
             source_gap = source_gap || (_samples[i].have && (f.valid & (1 << i)) &&
                 (int32_t)(f.time_ms - f.sample_ms[i]) >= 0 && (int32_t)(f.sample_ms[i] - _samples[i].time_ms) > 10000);
         }
-        if (elapsed > 10000 || source_gap) {
+        // the clock went back (an instrument replay returning to real time): the estimate cannot wait until it
+        // catches up, held and still flagged valid
+        const bool clock_back = elapsed < 0;
+        if (clock_back || elapsed > 10000 || source_gap) {
             // No usable motion history remains after a long outage. Restart dynamics, retaining calibration
             // and the last attitude; do not integrate seconds of unobserved acceleration as if measured.
             Warm w;
@@ -147,7 +150,7 @@ public:
             const float down[3] = {_supported_down[0], _supported_down[1], _supported_down[2]};
             start(f.time_ms, f.baro_alt, down, f.gyro, w);
         }
-        const bool gap = elapsed > 300 || source_gap;
+        const bool gap = clock_back || elapsed > 300 || source_gap;
         if (gap && elapsed <= 10000) {
             // Causal reconstruction: hold the previous sample through missing time, not the future endpoint.
             // Inferred history is marked unusable for GNSS fusion; trust recovers only on measured cycles.
