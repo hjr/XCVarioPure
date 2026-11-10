@@ -250,6 +250,46 @@ void landing() {
     }
     check(direct_invalid, "direct EKF callers also cannot mark zero TAS valid");
 }
+
+// A wind prior aligns the heading from a single fix. In a steady turn the fix is 0.75 s old: its air vector bearing
+// is the heading of that time, which the gyro has to carry to now. The fix falls between two history snapshots.
+void turningPriorAlignment() {
+    std::printf("prior alignment in a turn with a delayed fix\n");
+    const float rate = 0.2f, tas = 30.f, aoa = 0.1f, wn = 4.f, we = -3.f;
+    const uint32_t step = 50, latency = 750, arrival = 12050;
+    const float roll = std::atan(rate * tas / Units::g0);
+    const float a = std::cos(aoa), b = std::sin(aoa) * std::cos(roll);
+    const float pitch = std::atan2(b, a) - std::asin(0.8f / (tas * std::hypot(a, b)));
+    AirMassEKF ekf;
+    ekf.reset(1000.f, 1.f, 0.f, latency * 1e-3f);
+    std::vector<float> psi(arrival / step + 1, 0.f); // true heading at each cycle
+    for (uint32_t now = step; now <= arrival; now += step) {
+        psi[now / step] = psi[now / step - 1] + rate * step * 1e-3f;
+        AirMassEKF::Input in;
+        in.time_ms = now;
+        in.dt = step * 1e-3f;
+        in.roll = roll;
+        in.pitch = pitch;
+        in.aoa = aoa;
+        in.tas = tas;
+        in.yaw_rate = rate;
+        in.baro_alt = 1000.f - now * 0.0008f;
+        in.polar_sink = 0.8f;
+        in.load_factor = 1.f / std::cos(roll);
+        ekf.update(in);
+    }
+    float va[3];
+    AirMassEKF::airVelocity(tas, 1.f, roll, pitch, psi[(arrival - latency) / step], aoa, va, nullptr);
+    AirMassEKF::GnssVelocity g;
+    g.time_ms = arrival;
+    g.latency_ms = latency;
+    g.vn = va[0] + wn;
+    g.ve = va[1] + we;
+    ekf.fuseGnss(g, true, wn, we);
+    const float err = std::remainder(ekf.heading() - psi.back(), 2.f * (float)M_PI);
+    std::printf("  heading error %.2f deg\n", err * 180.f / (float)M_PI);
+    check(ekf.isAligned() && std::fabs(err) < 0.25f * (float)M_PI / 180.f, "aligned heading is the current one");
+}
 } // namespace
 
 int main() {
@@ -258,6 +298,7 @@ int main() {
     gaps();
     recording();
     landing();
+    turningPriorAlignment();
     flight("regular delayed fixes", false, false, true, false, false);
     flight("irregular fix cadence", true, false, true, false, false);
     flight("jitter, late and out-of-order fixes", false, true, true, false, false);
