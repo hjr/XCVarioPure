@@ -1,16 +1,11 @@
 // Mixed sensor rates, prediction-only cycles and elapsed-time guarantees for the target's 20Hz poll.
 #include "replay_core.h"
+#include "test_util.h"
 
 #include <cmath>
 #include <cstdio>
 
 namespace {
-int failures = 0;
-void check(bool ok, const char* name) {
-    std::printf("%s: %s\n", ok ? "PASS" : "FAIL", name);
-    failures += !ok;
-}
-bool near(float a, float b, float tol = 1e-5f) { return std::isfinite(a) && std::fabs(a - b) <= tol; }
 airmass::Frame frame(uint32_t t) {
     airmass::Frame f;
     f.time_ms = t;
