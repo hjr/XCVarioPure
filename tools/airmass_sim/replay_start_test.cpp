@@ -45,11 +45,10 @@ struct Turn {
 };
 
 std::string attitude(float roll, float pitch) {
-    char buf[160];
-    std::snprintf(buf, sizeof(buf), "$PXCV,0,1,0,1,1,15,1013,1000,0,%.6f,%.6f", Units::rad_to_deg(roll), Units::rad_to_deg(pitch));
-    std::string s = buf;
+    rec::Line s("$PXCV,0,1,0,1,1,15,1013,1000,0");
+    s.printf(",%.6f,%.6f", Units::rad_to_deg(roll), Units::rad_to_deg(pitch));
     rec::finish(s);
-    return s;
+    return s.c_str();
 }
 
 void snapshot() {

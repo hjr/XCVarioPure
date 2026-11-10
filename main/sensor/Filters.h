@@ -93,7 +93,6 @@ public:
     void setDamping(second_t damping) { _damping = damping; _lpf.setTau(damping / 3.f, _dt); }
     void reset(float init_val = 0.f) { _lpf.reset(init_val); _out = init_val; }
     float filter(float input) { _out += (_lpf.filter(input) - _out) / _damping; return _out; }
-    float get() const { return _out; }
     float lowPass() const { return _lpf.get(); } // the first stage
 private:
     LowPassFilterT<float> _lpf;

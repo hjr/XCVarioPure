@@ -354,8 +354,7 @@ int flapRecommendation(float ias, float load) {
 }
 
 // the device's vario damping (VarioFilter, VarioDamper)
-constexpr float DAMPING = 4.f;         // vario_delay default (TE netto)
-constexpr float AIRMASS_DAMPING = 2.f; // half of it for the air mass vario
+constexpr float DAMPING = 4.f; // vario_delay default (TE netto)
 
 bool inWindows(float t, const std::vector<std::pair<float, float>>& w) {
     for (auto& p : w) {
@@ -748,7 +747,7 @@ int main(int argc, char** argv) {
     float prev_vg[3] = {NAN, NAN, NAN};
     float prev_att[3] = {NAN, NAN, NAN};
     vector_f f_sum, w_sum;
-    VarioDamper am_display(AIRMASS_DAMPING), te_damp(DAMPING);
+    VarioDamper am_display(airmass::displayDamping(DAMPING)), te_damp(DAMPING);
     bool am_started = false;
     Lpf te_alt(0.5f, 0.1f);
     float prev_te_alt = NAN;

@@ -179,7 +179,7 @@ int main() {
             f[0] = -3.f / G - down[0];
             f[1] = -down[1];
             f[2] = -down[2];
-            att.update(gyro, f, tas, 0.f, 0.1f, 0.f);
+            att.update(gyro, f, tas, 1.f, 0.f, 0.1f, 0.f, true); // alpha 0
         }
         expect("pitch of the air data aided attitude [deg]", att.pitch() / D2R, 10.f, 0.3f);
         expect("pitch of a plain accelerometer reference [deg]", std::atan2(f[0], -f[2]) / D2R, 10.f - 17.f, 1.5f);

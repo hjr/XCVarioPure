@@ -47,6 +47,17 @@ struct Line {
         len = SIZE;
         return false;
     }
+    // printf at the end; when it does not fit the sentence is lost
+    template <typename... Args>
+    void printf(const char* fmt, Args... args) {
+        if (len >= SIZE) return;
+        const int n = std::snprintf(buf + len, SIZE - len, fmt, args...);
+        if (n >= 0 && fits(n)) {
+            len += n;
+        } else {
+            len = SIZE;
+        }
+    }
     void append(const char* text) {
         const int n = static_cast<int>(std::strlen(text));
         if (fits(n)) {
@@ -68,34 +79,21 @@ inline void finish(Line& s) {
         const char c = s.buf[i];
         if (c != '$' && c != '!') crc ^= static_cast<unsigned char>(c);
     }
-    static constexpr char HEX[] = "0123456789abcdef";
     char* p = s.buf + s.len;
     *p++ = '*';
-    *p++ = HEX[(crc >> 4) & 15];
-    *p++ = HEX[crc & 15];
+    *p++ = NMEA::hex[(crc >> 4) & 15];
+    *p++ = NMEA::hex[crc & 15];
     *p++ = '\r';
     *p++ = '\n';
     *p = 0;
     s.len += 5;
 }
 
-// the same for other sentences in a std::string (host tools)
-inline void finish(std::string& s) {
-    s += '*';
-    s += NMEA::CheckSum(s.c_str());
-    s += "\r\n";
-}
-
 inline void appendf(Line& s, const char* fmt, float v) {
     if (!s.fits(1)) return;
     s.buf[s.len++] = ',';
     if (std::isfinite(v)) {
-        const int n = std::snprintf(s.buf + s.len, Line::SIZE - s.len, fmt, v);
-        if (n >= 0 && s.fits(n)) {
-            s.len += n;
-        } else {
-            s.len = Line::SIZE;
-        }
+        s.printf(fmt, v);
     }
 }
 inline void appendu(Line& s, uint32_t v) {
@@ -238,10 +236,9 @@ inline Line output(const AirMassEKF& ekf) {
     int wdir = static_cast<int>(std::lround(Units::rad_to_deg(std::atan2(-we, -wn))));
     wdir = (wdir % 360 + 360) % 360;
     Line s("");
-    const int n = std::snprintf(s.buf, Line::SIZE, "$PXCVA,%.2f,%d,%.1f,%.2f,%.3f,%.2f,%.0f,%X", ekf.airmassVario(), wdir,
+    s.printf("$PXCVA,%.2f,%d,%.1f,%.2f,%.3f,%.2f,%.0f,%X", ekf.airmassVario(), wdir,
                                 Units::mps_to_kmh(std::hypot(wn, we)), ekf.windD(), ekf.kTas(), Units::rad_to_deg(ekf.pitchOffset()),
                                 ekf.gnssLatency() * 1000.f, static_cast<unsigned>(ekf.status()));
-    s.len = n >= 0 && n < Line::SIZE ? n : Line::SIZE;
     finish(s);
     return s;
 }

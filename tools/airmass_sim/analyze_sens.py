@@ -30,9 +30,12 @@ SIM_COLUMNS = ("t", "true_wind_n", "true_wind_e", "wind_n", "wind_e", "true_vari
                "tas", "te_polar", "stand_in")
 
 
+COL = {name: i for i, name in enumerate(SIM_COLUMNS)}
+
+
 def sim_columns(*names):
     """the indices of the named simulator CSV columns"""
-    return [SIM_COLUMNS.index(n) for n in names]
+    return [COL[n] for n in names]
 
 
 def load_sim_csv(path):

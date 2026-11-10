@@ -38,11 +38,7 @@ public:
     }
 
     // gyro: body rates [rad/s], f: specific force [g] at the CG, tas: calibrated true airspeed [m/s],
-    // alpha: angle of attack of the body x axis [rad], bias_z: body z gyro bias from the estimator (AirMassEKF BGZ)
-    void update(const float gyro[3], const float f[3], float tas, float alpha, float dt, float bias_z, bool continuous = true) {
-        update(gyro, f, tas, std::cos(alpha), std::sin(alpha), dt, bias_z, continuous);
-    }
-    // the same with cos(alpha) and sin(alpha)
+    // ca, sa: cos and sin of the angle of attack of the body x axis, bias_z: body z gyro bias from the estimator (AirMassEKF BGZ)
     void update(const float gyro[3], const float f[3], float tas, float ca, float sa, float dt, float bias_z, bool continuous) {
         if (!continuous) {
             _tas_dot = _gust_slow = 0.f;
