@@ -32,6 +32,7 @@ public:
     bool hasProtocol(ProtocolType ptyp) const;
     void removeProtocol(ProtocolType ptyp);
     void process(const char *packet, int len);
+    bool inject(const char *frame, int len);
     ProtocolItf *goBIN();
     void goNMEA();
     void switchProtocol();
@@ -58,6 +59,7 @@ public:
 private:
     // helpers
     void doForward(DeviceId src_dev);
+    void feed(const char *packet, int len);
     void enforceNmea(DeviceId did, int sendport, ProtocolType ptyp);
 
 private:
@@ -65,6 +67,7 @@ private:
     NmeaPrtcl   *_nmea   = nullptr; // the nmea protocoll shell
     ProtocolItf *_binary = nullptr; // if set it will be the priority parser
     ProtocolState _sm; // The message buffer for all protocol parser
+    SemaphoreHandle_t _parse_mutex; // one task at a time in the parser
     // Listen on
     const ItfTarget _itf_id;
     bool _monitoring = false;

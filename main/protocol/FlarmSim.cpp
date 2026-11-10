@@ -92,7 +92,9 @@ bool FlarmSim::tick()
         msg += "," + std::to_string(_icao_id) + "*"; // dummy ICAO
 
         msg += NMEA::CheckSum(msg.c_str()) + "\r\n";
-        _d->_link->process(msg.c_str(), msg.size());
+        if ( ! _d->_link->inject(msg.c_str(), msg.size()) ) {
+            return false; // the Flarm is mid sentence, retry next tick
+        }
 
         // increment own, and target position
         Quaternion q(deg2rad(_target_omega), vector_f(0.f, 0.f, 1.f));

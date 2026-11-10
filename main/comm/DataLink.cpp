@@ -40,6 +40,7 @@ DataLink::DataLink(int listen_port, int itfid) :
     _itf_id(ItfTarget((InterfaceId)itfid,listen_port))
 {
     _route_mutex = xSemaphoreCreateMutex();
+    _parse_mutex = xSemaphoreCreateMutex();
 }
 
 DataLink::~DataLink()
@@ -49,6 +50,7 @@ DataLink::~DataLink()
             delete it;
         }
     }
+    vSemaphoreDelete(_parse_mutex);
 }
 
 void DataLink::enforceNmea(DeviceId did, int sendport, ProtocolType ptyp)
@@ -284,6 +286,28 @@ void DataLink::removeProtocol(ProtocolType ptyp)
 }
 
 void DataLink::process(const char *packet, int len)
+{
+    xSemaphoreTake(_parse_mutex, portMAX_DELAY);
+    feed(packet, len);
+    xSemaphoreGive(_parse_mutex);
+}
+
+// Feed a complete frame from outside the receiving task, e.g. a simulator.
+// Returns false, consuming nothing, while the parser is busy or holds a part of a received frame.
+bool DataLink::inject(const char *frame, int len)
+{
+    if ( xSemaphoreTake(_parse_mutex, 0) != pdTRUE ) {
+        return false;
+    }
+    bool idle = _sm._state == START_TOKEN;
+    if ( idle ) {
+        feed(frame, len);
+    }
+    xSemaphoreGive(_parse_mutex);
+    return idle;
+}
+
+void DataLink::feed(const char *packet, int len)
 {
     // Feed the data monitor
     if (_monitoring) {
