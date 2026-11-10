@@ -1,8 +1,8 @@
 // Shared by the analysis scripts: the browser replay's own code (index.html: build, atFixes, Damp, derive, indexAt)
 // loaded into node, and the helpers the scripts have in common. derive() gives the two GNSS references: D.gnssNetInert
 // (gust-insensitive: GNSS ground velocity minus a 2 min wind) and D.gnssNetPitot (pitot TAS). The page functions read
-// the globals D (the flight being worked on), fileName and $ (the settings), so a script assigns D = build(...) without
-// declaring it.
+// the globals D (the flight being worked on), fileName, $ (the settings) and STATUS (the status bits, replay.js), so a
+// script assigns D = build(...) without declaring it.
 const fs = require("fs"), path = require("path");
 
 // REF_SINK=airmass (or { refSink: "airmass" }): the GNSS netto references subtract AirMass's polar sink (calibrated
@@ -25,11 +25,13 @@ function loadPage(web, { refSink = process.env.REF_SINK } = {}) {
     if (patched === src) throw new Error("REF_SINK patch failed: derive() changed");
     src = patched;
   }
+  const { runReplay, STATUS } = require(path.join(web, "replay.js"));
   globalThis.$ = (id) => ({ damping: { value: "4" }, samesmooth: { checked: false } })[id];
   globalThis.D = null;
   globalThis.fileName = "";
+  globalThis.STATUS = STATUS;
   (0, eval)(src + "\n" + names.map((x) => `globalThis.${x} = ${x};`).join(" "));
-  return { convert: require(path.join(web, "convert.js")).convert, runReplay: require(path.join(web, "replay.js")).runReplay };
+  return { convert: require(path.join(web, "convert.js")).convert, runReplay };
 }
 
 // the delay (in 10 Hz samples, 0..6 s) at which x matches y best (cross-correlation), on the samples where ok

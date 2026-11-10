@@ -24,7 +24,7 @@ const HZ = 10;
     for (const t of gw.turns) {
       turnRes.push(t.res);
       const k = indexAt(t.t), i = D.ai[k];
-      if (i >= 0 && r.status[i] & 2) {
+      if (i >= 0 && r.status[i] & STATUS.WIND_VALID) {
         const dn = r.avg_wind_n[i] - t.n, de = r.avg_wind_e[i] - t.e;
         wind.n++; wind.d2 += dn * dn + de * de; wind.dn += dn; wind.de += de;
         wind.tasRatio.push(t.tas / (r.k_tas[i] * c.tas[k]));
