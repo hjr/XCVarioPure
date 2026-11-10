@@ -78,7 +78,6 @@ struct AirData {
     float ias = 0.f;     // m/s, calibrated
     float n_lift = 1.f;  // g, lift load factor
     float aoa = 0.f;     // rad, AoA model, from the zero lift line
-    float alpha = 0.f;   // rad, body x axis off the air velocity
     float ca = 1.f, sa = 0.f; // cos(alpha), sin(alpha)
 };
 
@@ -90,9 +89,9 @@ inline AirData airData(const Raw& r, const AirMassEKF& ekf) {
     a.ias = ekf.kTas() * r.ias;
     a.n_lift = liftLoadFactor(a.f_cg, a.ias, r.mass, r.wing_area, ekf);
     a.aoa = aoaModel(a.n_lift, a.ias, r.mass, r.wing_area);
-    a.alpha = ekf.alphaOf(a.aoa);
-    a.ca = std::cos(a.alpha);
-    a.sa = std::sin(a.alpha);
+    const float alpha = ekf.alphaOf(a.aoa); // body x axis off the air velocity
+    a.ca = std::cos(alpha);
+    a.sa = std::sin(alpha);
     return a;
 }
 

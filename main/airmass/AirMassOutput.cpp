@@ -12,13 +12,9 @@
 #include <algorithm>
 #include <cstdio>
 
-// The air mass vario does not take horizontal gusts for lift, so it gets half the damping: just as calm,
-// and a thermal entry shows about a second earlier.
-constexpr float AIRMASS_DAMPING = 0.5f;
-
 second_t airmass::varioDamping(second_t te_damping)
 {
-    return std::max(1.f, te_damping * AIRMASS_DAMPING);
+    return displayDamping(te_damping);
 }
 
 bool airmass::rawVario(mps_t& air)

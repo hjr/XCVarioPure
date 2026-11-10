@@ -782,7 +782,7 @@ function derive(D) {
 // Presentation filters use the cached estimator/reference output, so changing damping does not replay the flight.
 function deriveDamping(D) {
   const delay = Math.max(1, +$("damping").value || 4), same = $("samesmooth").checked, n = D.n;
-  D.am = cockpitSeries(D, () => Math.max(1, delay * .5));
+  D.am = cockpitSeries(D, () => Math.max(1, delay * .5)); // airmass::displayDamping (AirMassPipeline.h)
   D.amGross = new Float32Array(n).fill(NaN);
   D.gnss = new Float32Array(n).fill(NaN);
   D.gnssGross = new Float32Array(n).fill(NaN);
@@ -966,14 +966,10 @@ function clockText(t) {
 const clockSuffix = () => (D && Number.isFinite(D.utcOfs) ? " UTC" : " device");
 
 function logDate(conv, name) {
-  const day = (year, month, date) => {
-    const ms = Date.UTC(year, month - 1, date), d = new Date(ms);
-    return d.getUTCFullYear() === year && d.getUTCMonth() === month - 1 && d.getUTCDate() === date ? ms : NaN;
-  };
   // Prefer the recorded UTC date (the converter's first dated RMC); sensor-only logs normally carry their date in the filename.
   if (Number.isFinite(conv.utcDay)) return { day: conv.utcDay, utc: true };
   const match = name.match(/(?:^|\D)(\d{4})-(\d{2})-(\d{2})(?!\d)/);
-  return { day: match ? day(+match[1], +match[2], +match[3]) : NaN, utc: false };
+  return { day: match ? AirMassConvert.utcDate(+match[1], +match[2], +match[3]) : NaN, utc: false };
 }
 
 function dateTimeText(t) {
@@ -1081,7 +1077,7 @@ function drawWindField() {
   windFieldLayer = windFieldArea = null;
   if (!D || !D.mapPts || !$("windfield").checked) return;
   windFieldLayer = L.layerGroup().addTo(map);
-  const r = D.rep.cols, view = map.getBounds().pad(0.5);
+  const r = D.rep.cols, view = map.getBounds().pad(0.25);
   windFieldArea = { zoom: map.getZoom(), bounds: view };
   let last = null;
   for (const p of D.mapPts) {

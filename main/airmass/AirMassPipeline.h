@@ -18,6 +18,10 @@
 
 namespace airmass {
 
+// The damping of the air mass vario from the TE vario damping [s]: it does not take horizontal gusts for lift, so half
+// the damping is just as calm, and a thermal entry shows about a second earlier.
+inline float displayDamping(float te_damping) { return std::max(1.f, te_damping * 0.5f); }
+
 // the device's glider polar (S2F): sink at the IAS and load factor
 using Polar = glider::Polar;
 

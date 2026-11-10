@@ -15,7 +15,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import analyze_sens as A  # noqa: E402
 
 G = 9.80665
-COL = {name: i for i, name in enumerate(A.SIM_COLUMNS)}  # the simulator's columns plus the vario stand-in
+COL = A.COL  # the simulator's columns plus the vario stand-in
 
 
 def main():

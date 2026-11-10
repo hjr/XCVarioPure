@@ -351,6 +351,10 @@
   function rmcDay(f) {
     if (f[2] !== "A" || !/^\d{6}(?:\.\d+)?$/.test(f[1]) || !/^\d{6}$/.test(f[9])) return NaN;
     const yy = +f[9].slice(4), year = yy + (yy >= 80 ? 1900 : 2000), month = +f[9].slice(2, 4), date = +f[9].slice(0, 2);
+    return utcDate(year, month, date);
+  }
+  // the UTC midnight [ms since 1970] of a calendar date, NaN if there is no such date
+  function utcDate(year, month, date) {
     const ms = Date.UTC(year, month - 1, date), d = new Date(ms);
     return d.getUTCFullYear() === year && d.getUTCMonth() === month - 1 && d.getUTCDate() === date ? ms : NaN;
   }
@@ -424,12 +428,11 @@
     const events = [], sensors = [];
     let gnssAlt = NaN, gnssUtc = NaN, skippedSensors = 0, skippedPressureSensors = 0, validSensors = 0;
     let timestampRecoveredSamples = 0;
-    const num = trimmedNum;
-    const validPressure = f => [3, 4, 5].every(i => Number.isFinite(num(f[i]))) && num(f[3]) > 0 && num(f[4]) > 0;
+    const validPressure = f => [3, 4, 5].every(i => Number.isFinite(trimmedNum(f[i]))) && trimmedNum(f[3]) > 0 && trimmedNum(f[4]) > 0;
     const configFields = f => {
       const v = setupValues(f);
       if (!v) return null;
-      const qnh = f[1] === "CMN" ? (scan.qnh > 0 ? scan.qnh * 100 : 101325) : num(f[7]);
+      const qnh = f[1] === "CMN" ? (scan.qnh > 0 ? scan.qnh * 100 : 101325) : trimmedNum(f[7]);
       if (!(qnh > 0)) return null;
       return [...v, qnh < 2000 ? qnh * 100 : qnh];
     };
@@ -458,7 +461,7 @@
           continue;
         }
         validSensors++;
-        if (s.f.length > 13 && (s.f.length < 16 || !s.f.slice(13, 16).every(x => Number.isFinite(num(x))))) s.f.length = 13;
+        if (s.f.length > 13 && (s.f.length < 16 || !s.f.slice(13, 16).every(x => Number.isFinite(trimmedNum(x))))) s.f.length = 13;
         output = sentence("SENS", s.f.slice(1)); t = s.t / 1000; kind = "sensor";
         sensors.push(events.length);
       } else if (/^!xcv,/i.test(line)) {
@@ -466,11 +469,11 @@
         if (f[1] === "CA1" || f[1] === "CMN") {
           const v = configFields(f);
           if (v) { config = v; output = makeConfig(config); }
-        } else if (f[1] === "FLP" && Number.isFinite(num(f[2]))) {
+        } else if (f[1] === "FLP" && Number.isFinite(trimmedNum(f[2]))) {
           output = checksum("!XCV,FLP," + f[2]); kind = "flap";
         } else {
           const j = { "empty-weight": 1, "crew-weight": 2, "bal-water": 3 }[f[1]];
-          if (j !== undefined && config && Number.isFinite(num(f[2]))) { config[j] = +f[2]; output = makeConfig(config); }
+          if (j !== undefined && config && Number.isFinite(trimmedNum(f[2]))) { config[j] = +f[2]; output = makeConfig(config); }
         }
       } else if (/^\$(?:G[PN](?:GGA|GSA|RMC)|PGRMZ|PFLA[UAL]),/.test(line)) {
         if (/^G[PN]RMC$/.test(f[0])) {
@@ -642,7 +645,7 @@
       flapsFrom: opts.noFlaps ? "" : loggedFlapFrames ? "logged" : flaps ? "the recommendation" : "" };
   }
 
-  const api = { convert, GLIDERS, gliderFromLog, serialTimeline, prepare, checksum };
+  const api = { convert, GLIDERS, gliderFromLog, serialTimeline, prepare, checksum, utcDate };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.AirMassConvert = api;
 })(typeof globalThis !== "undefined" ? globalThis : this);

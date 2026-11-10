@@ -16,6 +16,10 @@ set(UTIL_MATH ${REPO}/components/util/math)
 set(AHRS_MATH_SOURCES
     ${UTIL_MATH}/Quaternion.cpp ${UTIL_MATH}/vector_3d.cpp
     ${UTIL_MATH}/Trigonometry.cpp ${UTIL_MATH}/Floats.cpp ${UTIL_MATH}/Units.cpp)
+# the host builds of the device code: its include paths, and the host stand-ins for the ESP-IDF headers
+set(HOST_INCLUDES ${REPO}/main/airmass ${REPO}/components/util ${REPO}/components/glider/include ${REPO}/main ${CMAKE_CURRENT_SOURCE_DIR}/stub)
+set(HOST_OPTIONS -Wall -Wextra -fsingle-precision-constant -include ${CMAKE_CURRENT_SOURCE_DIR}/stub/host_compat.h)
+
 add_executable(airmass_sim
     sim.cpp
     ${REPO}/main/airmass/AirMassEKF.cpp
@@ -40,14 +44,12 @@ target_compile_options(airmass_sim PRIVATE -Wall -Wextra -Wno-unused-parameter -
 # conversion of the raw device measurements into the estimator input, flap offsets
 add_executable(input_test input_test.cpp ${REPO}/main/airmass/AirMassEKF.cpp)
 target_include_directories(input_test PRIVATE ${REPO}/main/airmass ${REPO}/components/util ${REPO}/components/glider/include)
-target_compile_options(input_test PRIVATE -Wall -Wextra -fsingle-precision-constant
-    -include ${CMAKE_CURRENT_SOURCE_DIR}/stub/host_compat.h)
+target_compile_options(input_test PRIVATE ${HOST_OPTIONS})
 
 # replay of recorded flights (main/airmass/AirMassRecord.h) through the same pipeline
 add_executable(airmass_replay replay.cpp ${REPO}/main/airmass/AirMassEKF.cpp ${REPO}/main/protocol/nmea_util.cpp ${AHRS_MATH_SOURCES})
-target_include_directories(airmass_replay PRIVATE ${REPO}/main/airmass ${REPO}/components/util ${REPO}/components/glider/include ${REPO}/main ${CMAKE_CURRENT_SOURCE_DIR}/stub)
-target_compile_options(airmass_replay PRIVATE -Wall -Wextra -fsingle-precision-constant
-    -include ${CMAKE_CURRENT_SOURCE_DIR}/stub/host_compat.h)
+target_include_directories(airmass_replay PRIVATE ${HOST_INCLUDES})
+target_compile_options(airmass_replay PRIVATE ${HOST_OPTIONS})
 
 # the GNSS/INS reference (ins_reference.h) on replayed $SENS flights (sens2rec.py, airmass_replay)
 add_executable(ref_replay ref_replay.cpp)
@@ -55,30 +57,25 @@ target_compile_options(ref_replay PRIVATE -Wall -Wextra -fsingle-precision-const
 
 enable_testing()
 add_executable(robustness_test robustness_test.cpp ${REPO}/main/airmass/AirMassEKF.cpp ${REPO}/main/protocol/nmea_util.cpp)
-target_include_directories(robustness_test PRIVATE ${REPO}/main/airmass ${REPO}/components/util ${REPO}/components/glider/include ${REPO}/main ${CMAKE_CURRENT_SOURCE_DIR}/stub)
-target_compile_options(robustness_test PRIVATE -Wall -Wextra -fsingle-precision-constant
-    -include ${CMAKE_CURRENT_SOURCE_DIR}/stub/host_compat.h)
+target_include_directories(robustness_test PRIVATE ${HOST_INCLUDES})
+target_compile_options(robustness_test PRIVATE ${HOST_OPTIONS})
 add_test(NAME sensor_gnss_robustness COMMAND robustness_test)
 add_executable(mahony_test mahony_test.cpp ${REPO}/main/airmass/AirMassEKF.cpp ${REPO}/main/protocol/nmea_util.cpp ${AHRS_MATH_SOURCES})
-target_include_directories(mahony_test PRIVATE ${REPO}/main/airmass ${REPO}/components/util ${REPO}/components/glider/include ${REPO}/main ${CMAKE_CURRENT_SOURCE_DIR}/stub)
-target_compile_options(mahony_test PRIVATE -Wall -Wextra -fsingle-precision-constant
-    -include ${CMAKE_CURRENT_SOURCE_DIR}/stub/host_compat.h)
+target_include_directories(mahony_test PRIVATE ${HOST_INCLUDES})
+target_compile_options(mahony_test PRIVATE ${HOST_OPTIONS})
 add_test(NAME mahony_ahrs COMMAND mahony_test)
 add_executable(replay_start_test replay_start_test.cpp ${REPO}/main/airmass/AirMassEKF.cpp ${REPO}/main/protocol/nmea_util.cpp ${AHRS_MATH_SOURCES})
-target_include_directories(replay_start_test PRIVATE ${REPO}/main/airmass ${REPO}/components/util ${REPO}/components/glider/include ${REPO}/main ${CMAKE_CURRENT_SOURCE_DIR}/stub)
-target_compile_options(replay_start_test PRIVATE -Wall -Wextra -fsingle-precision-constant
-    -include ${CMAKE_CURRENT_SOURCE_DIR}/stub/host_compat.h)
+target_include_directories(replay_start_test PRIVATE ${HOST_INCLUDES})
+target_compile_options(replay_start_test PRIVATE ${HOST_OPTIONS})
 add_test(NAME replay_airborne_start COMMAND replay_start_test)
 add_executable(sampling_test sampling_test.cpp ${REPO}/main/airmass/AirMassEKF.cpp ${REPO}/main/protocol/nmea_util.cpp ${AHRS_MATH_SOURCES})
-target_include_directories(sampling_test PRIVATE ${REPO}/main/airmass ${REPO}/components/util ${REPO}/components/glider/include ${REPO}/main ${CMAKE_CURRENT_SOURCE_DIR}/stub)
-target_compile_options(sampling_test PRIVATE -Wall -Wextra -fsingle-precision-constant
-    -include ${CMAKE_CURRENT_SOURCE_DIR}/stub/host_compat.h)
+target_include_directories(sampling_test PRIVATE ${HOST_INCLUDES})
+target_compile_options(sampling_test PRIVATE ${HOST_OPTIONS})
 add_test(NAME sensor_freshness_20hz COMMAND sampling_test)
 # the in place recording formatter writes the same bytes as the former std::string one
 add_executable(record_format_test record_format_test.cpp ${REPO}/main/airmass/AirMassEKF.cpp ${REPO}/main/protocol/nmea_util.cpp ${AHRS_MATH_SOURCES})
-target_include_directories(record_format_test PRIVATE ${REPO}/main/airmass ${REPO}/components/util ${REPO}/components/glider/include ${REPO}/main ${CMAKE_CURRENT_SOURCE_DIR}/stub)
-target_compile_options(record_format_test PRIVATE -Wall -Wextra -fsingle-precision-constant
-    -include ${CMAKE_CURRENT_SOURCE_DIR}/stub/host_compat.h)
+target_include_directories(record_format_test PRIVATE ${HOST_INCLUDES})
+target_compile_options(record_format_test PRIVATE ${HOST_OPTIONS})
 add_test(NAME record_format COMMAND record_format_test)
 add_test(NAME input_conversion COMMAND input_test)
 foreach(scenario straight thermal gust pullup slip nl endurance)
@@ -138,6 +135,5 @@ set_tests_properties(replay_predict20 PROPERTIES FIXTURES_REQUIRED predict20_rec
 # Regression for flap offsets in the delayed GNSS history.
 add_executable(flap_history_test flap_history_test.cpp ${REPO}/main/airmass/AirMassEKF.cpp)
 target_include_directories(flap_history_test PRIVATE ${REPO}/main/airmass ${REPO}/components/util ${REPO}/components/glider/include)
-target_compile_options(flap_history_test PRIVATE -Wall -Wextra -fsingle-precision-constant
-    -include ${CMAKE_CURRENT_SOURCE_DIR}/stub/host_compat.h)
+target_compile_options(flap_history_test PRIVATE ${HOST_OPTIONS})
 add_test(NAME flap_history_geometry COMMAND flap_history_test)
