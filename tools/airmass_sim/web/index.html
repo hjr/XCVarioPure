@@ -545,7 +545,9 @@ function build(conv, rep) {
   const fixes = [];
   for (let k = 0; k < n; k++) {
     const u = c.utc[k];
-    if (Number.isFinite(u) && (!fixes.length || u !== fixes[fixes.length - 1].u)) {
+    // one fix per epoch, in order: a logger merging two receivers interleaves epochs out of order
+    const last = fixes.length ? fixes[fixes.length - 1].u : -Infinity;
+    if (Number.isFinite(u) && (u > last || u < last - 80000)) {
       fixes.push({ k, u, tm: t[k] - lat_s, lat: c.lat[k], lon: c.lon[k], alt: c.gnss_alt[k] });
     }
   }
@@ -557,7 +559,7 @@ function build(conv, rep) {
     const want = t[fixes[j].k] + altDelay - lat_s;
     while (a + 1 < fixes.length && t[fixes[a + 1].k] <= want) a++;
     const ta = t[fixes[a].k], tb = a + 1 < fixes.length ? t[fixes[a + 1].k] : NaN;
-    if (ta <= want && tb - ta <= 3) fixes[j].alt = arrived[a] + (arrived[a + 1] - arrived[a]) * (want - ta) / (tb - ta);
+    if (ta <= want && tb > ta && tb - ta <= 3) fixes[j].alt = arrived[a] + (arrived[a + 1] - arrived[a]) * (want - ta) / (tb - ta);
   }
   const Dp = { n, t, fixes };
   const lat = atFixes(Dp, (f) => f.lat, Infinity), lon = atFixes(Dp, (f) => f.lon, Infinity);

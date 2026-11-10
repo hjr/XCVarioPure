@@ -157,6 +157,8 @@ class AirMassEKF {
     // (the airspeed derivative only), of the last cycle
     float energyWd() const { return _wd_energy; }
     float energyWdPlain() const { return _wd_energy_plain; }
+    // diagnostics: the pitch path's vertical air movement (Wd = vd - va_d, down positive) of the last cycle
+    float kinematicWd() const { return _wd_kinematic; }
     float heading() const { return _x[PSI]; }
     float kTas() const { return _x[KTAS]; }
     float pitchOffset() const { return _x[THB]; }
@@ -264,7 +266,7 @@ class AirMassEKF {
     float _anchor = 0.f;     // m/s, low pass of the plain energy balance minus the estimate (anchor_tau)
     float _vario_out = NAN;  // m/s, the vario output (airmassVario)
     float _straight = 1.f;   // the kinetic blend's weight at this cycle's bank (blendBankWeight)
-    float _wd_energy = NAN, _wd_energy_plain = NAN; // diagnostics, energyWd()
+    float _wd_energy = NAN, _wd_energy_plain = NAN, _wd_kinematic = NAN; // diagnostics, energyWd(), kinematicWd()
     float _ww_lp = 0.f, _blend_lp = 0.f; // low passes of the wind work and the blend correction (wind_work_hp, blend_hp)
     float _acc_mem = 0.f;// decaying peak of the longitudinal acceleration (AHRS disturbance memory)
     float _wind_prev[2] = {};
@@ -278,6 +280,7 @@ class AirMassEKF {
     uint32_t _gnss_rejects = 0;
     uint16_t _gnss_consecutive_rejects = 0;
     uint32_t _baro_reject_ms = 0;
+    uint32_t _energy_reject_ms = 0; // the energy balance off by more than WD_INNOVATION_MAX for this long
     airmass::SampleClock _baro_clock, _kinematic_clock, _energy_clock;
     // least squares alignment: v_gnss = W + Rz(psi_gyro) * [c -s; s c] * u_air
     struct Alignment {
