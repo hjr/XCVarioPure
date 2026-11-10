@@ -380,6 +380,13 @@ static void initRefs()
     }
 }
 
+// the wind gauge shows a live (instant) wind: the external one, or the AirMass estimate
+static bool instantWindShown()
+{
+    const int source = wind_enable.get();
+    return source == WA_EXTERNAL || (source & WA_AIRMASS);
+}
+
 ////////////////////////////
 // IpsDisplay implementation
 IpsDisplay::IpsDisplay( AdaptUGC *aucg ) {
@@ -579,7 +586,7 @@ void IpsDisplay::initDisplay() {
         WNDgauge = new PolarGauge(AMIDX + AVGOFFX, AMIDY, 360, 
             (display_orientation.get() == DISPLAY_NINETY) ? 56 : 58, PolarGauge::COMPASS);
     }
-    WNDgauge->enableWindIndicator(false /*wind_enable.get() > WA_OFF*/, wind_enable.get() == WA_EXTERNAL || (wind_enable.get() & WA_AIRMASS));
+    WNDgauge->enableWindIndicator(false /*wind_enable.get() > WA_OFF*/, instantWindShown());
     WNDgauge->setUnit(SpeedUnit->scale);
 
     if (thermal_assist.get()) {
@@ -897,7 +904,7 @@ void IpsDisplay::drawDisplay(){
             iwind.raw = ext_inst_wind.get();
             swind.raw = ext_syn_wind.get();
         }
-        if ((wind_enable.get() == WA_EXTERNAL || (wind_enable.get() & WA_AIRMASS)) && WNDgauge) {
+        if (instantWindShown() && WNDgauge) {
             // static int idir=0;
             // static int ival=5;
             // the wind simulator to check the wind indicator
@@ -964,7 +971,7 @@ void IpsDisplay::drawDisplay(){
 
         if (thermal_assist.get()) {
             WNDgauge->clearGauge();
-            if (CRMOD.getCMode() && wind_enable.get() == WA_EXTERNAL) {
+            if (CRMOD.getCMode() && instantWindShown()) {
                 WNDgauge->drawRose();
             }
         }
