@@ -1,0 +1,204 @@
+== q_tau 1e-6
+instant wind minus its 60 s centred mean, in the heading frame (along: + = more tailwind than the mean along the heading)
+phase            samples  rms dev  moves in 10 s   mean along  mean across   rms along  rms across   left after removing the means
+straight          356409   0.82     1.03            0.11        0.06       0.67       0.48        0.81
+circling          474799   0.80     1.13            0.05        0.08       0.55       0.58        0.79
+circling left     264389   0.84     1.17            0.04        0.13       0.57       0.62        0.83
+circling right    210410   0.73     1.07            0.06        0.01       0.52       0.52        0.73
+
+moves within 2 s: straight 0.30, circling 0.40
+circling, share of the deviation's variance locked to the heading (30° bins per flight): absolute 3 %, relative to the wind 2 % (rms 0.13 / 0.11 m/s)
+
+per flight, circling left / right: mean along, across (m/s); learned k_tas, GNSS latency
+2026-08-24_12-01.nmea.gz     L  0.02  0.07   R  0.12 -0.06   k_tas 1.015  latency 60 ms
+2026-08-25_12-10.nmea.gz     L -0.01  0.08   R  0.05 -0.06   k_tas 1.018  latency 50 ms
+2026-08-30_10-03.nmea.gz     L  0.06  0.06   R  0.07 -0.02   k_tas 1.028  latency 11 ms
+2026-08-31_09-35.nmea.gz     L  0.03  0.15   R  0.03  0.00   k_tas 1.006  latency 16 ms
+2026-09-01_09-30.nmea.gz     L  0.09  0.07   R  0.07  0.08   k_tas 1.012  latency 22 ms
+2026-09-02_09-52.nmea.gz     L  0.07  0.21   R  0.08 -0.04   k_tas 1.003  latency 708 ms
+2026-09-02_12-05.nmea.gz     L  0.04  0.16   R  0.04  0.15   k_tas 1.018  latency 134 ms
+2026-09-05_10-50.nmea.gz     L  0.06  0.23   R  0.04  0.03   k_tas 1.018  latency 20 ms
+2026-09-05_16-16.nmea.gz     L  0.36  0.33   R -0.00 -0.43   k_tas 1.014  latency 537 ms
+2026-09-06_11-02.nmea.gz     L  0.01  0.17   R  0.04  0.00   k_tas 1.020  latency 310 ms
+2026-09-07_11-17.nmea.gz     L  0.01  0.23   R  0.05  0.00   k_tas 1.025  latency 28 ms
+== q_tau 1e-5
+instant wind minus its 60 s centred mean, in the heading frame (along: + = more tailwind than the mean along the heading)
+phase            samples  rms dev  moves in 10 s   mean along  mean across   rms along  rms across   left after removing the means
+straight          356145   0.80     1.00            0.10        0.05       0.65       0.46        0.79
+circling          475021   0.77     1.09            0.04        0.07       0.52       0.57        0.77
+circling left     264477   0.82     1.14            0.04        0.13       0.55       0.61        0.81
+circling right    210544   0.70     1.02            0.05       -0.00       0.48       0.50        0.70
+
+moves within 2 s: straight 0.30, circling 0.39
+circling, share of the deviation's variance locked to the heading (30° bins per flight): absolute 2 %, relative to the wind 2 % (rms 0.12 / 0.11 m/s)
+
+per flight, circling left / right: mean along, across (m/s); learned k_tas, GNSS latency
+2026-08-24_12-01.nmea.gz     L  0.03  0.08   R  0.10 -0.13   k_tas 1.014  latency 168 ms
+2026-08-25_12-10.nmea.gz     L -0.01  0.08   R  0.05 -0.06   k_tas 1.018  latency 103 ms
+2026-08-30_10-03.nmea.gz     L  0.06  0.07   R  0.07 -0.01   k_tas 1.028  latency 68 ms
+2026-08-31_09-35.nmea.gz     L  0.03  0.15   R  0.03 -0.01   k_tas 1.006  latency 33 ms
+2026-09-01_09-30.nmea.gz     L  0.09  0.07   R  0.07  0.08   k_tas 1.012  latency 34 ms
+2026-09-02_09-52.nmea.gz     L  0.08  0.19   R  0.08 -0.04   k_tas 1.002  latency 725 ms
+2026-09-02_12-05.nmea.gz     L  0.04  0.16   R  0.00  0.10   k_tas 1.018  latency 156 ms
+2026-09-05_10-50.nmea.gz     L  0.06  0.25   R  0.02  0.01   k_tas 1.018  latency 117 ms
+2026-09-05_16-16.nmea.gz     L  0.36  0.33   R  0.05 -0.43   k_tas 1.014  latency 507 ms
+2026-09-06_11-02.nmea.gz     L  0.02  0.16   R  0.04 -0.00   k_tas 1.021  latency 98 ms
+2026-09-07_11-17.nmea.gz     L  0.01  0.23   R  0.04  0.01   k_tas 1.025  latency 36 ms
+== q_tau 1e-4
+instant wind minus its 60 s centred mean, in the heading frame (along: + = more tailwind than the mean along the heading)
+phase            samples  rms dev  moves in 10 s   mean along  mean across   rms along  rms across   left after removing the means
+straight          354637   0.79     0.99            0.09        0.05       0.65       0.46        0.78
+circling          474847   0.76     1.07            0.04        0.07       0.51       0.56        0.75
+circling left     264356   0.81     1.12            0.04        0.13       0.55       0.60        0.80
+circling right    210491   0.68     1.00            0.05        0.00       0.47       0.49        0.68
+
+moves within 2 s: straight 0.29, circling 0.38
+circling, share of the deviation's variance locked to the heading (30° bins per flight): absolute 3 %, relative to the wind 2 % (rms 0.12 / 0.11 m/s)
+
+per flight, circling left / right: mean along, across (m/s); learned k_tas, GNSS latency
+2026-08-24_12-01.nmea.gz     L  0.02  0.07   R  0.07 -0.14   k_tas 1.015  latency 77 ms
+2026-08-25_12-10.nmea.gz     L -0.00  0.07   R  0.05 -0.05   k_tas 1.018  latency 212 ms
+2026-08-30_10-03.nmea.gz     L  0.06  0.06   R  0.07 -0.01   k_tas 1.028  latency 69 ms
+2026-08-31_09-35.nmea.gz     L  0.03  0.14   R  0.04 -0.01   k_tas 1.006  latency 51 ms
+2026-09-01_09-30.nmea.gz     L  0.08  0.07   R  0.06  0.09   k_tas 1.012  latency 47 ms
+2026-09-02_09-52.nmea.gz     L  0.08  0.19   R  0.09 -0.03   k_tas 1.003  latency 556 ms
+2026-09-02_12-05.nmea.gz     L  0.04  0.17   R  0.01  0.11   k_tas 1.017  latency 140 ms
+2026-09-05_10-50.nmea.gz     L  0.06  0.25   R  0.02  0.01   k_tas 1.018  latency 0 ms
+2026-09-05_16-16.nmea.gz     L  0.25  0.29   R -0.44  0.90   k_tas 1.014  latency 1 ms
+2026-09-06_11-02.nmea.gz     L  0.02  0.16   R  0.03 -0.00   k_tas 1.021  latency 152 ms
+2026-09-07_11-17.nmea.gz     L  0.01  0.23   R  0.04  0.01   k_tas 1.025  latency 58 ms
+== needle
+series                               needle 1 s (all / straight / circling)   delay (circling)   10 s error (all / straight / circling)   own error: 10 s (straight / circling)  30 s
+q_tau 1e-6 (now)                     0.750 / 0.606 / 0.918            1.6 s (1.6 s)        0.543 / 0.458 / 0.629              0.117 / 0.203     0.108 / 0.104
+q_tau 1e-5                           0.751 / 0.606 / 0.919            1.6 s (1.6 s)        0.542 / 0.457 / 0.628              0.112 / 0.200     0.106 / 0.104
+q_tau 1e-4                           0.751 / 0.606 / 0.919            1.6 s (1.6 s)        0.542 / 0.457 / 0.628              0.113 / 0.201     0.105 / 0.104
+TE netto                             0.853 / 0.870 / 0.853            2.4 s (2.2 s)        0.591 / 0.555 / 0.631              0.335 / 0.211     0.157 / 0.093
+the reference's own error: 10 s 0.443 / 0.595, 30 s 0.231 / 0.173 (from q_tau 1e-6 (now), TE netto and the reference)
+== scoreboard sb_q5
+metric                                                  ours      TE     ref
+nl: cruise rms                                         0.340   0.438   0.338  LOSS
+nl: false lift /h                                      3.000   8.000   1.167  LOSS
+nl: entry rms                                          0.508   0.592   1.385  
+nl: entry max                                          1.873   1.688   3.283  LOSS
+nl: circling rms                                       0.360   0.420   0.530  
+nl: climb per thermal                                  0.040   0.030   0.060  LOSS
+nl: display lag s                                      1.400   2.400   0.550  LOSS
+nl: wind instant (valid)                               0.613       -   1.060  
+nl: wind instant (all)                                 0.847       -   1.247  
+nl: wind shown (valid+degraded)                        0.835       -   1.242  
+nl: wind not shown %                                   1.000       -       -  
+nl: wind 30s avg                                       0.460       -   1.027  
+nl: avg vs mean, straight                              0.837       -   2.038  
+nl: avg vs mean, circling                              0.842       -   1.340  
+straight: wind rms                                     0.212       -   1.643  
+straight: averaged wind rms                            0.198       -   1.602  
+straight: steady vario rms                             0.110   0.097   0.398  LOSS
+thermal: wind rms                                      0.203       -   1.098  
+thermal: averaged wind rms                             0.130       -   1.052  
+thermal: steady vario rms                              0.088   0.080   0.172  LOSS
+gust: wind rms                                         0.738       -   1.658  
+gust: averaged wind rms                                0.737       -   1.865  
+gust: steady vario rms                                 0.102   0.082   0.190  LOSS
+gust: spike max                                        2.085   3.973   1.085  LOSS
+pullup: wind rms                                       0.288       -   1.783  
+pullup: averaged wind rms                              0.282       -   1.783  
+pullup: steady vario rms                               0.127   0.195   0.282  
+pullup: spike max                                      0.753   0.840   1.785  
+slip: wind rms                                         0.618       -   2.738  
+slip: averaged wind rms                                0.383       -   2.520  
+slip: steady vario rms                                 0.227   0.253   0.490  
+endurance: wind rms                                    0.160       -   1.247  
+endurance: averaged wind rms                           0.100       -   1.063  
+endurance: steady vario rms                            0.150   0.160   0.440  
+losses: 9 of 34
+== scoreboard sb_q4
+metric                                                  ours      TE     ref
+nl: cruise rms                                         0.338   0.438   0.338  tie
+nl: false lift /h                                      3.000   8.000   1.167  LOSS
+nl: entry rms                                          0.507   0.592   1.385  
+nl: entry max                                          1.843   1.688   3.283  LOSS
+nl: circling rms                                       0.360   0.420   0.530  
+nl: climb per thermal                                  0.040   0.030   0.060  LOSS
+nl: display lag s                                      1.400   2.400   0.550  LOSS
+nl: wind instant (valid)                               0.632       -   1.055  
+nl: wind instant (all)                                 0.870       -   1.247  
+nl: wind shown (valid+degraded)                        0.858       -   1.242  
+nl: wind not shown %                                   1.000       -       -  
+nl: wind 30s avg                                       0.465       -   1.025  
+nl: avg vs mean, straight                              0.828       -   2.037  
+nl: avg vs mean, circling                              0.833       -   1.340  
+straight: wind rms                                     0.208       -   1.643  
+straight: averaged wind rms                            0.198       -   1.602  
+straight: steady vario rms                             0.110   0.097   0.398  LOSS
+thermal: wind rms                                      0.192       -   1.098  
+thermal: averaged wind rms                             0.127       -   1.052  
+thermal: steady vario rms                              0.088   0.080   0.172  LOSS
+gust: wind rms                                         0.738       -   1.658  
+gust: averaged wind rms                                0.735       -   1.865  
+gust: steady vario rms                                 0.102   0.082   0.190  LOSS
+gust: spike max                                        2.085   3.973   1.085  LOSS
+pullup: wind rms                                       0.293       -   1.783  
+pullup: averaged wind rms                              0.288       -   1.783  
+pullup: steady vario rms                               0.125   0.195   0.282  
+pullup: spike max                                      0.758   0.840   1.785  
+slip: wind rms                                         0.622       -   2.738  
+slip: averaged wind rms                                0.385       -   2.520  
+slip: steady vario rms                                 0.225   0.253   0.490  
+endurance: wind rms                                    0.162       -   1.247  
+endurance: averaged wind rms                           0.103       -   1.063  
+endurance: steady vario rms                            0.150   0.160   0.440  
+losses: 8 of 34
+== scoreboard sb_q3
+metric                                                  ours      TE     ref
+nl: cruise rms                                         0.340   0.438   0.338  LOSS
+nl: false lift /h                                      3.167   8.000   1.167  LOSS
+nl: entry rms                                          0.510   0.592   1.385  
+nl: entry max                                          1.862   1.688   3.283  LOSS
+nl: circling rms                                       0.360   0.420   0.530  
+nl: climb per thermal                                  0.040   0.030   0.060  LOSS
+nl: display lag s                                      1.400   2.400   0.550  LOSS
+nl: wind instant (valid)                               0.618       -   1.057  
+nl: wind instant (all)                                 0.847       -   1.247  
+nl: wind shown (valid+degraded)                        0.837       -   1.242  
+nl: wind not shown %                                   1.000       -       -  
+nl: wind 30s avg                                       0.465       -   1.027  
+nl: avg vs mean, straight                              0.830       -   2.035  
+nl: avg vs mean, circling                              0.837       -   1.340  
+straight: wind rms                                     0.208       -   1.643  
+straight: averaged wind rms                            0.200       -   1.602  
+straight: steady vario rms                             0.110   0.097   0.398  LOSS
+thermal: wind rms                                      0.200       -   1.098  
+thermal: averaged wind rms                             0.127       -   1.052  
+thermal: steady vario rms                              0.088   0.080   0.172  LOSS
+gust: wind rms                                         0.743       -   1.658  
+gust: averaged wind rms                                0.738       -   1.865  
+gust: steady vario rms                                 0.102   0.082   0.190  LOSS
+gust: spike max                                        2.085   3.973   1.085  LOSS
+pullup: wind rms                                       0.287       -   1.783  
+pullup: averaged wind rms                              0.282       -   1.783  
+pullup: steady vario rms                               0.125   0.195   0.282  
+pullup: spike max                                      0.753   0.840   1.785  
+slip: wind rms                                         0.617       -   2.738  
+slip: averaged wind rms                                0.380       -   2.520  
+slip: steady vario rms                                 0.225   0.253   0.490  
+endurance: wind rms                                    0.160       -   1.247  
+endurance: averaged wind rms                           0.100       -   1.063  
+endurance: steady vario rms                            0.150   0.160   0.440  
+losses: 9 of 34
+== scoreboard sb_q5_holdout
+metric                                                  ours      TE     ref
+held-out nl: cruise rms                                0.355   0.452   0.338  LOSS
+held-out nl: false lift /h                             4.333  10.167   1.333  LOSS
+held-out nl: entry rms                                 0.495   0.577   1.222  
+held-out nl: entry max                                 1.493   1.560   2.997  
+held-out nl: circling rms                              0.373   0.445   0.540  
+held-out nl: climb per thermal                         0.070   0.067   0.098  LOSS
+held-out nl: display lag s                             1.417   2.417   0.333  LOSS
+held-out nl: wind instant (valid)                      0.535       -   1.002  
+held-out nl: wind instant (all)                        0.687       -   1.195  
+held-out nl: wind shown (valid+degraded)               0.685       -   1.193  
+held-out nl: wind not shown %                          0.333       -       -  
+held-out nl: wind 30s avg                              0.430       -   0.958  
+held-out nl: avg vs mean, straight                     0.822       -   1.750  
+held-out nl: avg vs mean, circling                     0.925       -   1.343  
+losses: 4 of 14
