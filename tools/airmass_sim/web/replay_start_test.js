@@ -27,16 +27,51 @@ function sentence(body) {
   assert(full.t_ms.every((t, i) => !i || t - full.t_ms[i - 1] === 50), "10Hz sensor logs replay with 50ms predictions");
   assert.equal(full.summary.recovered_starts, 0);
 
+  // A confirmed sensor outage must reach the estimator as a gap, without held-input predictions filling it.
+  const gapped = [];
+  for (let i = 0; i < 240; i++) {
+    const elapsed = i * .1 + (i >= 180 ? 113.573 : 0), utc = 43200 + elapsed;
+    const time = [Math.floor(utc / 3600), Math.floor(utc / 60) % 60].map(v => String(v).padStart(2, "0")).join("") +
+      (utc % 60).toFixed(3).padStart(6, "0");
+    gapped.push(`$GPRMC,${time},A,4800.000,N,01100.000,E,60.0,90.0,091126,,,A`);
+    gapped.push(`$SENS,${(300 + elapsed).toFixed(3)},0,900,900,500,15,0,0,-1,0,0,0`);
+  }
+  const gapConv = convert(gapped.join("\n"), { glider: "log" });
+  assert.equal(gapConv.track.cols.t_ms[180] - gapConv.track.cols.t_ms[179], 113673);
+  for (const mahony of [false, true]) {
+    const gapReplay = await runReplay(M, gapConv.rec, { mahony });
+    const after = gapReplay.t_ms.findIndex((t, i, times) => i && t - times[i - 1] > 10000);
+    assert(after > 0, "the recorded gap reaches WASM");
+    assert.equal(gapReplay.t_ms[after] - gapReplay.t_ms[after - 1], 113673);
+    assert(gapReplay.n <= full.n, "no prediction ticks are fabricated through the outage");
+    assert(gapReplay.cols.status[after - 1] & 1, "the vario settled before the outage");
+    assert(!(gapReplay.cols.status[after] & 1), "the estimator must settle again after the gap");
+  }
+
   // RR-style logs carry sensors/attitude but no navigation sentences at all.
   const noGnss = convert(sensor.filter(line => !line.startsWith("$GPRMC,")).join("\n"), { glider: "log" });
   assert.equal(noGnss.frames, 141);
   assert.equal(noGnss.fixes, 0);
+  let frozenFrame = 0;
+  const frozen = sensor.filter(line => !line.startsWith("$GPRMC,")).map(line => {
+    if (!line.startsWith("$SENS,")) return line;
+    const fields = line.split(",");
+    if (frozenFrame > 180 && frozenFrame <= 190) fields[1] = "318.000";
+    fields[2] = String(1700000 + frozenFrame++ * 100);
+    return fields.join(",");
+  });
+  const recoveredClock = convert(frozen.join("\n"), { glider: "log" });
+  assert.equal(recoveredClock.timestampRecoveredSamples, 10);
+  assert.deepEqual(recoveredClock.track.cols.t_ms, noGnss.track.cols.t_ms);
   for (const mahony of [false, true]) {
     const rep = await runReplay(M, noGnss.rec, { mahony });
     assert.equal(rep.n, 281);
     assert(rep.cols.vario.every(Number.isFinite));
     assert(rep.cols.status.every(s => !(s & (2 | 4 | 8))), "missing GNSS cannot invent wind, fixes or heading alignment");
     assert(rep.cols.status.some(s => s & 1), "vario can settle without GNSS");
+    const recovered = await runReplay(M, recoveredClock.rec, { mahony });
+    assert.deepEqual(recovered.t_ms, rep.t_ms, "recovered clock preserves measured/predicted replay cadence");
+    assert.deepEqual(recovered.cols, rep.cols, "recovered clock yields the same estimator output as correctly timestamped input");
     const data = globalThis.build(noGnss, rep);
     globalThis.derive(data);
     assert(data.lat.every(v => !Number.isFinite(v)), "no GNSS positions means no invented track");
@@ -106,5 +141,5 @@ function sentence(body) {
     const data = globalThis.build(convert(slow.join("\n")), legacy);
     assert(data.ai.every(i => i >= 0), "page still maps every measured frame to its replay output");
   }
-  console.log("PASS: airborne/no-GNSS recovery, both attitude filters, 20Hz predictions from 5/10Hz logs, source freshness and page integration");
+  console.log("PASS: airborne/no-GNSS recovery, confirmed sensor gaps, frozen-clock recovery, both attitude filters, 20Hz predictions from 5/10Hz logs, source freshness and page integration");
 })().catch(error => { console.error(error); process.exitCode = 1; });

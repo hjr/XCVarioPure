@@ -13,6 +13,7 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="gliders.js"></script>
 <script src="convert.js"></script>
+<script src="serial.js"></script>
 <script src="replay.js"></script>
 <script src="airmass.js"></script>
 <style>
@@ -168,6 +169,14 @@ select { appearance: none; -webkit-appearance: none; padding-right: 26px !import
 
   <div class="settings" id="settings" hidden>
     <div class="form">
+      <label>Serial baud rate
+        <select id="baud"><option>9600</option><option>19200</option><option>38400</option><option>57600</option><option selected>115200</option><option>230400</option><option>460800</option><option>921600</option></select>
+      </label>
+      <label>Instrument replay <button class="btn" id="serialbtn" disabled>Connect serial…</button></label>
+      <label class="wide"><span id="serialstatus" role="status">Disconnected</span>
+        <span id="serialhint">Open a $SENS log to stream it to an XCVario. Serial playback starts at 1×.</span>
+        <span>Seeks and playback changes reset instrument settling; its estimator history differs from the offline replay. Restart the instrument to leave simulation mode. Browser estimator/polar overrides apply to the offline display; serial sends the logged setup.</span>
+      </label>
       <label>Gross mass, kg <input type="number" id="mass" value="-1" min="-1" step="1" title="-1: from the log: its empty, crew and ballast weights (CA1, newer logs), else its ballast factor ($PXCV)"></label>
       <label>Bugs, % <input type="number" id="bugs" value="-1" min="-1" step="1" title="-1: the setting logged in $PXCV"></label>
       <label>Vario damping, s <input type="number" id="damping" value="4" min="1" max="10" step="0.5" title="the device's vario delay, 4 s by default"></label>
@@ -254,6 +263,7 @@ let D = null;            // the loaded flight, see build()
 let fileText = null, fileName = "";
 let T = 0;               // current time, device s
 let playing = false, lastFrame = 0;
+let playbackFrame = null, loading = false, loadGeneration = 0;
 let view = null;         // the vario chart's time window [t0, t1]
 
 // ---------- colors ----------
@@ -313,6 +323,59 @@ function setStatus(text, error = false, done = false) {
 }
 const tick = () => new Promise((r) => setTimeout(r, 0));
 
+// Serial owns playback time while connected. Both the transmitter and the animation read serial.time().
+let serialWasConnected = false;
+const serial = new AirMassSerial.SerialReplay({ onChange: s => {
+  $("serialstatus").textContent = s.message;
+  $("serialbtn").textContent = s.connected ? "Disconnect serial" : "Connect serial…";
+  $("baud").disabled = s.connected || s.connecting;
+  if (s.connected || serialWasConnected) {
+    T = s.time();
+    const wasPlaying = playing;
+    playing = s.running;
+    playbackButton();
+    if (playing && !wasPlaying) nextFrame();
+    if (!playing) { cancelAnimationFrame(playbackFrame); soundOff(); }
+    if (D && view && !loading && !replaying) scheduleDraw();
+  }
+  serialWasConnected = s.connected;
+  serialControls();
+  if (/Serial stopped:|Serial lag|disconnected\./.test(s.message)) setStatus(s.message, true);
+} });
+function serialControls() {
+  const supported = !!navigator.serial && window.isSecureContext;
+  const allowed = AirMassSerial.allowedSpeeds(serial.timeline, +$("baud").value);
+  $("serialbtn").disabled = serial.connecting || serial.disconnecting || loading || replaying || (!serial.connected && (!supported || !allowed.includes(1)));
+  $("serialhint").textContent = !supported ? "Web Serial is unavailable. Use desktop Chrome over HTTPS or localhost." :
+    serial.timeline?.reason || (!serial.timeline ? "Open a $SENS sensor log to connect." :
+      !allowed.includes(1) ? "Log traffic exceeds this baud rate at 1×. Choose a higher rate supported by the instrument. Stalled log timestamps may make serial replay unavailable." :
+      `Serial speeds: ${allowed.join("×, ")}× · starts at 1×. ${serial.timeline.warning || "Logged configuration and flap changes will be replayed."}`);
+  for (const option of $("speed").options) option.disabled = serial.connected && !allowed.includes(+option.value);
+  if (serial.connected) $("speed").value = String(serial.speed);
+  $("playbtn").disabled = !D || loading || replaying || (serial.connected && !serial.ready);
+}
+$("serialbtn").onclick = async () => {
+  if (serial.connected) await serial.disconnect();
+  else {
+    pause();
+    serial.setTimeline(serial.timeline, T);
+    try { await serial.connect(+$("baud").value); }
+    catch (e) { $("serialstatus").textContent = e.message; }
+  }
+  serialControls();
+};
+$("baud").addEventListener("change", serialControls);
+$("speed").addEventListener("change", () => {
+  if (serial.connected) {
+    try { serial.setSpeed(+$("speed").value); }
+    catch (e) { $("speed").value = String(serial.speed); setStatus(e.message, true); }
+  }
+});
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden && serial.connected) serial.pause("Connected · paused because the tab is hidden");
+});
+window.addEventListener("pagehide", () => { if (serial.connected) serial.disconnect(); });
+
 // ---------- loading ----------
 async function readFile(file) {
   let stream = file.stream();
@@ -322,16 +385,24 @@ async function readFile(file) {
 }
 
 async function load(file) {
+  const generation = ++loadGeneration;
+  loading = true;
+  pause();
+  serialControls();
   try {
     setStatus(`Reading ${file.name}…`);
     await tick();
-    fileText = await readFile(file);
+    const text = await readFile(file);
+    if (generation !== loadGeneration) return;
+    fileText = text;
     fileName = file.name.replace(/\.(gz)$/i, "").replace(/\.(nmea|txt|log)$/i, "");
     selectLogGlider(fileText);
     await run();
   } catch (e) {
     console.error(e);
     setStatus(`Could not read ${file.name}: ${e.message}`, true);
+  } finally {
+    if (generation === loadGeneration) { loading = false; serialControls(); }
   }
 }
 
@@ -354,16 +425,18 @@ async function run() {
     do { replayAgain = false; await replayOnce(); } while (replayAgain);
   } finally {
     replaying = false;
+    serialControls();
   }
 }
 
 async function replayOnce() {
+  const sourceText = fileText, sourceName = fileName, sourceGeneration = loadGeneration;
   pause();
   $("rerun").disabled = true;
   try {
     setStatus("Converting…");
     await tick();
-    const conv = AirMassConvert.convert(fileText, {
+    const conv = AirMassConvert.convert(sourceText, {
       glider: $("glider").value, mass: +$("mass").value > 0 ? +$("mass").value : 0 /* -1: the logged ballast */, bugs: $("bugs").value === "" ? -1 : +$("bugs").value, noFlaps: $("noflaps").checked,
     });
     if (!conv.frames) throw new Error(conv.track.n ? "No flight found: replay needs 100 consecutive sensor samples above 72 km/h IAS." : "neither $SENS nor AirMass recording sentences found");
@@ -374,10 +447,18 @@ async function replayOnce() {
       setStatus(`Replaying… ${Math.round(f * 100)} %`);
       await tick();
     });
+    if (fileText !== sourceText || fileName !== sourceName || loadGeneration !== sourceGeneration) return;
     if (!rep.n) throw new Error("Could not initialize replay. The recording needs glider configuration and either a recorded start or usable airborne sensor data.");
     const keepT = D && D.name === fileName ? T : null;
     D = build(conv, rep);
     derive(D);
+    let timeline;
+    try { timeline = AirMassConvert.serialTimeline(sourceText); }
+    catch (e) { timeline = { events: [], reason: e.message }; }
+    if (timeline.events.length && (D.t[0] < timeline.start - .001 || D.t[D.n - 1] > timeline.end + .001)) {
+      timeline = { events: [], reason: "The recording and $SENS timestamps do not match. Open a sensor-only log for synchronized serial replay." };
+    }
+    await serial.setTimeline(timeline, keepT ?? D.tStart);
     const s = rep.summary;
     const hours = ((s.seconds ?? (rep.t_ms[rep.n - 1] - rep.t_ms[0]) / 1000) / 3600).toFixed(2);
     const setupUsed = conv.glider ? ` · ${conv.glider}${{ log: " (from the log)", default: " (no glider in the log)" }[conv.gliderFrom] || ""}, ` +
@@ -389,6 +470,7 @@ async function replayOnce() {
       `AoA scale ${s.aoa_scale.toFixed(3)}, GNSS latency ${s.latency_ms} ms (altitude ${Math.round(D.altDelay * 1000)} ms), gyro z bias ${s.gyro_z_bias_dps.toFixed(3)}°/s` +
       (conv.temperatureEstimatedSamples ? ` · OAT estimated for ${conv.temperatureEstimatedSamples} samples: 25°C at sea level, −6.5°C/km` : "") +
       (conv.temperatureKelvinSamples ? ` · OAT converted from Kelvin for ${conv.temperatureKelvinSamples} samples` : "") +
+      (conv.timestampRecoveredSamples ? ` · timing recovered for ${conv.timestampRecoveredSamples} samples with frozen timestamps` : "") +
       (conv.axesCorrected ? " · inconsistent sensor-axis metadata corrected using the logged attitude" : "") +
       (conv.axesInferred ? " · missing sensor-axis metadata inferred from logged attitude and gyro rates" : "") +
       (s.recovered_starts ? ` · ${s.recovered_starts} missing starts recovered (${s.estimated_attitude_starts} with estimated attitude); approximate initialization, allow settling` : "") +
@@ -401,7 +483,7 @@ async function replayOnce() {
     view = [D.t[0], D.t[D.n - 1]];
     invalidateCharts();
     drawTrack();
-    seek(keepT ?? D.tStart);
+    displayTime(keepT ?? D.tStart);
   } catch (e) {
     console.error(e);
     setStatus(e.message, true);
@@ -1261,32 +1343,53 @@ function scheduleDraw() {
 
 // ---------- playback ----------
 function seek(t, draw = drawAll) {
-  if (!D) return;
+  if (!D || loading || replaying) return;
+  t = Math.max(D.t[0], Math.min(D.t[D.n - 1], t));
+  if (serial.connected) serial.seek(t);
+  displayTime(t, draw);
+}
+function displayTime(t, draw = drawAll) {
   T = Math.max(D.t[0], Math.min(D.t[D.n - 1], t));
   if (T < view[0] || T > view[1]) { const span = view[1] - view[0]; view = [Math.max(D.t[0], T - span / 2), Math.min(D.t[D.n - 1], T + span / 2)]; invalidateCharts(); }
   draw();
 }
 function play() {
-  if (!D) return;
-  if (T >= D.t[D.n - 1]) T = D.tStart;
+  if (!D || loading || replaying || document.hidden && serial.connected) return;
+  if (T >= D.t[D.n - 1]) seek(D.tStart);
+  if (serial.connected) { serial.play(); return; }
   playing = true; lastFrame = performance.now();
-  if (audio.ctx && $("sound").checked) soundOn().catch((e) => console.error(e));
-  $("playbtn").textContent = "❚❚"; $("playbtn").setAttribute("aria-label", "Pause");
-  requestAnimationFrame(frame);
+  playbackButton();
+  nextFrame();
+}
+function playbackButton() {
+  $("playbtn").textContent = playing ? "❚❚" : "▶"; $("playbtn").setAttribute("aria-label", playing ? "Pause" : "Play");
+  if (playing && audio.ctx && $("sound").checked) soundOn().catch((e) => console.error(e));
+}
+function nextFrame() {
+  cancelAnimationFrame(playbackFrame);
+  playbackFrame = requestAnimationFrame(frame);
 }
 function pause() {
+  if (serial.connected) { serial.pause(); return; }
   playing = false;
+  cancelAnimationFrame(playbackFrame);
   if (audio.ctx) { clearInterval(audio.timer); audio.ctx.suspend(); }
   $("playbtn").textContent = "▶"; $("playbtn").setAttribute("aria-label", "Play");
 }
 function frame(now) {
   if (!playing) return;
+  if (serial.connected) {
+    T = serial.time();
+    displayTime(T);
+    if (playing) nextFrame();
+    return;
+  }
   const dt = Math.min(0.25, (now - lastFrame) / 1000);
   lastFrame = now;
   T += dt * +$("speed").value;
   if (T >= D.t[D.n - 1]) { T = D.t[D.n - 1]; pause(); }
   seek(T);
-  if (playing) requestAnimationFrame(frame);
+  if (playing) nextFrame();
 }
 $("playbtn").onclick = () => (playing ? pause() : play());
 // the settings panel: opens over the page, closes on the button, Escape or a click outside
@@ -1300,7 +1403,7 @@ document.addEventListener("keydown", (e) => {
   if (e.ctrlKey || e.metaKey || e.altKey || e.isComposing || e.target.closest("input[type=text], input[type=number], select, textarea, [contenteditable]")) return;
   const speed = $("speed");
   const option = /^[1-9]$/.test(e.key) ? speed.options[Number(e.key) - 1] : null;
-  if (option) {
+  if (option && !option.disabled) {
     e.preventDefault();
     speed.value = option.value;
     speed.dispatchEvent(new Event("change")); // save the choice just like a dropdown change
@@ -1534,6 +1637,7 @@ for (const id of ["harmonics", "clip"]) $(id).addEventListener("change", () => {
 $("volume").addEventListener("input", () => { if (audio.node) audio.node.port.postMessage({ volume: +$("volume").value }); });
 
 drawAll();
+serialControls();
 modulePromise.catch((e) => setStatus("The AirMass module did not load: " + e.message + " (run tools/airmass_sim/web/build.sh)", true));
 </script>
 </body>
