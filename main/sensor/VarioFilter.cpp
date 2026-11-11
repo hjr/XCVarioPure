@@ -40,8 +40,8 @@ VarioFilter::VarioFilter() :
     SensorTP<float>(vario_buffer, HSIZE, DUTY_CYCLE_MS, 1),
     _Gact(15.f, DUTY_CYCLE_MS / 1000.f),
     _Goptimal(15.f, DUTY_CYCLE_MS / 1000.f),
-    _vario_lpf(LowPassFilterT<float>::alphaFromTau(4.f, 0.1f)),
-    _avg_vario(LowPassFilterT<float>::alphaFromTau(1.f, 0.1f))
+    _vario_lpf(LowPassFilterT<float>::alphaFromTau(4.f, getNominalDutyCycleMS() / 1000.0f)),
+    _avg_vario(LowPassFilterT<float>::alphaFromTau(1.f, getNominalDutyCycleMS() / 1000.0f))
 {
     _id = SensorId(SensorType::VARIOMETER, 10); // prio right after the te_alt doRead filter
 
@@ -57,7 +57,7 @@ bool VarioFilter::setup() {
     float alt = altitude.get();
     ESP_LOGI(FNAME, "VarioFilter setup with alt %f", alt);
     // vario needle damping
-    _vario_lpf.setTau( vario_delay.get() / 3, .1f);
+    _vario_lpf.setTau( vario_delay.get() / 3, getDutyCycleS());
     averageAlt = alt;
     Altitude = alt;
     predictAlt = alt;
