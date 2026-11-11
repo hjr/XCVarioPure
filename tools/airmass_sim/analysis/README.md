@@ -43,6 +43,7 @@ estimator, the page's `build`/`derive`), so they stay in step with the site. Bui
 | `sim_agree.py` | simulator CSVs (`airmass_sim nl ... --csv`): AirMass, TE netto, GNSS/INS against the truth and a GNSS-style reference |
 | `table.js` | per-flight table and pooled 10 s / 30 s / cockpit scores from `batch.js` outputs (`EXCLUDE=file,...` leaves logs out of the pools) |
 | `decomp.js` | per-sample means of AirMass, its energy, plain-energy and pitch paths, TE netto and both references, binned by bank (left / right) and by time since circling; `--print` merges outputs |
+| `te_pressure.js` | AirMass netto, the logged TE netto and the TE netto replayed from the logged TE pressure (the page's `TeVario`) at equal 4 s damping against both references, per flight and pooled (`EXCLUDE`), with the three-cornered hat once per TE (the two share the probe), delays and 1 s needle movement; `node te_pressure.js OUT.json` alone re-reports a saved run |
 | `build_old.sh` | builds the estimator before real-flight tuning (a833f536, with the replay tools of 323f5a9c) as `build_sim/old/tools/airmass_sim/web/airmass_old.js` |
 
 ```sh
