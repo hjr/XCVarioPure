@@ -79,7 +79,7 @@ void InterfaceCtrl::addDataLink(DataLink *dl)
     }
 }
 
-// returns possibly a nullptr, when port is not found in the map
+// returns possibly a nullptr, when port is not found
 DataLink *InterfaceCtrl::MoveDataLink(int port)
 {
     DataLink *tmp = nullptr;
