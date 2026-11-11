@@ -126,6 +126,7 @@ select { appearance: none; -webkit-appearance: none; padding-right: 26px !import
 .readouts { display: grid; grid-template-columns: 1fr 1fr; gap: 1px 8px; font-size: 0.78rem; color: var(--muted); }
 .readouts span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .readouts b { color: var(--ink); font: 600 0.85rem var(--mono); }
+.readouts .ismain { display: none; }
 .readouts .head { grid-column: 1 / -1; font-size: 0.68rem; letter-spacing: 0.05em; text-transform: uppercase; }
 .key.gnsskey { background: var(--gnss); box-shadow: 0 0 0 1px var(--muted); }
 .key { display: inline-block; width: 12px; height: 3px; border-radius: 2px; vertical-align: middle; margin-right: 4px; }
@@ -186,8 +187,8 @@ select { appearance: none; -webkit-appearance: none; padding-right: 26px !import
     <input type="range" id="slider" min="0" max="1" step="0.1" value="0" disabled aria-label="Flight time" title="←/→: 10 s, Shift: 1 min. Charts: click to jump, wheel to zoom, drag to pan, double-click for the whole flight">
     <label class="btn soundbox" title="The XCVario vario tone"><input type="checkbox" id="sound" checked> Sound
       <input type="range" id="volume" min="0" max="1" step="0.05" value="0.5" aria-label="Volume"></label>
-    <select id="soundsrc" class="sel" aria-label="Sound source" title="What the tone follows">
-      <option value="airmass" selected>AirMass netto</option><option value="netto">TE netto</option><option value="tep" hidden>TE pressure netto</option>
+    <select id="mainvario" class="sel" aria-label="Main vario" title="The main vario: the big needle, the average on the gauge and the tone">
+      <option value="airmass" selected>Main: AirMass netto</option><option value="netto">Main: TE netto</option><option value="tep" hidden>Main: TE pressure netto</option>
     </select>
     <button class="btn" id="settingsbtn" aria-expanded="false" aria-controls="settings">Settings</button>
   </header>
@@ -234,7 +235,7 @@ select { appearance: none; -webkit-appearance: none; padding-right: 26px !import
           <legend>Vario</legend>
           <div class="row">
             <label>Damping, s <input type="number" id="damping" value="4" min="1" max="10" step="0.5" title="the device's vario delay, 4 s by default"></label>
-            <label>Averager, s <input type="number" id="averager" value="30" min="7" max="50" step="1" title="Trailing averaging window for the AirMass, TE and GNSS numeric readouts"></label>
+            <label>Averager, s <input type="number" id="averager" value="30" min="7" max="50" step="1" title="Trailing averaging window for the main vario's average on the gauge and the other varios' readouts"></label>
           </div>
           <label class="check" title="Switch all three vario needles, chart lines, averages and sound to gross total-energy climb, including the glider's polar sink. Off: netto air movement."><input type="checkbox" id="showgross"> Gross mode for all varios</label>
           <label class="check" title="The GNSS reference gets the device's vario damping; off: undamped. Applies in gross and netto mode."><input type="checkbox" id="samesmooth" checked> Damp the GNSS reference like the vario</label>
@@ -363,13 +364,14 @@ for (const name of Object.keys(AirMassConvert.GLIDERS)) $("glider").add(new Opti
 // Each newly loaded log selects its own type; manual overrides apply to the current log.
 $("glider").value = "log";
 const SETTINGS_KEY = "airmass-replay-settings";
-const FIELDS = ["harmonics", "clip", "glider", "mass", "bugs", "damping", "averager", "samesmooth", "sets", "noflaps", "mahony", "learn", "warm", "w0", "w1", "w2", "wlat", "wingpitch", "follow", "speed", "soundsrc", "chartsmap", "showhw", "showgross", "windfield"];
+const FIELDS = ["harmonics", "clip", "glider", "mass", "bugs", "damping", "averager", "samesmooth", "sets", "noflaps", "mahony", "learn", "warm", "w0", "w1", "w2", "wlat", "wingpitch", "follow", "speed", "mainvario", "chartsmap", "showhw", "showgross", "windfield"];
 try {
   const s = JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}");
-  // Old sound sources selected gross independently; the gross switch now controls every vario.
-  if (s.soundsrc === "gross" || s.soundsrc === "te") {
-    s.showgross = true;
-    s.soundsrc = s.soundsrc === "gross" ? "airmass" : "netto";
+  // The sound source became the main vario; old sound sources selected gross independently, the gross switch now
+  // controls every vario.
+  if ("soundsrc" in s && !("mainvario" in s)) {
+    if (s.soundsrc === "gross" || s.soundsrc === "te") s.showgross = true;
+    s.mainvario = s.soundsrc === "gross" ? "airmass" : s.soundsrc === "te" ? "netto" : s.soundsrc;
   }
   for (const k of FIELDS) if (k in s) { const el = $(k); if (el.type === "checkbox") el.checked = s[k]; else el.value = s[k]; }
 } catch (e) { /* no storage */ }
@@ -952,9 +954,16 @@ function deriveDamping(D) {
 // All vario displays and the tone use the same mode; the map's explicitly named colour sources stay independent.
 function varioSeries(D) {
   return $("showgross").checked
-    ? { am: D.amGross, te: D.tr.te_vario, tep: D.tepGross, gnss: D.gnssGross, averages: ["amGross", "teGross", "gnssGross", "tepGross"], mode: "gross" }
-    : { am: D.am, te: D.netto, tep: D.tep, gnss: D.gnss, averages: ["am", "net", "gnss", "tep"], mode: "netto" };
+    ? { am: D.amGross, te: D.tr.te_vario, tep: D.tepGross, gnss: D.gnssGross, avg: { am: "amGross", te: "teGross", gnss: "gnssGross", tep: "tepGross" }, mode: "gross" }
+    : { am: D.am, te: D.netto, tep: D.tep, gnss: D.gnss, avg: { am: "am", te: "net", gnss: "gnss", tep: "tep" }, mode: "netto" };
 }
+// The main vario (the big needle, the gauge's average and the tone) as a varioSeries key: TE where the log has no TE
+// pressure.
+function mainKey() {
+  const v = $("mainvario").value;
+  return v === "netto" || (v === "tep" && !D?.hasTep) ? "te" : v === "tep" ? "tep" : "am";
+}
+const VARIO_NAMES = { am: "AirMass", te: "TE", tep: "TE pressure", gnss: "GNSS" };
 
 // the track colour
 const COLOR_BY = { gnssnet: "GNSS netto", airmass: "AirMass vario", te: "TE vario", gnss: "GNSS altitude change", seeyou: "Netto, SeeYou style" };
@@ -1157,9 +1166,8 @@ function drawVario(k) {
     if (major) ctx.fillText(String(Math.abs(v)), cx + dx * R * 0.76, cy + dy * R * 0.76);
   }
   if (!D) return;
-  const ok = D.amOk[k];
   const series = varioSeries(D);
-  const fallback = !ok && Number.isFinite(series.am[k]);
+  const fallback = !D.amOk[k] && Number.isFinite(series.am[k]);
   const needle = (v, color, width, len, outline, dashed = false) => {
     if (!Number.isFinite(v)) return;
     ctx.save();
@@ -1172,23 +1180,29 @@ function drawVario(k) {
     path(); ctx.stroke();
     ctx.restore();
   };
+  // the main vario's needle big and on top, the others thin and of one length, each in its own colour
+  const main = mainKey();
   needle(series.gnss[k], C.gnss, 3, 0.8, C.dark ? C.muted : null);
-  needle(series.te[k], C.net, 3, 0.86);
-  needle(series.tep[k], C.tep, 3, 0.83);
-  needle(series.am[k], C.am, 5, 0.92, null, fallback);
+  for (const [key, color] of [["te", C.net], ["tep", C.tep], ["am", C.am]]) {
+    if (key !== main) needle(series[key][k], color, 3, 0.86, null, key === "am" && fallback);
+  }
+  needle(series[main][k], { am: C.am, te: C.net, tep: C.tep }[main], 6.5, 0.92, null, main === "am" && fallback);
   ctx.fillStyle = C.surface; ctx.strokeStyle = C.rule; ctx.lineWidth = 1.5;
   ctx.beginPath(); ctx.arc(cx, cy, R * 0.07, 0, 2 * Math.PI); ctx.fill(); ctx.stroke();
-  // the cockpit value on a plate, below the centre
+  // the main vario's average on a plate, below the centre
   const font = C.font;
-  const px = cx, py = cy + R * 0.41, pw = R * 0.72, ph = R * 0.36;
+  const label = main === "am" && D.ai[k] < 0 ? "not running" : `${VARIO_NAMES[main]} · ${averagingSeconds()} s avg`;
+  const smallFont = `${Math.round(R * 0.095)}px ${font}`;
+  ctx.font = smallFont;
+  const px = cx, py = cy + R * 0.41, pw = Math.max(R * 0.72, ctx.measureText(label).width + R * 0.12), ph = R * 0.36;
   ctx.fillStyle = C.surface; ctx.strokeStyle = C.rule; ctx.lineWidth = 1;
   ctx.beginPath(); ctx.roundRect(px - pw / 2, py - ph / 2, pw, ph, 6); ctx.fill(); ctx.stroke();
   ctx.fillStyle = C.ink;
   ctx.font = `600 ${Math.round(R * 0.21)}px ${font}`;
-  ctx.fillText(fmtV(series.am[k]), px, py - R * 0.035);
-  ctx.font = `${Math.round(R * 0.095)}px ${font}`;
+  ctx.fillText(fmtV(varioAverage(series.avg[main], k)), px, py - R * 0.035);
+  ctx.font = smallFont;
   ctx.fillStyle = C.muted;
-  ctx.fillText(D.ai[k] < 0 ? "not running" : ok ? (series.mode === "gross" ? "m/s gross" : "m/s air mass") : `m/s TE ${series.mode}`, px, py + R * 0.12);
+  ctx.fillText(label, px, py + R * 0.12);
 }
 
 // the pitch shown: of the sensor axis, or with "Wing reference" of the wing's zero-lift line as AirMass models it.
@@ -1211,17 +1225,18 @@ function updateVarioLabels() {
     $("label-" + key).textContent = name; // the mode is in the heading
     $("legend-" + key).textContent = `${name} ${mode}`;
   }
-  $("soundsrc").options[0].textContent = `AirMass ${mode}`;
-  $("soundsrc").options[1].textContent = `TE ${mode}`;
-  $("soundsrc").options[2].textContent = `TE pressure ${mode}`;
+  $("mainvario").options[0].textContent = `Main: AirMass ${mode}`;
+  $("mainvario").options[1].textContent = `Main: TE ${mode}`;
+  $("mainvario").options[2].textContent = `Main: TE pressure ${mode}`;
 }
 // the TE pressure vario's needle, readout, legend and tone only for logs with a TE pressure ($SENS)
 function showTePressure(on) {
   for (const el of document.querySelectorAll(".tep")) el.hidden = !on;
-  $("soundsrc").options[2].hidden = !on;
+  $("mainvario").options[2].hidden = !on;
 }
 updateVarioLabels();
 $("showgross").addEventListener("change", () => { updateVarioLabels(); invalidateCharts(); drawAll(); });
+$("mainvario").addEventListener("change", drawAll);
 $("windfield").addEventListener("change", drawWindField);
 
 // AirMass's instant wind along the track: one arrow every WIND_FIELD_PX on the screen, in view, pointing downwind
@@ -1446,11 +1461,12 @@ function drawStrip(k) {
 
 function updateReadouts(k) {
   const r = D.rep.cols, i = D.ai[k];
-  const keys = varioSeries(D).averages;
-  $("v-am").textContent = fmtV(varioAverage(keys[0], k));
-  $("v-net").textContent = fmtV(varioAverage(keys[1], k));
-  $("v-gnss").textContent = fmtV(varioAverage(keys[2], k));
-  $("v-tep").textContent = fmtV(varioAverage(keys[3], k));
+  // the averages of the other varios; the main one's is on the gauge
+  const avg = varioSeries(D).avg, main = mainKey();
+  for (const [key, id] of [["am", "v-am"], ["te", "v-net"], ["gnss", "v-gnss"], ["tep", "v-tep"]]) {
+    $(id).textContent = fmtV(varioAverage(avg[key], k));
+    $(id).parentElement.classList.toggle("ismain", key === main);
+  }
   const kmh = (v) => (Number.isFinite(v) ? (v * 3.6).toFixed(0) + " km/h" : "–");
   $("v-ias").textContent = kmh(D.tr.ias[k]); // as measured
   $("v-tas").textContent = kmh(D.tr.tas[k]); // density-corrected from the log's OAT, with altitude-based fallback when implausible
@@ -1856,10 +1872,8 @@ async function soundOn() {
   clearInterval(audio.timer);
   audio.timer = setInterval(() => { // the device updates the tone at 10 Hz
     if (!D || !playing) { audio.node.port.postMessage({ off: true }); return; }
-    // Follow the same series as the selected needle, including the common gross/netto mode.
-    const k = indexAt(T), src = $("soundsrc").value;
-    const series = varioSeries(D);
-    const v = src === "netto" || (src === "tep" && !D.hasTep) ? series.te[k] : src === "tep" ? series.tep[k] : series.am[k];
+    // the main vario, in the common gross/netto mode
+    const v = varioSeries(D)[mainKey()][indexAt(T)];
     audio.node.port.postMessage(Number.isFinite(v) ? { v } : { off: true });
   }, 100);
 }

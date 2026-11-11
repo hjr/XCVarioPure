@@ -95,8 +95,13 @@ of the last accepted observation, received age is the time since the last fusion
 `sensor_gnss_robustness` in the host CTest suite covers delayed/irregular fixes, transport jitter, out-of-order and
 duplicate epochs, outages, outliers, midnight/clock wrap, unsupported history, whole-fix rejection and sensor gaps.
 
-**Averager**, beside Damping in **Settings → Vario**, controls the trailing averaging window for the AirMass,
-TE and GNSS numeric readouts. It defaults to 30 seconds and accepts 7–50 seconds, matching the device's range.
+**Main vario**, the selector in the header, picks AirMass, TE or TE pressure as the main vario: it has the big
+needle (in its own colour), the tone, and its average on the gauge's centre plate instead of a momentary value; its
+average leaves the readouts below the gauge. Where the log has no TE pressure, TE pressure falls back to TE. The
+choice is saved in this browser.
+
+**Averager**, beside Damping in **Settings → Vario**, controls the trailing averaging window for the main vario's
+average on the gauge and the other varios' numeric readouts. It defaults to 30 seconds and accepts 7–50 seconds, matching the device's range.
 Changes update the readouts and their period label immediately and are saved in this browser.
 The vario damping runs the device's 10 Hz cycles on the frame timestamps, each cycle reading the latest frame, so
 5 Hz logs and 20 Hz recordings are damped like 10 Hz ones; between cycles the needle holds.
@@ -110,10 +115,10 @@ the pressure through `VarioFilter::postProcess` with a TEK probe (its altitude f
 vario damping set here), netto minus the polar sink like TE netto. The TE line is what the device logged in `$PXCV`
 (damped with its own setting, 0.1 m/s steps, 5 Hz). On real flights the two agree to about 0.3 m/s RMS at 4 s damping,
 so a difference shows a TE probe or tube problem in the log, or electronic compensation, which this replay does
-not model. It has its own needle, average, chart line, tooltip value, sound source and CSV columns
+not model. It has its own needle, average, chart line, tooltip value, main-vario option and CSV columns
 (`te_pressure_vario`, `te_pressure_netto`); AirMass recordings carry no TE pressure, so it is hidden for them.
 
-**Gross mode for all varios** switches the vario needles, chart lines, numeric averages and selected sound source
+**Gross mode for all varios** switches the vario needles, chart lines, numeric averages and the main vario's tone
 together. AirMass gross includes the polar sink and falls back to TE gross; TE gross is the logged TE vario;
 GNSS gross is the total-energy climb before subtracting the polar sink. The GNSS damping option applies to both
 modes. The switch takes effect immediately and is saved in the browser; the map's named colour sources keep their
