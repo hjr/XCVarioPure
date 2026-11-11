@@ -126,6 +126,9 @@ FlarmSim::FlarmSim(Device *d, const SIMRUN *sv) :
 
 FlarmSim::~FlarmSim()
 {
+    InterfaceCtrl *ic = _d->_itf;
+    // Reconnect datalink
+    ic->addDataLink(_d->_link);
     _sim = nullptr;
 }
 
@@ -139,7 +142,10 @@ void FlarmSim::StartSim(int variant)
         Device *d = DEVMAN->getDevice(FLARM_DEV);
         if ( d ) {
             ESP_LOGI(FNAME,"Found Flarm %d", d->_id);
-            // a Flarm is connected, inject here
+            // a Flarm is connected
+            InterfaceCtrl *ic = d->_itf;
+            ic->MoveDataLink(0); // the device has a backup of the data link pointer
+            // inject here
             _sim = new FlarmSim(d, simVariant + variant);
         }
 
