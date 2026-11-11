@@ -21,7 +21,7 @@ function harness({ connected = false, playing = true } = {}) {
     serial: { connected, port: connected ? {} : null, ready: true, speed: 5, timeline },
     localStorage: { getItem: () => "{}", setItem() {} }, performance: { now: () => 100 },
     modulePromise: Promise.resolve({}), tick: async () => {},
-    setStatus() {}, serialControls() {}, drawTrack(fit) { calls.trackFit.push(fit); }, invalidateCharts() {},
+    setStatus() {}, serialControls() {}, showTePressure() {}, drawTrack(fit) { calls.trackFit.push(fit); }, invalidateCharts() {},
     drawAll() { calls.draw++; }, deriveDamping() { calls.damping++; }, updateVarioLabels() { calls.labels++; },
     logDate: () => ({ day: NaN }), console: { error() {} },
     AirMassConvert: { convert: () => ({ frames: 2, kind: "XCVario sensor log", track: { n: 2 }, fixes: 0 }),
@@ -115,20 +115,35 @@ test("live damping updates cached display series while retaining estimator/refer
     amRaw: Float32Array.from({ length: n }, (_, i) => i < 100 ? 0 : 4), netto: new Float32Array(n).fill(2),
     sinkUp: new Float32Array(n).fill(-1), gnssNet: Float32Array.from({ length: n }, (_, i) => i < 100 ? 0 : 3),
     gnssGrossRaw: Float32Array.from({ length: n }, (_, i) => i < 100 ? 0 : 5),
-    tr: { te_vario: new Float32Array(n).fill(2) }, rep: {}, cum: {} };
+    tr: { te_vario: new Float32Array(n).fill(2), te_alt: Float64Array.from({ length: n }, (_, i) => 500 + (i < 100 ? 0 : (i - 100) * 0.2)) }, rep: {}, cum: {} };
   const retained = [data.rep, data.tr, data.cum, data.amRaw, data.gnssNet, data.gnssGrossRaw];
   data.amOk[90] = 0;
   const context = vm.createContext({ $ });
-  vm.runInContext(["class Damp", "function cockpitSeries(D, dampAt)", "function deriveDamping(D)"].map(grab).join("\n"), context);
+  vm.runInContext(["class Damp", "class TeVario", "function runningSums(n, val)", "function cockpitSeries(D, dampAt)", "function deriveDamping(D)"].map(grab).join("\n"), context);
   $("samesmooth").checked = true; $("damping").value = "2";
   context.deriveDamping(data);
-  const fast = data.am[120], fastGnss = data.gnss[120];
+  const fast = data.am[120], fastGnss = data.gnss[120], fastTe = data.tepGross[120];
+  assert(Math.abs(data.tepGross[199] - 2) < 0.05, "the TE pressure vario climbs with the TE altitude");
+  assert(Math.abs(data.tep[199] - 3) < 0.05, "its netto adds back the polar sink");
   $("damping").value = "8"; context.deriveDamping(data);
-  assert(data.am[120] < fast); assert(data.gnss[120] < fastGnss);
+  assert(data.am[120] < fast); assert(data.gnss[120] < fastGnss); assert(data.tepGross[120] < fastTe);
   assert.equal(data.am[90], 2); assert.equal(data.amGross[90], 2, "gross fallback remains logged TE");
   $("samesmooth").checked = false; context.deriveDamping(data);
   assert.equal(data.gnss[120], 3); assert.equal(data.gnssGross[120], 5);
   assert.deepEqual([data.rep, data.tr, data.cum, data.amRaw, data.gnssNet, data.gnssGrossRaw], retained);
+});
+
+test("the TE pressure vario follows the TE altitude at any frame rate and restarts after a gap", () => {
+  const context = vm.createContext({});
+  vm.runInContext(["class Damp", "class TeVario"].map(grab).join("\n") + "\nthis.TeVario = TeVario;", context);
+  const run = (dt, until, alt, f = new context.TeVario(4)) => { let y; for (let t = 0; t <= until + 1e-9; t += dt) y = f.at(t, alt(t)); return { y, f }; };
+  const climb = (t) => 800 + 1.5 * t;
+  assert(Math.abs(run(0.1, 60, climb).y - 1.5) < 0.02, "10 Hz");
+  assert(Math.abs(run(0.2, 60, climb).y - 1.5) < 0.02, "5 Hz: two cycles a frame");
+  assert(Math.abs(run(0.1, 60, () => 800).y) < 1e-6, "level: zero");
+  const { f } = run(0.1, 60, climb);
+  assert(Number.isNaN(f.at(61, NaN)), "no pressure: no value");
+  assert.equal(f.at(70, 2000), 0, "after a gap it starts again, a jump is not a climb");
 });
 
 test("the needle damping runs the device's 10 Hz cycles whatever the frame rate", () => {

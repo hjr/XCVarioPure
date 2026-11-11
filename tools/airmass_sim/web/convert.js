@@ -323,8 +323,9 @@
   // a growable column store for the track samples
   class Track {
     constructor() {
-      // te_new: 1 on the first sample after a $PXCV (the device's TE vario, 5 Hz in the log), for the interpolation
-      this.names = ["t_ms", "utc", "lat", "lon", "gnss_alt", "gnss_speed", "gnss_track", "baro_alt", "te_vario", "te_new", "ias", "tas", "polar_sink", "running"];
+      // te_new: 1 on the first sample after a $PXCV (the device's TE vario, 5 Hz in the log), for the interpolation;
+      // te_alt: the ISA altitude of the logged TE pressure ($SENS only), for the TE vario replayed from it
+      this.names = ["t_ms", "utc", "lat", "lon", "gnss_alt", "gnss_speed", "gnss_track", "baro_alt", "te_vario", "te_new", "te_alt", "ias", "tas", "polar_sink", "running"];
       this.n = 0;
       this.cap = 1 << 16;
       this.cols = {};
@@ -439,11 +440,12 @@
       const acc = [+f[7], +f[8], +f[9]], gyro = [+f[10], +f[11], +f[12]].map(x => x * Math.PI / 180);
       if (![stamp, age, p, q, ...acc, ...gyro].every(Number.isFinite)) return null;
       const t = monotone(stamp, utc, ageField);
-      const alt = p > 0 ? T0DIVL * (1 - Math.pow(p / P0, 1 / G0DIVRXL)) : NaN;
+      const isa = (pa) => (pa > 0 ? T0DIVL * (1 - Math.pow(pa / P0, 1 / G0DIVRXL)) : NaN);
+      const alt = isa(p), teAlt = isa(+f[4] * 100);
       const estimated = !plausibleTemperature(oat);
       if (estimated) oat = estimatedTemperature(Number.isFinite(gnssAlt) ? gnssAlt : alt);
       f[6] = oat;
-      return { f, t, age, p, q, oat, acc, gyro, alt, kelvin, estimated, timeRecovered: monotone.recovered };
+      return { f, t, age, p, q, oat, acc, gyro, alt, teAlt, kelvin, estimated, timeRecovered: monotone.recovered };
     };
   }
 
@@ -621,7 +623,7 @@
         const f = fields(raw.trim());
         const sensor = normalize(f, gnssAlt, fix ? fix.utc : NaN);
         if (!sensor) continue;
-        const { t, age, p, q, oat, acc, gyro, alt } = sensor;
+        const { t, age, p, q, oat, acc, gyro, alt, teAlt } = sensor;
         if (sensor.kelvin) temperatureKelvinSamples++;
         if (sensor.estimated) temperatureEstimatedSamples++;
         if (sensor.timeRecovered) timestampRecoveredSamples++;
@@ -671,7 +673,7 @@
           pendingFix = null;
         }
         track.push({ t_ms: t, utc: fix ? fix.utc : NaN, lat: fix ? fix.lat : NaN, lon: fix ? fix.lon : NaN, gnss_alt: gnssAlt,
-          gnss_speed: fix ? fix.speed : NaN, gnss_track: fix ? fix.track : NaN, baro_alt: alt, te_vario: pxcv.vario, te_new: teNew, ias, tas,
+          gnss_speed: fix ? fix.speed : NaN, gnss_track: fix ? fix.track : NaN, baro_alt: alt, te_vario: pxcv.vario, te_new: teNew, te_alt: teAlt, ias, tas,
           polar_sink: sink, running: running ? 1 : 0 });
         teNew = 0;
       }

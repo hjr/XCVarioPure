@@ -105,7 +105,15 @@ flap, calibration and estimator settings recalculate automatically while retaini
 chart view, playback speed and running/paused state. Instrument transmission pauses during recalculation;
 the same log keeps its serial timeline and resumes at the selected speed after a successful update.
 
-**Gross mode for all varios** switches the three needles, chart lines, numeric averages and selected sound source
+**TE pressure** (green) is the device's TE vario replayed from the TE pressure in `$SENS` logs: the ISA altitude of
+the pressure through `VarioFilter::postProcess` with a TEK probe (its altitude filter, the rate per 10 Hz cycle and the
+vario damping set here), netto minus the polar sink like TE netto. The TE line is what the device logged in `$PXCV`
+(damped with its own setting, 0.1 m/s steps, 5 Hz). On real flights the two agree to about 0.3 m/s RMS at 4 s damping,
+so a difference shows a TE probe or tube problem in the log, or electronic compensation, which this replay does
+not model. It has its own needle, average, chart line, tooltip value, sound source and CSV columns
+(`te_pressure_vario`, `te_pressure_netto`); AirMass recordings carry no TE pressure, so it is hidden for them.
+
+**Gross mode for all varios** switches the vario needles, chart lines, numeric averages and selected sound source
 together. AirMass gross includes the polar sink and falls back to TE gross; TE gross is the logged TE vario;
 GNSS gross is the total-energy climb before subtracting the polar sink. The GNSS damping option applies to both
 modes. The switch takes effect immediately and is saved in the browser; the map's named colour sources keep their

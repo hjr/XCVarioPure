@@ -22,8 +22,8 @@ function grab(script, name) {
 function loadPage(web, { refSink = process.env.REF_SINK } = {}) {
   web = path.resolve(web); // a relative path would be taken for a package name by require()
   const script = pageScript(web);
-  const names = ["build", "gnssAltDelay", "atFixes", "Damp", "derive", "deriveDamping", "indexAt", "runningSums", "cockpitSeries", "gnssNetFromEnergy"];
-  let src = ["function build(conv, rep)", "function gnssAltDelay(fixes, t, baro, running)", "function atFixes(D, get, maxHold)", "class Damp", "function derive(D)", "function deriveDamping(D)", "function indexAt(t)",
+  const names = ["build", "gnssAltDelay", "atFixes", "Damp", "TeVario", "derive", "deriveDamping", "indexAt", "runningSums", "cockpitSeries", "gnssNetFromEnergy"];
+  let src = ["function build(conv, rep)", "function gnssAltDelay(fixes, t, baro, running)", "function atFixes(D, get, maxHold)", "class Damp", "class TeVario", "function derive(D)", "function deriveDamping(D)", "function indexAt(t)",
     "function runningSums(n, val)", "function cockpitSeries(D, dampAt)", "function gnssNetFromEnergy(D, sinkUp, energyOf)"].map((name) => grab(script, name)).join("\n");
   if (refSink === "airmass") {
     const patched = src.replace("if (Number.isFinite(sink)) sinkUp[k] = sink;", "if (Number.isFinite(r.polar_sink[i])) sinkUp[k] = -r.polar_sink[i];");

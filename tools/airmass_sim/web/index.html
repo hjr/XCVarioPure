@@ -19,7 +19,7 @@
 <style>
 :root {
   --bg: #f3f5f6; --surface: #fcfcfb; --ink: #17212a; --muted: #5b6770; --rule: #d6dde2; --tint: #e8eef3;
-  --accent: #2f6fd0; --am: #2f6fd0; --net: #d9771f; --gnss: #000000; --degraded: #9aa3aa; --hw: #8e44ad;
+  --accent: #2f6fd0; --am: #2f6fd0; --net: #d9771f; --gnss: #000000; --tep: #2e9e5b; --degraded: #9aa3aa; --hw: #8e44ad;
   --grid: #e3e8ec; --danger: #b3261e;
   --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -27,13 +27,13 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #111518; --surface: #1a1a19; --ink: #e4e9ec; --muted: #9aa6ae; --rule: #2c353b; --tint: #222b31;
-    --accent: #5a94e8; --am: #5a94e8; --net: #c9772a; --gnss: #000000; --degraded: #6f787e; --hw: #b07cd8;
+    --accent: #5a94e8; --am: #5a94e8; --net: #c9772a; --gnss: #000000; --tep: #4cbf7a; --degraded: #6f787e; --hw: #b07cd8;
     --grid: #262e33; --danger: #f2827a; color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
   --bg: #111518; --surface: #1a1a19; --ink: #e4e9ec; --muted: #9aa6ae; --rule: #2c353b; --tint: #222b31;
-  --accent: #5a94e8; --am: #5a94e8; --net: #c9772a; --gnss: #000000; --degraded: #6f787e; --hw: #b07cd8;
+  --accent: #5a94e8; --am: #5a94e8; --net: #c9772a; --gnss: #000000; --tep: #4cbf7a; --degraded: #6f787e; --hw: #b07cd8;
   --grid: #262e33; --danger: #f2827a; color-scheme: dark;
 }
 * { box-sizing: border-box; }
@@ -187,7 +187,7 @@ select { appearance: none; -webkit-appearance: none; padding-right: 26px !import
     <label class="btn soundbox" title="The XCVario vario tone"><input type="checkbox" id="sound" checked> Sound
       <input type="range" id="volume" min="0" max="1" step="0.05" value="0.5" aria-label="Volume"></label>
     <select id="soundsrc" class="sel" aria-label="Sound source" title="What the tone follows">
-      <option value="airmass" selected>AirMass netto</option><option value="netto">TE netto</option>
+      <option value="airmass" selected>AirMass netto</option><option value="netto">TE netto</option><option value="tep" hidden>TE pressure netto</option>
     </select>
     <button class="btn" id="settingsbtn" aria-expanded="false" aria-controls="settings">Settings</button>
   </header>
@@ -291,10 +291,11 @@ select { appearance: none; -webkit-appearance: none; padding-right: 26px !import
         <h2 id="variotitle">Vario · netto</h2>
         <canvas id="vario" aria-label="Vario gauge"></canvas>
         <div class="readouts">
-          <span class="head" id="averagerlabel">Average, last 30 s</span>
-          <span><i class="key" style="background:var(--am)"></i><span id="label-am">AirMass netto</span> <b id="v-am">–</b></span>
-          <span><i class="key" style="background:var(--net)"></i><span id="label-te">TE netto</span> <b id="v-net">–</b></span>
-          <span><i class="key gnsskey"></i><span id="label-gnss">GNSS netto</span> <b id="v-gnss">–</b></span>
+          <span class="head" id="averagerlabel">Average netto, last 30 s</span>
+          <span><i class="key" style="background:var(--am)"></i><span id="label-am">AirMass</span> <b id="v-am">–</b></span>
+          <span><i class="key" style="background:var(--net)"></i><span id="label-te">TE</span> <b id="v-net">–</b></span>
+          <span class="tep" hidden title="The device's TE vario replayed from the logged TE pressure, with the damping set here"><i class="key" style="background:var(--tep)"></i><span id="label-tep">TE pressure</span> <b id="v-tep">–</b></span>
+          <span><i class="key gnsskey"></i><span id="label-gnss">GNSS</span> <b id="v-gnss">–</b></span>
           <span title="GNSS altitude above sea level (the pressure altitude, ISA, where there is no fix)">Alt <b id="w-alt">–</b></span>
         </div>
       </div>
@@ -314,6 +315,7 @@ select { appearance: none; -webkit-appearance: none; padding-right: 26px !import
       <div class="chead"><h3>Vario</h3><div class="legend">
         <span><i class="key" style="background:var(--am)"></i><span id="legend-am">AirMass netto</span></span>
         <span><i class="key" style="background:var(--net)"></i><span id="legend-te">TE netto</span></span>
+        <span class="tep" hidden title="The device's TE vario replayed from the logged TE pressure ($SENS logs), with the damping set in Settings; TE is the vario the device logged"><i class="key" style="background:var(--tep)"></i><span id="legend-tep">TE pressure netto</span></span>
         <span title="GNSS total-energy climb from altitude and ground velocity relative to AirMass's 2 min wind (pitot TAS until a wind is known). Netto mode removes the polar sink."><i class="key gnsskey"></i><span id="legend-gnss">GNSS netto</span> (reference, gust-insensitive)</span>
         <span id="stripkey">Strip: AirMass vario</span>
       </div></div>
@@ -342,7 +344,7 @@ let view = null;         // the vario chart's time window [t0, t1]
 let C = {};
 function readColors() {
   const cs = getComputedStyle(document.documentElement);
-  for (const k of ["surface", "ink", "muted", "rule", "am", "net", "gnss", "degraded", "grid", "hw"]) C[k] = cs.getPropertyValue("--" + k).trim();
+  for (const k of ["surface", "ink", "muted", "rule", "am", "net", "tep", "gnss", "degraded", "grid", "hw"]) C[k] = cs.getPropertyValue("--" + k).trim();
   C.dark = cs.colorScheme === "dark";
   C.font = getComputedStyle(document.body).fontFamily;
 }
@@ -555,6 +557,7 @@ async function replayOnce() {
     D.sourceGeneration = sourceGeneration;
     D.clockDate = logDate(conv, sourceName);
     derive(D);
+    showTePressure(D.hasTep);
     let timeline;
     try { timeline = sameLog && serial.timeline ? serial.timeline : AirMassConvert.serialTimeline(sourceLog); }
     catch (e) { timeline = { events: [], reason: e.message }; }
@@ -731,6 +734,40 @@ class Damp {
   }
 }
 
+// The device's TE vario with a TEK probe (VarioFilter::postProcess, 10 Hz) from the logged TE pressure's ISA altitude:
+// its altitude filter (a gain from the step against the predicted altitude, the first 10 cycles taken as they are),
+// the rate over the cycle, then the vario damping (Damp, its low pass also making the prediction). The cycles run on
+// the frames like Damp.at; a gap over 1 s or a missing pressure starts it again. at() gives the damped vario (te_gr),
+// rate the undamped one of the last cycle.
+class TeVario {
+  constructor(d) { this.damp = new Damp(d); this.restart(); }
+  restart() { this.damp.reset(NaN); this.alt = this.lastAlt = this.predict = NaN; this.jump = 10; this.last = null; this.x = NaN; this.y = this.rate = NaN; }
+  cycle(h) {
+    if (!Number.isFinite(this.alt)) this.alt = this.lastAlt = this.predict = h;
+    let step = h - this.alt, diff = Math.abs(step) * 1000 + 1;
+    if (diff > 1e6 || this.jump) { this.alt = h; step = diff = 0; if (this.jump > 0) this.jump--; } // over 100 m: a jump
+    const err = Math.abs(h - this.predict) * 1000 + 1;
+    this.alt += step * diff / (err * 1.6 + diff) * 0.2;
+    this.rate = (this.alt - this.lastAlt) / 0.1;
+    this.lastAlt = this.alt;
+    const y = this.damp.f(this.rate);
+    this.predict = this.alt + this.damp.l * 0.1;
+    return y;
+  }
+  at(t, h) {
+    if (!Number.isFinite(h) || (this.last !== null && !(t - this.last <= 1))) this.restart();
+    if (!Number.isFinite(h)) return NaN;
+    const n = this.last === null ? 1 : Math.floor((t - this.last + 0.025) / 0.1);
+    if (n > 0) {
+      for (let i = 1; i < n; i++) this.cycle(this.x);
+      this.y = this.cycle(h);
+      this.last = t;
+    }
+    this.x = h;
+    return this.y;
+  }
+}
+
 // running sums (S) and counts (N) of the finite values of val(k), k < n
 function runningSums(n, val) {
   const S = new Float64Array(n + 1), N = new Float64Array(n + 1);
@@ -796,6 +833,7 @@ function derive(D) {
   const sinkUp = D.sinkUp = new Float32Array(n).fill(NaN); // the polar sink in TAS terms, up positive (so negative)
   // Netto is the device's: its damped TE vario minus the polar sink of the moment (TAS terms), the sink not damped
   const sens = D.kind.startsWith("XCVario sensor");
+  D.hasTep = c.te_alt.some(Number.isFinite); // a TE pressure in the log ($SENS)
   for (let k = 0; k < n; k++) {
     const i = D.ai[k];
     if (i < 0) continue;
@@ -897,13 +935,25 @@ function deriveDamping(D) {
       D.gnssGross[k] = same ? dGross.at(D.t[k], gross) : gross;
     }
   }
+  // the TE vario replayed from the logged TE pressure (TeVario) with this damping; netto like the device's (the polar
+  // sink of the moment, not damped), the averages over the undamped rate like the AirMass one's
+  const te = new TeVario(delay), rate = new Float32Array(n).fill(NaN);
+  D.tepGross = new Float32Array(n).fill(NaN);
+  D.tep = new Float32Array(n).fill(NaN);
+  for (let k = 0; k < n; k++) {
+    D.tepGross[k] = te.at(D.t[k], D.tr.te_alt[k]);
+    if (Number.isFinite(D.tepGross[k])) rate[k] = te.rate;
+    if (Number.isFinite(D.sinkUp[k])) D.tep[k] = D.tepGross[k] - D.sinkUp[k];
+  }
+  D.cum.tepGross = runningSums(n, (k) => rate[k]);
+  D.cum.tep = runningSums(n, (k) => rate[k] - D.sinkUp[k]);
 }
 
 // All vario displays and the tone use the same mode; the map's explicitly named colour sources stay independent.
 function varioSeries(D) {
   return $("showgross").checked
-    ? { am: D.amGross, te: D.tr.te_vario, gnss: D.gnssGross, averages: ["amGross", "teGross", "gnssGross"], mode: "gross" }
-    : { am: D.am, te: D.netto, gnss: D.gnss, averages: ["am", "net", "gnss"], mode: "netto" };
+    ? { am: D.amGross, te: D.tr.te_vario, tep: D.tepGross, gnss: D.gnssGross, averages: ["amGross", "teGross", "gnssGross", "tepGross"], mode: "gross" }
+    : { am: D.am, te: D.netto, tep: D.tep, gnss: D.gnss, averages: ["am", "net", "gnss", "tep"], mode: "netto" };
 }
 
 // the track colour
@@ -1124,6 +1174,7 @@ function drawVario(k) {
   };
   needle(series.gnss[k], C.gnss, 3, 0.8, C.dark ? C.muted : null);
   needle(series.te[k], C.net, 3, 0.86);
+  needle(series.tep[k], C.tep, 3, 0.83);
   needle(series.am[k], C.am, 5, 0.92, null, fallback);
   ctx.fillStyle = C.surface; ctx.strokeStyle = C.rule; ctx.lineWidth = 1.5;
   ctx.beginPath(); ctx.arc(cx, cy, R * 0.07, 0, 2 * Math.PI); ctx.fill(); ctx.stroke();
@@ -1154,13 +1205,20 @@ showHeadwindKey();
 $("showhw").addEventListener("change", () => { showHeadwindKey(); drawAll(); });
 function updateVarioLabels() {
   const mode = $("showgross").checked ? "gross" : "netto";
-  $("averagerlabel").textContent = `Average, last ${averagingSeconds()} s`;
+  $("averagerlabel").textContent = `Average ${mode}, last ${averagingSeconds()} s`;
   $("variotitle").textContent = `Vario · ${mode}`;
-  for (const [key, name] of [["am", "AirMass"], ["te", "TE"], ["gnss", "GNSS"]]) {
-    $("label-" + key).textContent = $("legend-" + key).textContent = `${name} ${mode}`;
+  for (const [key, name] of [["am", "AirMass"], ["te", "TE"], ["tep", "TE pressure"], ["gnss", "GNSS"]]) {
+    $("label-" + key).textContent = name; // the mode is in the heading
+    $("legend-" + key).textContent = `${name} ${mode}`;
   }
   $("soundsrc").options[0].textContent = `AirMass ${mode}`;
   $("soundsrc").options[1].textContent = `TE ${mode}`;
+  $("soundsrc").options[2].textContent = `TE pressure ${mode}`;
+}
+// the TE pressure vario's needle, readout, legend and tone only for logs with a TE pressure ($SENS)
+function showTePressure(on) {
+  for (const el of document.querySelectorAll(".tep")) el.hidden = !on;
+  $("soundsrc").options[2].hidden = !on;
 }
 updateVarioLabels();
 $("showgross").addEventListener("change", () => { updateVarioLabels(); invalidateCharts(); drawAll(); });
@@ -1329,7 +1387,7 @@ function drawStrip(k) {
     // symmetric around zero, fitting all three selected vario series (at least ±1, at most ±10 m/s)
     let vmax = 1;
     for (let j = ka; j <= kb; j++) {
-      for (const values of [series.am, series.te, series.gnss]) {
+      for (const values of [series.am, series.te, series.tep, series.gnss]) {
         const v = Math.abs(values[j]);
         if (v > vmax && v < 10) vmax = v;
       }
@@ -1361,6 +1419,7 @@ function drawStrip(k) {
     o.save(); o.beginPath(); o.rect(L0, T0, R0 - L0, B0 - T0); o.clip();
     drawSeries(o, series.gnss, null, C.dark ? C.muted : C.gnss, 1.5, X, Y, ka, kb);
     drawSeries(o, series.te, null, C.net, 1.5, X, Y, ka, kb);
+    drawSeries(o, series.tep, null, C.tep, 1.5, X, Y, ka, kb);
     drawSeries(o, series.am, D.amOk, C.am, 2, X, Y, ka, kb);
     o.restore();
     varioCache = { off, w: cv.width, h: cv.height };
@@ -1379,6 +1438,7 @@ function drawStrip(k) {
       ctx.fillStyle = color; ctx.strokeStyle = C.surface; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, 4, 0, 2 * Math.PI); ctx.fill(); ctx.stroke();
     };
     dot(series.te[k], C.net);
+    dot(series.tep[k], C.tep);
     if (D.amOk[k]) dot(series.am[k], C.am);
   }
 }
@@ -1390,6 +1450,7 @@ function updateReadouts(k) {
   $("v-am").textContent = fmtV(varioAverage(keys[0], k));
   $("v-net").textContent = fmtV(varioAverage(keys[1], k));
   $("v-gnss").textContent = fmtV(varioAverage(keys[2], k));
+  $("v-tep").textContent = fmtV(varioAverage(keys[3], k));
   const kmh = (v) => (Number.isFinite(v) ? (v * 3.6).toFixed(0) + " km/h" : "–");
   $("v-ias").textContent = kmh(D.tr.ias[k]); // as measured
   $("v-tas").textContent = kmh(D.tr.tas[k]); // density-corrected from the log's OAT, with altitude-based fallback when implausible
@@ -1646,7 +1707,7 @@ document.addEventListener("keydown", (e) => {
     const qa = D.qnh > 0 ? 44330.76923 - (44330.76923 - pa) * Math.pow(1013.25 / D.qnh, 1 / 5.25588) : NaN;
     const series = varioSeries(D);
     tip.innerHTML = `${clockText(D.t[k])}${clockSuffix()}<br>GNSS ${Number.isFinite(alt) ? alt.toFixed(0) + " m" : "–"} · pressure ${Number.isFinite(pa) ? pa.toFixed(0) + " m" : "–"}${Number.isFinite(qa) ? ` · QNH ${qa.toFixed(0)} m` : ""}<br>` +
-      `AirMass ${series.mode} ${fmtV(series.am[k])}${D.amOk[k] ? "" : ` (TE ${series.mode})`} · TE ${series.mode} ${fmtV(series.te[k])} · GNSS ${series.mode} ${fmtV(series.gnss[k])} m/s` +
+      `AirMass ${series.mode} ${fmtV(series.am[k])}${D.amOk[k] ? "" : ` (TE ${series.mode})`} · TE ${series.mode} ${fmtV(series.te[k])}${D.hasTep ? ` · TE pressure ${series.mode} ${fmtV(series.tep[k])}` : ""} · GNSS ${series.mode} ${fmtV(series.gnss[k])} m/s` +
       (() => { const sec = D.sec[secAt(k)]; return sec ? `<br>${COLOR_BY[colorBy()]} (1 s) ${fmtV(sec.v[colorBy()])} m/s` : ""; })();
     tip.style.display = "block";
     const pr = $("charts").getBoundingClientRect(), cr = cv.getBoundingClientRect();
@@ -1671,12 +1732,12 @@ window.addEventListener("drop", (e) => { e.preventDefault(); dragDepth = 0; $("d
 $("export").onclick = () => {
   if (!D) return;
   const r = D.rep.cols, names = Object.keys(r);
-  const out = ["t_s,lat,lon,gnss_alt,baro_alt,te_vario,te_netto,airmass_shown," + names.join(",")];
+  const out = ["t_s,lat,lon,gnss_alt,baro_alt,te_vario,te_netto,airmass_shown,te_pressure_vario,te_pressure_netto," + names.join(",")];
   for (let k = 0; k < D.n; k++) {
     const i = D.ai[k];
     if (i < 0) continue;
     const f = (v, d) => (Number.isFinite(v) ? v.toFixed(d) : "");
-    out.push([D.t[k].toFixed(1), f(D.lat[k], 6), f(D.lon[k], 6), f(D.galt[k], 1), f(D.tr.baro_alt[k], 1), f(D.tr.te_vario[k], 2), f(D.netto[k], 3), f(D.am[k], 3)]
+    out.push([D.t[k].toFixed(1), f(D.lat[k], 6), f(D.lon[k], 6), f(D.galt[k], 1), f(D.tr.baro_alt[k], 1), f(D.tr.te_vario[k], 2), f(D.netto[k], 3), f(D.am[k], 3), f(D.tepGross[k], 3), f(D.tep[k], 3)]
       .concat(names.map((n) => f(r[n][i], n === "status" ? 0 : 4))).join(","));
   }
   const a = document.createElement("a");
@@ -1798,7 +1859,7 @@ async function soundOn() {
     // Follow the same series as the selected needle, including the common gross/netto mode.
     const k = indexAt(T), src = $("soundsrc").value;
     const series = varioSeries(D);
-    const v = src === "netto" ? series.te[k] : series.am[k];
+    const v = src === "netto" || (src === "tep" && !D.hasTep) ? series.te[k] : src === "tep" ? series.tep[k] : series.am[k];
     audio.node.port.postMessage(Number.isFinite(v) ? { v } : { off: true });
   }, 100);
 }
