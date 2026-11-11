@@ -128,7 +128,7 @@ void VarioFilter::postProcess()
     te_gr += ((TEAVG - te_gr)) / vario_delay.get();
     _got_positive = te_gr > .0f && te_vario.get() < .0f;
 
-    _polar_sink = Speed2Fly.getSink(ias.get());
+    _polar_sink = Speed2Fly.getSink(ias.get()) * tas_per_ias.get();
     mps_t te_ne = te_gr - _polar_sink;
 
     // calc the climb score
@@ -136,7 +136,7 @@ void VarioFilter::postProcess()
         // achieved gross climb integral
         _Gact.filter(std::max(te_gr, 0.f));
         // Gmax​(N)=N−S(vopt​)); max. gross achievable integral with current load and net vario
-        _Goptimal.filter(std::max(te_ne + Speed2Fly.getMinsink(), .1f));
+        _Goptimal.filter(std::max(te_ne + Speed2Fly.getMinsink() * tas_per_ias.get(), .1f));
     }
     else {
         _Gact.filter(.0f);
@@ -147,24 +147,24 @@ void VarioFilter::postProcess()
     // ESP_LOGI(FNAME, "Varioscore TE: %.3f, sink: %.3f, Gact: %.3f, Gmax: %.3f, tp: %.3f", vkf.v, _polar_sink, _Gact.get(), _Goptimal.get(), tp);
     thermal_score.set(tp);
 
-    // Adjust the net for Super Netto mode if applicable
-    if (CRMOD.getVMode() == CruiseMode::MODE_REL_NETTO) {
-        // Super Netto, considering circling sink
-        _polar_sink += Speed2Fly.getCirclingSink();
-    }
-    te_netto.set(te_ne);
-
     if ( CRMOD.getChanged() ) {
         restartRunningAvg(); // restart the running average when the cruise mode changes, avoid smeared data
         ESP_LOGI(FNAME, "Cruise mode changed, restarting running average");
     }
     if (CRMOD.isGross()) {
-        pushAndPublish(te_gr, now); // damp
-        te_gross.set(get());                // use damped value
+        pushAndPublish(te_gr, now);  // damp
+        te_gross.set(get());                 // use damped value
         te_netto.set(get() - _polar_sink);
     } else {
-        pushAndPublish(te_ne, now);
-        te_gross.set(get() + _polar_sink);
+        // Adjust the net for Super Netto mode if applicable
+        mps_t circle_sink = 0.f;
+        if (CRMOD.getVMode() == CruiseMode::MODE_REL_NETTO) {
+            // Super Netto, considering circling sink
+            circle_sink = Speed2Fly.getCirclingSink() * tas_per_ias.get();
+        }
+
+        pushAndPublish(te_ne + circle_sink, now);
+        te_gross.set(get() - circle_sink + _polar_sink);
         te_netto.set(get());
     }
     _avg_vario.filter(getRunningAvg());
