@@ -32,7 +32,7 @@ dl_action_t GarminMsg::parsePGRMZ(NmeaPlugin *plg)
     const std::vector<int> *word = &sm->_word_start;
     ESP_LOGI(FNAME, "parsePGRMZ");
 
-    if (word->size() == 4 && sm->_frame.at(word->at(1)) == 'F') {
+    if (word->size() == 3 && sm->_frame.at(word->at(1)) == 'F') {
         int alt1013_ft = atoi(sm->_frame.c_str()+word->at(0));
         meter_t alt_external = Units::read(Units::foot, alt1013_ft);
         ESP_LOGI(FNAME, "PGRMZ %d: ALT(1013):%5.0f m", alt1013_ft, alt_external);

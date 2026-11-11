@@ -152,7 +152,6 @@ dl_control_t NmeaPrtcl::nextBytes(const char* c, int len)
         }
         else {
             if ( *c == '*' ) {
-                _sm._word_start.push_back(pos+1);
                 _sm._state = CHECK_CRC1; // Expecting a CRC to check
                 break;
             }

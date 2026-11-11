@@ -158,7 +158,7 @@ dl_action_t XCVSimMsg::parseExcl_XCV(NmeaPlugin *plg)
 
     const char *s = sm->_frame.c_str();
     const char *key = s + word->at(0);
-    if (strncmp(key, "CA1", 3) == 0)
+    if (strncmp(key, "CA1", 3) == 0 && word->size() >= 7)
     {
         //          glider type, empty weight, crew weight, ballast, speed cal, QNH
         // !XCV,CA1,2305,229,88,0,0,102000.00*42
@@ -176,7 +176,7 @@ dl_action_t XCVSimMsg::parseExcl_XCV(NmeaPlugin *plg)
         float fvalue = atof(s + word->at(6)); // QNH
         QNH.set(fvalue);
     }
-    else if (strncmp(key, "FLP", 3) == 0)
+    else if (strncmp(key, "FLP", 3) == 0 && word->size() >= 2)
     {
         // flap (x10) setting changed 
         // !XCV,FLP,33*17

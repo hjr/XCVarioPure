@@ -115,7 +115,7 @@ dl_action_t FlarmMsg::parsePFLAE(NmeaPlugin *plg)
     ProtocolState *sm = plg->getNMEA().getSM();
     const std::vector<int> *word = &sm->_word_start;
 
-    if ( word->size() == 3
+    if ( word->size() >= 3
         && sm->_frame.at(word->at(0)) == 'A'
         && sm->_frame.at(word->at(1)) == '0'
         && sm->_frame.at(word->at(2)) == '0' )
@@ -200,11 +200,8 @@ dl_action_t FlarmMsg::parsePFLAX(NmeaPlugin *plg)
     NmeaPrtcl &nmea = plg->getNMEA();
     ProtocolState *sm = nmea.getSM();
     const std::vector<int> *word = &sm->_word_start;
-    // the number of fields without the checksum, the parser starts a word after the '*' as well
+    dl_action_t ret = DO_ROUTING;
     int fields = word->size();
-    if ( fields > 0 && sm->_frame[word->back() - 1] == '*' ) {
-        fields--;
-    }
 
     if ( fields == 1 || fields == 2 ) {
         const char cmd = sm->_frame[word->at(0)];
@@ -225,6 +222,7 @@ dl_action_t FlarmMsg::parsePFLAX(NmeaPlugin *plg)
             }
         }
         else if ( cmd == 'S' ) {
+            ret = NOACTION;
             if ( SetupCommon::isMaster() && !gflags.inSimulationMode ) {
                 // XCV extension to switch to simulation mode
                 ESP_LOGI(FNAME,"enter SIMULATION MODE");
@@ -257,7 +255,7 @@ dl_action_t FlarmMsg::parsePFLAX(NmeaPlugin *plg)
         }
     }
 
-    return DO_ROUTING;
+    return ret;
 }
 
 
