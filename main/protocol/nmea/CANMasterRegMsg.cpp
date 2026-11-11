@@ -113,7 +113,7 @@ dl_action_t CANMasterRegMsg::registration_query(NmeaPlugin *plg)
         ndev = XCVARIOSECOND_DEV;
         nproto = XCVSYNC_P;
         prio = 4;
-        if ( sm->_word_start.size() > 2 ) {
+        if ( sm->_word_start.size() >= 2 ) {
             client_caps = std::stoi(NMEA::extractWord(sm->_frame, pos));
         }
     }

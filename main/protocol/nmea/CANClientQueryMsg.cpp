@@ -122,7 +122,7 @@ dl_action_t CANClientQueryMsg::registration(NmeaPlugin *plg)
 
         // look for optional master capabilities
         int master_caps = 0;
-        if ( sm->_word_start.size() > 3 ) {
+        if ( sm->_word_start.size() >= 3 ) {
             master_caps = std::stoi(NMEA::extractWord(sm->_frame, pos));
             ESP_LOGI(FNAME, "Mcaps received 0x%x", master_caps);
             peer_caps.set(master_caps);

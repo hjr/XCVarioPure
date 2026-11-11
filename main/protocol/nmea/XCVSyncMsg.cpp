@@ -119,6 +119,10 @@ dl_action_t XCVSyncMsg::parseExcl_xcvX(NmeaPlugin *plg)
     ProtocolState *sm = plg->getNMEA().getSM();
     const std::vector<int> *word = &sm->_word_start;
 
+    if (word->size() < 2) {
+        return NOACTION;
+    }
+
     ESP_LOGD(FNAME,"parse xcvX %s p0 %d", sm->_frame.c_str(), word->at(0));
     char type = sm->_frame[4];
     int pos = word->at(0);
@@ -184,6 +188,10 @@ dl_action_t XCVSyncMsg::parseExcl_xcvRequest(NmeaPlugin *plg)
 {
     ProtocolState *sm = plg->getNMEA().getSM();
     const std::vector<int> *word = &sm->_word_start;
+    if ( word->size() < 1 ) {
+        return NOACTION;
+    }
+    
     const char *s = sm->_frame.c_str();
     const char *key = s + word->at(0);
     if ( strncmp(key, "Init", 4) == 0) {

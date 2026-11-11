@@ -192,7 +192,7 @@ dl_action_t GpsMsg::parseGPGGA(NmeaPlugin *plg)
     const std::vector<int> *word = &sm->_word_start;
     ESP_LOGD(FNAME, "parseGPGGA");
 
-    if (word->size() > 13)
+    if (word->size() >= 13)
     {
         int numSat = atoi(sm->_frame.c_str() + word->at(6));
         ESP_LOGD(FNAME, "numSat=%d", numSat);
