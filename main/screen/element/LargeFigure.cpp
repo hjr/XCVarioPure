@@ -81,10 +81,10 @@ void LargeFigure::drawStatic() {
     MYUCG->setColor(COLOR_HEADER);
     const char *mode = ""; // omit default "gross"
     if ( CRMOD.getVMode() == CruiseMode::MODE_REL_NETTO) {
-        mode = "s-netto";
+        mode = "s-net";
     }
     else if ( CRMOD.getVMode() == CruiseMode::MODE_NORMAL_NETTO) {
-        mode = "netto";
+        mode = " net ";
     }
     int16_t str_width = MYUCG->getStrWidth(mode);
     ESP_LOGI(FNAME, "stringlength %s: %d, font height: %d", mode, str_width, MYUCG->getFontAscent() - MYUCG->getFontDescent());
