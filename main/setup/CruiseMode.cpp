@@ -9,7 +9,6 @@
 #include "CruiseMode.h"
 
 #include "setup/SetupNG.h"
-#include "IpsDisplay.h"
 #include "logdefnone.h"
 
 CruiseMode CRMOD; // a global variable
@@ -43,18 +42,15 @@ void CruiseMode::updateCache()
     ESP_LOGI(FNAME, "update cruise mode: %d", _cmode);
 
     // set the vario mode cache
-    const bool relative = netto_mode.get() == static_cast<int>(e_netto_mode::NETTO_RELATIVE); // Super Netto
-    const int vm = vario_mode.get();
-    if (vm == static_cast<int>(e_vario_mode::VARIO_AIRMASS_GROSS)) {
-        _vmode_setup = MODE_AIRMASS_GROSS; // the air mass movement plus the polar sink
-    } else if (vm == static_cast<int>(e_vario_mode::VARIO_AIRMASS) || (_cmode && vm == static_cast<int>(e_vario_mode::CRUISE_ONLY_AIRMASS))) {
-        _vmode_setup = relative ? MODE_REL_AIRMASS : MODE_AIRMASS; // vertical air mass movement
-    } else if (vm == static_cast<int>(e_vario_mode::VARIO_NETTO) || (_cmode && vm == static_cast<int>(e_vario_mode::CRUISE_ONLY_NETTO))) {
-        _vmode_setup = relative ? MODE_REL_NETTO : MODE_NORMAL_NETTO;
+    if (vario_mode.get() == static_cast<int>(e_vario_mode::VARIO_NETTO) || (_cmode && (vario_mode.get() == static_cast<int>(e_vario_mode::CRUISE_ONLY_NETTO)))) {
+        if (netto_mode.get() == static_cast<int>(e_netto_mode::NETTO_NORMAL)) {
+            _vmode = MODE_NORMAL_NETTO;
+        } else {
+            _vmode = MODE_REL_NETTO; // Super Netto
+        }
     } else {
-        _vmode_setup = MODE_BRUTTO;
+        _vmode = MODE_BRUTTO;
     }
-    applyAirMass();
 
     // set the audio mode cache
     _audio_vario = ( ! _cmode || (cruise_audio_mode.get() != AUDIO_S2F) );
@@ -62,44 +58,6 @@ void CruiseMode::updateCache()
     // breaks can be filled with silence or with dual tone
     _audio_chopping = (_audio_vario && (chopping_mode.get() & VARIO_CHOP) ) ||
             (!_audio_vario && (chopping_mode.get() & S2F_CHOP) );
-}
-
-// the effective vario mode: without a valid air mass vario Air Mass Gross shows gross, Air Mass netto and
-// Super Air Mass Super Netto (MODE_AIRMASS_GROSS -> MODE_BRUTTO, MODE_AIRMASS -> MODE_NORMAL_NETTO, ...)
-void CruiseMode::applyAirMass()
-{
-    _vmode = _airmass_available ? _vmode_setup : (_vmode_setup & ~MODE_AIRMASS_GROSS);
-}
-
-void CruiseMode::setAirMassAvailable(bool available)
-{
-    _airmass_available = available;
-    applyAirMass();
-    if (isAirMass() != _airmass_shown) {
-        // the vario started or stopped showing the air mass movement
-        _airmass_shown = isAirMass();
-        _cm_changed = true; // restart the averages
-        IpsDisplay::setCruiseChanged(); // refresh the mode label
-    }
-}
-
-const char* CruiseMode::label(LabelStyle style) const
-{
-    const bool compact = style == LABEL_COMPACT;
-    switch (_vmode) {
-    case MODE_NORMAL_NETTO:
-        return compact ? "  net" : "netto";
-    case MODE_REL_NETTO:
-        return compact ? "snet" : "s-netto";
-    case MODE_AIRMASS_GROSS:
-        return compact ? " gair" : "g-air";
-    case MODE_AIRMASS:
-        return compact ? "  air" : "air";
-    case MODE_REL_AIRMASS:
-        return compact ? " sair" : "s-air";
-    default:
-        return ""; // gross
-    }
 }
 
 // call in context that should go in synch with the pending cruise mode change

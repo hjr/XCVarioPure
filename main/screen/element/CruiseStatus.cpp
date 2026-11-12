@@ -48,13 +48,15 @@ void CruiseStatus::draw() {
         text_offset = 3*SYMBOL_SIZE;
     }
 
-    // write the vario mode in case it is not gross
-    const char *s = CRMOD.label(CruiseMode::LABEL_COMPACT);
-    if (*s) {
+    // write netto mode in case set
+    if (CRMOD.isNet()) {
         MYUCG->setColor(COLOR_WGREY);
     } else {
         MYUCG->setColor(COLOR_BLACK);
-        s = "  net"; // clear the label
+    }
+    const char *s = "  net";
+    if (CRMOD.getVMode() == CruiseMode::MODE_REL_NETTO) {
+        s = "snet";
     }
     ESP_LOGI(FNAME, "print netto stat %d - %s", CRMOD.isNetto(), s);
     ESP_LOGI(FNAME, "print x/y %d/%d", _ref.x + SYMBOL_SIZE + 3 - MYUCG->getStrWidth(s), _ref.y + text_offset);

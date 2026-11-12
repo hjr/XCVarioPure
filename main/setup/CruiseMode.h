@@ -26,21 +26,15 @@ class CruiseMode
 {
 public:
     using CruiseAudio = enum : uint8_t { AUDIO_S2F, AUDIO_VARIO };
-    // vario mode bits: 1 net, 2 relative (Super Netto, plus circling sink), 4 air mass
-    using VarioModeBits = enum : uint8_t { MODE_BRUTTO=0, MODE_NORMAL_NETTO=1, MODE_REL_NETTO=3, MODE_AIRMASS_GROSS=4, MODE_AIRMASS=5, MODE_REL_AIRMASS=7 };
-    using LabelStyle = enum : uint8_t { LABEL_COMPACT, LABEL_LONG };
+    using VarioModeBits = enum : uint8_t { MODE_BRUTTO=0, MODE_NORMAL_NETTO=1, MODE_REL_NETTO=3 }; // vario mode bits
     CruiseMode();
     bool getCMode() const { return _cmode; };
     bool getChanged() const { return _cm_changed; }
-    bool isGross() const { return !isNet(); }
-    bool isNet() const { return _vmode & 1; }
-    bool isRelative() const { return _vmode & 2; }
-    bool isAirMass() const { return _vmode & 4; }
+    bool isGross() const { return _vmode == MODE_BRUTTO; }
+    bool isNet() const { return _vmode != MODE_BRUTTO; }
     bool audioIsVario() const { return _audio_vario; }
     bool audioIsChopping() const { return _audio_chopping; }
     int16_t getVMode() const { return _vmode; }
-    // the label of the effective vario mode, "" for gross; compact: padded to the width of "  net", long: for the large figure
-    const char* label(LabelStyle style) const;
 
     // setter
     void setCMode(bool cruise);
@@ -48,17 +42,9 @@ public:
     void unlockCMode() { _lock = false; }
     void updateCache();
     void promoteChange(); // call only once per sensor loop cycle
-    // vario filter, every cycle: the air mass vario is valid. While it is not, the air mass modes fall back to the
-    // TE vario modes (gross, netto, Super Netto); a switch between them counts as a mode change.
-    void setAirMassAvailable(bool available);
 
 private:
-    void applyAirMass();
-
-    uint8_t _vmode = 0; // cached effective vario mode
-    uint8_t _vmode_setup = 0; // cached vario mode of the setup
-    bool _airmass_available = false;
-    bool _airmass_shown = false; // the vario shows the air mass at the last setAirMassAvailable()
+    uint8_t _vmode = 0; // cached vario mode
     uint8_t _cmode :1 = false; // cached cruise mode
     uint8_t _pending_change :1 = false; // to synch with sensor loop
     uint8_t _cm_changed :1 = false; // changed in this sensor loop cycle
