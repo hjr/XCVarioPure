@@ -214,7 +214,12 @@ AirMassSensor::AirMassSensor() :
 
 AirMassSensor::~AirMassSensor()
 {
-    airmassSensor = nullptr;
+    if (_active) {
+        stop();
+    }
+    if (airmassSensor == this) {
+        airmassSensor = nullptr;
+    }
 }
 
 bool AirMassSensor::setup()
