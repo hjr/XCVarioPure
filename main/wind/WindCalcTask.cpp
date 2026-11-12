@@ -115,7 +115,7 @@ static void wind_calc_task(void *arg)
                             ToyNmeaPrtcl->sendXCVNmeaHDT();
                         }
                     }
-                    airmass::nmeaFeed(ToyNmeaPrtcl, !(count%5));
+                    airmass::nmeaFeed(ToyNmeaPrtcl, !(count%5)); // todo move to other feeds
                 }
                 break;
             }
