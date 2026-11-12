@@ -50,13 +50,14 @@ union WindData
     constexpr bool isValid() const { return flags == 0; }
     constexpr void setValid() { flags = 0; }
     constexpr bool isDegraded() const { return flags != 0 && flags < 15; }
+    constexpr bool isUsable() const { return flags < 15; }
     constexpr void setDegraded() { if (flags < 15) flags++; }
     constexpr int data() const { return raw; }
     // setters
     constexpr void setDeg2(int16_t d) { dir = d % 720; }
     constexpr void setKmh(kmh_t v) { val = fast_iroundf(v * Units::kmh_to_mps(8)); }
     constexpr void inclHeading(rad_t d) {
-        if (isValid()) { // the invalid marker must stay one
+        if (isUsable()) { // the invalid marker must stay one
             dir = (dir - fast_iroundf(Units::rad_to_deg(d) * 2)) % 720;
         }
     }
