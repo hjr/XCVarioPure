@@ -8,6 +8,7 @@
 
 #include "nmea_util.h"
 
+#include <cstdint>
 #include <cstdlib>
 #include <string>
 
