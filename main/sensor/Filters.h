@@ -46,9 +46,9 @@ public:
     void setTau(second_t tau, second_t dt) { _alpha = alphaFromTau(tau, dt); }
     void setAlpha(float alpha) { _alpha = alpha; }
     float getAlpha() const { return _alpha; }
-    void reset(T init_val = T{}) { _last_output = init_val; }
-    T filter(T input);
-    T get() const { return _last_output; }
+    void reset(T init_val = T{}) override { _last_output = init_val; }
+    T filter(T input) override;
+    T get() const override { return _last_output; }
     const T& getRef() const { return _last_output; }
 protected:
     float _alpha;
@@ -82,4 +82,21 @@ private:
     float _beta = 0.05f;
     float _activity = 0.f;
     float _threshold = 40.f;
+};
+
+// A periodic filter dedicated for navigation topics
+template <typename T>
+class PeriodicLowPassFilterT : public LowPassFilterT<T>
+{
+public:
+    explicit PeriodicLowPassFilterT(float alpha, T period)
+        : LowPassFilterT<T>(alpha), _period(period) {}
+
+    void reset(T init_val = T{}) override {
+       LowPassFilterT<T>::reset(std::remainder(init_val, _period));
+    }
+    T filter(T input) override;
+
+private:
+    T _period;
 };
