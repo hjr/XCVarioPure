@@ -244,7 +244,7 @@ void VarioFilter::postProcess() {
     _got_positive = _TEF > .0f && te_vario.get() < .0f;
 
     te_vario.set(_TEF);
-    _polar_sink = Speed2Fly.getSink(ias.get());
+    _polar_sink = Speed2Fly.getSink(ias.get()) * tas_per_ias.get();
     te_netto.set(_TEF - _polar_sink);
 
 	if( !(N%10) ){ // every second one sample
