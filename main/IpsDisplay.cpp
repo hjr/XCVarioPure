@@ -23,6 +23,7 @@
 #include "screen/element/ThermalAssist.h"
 #include "screen/MessageBox.h"
 
+#include "airmass/AirMassSensor.h"
 #include "sensor/imu/Accelerometer.h"
 #include "sensor/VarioFilter.h"
 #include "math/Trigonometry.h"
@@ -384,7 +385,7 @@ static void initRefs()
 static bool instantWindShown()
 {
     const int source = wind_enable.get();
-    return source == WA_EXTERNAL || (source & WA_AIRMASS);
+    return source == WA_EXTERNAL || airmassSensor;
 }
 
 ////////////////////////////
