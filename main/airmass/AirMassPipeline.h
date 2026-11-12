@@ -334,7 +334,7 @@ private:
         }
     }
 
-    // the end of the cycle, after its GNSS and compass fusion: the averaged wind follows the valid instant wind
+    // the end of the cycle, after its GNSS and compass fusion: the averaged wind follows the valid or degraded instant wind
     // (step() ends a cycle left open)
 public:
     void endCycle() {
@@ -342,7 +342,7 @@ public:
             return;
         }
         _open = false;
-        if (_ekf.status() & AirMassEKF::ST_WIND_VALID) {
+        if (_ekf.status() & (AirMassEKF::ST_WIND_VALID | AirMassEKF::ST_WIND_DEGRADED)) {
             _avg_wind.update(_ekf.windN(), _ekf.windE(), _ekf.heading(), _ekf.headingRate(), _in.dt);
         } else {
             _avg_wind.reset(_ekf.windN(), _ekf.windE());

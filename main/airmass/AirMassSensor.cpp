@@ -518,7 +518,7 @@ void AirMassSensor::publish()
     };
     setChanged(airmass_status, st);
 
-    // a degraded wind is still the best instant wind there is: shown marked, but no average.
+    // a degraded wind is still the best instant wind there is: shown marked, and averaged.
     // No stale wind for consumers that do not check the status.
     if (!(st & (AirMassEKF::ST_WIND_VALID | AirMassEKF::ST_WIND_DEGRADED))) {
         publishWind(inst_wind, WindData());
@@ -534,7 +534,7 @@ void AirMassSensor::publish()
             publishWind(synoptic_wind, WindData());
             _average_published = false;
         }
-    } else if ((st & AirMassEKF::ST_WIND_VALID) && average_due) {
+    } else if (average_due) {
         const vector_f avg(_pipe.avgWind().windN(), _pipe.avgWind().windE(), 0.f);
         publishWind(synoptic_wind, windFromVector(avg));
         _average_published = true;
