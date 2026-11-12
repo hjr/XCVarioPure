@@ -14,6 +14,7 @@
 #include "math/Floats.h"
 #include "logdefnone.h"
 #include "IpsDisplay.h" //bbox
+#include "airmass/AirMassSensor.h"
 
 #include <cmath>
 
@@ -194,7 +195,8 @@ bool ArrowIndicator::drawOver(int16_t val,float a)
         MYUCG->drawTriangle(n.x_4, n.y_4, n.x_5, n.y_5, n.x_6, n.y_6);
     }
     // draw a frame around the needle
-    MYUCG->setColor(COLOR_BLACK);
+
+    if (airmassSensor) MYUCG->setColor(COLOR_BLUE); else MYUCG->setColor(COLOR_BLACK);
     MYUCG->drawLine(n.x_0, n.y_0, n.x_1, n.y_1);
     MYUCG->drawLine(n.x_1, n.y_1, n.x_4, n.y_4);
     MYUCG->drawLine(n.x_4, n.y_4, n.x_6, n.y_6);
@@ -210,7 +212,7 @@ bool ArrowIndicator::drawOver(int16_t val,float a)
             MYUCG->drawTriangle(n.x_4, n.y_4, n.x_5, n.y_5, n.x_6, n.y_6);
         }
         // draw a frame around the needle
-        MYUCG->setColor(COLOR_BLACK);
+        if (airmassSensor) MYUCG->setColor(COLOR_BLUE); else MYUCG->setColor(COLOR_BLACK);
         MYUCG->drawLine(n.x_0, n.y_0, n.x_1, n.y_1);
         MYUCG->drawLine(n.x_1, n.y_1, n.x_4, n.y_4);
         MYUCG->drawLine(n.x_4, n.y_4, n.x_6, n.y_6);
