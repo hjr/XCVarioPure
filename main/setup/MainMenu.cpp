@@ -452,7 +452,6 @@ static void vario_menu_create(SetupMenu *vae) {
 	vamod->addEntry("Gross");
 	vamod->addEntry("Netto");
 	vamod->addEntry("Cruise-Netto");
-	airmass::menuVarioModes(vamod);
 	vae->addEntry(vamod);
 
 	SetupMenuSelect *nemod = new SetupMenuSelect("Netto Mode", RST_NONE, nullptr, &netto_mode);

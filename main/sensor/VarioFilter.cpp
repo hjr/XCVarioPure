@@ -15,6 +15,7 @@
 #include "setup/CruiseMode.h"
 #include "setup/SetupNG.h"
 #include "airmass/AirMass.h"
+#include "airmass/AirMassSensor.h"
 #include "logdef.h"
 
 
@@ -42,6 +43,7 @@ VarioFilter::VarioFilter() :
     _Gact(15.f, DUTY_CYCLE_MS / 1000.f),
     _Goptimal(15.f, DUTY_CYCLE_MS / 1000.f),
     _vario_lpf(LowPassFilterT<float>::alphaFromTau(4.f, getNominalDutyCycleMS() / 1000.0f)),
+    _air_lpf(LowPassFilterT<float>::alphaFromTau(4.f, getNominalDutyCycleMS() / 1000.0f)),
     _avg_vario(LowPassFilterT<float>::alphaFromTau(1.f, getNominalDutyCycleMS() / 1000.0f))
 {
     _id = SensorId(SensorType::VARIOMETER, 10); // prio right after the te_alt doRead filter
@@ -58,7 +60,8 @@ bool VarioFilter::setup() {
     float alt = altitude.get();
     ESP_LOGI(FNAME, "VarioFilter setup with alt %f", alt);
     // vario needle damping
-    _vario_lpf.setTau( vario_delay.get() / 3, getDutyCycleS());
+    _vario_lpf.setTau( vario_delay.get() / 3.f, getNominalDutyCycleMS() / 1000.0f);
+    _air_lpf.setTau( vario_delay.get() / 3.f * 1.2f, getNominalDutyCycleMS() / 1000.0f);
     averageAlt = alt;
     Altitude = alt;
     predictAlt = alt;
@@ -75,6 +78,7 @@ bool VarioFilter::setup() {
 void VarioFilter::postProcess()
 {
     static float _errorval = 1.6;
+    static mps_t te_gr = 0.f;
     int now = Clock::getMillis();
     const second_t dt = (now - _prev_time) / 1000.0f;
     _prev_time = now;
@@ -123,11 +127,9 @@ void VarioFilter::postProcess()
     meter_t altDiff = Altitude - lastAltitude;
     // ESP_LOGI(FNAME," altDiff %0.1f diff %0.1f", TE, diff);
     lastAltitude = Altitude;
-    // vario needle damping
-    _te_damper.setDamping(vario_delay.get());
-    const mps_t te_gr = _te_damper.filter(altDiff / dt);
-    predictAlt = Altitude + (_te_damper.lowPass() * dt);
-    _got_positive = te_gr > .0f && te_vario.get() < .0f;
+    mps_t TEAVG = _vario_lpf.filter(altDiff / dt);  // in m/s
+    predictAlt = Altitude + (TEAVG * dt);
+    te_gr += ((TEAVG - te_gr)) / vario_delay.get();
 
     _polar_sink = Speed2Fly.getSink(ias.get()) * tas_per_ias.get();
     mps_t te_ne = te_gr - _polar_sink;
@@ -147,19 +149,22 @@ void VarioFilter::postProcess()
     float tp = _Gact.get() / _Goptimal.get();
     // ESP_LOGI(FNAME, "Varioscore TE: %.3f, sink: %.3f, Gact: %.3f, Gmax: %.3f, tp: %.3f", vkf.v, _polar_sink, _Gact.get(), _Goptimal.get(), tp);
     thermal_score.set(tp);
+    
+    
+    // Air Mass mode: vertical air mass movement of the estimator, falls back to legacy
+    float te_air;
+    if ( airmass::rawVario(te_air) ) {
+        te_ne = _air_lpf.filter(te_air);
+        te_gr = te_ne + _polar_sink;
+    }
+    _got_positive = te_gr > .0f && te_vario.get() < .0f;
 
     if ( CRMOD.getChanged() ) {
         restartRunningAvg(); // restart the running average when the cruise mode changes, avoid smeared data
         ESP_LOGI(FNAME, "Cruise mode changed, restarting running average");
     }
-    if (airmass_ok) {
-        // Air Mass Gross: what the glider climbs in this air, like gross vario but with the air mass filter
-        pushAndPublish(air + (CRMOD.isGross() ? _polar_sink : rel_sink), now);
-        te_gross.set(te_gr);
-    } else if (CRMOD.isGross()) {
-        pushAndPublish(te_gr, now);  // damp
-        te_gross.set(get());                 // use damped value
-        te_netto.set(get() - _polar_sink);
+    if (CRMOD.isGross()) {
+        pushAndPublish(te_gr, now);
     } else {
         // Adjust the net for Super Netto mode if applicable
         mps_t circle_sink = 0.f;
@@ -169,13 +174,13 @@ void VarioFilter::postProcess()
         }
 
         pushAndPublish(te_ne + circle_sink, now);
-        te_gross.set(get() - circle_sink + _polar_sink);
-        te_netto.set(get());
     }
+    te_gross.set(te_gr);
+    te_netto.set(te_ne);
     _avg_vario.filter(getRunningAvg());
 
-    // speed to fly update on current vario, in Air Mass mode on the air mass movement (never with the circling sink)
-    s2f_ideal.set(Speed2Fly.calculate(airmass_ok ? air : te_ne, !CRMOD.getCMode()));
+    // speed to fly update on current vario
+    s2f_ideal.set(Speed2Fly.calculate(te_ne, !CRMOD.getCMode()));
 
     AverageVario::newSample(te_gr);
 }
