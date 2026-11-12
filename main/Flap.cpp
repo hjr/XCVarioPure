@@ -181,7 +181,11 @@ void Flap::removeLevel(int idx)
 // get optimum flap position for given speed
 float Flap::getOptimum(mps_t spd) const {
     // Correct for current g load
-    float g_force = accSensor ? accSensor->getGload() : 1.f;
+    return getOptimum(spd, accSensor ? accSensor->getGload() : 1.f);
+}
+
+// for the given g load
+float Flap::getOptimum(mps_t spd, float g_force) const {
     if (g_force < 0.3) {
         g_force = 0.3; // Ignore meaningless values below 0.3g
     }

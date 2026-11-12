@@ -109,6 +109,7 @@ public:
 
     // recommendations
     float getOptimum(mps_t speed) const;
+    float getOptimum(mps_t speed, float g_force) const;
     mps_t getSpeedBand(float wkf, mps_t &maxv) const;
     mps_t getSpeed(float wkf) const;
 
