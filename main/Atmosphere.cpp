@@ -46,8 +46,23 @@ const Units::unit_t *PressureUnit;
 // V(m/s) = sqrt(2*( <mmH2O> * 0.997585 * 9.807 ) / 1.225)
 
 
+void Atmosphere::cacheTasPerIas() {
+    kelvin_t temp = OAT.get();
+    if (!OAT.getValid()) {
+        temp = Units::isa_temperature(altitude.get());
+        // ESP_LOGW(FNAME,"T invalid, using 15 deg");
+    }
+    if ( statp.getValid() ) {
+        tas_per_ias.set(std::sqrt( (Units::rho0 * Units::R_air * temp) / statp.get()));
+    }
+    else {
+        tas_per_ias.set(1.0f);
+    }
+}
+
+
 mps_t Atmosphere::TAS(mps_t ias, pascal_t sp, kelvin_t temp) {
-    return ias * sqrtf( (Units::rho0 * Units::R_air * temp) / sp );
+    return ias * tas_per_ias.get();
 }
 
 // True Airspeed from dynamic pressure (incompressible, low Mach)

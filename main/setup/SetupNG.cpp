@@ -315,14 +315,8 @@ static void calc_speeds() {
     }
     
     // IAS to TAS conversion
-    kelvin_t temp = OAT.get();
-    if (!OAT.getValid()) {
-        temp = Units::isa_temperature(altitude.get());
-        // ESP_LOGW(FNAME,"T invalid, using 15 deg");
-    }
-    if (statp.getValid() && ias.getValid()) {
-        tas.set(Atmosphere::TAS(ias.get(), statp.get(), temp));
-        // ESP_LOGI(FNAME, "calc_speeds: IAS=%.2f, statp=%.2f, OAT=%.2f -> TAS=%.2f", ias.get(), statp.get(), temp, tas.get());
+    if (ias.getValid()) {
+        tas.set(ias.get() * tas_per_ias.get());
     }
     else {
         tas.setInvalid();
@@ -447,6 +441,7 @@ SetupNG<meter_t>  		altitude( "ALTI", 0.0, false, SYNC_NONE, VOLATILE ); // deri
 SetupNG<meter_t>  		altitude_isa( "ALT_ISA", 0.0, false, SYNC_NONE, VOLATILE ); // derived from statp
 SetupNG<mps_t>  		ias( "IASV", 0.0, false, SYNC_NONE, VOLATILE); // derived from dynp in calc_speeds()
 SetupNG<mps_t>  		tas( "TASV", 0.0, false, SYNC_NONE, VOLATILE ); // derived from ias + OAT + altitude in calc_speeds()
+SetupNG<float>  		tas_per_ias( "TPIAS", 1.0, 0, SYNC_BIDIR, VOLATILE );
 SetupNG<mps_t>  		gnd_speed( "GNDV", -1.0, false, SYNC_NONE, VOLATILE );
 SetupNG<rad_t>  		gnd_course( "GNDC", -10.0, false, SYNC_NONE, VOLATILE );
 SetupNG<meter_t>  		te_alt( "TEALT", 0.0, false, SYNC_FROM_MASTER, VOLATILE, feed_te_alt );

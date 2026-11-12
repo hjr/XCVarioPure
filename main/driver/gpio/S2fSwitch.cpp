@@ -13,7 +13,6 @@
 #include "setup/SetupNG.h"
 #include "screen/UiEvents.h"
 #include "screen/DrawDisplay.h"
-#include "sensor.h"
 #include "Flap.h"
 #include "sensor/imu/AccMPU6050.h"
 #include "logdefnone.h"

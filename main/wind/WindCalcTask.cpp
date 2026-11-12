@@ -9,6 +9,12 @@
 #include "WindCalcTask.h"
 #include "CircleWind.h"
 #include "StraightWind.h"
+#include "protocol/NMEA.h"
+#include "AverageVario.h"
+#include "driver/gpio/S2fSwitch.h"
+#include "Atmosphere.h"
+#include "protocol/NMEA.h"
+#include "AverageVario.h"
 #include "setup/SetupCommon.h"
 #include "setup/SetupNG.h"
 #include "logdefnone.h"
@@ -25,14 +31,16 @@ constexpr int CALC_MQ_SIZE = 5;
 // background task to calculate wind with lowest prio
 static void wind_calc_task(void *arg)
 {
-    QueueHandle_t queue = (QueueHandle_t)arg;
-    CalkTaskJob job(0);
-    TickType_t timeout = pdMS_TO_TICKS(1100);
+    BackgroundTaskQueue = xQueueCreate( CALC_MQ_SIZE, sizeof(CalkTaskJob) );
+    ESP_LOGI(FNAME, "Background task queue created %p", BackgroundTaskQueue);
+    CalkTaskJob job(CalkTaskJob::CALK_TASK_NONE);
+    TickType_t timeout = pdMS_TO_TICKS(3000);
+    Clock::start((WindCalcTask*)arg);
 
     while (true)
     {
         // sleep until the queue gives us something to do, or we have to do a retry
-        bool new_job = xQueueReceive(queue, &job, timeout) == pdTRUE;
+        bool new_job = xQueueReceive(BackgroundTaskQueue, &job, timeout) == pdTRUE;
 
         if ( new_job ) {
             if (job.raw == 0) {
@@ -56,6 +64,12 @@ static void wind_calc_task(void *arg)
                     circleWind->newConstellation(job.getDetail());
                 }
                 break;
+            case CalkTaskJob::CALK_1S_CACHE:
+                if (S2FSWITCH) {
+                    S2FSWITCH->checkCruiseMode();
+                }
+                Atmosphere::cacheTasPerIas();
+                break;
             default:
                 ESP_LOGE(FNAME, "Unknown job type %d", job.getJobTyp() );
                 break;
@@ -73,22 +87,25 @@ static void wind_calc_task(void *arg)
             // if ( straightWind ) { straightWind->tick(); }
         }
     }
-    vQueueDelete(queue);
+    Clock::stop((WindCalcTask*)arg);
+    vQueueDelete(BackgroundTaskQueue);
+    BackgroundTaskQueue = nullptr;
+    ESP_LOGW(FNAME, "Background task exiting");
     vTaskDelete(NULL);
 }
 
 
 // more or less just a guard to the background task
-WindCalcTask::WindCalcTask()
+WindCalcTask::WindCalcTask() :
+    Clock_I(100)
 {
-    _queue = xQueueCreate( CALC_MQ_SIZE, sizeof(CalkTaskJob) );
-    xTaskCreate(wind_calc_task, "background", 4000, _queue, 1, nullptr); // least priority
+    xTaskCreate(wind_calc_task, "background", 4000, this, 1, nullptr); // least priority
 }
 
 
 WindCalcTask::~WindCalcTask()
 {
-    xQueueSend( _queue, nullptr, 0 ); // stop task
+    xQueueSend( BackgroundTaskQueue, nullptr, 0 ); // stop task
 }
 
 void WindCalcTask::createWindResources()
@@ -122,17 +139,18 @@ void WindCalcTask::createWindResources()
             delete tmp;
         }
 
-        // wind calculation
-        if ( ! CalcTask && (circleWind || straightWind) ) {
+        // always needed
+        if ( ! CalcTask ) {
             CalcTask = new WindCalcTask();
-            BackgroundTaskQueue = CalcTask->getQueue();
         }
-        else if ( CalcTask && ! (circleWind || straightWind) ) {
-            BackgroundTaskQueue = nullptr;
-            // WindCalcTask *tmp = CalcTask;
-            // CalcTask = nullptr;
-            // delete tmp;
-        }
-
     }
 }
+
+
+bool WindCalcTask::tick()
+{
+    CalkTaskJob job(CalkTaskJob::CALK_1S_CACHE);
+    xQueueSend(BackgroundTaskQueue, &job, 0);
+    return false;
+}
+

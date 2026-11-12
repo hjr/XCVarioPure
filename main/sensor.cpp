@@ -349,10 +349,6 @@ void readSensors(void *pvParameters)
                 battery_voltage.set(BatVoltage->get());
             }
 
-            // Check auto s2f mode filter every second
-            if (S2FSWITCH) {
-                S2FSWITCH->checkCruiseMode();
-            }
         }
 
         // MinMax tracking
