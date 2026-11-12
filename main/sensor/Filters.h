@@ -10,6 +10,8 @@
 
 #include "math/Units.h"
 
+#include <cmath>
+
 //
 // Simple filter not knowing the signal history
 // filters are designed for floating point values only (!)
@@ -83,6 +85,31 @@ private:
     float _activity = 0.f;
     float _threshold = 50.f; // dedicated for raw flap sens readings
 };
+
+// a gain made for 10Hz cycles, with the same response at the sample interval dt
+inline float gainPerDt(float gain_10hz, second_t dt) { return 1.f - powf(1.f - gain_10hz, dt / 0.1f); }
+
+// The vario needle damping: a low pass with tau = D/3, then y += (x - y) / D per 0.1s, D the damping in seconds
+class VarioDamper
+{
+public:
+    explicit VarioDamper(second_t damping, second_t dt = 0.1f) : _lpf(0.f), _dt(dt), _damping(damping) { update(); }
+    void setDamping(second_t damping) { if (damping != _damping) { _damping = damping; update(); } }
+    void reset(float init_val = 0.f) { _lpf.reset(init_val); _out = init_val; }
+    float filter(float input) { _out += (_lpf.filter(input) - _out) * _gain; return _out; }
+    float lowPass() const { return _lpf.get(); } // the first stage
+private:
+    void update() {
+        _lpf.setTau(_damping / 3.f, _dt);
+        _gain = gainPerDt(1.f / _damping, _dt);
+    }
+    LowPassFilterT<float> _lpf;
+    second_t _dt;
+    second_t _damping;
+    float _gain = 0.f;
+    float _out = 0.f;
+};
+
 
 // A simple leaky integrator filter
 // designed for const dt sampling

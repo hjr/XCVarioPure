@@ -194,9 +194,10 @@ public:
         }
     }
     // Publish on black board NVS variable
-    void publishNVS() {
+    void publishNVS() { publishNVS(_history.getHead()); }
+    void publishNVS(const T& value) {
         if constexpr (std::is_same_v<T, float>) { // for float types
-            float fval = _history.getHead();
+            float fval = value;
             if ( _filter && std::isfinite(fval) ) {
                 fval = _filter->filter(fval);
             }
@@ -204,7 +205,7 @@ public:
             _processed = fval;
         }
         else if constexpr (std::is_same_v<T, vector_f>) { // for vector_f type
-            vector_f val = _history.getHead();
+            vector_f val = value;
             if ( _filter ) {
                 val = _filter->filter(val);
             }

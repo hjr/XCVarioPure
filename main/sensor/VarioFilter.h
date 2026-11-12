@@ -3,6 +3,9 @@
 
 #include "SensorBase.h"
 #include "Filters.h"
+#include "time/Sampling.h"
+
+#include <optional>
 
 
 //
@@ -27,14 +30,24 @@ class VarioFilter final : public SensorTP<mps_t> {
     bool gotPositive() const { return _got_positive; }
 
    private:
-    void init(meter_t alt);
+    std::optional<meter_t> teAltitude(bool te_probe) const;
+    void filterAltitude(meter_t curr_altitude, second_t dt);
+    void publish(mps_t v, int t, bool slow) {
+        if (slow) {
+            pushToHistory(v, t);
+        }
+        publishNVS(v);
+    }
 
     SensorTP<pascal_t>* pSensor = nullptr; // te or baro sensor
     LeakyIntegratorT<float> _Gact; // experimental thermal score
     LeakyIntegratorT<float> _Goptimal;
 
-    uint32_t _prev_time = 0;
-    LowPassFilterT<mps_t> _vario_lpf;
+    int _reading_ms = 0;
+    SampleClock _source_clock;
+    Periodic _slow_timer;
+    mps_t _te_rate = 0.f;    // altitude rate of the last reading
+    VarioDamper _te_damper;
     LowPassFilterT<mps_t> _avg_vario;
     float _eCompAdjust = 1.f;
     mps_t _polar_sink = 0.f;
