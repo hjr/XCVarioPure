@@ -346,7 +346,7 @@ static void change_audio() {
 
 
 void flap_act() {
-    if ( Flap::needed() ) {
+    if ( Speed2Fly.hasFlaps() ) {
         FLAP = Flap::theFlap(); // check on FLAP pointer further on
     }
     else if ( FLAP ) {

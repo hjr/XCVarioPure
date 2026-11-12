@@ -58,12 +58,6 @@ Flap::~Flap() {
     _instance = nullptr;
     FLAP = nullptr;
 }
-// the flap levels serve the flap box, the flap sensor, and with a flapped glider AirMass (the recommendation
-// stands in for a flap sensor), whether the box is shown or not
-bool Flap::needed() {
-    return flapbox_enable.get() || sensAvailable() || Speed2Fly.hasFlaps();
-}
-
 Flap *Flap::theFlap() {
     if (!_instance) {
         _instance = new Flap();
