@@ -5,7 +5,6 @@
 
 #include "setup/primitive/SetupMenu.h"
 #include "setup/primitive/SetupMenuSelect.h"
-#include "setup/primitive/SetupMenuValFloat.h"
 #include "setup/SetupCommon.h"
 #include "setup/Capability.h"
 
@@ -15,17 +14,13 @@ static bool available()
     return SetupCommon::isMaster() ? airmass::supported() : XcvCaps::haveCap(XcvCaps::AHRS_CAP);
 }
 
-void airmass::menuVarioModes(SetupMenuSelect* mode)
+void airmass::menuTeMethod(SetupMenuSelect* method)
 {
     if (!available()) {
         return;
     }
-    mode->setHelp("Vario indicator considers polar sink (=netto), or not (=gross), or net only in Cruise Mode. Air Mass shows the "
-                  "vertical air movement from the GNSS/IMU estimator and uses it for speed to fly, falls back to netto without it. "
-                  "Air Mass Gross adds the polar sink: the climb of the glider with the air mass filter, falls back to gross");
-    mode->addEntry("Air Mass", static_cast<int>(e_vario_mode::VARIO_AIRMASS));
-    mode->addEntry("Cruise-Air Mass", static_cast<int>(e_vario_mode::CRUISE_ONLY_AIRMASS));
-    mode->addEntry("Air Mass Gross", static_cast<int>(e_vario_mode::VARIO_AIRMASS_GROSS));
+    method->setHelp("Probe, electronic or Air Mass compensation");
+    method->addEntry("Air Mass", TE_AIRMASS);
 }
 
 static void createMenu(SetupMenu* top)
@@ -34,13 +29,6 @@ static void createMenu(SetupMenu* top)
     amwind->setHelp("Send the 30s average of the air mass wind to the navigation computer ($WIMWV, or Cambridge !w), XCSoar takes it as external wind");
     amwind->mkEnable();
     top->addEntry(amwind);
-
-    if (SetupCommon::isMaster()) {
-        SetupMenuValFloat* amc = new SetupMenuValFloat("Pull-up Comp.", "%", nullptr, &airmass_te_adjust, RST_NONE, false);
-        amc->setHelp("Static port error compensation, same meaning as the TE eAdjustment: lower it if pull-ups show false climb, raise it if they show false sink");
-        amc->setPrecision(1);
-        top->addEntry(amc);
-    }
 }
 
 void airmass::menuVario(SetupMenu* vario)

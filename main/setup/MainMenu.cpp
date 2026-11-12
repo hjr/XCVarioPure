@@ -409,12 +409,13 @@ static void vario_menu_create_s2f(SetupMenu *top) {
 static void vario_menu_create_tek(SetupMenu *top) {
     SetupMenuSelect* enac = new SetupMenuSelect("Method", RST_NONE, vario_setupS, &te_comp_enable);
     enac->setHelp("Probe or electronic TE compensation");
-    enac->addEntry("Probe");
-    enac->addEntry("eComp");
+    enac->addEntry("Probe", TE_PROBE);
+    enac->addEntry("eComp", TE_ECOMP);
+    airmass::menuTeMethod(enac);
     top->addEntry(enac);
 
     SetupMenuValFloat* elca = new SetupMenuValFloat("eAdjustment", "%", vario_setup, &te_comp_adjust, RST_NONE, false);
-    elca->setHelp("Electronic correction factor deviating from lossless \"100%\"");
+    elca->setHelp("Compensation factor, raise it if pull-ups show false climb, lower it if they show false sink");
     elca->setPrecision(1);
     top->addEntry(elca);
 }
@@ -452,7 +453,6 @@ static void vario_menu_create(SetupMenu *vae) {
 	vamod->addEntry("Gross");
 	vamod->addEntry("Netto");
 	vamod->addEntry("Cruise-Netto");
-	airmass::menuVarioModes(vamod);
 	vae->addEntry(vamod);
 
 	SetupMenuSelect *nemod = new SetupMenuSelect("Netto Mode", RST_NONE, nullptr, &netto_mode);

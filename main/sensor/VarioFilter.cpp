@@ -82,7 +82,7 @@ void VarioFilter::postProcess()
     // a total energy compensated altitude.
     meter_t curr_altitude;
 
-    if (te_comp_enable.get()) {
+    if (te_comp_enable.get() != TE_PROBE) {
         // electronic compensation
         curr_altitude = altitude_isa.get(); // already read
         if (!altitude_isa.getValid() || std::isnan(curr_altitude)) {

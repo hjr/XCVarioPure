@@ -37,8 +37,8 @@ second_t varioDamping(second_t te_damping);
 // wind is not valid any more but still the best estimate (long straight glides), to be shown marked
 void displayWind(WindData& synoptic, WindData& instant, bool& degraded);
 
-// setup menu: the Air Mass vario modes, and the Air Mass settings menu
-void menuVarioModes(SetupMenuSelect* mode);
+// setup menu: Air Mass as TE compensation method, and the Air Mass settings menu
+void menuTeMethod(SetupMenuSelect* method);
 void menuVario(SetupMenu* vario);
 
 // NMEA, 5Hz: the recording if enabled; slow (1Hz): the averaged wind to the navigation computer

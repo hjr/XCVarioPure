@@ -185,8 +185,21 @@ void airmass::prepareForSimJump()
     }
 }
 
+// earlier firmware had the vario modes Air Mass, Cruise-Air Mass, Air Mass Gross after Cruise-Netto
+static void migrateVarioMode()
+{
+    static const e_vario_mode FORMER[] = {e_vario_mode::VARIO_NETTO, e_vario_mode::CRUISE_ONLY_NETTO, e_vario_mode::VARIO_BRUTTO};
+    const int former = vario_mode.get() - (static_cast<int>(e_vario_mode::CRUISE_ONLY_NETTO) + 1);
+    if (former >= 0 && former < static_cast<int>(std::size(FORMER))) {
+        // no change action: display and audio do not exist yet
+        te_comp_enable.set(TE_AIRMASS, true, false);
+        vario_mode.set(static_cast<int>(FORMER[former]), true, false);
+    }
+}
+
 void airmass::startup()
 {
+    migrateVarioMode();
     if (supported()) {
         airmassSensor = new AirMassSensor();
         airmassSensor->setup();
@@ -220,7 +233,7 @@ airmass::Setup AirMassSensor::currentSetup() const
     s.mass = gross_weight.get();
     s.wing_area = polar_wingarea.get();
     s.polar = Speed2Fly.getPolar();
-    s.te_adjust = airmass_te_adjust.get();
+    s.te_adjust = te_comp_adjust.get();
     return s;
 }
 

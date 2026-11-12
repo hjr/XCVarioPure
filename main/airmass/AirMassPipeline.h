@@ -33,7 +33,7 @@ struct Setup {
     Polar polar;
     float wind_resp = 1.f;   // scales the horizontal wind process noise, fixed on the device
     float vario_resp = 1.f;  // scales the vertical wind process noise, fixed on the device
-    float te_adjust = 100.f; // "Pull-up Comp." [%]
+    float te_adjust = 100.f; // TE "eAdjustment" [%]
 
     bool operator==(const Setup& o) const {
         return lever_arm == o.lever_arm && mass == o.mass && wing_area == o.wing_area && polar == o.polar && wind_resp == o.wind_resp &&

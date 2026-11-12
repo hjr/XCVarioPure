@@ -45,14 +45,13 @@ void CruiseMode::updateCache()
     // set the vario mode cache
     const bool relative = netto_mode.get() == static_cast<int>(e_netto_mode::NETTO_RELATIVE); // Super Netto
     const int vm = vario_mode.get();
-    if (vm == static_cast<int>(e_vario_mode::VARIO_AIRMASS_GROSS)) {
-        _vmode_setup = MODE_AIRMASS_GROSS; // the air mass movement plus the polar sink
-    } else if (vm == static_cast<int>(e_vario_mode::VARIO_AIRMASS) || (_cmode && vm == static_cast<int>(e_vario_mode::CRUISE_ONLY_AIRMASS))) {
-        _vmode_setup = relative ? MODE_REL_AIRMASS : MODE_AIRMASS; // vertical air mass movement
-    } else if (vm == static_cast<int>(e_vario_mode::VARIO_NETTO) || (_cmode && vm == static_cast<int>(e_vario_mode::CRUISE_ONLY_NETTO))) {
+    if (vm == static_cast<int>(e_vario_mode::VARIO_NETTO) || (_cmode && vm == static_cast<int>(e_vario_mode::CRUISE_ONLY_NETTO))) {
         _vmode_setup = relative ? MODE_REL_NETTO : MODE_NORMAL_NETTO;
     } else {
         _vmode_setup = MODE_BRUTTO;
+    }
+    if (te_comp_enable.get() == TE_AIRMASS) {
+        _vmode_setup |= AIRMASS_BIT;
     }
     applyAirMass();
 
@@ -64,11 +63,10 @@ void CruiseMode::updateCache()
             (!_audio_vario && (chopping_mode.get() & S2F_CHOP) );
 }
 
-// the effective vario mode: without a valid air mass vario Air Mass Gross shows gross, Air Mass netto and
-// Super Air Mass Super Netto (MODE_AIRMASS_GROSS -> MODE_BRUTTO, MODE_AIRMASS -> MODE_NORMAL_NETTO, ...)
+// without a valid air mass vario the TE vario of the same mode
 void CruiseMode::applyAirMass()
 {
-    _vmode = _airmass_available ? _vmode_setup : (_vmode_setup & ~MODE_AIRMASS_GROSS);
+    _vmode = _airmass_available ? _vmode_setup : (_vmode_setup & ~AIRMASS_BIT);
 }
 
 void CruiseMode::setAirMassAvailable(bool available)

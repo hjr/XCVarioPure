@@ -12,6 +12,7 @@
 
 // A wrapper to the logic of the setup variables:
 // vario_mode - persistent info, but individual for master/client, about gross/netto
+// te_comp_enable - persistent info, the method Air Mass shows the air mass movement instead of TE
 // netto_mode - persistent info, but individual for master/client, about used netto flavor (in case)
 // cruise_mode - volatile status of the s2f mode, whereas syncronized bidirectional
 //
@@ -28,6 +29,7 @@ public:
     using CruiseAudio = enum : uint8_t { AUDIO_S2F, AUDIO_VARIO };
     // vario mode bits: 1 net, 2 relative (Super Netto, plus circling sink), 4 air mass
     using VarioModeBits = enum : uint8_t { MODE_BRUTTO=0, MODE_NORMAL_NETTO=1, MODE_REL_NETTO=3, MODE_AIRMASS_GROSS=4, MODE_AIRMASS=5, MODE_REL_AIRMASS=7 };
+    static constexpr uint8_t AIRMASS_BIT = 4;
     using LabelStyle = enum : uint8_t { LABEL_COMPACT, LABEL_LONG };
     CruiseMode();
     bool getCMode() const { return _cmode; };
@@ -35,7 +37,7 @@ public:
     bool isGross() const { return !isNet(); }
     bool isNet() const { return _vmode & 1; }
     bool isRelative() const { return _vmode & 2; }
-    bool isAirMass() const { return _vmode & 4; }
+    bool isAirMass() const { return _vmode & AIRMASS_BIT; }
     bool audioIsVario() const { return _audio_vario; }
     bool audioIsChopping() const { return _audio_chopping; }
     int16_t getVMode() const { return _vmode; }
