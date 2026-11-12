@@ -208,6 +208,7 @@ extern SetupNG<float>  		bugs;
 extern SetupNG<int>  		cruise_mode;
 extern SetupNG<kelvin_t>    OAT;   // outside temperature
 extern SetupNG<int>  		synoptic_wind; // int alias WindData
+extern SetupNG<int>  		inst_wind;
 extern SetupNG<float>  		swind_sideslip_lim;
 extern SetupNG<int>  		ext_syn_wind; // synoptic and
 extern SetupNG<int>  		ext_inst_wind; // instant external wind

@@ -28,13 +28,14 @@ union WindData
         uint16_t val : 12; // internally 3bit fix point [m/s]; could be any unit, e.g. m/s or km/h
         uint16_t flags : 4; // degradation until invalid; 0 valid, 15 invalid
     } __attribute__((packed));
-    uint32_t raw = 0xffff;
+    uint32_t raw = 0xff000000;
 
     // ctors
     constexpr WindData() = default;
     constexpr WindData(uint32_t d) : raw(d) {}
-    constexpr WindData(int16_t wdir, int16_t wval) : dir(wdir), val(wval) {}
-    constexpr WindData(rad_t wdir, mps_t wval) : dir((fast_iroundf(Units::rad_to_deg(Vector::normalizePI2(wdir))) * 2) % 720), val(fast_iroundf(wval * 8)) {}
+    constexpr WindData(int16_t wdir, int16_t wval) : dir(wdir), val(wval), flags(0) {}
+    constexpr WindData(rad_t wdir, mps_t wval) : dir((fast_iroundf(Units::rad_to_deg(Vector::normalizePI2(wdir))) * 2) % 720), 
+        val(fast_iroundf(wval * 8)), flags(0) {}
     // getters
     constexpr int16_t getDeg2() const { return dir; }
     constexpr int16_t getVDeg2() const { return dir + 360; } // get wind vector direction -> +180° shift
@@ -47,6 +48,7 @@ union WindData
     constexpr mps_t getVal() const { return static_cast<float>(val) / 8.0f; }
     constexpr int16_t relToHeading(rad_t d) const { return (dir - fast_iroundf(Units::rad_to_deg(d) * 2)) % 720; }
     constexpr bool isValid() const { return flags == 0; }
+    constexpr void setValid() { flags = 0; }
     constexpr bool isDegraded() const { return flags != 0 && flags < 15; }
     constexpr void setDegraded() { if (flags < 15) flags++; }
     constexpr int data() const { return raw; }

@@ -890,6 +890,9 @@ void IpsDisplay::drawDisplay(){
             if (synoptic_wind.getValid()) {
                 swind = static_cast<WindData>(synoptic_wind.get());
             }
+            if (inst_wind.getValid()) {
+                iwind = static_cast<WindData>(inst_wind.get());
+            }
         } else {
             iwind.raw = ext_inst_wind.get();
             swind.raw = ext_syn_wind.get();
