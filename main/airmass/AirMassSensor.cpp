@@ -40,11 +40,8 @@ constexpr float COMPASS_MAX_ROLL = 0.17f;     // rad, the compass is only truste
 constexpr uint32_t PERSIST_MS = 300000;       // save the learned calibration every 5 minutes in flight
 constexpr uint32_t SETUP_MS = 10000;          // repeat the recorded setup every 10s
 
-// "NMEA Output" (airmass_nmea)
-enum : int { NMEA_OFF = 0, NMEA_OUTPUT = 1, NMEA_RECORD = 2 };
-
-// Lines for the NMEA output, from the sensor loop to the NMEA feed (5Hz), created with the first line. A ring buffer
-// holds them at their length (about 130 bytes, a queue would take the longest one for each): Recording queues about
+// Lines for the recording, from the sensor loop to the NMEA feed (5Hz), created with the first line. A ring buffer
+// holds them at their length (about 130 bytes, a queue would take the longest one for each): the recording queues about
 // 700 bytes per feed cycle, this holds three cycles.
 constexpr size_t RING_BYTES = 2048;
 static RingbufHandle_t nmea_ring = nullptr;
@@ -83,7 +80,7 @@ bool airmassNmeaDrain(std::string& lines)
 
 static bool recording()
 {
-    return airmass_nmea.get() == NMEA_RECORD;
+    return logging.get() == LOGG_RAW_SENSOR_DATA;
 }
 
 static_assert(airmass::FlapOffsets::N == Flap::MAX_NR_POS, "a pitch offset per flap position");
@@ -190,8 +187,7 @@ void airmass::prepareForSimJump()
 
 void airmass::startup()
 {
-    // a disabled estimator takes no memory, enabling it restarts the device
-    if (supported() && airmass_enable.get()) {
+    if (supported()) {
         airmassSensor = new AirMassSensor();
         airmassSensor->setup();
         SensorRegistry::registerSensor(airmassSensor);
@@ -224,8 +220,6 @@ airmass::Setup AirMassSensor::currentSetup() const
     s.mass = gross_weight.get();
     s.wing_area = polar_wingarea.get();
     s.polar = Speed2Fly.getPolar();
-    s.wind_resp = airmass_wind_resp.get();
-    s.vario_resp = airmass_vario_resp.get();
     s.te_adjust = airmass_te_adjust.get();
     return s;
 }
@@ -362,7 +356,7 @@ void AirMassSensor::stop()
 
 void AirMassSensor::postProcess()
 {
-    const bool active = airmass_enable.get() && airborne.get() && ahrsSensor && accSensor && gyroSensor;
+    const bool active = airborne.get() && ahrsSensor && accSensor && gyroSensor;
     if (active != _active) {
         _active = active;
         if (active) {
@@ -461,7 +455,7 @@ void AirMassSensor::postProcess()
     _pipe.endCycle();
     publish();
     // the estimator output at 5Hz, after the cycle it belongs to
-    if (airmass_nmea.get() != NMEA_OFF && _output_timer.due(now, 200)) {
+    if (rec && _output_timer.due(now, 200)) {
         queueLine([this] { return airmass::record::output(_pipe.ekf()); });
     }
 

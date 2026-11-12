@@ -43,7 +43,7 @@ static bool naviWind(WindData& w)
     return airmass_wind_nmea.get() && (airmass_status.get() & AirMassEKF::ST_WIND_VALID) && w.isValid();
 }
 
-// "NMEA Output" (master only): the estimator output $PXCVA (format in AirMassRecord.h)
+// System > Logging > "All Sensor Data" (master only): the estimator output $PXCVA (format in AirMassRecord.h)
 //    * vario: vertical air mass movement in m/s, up positive
 //    * wdir: instant wind direction in deg (the direction the wind blows from)
 //    * wspeed: instant wind speed in km/h
@@ -52,7 +52,7 @@ static bool naviWind(WindData& w)
 //    * pitch_ofs: learned pitch/AoA offset in deg
 //    * latency: estimated effective GNSS velocity latency in ms
 //    * status: AirMassEKF status bits (hex)
-// and with "Recording" the estimator inputs, for the replay on a host (tools/airmass_sim/replay). The sensor loop
+// and the estimator inputs, for the replay on a host (tools/airmass_sim/replay). The sensor loop
 // queues the lines in the order of its cycles.
 void airmass::nmeaFeed(NmeaPrtcl* nmea, bool slow)
 {

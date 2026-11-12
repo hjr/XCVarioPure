@@ -1,7 +1,7 @@
 // Flight log to AirMass recording, in the browser (index.html) and in node (check.js).
 //
 // Two kinds of log:
-//  * an AirMass recording ("NMEA Output" Recording, main/airmass/AirMassRecord.h): its $PXCV? sentences pass through
+//  * an AirMass recording (System > Logging "All Sensor Data", main/airmass/AirMassRecord.h): its $PXCV? sentences pass through
 //  * an XCVario "$SENS" sensor log: converted like tools/airmass_sim/sens2rec.py (keep the two in step)
 // Either way the result also has one track sample per sensor cycle: position and GNSS altitude of the last fix, the
 // static pressure altitude, the device's TE vario ($PXCV), IAS, TAS and the polar sink, for the map and the charts.

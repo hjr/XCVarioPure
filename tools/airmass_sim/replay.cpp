@@ -1,6 +1,6 @@
 // Replay of a recorded flight through the AirMass estimator (the same airmass::Pipeline the device runs).
 //
-// The log is any NMEA log with the AirMass recording ("NMEA Output" Recording, see main/airmass/AirMassRecord.h),
+// The log is any NMEA log with the AirMass recording (System > Logging "All Sensor Data", see main/airmass/AirMassRecord.h),
 // e.g. the navigation computer's NMEA log of a flight; other sentences are skipped. Where the log has the device's
 // own $PXCVA output, the replay compares itself with it: with the same firmware it reproduces the device.
 //

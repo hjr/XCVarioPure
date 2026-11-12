@@ -52,7 +52,7 @@ private:
     std::atomic<bool> _jump{false}; // a replay jump requested
 };
 
-// NMEA output of the estimator ("NMEA Output"): $PXCVA, with the recording also the input sentences of
+// Recording of the estimator (System > Logging > "All Sensor Data"): $PXCVA and the input sentences of
 // AirMassRecord.h, queued by the sensor loop in the order they happened. Appends the queued lines, false when empty.
 bool airmassNmeaDrain(std::string& lines);
 

@@ -23,7 +23,7 @@
 //   --warm k_tas,pitch_ofs,aoa_scale,latency: start with these learned values, like the device after a flight
 //   --flap-warm o0,..,o4: learned pitch offsets per flap position [rad] of an earlier flight (--set flaps=1)
 //   --no-learn: keep the calibration values as started
-//   --record file: write the estimator inputs like the device's "NMEA Output" Recording, for tools/airmass_sim/replay
+//   --record file: write the estimator inputs like the device's recording (System > Logging "All Sensor Data"), for tools/airmass_sim/replay
 
 #include "AirMassEKF.h"
 #include "AirMassInput.h"

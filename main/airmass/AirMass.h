@@ -16,7 +16,7 @@ union WindData;
 
 namespace airmass {
 
-// system startup: create the estimator if enabled and supported
+// system startup: create the estimator if supported
 void startup();
 // the estimator can run here: the master with IMU and air data
 bool supported();
@@ -41,7 +41,7 @@ void displayWind(WindData& synoptic, WindData& instant, bool& degraded);
 void menuVarioModes(SetupMenuSelect* mode);
 void menuVario(SetupMenu* vario);
 
-// NMEA, 5Hz: $PXCVA if enabled; slow (1Hz): the averaged wind to the navigation computer
+// NMEA, 5Hz: the recording if enabled; slow (1Hz): the averaged wind to the navigation computer
 void nmeaFeed(NmeaPrtcl* nmea, bool slow);
 // the wind field of the Cambridge sentence ("!w,...")
 std::string cambridgeWind();

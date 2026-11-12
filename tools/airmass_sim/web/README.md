@@ -9,8 +9,8 @@ the page.
     python3 -m http.server 8765 -d tools/airmass_sim/web    # then open http://127.0.0.1:8765
     tools/airmass_sim/web/deploy.sh                         # publish to Cloudflare (airmass-replay.<subdomain>.workers.dev)
 
-It reads an XCVario sensor log (`$SENS`, converted like `sens2rec.py`) or an AirMass recording ("NMEA Output" →
-Recording), plain or `.gz`. Settings: the glider polar for sensor logs, the mass, bugs, the vario damping and averager, estimator
+It reads an XCVario sensor log (`$SENS`, converted like `sens2rec.py`) or an AirMass recording (System > Logging →
+All Sensor Data), plain or `.gz`. Settings: the glider polar for sensor logs, the mass, bugs, the vario damping and averager, estimator
 settings as in `airmass_replay --set`, and the start calibration.
 
 Opening a new log automatically selects its glider from `CA1` or older `CMN` metadata, and shows the type in the

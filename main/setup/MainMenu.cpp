@@ -944,7 +944,8 @@ static void system_menu_create(SetupMenu *sye) {
 
     if (gflags.expert) {
         SetupMenuSelect *logg = new SetupMenuSelect("Logging", RST_NONE, nullptr, &logging);
-        logg->setHelp("R&D option, do not just enable!\n Collect data with NMEA logger in XCSoar");
+        logg->setHelp("R&D option, do not just enable!\n Collect data with NMEA logger in XCSoar. All Sensor Data adds the Air Mass recording "
+                      "at 20Hz (about 3 kB/s, use Wi-Fi or Bluetooth) for the replay on a PC");
         logg->addEntry("Disable");
         logg->addEntry("Wind");
         logg->addEntry("GYRO/MAG");

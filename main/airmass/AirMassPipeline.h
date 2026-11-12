@@ -31,8 +31,8 @@ struct Setup {
     float mass = 0.f;      // kg, gross weight
     float wing_area = 0.f; // m²
     Polar polar;
-    float wind_resp = 1.f;   // "Wind Agility"
-    float vario_resp = 1.f;  // "Vario Agility"
+    float wind_resp = 1.f;   // scales the horizontal wind process noise, fixed on the device
+    float vario_resp = 1.f;  // scales the vertical wind process noise, fixed on the device
     float te_adjust = 100.f; // "Pull-up Comp." [%]
 
     bool operator==(const Setup& o) const {
