@@ -1,5 +1,5 @@
 
-file(GLOB SUB_SRCS "*.cpp" "adc/*.cpp" "gps/*.cpp" "imu/*.cpp" "mag/*.cpp" "press_diff/*.cpp" "pressure/*.cpp" "temp/*.cpp")
+file(GLOB SUB_SRCS "VarioFilter.cpp" "*.cpp" "adc/*.cpp" "gps/*.cpp" "imu/*.cpp" "mag/*.cpp" "press_diff/*.cpp" "pressure/*.cpp" "temp/*.cpp")
 
 set_source_files_properties(
     imu/AccMPU6050.cpp

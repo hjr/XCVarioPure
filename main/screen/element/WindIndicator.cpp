@@ -99,7 +99,7 @@ void WindIndicator::drawWind(bool erase)
     int16_t y1 = y0 / 4;
     if (erase) {
         MYUCG->setColor(COLOR_BLACK);
-    } else if (_degraded) {
+    } else if (_wind.isDegraded()) {
         MYUCG->setColor(COLOR_LGREY);
     } else {
         MYUCG->setColor(_color.color[0], _color.color[1], _color.color[2]);

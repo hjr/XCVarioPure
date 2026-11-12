@@ -80,8 +80,13 @@ void LargeFigure::drawStatic() {
     // draw mode
     MYUCG->setFont(ucg_font_fub11_hr, true);
     MYUCG->setColor(COLOR_HEADER);
-    // omits the default "gross"; the cleared area above is 56 pixel wide
-    const char *mode = CRMOD.label(CruiseMode::LABEL_LONG);
+    const char *mode = ""; // omit default "gross"
+    if ( CRMOD.getVMode() == CruiseMode::MODE_REL_NETTO) {
+        mode = "s-net";
+    }
+    else if ( CRMOD.getVMode() == CruiseMode::MODE_NORMAL_NETTO) {
+        mode = " net ";
+    }
     int16_t str_width = MYUCG->getStrWidth(mode);
     ESP_LOGI(FNAME, "stringlength %s: %d, font height: %d", mode, str_width, MYUCG->getFontAscent() - MYUCG->getFontDescent());
     MYUCG->setPrintPos(_ref.x - str_width / 2, _bbox.origin.y -6);
