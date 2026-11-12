@@ -978,7 +978,9 @@ void system_startup(void *args){
         asSensor->update(Clock::getMillis());
     }
     
-    airmass::startup();
+    if ( airmass_enable.get() ) {
+        airmass::startup();
+    }
 
     // TE vario "sensor" always needed, but last in line
     varioSensor = new VarioFilter();

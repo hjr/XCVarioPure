@@ -191,7 +191,7 @@ void airmass::prepareForSimJump()
 void airmass::startup()
 {
     // a disabled estimator takes no memory
-    if (supported()) {
+    if (supported() && !airmassSensor) {
         airmassSensor = new AirMassSensor();
         airmassSensor->setup();
         SensorRegistry::registerSensor(airmassSensor);
