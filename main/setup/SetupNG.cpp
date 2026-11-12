@@ -432,10 +432,11 @@ SetupNG<float>  		bugs( "BUGS", 0.0, 0, SYNC_BIDIR, VOLATILE, change_bugs, quant
 
 SetupNG<int>  			cruise_mode( "CRUISE", 0, 0, SYNC_BIDIR, VOLATILE, change_cruise ); // use the CruiseMode wrapper to access and modify
 SetupNG<kelvin_t>  		OAT( "OAT", NAN, 0, SYNC_BIDIR, VOLATILE );   // outside air temperature, sensor on any side
-SetupNG<int>  			synoptic_wind( "SYNWND", 0.0, 0, SYNC_FROM_MASTER, VOLATILE );
+SetupNG<int>  			synoptic_wind( "SYNWND", 0xff000000, 0, SYNC_FROM_MASTER, VOLATILE );
+SetupNG<int>  			inst_wind( "INSWND", 0xff000000, 0, SYNC_FROM_MASTER, VOLATILE );
 SetupNG<float>  		swind_sideslip_lim( "SWSL", 2.0, USER_RST, SYNC_FROM_MASTER, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(0, 45.0, 0.1));
-SetupNG<int>  			ext_syn_wind( "EXSYNWND", 0.0, 0, SYNC_BIDIR, VOLATILE ); // synoptic and
-SetupNG<int>  			ext_inst_wind( "EXINSWND", 0.0, 0, SYNC_BIDIR, VOLATILE ); // instant external wind
+SetupNG<int>  			ext_syn_wind( "EXSYNWND", 0xff000000, 0, SYNC_BIDIR, VOLATILE ); // synoptic and
+SetupNG<int>  			ext_inst_wind( "EXINSWND", 0xff000000, 0, SYNC_BIDIR, VOLATILE ); // instant external wind
 SetupNG<rad_t>  		heading_mag( "HDM", .0f, 0, SYNC_FROM_MASTER, VOLATILE );
 SetupNG<rad_t>  		heading_tru( "HDT", .0f, 0, SYNC_FROM_MASTER, VOLATILE );
 SetupNG<rad_t>  		heading_wca( "WCA", .0f, 0, SYNC_FROM_MASTER, VOLATILE );
