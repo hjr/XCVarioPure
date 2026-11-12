@@ -190,11 +190,18 @@ void airmass::prepareForSimJump()
 
 void airmass::startup()
 {
-    // a disabled estimator takes no memory, enabling it restarts the device
-    if (supported() && airmass_enable.get()) {
+    // a disabled estimator takes no memory
+    if (supported()) {
         airmassSensor = new AirMassSensor();
         airmassSensor->setup();
         SensorRegistry::registerSensor(airmassSensor);
+    }
+}
+
+void airmass::shutdown()
+{
+    if (airmassSensor) {
+        SensorRegistry::deregisterSensor(airmassSensor);
     }
 }
 
@@ -356,13 +363,15 @@ void AirMassSensor::stop()
         queueLine([] { return airmass::record::stop(Clock::getMillis()); });
     }
     airmass_status.set(0);
-    airmass_inst_wind.set(WindData().data());
-    airmass_avg_wind.set(WindData().data());
+    inst_wind.set(WindData().data());
+    synoptic_wind.set(WindData().data());
+    inst_wind.setInvalid();
+    synoptic_wind.setInvalid();
 }
 
 void AirMassSensor::postProcess()
 {
-    const bool active = airmass_enable.get() && airborne.get() && ahrsSensor && accSensor && gyroSensor;
+    const bool active = airborne.get() && ahrsSensor && accSensor && gyroSensor;
     if (active != _active) {
         _active = active;
         if (active) {
@@ -493,16 +502,20 @@ void AirMassSensor::publish()
 
     // a degraded wind is still the best instant wind there is: shown marked, but no average.
     // No stale wind for consumers that do not check the status.
-    if (!(st & (AirMassEKF::ST_WIND_VALID | AirMassEKF::ST_WIND_DEGRADED))) {
-        setChanged(airmass_inst_wind, WindData().data());
+    if (!(st & (AirMassEKF::ST_WIND_VALID))) {
+        inst_wind.set(WindData().data());
+    } else if (st & AirMassEKF::ST_WIND_DEGRADED) {
+        WindData tmp = inst_wind.get();
+        tmp.setDegraded();
+        setChanged(inst_wind, tmp.data());
     } else if (wind_due) {
-        setChanged(airmass_inst_wind, windFromVector(wind).data());
+        setChanged( inst_wind, windFromVector(wind).data());
     }
     if (!(st & AirMassEKF::ST_WIND_VALID)) {
-        setChanged(airmass_avg_wind, WindData().data());
+        synoptic_wind.set(WindData().data());
     } else if (average_due) {
         const vector_f avg(_pipe.avgWind().windN(), _pipe.avgWind().windE(), 0.f);
-        setChanged(airmass_avg_wind, windFromVector(avg).data());
+        setChanged(synoptic_wind, windFromVector(avg).data());
     }
     if (_diagnostic_timer.due(now, 5000)) {
         ESP_LOGI(FNAME, "AirMass st %x wind %.1f/%.1f/%.2f psi %.1f° k %.3f thb %.2f° baz %.3f bgz %.3f°/s lat %.0fms", st, wind.x, wind.y,

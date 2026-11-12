@@ -23,23 +23,10 @@ bool airmass::rawVario(mps_t& air)
     return (airmass_status.get() & AirMassEKF::ST_VARIO_VALID) && airmass_vario.getValid();
 }
 
-void airmass::displayWind(WindData& synoptic, WindData& instant, bool& degraded)
-{
-    const int st = airmass_status.get();
-    degraded = false;
-    if ((wind_enable.get() & WA_AIRMASS) && (st & (AirMassEKF::ST_WIND_VALID | AirMassEKF::ST_WIND_DEGRADED))) {
-        instant.raw = airmass_inst_wind.get();
-        degraded = !(st & AirMassEKF::ST_WIND_VALID);
-        if (!synoptic.isValid() && !degraded) {
-            synoptic.raw = airmass_avg_wind.get(); // the long term average of the estimator
-        }
-    }
-}
-
 // the averaged air mass wind for the navigation computer, if enabled and valid (master and second seat)
 static bool naviWind(WindData& w)
 {
-    w = WindData(static_cast<uint32_t>(airmass_avg_wind.get()));
+    w = WindData(static_cast<uint32_t>(synoptic_wind.get()));
     return airmass_wind_nmea.get() && (airmass_status.get() & AirMassEKF::ST_WIND_VALID) && w.isValid();
 }
 

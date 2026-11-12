@@ -6,8 +6,6 @@
 #include "setup/SetupNG.h"
 
 extern SetupNG<mps_t>  		airmass_vario; // vertical air mass movement, up positive
-extern SetupNG<int>  		airmass_inst_wind; // int alias WindData, instant wind of the air mass estimator
-extern SetupNG<int>  		airmass_avg_wind; // int alias WindData, long term average of the air mass estimator
 extern SetupNG<int>  		airmass_status; // AirMassEKF status bits
 extern SetupNG<int> 		airmass_enable;
 extern SetupNG<float> 		airmass_wind_resp;

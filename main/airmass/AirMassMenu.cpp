@@ -15,17 +15,15 @@ static bool available()
     return SetupCommon::isMaster() ? airmass::supported() : XcvCaps::haveCap(XcvCaps::AHRS_CAP);
 }
 
-void airmass::menuVarioModes(SetupMenuSelect* mode)
+static int airmass_action(SetupMenuSelect* entry)
 {
-    if (!available()) {
-        return;
+    if ((entry->getSelect() == 1 )) {
+        airmass::startup();
     }
-    mode->setHelp("Vario indicator considers polar sink (=netto), or not (=gross), or net only in Cruise Mode. Air Mass shows the "
-                  "vertical air movement from the GNSS/IMU estimator and uses it for speed to fly, falls back to netto without it. "
-                  "Air Mass Gross adds the polar sink: the climb of the glider with the air mass filter, falls back to gross");
-    mode->addEntry("Air Mass", static_cast<int>(e_vario_mode::VARIO_AIRMASS));
-    mode->addEntry("Cruise-Air Mass", static_cast<int>(e_vario_mode::CRUISE_ONLY_AIRMASS));
-    mode->addEntry("Air Mass Gross", static_cast<int>(e_vario_mode::VARIO_AIRMASS_GROSS));
+    else {
+        airmass::shutdown();
+    }
+    return 0;
 }
 
 static void createMenu(SetupMenu* top)
@@ -38,7 +36,7 @@ static void createMenu(SetupMenu* top)
     if (!SetupCommon::isMaster()) {
         return; // the estimator settings belong to the master
     }
-    SetupMenuSelect* amena = new SetupMenuSelect("Estimator", RST_ON_EXIT, nullptr, &airmass_enable);
+    SetupMenuSelect* amena = new SetupMenuSelect("Estimator", RST_NONE, airmass_action, &airmass_enable);
     amena->setHelp("GNSS/IMU fusion for the vertical air mass movement (vario mode Air Mass) and instant wind. When disabled, the Air Mass vario modes show netto "
                    "and the estimator takes no memory. Changes restart the device");
     amena->mkEnable();
@@ -75,7 +73,6 @@ void airmass::menuVario(SetupMenu* vario)
         return;
     }
     SetupMenu* amass = new SetupMenu("Air Mass", createMenu);
-    amass->setHelp("Settings of the air mass estimator, fusing GNSS, IMU and air data. The Air Mass vario uses half the Vario "
-                   "Damping, it does not take gusts for lift; Super-Netto applies to it as well");
+    amass->setHelp("Settings of the air mass estimator, fusing GNSS, IMU and probes.");
     vario->addEntry(amass);
 }

@@ -18,6 +18,8 @@ namespace airmass {
 
 // system startup: create the estimator if enabled and supported
 void startup();
+void shutdown();
+
 // the estimator can run here: the master with IMU and air data
 bool supported();
 // instrument replay ($PFLAX,S): the replayed flight or the clock jumps, restart the estimator (protocol task)
@@ -33,12 +35,7 @@ bool rawVario(mps_t& air);
 // the damping of the air mass vario, from the damping of the TE vario
 second_t varioDamping(second_t te_damping);
 
-// wind gauge: the estimator's instant wind, and its average where no synoptic wind is valid; degraded: the instant
-// wind is not valid any more but still the best estimate (long straight glides), to be shown marked
-void displayWind(WindData& synoptic, WindData& instant, bool& degraded);
-
-// setup menu: the Air Mass vario modes, and the Air Mass settings menu
-void menuVarioModes(SetupMenuSelect* mode);
+// setup menu: the Air Mass vario settings menu
 void menuVario(SetupMenu* vario);
 
 // NMEA, 5Hz: $PXCVA if enabled; slow (1Hz): the averaged wind to the navigation computer
