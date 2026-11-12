@@ -58,7 +58,8 @@ struct ScreenEvent
         QNH_ADJUST,
         BALLAST_CONFIRM,
         FACTORY_CONFIG,
-        SENSOR_TEST
+        SENSOR_TEST,
+        AIRMASS_STATUS
     };
 
     uint32_t raw;

@@ -8,6 +8,7 @@
 #include "setup/specific/ShowStraightWind.h"
 #include "Capability.h"
 #include "SetupNG.h"
+#include "airmass/AirMass.h"
 #include "wind/WindCalcTask.h"
 #include "AdaptUGC.h"
 #include "logdefnone.h"
@@ -367,6 +368,8 @@ void options_menu_create_wind(SetupMenu *top) {
     }
 	windcal->setHelp("Chose the source for the wind calculation");
 	top->addEntry(windcal);
+
+    airmass::menuWind(top);
 
     SetupMenuSelect *wref = new SetupMenuSelect("Reference", RST_NONE, nullptr, &wind_reference);
     wref->setHelp("Display wind relative to glider is default, choose north-up, if prefered");

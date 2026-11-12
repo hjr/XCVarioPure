@@ -10,6 +10,7 @@
 #include <string>
 
 class SetupMenu;
+class MenuEntry;
 class SetupMenuSelect;
 class NmeaPrtcl;
 union WindData;
@@ -37,9 +38,14 @@ second_t varioDamping(second_t te_damping);
 // wind is not valid any more but still the best estimate (long straight glides), to be shown marked
 void displayWind(WindData& synoptic, WindData& instant, bool& degraded);
 
-// setup menu: Air Mass as TE compensation method, and the Air Mass settings menu
+// setup menu: Air Mass as TE compensation method, the expert status page of the vario menu, the wind to the navigation computer
 void menuTeMethod(SetupMenuSelect* method);
 void menuVario(SetupMenu* vario);
+void menuWind(SetupMenu* wind);
+MenuEntry* statusPage();
+void statusUpdate();
+// learned flap position offsets in NVS, -1 without flaps
+int learnedFlapPositions();
 
 // NMEA, 5Hz: the recording if enabled; slow (1Hz): the averaged wind to the navigation computer
 void nmeaFeed(NmeaPrtcl* nmea, bool slow);

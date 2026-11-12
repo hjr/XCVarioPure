@@ -17,6 +17,7 @@
 #include "HorizonPage.h"
 
 #include "setup/specific/SensorTest.h"
+#include "airmass/AirMass.h"
 #include "setup/primitive/SetupMenuValFloat.h"
 #include "setup/primitive/SetupMenu.h"
 #include "setup/SubMenuGlider.h"
@@ -127,6 +128,8 @@ void UiEventLoop(void *arg)
                     MenuRoot->begin(SetupMenu::createFactorySetup());
                 } else if (detail == ScreenEvent::SENSOR_TEST) {
                     SensorTest::update();
+                } else if (detail == ScreenEvent::AIRMASS_STATUS) {
+                    airmass::statusUpdate();
                 }
             }
             else if (event.isModeEvent()) {

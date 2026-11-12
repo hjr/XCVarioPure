@@ -197,6 +197,18 @@ static void migrateVarioMode()
     }
 }
 
+int airmass::learnedFlapPositions()
+{
+    if (!(Flap::sensAvailable() || Speed2Fly.hasFlaps())) {
+        return -1;
+    }
+    int learned = 0;
+    for (SetupNG<float>* ofs : FLAP_OFS) {
+        learned += std::fabs(ofs->get()) < airmass::FlapOffsets::UNKNOWN;
+    }
+    return learned;
+}
+
 void airmass::startup()
 {
     migrateVarioMode();
