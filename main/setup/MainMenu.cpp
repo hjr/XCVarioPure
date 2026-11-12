@@ -463,7 +463,6 @@ static void vario_menu_create(SetupMenu *vae) {
 
 	SetupMenu *vdamp = new SetupMenu("Vario Damping", vario_menu_create_damping);
 	vae->addEntry(vdamp);
-	airmass::menuVario(vae);
 
 	SetupMenu *meanclimb = new SetupMenu("Climb Stats", vario_menu_create_meanclimb);
 	meanclimb->setHelp("Parameter for Climb Statistics, displayed by green/red dot");
@@ -472,6 +471,7 @@ static void vario_menu_create(SetupMenu *vae) {
     SetupMenu *elco = new SetupMenu("TE Compensation", vario_menu_create_tek);
     elco->setHelp("TE compensation method");
     vae->addEntry(elco);
+    airmass::menuVario(vae);
 }
 
 static void options_menu_create_units(SetupMenu *top) {
