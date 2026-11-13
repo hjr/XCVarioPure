@@ -12,6 +12,7 @@
 class SetupMenu;
 class MenuEntry;
 class SetupMenuSelect;
+class SetupMenuValFloat;
 class NmeaPrtcl;
 union WindData;
 
@@ -38,8 +39,11 @@ bool vario(mps_t& air, second_t te_damping, mps_t fallback, bool& switched);
 // wind is not valid any more but still the best estimate (long straight glides), to be shown marked
 void displayWind(WindData& synoptic, WindData& instant, bool& degraded);
 
-// setup menu: Air Mass as TE compensation method, the expert status page of the vario menu, the wind to the navigation computer
-void menuTeMethod(SetupMenuSelect* method);
+// setup menu: Air Mass as TE compensation method (with the help of its eAdjustment), the wind to the navigation
+// computer, and for development builds (DEBUG_AND_TEST) the status page of the vario menu and the recording in the
+// help of the logging
+void menuTeMethod(SetupMenuSelect* method, SetupMenuValFloat* adjustment);
+void menuLogging(SetupMenuSelect* logging);
 void menuVario(SetupMenu* vario);
 void menuWind(SetupMenu* wind);
 MenuEntry* statusPage();

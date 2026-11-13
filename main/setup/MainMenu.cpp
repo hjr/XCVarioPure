@@ -409,13 +409,13 @@ static void vario_menu_create_s2f(SetupMenu *top) {
 static void vario_menu_create_tek(SetupMenu *top) {
     SetupMenuSelect* enac = new SetupMenuSelect("Method", RST_NONE, vario_setupS, &te_comp_enable);
     enac->setHelp("Probe or electronic TE compensation");
-    enac->addEntry("Probe", TE_PROBE);
-    enac->addEntry("eComp", TE_ECOMP);
-    airmass::menuTeMethod(enac);
+    enac->addEntry("Probe");
+    enac->addEntry("eComp");
     top->addEntry(enac);
 
     SetupMenuValFloat* elca = new SetupMenuValFloat("eAdjustment", "%", vario_setup, &te_comp_adjust, RST_NONE, false);
-    elca->setHelp("Compensation factor, raise it if pull-ups show false climb, lower it if they show false sink");
+    elca->setHelp("Electronic correction factor deviating from lossless \"100%\"");
+    airmass::menuTeMethod(enac, elca);
     elca->setPrecision(1);
     top->addEntry(elca);
 }
@@ -471,7 +471,9 @@ static void vario_menu_create(SetupMenu *vae) {
     SetupMenu *elco = new SetupMenu("TE Compensation", vario_menu_create_tek);
     elco->setHelp("TE compensation method");
     vae->addEntry(elco);
+#ifdef DEBUG_AND_TEST
     airmass::menuVario(vae);
+#endif
 }
 
 static void options_menu_create_units(SetupMenu *top) {
@@ -944,13 +946,15 @@ static void system_menu_create(SetupMenu *sye) {
 
     if (gflags.expert) {
         SetupMenuSelect *logg = new SetupMenuSelect("Logging", RST_NONE, nullptr, &logging);
-        logg->setHelp("R&D option, do not just enable!\n Collect data with NMEA logger in XCSoar. All Sensor Data adds the Air Mass recording "
-                      "at 10Hz (about 1.5 kB/s, use Wi-Fi or Bluetooth) for the replay on a PC");
+        logg->setHelp("R&D option, do not just enable!\n Collect data with NMEA logger in XCSoar");
         logg->addEntry("Disable");
         logg->addEntry("Wind");
         logg->addEntry("GYRO/MAG");
         logg->addEntry("Both");
         logg->addEntry("All Sensor Data");
+#ifdef DEBUG_AND_TEST
+        airmass::menuLogging(logg);
+#endif
         sye->addEntry(logg);
 
         // SetupAction *devdump = new SetupAction("Device Setup Dump", deviceDumpAction, 0);
