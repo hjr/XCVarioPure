@@ -29,7 +29,8 @@ void gnssVelocity(mps_t speed, rad_t course, uint32_t time_ms, uint16_t latency_
 // GNSS: true heading and wind correction angle from the estimator; false while it has none
 bool heading(rad_t track);
 
-// vario filter, every cycle: the raw vertical air mass movement, false while the estimator has no valid one
+// vario filter, every cycle: the raw vertical air mass movement, false while the method is not Air Mass or the
+// estimator has no valid one
 bool rawVario(mps_t& air);
 // the damping of the air mass vario, from the damping of the TE vario
 second_t varioDamping(second_t te_damping);

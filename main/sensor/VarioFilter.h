@@ -36,6 +36,7 @@ class VarioFilter final : public SensorTP<mps_t> {
     uint32_t _prev_time = 0;
     VarioDamper _te_damper;  // the TE vario, gross
     VarioDamper _air_damper; // the air mass vario of the estimator
+    bool _air_shown = false;
     LowPassFilterT<mps_t> _avg_vario;
     float _eCompAdjust = 1.f;
     mps_t _polar_sink = 0.f;

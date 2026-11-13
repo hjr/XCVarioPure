@@ -20,7 +20,7 @@ second_t airmass::varioDamping(second_t te_damping)
 bool airmass::rawVario(mps_t& air)
 {
     air = airmass_vario.get();
-    return (airmass_status.get() & AirMassEKF::ST_VARIO_VALID) && airmass_vario.getValid();
+    return te_comp_enable.get() == TE_AIRMASS && (airmass_status.get() & AirMassEKF::ST_VARIO_VALID) && airmass_vario.getValid();
 }
 
 void airmass::displayWind(WindData& synoptic, WindData& instant, bool& degraded)

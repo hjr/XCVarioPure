@@ -152,13 +152,12 @@ void VarioFilter::postProcess()
     thermal_score.set(tp);
 
     // Super Netto shows the climb as if circling here: netto (or air mass) plus the circling sink, TAS terms as well
-    const mps_t rel_sink = CRMOD.isRelative() ? Speed2Fly.getCirclingSink() * tas_per_ias : 0.f;
+    const mps_t rel_sink = CRMOD.getVMode() == CruiseMode::MODE_REL_NETTO ? Speed2Fly.getCirclingSink() * tas_per_ias : 0.f;
     te_netto.set(te_ne);
 
-    // Air Mass mode: the damped vertical air mass movement of the estimator, falls back to netto while it has none
+    // Air Mass method: the damped vertical air mass movement of the estimator, falls back to netto while it has none
     mps_t air = 0.f;
-    CRMOD.setAirMassAvailable(airmass::rawVario(air));
-    const bool airmass_ok = CRMOD.isAirMass();
+    const bool airmass_ok = airmass::rawVario(air);
     if (airmass_ok) {
         _air_damper.setDamping(airmass::varioDamping(vario_delay.get()));
         air = _air_damper.filter(air);
@@ -166,7 +165,8 @@ void VarioFilter::postProcess()
         _air_damper.reset(te_ne); // start from netto when it gets valid
     }
 
-    if ( CRMOD.getChanged() ) {
+    if ( CRMOD.getChanged() || airmass_ok != _air_shown ) {
+        _air_shown = airmass_ok;
         restartRunningAvg(); // restart the running average when the cruise mode changes, avoid smeared data
         ESP_LOGI(FNAME, "Cruise mode changed, restarting running average");
     }
