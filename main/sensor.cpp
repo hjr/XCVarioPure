@@ -238,7 +238,8 @@ void readSensors(void *pvParameters)
 
         // logging && toy feed
         if (ToyNmeaPrtcl) {
-            if (logging.get() == LOGG_RAW_SENSOR_DATA && SetupCommon::isMaster()) {
+            // with the 10Hz sensor readings, not twice each
+            if (!(count % 2) && logging.get() == LOGG_RAW_SENSOR_DATA && SetupCommon::isMaster()) {
                 CalkTaskJob job(CalkTaskJob::CALK_TASK_SEND_SENS);
                 xQueueSend(BackgroundTaskQueue, &job, 0);
             }
