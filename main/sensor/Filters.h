@@ -84,23 +84,6 @@ private:
     float _threshold = 50.f; // dedicated for raw flap sens readings
 };
 
-// The vario needle damping: a low pass with tau = D/3, then y += (x - y) / D per cycle,
-// D the damping in seconds, dt the cycle time
-class VarioDamper
-{
-public:
-    explicit VarioDamper(second_t damping, second_t dt = 0.1f) : _lpf(LowPassFilterT<float>::alphaFromTau(damping / 3.f, dt)), _dt(dt), _damping(damping) {}
-    void setDamping(second_t damping) { _damping = damping; _lpf.setTau(damping / 3.f, _dt); }
-    void reset(float init_val = 0.f) { _lpf.reset(init_val); _out = init_val; }
-    float filter(float input) { _out += (_lpf.filter(input) - _out) / _damping; return _out; }
-    float lowPass() const { return _lpf.get(); } // the first stage
-private:
-    LowPassFilterT<float> _lpf;
-    second_t _dt;
-    second_t _damping;
-    float _out = 0.f;
-};
-
 // A simple leaky integrator filter
 // designed for const dt sampling
 template <typename T>

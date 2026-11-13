@@ -12,15 +12,20 @@
 #include <algorithm>
 #include <cstdio>
 
-second_t airmass::varioDamping(second_t te_damping)
+bool airmass::vario(mps_t& air, second_t te_damping, mps_t fallback, bool& switched)
 {
-    return displayDamping(te_damping);
-}
-
-bool airmass::rawVario(mps_t& air)
-{
-    air = airmass_vario.get();
-    return te_comp_enable.get() == TE_AIRMASS && (airmass_status.get() & AirMassEKF::ST_VARIO_VALID) && airmass_vario.getValid();
+    static VarioDamper damper(1.f);
+    static bool shown = false;
+    const bool ok = te_comp_enable.get() == TE_AIRMASS && (airmass_status.get() & AirMassEKF::ST_VARIO_VALID) && airmass_vario.getValid();
+    if (ok) {
+        damper.setDamping(displayDamping(te_damping));
+        air = damper.filter(airmass_vario.get());
+    } else {
+        damper.reset(fallback);
+    }
+    switched = ok != shown;
+    shown = ok;
+    return ok;
 }
 
 void airmass::displayWind(WindData& synoptic, WindData& instant, bool& degraded)

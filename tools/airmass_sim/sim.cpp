@@ -35,7 +35,6 @@
 #include "ins_reference.h"
 #include "stats.h"
 #include "math/Quaternion.h"
-#include "sensor/Filters.h"
 #include "math/vector_3d.h"
 
 #include <algorithm>
@@ -353,7 +352,7 @@ int flapRecommendation(float ias, float load) {
     return i;
 }
 
-// the device's vario damping (VarioFilter, VarioDamper)
+// the device's vario damping (VarioFilter, airmass::VarioDamper)
 constexpr float DAMPING = 4.f; // vario_delay default (TE netto)
 
 bool inWindows(float t, const std::vector<std::pair<float, float>>& w) {
@@ -748,7 +747,7 @@ int main(int argc, char** argv) {
     float prev_vg[3] = {NAN, NAN, NAN};
     float prev_att[3] = {NAN, NAN, NAN};
     vector_f f_sum, w_sum;
-    VarioDamper am_display(airmass::displayDamping(DAMPING)), te_damp(DAMPING);
+    airmass::VarioDamper am_display(airmass::displayDamping(DAMPING)), te_damp(DAMPING);
     bool am_started = false;
     Lpf te_alt(0.5f, 0.1f);
     float prev_te_alt = NAN;

@@ -23,6 +23,58 @@ constexpr float WD_INNOVATION_MAX = 20.f;
 // the attitude error; a glitch beyond it must not be learned as attitude error for kinetic_tau
 constexpr float KINETIC_DISAGREE_MAX = 20.f;
 
+// The scalar (sequential) Kalman measurement update of math/Matrix.h (ekfScalarUpdate) with two changes for this
+// estimator: the few non-zero entries of h only, and no negative variance along h.
+//   h: measurement Jacobian row, y: innovation, r: measurement variance, gate: innovation gate in sigma (<= 0: none)
+// Returns false if the measurement got rejected by the gate (state untouched).
+bool scalarUpdate(Matrix<AirMassEKF::NX, AirMassEKF::NX>& P, float (&x)[AirMassEKF::NX], const float (&h)[AirMassEKF::NX],
+                  float y, float r, float gate = 0.f) {
+    constexpr size_t N = AirMassEKF::NX;
+    // h has a few non-zero entries: the zero ones add only +-0 to the (finite) sums, skipping them in
+    // index order gives the same results as the dense products
+    size_t nz[N];
+    size_t n = 0;
+    for (size_t j = 0; j < N; ++j) {
+        if (h[j] != 0.f) {
+            nz[n++] = j;
+        }
+    }
+    float pht[N];
+    for (size_t i = 0; i < N; ++i) {
+        float acc = 0.f;
+        for (size_t k = 0; k < n; ++k) {
+            acc += P(i, nz[k]) * h[nz[k]];
+        }
+        pht[i] = acc;
+    }
+    float hph = 0.f;
+    for (size_t k = 0; k < n; ++k) {
+        hph += h[nz[k]] * pht[nz[k]];
+    }
+    // a negative variance along h is rounding in a nearly degenerate covariance (e.g. two states observed only in
+    // their difference): the gain must not grow beyond the measurement's own noise
+    const float s = r + std::max(hph, 0.f);
+    if (!(s > 0.f) || !std::isfinite(y)) {
+        return false;
+    }
+    if (gate > 0.f && y * y > gate * gate * s) {
+        return false;
+    }
+    const float inv_s = 1.f / s;
+    for (size_t i = 0; i < N; ++i) {
+        x[i] += pht[i] * inv_s * y;
+    }
+    // P = P - K * (H P), with K = P H' / s and (H P) = (P H')' for symmetric P
+    for (size_t i = 0; i < N; ++i) {
+        const float ki = pht[i] * inv_s;
+        for (size_t j = 0; j < N; ++j) {
+            P(i, j) -= ki * pht[j];
+        }
+    }
+    P.symmetrize();
+    return true;
+}
+
 // Gate the complete horizontal observation before changing any state. A bad east component must not
 // partially update the north/wind/calibration states. Joseph covariance update also supports frozen gains.
 bool velocityUpdate(Matrix<AirMassEKF::NX, AirMassEKF::NX>& p, float (&x)[AirMassEKF::NX],
@@ -374,7 +426,7 @@ void AirMassEKF::fuseBaro(float alt, float sample_dt) {
     h[ALT] = 1.f;
     // the static line delays the reading: it shows the altitude of lag_static ago, alt + lag * vd
     h[VD] = _cfg.lag_static;
-    if (ekfScalarUpdate(_cov, _x, h, alt - (_x[ALT] + _cfg.lag_static * _x[VD]), _cfg.r_baro, _cfg.gate * 2.f)) {
+    if (scalarUpdate(_cov, _x, h, alt - (_x[ALT] + _cfg.lag_static * _x[VD]), _cfg.r_baro, _cfg.gate * 2.f)) {
         _baro_reject_ms = 0;
     } else if ((_baro_reject_ms += (uint32_t)(std::clamp(sample_dt, 0.001f, 0.3f) * 1000.f + 0.5f)) > 2000) {
         // disruptive altitude change (e.g. simulator jump), restart the vertical channel
@@ -407,7 +459,7 @@ void AirMassEKF::fuseKinematic(const Input& in, const Tilt& tilt, const float va
     // These model constraints have correlated noise. Keep their information per second stable across rates.
     const float sample_dt = _kinematic_clock.interval_ms ? _kinematic_clock.interval_ms * 1e-3f : in.dt;
     const float rate_scale = 0.1f / std::clamp(sample_dt, 0.001f, 0.3f);
-    ekfScalarUpdate(_cov, _x, h, y, (sv * sv + ss * ss + 0.01f) * rate_scale, _cfg.gate);
+    scalarUpdate(_cov, _x, h, y, (sv * sv + ss * ss + 0.01f) * rate_scale, _cfg.gate);
 }
 
 float AirMassEKF::blendBankWeight(float roll) const {
@@ -492,7 +544,7 @@ void AirMassEKF::fuseEnergy(const Input& in) {
         _energy_reject_ms = 0;
         const float sample_dt = _energy_clock.interval_ms ? _energy_clock.interval_ms * 1e-3f : in.dt;
         const float rate_scale = 0.1f / std::clamp(sample_dt, 0.001f, 0.3f);
-        ekfScalarUpdate(_cov, _x, h, y, sig * sig * rate_scale, _cfg.energy_gate);
+        scalarUpdate(_cov, _x, h, y, sig * sig * rate_scale, _cfg.energy_gate);
     }
 
     // The energy balance is down weighted in gusts and at high load factors, which come with the lift in thermals: on
@@ -800,7 +852,7 @@ void AirMassEKF::fuseHeading(float psi, float sig) {
     }
     float h[NX] = {};
     h[PSI] = 1.f;
-    ekfScalarUpdate(_cov, _x, h, wrapPi(psi - _x[PSI]), sig * sig, _cfg.gate);
+    scalarUpdate(_cov, _x, h, wrapPi(psi - _x[PSI]), sig * sig, _cfg.gate);
     wrapPsi();
 }
 

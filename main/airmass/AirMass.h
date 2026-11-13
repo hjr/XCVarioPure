@@ -29,11 +29,10 @@ void gnssVelocity(mps_t speed, rad_t course, uint32_t time_ms, uint16_t latency_
 // GNSS: true heading and wind correction angle from the estimator; false while it has none
 bool heading(rad_t track);
 
-// vario filter, every cycle: the raw vertical air mass movement, false while the method is not Air Mass or the
-// estimator has no valid one
-bool rawVario(mps_t& air);
-// the damping of the air mass vario, from the damping of the TE vario
-second_t varioDamping(second_t te_damping);
+// vario filter, every cycle (10Hz): the vertical air mass movement damped for the needle (te_damping: the damping of
+// the TE vario), false while the method is not Air Mass or the estimator has no valid one; the damping then restarts
+// from fallback (netto). switched: the vario starts or stops showing the air mass with this cycle
+bool vario(mps_t& air, second_t te_damping, mps_t fallback, bool& switched);
 
 // wind gauge: the estimator's instant wind, and its average where no synoptic wind is valid; degraded: the instant
 // wind is not valid any more but still the best estimate (long straight glides), to be shown marked

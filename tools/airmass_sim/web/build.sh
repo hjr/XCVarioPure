@@ -8,7 +8,7 @@ ROOT=${ROOT:-$(cd "$(dirname "$0")/../../.." && pwd)}
 OUTPUT=${OUTPUT:-airmass.js}
 docker run --rm -v "$ROOT":/project -w /project/tools/airmass_sim/web emscripten/emsdk:3.1.74 \
     em++ -std=c++17 -O2 -Wall -Wextra $EXTRA \
-    -include ../stub/host_compat.h -include cstdint -I.. -I../stub -I../../../main/airmass -I../../../components/util -I../../../components/glider/include -I../../../main \
+    -include ../stub/host_compat.h -include cstdint -I.. -I../stub -I../../../main/airmass -I../../../components/util -I../../../main \
     airmass_wasm.cpp ../../../main/airmass/AirMassEKF.cpp ../../../main/protocol/nmea_util.cpp \
     ../../../components/util/math/Quaternion.cpp ../../../components/util/math/vector_3d.cpp \
     ../../../components/util/math/Trigonometry.cpp ../../../components/util/math/Floats.cpp ../../../components/util/math/Units.cpp \

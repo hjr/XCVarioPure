@@ -244,7 +244,8 @@ airmass::Setup AirMassSensor::currentSetup() const
     s.lever_arm = imuSensor ? imuSensor->getLeverArm() : 0.f;
     s.mass = gross_weight.get();
     s.wing_area = polar_wingarea.get();
-    s.polar = Speed2Fly.getPolar();
+    s.polar.valid = Speed2Fly.getPolar(s.polar.a0, s.polar.a1, s.polar.a2);
+    s.polar.v_stall = Speed2Fly.getStallSpeed();
     s.te_adjust = te_comp_adjust.get();
     return s;
 }

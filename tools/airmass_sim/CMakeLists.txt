@@ -17,7 +17,7 @@ set(AHRS_MATH_SOURCES
     ${UTIL_MATH}/Quaternion.cpp ${UTIL_MATH}/vector_3d.cpp
     ${UTIL_MATH}/Trigonometry.cpp ${UTIL_MATH}/Floats.cpp ${UTIL_MATH}/Units.cpp)
 # the host builds of the device code: its include paths, and the host stand-ins for the ESP-IDF headers
-set(HOST_INCLUDES ${REPO}/main/airmass ${REPO}/components/util ${REPO}/components/glider/include ${REPO}/main ${CMAKE_CURRENT_SOURCE_DIR}/stub)
+set(HOST_INCLUDES ${REPO}/main/airmass ${REPO}/components/util ${REPO}/main ${CMAKE_CURRENT_SOURCE_DIR}/stub)
 set(HOST_OPTIONS -Wall -Wextra -fsingle-precision-constant -include ${CMAKE_CURRENT_SOURCE_DIR}/stub/host_compat.h)
 
 add_executable(airmass_sim
@@ -29,12 +29,10 @@ add_executable(airmass_sim
     ${UTIL_MATH}/Floats.cpp
     ${UTIL_MATH}/Units.cpp
     ${REPO}/main/protocol/nmea_util.cpp
-    ${REPO}/main/sensor/Filters.cpp
 )
 target_include_directories(airmass_sim PRIVATE
     ${REPO}/main/airmass
     ${REPO}/components/util
-    ${REPO}/components/glider/include
     ${CMAKE_CURRENT_SOURCE_DIR}/stub
     ${REPO}/main
 )
@@ -43,7 +41,7 @@ target_compile_options(airmass_sim PRIVATE -Wall -Wextra -Wno-unused-parameter -
 
 # conversion of the raw device measurements into the estimator input, flap offsets
 add_executable(input_test input_test.cpp ${REPO}/main/airmass/AirMassEKF.cpp)
-target_include_directories(input_test PRIVATE ${REPO}/main/airmass ${REPO}/components/util ${REPO}/components/glider/include)
+target_include_directories(input_test PRIVATE ${REPO}/main/airmass ${REPO}/components/util)
 target_compile_options(input_test PRIVATE ${HOST_OPTIONS})
 
 # replay of recorded flights (main/airmass/AirMassRecord.h) through the same pipeline
@@ -134,6 +132,6 @@ set_tests_properties(replay_predict20 PROPERTIES FIXTURES_REQUIRED predict20_rec
 
 # Regression for flap offsets in the delayed GNSS history.
 add_executable(flap_history_test flap_history_test.cpp ${REPO}/main/airmass/AirMassEKF.cpp)
-target_include_directories(flap_history_test PRIVATE ${REPO}/main/airmass ${REPO}/components/util ${REPO}/components/glider/include)
+target_include_directories(flap_history_test PRIVATE ${REPO}/main/airmass ${REPO}/components/util)
 target_compile_options(flap_history_test PRIVATE ${HOST_OPTIONS})
 add_test(NAME flap_history_geometry COMMAND flap_history_test)

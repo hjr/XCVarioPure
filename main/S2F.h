@@ -7,7 +7,6 @@
 
 #pragma once
 
-#include "glider/PolarModel.h"
 #include "math/Units.h"
 #include "sensor/Filters.h"
 
@@ -28,9 +27,10 @@ public:
 	static bool isPolarEqualTo(int idx);
 	mps_t calculate(mps_t net_vario, bool circling=false ); // call after sensor reads 10 Hz
 	mps_t getDelta() const { return _s2f_delta; }
-	mps_t getStallSpeed() const { return _polar.v_stall; }
-	mps_t getSink( mps_t v ); // at the current load factor
-	const glider::Polar& getPolar() const { return _polar; } // for the AirMass estimator
+	mps_t getStallSpeed() const { return _stall_speed; }
+	mps_t getSink( mps_t v );
+	// the fitted polar w = c0 + c1 v + c2 v² [m/s] for the AirMass estimator, false while it is not valid
+	bool getPolar( float &c0, float &c1, float &c2 ) const { c0 = a0; c1 = a1; c2 = a2; return _valid; }
 	mps_t getMinsink();
 	mps_t getMinsinkSpeed();
 	mps_t getStaticMinsinkSpeed() { return _min_sink_speed; };
@@ -50,14 +50,16 @@ private:
 
     int _glider_index = 0;
 	float myballast = 1.f; // classical ballast definition (once as % over the ref weight) as plain factor
-	glider::Polar _polar;
+	float a0=0, a1=0, a2=0;
 	float w0=0, w1=0, w2=0;
 	mps_t _min_sink_speed = 0.f;
 	mps_t _min_sink = 0.f;
 	mps_t _circling_speed = 0.f;
 	mps_t _circling_sink = 0.f;
+	mps_t _stall_speed = 0.f;
 	mps_t _s2f_delta = 0.f;
 	LowPassFilterT<float> _lpf_delta{0.1f};
+	bool _valid = false;
 };
 
 extern S2F Speed2Fly;

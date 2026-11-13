@@ -275,7 +275,7 @@
     return s === "-0" ? "0" : s;
   }
 
-  // S2F::recalculatePolar and glider::Polar::sink (components/glider/include/glider/PolarModel.h)
+  // S2F::recalculatePolar and airmass::Polar::sink (main/airmass/AirMassPolar.h)
   function makePolar(g, ballastFactor, bugs) {
     const [[v1, w1], [v2, w2], [v3, w3]] = g.polar.map(([v, w]) => [v / 3.6, w]);
     const d = v1 * v1 * (v2 - v3) + v2 * v2 * (v3 - v1) + v3 * v3 * (v1 - v2);

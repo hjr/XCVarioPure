@@ -1,8 +1,6 @@
 /*
- * glider/PolarModel.h
- *
  * The glider polar as S2F fits it (S2F::recalculatePolar): w = a0 + a1 v + a2 v² at 1 g, for the actual wing load
- * and bugs. One model for the device (speed to fly, netto, AirMass) and the host tools (tools/airmass_sim).
+ * and bugs. One model for the estimator on the device and in the host tools (tools/airmass_sim).
  * Plain C++, header only.
  */
 
@@ -10,7 +8,7 @@
 
 #include <cmath>
 
-namespace glider {
+namespace airmass {
 
 struct Polar {
     float a0 = 0.f, a1 = 0.f, a2 = 0.f; // m/s, negative = sink, v in m/s
@@ -29,4 +27,4 @@ struct Polar {
     bool operator==(const Polar& o) const { return a0 == o.a0 && a1 == o.a1 && a2 == o.a2 && v_stall == o.v_stall && valid == o.valid; }
 };
 
-} // namespace glider
+} // namespace airmass

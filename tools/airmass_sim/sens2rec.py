@@ -259,7 +259,7 @@ def sentence(name, fields):
 
 
 class Polar:
-    """S2F::recalculatePolar and glider::Polar::sink (components/glider/include/glider/PolarModel.h)"""
+    """S2F::recalculatePolar and airmass::Polar::sink (main/airmass/AirMassPolar.h)"""
 
     def __init__(self, g, ballast_factor, bugs):
         (v1, w1), (v2, w2), (v3, w3) = [(v / 3.6, w) for v, w in g["polar"]]
