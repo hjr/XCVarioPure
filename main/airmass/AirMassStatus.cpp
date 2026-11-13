@@ -5,8 +5,10 @@
 #include "setup/SetupCommon.h"
 #include "screen/UiEvents.h"
 #include "screen/DrawDisplay.h"
+#include "sensor.h"
 #include "driver/time/Clock.h"
 #include "driver/time/ClockIntf.h"
+#include "driver/time/WatchDog.h"
 #include "wind/Wind.h"
 #include "math/Units.h"
 #include "Atmosphere.h"
@@ -43,6 +45,7 @@ private:
     static constexpr int ROWS = 16;
     static constexpr int LANDSCAPE_ROWS = 9; // title and 8 lines, no room for the exit hint
     char _drawn[ROWS][48] = {};
+    int16_t _end[ROWS] = {}; // where the text of the row ends on the screen
 };
 
 StatusPage* StatusPage::shown = nullptr;
@@ -60,6 +63,7 @@ void StatusPage::display(int)
     clear();
     printTitle();
     memset(_drawn, 0, sizeof(_drawn));
+    memset(_end, 0, sizeof(_end));
     draw();
     if (maxLines() > LANDSCAPE_ROWS) {
         menuPrintLn("Press button to exit", maxLines() - 1, 5);
@@ -90,11 +94,19 @@ void StatusPage::line(int ln, const char* text)
         return;
     }
     snprintf(_drawn[ln], sizeof(_drawn[ln]), "%s", text);
-    // the row from the ascent to the descent of its text, menuClearLn would cut the descenders of the row above
-    MYUCG->setColor(COLOR_BLACK);
-    MYUCG->drawBox(0, ln * LINE_HEIGHT + 6, dwidth, LINE_HEIGHT - 1);
+    // the text covers the one before with its background, clearing the row first would flicker
+    MYUCG->setFont(ucg_font_fub14_hr, true);
     MYUCG->setColor(COLOR_WHITE);
     menuPrintLn(text, ln, 5);
+    const int16_t end = 5 + MYUCG->getStrWidth(text);
+    if (end < _end[ln]) {
+        // what is left of a longer text: the row from the ascent to the descent of its text, menuClearLn would cut
+        // the descenders of the row above
+        MYUCG->setColor(COLOR_BLACK);
+        MYUCG->drawBox(end, ln * LINE_HEIGHT + 6, _end[ln] - end, LINE_HEIGHT - 1);
+        MYUCG->setColor(COLOR_WHITE);
+    }
+    _end[ln] = end;
 }
 
 int windText(char* buf, size_t size, const char* label, int raw)
@@ -185,5 +197,9 @@ void airmass::statusUpdate()
 {
     if (StatusPage::shown) {
         StatusPage::shown->draw();
+        // a page to watch in flight: without it the setup closes after a while without the knob
+        if (uiMonitor) {
+            uiMonitor->pet();
+        }
     }
 }
