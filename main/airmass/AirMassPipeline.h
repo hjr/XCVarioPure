@@ -85,6 +85,29 @@ struct Frame {
     uint8_t valid = ALL;
 };
 
+// The down axis for a start in flight without a converged AHRS (a log beginning airborne, an instrument replay jumping
+// into a flight). In a coordinated turn the apparent gravity points along the lift, not down: the air path's
+// centripetal acceleration (omega x air velocity) is taken out, as the attitude filter does. False when the frame
+// gives no gravity reference (an unmodelled manoeuvre).
+inline bool downFromMotion(const Setup& setup, const Frame& f, const Warm& w, float down[3]) {
+    Raw raw;
+    raw.lever_arm = setup.lever_arm;
+    std::copy(std::begin(f.gyro), std::end(f.gyro), raw.gyro);
+    std::copy(std::begin(f.f_body), std::end(f.f_body), raw.f_body);
+    float force[3];
+    forceAtCg(raw, force);
+    const float ias = f.ias * w.k_tas, tas = f.tas * w.k_tas;
+    const float alpha = aoaModel(std::max(-force[2], 0.3f), ias, setup.mass, setup.wing_area) * w.k_aoa - w.pitch_ofs;
+    const float vx = tas * std::cos(alpha), vz = tas * std::sin(alpha);
+    down[0] = f.gyro[1] * vz / G0 - force[0];
+    down[1] = (f.gyro[2] * vx - f.gyro[0] * vz) / G0 - force[1];
+    down[2] = -f.gyro[1] * vx / G0 - force[2];
+    const float norm = std::sqrt(down[0] * down[0] + down[1] * down[1] + down[2] * down[2]);
+    if (!std::isfinite(norm) || norm < 0.75f || norm > 1.25f || down[2] <= 0.f) return false;
+    for (int i = 0; i < 3; ++i) down[i] /= norm;
+    return true;
+}
+
 // Optional attitude supplied by replay experiments instead of the air-data-aided attitude.
 struct ExternalAttitude {
     float down[3] = {0.f, 0.f, 1.f};

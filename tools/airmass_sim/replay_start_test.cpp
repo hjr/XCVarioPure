@@ -97,24 +97,24 @@ void recovery(bool mahony, bool logged) {
           "banked recovery separates gravity from turn acceleration");
     check(!(replay.pipeline().ekf().status() & AirMassEKF::ST_VARIO_VALID) && !replay.pipeline().ekf().isAligned(),
           "recovered output still waits for vertical settling and heading alignment");
-    for (int i = 0; i < 100; ++i) {
+    for (int i = 0; i < 300; ++i) {
         turn.f.time_ms += 100;
         replay.line(rec::frame(turn.f).c_str());
     }
     replay.finish();
-    check(replay.frames == 101 && replay.pipeline().ekf().covarianceHealthy() &&
+    check(replay.frames == 301 && replay.pipeline().ekf().covarianceHealthy() &&
           (replay.pipeline().ekf().status() & AirMassEKF::ST_VARIO_VALID), "recovered flight reaches valid vario after settling");
     replay.line(rec::stop(turn.f.time_ms).c_str());
     turn.f.time_ms += 100;
     replay.line(rec::frame(turn.f).c_str());
-    check(replay.frames == 101 && replay.skipped == 1, "explicit stop prevents automatic airborne restart");
+    check(replay.frames == 301 && replay.skipped == 1, "explicit stop prevents automatic airborne restart");
     rec::Start next;
     next.t = turn.f.time_ms;
     next.alt = turn.f.baro_alt;
     next.warm.k_tas = 1.07f;
     replay.line(rec::start(next).c_str());
     replay.line(rec::frame(turn.f).c_str());
-    check(replay.frames == 102 && replay.starts == 2 && near(replay.pipeline().ekf().kTas(), 1.07f, 0.001f),
+    check(replay.frames == 302 && replay.starts == 2 && near(replay.pipeline().ekf().kTas(), 1.07f, 0.001f),
           "a later explicit start replaces recovered state and calibration");
 }
 

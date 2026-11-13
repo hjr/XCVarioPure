@@ -196,7 +196,7 @@ void glitches() {
         }
     };
     f.time_ms = 1100;
-    fly(20000);
+    fly(40000);
     const float settled = p.ekf().airmassVario();
     check(p.ekf().status() & AirMassEKF::ST_VARIO_VALID, "steady glide settles before the glitches");
     float worst = 0.f;
@@ -284,17 +284,17 @@ void landing() {
     f.tas = 35.f;
     f.baro_alt = 1000.f;
     airmass::ExternalAttitude att;
-    for (f.time_ms = 1100; f.time_ms <= 12000; f.time_ms += 100) pipe.step(f, &att);
+    for (f.time_ms = 1100; f.time_ms <= 37000; f.time_ms += 100) pipe.step(f, &att);
     check(pipe.ekf().status() & AirMassEKF::ST_VARIO_VALID, "valid before landing at flying speed");
 
     // IAS 17 m/s is below 80% of the 21.636 m/s polar reference, while TAS exceeds its separate floor.
     f.ias = 17.f;
     f.tas = 25.f;
-    f.time_ms = 12100;
+    f.time_ms = 37100;
     pipe.step(f, &att);
     const float pitch_ofs = pipe.ekf().pitchOffset(), aoa_scale = pipe.ekf().aoaScale();
     bool invalid = !(pipe.ekf().status() & AirMassEKF::ST_VARIO_VALID);
-    for (f.time_ms = 12200; f.time_ms <= 16000; f.time_ms += 100) {
+    for (f.time_ms = 37200; f.time_ms <= 41000; f.time_ms += 100) {
         pipe.step(f, &att);
         invalid &= !(pipe.ekf().status() & AirMassEKF::ST_VARIO_VALID);
     }
@@ -302,11 +302,11 @@ void landing() {
     check(pipe.ekf().pitchOffset() == pitch_ofs && pipe.ekf().aoaScale() == aoa_scale,
           "wheel support cannot train pitch or AoA calibration");
     const auto rejects = pipe.ekf().rejectedGnss();
-    pipe.gnss({16000, 750, 25.f, 0.f, 0.5f}, true, 0.f, 0.f);
+    pipe.gnss({41000, 750, 25.f, 0.f, 0.5f}, true, 0.f, 0.f);
     check(pipe.ekf().rejectedGnss() == rejects + 1 && !pipe.ekf().isAligned(),
           "low-speed air-vector history cannot align wind from wheel support");
     f.ias = f.tas = 0.f;
-    for (f.time_ms = 16100; f.time_ms <= 50000; f.time_ms += 100) {
+    for (f.time_ms = 41100; f.time_ms <= 75000; f.time_ms += 100) {
         pipe.step(f, &att);
         invalid &= !(pipe.ekf().status() & AirMassEKF::ST_VARIO_VALID);
     }
@@ -316,13 +316,13 @@ void landing() {
     f.ias = 18.f;
     f.tas = 27.f;
     bool premature = false;
-    for (f.time_ms = 50100; f.time_ms <= 54900; f.time_ms += 100) {
+    for (f.time_ms = 75100; f.time_ms <= 79900; f.time_ms += 100) {
         pipe.step(f, &att);
         premature |= pipe.ekf().status() & AirMassEKF::ST_VARIO_VALID;
     }
     check(pipe.input().flying_speed && !premature, "return to flying speed waits for settling before leaving TE");
     // the airspeed step from 0 to 27 m/s in one sample is held out as implausible for two samples (Plausibility)
-    for (f.time_ms = 55000; f.time_ms <= 55300; f.time_ms += 100) pipe.step(f, &att);
+    for (f.time_ms = 80000; f.time_ms <= 80300; f.time_ms += 100) pipe.step(f, &att);
     check(pipe.ekf().status() & AirMassEKF::ST_VARIO_VALID, "sustained flying speed restores AirMass after settling");
 
     AirMassEKF ekf;

@@ -293,12 +293,21 @@ void AirMassSensor::start()
     st.t = Clock::getMillis();
     st.alt = alt;
     _last_ms = st.t;
-    _jump = false;
     const vector_f down = ahrsSensor->getBody2Nav().rotateInv(vector_f(0.f, 0.f, 1.f));
     const vector_f gyro = gyroSensor ? gyroRates() : vector_f();
+    const vector_f& f_body = accSensor->getHead();
+    airmass::Frame f;
     for (int i = 0; i < 3; ++i) {
         st.down[i] = down[i];
-        st.gyro[i] = gyro[i];
+        st.gyro[i] = f.gyro[i] = gyro[i];
+        f.f_body[i] = f_body[i];
+    }
+    f.ias = ias.get();
+    f.tas = tas.get();
+    // a replay jump has just reset the AHRS: it knows the accelerometer direction only, level in every turn
+    float in_flight[3];
+    if (_jump.exchange(false) && f.tas > 10.f && airmass::downFromMotion(currentSetup(), f, warm, in_flight)) {
+        std::copy(in_flight, in_flight + 3, st.down);
     }
     st.warm = warm;
     applyConfig();
@@ -397,7 +406,7 @@ void AirMassSensor::postProcess()
     if (!_pipe.ekf().isRunning()) {
         ESP_LOGW(FNAME, "AirMass estimator restart");
         start();
-    } else if (_jump.exchange(false) || (int32_t)(Clock::getMillis() - _last_ms) < 0) {
+    } else if (_jump || (int32_t)(Clock::getMillis() - _last_ms) < 0) {
         // A replay jump, or the clock going back when a faster replay returns to real time: restart (recorded, so
         // the replay of the recording restarts too) rather than hold the estimate until the clock catches up.
         ESP_LOGI(FNAME, "AirMass restart after a jump");

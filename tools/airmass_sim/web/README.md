@@ -36,8 +36,8 @@ A logger joining an existing recording stream can still miss the snapshot and us
 The target polls AirMass every 100 ms (10 Hz), with its sensors. Each tick predicts the state; barometer, kinematic and energy
 corrections consume only new source timestamps. IMU and pressure/pitot freshness are tracked separately, so a
 barometer can update while other readings are held. Held IMU data carry increasing prediction uncertainty;
-stale/invalid data cannot maintain vario validity. Settling remains five seconds and delayed GNSS support 6.4
-seconds, independent of poll rate. Kinematic/energy model-constraint noise is normalized by correction interval.
+stale/invalid data cannot maintain vario validity. Settling remains five seconds (thirty after a start in flight, where the attitude has to converge first) and delayed GNSS
+support 6.4 seconds, independent of poll rate. Kinematic/energy model-constraint noise is normalized by correction interval.
 Output synchronization stays at 5 Hz, wind at 2 Hz, average wind at 1 Hz, and setup/compass/save periods use
 elapsed time. This changes the estimator scheduler only; it does not increase physical sensor sampling rates.
 

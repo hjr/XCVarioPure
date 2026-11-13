@@ -183,6 +183,7 @@ void AirMassEKF::reset(float baro_alt, float k_tas, float pitch_ofs, float laten
     _energy_reject_ms = 0;
     _baro_clock = _kinematic_clock = _energy_clock = {};
     _vertical_settle_ms = 0;
+    _settle_ms = SETTLE_MS;
     _last_gnss_ms = _last_time_ms;
     _have_gnss = _have_received_gnss = _have_input = false;
     _gnss_timing.reset();
@@ -332,6 +333,7 @@ void AirMassEKF::update(const Input& in) {
         return;
     }
     const bool continuous = in.continuous && (!_have_input || (uint32_t)(in.time_ms - _last_time_ms) <= 300);
+    const bool first = !_have_input;
     _have_input = true;
     _last_time_ms = in.time_ms;
     if (!continuous) {
@@ -351,6 +353,9 @@ void AirMassEKF::update(const Input& in) {
         _inertial_trust = std::min(1.f, _inertial_trust + in.dt / 10.f);
     }
     const bool flying_speed = in.flying_speed && std::isfinite(in.tas) && in.tas > 10.f;
+    if (first) {
+        _settle_ms = flying_speed ? SETTLE_IN_FLIGHT_MS : SETTLE_MS;
+    }
     if (!flying_speed) {
         _vertical_settle_ms = 0;
         // Do not carry ground braking or a frozen air-mass output into the next takeoff.
@@ -417,7 +422,10 @@ void AirMassEKF::update(const Input& in) {
     _vario_out = std::isnan(_vario_out) ? vario : _vario_out + (vario - _vario_out) * in.dt / (tau + in.dt);
     updateWindValid();
     if (_running && flying_speed && continuous) {
-        _vertical_settle_ms = std::min<uint32_t>(5000, _vertical_settle_ms + (uint32_t)(in.dt * 1000.f + 0.5f));
+        _vertical_settle_ms = std::min<uint32_t>(_settle_ms, _vertical_settle_ms + (uint32_t)(in.dt * 1000.f + 0.5f));
+        if (_vertical_settle_ms >= _settle_ms) {
+            _settle_ms = SETTLE_MS; // settled once, an interruption needs the short time only
+        }
     }
 }
 
@@ -861,7 +869,7 @@ uint8_t AirMassEKF::status() const {
         return 0;
     }
     uint8_t st = 0;
-    if (_vertical_settle_ms >= 5000) {
+    if (_vertical_settle_ms >= _settle_ms) {
         st |= ST_VARIO_VALID;
     }
     if (_aligned) {

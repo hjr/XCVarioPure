@@ -161,26 +161,10 @@ private:
         if (logged) {
             std::copy(std::begin(_logged_down), std::end(_logged_down), st.down);
         } else {
-            // In a coordinated turn, apparent gravity points along the lift, not down. Subtract the
-            // air-path centripetal acceleration (omega x air velocity), as the attitude filter does.
-            Raw raw;
-            raw.lever_arm = _setup.lever_arm;
-            std::copy(std::begin(f.gyro), std::end(f.gyro), raw.gyro);
-            std::copy(std::begin(f.f_body), std::end(f.f_body), raw.f_body);
-            float force[3];
-            forceAtCg(raw, force);
             Warm w;
             overrideWarm(w);
-            const float ias = f.ias * w.k_tas, tas = f.tas * w.k_tas;
-            const float alpha = aoaModel(std::max(-force[2], 0.3f), ias, _setup.mass, _setup.wing_area) * w.k_aoa - w.pitch_ofs;
-            const float vx = tas * std::cos(alpha), vz = tas * std::sin(alpha);
-            st.down[0] = f.gyro[1] * vz / G0 - force[0];
-            st.down[1] = (f.gyro[2] * vx - f.gyro[0] * vz) / G0 - force[1];
-            st.down[2] = -f.gyro[1] * vx / G0 - force[2];
-            const float norm = std::sqrt(st.down[0] * st.down[0] + st.down[1] * st.down[1] + st.down[2] * st.down[2]);
             // An unmodelled manoeuvre cannot supply a useful initial gravity reference. Wait for another frame.
-            if (!std::isfinite(norm) || norm < 0.75f || norm > 1.25f || st.down[2] <= 0.f) return false;
-            for (float& d : st.down) d /= norm;
+            if (!downFromMotion(_setup, f, w, st.down)) return false;
         }
         begin(st);
         recovered_starts++;

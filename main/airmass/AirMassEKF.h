@@ -228,6 +228,9 @@ class AirMassEKF {
         bool flying_speed;
     };
     static constexpr uint32_t HISTORY_MS = 6400; // the oldest GNSS fix the delayed fusion takes
+    // supported flight until the vario is valid; started in flight the attitude has to converge first: without a
+    // converged AHRS the vario is off by 0.5 to 1 m/s for half a minute (RESULTS-2026-11-13-start.md)
+    static constexpr uint32_t SETTLE_MS = 5000, SETTLE_IN_FLIGHT_MS = 30000;
     // A snapshot every cycle, but faster ticks (20Hz) share one: the newest replaces the head until it is this far from
     // the one before, so the history keeps 6.4s in less memory; the delayed fusion interpolates between them anyway
     static constexpr uint32_t HIST_STEP_MS = 90;
@@ -315,6 +318,7 @@ class AirMassEKF {
         bool valid;
     } _aid = {};
     uint32_t _vertical_settle_ms = 0;
+    uint32_t _settle_ms = SETTLE_MS; // what the vario needs now to be valid
     bool _running = false;
     bool _aligned = false;
     bool _wind_valid = false;

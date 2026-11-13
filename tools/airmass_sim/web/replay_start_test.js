@@ -26,21 +26,21 @@ const { convert, runReplay } = loadPage(__dirname);
 
   // A confirmed sensor outage must reach the estimator as a gap, without held-input predictions filling it.
   const gapped = [];
-  for (let i = 0; i < 240; i++) {
-    const elapsed = i * .1 + (i >= 180 ? 113.573 : 0), utc = 43200 + elapsed;
+  for (let i = 0; i < 600; i++) {
+    const elapsed = i * .1 + (i >= 540 ? 113.573 : 0), utc = 43200 + elapsed;
     const time = [Math.floor(utc / 3600), Math.floor(utc / 60) % 60].map(v => String(v).padStart(2, "0")).join("") +
       (utc % 60).toFixed(3).padStart(6, "0");
     gapped.push(`$GPRMC,${time},A,4800.000,N,01100.000,E,60.0,90.0,091126,,,A`);
     gapped.push(`$SENS,${(300 + elapsed).toFixed(3)},0,900,900,500,15,0,0,-1,0,0,0`);
   }
   const gapConv = convert(gapped.join("\n"), { glider: "log" });
-  assert.equal(gapConv.track.cols.t_ms[180] - gapConv.track.cols.t_ms[179], 113673);
+  assert.equal(gapConv.track.cols.t_ms[540] - gapConv.track.cols.t_ms[539], 113673);
   for (const mahony of [false, true]) {
     const gapReplay = await runReplay(M, gapConv.rec, { mahony });
     const after = gapReplay.t_ms.findIndex((t, i, times) => i && t - times[i - 1] > 10000);
     assert(after > 0, "the recorded gap reaches WASM");
     assert.equal(gapReplay.t_ms[after] - gapReplay.t_ms[after - 1], 113673);
-    assert(gapReplay.n <= full.n, "no prediction ticks are fabricated through the outage");
+    assert(gapReplay.n <= gapConv.frames, "no prediction ticks are fabricated through the outage");
     assert(gapReplay.cols.status[after - 1] & STATUS.VARIO_VALID, "the vario settled before the outage");
     assert(!(gapReplay.cols.status[after] & STATUS.VARIO_VALID), "the estimator must settle again after the gap");
   }
@@ -65,7 +65,11 @@ const { convert, runReplay } = loadPage(__dirname);
     assert.equal(rep.n, 141);
     assert(rep.cols.vario.every(Number.isFinite));
     assert(rep.cols.status.every(s => !(s & (STATUS.WIND_VALID | STATUS.GNSS_FRESH | STATUS.ALIGNED))), "missing GNSS cannot invent wind, fixes or heading alignment");
-    assert(rep.cols.status.some(s => s & STATUS.VARIO_VALID), "vario can settle without GNSS");
+    assert(rep.cols.status.every(s => !(s & STATUS.VARIO_VALID)), "a start in flight is not valid within 14 seconds");
+    const longer = [];
+    for (let i = 0; i < 500; ++i) longer.push(sentence("$PXCV,0,1,0,1,1,15,1013,1000,0,25,3"), `$SENS,${(300 + i * 0.1).toFixed(3)},0,900,900,500,15,0,0,-1,0,0,0`);
+    const settled = await runReplay(M, convert(longer.join("\n"), { glider: "log" }).rec, { mahony });
+    assert(settled.cols.status.some(s => s & STATUS.VARIO_VALID), "vario can settle without GNSS");
     const recovered = await runReplay(M, recoveredClock.rec, { mahony });
     assert.deepEqual(recovered.t_ms, rep.t_ms, "recovered clock preserves measured/predicted replay cadence");
     assert.deepEqual(recovered.cols, rep.cols, "recovered clock yields the same estimator output as correctly timestamped input");
@@ -107,7 +111,7 @@ const { convert, runReplay } = loadPage(__dirname);
   // New device recordings include source timestamps: 20Hz polls with physical readings at 10Hz.
   const timed = [sens.rec.find(line => line.startsWith("$PXCVC,")),
     sentence("$PXCVS,0,1000,0,0,1,0,0,0,1,0,0.75,1,1,1,1,1,1,1,1,2")];
-  for (let t = 50; t <= 12000; t += 50) {
+  for (let t = 50; t <= 32000; t += 50) {
     const stamp = Math.floor(t / 100) * 100;
     const held = t > 50 && t % 100 !== 0;
     // Different values with unchanged source timestamps must be ignored, including by Mahony.
@@ -115,17 +119,17 @@ const { convert, runReplay } = loadPage(__dirname);
   }
   for (const mahony of [false, true]) {
     const rep = await runReplay(M, convert(timed.join("\n")).rec, { mahony });
-    assert.equal(rep.n, 240);
-    assert.equal(rep.summary.seconds, 12, "reported duration is elapsed time, independent of frame rate");
+    assert.equal(rep.n, 640);
+    assert.equal(rep.summary.seconds, 32, "reported duration is elapsed time, independent of frame rate");
     assert(rep.cols.roll_deg.every(v => Math.abs(v) < 0.001), "held-stamp gyro changes cannot tilt either attitude filter");
-    assert(rep.cols.status.slice(0, 99).every(s => !(s & STATUS.VARIO_VALID)), "20Hz still needs five seconds of settling");
-    assert(rep.cols.status[99] & STATUS.VARIO_VALID);
+    assert(rep.cols.status.slice(0, 599).every(s => !(s & STATUS.VARIO_VALID)), "20Hz still needs thirty seconds of settling after a start in flight");
+    assert(rep.cols.status[599] & STATUS.VARIO_VALID);
     // One invalid frame is bridged by the held readings; validity ends when they are older than 300 ms.
     const invalid = [...timed];
-    for (let t = 12050; t <= 12350; t += 50) invalid.push(sentence(`$PXCVR,${t},,,,,,,,,,,${t},${t},${t},${t},0`));
+    for (let t = 32050; t <= 32350; t += 50) invalid.push(sentence(`$PXCVR,${t},,,,,,,,,,,${t},${t},${t},${t},0`));
     const bad = await runReplay(M, convert(invalid.join("\n")).rec, { mahony });
-    assert.equal(bad.n, 247);
-    assert(bad.cols.status[240] & STATUS.VARIO_VALID, "one invalid frame is bridged");
+    assert.equal(bad.n, 647);
+    assert(bad.cols.status[640] & STATUS.VARIO_VALID, "one invalid frame is bridged");
     assert(!(bad.cols.status[bad.n - 1] & STATUS.VARIO_VALID), "explicit invalid-source metadata forces fallback");
     assert(bad.cols.vario.every(Number.isFinite));
 

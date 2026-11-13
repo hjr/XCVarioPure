@@ -85,30 +85,35 @@ void mixedRates() {
     airmass::Pipeline p;
     start(p);
     int baro = 0, kinetic = 0, energy = 0;
-    for (uint32_t t = 50; t <= 6000; t += 50) {
+    for (uint32_t t = 50; t <= 30000; t += 50) {
         auto f = frame(t);
         f.sample_ms[0] = f.sample_ms[3] = t / 100 * 100;
         f.sample_ms[2] = t / 200 * 200;
         p.step(f);
-        baro += p.input().baro_fresh;
-        kinetic += p.input().kinematic_fresh;
-        energy += p.input().energy_fresh;
-        if (t == 2500 || t == 4950) check(!(p.ekf().status() & AirMassEKF::ST_VARIO_VALID), "20Hz cannot shorten the five-second settling period");
-        if (t == 5000) check(p.ekf().status() & AirMassEKF::ST_VARIO_VALID, "five seconds of supported data settles at 20Hz");
+        if (t <= 6000) {
+            baro += p.input().baro_fresh;
+            kinetic += p.input().kinematic_fresh;
+            energy += p.input().energy_fresh;
+        }
+        if (t == 5000 || t == 29950) check(!(p.ekf().status() & AirMassEKF::ST_VARIO_VALID), "20Hz cannot shorten the settling period of a start in flight");
+        if (t == 30000) check(p.ekf().status() & AirMassEKF::ST_VARIO_VALID, "thirty seconds of supported data settle a start in flight at 20Hz");
     }
     check(baro == 31 && energy == 61 && kinetic == 120, "5Hz barometer, 10Hz pitot/accel and 20Hz gyro correct independently");
-    auto f = frame(6000);
-    for (uint32_t t = 6050; t <= 6500; t += 50) { f.time_ms = t; p.step(f); }
+    auto f = frame(30000);
+    for (uint32_t t = 30050; t <= 30500; t += 50) { f.time_ms = t; p.step(f); }
     check(!p.input().continuous && p.ekf().inertialTrust() == 0.f && !(p.ekf().status() & AirMassEKF::ST_VARIO_VALID),
           "polling held data cannot hide an IMU/air-data outage");
-    for (uint32_t t = 6550; t <= 11550; t += 50) p.step(frame(t));
-    check(p.ekf().status() & AirMassEKF::ST_VARIO_VALID, "fresh data restores validity after another five-second settling period");
-    for (uint32_t t = 11600; t <= 11900; t += 50) {
+    for (uint32_t t = 30550; t <= 35550; t += 50) {
+        p.step(frame(t));
+        if (t == 35500) check(!(p.ekf().status() & AirMassEKF::ST_VARIO_VALID), "an interruption settles for five seconds again");
+    }
+    check(p.ekf().status() & AirMassEKF::ST_VARIO_VALID, "fresh data restores validity after a five-second settling period, not the one of the start");
+    for (uint32_t t = 35600; t <= 35900; t += 50) {
         f = frame(t);
         f.valid = 0;
         f.baro_alt = f.tas = f.gyro[0] = f.f_body[2] = NAN;
         p.step(f);
-        if (t == 11600) check(p.ekf().status() & AirMassEKF::ST_VARIO_VALID, "one invalid readout is bridged by the held readings");
+        if (t == 35600) check(p.ekf().status() & AirMassEKF::ST_VARIO_VALID, "one invalid readout is bridged by the held readings");
     }
     check(std::isfinite(p.ekf().airmassVario()) && !(p.ekf().status() & AirMassEKF::ST_VARIO_VALID),
           "invalid sensor readouts suppress vario validity once the held readings are stale");
@@ -216,7 +221,7 @@ void clockJumps() {
     // the wind (valid or degraded) needs the alignment
     constexpr uint8_t VALID = AirMassEKF::ST_VARIO_VALID | AirMassEKF::ST_ALIGNED;
     constexpr uint8_t ANY = VALID | AirMassEKF::ST_WIND_VALID | AirMassEKF::ST_WIND_DEGRADED | AirMassEKF::ST_GNSS_FRESH;
-    fly(50, 60000);
+    fly(50, 90000);
     check((p.ekf().status() & VALID) == VALID, "clock-jump fixture starts with valid vario and aligned wind");
     const float ktas = p.ekf().kTas();
     p.step(frame(30000));
@@ -226,12 +231,12 @@ void clockJumps() {
     fly(30050, 34950);
     check(p.input().time_ms == 34950 && !(p.ekf().status() & AirMassEKF::ST_VARIO_VALID),
           "predictions run on the new clock and the restart settles again");
-    fly(35000, 59950);
+    fly(35000, 65000);
     check((p.ekf().status() & VALID) == VALID, "valid again long before the old clock is reached");
     p.step(frame(120000));
     p.endCycle();
     check(!(p.ekf().status() & ANY) && p.input().time_ms == 120000, "a clock jumping ahead restarts as well");
-    fly(120050, 150000);
+    fly(120050, 155000);
     check((p.ekf().status() & VALID) == VALID, "valid again after the forward jump");
 }
 
