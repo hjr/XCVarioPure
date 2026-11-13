@@ -883,10 +883,7 @@ function derive(D) {
   D.gnssGrossRaw = grossInert.map((v, k) => (Number.isFinite(v) ? v : grossPitot[k]));
   const gnssNet = D.gnssNet = D.gnssNetInert.map((v, k) => (Number.isFinite(v) ? v : D.gnssNetPitot[k]));
   // running sums for the configurable averages under the vario gauge
-  D.cum = { am: runningSums(n, (k) => (D.amOk[k] ? D.amRaw[k] : NaN)), net: runningSums(n, (k) => D.netto[k]), gnss: runningSums(n, (k) => gnssNet[k]) };
-  D.cum.amGross = runningSums(n, (k) => D.amOk[k] ? D.amRaw[k] + (Number.isFinite(sinkUp[k]) ? sinkUp[k] : 0) : NaN);
-  D.cum.teGross = runningSums(n, (k) => c.te_vario[k]);
-  D.cum.gnssGross = runningSums(n, (k) => D.gnssGrossRaw[k]);
+  D.cum = { net: runningSums(n, (k) => D.netto[k]), teGross: runningSums(n, (k) => c.te_vario[k]) };
   // per second, for the map track and the strip under the vario chart: the AirMass vario where valid, the device's TE
   // vario in flight, the GNSS climb, GNSS netto as the black line (undamped) and as SeeYou computes it
   D.sec = [];
@@ -938,17 +935,16 @@ function deriveDamping(D) {
     }
   }
   // the TE vario replayed from the logged TE pressure (TeVario) with this damping; netto like the device's (the polar
-  // sink of the moment, not damped), the averages over the undamped rate like the AirMass one's
-  const te = new TeVario(delay), rate = new Float32Array(n).fill(NaN);
+  // sink of the moment, not damped)
+  const te = new TeVario(delay);
   D.tepGross = new Float32Array(n).fill(NaN);
   D.tep = new Float32Array(n).fill(NaN);
   for (let k = 0; k < n; k++) {
     D.tepGross[k] = te.at(D.t[k], D.tr.te_alt[k]);
-    if (Number.isFinite(D.tepGross[k])) rate[k] = te.rate;
     if (Number.isFinite(D.sinkUp[k])) D.tep[k] = D.tepGross[k] - D.sinkUp[k];
   }
-  D.cum.tepGross = runningSums(n, (k) => rate[k]);
-  D.cum.tep = runningSums(n, (k) => rate[k] - D.sinkUp[k]);
+  // the averages over the damped varios, as the device averages what its needle shows
+  for (const name of ["am", "amGross", "gnss", "gnssGross", "tep", "tepGross"]) D.cum[name] = runningSums(n, (k) => D[name][k]);
 }
 
 // All vario displays and the tone use the same mode; the map's explicitly named colour sources stay independent.

@@ -102,6 +102,7 @@ choice is saved in this browser.
 
 **Averager**, beside Damping in **Settings → Vario**, controls the trailing averaging window for the main vario's
 average on the gauge and the other varios' numeric readouts. It defaults to 30 seconds and accepts 7–50 seconds, matching the device's range.
+The averages are over the damped varios, as the device averages what its needle shows.
 Changes update the readouts and their period label immediately and are saved in this browser.
 The vario damping runs the device's 10 Hz cycles on the frame timestamps, each cycle reading the latest frame, so
 5 Hz logs and 20 Hz recordings are damped like 10 Hz ones; between cycles the needle holds.
