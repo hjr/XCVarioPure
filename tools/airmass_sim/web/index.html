@@ -423,7 +423,19 @@ const tick = () => new Promise((r) => setTimeout(r, 0));
 
 // Serial owns playback time while connected. Both the transmitter and the animation read serial.time().
 let serialWasConnected = false;
-const serial = new AirMassSerial.SerialReplay({ onChange: s => {
+// A hidden tab's timers fire once a second or less; a worker's keep their time, so the instrument replay goes on.
+const backgroundTimers = (() => {
+  try {
+    const source = "const t = new Map(); onmessage = (e) => { const [id, ms] = e.data; if (ms === undefined) { clearTimeout(t.get(id)); t.delete(id); }" +
+      " else t.set(id, setTimeout(() => { t.delete(id); postMessage(id); }, ms)); };";
+    const worker = new Worker(URL.createObjectURL(new Blob([source], { type: "text/javascript" }))), pending = new Map();
+    let next = 1;
+    worker.onmessage = (e) => { const f = pending.get(e.data); pending.delete(e.data); if (f) f(); };
+    return { setTimer: (f, ms) => { pending.set(next, f); worker.postMessage([next, ms]); return next++; },
+      clearTimer: (id) => { if (pending.delete(id)) worker.postMessage([id]); } };
+  } catch (_) { return {}; }
+})();
+const serial = new AirMassSerial.SerialReplay({ ...backgroundTimers, onChange: s => {
   $("serialstatus").textContent = s.message;
   $("serialbtn").textContent = s.connected ? "Disconnect serial" : "Connect serial…";
   $("baud").disabled = s.connected || s.connecting;
@@ -468,9 +480,6 @@ $("speed").addEventListener("change", () => {
     try { serial.setSpeed(+$("speed").value); }
     catch (e) { $("speed").value = String(serial.speed); setStatus(e.message, true); }
   }
-});
-document.addEventListener("visibilitychange", () => {
-  if (document.hidden && serial.connected) serial.pause("Connected · paused because the tab is hidden");
 });
 window.addEventListener("pagehide", () => { if (serial.connected) serial.disconnect(); });
 
@@ -1595,7 +1604,7 @@ function displayTime(t, draw = drawAll) {
   draw();
 }
 function play() {
-  if (!D || loading || replaying || document.hidden && serial.connected) return;
+  if (!D || loading || replaying) return;
   if (T >= D.t[D.n - 1]) seek(D.tStart);
   if (serial.connected) { serial.play(); return; }
   playing = true; lastFrame = performance.now();

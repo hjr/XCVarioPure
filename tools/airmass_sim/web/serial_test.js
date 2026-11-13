@@ -450,7 +450,7 @@ test("coincident sensor timestamps exceeding wire capacity are rejected before t
   assert.equal(h.calls.length, 0);
 });
 
-test("page controls connect at the selected offline time, render from serial time and pause when hidden", async () => {
+test("page controls connect at the selected offline time, render from serial time and go on when hidden", async () => {
   const h = harness(), events = {}, elements = {};
   const element = id => elements[id] ||= { value: "", checked: false, options: [], addEventListener() {}, setAttribute() {} };
   element("baud").value = "115200";
@@ -492,9 +492,7 @@ test("page controls connect at the selected offline time, render from serial tim
   assert.equal(h.replay.generation, generation + 1, "letting go after the change does not seek again");
   await h.clock.advance(50); vm.runInContext("frame(performance.now());", context);
   assert.equal(context.T, h.replay.time(), "the page follows the instrument again");
-  context.document.hidden = true; events.visibilitychange(); await flush();
-  assert.equal(h.replay.running, false); assert.equal(context.playing, false);
-  assert.match(element("serialstatus").textContent, /hidden/);
+  assert.equal(events.visibilitychange, undefined, "a hidden tab keeps the instrument replay going");
 });
 
 test("page hooks keep serial time separate from offline frame advancement; assets include serial", () => {
@@ -503,7 +501,7 @@ test("page hooks keep serial time separate from offline frame advancement; asset
   const functionText = name => grab(script, `function ${name}(`);
   assert.match(functionText("frame"), /T = serial.time\(\)/);
   assert(!functionText("frame").split("const dt")[0].includes("seek(T)"), "drawing does not issue a hardware seek");
-  assert.match(script, /visibilitychange[\s\S]*?document.hidden && serial.connected\) serial.pause/);
+  assert.match(script, /new AirMassSerial.SerialReplay\(\{ \.\.\.backgroundTimers,/);
   assert.match(script, /option && !option.disabled/);
   assert.match(fs.readFileSync(__dirname + "/deploy.sh", "utf8"), /SCRIPTS="[^"]*serial.js/);
 });

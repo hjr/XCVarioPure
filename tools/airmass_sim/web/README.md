@@ -202,7 +202,7 @@ measured increments supply the elapsed time; browser and Python converters repor
 Without that evidence, coincident samples are retained and can still exceed every baud rate.
 Writes are serialized and await stream backpressure. More than 250 ms of scheduling/write lag pauses playback without
 dropping samples or starting a catch-up burst; a two-second write/backpressure timeout closes the connection.
-Hiding the tab pauses serial replay, and returning to it requires Play. A write already handed to the OS can
+Serial replay goes on while the tab is hidden; its timers run in a worker, which the browser does not slow down. A write already handed to the OS can
 finish after Pause/Seek, but pending stale sentences are canceled. Loading another log or rerunning the estimator
 pauses transmission; replacing the timeline restores setup and resets serial speed to 1×.
 
