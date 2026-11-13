@@ -29,7 +29,7 @@
 AirMassSensor *airmassSensor = nullptr;
 
 constexpr int SENSOR_HISTORY_DURATION_MS = 500; // nobody evaluates the wind history so far
-constexpr int DUTY_CYCLE_MS = 50;               // 20Hz prediction; corrections follow source timestamps
+constexpr int DUTY_CYCLE_MS = 100;              // 10Hz, with the sensors; corrections follow source timestamps
 constexpr size_t HSIZE = SENSOR_HISTORY_DURATION_MS / DUTY_CYCLE_MS;
 static __attribute__((aligned(4))) vector_f airmass_buffer[HSIZE + 1];
 

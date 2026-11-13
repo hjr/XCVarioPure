@@ -34,7 +34,7 @@ extern "C" {
 EMSCRIPTEN_KEEPALIVE int am_begin(const char* settings, int learn, int warm, float k_tas, float pitch_ofs_deg, float aoa_scale, float latency_s, int mahony) {
     delete g_replay;
     g_replay = new airmass::replay::Replayer();
-    g_replay->setPredictionPeriod(50);
+    g_replay->setPredictionPeriod(100);
     g_rows.clear();
     g_times.clear();
     g_replay->setMahony(mahony != 0);

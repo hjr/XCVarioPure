@@ -33,7 +33,7 @@ The device sends a fresh setup and `PXCVS` snapshot if Recording is enabled whil
 The snapshot carries its current attitude, calibration and flap offsets without resetting the live estimator.
 A logger joining an existing recording stream can still miss the snapshot and use the recovery path above.
 
-The target polls AirMass every 50 ms (20 Hz). Each tick predicts the state; barometer, kinematic and energy
+The target polls AirMass every 100 ms (10 Hz), with its sensors. Each tick predicts the state; barometer, kinematic and energy
 corrections consume only new source timestamps. IMU and pressure/pitot freshness are tracked separately, so a
 barometer can update while other readings are held. Held IMU data carry increasing prediction uncertainty;
 stale/invalid data cannot maintain vario validity. Settling remains five seconds and delayed GNSS support 6.4
@@ -43,7 +43,7 @@ elapsed time. This changes the estimator scheduler only; it does not increase ph
 
 New `PXCVR` frames append acceleration, gyro, barometer and airspeed source timestamps, then a valid-source
 bitmask (1/2/4/8). Native and web replay preserve these fields, including prediction-only ticks. The web replay
-also inserts 50 ms prediction ticks between frames of older recordings and converted `$SENS` logs. Inserted
+also inserts 100 ms prediction ticks between frames of slower recordings and converted `$SENS` logs. Inserted
 ticks hold the previous readings and their original source timestamps; corrections still run only for new
 measurements, including with Mahony enabled. Already recorded 20 Hz ticks are preserved. A new flight waits
 for its first measured frame, and gaps longer than ten seconds use the existing dynamics reset instead of
@@ -51,7 +51,7 @@ fabricated history. The native recording checker keeps the original recorded cad
 Displayed replay duration is computed from timestamps. Map/chart sensor data keep their logged cadence;
 estimator output includes the additional prediction ticks. Rebuild `airmass.js` to use the updated core.
 `sensor_freshness_20hz` covers independent updates, held values, outages, scheduling, history duration, rollover,
-device/replay equivalence and upsampling equivalence. The WASM integration test covers 5/10 Hz logs at 20 Hz.
+device/replay equivalence and upsampling equivalence. The WASM integration test covers 5 Hz logs at 10 Hz and recorded 20 Hz polls.
 The native simulator accepts `--set predict_hz=20` to insert held-input prediction ticks between the same 10 Hz
 physical measurements (default: 10). CTest also runs straight, thermal, gust and cross-country scenarios and an
 exact recording/replay check at this mixed rate.
@@ -169,7 +169,7 @@ configuration and flap position at the selected time, and stays paused. Play sta
 speed selector and all seek controls drive the instrument and display from one clock. Untimed navigation and
 configuration sentences are interpolated in file order between the repaired `$SENS` timestamps. TE pressure and
 optional magnetometer data are retained; sensor conventions and temperature corrections use the same normalization
-as offline import. Offline 20 Hz estimator predictions are never transmitted as additional sensor readings.
+as offline import. Offline estimator prediction ticks are never transmitted as additional sensor readings.
 Forward sensor gaps longer than five seconds keep their duration when elapsed RMC UTC agrees within two seconds
 (including UTC midnight). Navigation/setup messages remain spread across the gap. Browser and command-line
 conversion use the same rule; clock synchronization jumps and resets retain the existing timestamp repair.

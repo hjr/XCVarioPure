@@ -198,7 +198,8 @@ private:
             const Frame next = _fr;
             _fr = _held_frame;
             // Hold only past readings. Their source clocks must not advance with the prediction clock.
-            while ((uint32_t)(next.time_ms - _fr.time_ms) > _prediction_ms) {
+            // a late frame is still one cycle of the device, not a missed one
+            while ((uint32_t)(next.time_ms - _fr.time_ms) > _prediction_ms * 3 / 2) {
                 _fr.time_ms += _prediction_ms;
                 stepOnce();
                 endCycle();

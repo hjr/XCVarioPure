@@ -221,7 +221,7 @@ private:
         in = AirMassEKF::Input();
         in.time_ms = f.time_ms;
         const uint32_t elapsed_ms = f.time_ms - _prev_time;
-        in.dt = elapsed_ms ? std::min(elapsed_ms * 1e-3f, 0.3f) : 0.05f;
+        in.dt = elapsed_ms ? std::min(elapsed_ms * 1e-3f, 0.3f) : 0.1f;
         _prev_time = f.time_ms;
         bool fresh[4];
         uint8_t valid = f.valid;

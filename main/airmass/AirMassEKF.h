@@ -23,7 +23,7 @@ class AirMassEKF {
     // KCL scales the modelled angle of attack (lift slope error), THB is the offset of the body x axis
     enum : uint8_t { WN = 0, WE, WD, PSI, KTAS, THB, ALT, VD, BAZ, BGZ, TAU, KCL, NX };
 
-    // per prediction cycle input (20Hz on target; legacy replay may use 10Hz)
+    // per prediction cycle input (10Hz on target; recordings can have 20Hz)
     struct Input {
         uint32_t time_ms = 0;
         float dt = 0.1f;        // s

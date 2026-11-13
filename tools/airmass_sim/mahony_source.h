@@ -31,7 +31,7 @@ public:
     // the attitude for the pipeline's step() with this frame
     ExternalAttitude step(const Frame& f) {
         const uint32_t elapsed_ms = f.time_ms - _time;
-        const float dt = elapsed_ms ? std::min(elapsed_ms * 1e-3f, 0.3f) : 0.05f;
+        const float dt = elapsed_ms ? std::min(elapsed_ms * 1e-3f, 0.3f) : 0.1f;
         _time = f.time_ms;
         bool accel_ok = f.valid & Frame::ACCEL, gyro_ok = f.valid & Frame::GYRO;
         for (int i = 0; i < 3; ++i) {
