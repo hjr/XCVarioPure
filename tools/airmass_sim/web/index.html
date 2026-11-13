@@ -709,7 +709,8 @@ function atFixes(D, get, maxHold) {
 }
 
 // the device's vario damping (VarioFilter, 10 Hz), as tools/airmass_sim/analyze_sens.py: f(x) is one cycle of the
-// device, at(t, x) the cycles due by a frame at time t [s] with input x, for frames at any rate
+// device, at(t, x) the cycles due by a frame at time t [s] with input x, for frames at any rate; single: the low pass
+// alone (the air mass vario)
 class Damp {
   constructor(d) { this.d = d; this.l = null; this.y = null; this.last = null; this.x = NaN; }
   // restart from x (NaN: from the next input, and the cycles with it)
@@ -717,7 +718,7 @@ class Damp {
   f(x) {
     if (this.l === null) this.l = this.y = x;
     this.l += (x - this.l) * 0.1 / (this.d / 3.0 + 0.1);
-    this.y += (this.l - this.y) / Math.max(this.d, 1.0);
+    this.y = this.single ? this.l : this.y + (this.l - this.y) / Math.max(this.d, 1.0);
     return this.y;
   }
   // The device's cycles since the last one, each reading the latest frame: one per 0.1 s (from 75 ms on), the last on
@@ -777,12 +778,13 @@ function runningSums(n, val) {
   return { S, N };
 }
 
-// What the cockpit shows in Air Mass mode (airmass::vario, VarioFilter::postProcess): the air mass vario damped (a low
-// pass with tau = d/3, then y += (x - y) / d per 0.1 s cycle; the device's d = max(1, vario delay / 2); dampAt(k)) while
-// it is valid, otherwise netto, which the damping restarts from when the air mass vario comes back. The device's
-// 10 Hz cycles (Damp.at) run on frames at any rate; between them the needle holds.
+// What the cockpit shows with the air mass vario (VarioFilter::postProcess): the air mass vario damped (one low pass
+// with tau = d/3; the device's d = 0.6 × vario delay; dampAt(k)) while it is valid, otherwise netto, which the damping
+// restarts from when the air mass vario comes back. The device's 10 Hz cycles (Damp.at) run on frames at any rate;
+// between them the needle holds.
 function cockpitSeries(D, dampAt) {
   const out = new Float32Array(D.n).fill(NaN), f = new Damp(1);
+  f.single = true;
   for (let k = 0; k < D.n; k++) {
     if (D.ai[k] < 0) { f.reset(NaN); continue; }
     f.d = dampAt(k);
@@ -918,7 +920,7 @@ function derive(D) {
 // Presentation filters use the cached estimator/reference output, so changing damping does not replay the flight.
 function deriveDamping(D) {
   const delay = Math.max(1, +$("damping").value || 4), same = $("samesmooth").checked, n = D.n;
-  D.am = cockpitSeries(D, () => Math.max(1, delay * .5)); // airmass::displayDamping (AirMassPipeline.h)
+  D.am = cockpitSeries(D, () => delay * .6); // _air_lpf (VarioFilter.cpp)
   D.amGross = new Float32Array(n).fill(NaN);
   D.gnss = new Float32Array(n).fill(NaN);
   D.gnssGross = new Float32Array(n).fill(NaN);

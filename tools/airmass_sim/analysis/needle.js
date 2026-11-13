@@ -6,7 +6,7 @@
 //   node needle.js <web dir> log1.nmea.gz ...
 //   REALTIME=1: errors without the delay shift (as the pilot sees the needle); PHASE_LAG=1: the errors with each
 //   series shifted by its delay in that phase
-//   SERIES='[["name","settings",dampAir], ...]' (dampAir: the cockpit damping in s, default 2 = half the 4 s TE damping;
+//   SERIES='[["name","settings",dampAir], ...]' (dampAir: the cockpit damping in s, default 2.4 = 0.6 × the 4 s TE damping;
 //   [straight, circling]: blended between 15° and 25° bank)
 const path = require("path");
 const { loadPage, cat, lagOf, freeMask } = require("./page.js");
@@ -23,7 +23,7 @@ const dampOf = (D, dAir) => {
 
 (async () => {
   const M = await require(path.join(web, "airmass.js"))();
-  const variants = JSON.parse(process.env.SERIES || '[["now","",2],["blend at any bank","blend_bank=0",2],["1st tuning","kinetic_tau=10,blend_bank=0",2]]');
+  const variants = JSON.parse(process.env.SERIES || '[["now","",2.4],["blend at any bank","blend_bank=0",2.4],["1st tuning","kinetic_tau=10,blend_bank=0",2.4]]');
   const runs = [];
   for (const log of process.argv.slice(3)) {
     fileName = path.basename(log);
@@ -33,7 +33,7 @@ const dampOf = (D, dAir) => {
     for (const [nm, st, dAir] of variants) {
       if (!reps[st]) { D = build(conv, await runReplay(M, conv.rec, { settings: st })); derive(D); reps[st] = D; }
       D0 ||= reps[st];
-      ser[nm] = cockpitSeries(reps[st], dampOf(reps[st], dAir ?? 2));
+      ser[nm] = cockpitSeries(reps[st], dampOf(reps[st], dAir ?? 2.4));
     }
     D = D0;
     const r = D0.rep.cols, c = D0.tr, n = D0.n;

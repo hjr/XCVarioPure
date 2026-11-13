@@ -61,7 +61,7 @@ bool VarioFilter::setup() {
     ESP_LOGI(FNAME, "VarioFilter setup with alt %f", alt);
     // vario needle damping
     _vario_lpf.setTau( vario_delay.get() / 3.f, getNominalDutyCycleMS() / 1000.0f);
-    _air_lpf.setTau( vario_delay.get() / 3.f * 1.2f, getNominalDutyCycleMS() / 1000.0f);
+    _air_lpf.setTau( vario_delay.get() / 3.f * 0.6f, getNominalDutyCycleMS() / 1000.0f);
     averageAlt = alt;
     Altitude = alt;
     predictAlt = alt;
@@ -156,6 +156,8 @@ void VarioFilter::postProcess()
     if ( airmass::rawVario(te_air) ) {
         te_ne = _air_lpf.filter(te_air);
         te_gr = te_ne + _polar_sink;
+    } else {
+        _air_lpf.reset(te_ne);
     }
     _got_positive = te_gr > .0f && te_vario.get() < .0f;
 

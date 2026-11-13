@@ -353,8 +353,18 @@ int flapRecommendation(float ias, float load) {
     return i;
 }
 
-// the device's vario damping (VarioFilter, VarioDamper)
+// the device's vario damping (VarioFilter): TE a low pass with tau = D/3, then y += (x - y) / D per cycle;
+// the air mass vario a low pass with tau = 0.6 D/3
 constexpr float DAMPING = 4.f; // vario_delay default (TE netto)
+
+struct TeDamper {
+    LowPassFilterT<float> lpf{LowPassFilterT<float>::alphaFromTau(DAMPING / 3.f, 0.1f)};
+    float out = 0.f;
+    float filter(float input) {
+        out += (lpf.filter(input) - out) / DAMPING;
+        return out;
+    }
+};
 
 bool inWindows(float t, const std::vector<std::pair<float, float>>& w) {
     for (auto& p : w) {
@@ -748,7 +758,8 @@ int main(int argc, char** argv) {
     float prev_vg[3] = {NAN, NAN, NAN};
     float prev_att[3] = {NAN, NAN, NAN};
     vector_f f_sum, w_sum;
-    VarioDamper am_display(airmass::displayDamping(DAMPING)), te_damp(DAMPING);
+    LowPassFilterT<float> am_display(LowPassFilterT<float>::alphaFromTau(DAMPING / 3.f * 0.6f, 0.1f));
+    TeDamper te_damp;
     bool am_started = false;
     Lpf te_alt(0.5f, 0.1f);
     float prev_te_alt = NAN;

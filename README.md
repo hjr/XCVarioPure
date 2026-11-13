@@ -80,7 +80,7 @@ The ESP32 integrates Bluetooth, Wi-Fi, and multiple serial interfaces, allowing 
   - vertical air mass movement as vario mode "Air Mass" (or "Cruise-Air Mass", gross while circling), insensitive to horizontal gusts and independent of TE compensation; falls back to netto while not available. Vario mode "Air Mass Gross" adds the polar sink: the climb of the glider with the air mass filter, falls back to gross
   - uses the static port directly, whatever the altimeter source setting, and the gyro without the "Gyro Gating" dead zone; compensates the IMU lever arm and accounts for sideslip from the lateral acceleration
   - runs its own gyro propagated attitude, aided by air data instead of a plain accelerometer gravity reference: pull-ups and zooms do not tilt it, so a stick thermal shows less false climb than TE netto
-  - damped with half the Vario Damping setting: it does not take gusts for lift, so it can show a thermal entry about a second earlier than TE netto
+  - damped with a low pass of a fifth of the Vario Damping setting: it does not take gusts for lift, so it can show a thermal entry about a second earlier than TE netto
   - with Netto Mode "Super-Netto" the circling sink is added (needle, average and audio), showing the climb as if circling there
   - in Air Mass mode the speed to fly command uses the air mass movement as well, steadier in gusts and pull-ups than TE netto
   - works with the 1 Hz GNSS of the Flarm
