@@ -195,6 +195,8 @@ void readSensors(void *pvParameters)
     esp_task_wdt_add(NULL);
     int count = 0;
     uint32_t sparse_time;
+    uint32_t sim_wake_ms = 0;
+    bool sim_second_loop = false;
 #ifdef DEBUG_AND_TEST
     int max_time = 0;
     int max_time_to = 0;
@@ -356,9 +358,15 @@ void readSensors(void *pvParameters)
         esp_task_wdt_reset();
         if (SetupCommon::isMaster() && !gflags.inSimulationMode) {
             xTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(SENSOR_LOOP_ATOMIC_CYCLE));
+        } else if (sim_second_loop) {
+            sim_second_loop = false;
         } else {
             ulTaskNotifyTake(pdTRUE, 0);  // delete pending notifications
             ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(150)); // get in synch with the master loop, or sim
+            // sensor sentences at 10Hz stand for two loops each, the cycle counts stay in time
+            const uint32_t now = Clock::getMillis();
+            sim_second_loop = gflags.inSimulationMode && now - sim_wake_ms >= SENSOR_LOOP_ATOMIC_CYCLE * 3 / 2;
+            sim_wake_ms = now;
         }
     }
 }
