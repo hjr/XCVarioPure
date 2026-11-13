@@ -120,8 +120,12 @@ const { convert, runReplay } = loadPage(__dirname);
     assert(rep.cols.roll_deg.every(v => Math.abs(v) < 0.001), "held-stamp gyro changes cannot tilt either attitude filter");
     assert(rep.cols.status.slice(0, 99).every(s => !(s & STATUS.VARIO_VALID)), "20Hz still needs five seconds of settling");
     assert(rep.cols.status[99] & STATUS.VARIO_VALID);
-    const invalid = [...timed, sentence("$PXCVR,12050,,,,,,,,,,,12050,12050,12050,12050,0")];
+    // One invalid frame is bridged by the held readings; validity ends when they are older than 300 ms.
+    const invalid = [...timed];
+    for (let t = 12050; t <= 12350; t += 50) invalid.push(sentence(`$PXCVR,${t},,,,,,,,,,,${t},${t},${t},${t},0`));
     const bad = await runReplay(M, convert(invalid.join("\n")).rec, { mahony });
+    assert.equal(bad.n, 247);
+    assert(bad.cols.status[240] & STATUS.VARIO_VALID, "one invalid frame is bridged");
     assert(!(bad.cols.status[bad.n - 1] & STATUS.VARIO_VALID), "explicit invalid-source metadata forces fallback");
     assert(bad.cols.vario.every(Number.isFinite));
 

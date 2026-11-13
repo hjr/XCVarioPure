@@ -78,8 +78,7 @@ void freshMeasurements() {
     f.valid = 0;
     f.baro_alt = f.tas = f.gyro[0] = f.f_body[2] = NAN;
     p.step(f);
-    check(p.ekf().covarianceHealthy() && std::isfinite(p.ekf().airmassVario()) && !(p.ekf().status() & AirMassEKF::ST_VARIO_VALID),
-          "invalid sensor readouts preserve finite prediction and suppress vario validity");
+    check(p.ekf().covarianceHealthy() && std::isfinite(p.ekf().airmassVario()), "invalid sensor readouts preserve finite prediction");
 }
 
 void mixedRates() {
@@ -104,6 +103,15 @@ void mixedRates() {
           "polling held data cannot hide an IMU/air-data outage");
     for (uint32_t t = 6550; t <= 11550; t += 50) p.step(frame(t));
     check(p.ekf().status() & AirMassEKF::ST_VARIO_VALID, "fresh data restores validity after another five-second settling period");
+    for (uint32_t t = 11600; t <= 11900; t += 50) {
+        f = frame(t);
+        f.valid = 0;
+        f.baro_alt = f.tas = f.gyro[0] = f.f_body[2] = NAN;
+        p.step(f);
+        if (t == 11600) check(p.ekf().status() & AirMassEKF::ST_VARIO_VALID, "one invalid readout is bridged by the held readings");
+    }
+    check(std::isfinite(p.ekf().airmassVario()) && !(p.ekf().status() & AirMassEKF::ST_VARIO_VALID),
+          "invalid sensor readouts suppress vario validity once the held readings are stale");
 }
 
 void jitter() {
