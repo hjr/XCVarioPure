@@ -10,6 +10,7 @@ dependencies.lock
 sdkconfig
 sdkconfig.old
 /build_sim
+/build_release
 /flightlogs
 .wrangler/
 __pycache__/
