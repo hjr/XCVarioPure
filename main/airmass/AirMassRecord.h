@@ -2,7 +2,9 @@
 
 // Flight recording of the AirMass estimator inputs as NMEA sentences, so a flight can be replayed on a host
 // (tools/airmass_sim/replay) through the same airmass::Pipeline the device runs. Any NMEA logger records them
-// (e.g. the navigation computer's NMEA log). Plain C++, the device and the host tools share it.
+// (e.g. the navigation computer's NMEA log). Plain C++, the device and the host tools share it. The device leaves
+// out the input frames ($PXCVR): its $SENS sentences of the same logging carry the sensor readings, the converters
+// (sens2rec.py, web/convert.js) make the frames from them.
 //
 //   $PXCVC,lever,mass,area,a0,a1,a2,vstall,valid,wresp,vresp,teadj   setup (at start, on change, every 10s)
 //   $PXCVS,t,alt,d0,d1,d2,g0,g1,g2,ktas,pitch,lat,kaoa,f0,..,f6,fmt    estimator start: AHRS down axis, gyro, warm start

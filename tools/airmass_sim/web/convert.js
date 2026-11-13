@@ -1,8 +1,10 @@
 // Flight log to AirMass recording, in the browser (index.html) and in node (check.js).
 //
 // Two kinds of log:
-//  * an AirMass recording (System > Logging "All Sensor Data", main/airmass/AirMassRecord.h): its $PXCV? sentences pass through
-//  * an XCVario "$SENS" sensor log: converted like tools/airmass_sim/sens2rec.py (keep the two in step)
+//  * an AirMass recording with input frames (main/airmass/AirMassRecord.h, the simulator and earlier firmware): its
+//    $PXCV? sentences pass through
+//  * an XCVario "$SENS" sensor log (System > Logging "All Sensor Data"): converted like tools/airmass_sim/sens2rec.py
+//    (keep the two in step), with the device's AirMass start, setup and output where it recorded them
 // Either way the result also has one track sample per sensor cycle: position and GNSS altitude of the last fix, the
 // static pressure altitude, the device's TE vario ($PXCV), IAS, TAS and the polar sink, for the map and the charts.
 (function (root) {
@@ -571,6 +573,9 @@
     let teNew = 0;
     let fix = null, gnssAlt = NaN, pendingFix = null, running = false, above = 0, below = 0;
     let setupLine = null, setupCount = 0, starts = 0, frames = 0, fixes = 0, polar = null, flaps = null, tMs = 0;
+    // the setup the device recorded ($PXCVC), used while no glider, mass or bugs are set here
+    let deviceSetup = null;
+    const useDeviceSetup = opts.glider === "log" && !(mass > 0) && bugsOpt < 0;
     let temperatureEstimatedSamples = 0, temperatureKelvinSamples = 0, timestampRecoveredSamples = 0, utcDay = NaN;
     const { lines, scan } = log, normalize = sensorNormalizer(scan);
     const initialSetup = scan.ca1 || scan.cmn;
@@ -592,8 +597,9 @@
       massUsed = bf * ref;
       polar = makePolar(g, bf, bugsOpt >= 0 ? bugsOpt : pxcv.bugs);
       flaps = opts.noFlaps ? null : makeFlaps(g, bf);
-      return sentence("PXCVC", [fx(lever, 4), fx(massUsed, 2), fx(area, 4), fg(polar.a0, 8), fg(polar.a1, 8), fg(polar.a2, 8), fx(polar.vStall, 4),
+      const own = sentence("PXCVC", [fx(lever, 4), fx(massUsed, 2), fx(area, 4), fg(polar.a0, 8), fg(polar.a1, 8), fg(polar.a2, 8), fx(polar.vStall, 4),
         "1", "1.000", "1.000", "100.000"]);
+      return useDeviceSetup && deviceSetup ? deviceSetup : own;
     };
 
     for (const original of lines) {
@@ -602,6 +608,26 @@
       if (xcv) {
         // a new glider or weight in flight (water ballast dumped): the setup the device sends from now on
         if (xcv === "setup" && running) setupLine = setup();
+        continue;
+      }
+      // The device's AirMass records in a sensor log (System > Logging "All Sensor Data"): the estimator starts where
+      // and how the device started it (attitude, calibration), with its setup, and the replay checks itself against
+      // the device's output. Its GNSS velocities ($PXCVG) are left out, the navigation sentences give them.
+      if (/^\$PXCV[SCAHX],/.test(raw)) {
+        const line = raw.trim(), kind = line[5];
+        if (damaged(line)) continue;
+        if (kind === "C") {
+          deviceSetup = line;
+          if (running && useDeviceSetup) rec.push(setupLine = line);
+        } else if (kind === "S") {
+          running = true;
+          starts++;
+          above = below = setupCount = 0;
+          rec.push(setupLine = setup(), line);
+        } else if (running) {
+          rec.push(line);
+          if (kind === "X") { running = false; above = below = 0; }
+        }
         continue;
       }
       if (raw.startsWith("$PXCV,")) {

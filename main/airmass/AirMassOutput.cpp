@@ -57,7 +57,8 @@ static bool naviWind(WindData& w)
 //    * pitch_ofs: learned pitch/AoA offset in deg
 //    * latency: estimated effective GNSS velocity latency in ms
 //    * status: AirMassEKF status bits (hex)
-// and the estimator inputs, for the replay on a host (tools/airmass_sim/replay). The sensor loop
+// and its start, setup, GNSS velocities and compass headings, for the replay on a host together with the $SENS
+// sentences of that logging (tools/airmass_sim). The sensor loop
 // queues the lines in the order of its cycles.
 void airmass::nmeaFeed(NmeaPrtcl* nmea, bool slow)
 {

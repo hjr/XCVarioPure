@@ -453,9 +453,6 @@ void AirMassSensor::postProcess()
     }
     if (!rec) _recording = false;
     _pipe.step(f);
-    if (rec) {
-        queueLine([&f] { return airmass::record::frame(f); });
-    }
 
     // compass: absolute heading in straight flight, aligns the wind before the first turn
     if (_compass_timer.due(now, COMPASS_MS) && compass_calibrated.get() && heading_mag.getValid() && magSensor &&

@@ -10,7 +10,7 @@ import sys
 import tempfile
 import unittest
 
-from sens2rec import nmea_fields, scan_log, StampRepair
+from sens2rec import nmea_fields, scan_log, StampRepair, sentence
 
 
 def log_fixture(*, gravity=False, kelvin=False, temperature=None, rates=True, flat=False, samples=220, gyro_bias_z=0):
@@ -177,6 +177,46 @@ console.log(JSON.stringify({frames: c.frames, starts: c.starts, rec: c.rec}));
                     # Signed zero has the same meaning, even though its NMEA text/checksum differs.
                     self.assertEqual([float(v) if v else None for v in py_fields[1:]],
                                      [float(v) if v else None for v in js_fields[1:]])
+
+    def test_device_records_in_a_sensor_log_start_and_check_the_replay(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            lines = ["!XCV,CMN,1032,300,100,0,0"]
+            device_setup = sentence("PXCVC", ["0.0000", "400.00", "10.5000", "-1.2", "0.07", "-0.0016", "23.0000", "1", "1.000", "1.000", "95.000"]).strip()
+            for i in range(240):
+                t = 300000 + i * 100
+                if i == 30:
+                    lines.append(device_setup)
+                    lines.append(sentence("PXCVS", [str(t), "1000.00", "0.000000", "0.000000", "1.000000", "0.000000", "0.000000", "0.000000",
+                                                    "1.04000", "0.010000", "0.2000", "1.00000"] + ["1.000000"] * 7 + ["2"]).strip())
+                if i == 200:
+                    lines.append(sentence("PXCVX", [str(t)]).strip())
+                lines.append("$PXCV,0,1,0,1,1,15,1013,1000,0,0,0")
+                lines.append(f"$SENS,{t / 1000:.3f},0,900,900,500,15,0,0,-1,0,0,0")
+                if i % 2 == 0:
+                    lines.append(sentence("PXCVA", ["0.10", "270", "12.0", "-0.10", "1.040", "0.57", "200", "1"]).strip())
+                if i == 100:
+                    lines.append("$PXCVA,9.99,270,12.0,-9.99,1.040,0.57,200,1*00")
+            text = "\n".join(lines) + "\n"
+            source, output = Path(tmp) / "flight.nmea", Path(tmp) / "replay.nmea"
+            source.write_text(text)
+            subprocess.run([sys.executable, str(Path(__file__).with_name("sens2rec.py")), str(source), str(output), "--glider", "log"],
+                           check=True, capture_output=True)
+            script = """
+const fs = require('fs'), {convert} = require('./web/convert.js');
+const c = convert(fs.readFileSync(0, 'utf8'), {glider: 'log'});
+console.log(JSON.stringify({frames: c.frames, starts: c.starts, kind: c.kind, rec: c.rec}));
+"""
+            js = json.loads(subprocess.check_output(["node", "-e", script], input=text.encode(), cwd=Path(__file__).parent))
+            self.assertEqual(js["kind"], "XCVario sensor log")
+            self.assertEqual(js["starts"], 1, "the device's start, not the airspeed's a few seconds later")
+            self.assertEqual(js["frames"], 170, "from the device's start to its stop")
+            names = [nmea_fields(line)[0] for line in js["rec"]]
+            self.assertEqual(names[:3], ["PXCVC", "PXCVS", "PXCVR"])
+            self.assertEqual(js["rec"][0].strip(), device_setup, "the device's setup while none is set")
+            self.assertIn("1.04000", js["rec"][1], "the device's calibration")
+            self.assertEqual(names.count("PXCVA"), 85, "the device's output for the replay to check itself, the damaged one left out")
+            self.assertEqual(names[-1], "PXCVX")
+            self.assertEqual([line.strip() for line in output.read_text().splitlines()], [line.strip() for line in js["rec"]])
 
 
 if __name__ == "__main__":

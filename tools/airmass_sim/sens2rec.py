@@ -7,6 +7,9 @@ The inputs are derived the way the device derives them (AirMassSensor, SetupNG c
   IAS from the dynamic pressure, TAS with the static pressure and OAT, the ISA altitude of the static pressure, the
   polar of the glider type at the logged ballast factor and bugs, the flap lever from the flap recommendation (no flap
   sensor in the log), the GNSS velocity with its arrival time from the $SENS GPS age field.
+Where the device recorded its AirMass start ($PXCVS), setup ($PXCVC) and output ($PXCVA) with the sensor data, the
+estimator starts there with the device's attitude and calibration, with its setup while no glider, mass or bugs are
+given, and airmass_replay compares itself with the output.
 Kelvin OAT is recognized by agreement with PXCV Celsius; inconsistent legacy FMT axes are corrected only when
 stationary gravity and pitch-rate checks against PXCV attitude both support the repair.
 Missing or implausible OAT (outside -60..50°C) is estimated as 25°C at sea level minus 6.5°C/km, using GNSS altitude
@@ -250,6 +253,14 @@ def checksum(body):
     return f"{body}*{cs:02x}\r\n"
 
 
+def damaged(line):
+    """A logged sentence a logger damaged: its checksum fails, or without one another sentence starts inside it"""
+    star = line.find("*")
+    if star < 0:
+        return "$" in line[1:] or "!" in line[1:]
+    return checksum(line[:star])[star + 1:].strip() != line[star + 1:].strip().lower()
+
+
 def fmt(v, f):
     return "" if v is None or (isinstance(v, float) and not math.isfinite(v)) else (f % v)
 
@@ -342,6 +353,9 @@ def main():
     pending_fix = None    # a fix not yet passed to the estimator (its arrival time comes with the next $SENS)
     running, above, below = False, 0, 0
     setup_line, setup_count, starts, frames, fixes = None, 0, 0, 0, 0
+    # the setup the device recorded ($PXCVC), used while no glider, mass or bugs are set here
+    device_setup = None
+    use_device_setup = a.glider == "log" and not a.mass > 0 and a.bugs < 0
     temperature_estimated_samples = 0
     temperature_kelvin_samples = 0
     timestamp_recovered_samples = 0
@@ -375,9 +389,10 @@ def main():
         bf = a.mass / ref if a.mass > 0 else logged_mass / ref if logged_mass > 0 else (pxcv["ballast"] if pxcv["ballast"] > 0.5 else 1.0)
         polar, flaps = Polar(g, bf, a.bugs if a.bugs >= 0 else pxcv["bugs"]), Flaps(g, bf) if g.get("flaps") else None
         mass = bf * ref
-        return sentence("PXCVC", [fmt(a.lever_arm, "%.4f"), fmt(mass, "%.2f"), fmt(g["area"], "%.4f"), fmt(polar.a0, "%.8g"),
-                                  fmt(polar.a1, "%.8g"), fmt(polar.a2, "%.8g"), fmt(polar.v_stall, "%.4f"), "1", "1.000", "1.000",
-                                  "100.000"])
+        own = sentence("PXCVC", [fmt(a.lever_arm, "%.4f"), fmt(mass, "%.2f"), fmt(g["area"], "%.4f"), fmt(polar.a0, "%.8g"),
+                                 fmt(polar.a1, "%.8g"), fmt(polar.a2, "%.8g"), fmt(polar.v_stall, "%.4f"), "1", "1.000", "1.000",
+                                 "100.000"])
+        return device_setup if use_device_setup and device_setup else own
 
     for original in lines:
         raw = clean_line(original)
@@ -386,6 +401,30 @@ def main():
             # a new glider or weight in flight (water ballast dumped): the setup the device sends from now on
             if xcv == "setup" and running:
                 setup_line = setup()
+            continue
+        # The device's AirMass records in a sensor log (System > Logging "All Sensor Data"): the estimator starts where
+        # and how the device started it (attitude, calibration), with its setup, and the replay checks itself against
+        # the device's output. Its GNSS velocities ($PXCVG) are left out, the navigation sentences give them.
+        if raw[:6] in ("$PXCVS", "$PXCVC", "$PXCVA", "$PXCVH", "$PXCVX") and raw[6:7] == ",":
+            line, kind = raw.strip(), raw[5]
+            if damaged(line):
+                continue
+            if kind == "C":
+                device_setup = line + "\r\n"
+                if running and use_device_setup:
+                    setup_line = device_setup
+                    out.write(setup_line)
+            elif kind == "S":
+                running = True
+                starts += 1
+                above = below = setup_count = 0
+                setup_line = setup()
+                out.write(setup_line)
+                out.write(line + "\r\n")
+            elif running:
+                out.write(line + "\r\n")
+                if kind == "X":
+                    running, above, below = False, 0, 0
             continue
         if raw.startswith("$PXCV,"):
             f = nmea_fields(raw)

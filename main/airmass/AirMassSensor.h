@@ -52,8 +52,8 @@ private:
     std::atomic<bool> _jump{false}; // a replay jump requested
 };
 
-// Recording of the estimator (System > Logging > "All Sensor Data"): $PXCVA and the input sentences of
-// AirMassRecord.h, queued by the sensor loop in the order they happened. Appends the queued lines, false when empty.
+// Recording of the estimator (System > Logging > "All Sensor Data"): $PXCVA and the sentences of AirMassRecord.h
+// but the input frames ($SENS has the sensor readings), queued by the sensor loop in the order they happened. Appends the queued lines, false when empty.
 bool airmassNmeaDrain(std::string& lines);
 
 extern AirMassSensor *airmassSensor;
