@@ -46,6 +46,7 @@ private: // attributes
     const int16_t _half_width;
     // live data
     int16_t _needle_pos = 0;        // .5deg diced up
+    bool _fallback = false;         // drawn grey
     float _last_a = 0.f;            // last drawn position in scale values
     ArrowPoints prev;
 };
