@@ -19,7 +19,8 @@ namespace airmass {
 
 // system startup
 void startup();
-// create the estimator with the TE compensation method Air Mass where it is supported, remove it without
+// create the estimator with the TE compensation method or the wind source Air Mass where it is supported, remove it
+// without
 void followMethod();
 // the estimator can run here: the master with IMU and air data
 bool supported();
@@ -37,13 +38,13 @@ bool rawVario(mps_t& air);
 // vario needle: the method is Air Mass, but the vario shows the TE vario for now
 bool varioFallback();
 
-// setup menu: Air Mass as TE compensation method (with the help of its eAdjustment), the wind to the navigation
+// setup menu: Air Mass as TE compensation method (with the help of its eAdjustment), as wind source with the wind to the navigation
 // computer, and for development builds (DEBUG_AND_TEST) the status page of the vario menu and the recording in the
 // help of the logging
 void menuTeMethod(SetupMenuSelect* method, SetupMenuValFloat* adjustment);
 void menuLogging(SetupMenuSelect* logging);
 void menuVario(SetupMenu* vario);
-void menuWind(SetupMenu* wind);
+void menuWind(SetupMenu* wind, SetupMenuSelect* source);
 MenuEntry* statusPage();
 void statusUpdate();
 // learned flap position offsets in NVS, -1 without flaps

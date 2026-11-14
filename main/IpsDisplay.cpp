@@ -385,7 +385,7 @@ static void initRefs()
 static bool instantWindShown()
 {
     const int source = wind_enable.get();
-    return source == WA_EXTERNAL || airmassSensor;
+    return source == WA_EXTERNAL || source == WA_AIRMASS;
 }
 
 ////////////////////////////
@@ -895,7 +895,7 @@ void IpsDisplay::drawDisplay(){
         }
 
         WindData swind, iwind;
-        if (wind_enable.get() & WA_BOTH) {
+        if (wind_enable.get() & (WA_BOTH | WA_AIRMASS)) {
             if (synoptic_wind.getValid()) {
                 swind = static_cast<WindData>(synoptic_wind.get());
             }

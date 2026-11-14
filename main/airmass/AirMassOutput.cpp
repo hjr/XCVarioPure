@@ -32,7 +32,8 @@ bool airmass::varioFallback()
 static bool naviWind(WindData& w)
 {
     w = WindData(static_cast<uint32_t>(synoptic_wind.get()));
-    return airmass_wind_nmea.get() && (airmass_status.get() & AirMassEKF::ST_WIND_VALID) && w.isValid();
+    return airmass_wind_nmea.get() && wind_enable.get() == WA_AIRMASS &&
+           (airmass_status.get() & (AirMassEKF::ST_WIND_VALID | AirMassEKF::ST_WIND_DEGRADED)) && w.isUsable();
 }
 
 // System > Logging > "All Sensor Data" (master only): the estimator output $PXCVA (format in AirMassRecord.h)
@@ -47,6 +48,21 @@ static bool naviWind(WindData& w)
 // and its start, setup, GNSS velocities and compass headings, for the replay on a host together with the $SENS
 // sentences of that logging (tools/airmass_sim). The sensor loop
 // queues the lines in the order of its cycles.
+// $PXCVW,dir,speed,type,status: the wind like the $PLARW of the Larus
+//    * dir: the direction the wind blows from in deg
+//    * speed: wind speed in km/h
+//    * type: A the 30s average, I the instant wind
+//    * status: A valid, D degraded (not checked against the GNSS track for a while, still the best estimate)
+static void sendWind(NmeaPrtcl* nmea, WindData w, char type, bool degraded)
+{
+    char text[48];
+    std::snprintf(text, sizeof(text), "$PXCVW,%.1f,%.1f,%c,%c", w.getDeg2() * 0.5f, Units::mps_to_kmh(w.getVal()), type, degraded ? 'D' : 'A');
+    Message* msg = nmea->newMessage();
+    msg->buffer = text;
+    msg->appendCheckSum();
+    DEV::Send(msg);
+}
+
 void airmass::nmeaFeed(NmeaPrtcl* nmea, bool slow)
 {
     // the queued lines in one message; no NMEA in binary mode, the queue is drained anyway

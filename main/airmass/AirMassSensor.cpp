@@ -226,13 +226,16 @@ static bool removal_pending = false;
 void airmass::startup()
 {
     migrateVarioMode();
+    if (wind_enable.get() == (WA_BOTH | WA_AIRMASS)) { // the former source "XCVario+Instant"
+        wind_enable.set(WA_AIRMASS, true, false);
+    }
     followMethod();
 }
 
-// without the TE compensation method Air Mass the estimator takes no memory
+// without the TE compensation method or the wind source Air Mass the estimator takes no memory
 void airmass::followMethod()
 {
-    const bool wanted = te_comp_enable.get() == TE_AIRMASS && supported();
+    const bool wanted = (te_comp_enable.get() == TE_AIRMASS || wind_enable.get() == WA_AIRMASS) && supported();
     if (wanted && !airmassSensor) {
         removal_pending = false;
         airmassSensor = new AirMassSensor();
@@ -510,7 +513,7 @@ void AirMassSensor::postProcess()
     if (epoch && epoch != _gnss_epoch) {
         _gnss_epoch = epoch;
         // a valid synoptic wind (circling/straight wind) serves as prior for the alignment
-        g.prior = synoptic_wind.getValid();
+        g.prior = synoptic_wind.getValid() && !_average_published; // not the own average
         if (g.prior) {
             const vector_f w = static_cast<WindData>(synoptic_wind.get()).getVector();
             g.wn0 = w.x;
@@ -554,7 +557,8 @@ void AirMassSensor::publish()
 
     // a degraded wind is still the best instant wind there is: shown marked, and averaged.
     // No stale wind for consumers that do not check the status.
-    if (!(st & (AirMassEKF::ST_WIND_VALID | AirMassEKF::ST_WIND_DEGRADED))) {
+    // the wind only as the selected wind source
+    if (wind_enable.get() != WA_AIRMASS || !(st & (AirMassEKF::ST_WIND_VALID | AirMassEKF::ST_WIND_DEGRADED))) {
         withdrawWind();
     } else {
         if (wind_due) {
