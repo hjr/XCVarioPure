@@ -18,35 +18,10 @@
 
 namespace airmass {
 
-// The damping of the air mass vario from the TE vario damping [s]: it does not take horizontal gusts for lift, so half
-// the damping is just as calm, and a thermal entry shows about a second earlier.
-inline float displayDamping(float te_damping) { return std::max(1.f, te_damping * 0.5f); }
+// The low pass of the air mass vario needle has this share of the TE vario's (VarioFilter): it does not take
+// horizontal gusts for lift, so less damping is just as calm, and a thermal entry shows about a second earlier.
+constexpr float NEEDLE_DAMPING = 0.6f;
 
-// The vario needle damping of the device (VarioFilter): a low pass with tau = D/3, then y += (x - y) / D per cycle,
-// D the damping in seconds, dt the cycle time
-class VarioDamper
-{
-public:
-    explicit VarioDamper(float damping, float dt = 0.1f) : _dt(dt), _damping(damping) {}
-    void setDamping(float damping) { _damping = damping; }
-    void reset(float init_val = 0.f) { _low = _out = init_val; }
-    float filter(float input) {
-        if (std::isfinite(input)) {
-            _low += (input - _low) * _dt / (_damping / 3.f + _dt);
-        }
-        _out += (_low - _out) / _damping;
-        return _out;
-    }
-private:
-    float _dt;
-    float _damping;
-    float _low = 0.f;
-    float _out = 0.f;
-};
-
-// the device's glider polar (S2F): sink at the IAS and load factor
-
-// installation and settings
 struct Setup {
     float lever_arm = 0.f; // m, IMU ahead of the CG
     float mass = 0.f;      // kg, gross weight

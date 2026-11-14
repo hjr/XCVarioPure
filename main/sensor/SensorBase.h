@@ -109,7 +109,7 @@ public:
     virtual bool update(uint32_t now_ms) = 0;
     virtual void postProcess() {};
     virtual bool isResting() const { return false; } // whether the sensor is in a calm state
-    uint16_t getNominalDutyCycleMS() const { return _duty_cycle_ms; } // read loop schedule
+    constexpr uint16_t getNominalDutyCycleMS() const { return _duty_cycle_ms; } // read loop schedule
     uint16_t getDutyCycleMS() const { return (uint16_t)_lpf_interval.get(); } // measured update interval
     float getDutyCycleS() const { return _lpf_interval.get() / 1000.0f; }
     uint16_t getProcessInterval() const { return _process_interval_ms; }

@@ -150,7 +150,7 @@ test("the needle damping runs the device's 10 Hz cycles whatever the frame rate"
   const context = vm.createContext({});
   // the damping before, one device cycle per frame
   const perFrame = `function perFrame(D, dampAt) {
-    const out = new Float32Array(D.n).fill(NaN), f = new Damp(1);
+    const out = new Float32Array(D.n).fill(NaN), f = new Damp(1, true);
     for (let k = 0; k < D.n; k++) {
       if (D.ai[k] < 0) { f.reset(NaN); continue; }
       f.d = dampAt(k);

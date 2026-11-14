@@ -59,7 +59,7 @@ class AirMassEKF {
     // tuning
     struct Config {
         float q_wind_h = 0.04f;     // (m/s)²/s horizontal wind random walk
-        float q_wind_v = 1.125f;    // (m/s)²/s vertical wind random walk; thermal entry within ~0.5s at half the TE damping
+        float q_wind_v = 1.125f;    // (m/s)²/s vertical wind random walk; thermal entry within ~0.5s at the lighter damping of its needle
         float q_psi = 3e-5f;        // rad²/s gyro heading drift
         float q_ktas = 1e-8f;       // 1/s airspeed scale random walk
         float q_thb = 1e-7f;        // rad²/s pitch offset random walk

@@ -14,14 +14,13 @@ class MenuEntry;
 class SetupMenuSelect;
 class SetupMenuValFloat;
 class NmeaPrtcl;
-union WindData;
 
 namespace airmass {
 
 // system startup
+void startup();
 // create the estimator with the TE compensation method Air Mass where it is supported, remove it without
 void followMethod();
-void startup();
 // the estimator can run here: the master with IMU and air data
 bool supported();
 // instrument replay ($PFLAX,S): the replayed flight or the clock jumps, restart the estimator (protocol task)

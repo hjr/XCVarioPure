@@ -1,4 +1,4 @@
-// AirMass outputs to the rest of the firmware: vario, wind gauge, NMEA
+// AirMass outputs to the rest of the firmware: vario, NMEA
 
 #include "AirMass.h"
 #include "AirMassSensor.h"
@@ -9,36 +9,23 @@
 #include "comm/Messages.h"
 #include "wind/Wind.h"
 
-#include <algorithm>
 #include <cstdio>
 
-bool airmass::vario(mps_t& air, second_t te_damping, mps_t fallback, bool& switched)
+static bool varioValid()
 {
-    static VarioDamper damper(1.f);
-    static bool shown = false;
-    const bool ok = te_comp_enable.get() == TE_AIRMASS && (airmass_status.get() & AirMassEKF::ST_VARIO_VALID) && airmass_vario.getValid();
-    if (ok) {
-        damper.setDamping(displayDamping(te_damping));
-        air = damper.filter(airmass_vario.get());
-    } else {
-        damper.reset(fallback);
-    }
-    switched = ok != shown;
-    shown = ok;
-    return ok;
+    return te_comp_enable.get() == TE_AIRMASS && (airmass_status.get() & AirMassEKF::ST_VARIO_VALID) && airmass_vario.getValid();
 }
 
-void airmass::displayWind(WindData& synoptic, WindData& instant, bool& degraded)
+bool airmass::rawVario(mps_t& air)
 {
-    const int st = airmass_status.get();
-    degraded = false;
-    if ((wind_enable.get() & WA_AIRMASS) && (st & (AirMassEKF::ST_WIND_VALID | AirMassEKF::ST_WIND_DEGRADED))) {
-        instant.raw = airmass_inst_wind.get();
-        degraded = !(st & AirMassEKF::ST_WIND_VALID);
-        if (!synoptic.isValid() && !degraded) {
-            synoptic.raw = airmass_avg_wind.get(); // the long term average of the estimator
-        }
-    }
+    followMethod();
+    air = airmass_vario.get();
+    return varioValid();
+}
+
+bool airmass::varioFallback()
+{
+    return te_comp_enable.get() == TE_AIRMASS && !varioValid();
 }
 
 // the averaged air mass wind for the navigation computer, if enabled and valid (master and second seat)

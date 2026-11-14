@@ -94,7 +94,7 @@ def main():
     ex.legend(handles=legend, loc="upper left", bbox_to_anchor=(0.0, 0.0), bbox_transform=below, ncol=2, frameon=False,
               fontsize=9, labelcolor=INK, borderaxespad=0.0)
     ax.set_title(a.title, loc="left", color=INK, fontsize=12, fontweight="bold", pad=22)
-    ax.text(0.0, 1.01, f"{t[0]:.0f}–{t[-1]:.0f} s, as shown: AirMass with half the TE netto damping, the reference with its own",
+    ax.text(0.0, 1.01, f"{t[0]:.0f}–{t[-1]:.0f} s, as shown: AirMass with 0.6 of the TE netto low pass, the reference with its own",
             transform=ax.transAxes, fontsize=9, color=INK_2, va="bottom")
     fig.savefig(a.png, facecolor=SURFACE, bbox_inches="tight", pad_inches=0.25)
     print(f"{a.png}: " + ", ".join(f"{k} {r:.2f} rms / {m:.2f} max" for k, (r, m) in stats.items()))
@@ -142,7 +142,7 @@ def plot_real(a, rows, t):
               fontsize=9, labelcolor=INK, borderaxespad=0.0)
     ax.set_title(a.title, loc="left", color=INK, fontsize=12, fontweight="bold", pad=22)
     hh = int(t[0] // 3600)
-    ax.text(0.0, 1.01, f"{hh:02d}:{int(t[0] % 3600 // 60):02d} UTC, {t[-1] - t[0]:.0f} s, as shown: AirMass with half the TE netto damping",
+    ax.text(0.0, 1.01, f"{hh:02d}:{int(t[0] % 3600 // 60):02d} UTC, {t[-1] - t[0]:.0f} s, as shown: AirMass with 0.6 of the TE netto low pass",
             transform=ax.transAxes, fontsize=9, color=INK_2, va="bottom")
     fig.savefig(a.png, facecolor=SURFACE, bbox_inches="tight", pad_inches=0.25)
     print(f"{a.png}: real flight, {len(rows)} samples")

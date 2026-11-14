@@ -352,8 +352,18 @@ int flapRecommendation(float ias, float load) {
     return i;
 }
 
-// the device's vario damping (VarioFilter, airmass::VarioDamper)
+// the device's vario damping (VarioFilter): TE a low pass with tau = D/3, then y += (x - y) / D per cycle; the air mass
+// vario one low pass with tau = 0.6 D/3
 constexpr float DAMPING = 4.f; // vario_delay default (TE netto)
+
+struct TeDamper {
+    Lpf lpf{DAMPING / 3.f, 0.1f};
+    float out = 0.f;
+    float filter(float x) {
+        out += (lpf.f(x) - out) / DAMPING;
+        return out;
+    }
+};
 
 bool inWindows(float t, const std::vector<std::pair<float, float>>& w) {
     for (auto& p : w) {
@@ -747,8 +757,8 @@ int main(int argc, char** argv) {
     float prev_vg[3] = {NAN, NAN, NAN};
     float prev_att[3] = {NAN, NAN, NAN};
     vector_f f_sum, w_sum;
-    airmass::VarioDamper am_display(airmass::displayDamping(DAMPING)), te_damp(DAMPING);
-    bool am_started = false;
+    Lpf am_display(DAMPING / 3.f * airmass::NEEDLE_DAMPING, 0.1f); // starts at the first estimate
+    TeDamper te_damp;
     Lpf te_alt(0.5f, 0.1f);
     float prev_te_alt = NAN;
     struct GnssSample { uint32_t t_obs; float vn, ve; };
@@ -1137,11 +1147,7 @@ int main(int argc, char** argv) {
         // evaluation
         const uint8_t st = ekf.status();
         const float vario_true = -tr.wd;
-        if (!am_started) { // the needle starts at the first estimate
-            am_display.reset(ekf.airmassVario());
-            am_started = true;
-        }
-        const float am_vario = am_display.filter(ekf.airmassVario()); // as displayed
+        const float am_vario = am_display.f(ekf.airmassVario()); // as displayed
         if ((st & AirMassEKF::ST_WIND_VALID) && t_wind_valid < 0.f) {
             t_wind_valid = tr.t;
         }
