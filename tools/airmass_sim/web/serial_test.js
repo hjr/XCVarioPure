@@ -415,6 +415,37 @@ test("chooser cancel, write failure, timeout, unplug and reconnect release resou
   }
 });
 
+test("connect reuses the last used port, also after a reload, and asks when it is not known for sure", async () => {
+  const choosers = h => h.calls.filter(c => c === "chooser").length;
+  const h = harness(), other = { ...h.port, getInfo: () => ({ usbVendorId: 2 }) };
+  const store = new Map(), storage = { getItem: k => store.get(k) ?? null, setItem: (k, v) => store.set(k, v) };
+  h.port.getInfo = () => ({ usbVendorId: 1 });
+  h.api.getPorts = async () => [other, h.port];
+  h.replay.storage = storage;
+  await h.connect(); assert.equal(choosers(h), 1);
+  await h.replay.disconnect(); await h.connect();
+  assert.equal(choosers(h), 1); assert.equal(h.replay.port, h.port);
+  await h.replay.disconnect();
+  const chosen = h.replay.connect(115200, true); await h.clock.advance(1000); await chosen;
+  assert.equal(choosers(h), 2, "Choose port always asks");
+  await h.replay.disconnect();
+
+  const reloaded = harness(); reloaded.replay.storage = storage;
+  reloaded.port.getInfo = () => ({ usbVendorId: 1 });
+  reloaded.api.getPorts = async () => [other, reloaded.port];
+  await reloaded.connect();
+  assert.equal(choosers(reloaded), 0); assert.equal(reloaded.replay.port, reloaded.port);
+  await reloaded.replay.disconnect();
+
+  const twins = harness(); twins.replay.storage = storage;
+  twins.port.getInfo = () => ({ usbVendorId: 1 });
+  twins.api.getPorts = async () => [twins.port, { ...twins.port }];
+  await twins.connect(); assert.equal(choosers(twins), 1);
+  const revoked = harness(); revoked.replay.storage = storage;
+  revoked.api.getPorts = async () => [];
+  await revoked.connect(); assert.equal(choosers(revoked), 1);
+});
+
 test("new log/rerun cancel old data and latest seek wins during initialization", async () => {
   const h = harness(); const connecting = h.replay.connect(); await h.clock.advance(100);
   h.replay.seek(300.1); const seek = h.replay.seek(300.2);
@@ -452,7 +483,7 @@ test("coincident sensor timestamps exceeding wire capacity are rejected before t
 
 test("page controls connect at the selected offline time, render from serial time and go on when hidden", async () => {
   const h = harness(), events = {}, elements = {};
-  const element = id => elements[id] ||= { value: "", checked: false, options: [], addEventListener() {}, setAttribute() {} };
+  const element = id => elements[id] ||= { value: "", checked: false, options: [], addEventListener() {}, setAttribute() {}, classList: { toggle() {} } };
   element("baud").value = "115200";
   element("speed").value = "10";
   element("speed").options = [1, 2, 5, 10, 30, 60, 120, 300].map(value => ({ value: String(value), disabled: false }));
@@ -472,6 +503,12 @@ test("page controls connect at the selected offline time, render from serial tim
   vm.runInContext(setup + playback + "\nserialControls();", context);
   const connect = element("serialbtn").onclick(); await h.clock.advance(1000); await connect;
   assert.equal(h.replay.time(), 300.2);
+  h.api.getPorts = async () => [h.port];
+  vm.runInContext("play();", context); await h.clock.advance(100);
+  const at = h.replay.time(), again = element("serialbtn").onclick(); await h.clock.advance(1100); await again;
+  assert.equal(h.calls.filter(c => c === "chooser").length, 1, "reconnecting does not ask for the port");
+  assert.equal(h.replay.ready, true); assert.equal(h.replay.running, false);
+  assert.equal(h.replay.time(), at, "reconnecting keeps the replay position");
   assert.equal(element("speed").value, "1");
   assert.equal(element("speed").options.at(-1).disabled, true);
   vm.runInContext("play();", context); await h.clock.advance(50);

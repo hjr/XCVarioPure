@@ -50,7 +50,7 @@ button, input, select { font: inherit; color: inherit; }
 .btn:hover:not(:disabled) { border-color: var(--accent); }
 .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
 .btn:disabled { opacity: 0.5; cursor: default; }
-.btn[aria-expanded="true"] { border-color: var(--accent); color: var(--accent); }
+.btn[aria-expanded="true"], .btn.on { border-color: var(--accent); color: var(--accent); }
 .sel { background-color: var(--surface); border: 1px solid var(--rule); border-radius: 6px; padding: 5px 6px; }
 #glider { max-width: 150px; }
 .bar #slider { flex: 1 1 140px; min-width: 80px; accent-color: var(--accent); }
@@ -190,6 +190,7 @@ select { appearance: none; -webkit-appearance: none; padding-right: 26px !import
     <select id="mainvario" class="sel" aria-label="Main vario" title="The main vario: the big needle, the average on the gauge and the tone">
       <option value="airmass" selected>Main: AirMass netto</option><option value="netto">Main: TE netto</option><option value="tep" hidden>Main: TE pressure netto</option>
     </select>
+    <button class="btn" id="serialbtn" disabled>Connect serial</button>
     <button class="btn" id="settingsbtn" aria-expanded="false" aria-controls="settings">Settings</button>
   </header>
   <div class="status" id="status" role="status" hidden></div>
@@ -260,10 +261,11 @@ select { appearance: none; -webkit-appearance: none; padding-right: 26px !import
           <label>Serial baud rate
             <select id="baud"><option>9600</option><option>19200</option><option>38400</option><option>57600</option><option selected>115200</option><option>230400</option><option>460800</option><option>921600</option></select>
           </label>
-          <button class="btn" id="serialbtn" disabled>Connect serial…</button>
+          <button class="btn" id="serialport" disabled>Choose port…</button>
         </div>
         <span class="serialstatus" id="serialstatus" role="status">Disconnected</span>
         <span class="note" id="serialhint">Open a $SENS log to stream it to an XCVario. Serial playback starts at 1×.</span>
+        <p class="note">Connect serial in the top bar connects to the last used port again, or reconnects while connected.</p>
         <p class="note">Seeks and playback changes reset instrument settling; its estimator history differs from the offline replay. Restart the instrument to leave simulation mode. Serial sends the logged setup: the browser's glider, loading and estimator overrides apply to the offline display only. It pauses while the flight replays, then resumes if it was playing.</p>
       </fieldset>
     </div>
@@ -364,7 +366,7 @@ for (const name of Object.keys(AirMassConvert.GLIDERS)) $("glider").add(new Opti
 // Each newly loaded log selects its own type; manual overrides apply to the current log.
 $("glider").value = "log";
 const SETTINGS_KEY = "airmass-replay-settings";
-const FIELDS = ["harmonics", "clip", "glider", "mass", "bugs", "damping", "averager", "samesmooth", "sets", "noflaps", "mahony", "learn", "warm", "w0", "w1", "w2", "wlat", "wingpitch", "follow", "speed", "mainvario", "chartsmap", "showhw", "showgross", "windfield"];
+const FIELDS = ["harmonics", "clip", "glider", "mass", "bugs", "damping", "averager", "samesmooth", "sets", "noflaps", "mahony", "learn", "warm", "w0", "w1", "w2", "wlat", "wingpitch", "follow", "speed", "mainvario", "chartsmap", "showhw", "showgross", "windfield", "baud"];
 try {
   const s = JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}");
   // The sound source became the main vario; old sound sources selected gross independently, the gross switch now
@@ -435,9 +437,12 @@ const backgroundTimers = (() => {
       clearTimer: (id) => { if (pending.delete(id)) worker.postMessage([id]); } };
   } catch (_) { return {}; }
 })();
-const serial = new AirMassSerial.SerialReplay({ ...backgroundTimers, onChange: s => {
+const portStorage = (() => { try { return localStorage; } catch (_) { return null; } })();
+const serial = new AirMassSerial.SerialReplay({ ...backgroundTimers, storage: portStorage, onChange: s => {
   $("serialstatus").textContent = s.message;
-  $("serialbtn").textContent = s.connected ? "Disconnect serial" : "Connect serial…";
+  $("serialbtn").textContent = s.connected ? "Reconnect serial" : "Connect serial";
+  $("serialbtn").classList.toggle("on", s.connected);
+  $("serialport").textContent = s.connected ? "Disconnect" : "Choose port…";
   $("baud").disabled = s.connected || s.connecting;
   if (s.connected || serialWasConnected) {
     if (!scrubbing) T = s.time(); // a dragged slider holds the page's time (endScrub)
@@ -450,30 +455,33 @@ const serial = new AirMassSerial.SerialReplay({ ...backgroundTimers, onChange: s
   }
   serialWasConnected = s.connected;
   serialControls();
-  if (/Serial stopped:|Serial lag|disconnected\./.test(s.message)) setStatus(s.message, true);
+  if (/^Serial: |Serial stopped:|Serial lag|disconnected\./.test(s.message)) setStatus(s.message, true);
 } });
 function serialControls() {
   const supported = !!navigator.serial && window.isSecureContext;
   const allowed = AirMassSerial.allowedSpeeds(serial.timeline, +$("baud").value);
-  $("serialbtn").disabled = serial.connecting || serial.disconnecting || loading || replaying || (!serial.connected && (!supported || !allowed.includes(1)));
-  $("serialhint").textContent = !supported ? "Web Serial is unavailable. Use desktop Chrome over HTTPS or localhost." :
+  const busy = serial.connecting || serial.disconnecting || loading || replaying;
+  $("serialbtn").disabled = busy || !supported || !allowed.includes(1);
+  $("serialport").disabled = $("serialbtn").disabled && (busy || !serial.connected);
+  const hint = $("serialhint").textContent = !supported ? "Web Serial is unavailable. Use desktop Chrome over HTTPS or localhost." :
     serial.timeline?.reason || (!serial.timeline ? "Open a $SENS sensor log to connect." :
       !allowed.includes(1) ? "Log traffic exceeds this baud rate at 1×. Choose a higher rate supported by the instrument. Stalled log timestamps may make serial replay unavailable." :
       `Serial speeds: ${allowed.join("×, ")}× · starts at 1×. ${serial.timeline.warning || "Logged configuration and flap changes will be replayed."}`);
+  $("serialbtn").title = `${serial.message}. ${serial.connected ? "Reconnects to the same port" : "Connects to the last used port"}; Settings → Instrument replay has the baud rate and the other ports. ${hint}`;
   for (const option of $("speed").options) option.disabled = serial.connected && !allowed.includes(+option.value);
   if (serial.connected) $("speed").value = String(serial.speed);
   $("playbtn").disabled = !D || loading || replaying || (serial.connected && !serial.ready);
 }
-$("serialbtn").onclick = async () => {
-  if (serial.connected) await serial.disconnect();
-  else {
-    pause();
-    serial.setTimeline(serial.timeline, T);
-    try { await serial.connect(+$("baud").value); }
-    catch (e) { $("serialstatus").textContent = e.message; }
-  }
+async function connectSerial(choose) {
+  pause();
+  await serial.disconnect("Reconnecting…");
+  serial.setTimeline(serial.timeline, T);
+  try { await serial.connect(+$("baud").value, choose); }
+  catch (e) { $("serialstatus").textContent = e.message; setStatus(e.message, true); }
   serialControls();
-};
+}
+$("serialbtn").onclick = () => connectSerial(false);
+$("serialport").onclick = () => serial.connected ? serial.disconnect() : connectSerial(true);
 $("baud").addEventListener("change", serialControls);
 $("speed").addEventListener("change", () => {
   if (serial.connected) {

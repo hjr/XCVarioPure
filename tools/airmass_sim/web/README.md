@@ -162,11 +162,12 @@ Run `python3 tools/airmass_sim/conversion_test.py` for the shared JavaScript/Pyt
 invalid inputs and stop markers. After rebuilding the web module, run
 `node tools/airmass_sim/web/replay_start_test.js` for converter/WASM/page integration.
 
-To replay into an XCVario, open a sensor log, then open **Settings → Instrument replay → Connect serial…**.
-Choose the baud rate used by the instrument's NMEA input (115200 by default) and select its port in the browser
-chooser. This requires [Web Serial in desktop Chrome](https://developer.chrome.com/docs/capabilities/serial)
-over HTTPS or localhost. Permission is requested only when you click Connect. The connection status and
-Disconnect button are in Settings. `$PXCVR` recordings cannot supply the full hardware sensor payload;
+To replay into an XCVario, open a sensor log, then click **Connect serial** in the top bar. The first time, select
+the instrument's port in the browser chooser; after that the button connects to the last used port without asking,
+also after a reload, and reconnects to it while connected. **Settings → Instrument replay** has the baud rate of the
+instrument's NMEA input (115200 by default), **Choose port…** for another port, which is **Disconnect** while connected, and the
+connection status. This requires [Web Serial in desktop Chrome](https://developer.chrome.com/docs/capabilities/serial)
+over HTTPS or localhost. Permission is requested only when you click a connect button. `$PXCVR` recordings cannot supply the full hardware sensor payload;
 serial playback currently requires `$SENS` logs.
 
 Connection enters simulation mode with `$PFLAX,S,0`, waits one second, restores the logged glider/loading

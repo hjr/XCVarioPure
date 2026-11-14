@@ -21,14 +21,16 @@
     }
     return { index, lines: [config, flap].filter(Boolean) };
   }
+  const PORT_KEY = "airmass-replay-serial-port";
+  const portId = port => JSON.stringify(port.getInfo?.() ?? {});
 
   class SerialReplay {
     constructor({ serial = root.navigator?.serial, now = () => performance.now(),
       setTimer = (f, ms) => setTimeout(f, ms), clearTimer = id => clearTimeout(id),
-      onChange = () => {}, lagMs = 250, writeTimeoutMs = 2000 } = {}) {
-      Object.assign(this, { serial, now, setTimer, clearTimer, onChange, lagMs, writeTimeoutMs });
+      onChange = () => {}, lagMs = 250, writeTimeoutMs = 2000, storage = null } = {}) {
+      Object.assign(this, { serial, now, setTimer, clearTimer, onChange, lagMs, writeTimeoutMs, storage });
       this.timeline = null;
-      this.port = this.writer = null;
+      this.port = this.writer = this.lastUsed = null;
       this.running = this.wanted = this.ready = this.connecting = false;
       this.speed = 1; this.position = 0; this.anchor = 0; this.index = 0; this.generation = 0;
       this.queue = Promise.resolve(); this.timer = null; this.message = "Disconnected";
@@ -80,19 +82,32 @@
       await this.bounded(written, this.writeTimeoutMs, "Serial write timed out");
       return true;
     }
-    async connect(baud = 115200) {
+    // The port of the last connection among those the browser still grants: this session's, else the only one with the
+    // remembered USB or Bluetooth identity.
+    async lastPort() {
+      const ports = await this.serial.getPorts?.() ?? [];
+      if (ports.includes(this.lastUsed)) return this.lastUsed;
+      let saved = null;
+      try { saved = this.storage?.getItem(PORT_KEY); } catch (_) { /* no storage */ }
+      const same = ports.filter(p => portId(p) === saved);
+      return same.length === 1 ? same[0] : null;
+    }
+    async connect(baud = 115200, choose = false) {
       if (this.connected || this.connecting) return;
       if (!this.serial) throw new Error("Web Serial is unavailable. Use desktop Chrome over HTTPS or localhost.");
-      if (this.closing) throw new Error("The previous serial connection is still closing. Try again shortly.");
       if (!allowedSpeeds(this.timeline, baud).includes(1)) throw new Error(this.timeline?.reason || "This log exceeds the selected baud rate at 1×. Select a higher baud rate.");
       this.connecting = true;
-      this.notify("Choose the instrument's serial port…");
       let port;
       try {
-        // Only called by the Connect button; never request permission on page load.
-        port = await this.serial.requestPort();
+        if (this.closing) { this.notify("Closing the previous connection…"); await this.closing; }
+        if (!choose) port = await this.lastPort();
+        this.notify(port ? "Connecting…" : "Choose the instrument's serial port…");
+        // Only called by the connect buttons; never request permission on page load.
+        port ||= await this.serial.requestPort();
         await port.open({ baudRate: baud, dataBits: 8, stopBits: 1, parity: "none", flowControl: "none", bufferSize: 1024 });
         if (!allowedSpeeds(this.timeline, baud).includes(1)) throw new Error("The loaded log changed; choose a supported sensor log and reconnect.");
+        this.lastUsed = port;
+        try { this.storage?.setItem(PORT_KEY, portId(port)); } catch (_) { /* no storage */ }
         this.port = port; this.writer = port.writable.getWriter(); this.baud = baud; this.speed = 1; this.initialized = false;
         await this.restore(this.position, false, true);
       } catch (e) {
