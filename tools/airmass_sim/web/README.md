@@ -100,7 +100,7 @@ of the last accepted observation, received age is the time since the last fusion
 duplicate epochs, outages, outliers, midnight/clock wrap, unsupported history, whole-fix rejection and sensor gaps.
 
 **Main vario**, the selector in the header, picks AirMass, TE or TE pressure as the main vario: it has the big
-needle (in its own colour), the tone, and its average on the gauge's centre plate instead of a momentary value; its
+needle (in its own colour), the tone, and its average on the gauge, right of the centre, instead of a momentary value; its
 average leaves the readouts below the gauge. Where the log has no TE pressure, TE pressure falls back to TE. The
 choice is saved in this browser.
 

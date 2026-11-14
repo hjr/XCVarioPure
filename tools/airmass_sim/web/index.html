@@ -977,7 +977,6 @@ function mainKey() {
   const v = $("mainvario").value;
   return v === "netto" || (v === "tep" && !D?.hasTep) ? "te" : v === "tep" ? "tep" : "am";
 }
-const VARIO_NAMES = { am: "AirMass", te: "TE", tep: "TE pressure", gnss: "GNSS" };
 
 // the track colour
 const COLOR_BY = { gnssnet: "GNSS netto", airmass: "AirMass vario", te: "TE vario", gnss: "GNSS altitude change", seeyou: "Netto, SeeYou style" };
@@ -1163,11 +1162,11 @@ $("clock").onclick = async () => {
   }
 };
 
-// vario gauge: 0 at 9 o'clock, lift clockwise over the top, ±5 m/s at ±150°
+// vario gauge: 0 at 9 o'clock, lift clockwise over the top, ±5 m/s at ±128° like the device's (IpsDisplay scale_geometry)
 function drawVario(k) {
   const { ctx, w, h } = fitCanvas($("vario"));
   ctx.clearRect(0, 0, w, h);
-  const cx = w / 2, cy = h / 2, R = Math.min(w, h) / 2 - 6, MAX = 5, SPAN = 150 * Math.PI / 180;
+  const cx = w / 2, cy = h / 2, R = Math.min(w, h) / 2 - 6, MAX = 5, SPAN = 128 * Math.PI / 180;
   const dir = (v) => { const p = Math.max(-1.04, Math.min(1.04, v / MAX)) * SPAN; return [-Math.cos(p), -Math.sin(p)]; };
   ctx.lineCap = "round";
   ctx.strokeStyle = C.rule; ctx.lineWidth = 2;
@@ -1194,7 +1193,6 @@ function drawVario(k) {
     path(); ctx.stroke();
     ctx.restore();
   };
-  // the main vario's needle big and on top, the others thin and of one length, each in its own colour
   const main = mainKey();
   needle(series.gnss[k], C.gnss, 3, 0.8, C.dark ? C.muted : null);
   for (const [key, color] of [["te", C.net], ["tep", C.tep], ["am", C.am]]) {
@@ -1203,23 +1201,14 @@ function drawVario(k) {
   needle(series[main][k], { am: C.am, te: C.net, tep: C.tep }[main], 6.5, 0.92, null, main === "am" && fallback);
   ctx.fillStyle = C.surface; ctx.strokeStyle = C.rule; ctx.lineWidth = 1.5;
   ctx.beginPath(); ctx.arc(cx, cy, R * 0.07, 0, 2 * Math.PI); ctx.fill(); ctx.stroke();
-  // the main vario's average on a plate, below the centre
-  const font = C.font;
-  const label = main === "am" && D.ai[k] < 0 ? "not running" : `${VARIO_NAMES[main]} · ${averagingSeconds()} s avg`;
-  const smallFont = `${Math.round(R * 0.095)}px ${font}`;
-  ctx.font = smallFont;
-  const px = cx, py = cy + R * 0.41, pw = Math.max(R * 0.72, ctx.measureText(label).width + R * 0.12), ph = R * 0.36;
-  ctx.fillStyle = C.surface; ctx.strokeStyle = C.rule; ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.roundRect(px - pw / 2, py - ph / 2, pw, ph, 6); ctx.fill(); ctx.stroke();
-  ctx.fillStyle = C.ink;
-  ctx.font = `600 ${Math.round(R * 0.21)}px ${font}`;
-  ctx.fillText(fmtV(varioAverage(series.avg[main], k)), px, py - R * 0.035);
-  ctx.font = smallFont;
-  ctx.fillStyle = C.muted;
-  ctx.fillText(label, px, py + R * 0.12);
 }
 
 // the pitch shown: of the sensor axis, or with "Wing reference" of the wing's zero-lift line as AirMass models it.
+  // the main vario's average right of the centre, under the needles
+  ctx.fillStyle = C.ink;
+  ctx.font = `600 ${Math.round(R * 0.21)}px ${C.font}`;
+  ctx.fillText(fmtV(varioAverage(series.avg[main], k)), cx + R * 0.45, cy);
+  // the main vario's needle big and on top, the others thin and of one length, each in its own colour
 // alpha (body x axis to the air velocity) = aoa_model * k_aoa - pitch_ofs, so the zero-lift line, at aoa_model * k_aoa
 // to the air velocity, is pitched by pitch + pitch_ofs
 function shownPitch(i) {
