@@ -47,7 +47,7 @@ void airmass::menuWind(SetupMenu* wind, SetupMenuSelect* source)
     }
     source->addEntry("AirMass", WA_AIRMASS);
     SetupMenuSelect* navi = new SetupMenuSelect("Wind to Navi", RST_NONE, nullptr, &airmass_wind_nmea);
-    navi->setHelp("Send the 30s average of the air mass wind to the navigation computer ($WIMWV, or Cambridge !w), XCSoar takes it as external wind");
+    navi->setHelp("Send the 30s average of the air mass wind to the navigation computer ($WIMWV, or Cambridge !w), XCSoar takes it as external wind. $PXCVW has the average and the instant wind");
     navi->mkEnable();
     wind->addEntry(navi);
 }

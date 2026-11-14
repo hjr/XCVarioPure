@@ -28,7 +28,7 @@ bool airmass::varioFallback()
     return te_comp_enable.get() == TE_AIRMASS && !varioValid();
 }
 
-// the averaged air mass wind for the navigation computer, if enabled and valid (master and second seat)
+// the averaged air mass wind for the navigation computer, if enabled and valid or degraded (master and second seat)
 static bool naviWind(WindData& w)
 {
     w = WindData(static_cast<uint32_t>(synoptic_wind.get()));
@@ -72,10 +72,20 @@ void airmass::nmeaFeed(NmeaPrtcl* nmea, bool slow)
         msg->buffer = std::move(lines);
         DEV::Send(msg);
     }
-    // the Cambridge sentence carries the wind already
     WindData wind;
-    if (slow && nmea->getProtocolId() != CAMBRIDGE_P && naviWind(wind)) {
-        nmea->sendXCVNmeaMWV(wind.getDeg(), wind.getVal());
+    if (slow && naviWind(wind)) {
+        // the Cambridge sentence carries the wind already
+        if (nmea->getProtocolId() != CAMBRIDGE_P) {
+            nmea->sendXCVNmeaMWV(wind.getDeg(), wind.getVal());
+        }
+        if (!nmea->getDL()->isBinActive()) {
+            const bool degraded = !(airmass_status.get() & AirMassEKF::ST_WIND_VALID);
+            sendWind(nmea, wind, 'A', degraded);
+            const WindData instant(static_cast<uint32_t>(inst_wind.get()));
+            if (instant.isUsable()) {
+                sendWind(nmea, instant, 'I', degraded);
+            }
+        }
     }
 }
 
