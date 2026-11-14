@@ -209,13 +209,37 @@ int airmass::learnedFlapPositions()
     return learned;
 }
 
+// a wind on the blackboard, set on change only, an unusable one marked invalid
+static void publishWind(SetupNG<int>& var, WindData w)
+{
+    const bool usable = w.isUsable();
+    if (w.data() != var.get() || (usable && !var.getValid())) {
+        var.set(w.data());
+    }
+    if (!usable) {
+        var.setInvalid();
+    }
+}
+
+static bool removal_pending = false;
+
 void airmass::startup()
 {
     migrateVarioMode();
-    if (supported()) {
+    followMethod();
+}
+
+// without the TE compensation method Air Mass the estimator takes no memory
+void airmass::followMethod()
+{
+    const bool wanted = te_comp_enable.get() == TE_AIRMASS && supported();
+    if (wanted && !airmassSensor) {
+        removal_pending = false;
         airmassSensor = new AirMassSensor();
         airmassSensor->setup();
         SensorRegistry::registerSensor(airmassSensor);
+    } else if (!wanted && airmassSensor && !removal_pending) {
+        removal_pending = SensorRegistry::deregisterSensor(airmassSensor);
     }
 }
 
@@ -228,7 +252,13 @@ AirMassSensor::AirMassSensor() :
 
 AirMassSensor::~AirMassSensor()
 {
-    airmassSensor = nullptr;
+    if (_active) {
+        stop();
+    }
+    if (airmassSensor == this) {
+        airmassSensor = nullptr;
+        removal_pending = false;
+    }
 }
 
 bool AirMassSensor::setup()

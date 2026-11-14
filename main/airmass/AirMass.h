@@ -18,7 +18,9 @@ union WindData;
 
 namespace airmass {
 
-// system startup: create the estimator if supported
+// system startup
+// create the estimator with the TE compensation method Air Mass where it is supported, remove it without
+void followMethod();
 void startup();
 // the estimator can run here: the master with IMU and air data
 bool supported();
@@ -30,14 +32,11 @@ void gnssVelocity(mps_t speed, rad_t course, uint32_t time_ms, uint16_t latency_
 // GNSS: true heading and wind correction angle from the estimator; false while it has none
 bool heading(rad_t track);
 
-// vario filter, every cycle (10Hz): the vertical air mass movement damped for the needle (te_damping: the damping of
-// the TE vario), false while the method is not Air Mass or the estimator has no valid one; the damping then restarts
-// from fallback (netto). switched: the vario starts or stops showing the air mass with this cycle
-bool vario(mps_t& air, second_t te_damping, mps_t fallback, bool& switched);
-
-// wind gauge: the estimator's instant wind, and its average where no synoptic wind is valid; degraded: the instant
-// wind is not valid any more but still the best estimate (long straight glides), to be shown marked
-void displayWind(WindData& synoptic, WindData& instant, bool& degraded);
+// vario filter, every cycle: the raw vertical air mass movement, false while the TE compensation method is not Air
+// Mass or the estimator has no valid one. Follows the method (followMethod).
+bool rawVario(mps_t& air);
+// vario needle: the method is Air Mass, but the vario shows the TE vario for now
+bool varioFallback();
 
 // setup menu: Air Mass as TE compensation method (with the help of its eAdjustment), the wind to the navigation
 // computer, and for development builds (DEBUG_AND_TEST) the status page of the vario menu and the recording in the
