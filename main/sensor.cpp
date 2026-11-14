@@ -1009,7 +1009,7 @@ void system_startup(void *args){
     // Init the vario screens
     MenuRoot->initScreens();
 
-    if (Flap::needed()) {
+    if (Speed2Fly.hasFlaps()) {
         Flap::theFlap();  // check on FLAP pointer further on
     }
     // if (hardwareRevision.get() != XCVARIO_20) {

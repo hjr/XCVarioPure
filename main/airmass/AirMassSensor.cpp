@@ -92,7 +92,7 @@ static SetupNG<float>* const FLAP_OFS[airmass::FlapOffsets::N] = {&airmass_flap_
 // not move the flaps. NAN without flaps.
 static float flapLever(float roll)
 {
-    // flap levels left from an earlier glider do not count; a flapped glider keeps FLAP (Flap::needed)
+    // flap levels left from an earlier glider do not count; a flapped glider keeps FLAP
     const bool sensor = Flap::sensAvailable();
     if (!(sensor || Speed2Fly.hasFlaps()) || !FLAP || FLAP->getNrPositions() < 2) {
         return NAN;
