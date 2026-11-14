@@ -415,8 +415,16 @@ void AirMassSensor::stop()
         queueLine([] { return airmass::record::stop(Clock::getMillis()); });
     }
     airmass_status.set(0);
-    airmass_inst_wind.set(WindData().data());
-    airmass_avg_wind.set(WindData().data());
+    withdrawWind();
+}
+
+void AirMassSensor::withdrawWind()
+{
+    publishWind(inst_wind, WindData());
+    if (_average_published) {
+        publishWind(synoptic_wind, WindData());
+        _average_published = false;
+    }
 }
 
 void AirMassSensor::postProcess()
@@ -540,25 +548,27 @@ void AirMassSensor::publish()
     const bool wind_due = _wind_timer.due(now, 500);
     const bool average_due = _average_timer.due(now, 1000);
     // volatile entries stay dirty once set, so every set() would sync: only set on change
-    auto setChanged = [](SetupNG<int>& var, int val) {
-        if (val != var.get()) {
-            var.set(val);
-        }
-    };
-    setChanged(airmass_status, st);
+    if (st != airmass_status.get()) {
+        airmass_status.set(st);
+    }
 
-    // a degraded wind is still the best instant wind there is: shown marked, but no average.
+    // a degraded wind is still the best instant wind there is: shown marked, and averaged.
     // No stale wind for consumers that do not check the status.
     if (!(st & (AirMassEKF::ST_WIND_VALID | AirMassEKF::ST_WIND_DEGRADED))) {
-        setChanged(airmass_inst_wind, WindData().data());
-    } else if (wind_due) {
-        setChanged(airmass_inst_wind, windFromVector(wind).data());
-    }
-    if (!(st & AirMassEKF::ST_WIND_VALID)) {
-        setChanged(airmass_avg_wind, WindData().data());
-    } else if (average_due) {
-        const vector_f avg(_pipe.avgWind().windN(), _pipe.avgWind().windE(), 0.f);
-        setChanged(airmass_avg_wind, windFromVector(avg).data());
+        withdrawWind();
+    } else {
+        if (wind_due) {
+            WindData w = windFromVector(wind);
+            if (!(st & AirMassEKF::ST_WIND_VALID)) {
+                w.setDegraded();
+            }
+            publishWind(inst_wind, w);
+        }
+        if (average_due) {
+            const vector_f avg(_pipe.avgWind().windN(), _pipe.avgWind().windE(), 0.f);
+            publishWind(synoptic_wind, windFromVector(avg));
+            _average_published = true;
+        }
     }
     if (_diagnostic_timer.due(now, 5000)) {
         ESP_LOGI(FNAME, "AirMass st %x wind %.1f/%.1f/%.2f psi %.1f° k %.3f thb %.2f° baz %.3f bgz %.3f°/s lat %.0fms", st, wind.x, wind.y,

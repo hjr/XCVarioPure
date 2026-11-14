@@ -1534,7 +1534,7 @@ function drawMapWind(k) {
   // [north, east, colour, label prefix (default: the direction it comes from)]
   const winds = {
     inst: st & (STATUS.WIND_VALID | STATUS.WIND_DEGRADED) ? [r.wind_n[i], r.wind_e[i], st & STATUS.WIND_VALID ? C.am : fadeToGrey(C.am, r.wind_fade[i])] : null,
-    avg: st & STATUS.WIND_VALID ? [r.avg_wind_n[i], r.avg_wind_e[i], C.muted] : null,
+    avg: st & (STATUS.WIND_VALID | STATUS.WIND_DEGRADED) ? [r.avg_wind_n[i], r.avg_wind_e[i], C.muted] : null,
     hw: $("showhw").checked && Number.isFinite(hw) ? [-hw * Math.cos(psi), -hw * Math.sin(psi), C.hw, hw >= 0 ? "HW" : "TW"] : null,
   };
   const placed = [];

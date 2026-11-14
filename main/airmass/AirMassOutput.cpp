@@ -31,7 +31,7 @@ bool airmass::varioFallback()
 // the averaged air mass wind for the navigation computer, if enabled and valid (master and second seat)
 static bool naviWind(WindData& w)
 {
-    w = WindData(static_cast<uint32_t>(airmass_avg_wind.get()));
+    w = WindData(static_cast<uint32_t>(synoptic_wind.get()));
     return airmass_wind_nmea.get() && (airmass_status.get() & AirMassEKF::ST_WIND_VALID) && w.isValid();
 }
 

@@ -112,7 +112,7 @@ void StatusPage::line(int ln, const char* text)
 int windText(char* buf, size_t size, const char* label, int raw)
 {
     const WindData w(static_cast<uint32_t>(raw));
-    if (w.isValid()) {
+    if (w.isUsable()) {
         return snprintf(buf, size, "%s %d°/%.0f %s", label, w.getDeg(), SpeedUnit->apply(w.getVal()), SpeedUnit->getName());
     }
     return snprintf(buf, size, "%s --", label);
@@ -142,12 +142,12 @@ void StatusPage::draw()
         snprintf(buf, sizeof(buf), "Vario: --");
     }
     line(ln++, buf);
-    const int len = windText(buf, sizeof(buf), "Wind:", airmass_inst_wind.get());
+    const int len = windText(buf, sizeof(buf), "Wind:", inst_wind.get());
     if (dwidth > dheight) {
-        windText(buf + len, sizeof(buf) - len, ", avg", airmass_avg_wind.get());
+        windText(buf + len, sizeof(buf) - len, ", avg", synoptic_wind.get());
     } else {
         line(ln++, buf);
-        windText(buf, sizeof(buf), "Avg wind:", airmass_avg_wind.get());
+        windText(buf, sizeof(buf), "Avg wind:", synoptic_wind.get());
     }
     line(ln++, buf);
 

@@ -59,7 +59,7 @@ bool WindIndicator::changed(WindData w)
         _gauge.drawRose(_wind.getDeg());
         _wind = w;
         ESP_LOGI(FNAME, "Wind (%d,%.2f)", _wind.getDeg(), _wind.getVal());
-        if ( !_wind.isValid() ) {
+        if ( !_wind.isUsable() ) {
             return false;
         }
         return true;
@@ -76,7 +76,7 @@ bool WindIndicator::draw(WindData w)
         drawWind(true);
         _gauge.drawRose(_wind.getDeg());
         _wind = w;
-        if ( !_wind.isValid() ) {
+        if ( !_wind.isUsable() ) {
             return false;
         }
         drawWind(false);
@@ -89,6 +89,9 @@ bool WindIndicator::draw(WindData w)
 // 0° reference on top of the compass rose
 void WindIndicator::drawWind(bool erase)
 {
+    if (!_wind.isUsable()) {
+        return;
+    }
     ESP_LOGI(FNAME, "wind deg:%d, v:%.1f ", _wind.getDeg(), _wind.getVal());
     float si = -fast_sin_idx(_wind.getDeg2());
     float co = fast_cos_idx(_wind.getDeg2());
@@ -99,7 +102,7 @@ void WindIndicator::drawWind(bool erase)
     int16_t y1 = y0 / 4;
     if (erase) {
         MYUCG->setColor(COLOR_BLACK);
-    } else if (_degraded) {
+    } else if (_wind.isDegraded()) {
         MYUCG->setColor(COLOR_LGREY);
     } else {
         MYUCG->setColor(_color.color[0], _color.color[1], _color.color[2]);
@@ -112,11 +115,7 @@ void WindIndicator::drawWind(bool erase)
         MYUCG->drawBox(_gauge._ref.x - x0 - x1 / 2 - xshift, _gauge._ref.y - y0 - y1 / 2 - _cheight / 2, sw, _cheight);
     } else {
         char buf[8];
-        if (_wind.isValid()) {
-            sprintf(buf, "%d", value);
-        } else {
-            sprintf(buf, "oo");
-        }
+        sprintf(buf, "%d", value);
         MYUCG->setFont(ucg_font_fub14_hr);
         MYUCG->setFontPosCenter();
         MYUCG->setPrintPos(_gauge._ref.x - x0 - x1 / 2 - xshift, _gauge._ref.y - y0 - y1 / 2);
