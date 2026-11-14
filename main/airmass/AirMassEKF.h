@@ -67,11 +67,8 @@ class AirMassEKF {
         float q_vd = 0.25f;         // (m/s)²/s accelerometer noise
         float q_baz = 1e-5f;        // (m/s²)²/s accel bias random walk
         float q_bgz = 1e-8f;        // (rad/s)²/s body z gyro bias random walk (temperature drift)
-        float q_tau = 1e-5f;        // s²/s GNSS latency random walk. The Flarm's latency differs from flight to flight (0 to
-                                    // 0.9 s on 11 flights of one glider, constant within a flight: an output phase per power
-                                    // up?), so it has to be learned anew every flight: at 1e-6 one flight took 2.5 h from the
-                                    // 0.75 s start to its 0.9 s, at 1e-5 half an hour, and the circling wind wobbles 4% less
-                                    // on 11 flights; 1e-4 jitters by 0.15 s
+        float q_tau = 1e-5f;        // s²/s GNSS latency random walk: a receiver's latency is learned within half an hour
+                                    // (1e-6: 2.5 h); 1e-4 jitters by 0.15 s
         float q_kcl = 1e-8f;        // 1/s angle of attack scale random walk
         float r_baro = 0.09f;       // m² baro altitude noise
         float sigma_pitch = 0.03f;  // rad, the attitude's pitch error in calm straight flight: the weight of the pitch path

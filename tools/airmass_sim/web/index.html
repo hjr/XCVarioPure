@@ -597,7 +597,8 @@ async function replayOnce() {
       setupUsed.slice(3),
       `${attitudeUsed} · cycles ${s.cycles} · GNSS fixes ${s.gnss} · compass ${s.compass}`,
       `learned: k_tas ${s.k_tas.toFixed(3)}, pitch offset ${s.pitch_ofs_deg.toFixed(2)}°, AoA scale ${s.aoa_scale.toFixed(3)}, ` +
-        `GNSS latency ${s.latency_ms} ms (altitude ${Math.round(D.altDelay * 1000)} ms), gyro z bias ${s.gyro_z_bias_dps.toFixed(3)}°/s`,
+        `GNSS latency ${s.latency_ms} ms, gyro z bias ${s.gyro_z_bias_dps.toFixed(3)}°/s`,
+      conv.fixes && `GNSS reference: altitude ${Math.round(D.altDelay * 1000)} ms old at arrival, ground speed ${Math.round((D.altDelay + D.speedLag) * 1000)} ms (measured from the log)`,
       conv.temperatureEstimatedSamples && `OAT estimated for ${conv.temperatureEstimatedSamples} samples: 25°C at sea level, −6.5°C/km`,
       conv.temperatureKelvinSamples && `OAT converted from Kelvin for ${conv.temperatureKelvinSamples} samples`,
       conv.timestampRecoveredSamples && `timing recovered for ${conv.timestampRecoveredSamples} samples with frozen timestamps`,
@@ -637,27 +638,26 @@ function build(conv, rep) {
   // A recording may start after its PXCVS. The replay's recovered cycles determine where it actually ran.
   if (conv.kind === "AirMass recording") for (let k = 0; k < n; k++) c.running[k] = ai[k] >= 0 ? 1 : 0;
 
-  // GNSS fixes reach the device late (AirMass learns by how much): each fix belongs to its arrival time minus that
-  // latency, and positions and altitudes are interpolated between those times. A replay knows the next fix already.
-  const lat_s = Number.isFinite(rep.summary.latency_ms) && rep.summary.latency_ms > 0 ? rep.summary.latency_ms / 1000 : 0.9;
+  // A fix belongs to the time its ground velocity was measured. Its altitude is the one of its own UTC epoch (the GGA
+  // sentence follows the RMC one, mostly a sensor cycle later), altDelay old at the fix's row; the velocity is speedLag
+  // older still, so the altitude of that moment lies between this epoch's and the one before.
+  const altOf = new Map();
+  for (let k = 0; k < n; k++) if (Number.isFinite(c.alt_utc[k])) altOf.set(c.alt_utc[k], c.gnss_alt[k]);
   const fixes = [];
   for (let k = 0; k < n; k++) {
     const u = c.utc[k];
     // one fix per epoch, in order: a logger merging two receivers interleaves epochs out of order
     const last = fixes.length ? fixes[fixes.length - 1].u : -Infinity;
     if (Number.isFinite(u) && (u > last || u < last - 80000)) {
-      fixes.push({ k, u, tm: t[k] - lat_s, lat: c.lat[k], lon: c.lon[k], alt: c.gnss_alt[k] });
+      fixes.push({ k, u, lat: c.lat[k], lon: c.lon[k], alt: altOf.get(u) ?? NaN, speed: c.gnss_speed[k], track: c.gnss_track[k] });
     }
   }
-  // the GNSS altitude comes later than the ground velocity AirMass learns the latency of (about 1.6 against 0.9 s): each
-  // fix gets the altitude of its measurement time, from the fixes around where that altitude arrived
-  const altDelay = gnssAltDelay(fixes, t, c.baro_alt, c.running);
-  const arrived = fixes.map((f) => f.alt);
-  for (let j = 0, a = 0; j < fixes.length; j++) {
-    const want = t[fixes[j].k] + altDelay - lat_s;
-    while (a + 1 < fixes.length && t[fixes[a + 1].k] <= want) a++;
-    const ta = t[fixes[a].k], tb = a + 1 < fixes.length ? t[fixes[a + 1].k] : NaN;
-    if (ta <= want && tb > ta && tb - ta <= 3) fixes[j].alt = arrived[a] + (arrived[a + 1] - arrived[a]) * (want - ta) / (tb - ta);
+  const altDelay = gnssAltDelay(fixes, t, c.baro_alt, c.running), speedLag = gnssSpeedLag(fixes, t);
+  const epochAlt = fixes.map((f) => f.alt);
+  for (let j = 0; j < fixes.length; j++) {
+    const f = fixes[j], dt = j ? t[f.k] - t[fixes[j - 1].k] : NaN;
+    f.tm = t[f.k] - altDelay - speedLag;
+    if (dt <= 3 && Number.isFinite(epochAlt[j - 1])) f.alt += (epochAlt[j - 1] - f.alt) * speedLag / dt;
   }
   const Dp = { n, t, fixes };
   const lat = atFixes(Dp, (f) => f.lat, Infinity), lon = atFixes(Dp, (f) => f.lon, Infinity);
@@ -684,15 +684,16 @@ function build(conv, rep) {
   for (let k = 0; k < n; k++) if (ai[k] >= 0) { tStart = t[k]; break; }
   let utcOfs = NaN;
   for (let k = 0; k < n; k++) if (Number.isFinite(c.utc[k])) { utcOfs = c.utc[k] - t[k]; break; }
-  return { name: fileName, kind: conv.kind, n, t, ai, lat, lon, galt, fixes, tr: c, rep, tStart, utcOfs, qnh: conv.qnh, altDelay };
+  return { name: fileName, kind: conv.kind, n, t, ai, lat, lon, galt, fixes, tr: c, rep, tStart, utcOfs, qnh: conv.qnh, altDelay, speedLag };
 }
 
-// The age of a GNSS altitude at its arrival, s: the delay that lines the climb between fixes up best with the climb of
-// the static pressure altitude, plus the static line's own delay (AirMassEKF::Config::lag_static). 1.6 s, the usual
-// measured value, for a flight too short or too calm to tell.
+// The age of a fix's GNSS altitude at the fix's row, s: the delay that lines the climb between fixes up best with the
+// climb of the static pressure altitude, plus the static line's own delay (AirMassEKF::Config::lag_static). DEFAULT_S,
+// the usual measured value, for a flight too short or too calm to tell.
 function gnssAltDelay(fixes, t, baro, running) {
+  const DEFAULT_S = 0.8;
   const at = (x) => { let lo = 0, hi = t.length - 1; while (lo < hi) { const m = (lo + hi + 1) >> 1; if (t[m] <= x) lo = m; else hi = m - 1; } return lo; };
-  let best = -2, delay = 1.6;
+  let best = -2, delay = DEFAULT_S;
   for (let L = 0; L <= 3.001; L += 0.05) {
     let m = 0, sx = 0, sy = 0, sxx = 0, syy = 0, sxy = 0;
     for (let j = 2; j < fixes.length; j += 2) {
@@ -705,7 +706,30 @@ function gnssAltDelay(fixes, t, baro, running) {
     const r = (m * sxy - sx * sy) / Math.sqrt((m * sxx - sx * sx) * (m * syy - sy * sy));
     if (m >= 100 && r > best) { best = r; delay = L + 0.2; }
   }
-  return best > 0.8 ? delay : 1.6;
+  return best > 0.8 ? delay : DEFAULT_S;
+}
+
+// How much older the ground speed of a fix is than its altitude, s. Flying straight, height and speed trade in a
+// pull-up or push-over (dh = -V dV / g): the height change around a fix lines up best with the speed change this much
+// later, from the correlation at whole fixes and a parabola through its peak. 0.3 s, the usual measured value, for a
+// flight with too little of it.
+function gnssSpeedLag(fixes, t) {
+  const r = [];
+  for (let L = -1; L <= 2; L++) {
+    let m = 0, sx = 0, sy = 0, sxx = 0, syy = 0, sxy = 0;
+    for (let j = 2; j + 3 < fixes.length; j++) {
+      const f = fixes[j], from = fixes[j - 2], to = fixes[j + 3];
+      const turn = Math.abs((to.track - from.track + 540) % 360 - 180);
+      if (!(f.speed > 25 && turn < 4 && Math.abs(t[to.k] - t[from.k] - 5) < 0.5)) continue;
+      const x = -f.speed * (fixes[j + 1 + L].speed - fixes[j - 1 + L].speed) / 9.80665, y = fixes[j + 1].alt - fixes[j - 1].alt;
+      if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
+      m++; sx += x; sy += y; sxx += x * x; syy += y * y; sxy += x * y;
+    }
+    r.push(m >= 300 ? (m * sxy - sx * sy) / Math.sqrt((m * sxx - sx * sx) * (m * syy - sy * sy)) : NaN);
+  }
+  const i = r.indexOf(Math.max(...r));
+  if (!(r[i] > 0.5) || i === 0 || i === r.length - 1) return 0.3;
+  return Math.min(1, Math.max(0, i - 1 + 0.5 * (r[i - 1] - r[i + 1]) / (r[i - 1] - 2 * r[i] + r[i + 1])));
 }
 
 // a per-sample series from a value of each fix, interpolated between the fixes' measurement times; held up to
@@ -818,7 +842,7 @@ function cockpitSeries(D, dampAt) {
 
 // GNSS netto from the energy height of the fixes (energyOf(fix), m): its change over the fixes before and after each
 // fix over their time difference, minus the mean polar sink (sinkUp, TAS terms) over that time. It belongs to the time
-// fix j was measured (its arrival minus the GNSS latency) and is interpolated in between. It uses the next fix, so no
+// fix j was measured (fix.tm) and is interpolated in between. It uses the next fix, so no
 // instrument could show it live: it is the air movement at that moment, after the fact. Uses the global D (indexAt).
 function gnssNetFromEnergy(D, sinkUp, energyOf) {
   // No sink series: gross energy climb. Otherwise remove the mean polar sink over each fix interval.
@@ -890,7 +914,7 @@ function derive(D) {
   const inertialEnergy = (f) => {
     const km = indexAt(f.tm), a = Math.max(0, km - HALF_2MIN), b = Math.min(n, km + HALF_2MIN), m = wN[b] - wN[a];
     if (!(m > HALF_2MIN / 2)) return NaN;
-    const spd = c.gnss_speed[f.k], trk = c.gnss_track[f.k] * Math.PI / 180;
+    const spd = f.speed, trk = f.track * Math.PI / 180;
     const vn = spd * Math.cos(trk) - (wnS[b] - wnS[a]) / m, ve = spd * Math.sin(trk) - (weS[b] - weS[a]) / m;
     return f.alt + (vn * vn + ve * ve) / (2 * G);
   };
@@ -1194,6 +1218,11 @@ function drawVario(k) {
     ctx.restore();
   };
   const main = mainKey();
+  // the main vario's average right of the centre, under the needles
+  ctx.fillStyle = C.ink;
+  ctx.font = `600 ${Math.round(R * 0.21)}px ${C.font}`;
+  ctx.fillText(fmtV(varioAverage(series.avg[main], k)), cx + R * 0.45, cy);
+  // the main vario's needle big and on top, the others thin and of one length, each in its own colour
   needle(series.gnss[k], C.gnss, 3, 0.8, C.dark ? C.muted : null);
   for (const [key, color] of [["te", C.net], ["tep", C.tep], ["am", C.am]]) {
     if (key !== main) needle(series[key][k], color, 3, 0.86, null, key === "am" && fallback);
@@ -1204,11 +1233,6 @@ function drawVario(k) {
 }
 
 // the pitch shown: of the sensor axis, or with "Wing reference" of the wing's zero-lift line as AirMass models it.
-  // the main vario's average right of the centre, under the needles
-  ctx.fillStyle = C.ink;
-  ctx.font = `600 ${Math.round(R * 0.21)}px ${C.font}`;
-  ctx.fillText(fmtV(varioAverage(series.avg[main], k)), cx + R * 0.45, cy);
-  // the main vario's needle big and on top, the others thin and of one length, each in its own colour
 // alpha (body x axis to the air velocity) = aoa_model * k_aoa - pitch_ofs, so the zero-lift line, at aoa_model * k_aoa
 // to the air velocity, is pitched by pitch + pitch_ofs
 function shownPitch(i) {

@@ -327,7 +327,7 @@
     constructor() {
       // te_new: 1 on the first sample after a $PXCV (the device's TE vario, 5 Hz in the log), for the interpolation;
       // te_alt: the ISA altitude of the logged TE pressure ($SENS only), for the TE vario replayed from it
-      this.names = ["t_ms", "utc", "lat", "lon", "gnss_alt", "gnss_speed", "gnss_track", "baro_alt", "te_vario", "te_new", "te_alt", "ias", "tas", "polar_sink", "running"];
+      this.names = ["t_ms", "utc", "lat", "lon", "gnss_alt", "alt_utc", "gnss_speed", "gnss_track", "baro_alt", "te_vario", "te_new", "te_alt", "ias", "tas", "polar_sink", "running"];
       this.n = 0;
       this.cap = 1 << 16;
       this.cols = {};
@@ -364,14 +364,16 @@
     return isRecording ? passRecording(log) : convertSens(log, opts);
   }
 
+  const utcOf = (hhmmss) => +hhmmss.slice(0, 2) * 3600 + +hhmmss.slice(2, 4) * 60 + +hhmmss.slice(4);
+
   function parseRmc(f) {
     if (f.length > 8 && f[2] === "A" && f[7]) {
-      const hh = +f[1].slice(0, 2), mm = +f[1].slice(2, 4), ss = +f[1].slice(4);
+      const utc = utcOf(f[1]);
       const lat = (+f[3].slice(0, 2) + +f[3].slice(2) / 60.0) * (f[4] === "N" ? 1 : -1);
       const lon = (+f[5].slice(0, 3) + +f[5].slice(3) / 60.0) * (f[6] === "E" ? 1 : -1);
       const speed = +f[7] * KNOT;
       const track = f[8] ? +f[8] : NaN;
-      if ([hh, mm, ss, lat, lon, speed].every(Number.isFinite)) return { utc: hh * 3600 + mm * 60 + ss, speed, track, lat, lon };
+      if ([utc, lat, lon, speed].every(Number.isFinite)) return { utc, speed, track, lat, lon };
     }
     return null;
   }
@@ -392,7 +394,7 @@
   function passRecording(log) {
     const rec = [];
     const track = new Track();
-    let fix = null, gnssAlt = NaN, te = NaN, teNew = 0, running = false, starts = 0, frames = 0, fixes = 0, utcDay = NaN;
+    let fix = null, gnssAlt = NaN, altUtc = NaN, te = NaN, teNew = 0, running = false, starts = 0, frames = 0, fixes = 0, utcDay = NaN;
     for (const raw of log.lines) {
       const line = raw.trim();
       if (line.startsWith("$PXCV") && line[5] !== ",") {
@@ -404,7 +406,7 @@
         else if (kind === "R") {
           const f = fields(line);
           frames++;
-          track.push({ t_ms: +f[1], utc: fix ? fix.utc : NaN, lat: fix ? fix.lat : NaN, lon: fix ? fix.lon : NaN, gnss_alt: gnssAlt,
+          track.push({ t_ms: +f[1], utc: fix ? fix.utc : NaN, lat: fix ? fix.lat : NaN, lon: fix ? fix.lon : NaN, gnss_alt: gnssAlt, alt_utc: altUtc,
             gnss_speed: fix ? fix.speed : NaN, gnss_track: fix ? fix.track : NaN, baro_alt: f[10] === "" ? NaN : +f[10], te_vario: te,
             te_new: teNew, ias: +f[8], tas: +f[9], polar_sink: NaN, running: running ? 1 : 0 });
           teNew = 0;
@@ -418,8 +420,8 @@
         fix = parseRmc(f) || fix;
         if (!Number.isFinite(utcDay)) utcDay = rmcDay(f);
       } else if (line.startsWith("$GPGGA,") || line.startsWith("$GNGGA,")) {
-        const v = parseFloat(fields(line)[9]);
-        if (Number.isFinite(v)) gnssAlt = v;
+        const f = fields(line), v = parseFloat(f[9]);
+        if (Number.isFinite(v)) { gnssAlt = v; altUtc = utcOf(f[1]); }
       }
     }
     return { kind: "AirMass recording", rec, track: track.done(), starts, frames, fixes, utcDay };
@@ -571,7 +573,7 @@
     const track = new Track();
     const pxcv = { vario: NaN, bugs: 0.0, ballast: 1.0, roll: 0.0, pitch: 0.0 };
     let teNew = 0;
-    let fix = null, gnssAlt = NaN, pendingFix = null, running = false, above = 0, below = 0;
+    let fix = null, gnssAlt = NaN, altUtc = NaN, pendingFix = null, running = false, above = 0, below = 0;
     let setupLine = null, setupCount = 0, starts = 0, frames = 0, fixes = 0, polar = null, flaps = null, tMs = 0;
     // the setup the device recorded ($PXCVC), used while no glider, mass or bugs are set here
     let deviceSetup = null;
@@ -643,8 +645,8 @@
         if (r) { fix = r; pendingFix = r; }
         if (!Number.isFinite(utcDay)) utcDay = rmcDay(f);
       } else if (raw.startsWith("$GPGGA,") || raw.startsWith("$GNGGA,")) {
-        const v = parseFloat(fields(raw.trim())[9]);
-        if (Number.isFinite(v)) gnssAlt = v;
+        const f = fields(raw.trim()), v = parseFloat(f[9]);
+        if (Number.isFinite(v)) { gnssAlt = v; altUtc = utcOf(f[1]); }
       } else if (raw.startsWith("$SENS,")) {
         const f = fields(raw.trim());
         const sensor = normalize(f, gnssAlt, fix ? fix.utc : NaN);
@@ -653,6 +655,7 @@
         if (sensor.kelvin) temperatureKelvinSamples++;
         if (sensor.estimated) temperatureEstimatedSamples++;
         if (sensor.timeRecovered) timestampRecoveredSamples++;
+        const before = tMs;
         tMs = t;
         const ias = q > 0.0 ? Math.sqrt(2.0 * q / RHO0) : 0.0;
         const tas = p > 0 ? ias * Math.sqrt(RHO0 * R_AIR * (oat + 273.15) / p) : 0.0;
@@ -689,16 +692,17 @@
           if (setupCount % 100 === 0) rec.push(setupLine); // like the device, every 10 s
           rec.push(sentence("PXCVR", [String(t)].concat(acc.map((x) => fx(x, 5)), gyro.map((x) => fx(x, 6)), [fx(ias, 3), fx(tas, 3), fx(alt, 2), fx(flap, 3)])));
           frames++;
-          // the fix arrived age ms before this cycle; the estimator gets it in this cycle
+          // the fix arrived age ms before this cycle, but after the cycle before: the log has fixes ahead of a cycle
+          // whose age still counts from the fix before; the estimator gets it in this cycle
           if (pendingFix && pendingFix.speed > 1.0 && Number.isFinite(pendingFix.track)) {
             const trk = pendingFix.track * Math.PI / 180;
-            rec.push(sentence("PXCVG", [String(t - age), fx(pendingFix.speed * Math.cos(trk), 3), fx(pendingFix.speed * Math.sin(trk), 3),
+            rec.push(sentence("PXCVG", [String(Math.max(t - age, before)), fx(pendingFix.speed * Math.cos(trk), 3), fx(pendingFix.speed * Math.sin(trk), 3),
               "0.500", "750", "0", "0.000", "0.000", String(Math.round(pendingFix.utc * 1000) % 86400000)]));
             fixes++;
           }
           pendingFix = null;
         }
-        track.push({ t_ms: t, utc: fix ? fix.utc : NaN, lat: fix ? fix.lat : NaN, lon: fix ? fix.lon : NaN, gnss_alt: gnssAlt,
+        track.push({ t_ms: t, utc: fix ? fix.utc : NaN, lat: fix ? fix.lat : NaN, lon: fix ? fix.lon : NaN, gnss_alt: gnssAlt, alt_utc: altUtc,
           gnss_speed: fix ? fix.speed : NaN, gnss_track: fix ? fix.track : NaN, baro_alt: alt, te_vario: pxcv.vario, te_new: teNew, te_alt: teAlt, ias, tas,
           polar_sink: sink, running: running ? 1 : 0 });
         teNew = 0;

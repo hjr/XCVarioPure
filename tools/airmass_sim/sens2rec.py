@@ -350,6 +350,7 @@ def main():
     pxcv = dict(vario=math.nan, bugs=0.0, ballast=1.0, roll=0.0, pitch=0.0)
     fix = None            # the last $GPRMC: utc seconds of day, speed, track, lat, lon
     gnss_alt = math.nan
+    last_ms = 0
     pending_fix = None    # a fix not yet passed to the estimator (its arrival time comes with the next $SENS)
     running, above, below = False, 0, 0
     setup_line, setup_count, starts, frames, fixes = None, 0, 0, 0, 0
@@ -481,6 +482,7 @@ def main():
                 oat -= 273.15
                 temperature_kelvin_samples += 1
             t_ms = monotone(stamp, fix["utc"] if fix else math.nan, raw_age)
+            before_ms, last_ms = last_ms, t_ms
             if monotone.recovered:
                 timestamp_recovered_samples += 1
             ias = math.sqrt(2.0 * q / RHO0) if q > 0.0 else 0.0
@@ -523,11 +525,12 @@ def main():
                 out.write(sentence("PXCVR", [str(t_ms)] + [fmt(x, "%.5f") for x in acc] + [fmt(x, "%.6f") for x in gyro] +
                                    [fmt(ias, "%.3f"), fmt(tas, "%.3f"), fmt(alt, "%.2f"), fmt(flap, "%.3f")]))
                 frames += 1
-                # the fix arrived age ms before this cycle; the estimator gets it in this cycle (AirMassSensor polls)
+                # the fix arrived age ms before this cycle, but after the cycle before: the log has fixes ahead of a cycle
+                # whose age still counts from the fix before; the estimator gets it in this cycle (AirMassSensor polls)
                 if pending_fix is not None and pending_fix["speed"] > 1.0 and math.isfinite(pending_fix["track"]):
                     trk = math.radians(pending_fix["track"])
                     vn, ve = pending_fix["speed"] * math.cos(trk), pending_fix["speed"] * math.sin(trk)
-                    out.write(sentence("PXCVG", [str(t_ms - age), fmt(vn, "%.3f"), fmt(ve, "%.3f"), "0.500", "750", "0",
+                    out.write(sentence("PXCVG", [str(max(t_ms - age, before_ms)), fmt(vn, "%.3f"), fmt(ve, "%.3f"), "0.500", "750", "0",
                                                  "0.000", "0.000", str(round(pending_fix["utc"] * 1000) % 86400000)]))
                     fixes += 1
                 pending_fix = None
