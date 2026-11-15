@@ -36,6 +36,8 @@ bool heading(rad_t track);
 bool rawVario(mps_t& air);
 // vario needle: the method is Air Mass, but the vario shows the TE vario for now
 bool varioFallback();
+// the vario label of the TE compensation method: "air" for Air Mass, else "te"
+const char* varioLabel();
 
 // setup menu: Air Mass as TE compensation method (with the help of its eAdjustment), the wind to the navigation computer, and
 // for development builds (DEBUG_AND_TEST) the status page of the vario menu and the recording in the help of the logging

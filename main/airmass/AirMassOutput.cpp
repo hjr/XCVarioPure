@@ -11,9 +11,14 @@
 
 #include <cstdio>
 
+static bool airMassMethod()
+{
+    return te_comp_enable.get() == TE_AIRMASS;
+}
+
 static bool varioValid()
 {
-    return te_comp_enable.get() == TE_AIRMASS && (airmass_status.get() & AirMassEKF::ST_VARIO_VALID) && airmass_vario.getValid();
+    return airMassMethod() && (airmass_status.get() & AirMassEKF::ST_VARIO_VALID) && airmass_vario.getValid();
 }
 
 bool airmass::rawVario(mps_t& air)
@@ -24,7 +29,12 @@ bool airmass::rawVario(mps_t& air)
 
 bool airmass::varioFallback()
 {
-    return te_comp_enable.get() == TE_AIRMASS && !varioValid();
+    return airMassMethod() && !varioValid();
+}
+
+const char* airmass::varioLabel()
+{
+    return airMassMethod() ? "air" : "te";
 }
 
 // the averaged air mass wind for the navigation computer, if enabled and valid or degraded (master and second seat)

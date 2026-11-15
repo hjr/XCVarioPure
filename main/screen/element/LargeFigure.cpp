@@ -14,6 +14,7 @@
 #include "math/Floats.h"
 #include "setup/CruiseMode.h"
 #include "setup/SetupNG.h"
+#include "airmass/AirMass.h"
 #include "logdefnone.h"
 
 #include <cmath>
@@ -75,18 +76,20 @@ void LargeFigure::draw() {
 void LargeFigure::drawStatic() {
     // remove old mode
     MYUCG->setColor(COLOR_BLACK);
-    MYUCG->drawBox(_ref.x - 56/2, _ref.y - 36/2 - 20, 56, 12);
+    MYUCG->drawBox(_ref.x - 72/2, _ref.y - 36/2 - 20, 72, 12);
 
     // draw mode
     MYUCG->setFont(ucg_font_fub11_hr, true);
     MYUCG->setColor(COLOR_HEADER);
-    const char *mode = ""; // omit default "gross"
+    const char *netto = ""; // omit default "gross"
     if ( CRMOD.getVMode() == CruiseMode::MODE_REL_NETTO) {
-        mode = "s-net";
+        netto = " s-net";
     }
     else if ( CRMOD.getVMode() == CruiseMode::MODE_NORMAL_NETTO) {
-        mode = " net ";
+        netto = " net";
     }
+    char mode[16];
+    snprintf(mode, sizeof(mode), "%s%s", airmass::varioLabel(), netto);
     int16_t str_width = MYUCG->getStrWidth(mode);
     ESP_LOGI(FNAME, "stringlength %s: %d, font height: %d", mode, str_width, MYUCG->getFontAscent() - MYUCG->getFontDescent());
     MYUCG->setPrintPos(_ref.x - str_width / 2, _bbox.origin.y -6);
