@@ -406,18 +406,22 @@ static void vario_menu_create_s2f(SetupMenu *top) {
 	top->addEntry(s2flag);
 }
 
-static void vario_menu_create_tek(SetupMenu *top) {
-    SetupMenuSelect* enac = new SetupMenuSelect("Method", RST_NONE, vario_setupS, &te_comp_enable);
+static void tek_entries_create(SetupMenu *top, const char *method, const char *adjustment) {
+    SetupMenuSelect* enac = new SetupMenuSelect(method, RST_NONE, vario_setupS, &te_comp_enable);
     enac->setHelp("Probe or electronic TE compensation");
     enac->addEntry("Probe");
     enac->addEntry("eComp");
     top->addEntry(enac);
 
-    SetupMenuValFloat* elca = new SetupMenuValFloat("eAdjustment", "%", vario_setup, &te_comp_adjust, RST_NONE, false);
+    SetupMenuValFloat* elca = new SetupMenuValFloat(adjustment, "%", vario_setup, &te_comp_adjust, RST_NONE, false);
     elca->setHelp("Electronic correction factor deviating from lossless \"100%\"");
     airmass::menuTeMethod(enac, elca);
     elca->setPrecision(1);
     top->addEntry(elca);
+}
+
+static void vario_menu_create_tek(SetupMenu *top) {
+    tek_entries_create(top, "Method", "eAdjustment");
 }
 
 static void bugs_item_create(SetupMenu *top) {
@@ -966,6 +970,12 @@ static void system_menu_create(SetupMenu *sye) {
 
 void setup_create_root(SetupMenu *top) {
 	ESP_LOGI(FNAME,"setup_create_root()");
+#ifdef DEBUG_AND_TEST
+    // temporary, for test flights
+    if (!student_mode.get()) {
+        tek_entries_create(top, "TE Method", "TE eAdjustment");
+    }
+#endif
 	if (rot_default.get() == 0) {
 		SetupMenuValFloat *mc = new SetupMenuValFloat("MC", "", nullptr, &MC);
 		mc->setHelp(
