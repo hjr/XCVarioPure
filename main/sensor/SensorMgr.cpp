@@ -12,13 +12,13 @@
 #include "logdef.h"
 
 #ifndef ALL_LOGS_DISABLED
-const char *idmemo[] = { "", "Tmp", "dP", "sP", "teP", "Pos", "Alt", "virtual", "Var", "Mag", "Acc", "Gyr", "HUM", "FLP", "Bat" };
+const char *idmemo[] = { "", "Tmp", "dP", "sP", "teP", "Pos", "Alt", "virtual", "Var", "Mag", "Acc", "Gyr", "HUM", "FLP", "Bat", "AirM" };
 #endif
 
 // queue changes
 QueueHandle_t SensorRegistry::sensChangeQueue = nullptr;
 
-// manage max. 14 sensors at a time (incl. all virtual filter sensors)
+// manage max. 16 sensors at a time (incl. all virtual filter sensors)
 std::array<SensorEntry, SensorRegistry::MaxSensors> SensorRegistry::all_sensors {};
 int SensorRegistry::numSensors = 0;
 
