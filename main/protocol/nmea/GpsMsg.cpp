@@ -100,19 +100,27 @@ dl_action_t GpsMsg::parseGPRMC(NmeaPlugin *plg)
     }
     ESP_LOGD(FNAME, "parseGPRMC");
 
-    struct tm t;
+    struct tm date = {};
     const char *s = sm->_frame.c_str();
-    int valid_time_scan = sscanf( s + word->at(0), "%02d%02d%02d", &t.tm_hour, &t.tm_min, &t.tm_sec );
+	float seconds = NAN;
+    int valid_time_scan = sscanf( s + word->at(0), "%02d%02d%f", &date.tm_hour, &date.tm_min, &seconds );
+    const bool time_ok = valid_time_scan == 3 && date.tm_hour >= 0 && date.tm_hour < 24 && date.tm_min >= 0 &&
+        date.tm_min < 60 && std::isfinite(seconds) && seconds >= 0. && seconds < 60.;
+    date.tm_sec = time_ok ? static_cast<int>(seconds) : 0;
     char warn = *(s + word->at(1));
     float lat, lon;
     bool fix_ok = decodeNMEADegMin( s + word->at(2), *(s + word->at(3)), lat )
         && decodeNMEADegMin( s + word->at(4), *(s + word->at(5)), lon );
-    float tmp;
-    sscanf( s + word->at(6), "%f", &tmp );
-    mps_t gndSpeed = Units::knots_to_mps(tmp);
-    sscanf( s + word->at(7), "%f", &tmp );
-    rad_t gndCourse = Units::deg_to_rad(tmp);
-    int valid_date_scan = sscanf( s + word->at(8),"%02d%02d%02d", &t.tm_mday, &t.tm_mon, &t.tm_year );
+    float tmp = NAN;
+    const bool speed_ok = sscanf(s + word->at(6), "%f", &tmp) == 1 && std::isfinite(tmp) && tmp >= 0.f;
+    mps_t gndSpeed = speed_ok ? Units::knots_to_mps(tmp) : 0.f;
+    tmp = NAN;
+    const bool course_ok = sscanf(s + word->at(7), "%f", &tmp) == 1 && std::isfinite(tmp) &&
+        tmp >= 0.f && tmp <= 360.f;
+    // standing still, receivers leave the course empty: a zero velocity needs none
+    const bool velocity_ok = speed_ok && (course_ok || gndSpeed < 1.0f);
+    rad_t gndCourse = course_ok ? Units::deg_to_rad(tmp) : 0.f;
+    int valid_date_scan = sscanf( s + word->at(8),"%02d%02d%02d", &date.tm_mday, &date.tm_mon, &date.tm_year );
     // ESP_LOGI(FNAME,"SC: %d/%d/%d %02d:%02d:%02d ", t.tm_year, t.tm_mon, t.tm_mday, t.tm_hour, t.tm_min, t.tm_sec );
 
     // ESP_LOGI(FNAME,"G: %s",_gprmc );
@@ -120,11 +128,7 @@ dl_action_t GpsMsg::parseGPRMC(NmeaPlugin *plg)
     // ESP_LOGI(FNAME,"GP%s, warn:%c T:%s D:%s", gprmc+3, warn, time, date  );
 
     if ( warn == 'A' ) {
-        if (fix_ok && gpsSensor) {
-           // valid fix
-           gpsSensor->inject(lat, lon, gndSpeed, gndCourse);
-        }
-        if ( circleWind && BackgroundTaskQueue ) {
+        if (fix_ok && velocity_ok && circleWind && BackgroundTaskQueue) {
             ESP_LOGD(FNAME,"Track: %3.2f, GPRMC: %s", gndCourse, sm->_frame.c_str() );
             circleWind->setNewSample(Vector(gndCourse, gndSpeed));
 
@@ -132,25 +136,30 @@ dl_action_t GpsMsg::parseGPRMC(NmeaPlugin *plg)
             xQueueSend(BackgroundTaskQueue, &job, 0);
         }
         ESP_LOGD(FNAME,"Valid GPS Time info received %d/%d.", valid_date_scan, valid_time_scan );
-        if (valid_time_scan == 3 && valid_date_scan == 3)
+        if (time_ok && valid_date_scan == 3)
         {
-            t.tm_year += 2000 - 1900; // NMEA gives only two digit year
-            t.tm_mon -= 1; // struct tm month is 0..11
-            long int epoch_time = mktime(&t);
+            date.tm_year += 2000 - 1900; // NMEA gives only two digit year
+            date.tm_mon -= 1; // struct tm month is 0..11
+            long int epoch_time = mktime(&date);
+            long usec = static_cast<long>(std::modf( seconds, &tmp) * 1e6f);
             if (!Clock::isValidUTC()) // set system time if not yet done
             {
                 // just once, at first valid GPS time info
                 ESP_LOGD(FNAME, "Start TimeSync");
-                timeval epoch = {epoch_time, 0};
+                timeval epoch = {epoch_time, usec};
                 settimeofday(&epoch, nullptr);
-                Clock::setTimeUTC(epoch_time * 1000LL);
+                Clock::setTimeUTC(epoch_time * 1000LL + usec / 1000 + gpsSensor->getLatency());
                 ESP_LOGD(FNAME, "Finish Time Sync");
             }
-            else if ( Clock::getUpdateAgeMs() > 60000 || gflags.inSimulationMode )  // update every minute
+            else if ( Clock::getUpdateAgeMs() > 10000 || gflags.inSimulationMode )  // update every 10 sec
             {
                 // update time offset
-                Clock::updateTimeUTC(epoch_time * 1000LL);
+                Clock::updateTimeUTC(epoch_time * 1000LL + usec / 1000 + gpsSensor->getLatency());
             }
+        }
+        if (fix_ok && velocity_ok && gpsSensor) {
+           // valid fix
+           gpsSensor->inject(lat, lon, gndSpeed, gndCourse);
         }
     }
     return DO_ROUTING;
