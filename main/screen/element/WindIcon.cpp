@@ -73,7 +73,7 @@ void WindIcon::draw(WindData w)
         // MYUCG->drawFrame(_ref.x, _ref.y - 26, 40, 26);
         MYUCG->startBuffering(_ref.x, _ref.y - 26, 40, 26); // avoid artefacts when s shrinks
         MYUCG->setPrintPos(_ref.x, _ref.y + 3);
-        MYUCG->print(wstrength);
+        MYUCG->print(s);
         MYUCG->finishBuffering();
         int16_t str_width = MYUCG->getStrWidth(s);
         MYUCG->setPrintPos(_ref.x + str_width, _ref.y);
