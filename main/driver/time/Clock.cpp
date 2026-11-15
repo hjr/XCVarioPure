@@ -136,3 +136,7 @@ void Clock::updateTimeUTC(int64_t gps_utc_ms) {
     _offset_ms += std::clamp(error / 12, -5LL, +5LL); // max 5 ms correction per update
 }
 
+int Clock::GpsToMillis(int64_t gps_utc_ms)
+{
+    return gps_utc_ms - _offset_ms;
+}

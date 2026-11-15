@@ -41,6 +41,7 @@ public:
     static int getUpdateAgeMs();
     static void setTimeUTC(int64_t gps_utc_ms); // just call once with first valid GPS time stamp
     static void updateTimeUTC(int64_t gps_utc_ms);
+    static int GpsToMillis(int64_t gps_utc_ms);
 
 private:
     static void clock_timer_sr(ClockSet *registry);
