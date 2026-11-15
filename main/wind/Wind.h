@@ -47,7 +47,7 @@ union WindData
     constexpr int16_t getDeg() const { return dir/2; }
     constexpr mps_t getVal() const { return static_cast<float>(val) / 8.0f; }
     constexpr int16_t relToHeading(rad_t d) const { return (dir - fast_iroundf(Units::rad_to_deg(d) * 2)) % 720; }
-    constexpr bool isValid() const { return flags == 0; }
+    constexpr bool isValid() const { return flags < 15; }
     constexpr void setValid() { flags = 0; }
     constexpr bool isDegraded() const { return flags != 0 && flags < 15; }
     constexpr void setDegraded() { if (flags < 15) flags++; }
