@@ -57,15 +57,10 @@ VarioFilter::VarioFilter() :
 }
 
 bool VarioFilter::setup() {
-    float alt = altitude.get();
-    ESP_LOGI(FNAME, "VarioFilter setup with alt %f", alt);
+    ESP_LOGI(FNAME, "VarioFilter setup");
     // vario needle damping
     _vario_lpf.setTau( vario_delay.get() / 3.f, getNominalDutyCycleMS() / 1000.0f);
     _air_lpf.setTau( vario_delay.get() / 3.f * 0.6f, getNominalDutyCycleMS() / 1000.0f);
-    averageAlt = alt;
-    Altitude = alt;
-    predictAlt = alt;
-    lastAltitude = alt;
 
     // set averager time span
     startRunningAvg(vario_av_delay.get() * 1000);
@@ -86,6 +81,13 @@ void VarioFilter::postProcess()
     // extract from sensors according to the selected TE compensation method
     // a total energy compensated altitude.
     meter_t curr_altitude;
+
+    // a new TE altitude source or compensation steps the altitude: restart the filter from it, no rate from the step
+    if (te_comp_enable.get() != _te_method || te_comp_adjust.get() != _te_adjust) {
+        _te_method = te_comp_enable.get();
+        _te_adjust = te_comp_adjust.get();
+        _prepare_jump = std::max<int8_t>(_prepare_jump, 1);
+    }
 
     if (te_comp_enable.get()) {
         // electronic compensation
@@ -116,7 +118,7 @@ void VarioFilter::postProcess()
     if (diff > 1000000 || _prepare_jump) {  // more than 100 m altitude diff in 0.1 second not plausible ( > 400 km/h vertical ) -> handled by Kalman filter
         ESP_LOGW(FNAME, "TE sensor delta OOB: %f m", diff / 10000);
         // reset filter state
-        averageAlt = Altitude = curr_altitude;
+        averageAlt = Altitude = lastAltitude = predictAlt = curr_altitude;
         diff = adiff = 0.f;
         if (_prepare_jump > 0) _prepare_jump--;
     }

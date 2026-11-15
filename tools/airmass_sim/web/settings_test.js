@@ -144,6 +144,8 @@ test("the TE pressure vario follows the TE altitude at any frame rate and restar
   const { f } = run(0.1, 60, climb);
   assert(Number.isNaN(f.at(61, NaN)), "no pressure: no value");
   assert.equal(f.at(70, 2000), 0, "after a gap it starts again, a jump is not a climb");
+  const level = run(0.1, 60, () => 800).f;
+  assert(Math.abs(level.at(60.1, 2300)) < 1e-6, "a jump over 100 m in one cycle is not a climb");
 });
 
 test("the needle damping runs the device's 10 Hz cycles whatever the frame rate", () => {

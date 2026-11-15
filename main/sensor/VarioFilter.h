@@ -38,6 +38,8 @@ class VarioFilter final : public SensorTP<mps_t> {
     LowPassFilterT<mps_t> _air_lpf;
     LowPassFilterT<mps_t> _avg_vario;
     float _eCompAdjust = 1.f;
+    int _te_method = -1;
+    float _te_adjust = 0.f;
     mps_t _polar_sink = 0.f;
     uint16_t count = 0;
     int8_t _prepare_jump = 0;

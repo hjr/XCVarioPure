@@ -789,7 +789,7 @@ class TeVario {
   cycle(h) {
     if (!Number.isFinite(this.alt)) this.alt = this.lastAlt = this.predict = h;
     let step = h - this.alt, diff = Math.abs(step) * 1000 + 1;
-    if (diff > 1e6 || this.jump) { this.alt = h; step = diff = 0; if (this.jump > 0) this.jump--; } // over 100 m: a jump
+    if (diff > 1e6 || this.jump) { this.alt = this.lastAlt = this.predict = h; step = diff = 0; if (this.jump > 0) this.jump--; } // over 100 m: a jump
     const err = Math.abs(h - this.predict) * 1000 + 1;
     this.alt += step * diff / (err * 1.6 + diff) * 0.2;
     this.rate = (this.alt - this.lastAlt) / 0.1;
