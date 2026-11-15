@@ -998,7 +998,7 @@ void system_startup(void *args){
     // Init the vario screens
     MenuRoot->initScreens();
 
-    if (flapbox_enable.get()) {
+    if (Speed2Fly.hasFlaps()) {
         Flap::theFlap();  // check on FLAP pointer further on
     }
     // if (hardwareRevision.get() != XCVARIO_20) {
