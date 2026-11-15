@@ -12,6 +12,7 @@
 #include "comm/Devices.h"
 #include "comm/DeviceMgr.h"
 #include "setup/SetupNG.h"
+#include "airmass/AirMass.h"
 #include "logdef.h"
 
 #include <cstring>
@@ -50,7 +51,7 @@ void XcvCaps::updateCapsFromDev(DeviceId did, bool add)
             cap = XcvCaps::EXTWIND_CAP;
             if ( ! add && wind_enable.get() == WA_EXTERNAL ) {
                 // no external wind source selection possible any more, so set it to internal
-                wind_enable.set(WA_BOTH);
+                wind_enable.set(airmass::windSource());
             }
             break;
         case FLARM_DEV:

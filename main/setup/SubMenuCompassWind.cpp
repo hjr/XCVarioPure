@@ -357,15 +357,15 @@ void options_menu_create_compasswind_circlingwind(SetupMenu *top) {
 }
 
 void options_menu_create_wind(SetupMenu *top) {
-    // Wind speed observation window
-    SetupMenuSelect* windcal = new SetupMenuSelect("Source", RST_NONE, windResourcesAction, &wind_enable);
-    windcal->addEntry("Circling", WA_BOTH);
-    if (XcvCaps::haveCap(XcvCaps::EXTWIND_CAP)) {
+	// Wind speed observation window
+	SetupMenuSelect *windcal = new SetupMenuSelect("Source", RST_NONE, windResourcesAction, &wind_enable);
+	windcal->addEntry("XCVario", airmass::windSource());
+    if ( XcvCaps::haveCap(XcvCaps::EXTWIND_CAP) ) {
         windcal->addEntry("External", WA_EXTERNAL);
     }
-    windcal->setHelp("Chose the source for the wind calculation");
-    top->addEntry(windcal);
-    airmass::menuWind(top, windcal);
+	windcal->setHelp("Chose the source for the wind calculation");
+	top->addEntry(windcal);
+    airmass::menuWind(top);
 
     SetupMenuSelect *wref = new SetupMenuSelect("Reference", RST_NONE, nullptr, &wind_reference);
     wref->setHelp("Display wind relative to glider is default, choose north-up, if prefered");

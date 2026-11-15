@@ -221,28 +221,21 @@ static void publishWind(SetupNG<int>& var, WindData w)
     }
 }
 
-static bool removal_pending = false;
+int airmass::windSource()
+{
+    return supported() || SetupCommon::isClient() ? WA_AIRMASS : WA_BOTH;
+}
 
 void airmass::startup()
 {
     migrateVarioMode();
-    if (wind_enable.get() == (WA_BOTH | WA_AIRMASS)) { // the former source "XCVario+Instant"
-        wind_enable.set(WA_AIRMASS, true, false);
+    if (wind_enable.get() != WA_EXTERNAL) {
+        wind_enable.set(windSource(), true, false);
     }
-    followMethod();
-}
-
-// without the TE compensation method or the wind source Air Mass the estimator takes no memory
-void airmass::followMethod()
-{
-    const bool wanted = (te_comp_enable.get() == TE_AIRMASS || wind_enable.get() == WA_AIRMASS) && supported();
-    if (wanted && !airmassSensor) {
-        removal_pending = false;
+    if (supported()) {
         airmassSensor = new AirMassSensor();
         airmassSensor->setup();
         SensorRegistry::registerSensor(airmassSensor);
-    } else if (!wanted && airmassSensor && !removal_pending) {
-        removal_pending = SensorRegistry::deregisterSensor(airmassSensor);
     }
 }
 
@@ -260,7 +253,6 @@ AirMassSensor::~AirMassSensor()
     }
     if (airmassSensor == this) {
         airmassSensor = nullptr;
-        removal_pending = false;
     }
 }
 

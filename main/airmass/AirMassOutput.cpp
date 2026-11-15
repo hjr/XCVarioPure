@@ -18,7 +18,6 @@ static bool varioValid()
 
 bool airmass::rawVario(mps_t& air)
 {
-    followMethod();
     air = airmass_vario.get();
     return varioValid();
 }
