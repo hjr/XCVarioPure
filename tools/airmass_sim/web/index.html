@@ -265,7 +265,7 @@ select { appearance: none; -webkit-appearance: none; padding-right: 26px !import
         </div>
         <span class="serialstatus" id="serialstatus" role="status">Disconnected</span>
         <span class="note" id="serialhint">Open a $SENS log to stream it to an XCVario. Serial playback starts at 1×.</span>
-        <p class="note">Connect serial in the top bar connects to the last used port again, or reconnects while connected.</p>
+        <p class="note">Connect serial in the top bar connects to the last used port again, or reconnects while connected; a replay that was playing goes on.</p>
         <p class="note">Seeks and playback changes reset instrument settling; its estimator history differs from the offline replay. Restart the instrument to leave simulation mode. Serial sends the logged setup: the browser's glider, loading and estimator overrides apply to the offline display only. It pauses while the flight replays, then resumes if it was playing.</p>
       </fieldset>
     </div>
@@ -424,7 +424,7 @@ function setStatus(text, error = false, done = false) {
 const tick = () => new Promise((r) => setTimeout(r, 0));
 
 // Serial owns playback time while connected. Both the transmitter and the animation read serial.time().
-let serialWasConnected = false;
+let serialWasConnected = false, serialResume = false; // a lost connection was playing
 // A hidden tab's timers fire once a second or less; a worker's keep their time, so the instrument replay goes on.
 const backgroundTimers = (() => {
   try {
@@ -444,6 +444,7 @@ const serial = new AirMassSerial.SerialReplay({ ...backgroundTimers, storage: po
   $("serialbtn").classList.toggle("on", s.connected);
   $("serialport").textContent = s.connected ? "Disconnect" : "Choose port…";
   $("baud").disabled = s.connected || s.connecting;
+  if (serialWasConnected && !s.connected) serialResume = s.wanted;
   if (s.connected || serialWasConnected) {
     if (!scrubbing) T = s.time(); // a dragged slider holds the page's time (endScrub)
     const wasPlaying = playing;
@@ -473,10 +474,11 @@ function serialControls() {
   $("playbtn").disabled = !D || loading || replaying || (serial.connected && !serial.ready);
 }
 async function connectSerial(choose) {
+  const resume = playing || (serial.connected ? serial.wanted : serialResume);
   pause();
   await serial.disconnect("Reconnecting…");
   serial.setTimeline(serial.timeline, T);
-  try { await serial.connect(+$("baud").value, choose); }
+  try { await serial.connect(+$("baud").value, choose, resume); }
   catch (e) { $("serialstatus").textContent = e.message; setStatus(e.message, true); }
   serialControls();
 }
@@ -1627,6 +1629,7 @@ function displayTime(t, draw = drawAll) {
 }
 function play() {
   if (!D || loading || replaying) return;
+  serialResume = false;
   if (T >= D.t[D.n - 1]) seek(D.tStart);
   if (serial.connected) { serial.play(); return; }
   playing = true; lastFrame = performance.now();
@@ -1642,6 +1645,7 @@ function nextFrame() {
   playbackFrame = requestAnimationFrame(frame);
 }
 function pause() {
+  serialResume = false;
   if (serial.connected) { serial.pause(); return; }
   playing = false;
   cancelAnimationFrame(playbackFrame);

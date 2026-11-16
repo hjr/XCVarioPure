@@ -92,7 +92,7 @@
       const same = ports.filter(p => portId(p) === saved);
       return same.length === 1 ? same[0] : null;
     }
-    async connect(baud = 115200, choose = false) {
+    async connect(baud = 115200, choose = false, resume = false) {
       if (this.connected || this.connecting) return;
       if (!this.serial) throw new Error("Web Serial is unavailable. Use desktop Chrome over HTTPS or localhost.");
       if (!allowedSpeeds(this.timeline, baud).includes(1)) throw new Error(this.timeline?.reason || "This log exceeds the selected baud rate at 1×. Select a higher baud rate.");
@@ -109,7 +109,7 @@
         this.lastUsed = port;
         try { this.storage?.setItem(PORT_KEY, portId(port)); } catch (_) { /* no storage */ }
         this.port = port; this.writer = port.writable.getWriter(); this.baud = baud; this.speed = 1; this.initialized = false;
-        await this.restore(this.position, false, true);
+        await this.restore(this.position, resume, true);
       } catch (e) {
         if (this.connected) this.fail(e);
         else if (port) await port.close().catch(() => {});
@@ -224,8 +224,8 @@
       this.pause(`Serial lag exceeded ${this.lagMs} ms · paused without dropping samples. Resume or reduce speed.`);
     }
     fail(e) {
-      // Invalidate synchronously so the page pauses before any other animation or stale write.
-      this.cancel(); this.wanted = this.ready = false;
+      // Invalidate synchronously so the page pauses before any other animation or stale write. Keeps wanted for a reconnect.
+      this.cancel(); this.ready = false;
       const writer = this.writer, port = this.port;
       this.writer = this.port = null;
       this.notify("Serial stopped: " + e.message);
