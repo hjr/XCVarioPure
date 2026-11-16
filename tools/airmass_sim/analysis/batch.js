@@ -81,9 +81,32 @@ async function evaluate(M, file) {
       cockpitDelay[phase] = { samples: phaseMask.reduce((s,v) => s + v, 0),
         ...Object.fromEntries(Object.entries(cockpit).map(([name, series]) => [name, lagOf(series, ref, phaseMask) / 10])) };
     }
+    // false climbs in straight flight (bank under 10° for 8 s): the needle a threshold or more above the reference (its
+    // centred 2 s mean) for a time, again only after it came back within half the threshold. 1 m/s for 1 s as the
+    // simulator counts them; 2 m/s for 2 s, beyond the reference's own noise. The same below it, false sinks, for
+    // what the reference and the air's short bumps alone give.
+    const refMean = new Float32Array(gridN).fill(NaN);
+    for (let k = 10; k + 10 < gridN; k++) {
+      let s = 0, m = 0;
+      for (let j = k - 10; j <= k + 10; j++) if (mask[j]) { s += ref[j]; m++; }
+      if (m >= 15) refMean[k] = s / m;
+    }
+    const falseClimbs = { straightHours: 0 };
+    for (const [thr, dur] of [[1, 1], [2, 2]]) for (const sign of [1, -1]) for (const [name, series] of Object.entries(cockpit)) {
+      let events = 0, above = 0, counted = false, level = 0, seconds = 0;
+      for (let k = 0; k < gridN; k++) {
+        level = mask[k] && Math.abs(gridRoll[k]) < 10 ? level + 1 : 0;
+        const err = sign * (series[k] - refMean[k]);
+        if (level < 80 || !Number.isFinite(err)) { above = 0; counted = false; continue; }
+        seconds += 0.1;
+        if (err > thr) { above += 0.1; if (above >= dur - 1e-6 && !counted) { events++; counted = true; } }
+        else if (err < thr / 2) { above = 0; counted = false; }
+      }
+      falseClimbs[`${sign > 0 ? 'climb' : 'sink'}${thr}${name}`] = events; falseClimbs.straightHours = seconds / 3600;
+    }
     results[refName] = { delay: Object.fromEntries(Object.entries(lags).map(([s,l]) => [s,l / 10])),
       scores: score(mask, ref, regular, lags),
-      cockpitDelay,
+      cockpitDelay, falseClimbs,
       cockpitUnshifted: score(mask, ref, cockpit, { AirMass: 0, TE: 0 }) };
   }
   const status = { samples: 0, vario: 0, wind: 0, degraded: 0, fresh: 0, aligned: 0 }, windSpeed = [], beta = [];
