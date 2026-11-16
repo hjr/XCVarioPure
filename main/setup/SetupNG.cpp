@@ -532,10 +532,12 @@ SetupNG<int>  			serial1_speed( "SER1_SPEED", BAUD_19200, FACTORY_RST, SYNC_NONE
 SetupNG<int>  			serial1_pin_swap( "SER1_PINS", 0, FACTORY_RST );
 SetupNG<int>  			serial1_ttl_signals( "SER1_TTL", RS232_TTL, FACTORY_RST );
 SetupNG<int>  			serial1_tx_enable( "SER1_TX_ENA", 1, FACTORY_RST );
+SetupNG<int>  			serial1_baud_mode( "SER1_BAUDM", 0, FACTORY_RST );
 SetupNG<int>  			serial2_speed( "SER2_SPEED", BAUD_38400, FACTORY_RST, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(BAUD_2400, BAUD_115200, 1));
 SetupNG<int>  			serial2_pin_swap( "SER2_PINS", 0, FACTORY_RST );
 SetupNG<int>  			serial2_ttl_signals( "SER2_TTL", RS232_NORMAL, FACTORY_RST );
 SetupNG<int>  			serial2_tx_enable( "SER2_TX_ENA", 1, FACTORY_RST );
+SetupNG<int>  			serial2_baud_mode( "SER2_BAUDM", 0, FACTORY_RST );
 SetupNG<int>  			software_update( "SOFTWARE_UPDATE", 0, FACTORY_RST );
 SetupNG<t_tenchar_id>  	ota_ap( "OTA_AP",  t_tenchar_id(""), FACTORY_RST);
 SetupNG<t_tenchar_id>  	ota_pwd( "OTA_PWD",  t_tenchar_id(""), FACTORY_RST );

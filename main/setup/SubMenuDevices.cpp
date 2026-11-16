@@ -130,6 +130,9 @@ static SetupMenu::SetupMenuCreator_t get_itf_menu_creator(InterfaceId iid)
 }
 
 static const char* baudLbl[] = {"2400 baud", "4800 baud", "9600 baud", "19200 baud", "38400 baud", "57600 baud", "115200 baud" };
+static const char* varBaudLbl[] = {"Var 2400", "Var 4800", "Var 9600", "Var 19200", "Var 38400", "Var 57600", "Var 115200" };
+static const char* detectOnceLbl = "Detect Once";
+static const char* variableLbl = "Variable";
 static const char* canLbl[] = {"", "250 kbit", "500 kbit", "1000 kbit" };
 const char* get_itf_buzz(InterfaceId iid)
 {
@@ -139,7 +142,12 @@ const char* get_itf_buzz(InterfaceId iid)
         return (char *)(ptr->id);
     }
     else if ( iid == S1_RS232 || iid == S2_RS232 ) {
-        return baudLbl[ (iid == S1_RS232) ? serial1_speed.get() : serial2_speed.get() ];
+        SerialLine *sx = (iid == S1_RS232) ? S1 : S2;
+        SetupNG<int> &speed = (iid == S1_RS232) ? serial1_speed : serial2_speed;
+        if ( sx && sx->baudDetecting() ) {
+            return sx->getBaudMode() == BAUD_MODE_VARIABLE ? varBaudLbl[sx->getBaud()] : detectOnceLbl;
+        }
+        return baudLbl[ speed.get() ];
     }
     else if ( iid == CAN_BUS ) {
         return canLbl[can_speed.get()];
@@ -193,8 +201,14 @@ static int update_sX_baud(SetupMenuSelect *p)
 {
     ESP_LOGI(FNAME, "Select baudrate: %d", p->getSelect());
     int sx = p->getParent()->getContId();
-    ((sx==S1_RS232) ? S1 : S2)->setBaud((e_baud)(p->getSelect())); // 0: 2400, 1:4800, etc
-    p->getParent()->setBuzzword(baudLbl[p->getSelect()]);
+    SerialLine *line = (sx==S1_RS232) ? S1 : S2;
+    int sel = p->getSelect();
+    if ( sel <= BAUD_115200 ) {
+        line->setBaud((e_baud)sel); // 0: 2400, 1:4800, etc
+    } else {
+        line->setBaudMode((e_baud_mode)(sel - BAUD_115200));
+    }
+    p->getParent()->setBuzzword(get_itf_buzz(InterfaceId(sx)));
     return 0;
 }
 
@@ -230,7 +244,9 @@ static void connected_devices_menu_create_interfaceSX(SetupMenu *top)
     if ( top->getNrChilds() == 0 ) {
         top->setDynContent();
 
-        SetupMenuSelect *sXspeed = new SetupMenuSelect("Baudrate", RST_NONE, update_sX_baud, &serial1_speed);
+        SetupMenuSelect *sXspeed = new SetupMenuSelect("Baudrate", RST_NONE, update_sX_baud);
+        sXspeed->setHelp("Detect Once finds the rate from valid NMEA and keeps it, Variable also follows later changes. "
+                         "NMEA devices only");
         sXspeed->addEntry(baudLbl[0]);
         sXspeed->addEntry(baudLbl[1]);
         sXspeed->addEntry(baudLbl[2]);
@@ -258,7 +274,16 @@ static void connected_devices_menu_create_interfaceSX(SetupMenu *top)
         stxdis1->mkEnable();
         top->addEntry(stxdis1);
     }
-    static_cast<SetupMenuSelect*>(top->getEntry(0))->setNvsVar( (sx==S1_RS232) ? &serial1_speed : &serial2_speed );
+    SerialLine *line = (sx==S1_RS232) ? S1 : S2;
+    SetupMenuSelect *speed = static_cast<SetupMenuSelect*>(top->getEntry(0));
+    speed->delEntry(detectOnceLbl);
+    speed->delEntry(variableLbl);
+    if ( line->baudDetectApplicable() ) {
+        speed->addEntry(detectOnceLbl);
+        speed->addEntry(variableLbl);
+    }
+    speed->setSelect( line->baudDetecting() ? BAUD_115200 + line->getBaudMode()
+                                             : ((sx==S1_RS232) ? serial1_speed : serial2_speed).get() );
     static_cast<SetupMenuSelect*>(top->getEntry(1))->setNvsVar( (sx==S1_RS232) ? &serial1_ttl_signals : &serial2_ttl_signals );
     static_cast<SetupMenuSelect*>(top->getEntry(2))->setNvsVar( (sx==S1_RS232) ? &serial1_pin_swap : &serial2_pin_swap );
     static_cast<SetupMenuSelect*>(top->getEntry(3))->setNvsVar( (sx==S1_RS232) ? &serial1_tx_enable : &serial2_tx_enable );
@@ -601,6 +626,15 @@ static void connected_devices_menu_device(SetupMenu *top) // dynamic!
         SetupMenuSelect *remove = new SetupMenuSelect("Remove device", RST_NONE, remove_device);
         remove->mkConfirm();
         top->addEntry(remove);
+    }
+
+    // auto baud locks while the menu exists
+    std::string_view itfname = DEVMAN->getItfName(dev->_itf->getId());
+    for ( int i = 0; i < top->getNrChilds(); i++ ) {
+        MenuEntry *e = top->getEntry(i);
+        if ( !e->isLeaf() && itfname == e->getTitle() ) {
+            static_cast<SetupMenu*>(e)->setBuzzword(get_itf_buzz(dev->_itf->getId()));
+        }
     }
 
     // list protocols

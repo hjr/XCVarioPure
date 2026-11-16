@@ -18,6 +18,8 @@
 
 #include <soc/uart_reg.h>
 
+#include <algorithm>
+
 
 constexpr int BUF_LEN = 128;
 constexpr int UARTRXFIFO_LEN = 256;
@@ -25,6 +27,12 @@ constexpr int UARTTXFIFO_LEN = 1024;
 constexpr int UARTEVENTQ_LEN = 10;
 
 static constexpr std::array<int, 7> baud_rate_table = { 2400, 4800, 9600, 19200, 38400, 57600, 115200 };  // stay compatible with existing setup's
+static constexpr std::array<e_baud, 7> scan_order = { BAUD_19200, BAUD_38400, BAUD_57600, BAUD_115200, BAUD_9600, BAUD_4800, BAUD_2400 };
+constexpr int GARBAGE_LIMIT = 2 * ProtocolItf::MAX_LEN;
+constexpr int STALE_GARBAGE = 32;
+constexpr TickType_t STALE_TIME = pdMS_TO_TICKS(500);
+constexpr TickType_t LOCKED_STALE_TIME = pdMS_TO_TICKS(2000);
+constexpr TickType_t QUIET_RESET = pdMS_TO_TICKS(2000);
 
 // enumeration is: SM_FLARM, SM_RADIO, SM_XCTNAV_S3, SM_OPENVARIO
 static constexpr std::array<t_serial_cfg, NR_OF_SER_PROFILES> sm_serial_config = {{
@@ -38,11 +46,67 @@ static constexpr std::array<std::string_view, 3> MEMOS = {"S0", "S1", "S2"};
 
 // connection to nvs setup variables
 static constexpr std::array<t_serial_nvs_setup, 3> uart_setup = {{
-    {nullptr, nullptr, nullptr, nullptr},
-    {&serial1_speed, &serial1_ttl_signals, &serial1_pin_swap, &serial1_tx_enable},
-    {&serial2_speed, &serial2_ttl_signals, &serial2_pin_swap, &serial2_tx_enable}}};
+    {nullptr, nullptr, nullptr, nullptr, nullptr},
+    {&serial1_speed, &serial1_ttl_signals, &serial1_pin_swap, &serial1_tx_enable, &serial1_baud_mode},
+    {&serial2_speed, &serial2_ttl_signals, &serial2_pin_swap, &serial2_tx_enable, &serial2_baud_mode}}};
 
 static constexpr uart_event_t stop_trigger = {UART_EVENT_MAX, 0, false};
+
+static int hexValue(char c)
+{
+    if (c >= '0' && c <= '9') return c - '0';
+    if (c >= 'A' && c <= 'F') return c - 'A' + 10;
+    if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+    return -1;
+}
+
+void BaudProbe::feed(const char *c, int len)
+{
+    for (; len > 0; c++, len--) {
+        unsigned char ch = *c;
+        if (ch != '\r' && ch != '\n') {
+            _garbage++;
+        }
+        if (ch == '$' || ch == '!') {
+            _state = BODY;
+            _crc = 0;
+            _len = 0;
+            continue;
+        }
+        switch (_state) {
+        case BODY:
+            if (ch == '*') {
+                _state = CRC1;
+            } else if (ch < 0x20 || ch > 0x7e || ++_len > ProtocolItf::MAX_LEN) {
+                _state = IDLE;
+            } else {
+                _crc ^= ch;
+            }
+            break;
+        case CRC1: {
+            int hi = hexValue(ch);
+            if (hi < 0) {
+                _state = IDLE;
+                break;
+            }
+            _crc ^= hi << 4;
+            _state = CRC2;
+            break;
+        }
+        case CRC2: {
+            int lo = hexValue(ch);
+            if (lo >= 0 && (_crc ^ lo) == 0) {
+                _good++;
+                _garbage = 0;
+            }
+            _state = IDLE;
+            break;
+        }
+        default:
+            break;
+        }
+    }
+}
 
 // Thread body to handle UART events
 void uartTask(SerialLine *s) {
@@ -76,15 +140,23 @@ void uartTask(SerialLine *s) {
             // ESP_LOGI(FNAME, "Pattern detected on UART%d", un);
         case UART_DATA: {
             int count = uart_read_bytes(un, rx_buf, BUF_LEN, 0);
-            if (count > 0 && dltarget) {
-                rx_buf[count] = '\0';
-                // ESP_LOGI(FNAME, "Data received from UART%d: %dc", un, count);
-                if (dltarget) dltarget->process(rx_buf, count); // SX interfaces do have only one data link
+            if (count > 0) {
+                if (s->baudDetecting()) {
+                    s->detectBaud(rx_buf, count);
+                }
+                if (dltarget) {
+                    rx_buf[count] = '\0';
+                    // ESP_LOGI(FNAME, "Data received from UART%d: %dc", un, count);
+                    dltarget->process(rx_buf, count); // SX interfaces do have only one data link
+                }
             }
             break;
         }
         case UART_BREAK:
             s->break_count++;
+            if (s->baudDetecting()) {
+                s->detectBaud(nullptr, 0);
+            }
             // ESP_LOGI(FNAME, "Break detected on UART%d", un);
             break;
         case UART_BUFFER_FULL:
@@ -180,6 +252,73 @@ void SerialLine::applyBaud()
         uart_flush(uart_nr);
     }
     uart_set_baudrate(uart_nr, baud_rate_table[cfg.baud]);
+    _rescan = true;
+}
+
+void SerialLine::setBaudMode(e_baud_mode mode)
+{
+    _baud_mode = mode;
+    _setup.baud_mode->set(mode);
+    _rescan = true;
+    if (mode == BAUD_MODE_FIXED && cfg.baud != _setup.baud->get()) {
+        cfg.baud = (e_baud)_setup.baud->get();
+        applyBaud();
+    }
+}
+
+// binary protocols and the binary XCV sync frames cannot be validated by the NMEA probe
+bool SerialLine::baudDetectApplicable()
+{
+    DataLink *dl = _dlink.begin()->link;
+    return dl && dl->getNmea() && !dl->isBinActive() && !dl->hasProtocol(XCVSYNC_P);
+}
+
+// rx == nullptr: a line break
+void SerialLine::detectBaud(const char *rx, int len)
+{
+    TickType_t now = xTaskGetTickCount();
+    bool rescan = _rescan.exchange(false);
+    if (rescan) {
+        _baud_locked = false;
+    }
+    // noise between quiet periods must not add up to a rate change
+    if (rescan || now - _last_rx > QUIET_RESET) {
+        _probe.reset();
+    }
+    _last_rx = now;
+    int good = _probe.good();
+    bool clean = _probe.garbage() == 0;
+    if (rx) {
+        _probe.feed(rx, len);
+    } else {
+        _probe.noise();
+    }
+    if (clean || _probe.good() > good) {
+        _garbage_since = now;
+    }
+    TickType_t since = now - _garbage_since;
+    int garbage = _probe.garbage();
+    bool leave = _baud_locked
+        // dropped bytes break single sentences, a wrong rate leaves none valid
+        ? garbage >= GARBAGE_LIMIT && since > LOCKED_STALE_TIME
+        // a slower rate than the sender's sees only a few bytes of it
+        : garbage >= GARBAGE_LIMIT || (garbage >= STALE_GARBAGE && since > STALE_TIME);
+    if (leave) {
+        if (_baud_locked) {
+            ESP_LOGI(FNAME, "UART%d lost sync at %d", uart_nr, baud_rate_table[cfg.baud]);
+            _baud_locked = false;
+        }
+        auto pos = std::find(scan_order.begin(), scan_order.end(), cfg.baud) - scan_order.begin();
+        cfg.baud = scan_order[(pos + 1) % scan_order.size()];
+        applyBaud();
+    } else if (!_baud_locked && _probe.good() >= 2) {
+        ESP_LOGI(FNAME, "UART%d locked at %d", uart_nr, baud_rate_table[cfg.baud]);
+        _baud_locked = true;
+        _setup.baud->set(cfg.baud);
+        if (_baud_mode == BAUD_MODE_DETECT_ONCE) {
+            setBaudMode(BAUD_MODE_FIXED);
+        }
+    }
 }
 
 // configures ESP32 matrix, here also the line polartity (inverting) is handled
@@ -247,6 +386,7 @@ void SerialLine::loadSetupDefaults()
     cfg.polarity = _setup.polarity->get();
     cfg.tx_ena = _setup.tx_ena->get();
     cfg.pin_swp = _setup.pin_swp->get();
+    _baud_mode = (e_baud_mode)_setup.baud_mode->get();
     ESP_LOGI(FNAME, "load default: %d/%d/%d/%d", cfg.baud, cfg.polarity, cfg.tx_ena, cfg.pin_swp);
 }
 

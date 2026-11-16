@@ -7,11 +7,13 @@
 #include <driver/uart.h>
 #include <driver/gpio.h>
 
+#include <atomic>
 #include <cstdint>
 
 typedef enum { BAUD_2400, BAUD_4800, BAUD_9600, BAUD_19200, BAUD_38400, BAUD_57600, BAUD_115200 } e_baud; // stay compatible with baudrates in existing setup
 typedef enum { SM_FLARM, SM_RADIO, SM_XCTNAV_S3, SM_OPENVARIO, NR_OF_SER_PROFILES } e_profile;
 typedef enum { RS232_NORMAL, RS232_TTL } rs232lm_t;
+typedef enum { BAUD_MODE_FIXED, BAUD_MODE_DETECT_ONCE, BAUD_MODE_VARIABLE } e_baud_mode;
 
 
 union t_serial_cfg {
@@ -32,8 +34,25 @@ struct t_serial_nvs_setup {
 	SetupNG<int> *polarity;
 	SetupNG<int> *pin_swp;
 	SetupNG<int> *tx_ena;
-	constexpr t_serial_nvs_setup(SetupNG<int>* ba, SetupNG<int>* po, SetupNG<int>* pi, SetupNG<int>* tx) : 
-		baud(ba), polarity(po), pin_swp(pi), tx_ena(tx) {}
+	SetupNG<int> *baud_mode;
+	constexpr t_serial_nvs_setup(SetupNG<int>* ba, SetupNG<int>* po, SetupNG<int>* pi, SetupNG<int>* tx, SetupNG<int>* bm) :
+		baud(ba), polarity(po), pin_swp(pi), tx_ena(tx), baud_mode(bm) {}
+};
+
+class BaudProbe {
+public:
+    void feed(const char *c, int len);
+    void noise() { _garbage++; }
+    void reset() { _good = _garbage = 0; }
+    int good() const { return _good; }
+    int garbage() const { return _garbage; }
+
+private:
+    enum { IDLE, BODY, CRC1, CRC2 } _state = IDLE;
+    int _len = 0;
+    int _crc = 0;
+    int _good = 0;
+    int _garbage = 0;
 };
 
 
@@ -42,7 +61,12 @@ public:
     SerialLine(uart_port_t uart, gpio_num_t rx_pin, gpio_num_t tx_pin);   // uart: [0 = console], 1 = S1, 2 = S2
     virtual ~SerialLine();
 
-    void setBaud(e_baud baud) { cfg.baud = baud; applyBaud(); };    // BAUD_9600, etc
+    void setBaud(e_baud baud) { _setup.baud->set(baud); setBaudMode(BAUD_MODE_FIXED); };    // BAUD_9600, etc
+    void setBaudMode(e_baud_mode mode);
+    e_baud_mode getBaudMode() const { return _baud_mode; }
+    bool baudDetectApplicable();
+    bool baudDetecting() { return _baud_mode != BAUD_MODE_FIXED && baudDetectApplicable(); }
+    e_baud getBaud() const { return cfg.baud; }
     void setLineInverse(bool apol) { cfg.polarity = apol; applyLineInverse(); } // 0: Normal, 1: Invert
     void setPinSwap(bool pinswp) { cfg.pin_swp = pinswp; applyPins(); }  // 0: Standard 1: Swapped
     void setTxOn(bool tx) { cfg.tx_ena = tx; applyPins(); }           // 0: no tx  1: tx on
@@ -67,6 +91,7 @@ private:
     void loadProfile(e_profile profile);    // load defaults according to profile given
     void loadSetupDefaults();
     void start();                           // starts RS232 interface
+    void detectBaud(const char *rx, int len);
 
     t_serial_cfg cfg;
    
@@ -84,6 +109,12 @@ private:
     void* _event_queue = nullptr;
     void* _iotask = nullptr;
     int break_count = 0;
+    std::atomic<e_baud_mode> _baud_mode{BAUD_MODE_FIXED};
+    std::atomic<bool> _rescan{false};
+    std::atomic<bool> _baud_locked{false};
+    BaudProbe _probe;
+    TickType_t _last_rx = 0;
+    TickType_t _garbage_since = 0;
     // Sending data with uart buffer
 };
 
