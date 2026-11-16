@@ -120,9 +120,9 @@ function lsq(X, y) {
 // The wind from GNSS alone, per full turn while circling: the ground velocities of the fixes of one turn (360° of
 // track change, the track turning faster than 6°/s the same way) lie on a circle around the wind, its radius the
 // airspeed (taken constant over the turn); a least squares circle fit (Kåsa). Uses neither heading nor airspeed nor
-// AirMass. Returns the turns [{ t (device time of the turn's middle, s), n, e (m/s), tas (the radius), res (rms of
-// the points off the circle) }] and the wind per sample (wn, we), interpolated in time between turns, held before the
-// first and after the last.
+// AirMass. Returns the turns [{ t (device time of the turn's middle, s), t0, t1 (its first and last fix), thermal,
+// n, e (m/s), tas (the radius), res (rms of the points off the circle) }] and the wind per sample (wn, we),
+// interpolated in time between turns, held before the first and after the last.
 // opts: tas (true: fit |ground velocity - wind| to the measured TAS of each fix times a scale, Gauss-Newton from the
 // circle fit, instead of a constant airspeed: the size of the airspeed only, still no heading and no AirMass), smooth
 // (the number of turns on either side averaged with each turn's wind, within the same circling, default 0)
@@ -170,7 +170,7 @@ function gnssCircleWind(D, opts = {}) {
         pts.forEach(([px, py], i) => { res += (Math.hypot(px - x[0], py - x[1]) - x[2] * tas[i]) ** 2; });
         w = { n: x[0], e: x[1], tas: x[2] * tasMean, res: Math.sqrt(res / pts.length) };
       }
-      if (w && w.tas > 15 && w.tas < 70 && w.res < 2.5) turns.push({ t: (seg[0].tm + seg[seg.length - 1].tm) / 2, thermal: thermalId, ...w });
+      if (w && w.tas > 15 && w.tas < 70 && w.res < 2.5) turns.push({ t: (seg[0].tm + seg[seg.length - 1].tm) / 2, t0: seg[0].tm, t1: seg[seg.length - 1].tm, thermal: thermalId, ...w });
       seg = [q]; cum = 0;
     }
   }

@@ -46,6 +46,7 @@ estimator, the page's `build`/`derive`), so they stay in step with the site. Bui
 | `restart.js` | restarts in flight every ten minutes of a log against the uninterrupted estimator: vario difference and validity by time since the restart, for a start attitude from the accelerometer alone, the true one and the turn-corrected one, restarts in straight flight and while banked |
 | `decomp.js` | per-sample means of AirMass, its energy, plain-energy and pitch paths, TE netto and both references, binned by bank (left / right) and by time since circling; `--print` merges outputs |
 | `te_pressure.js` | AirMass netto, the logged TE netto and the TE netto replayed from the logged TE pressure (the page's `TeVario`) at equal 4 s damping against both references, per flight and pooled (`EXCLUDE`), with the three-cornered hat once per TE (the two share the probe), delays and 1 s needle movement; `node te_pressure.js OUT.json` alone re-reports a saved run |
+| `xcsoar_wind.js` | AirMass's wind against XCSoar's zigzag wind (WindEKF and its glue, ported) and against the per-turn GNSS-only wind: while circling, and in straight flight by the time since the thermal before and until the next one; `node xcsoar_wind.js OUT.json` alone re-reports ([2026-11-16 results](RESULTS-2026-11-16-xcsoar-wind.md)) |
 | `build_old.sh` | builds the estimator before real-flight tuning (a833f536, with the replay tools of 323f5a9c) as `build_sim/old/tools/airmass_sim/web/airmass_old.js` |
 
 ```sh
