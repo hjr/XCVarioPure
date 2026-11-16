@@ -101,7 +101,9 @@ static SetupMenu::SetupMenuCreator_t get_itf_menu_creator(InterfaceId iid)
 }
 
 static const char* baudLbl[] = {"2400 baud", "4800 baud", "9600 baud", "19200 baud", "38400 baud", "57600 baud", "115200 baud" };
-static const char* autoBaudLbl[] = {"Auto 2400", "Auto 4800", "Auto 9600", "Auto 19200", "Auto 38400", "Auto 57600", "Auto 115200" };
+static const char* varBaudLbl[] = {"Var 2400", "Var 4800", "Var 9600", "Var 19200", "Var 38400", "Var 57600", "Var 115200" };
+static const char* detectOnceLbl = "Detect Once";
+static const char* variableLbl = "Variable";
 static const char* canLbl[] = {"", "250 kbit", "500 kbit", "1000 kbit" };
 const char* get_itf_buzz(InterfaceId iid)
 {
@@ -113,8 +115,8 @@ const char* get_itf_buzz(InterfaceId iid)
     else if ( iid == S1_RS232 || iid == S2_RS232 ) {
         SerialLine *sx = (iid == S1_RS232) ? S1 : S2;
         SetupNG<int> &speed = (iid == S1_RS232) ? serial1_speed : serial2_speed;
-        if ( sx && sx->autoBaudActive() ) {
-            return autoBaudLbl[sx->getBaud()];
+        if ( sx && sx->baudDetecting() ) {
+            return sx->getBaudMode() == BAUD_MODE_VARIABLE ? varBaudLbl[sx->getBaud()] : detectOnceLbl;
         }
         return baudLbl[ speed.get() ];
     }
@@ -170,15 +172,13 @@ static int update_sX_baud(SetupMenuSelect *p)
 {
     ESP_LOGI(FNAME, "Select baudrate: %d", p->getSelect());
     int sx = p->getParent()->getContId();
-    ((sx==S1_RS232) ? S1 : S2)->setBaud((e_baud)(p->getSelect())); // 0: 2400, 1:4800, etc
-    p->getParent()->setBuzzword(get_itf_buzz(InterfaceId(sx)));
-    return 0;
-}
-
-static int update_sX_autobaud(SetupMenuSelect *p)
-{
-    int sx = p->getParent()->getContId();
-    ((sx==S1_RS232) ? S1 : S2)->setAutoBaud(p->getSelect());
+    SerialLine *line = (sx==S1_RS232) ? S1 : S2;
+    int sel = p->getSelect();
+    if ( sel <= BAUD_115200 ) {
+        line->setBaud((e_baud)sel); // 0: 2400, 1:4800, etc
+    } else {
+        line->setBaudMode((e_baud_mode)(sel - BAUD_115200));
+    }
     p->getParent()->setBuzzword(get_itf_buzz(InterfaceId(sx)));
     return 0;
 }
@@ -215,7 +215,9 @@ static void connected_devices_menu_create_interfaceSX(SetupMenu *top)
     if ( top->getNrChilds() == 0 ) {
         top->setDynContent();
 
-        SetupMenuSelect *sXspeed = new SetupMenuSelect("Baudrate", RST_NONE, update_sX_baud, &serial1_speed);
+        SetupMenuSelect *sXspeed = new SetupMenuSelect("Baudrate", RST_NONE, update_sX_baud);
+        sXspeed->setHelp("Detect Once finds the rate from valid NMEA and keeps it, Variable also follows later changes. "
+                         "NMEA devices only");
         sXspeed->addEntry(baudLbl[0]);
         sXspeed->addEntry(baudLbl[1]);
         sXspeed->addEntry(baudLbl[2]);
@@ -242,23 +244,20 @@ static void connected_devices_menu_create_interfaceSX(SetupMenu *top)
         stxdis1->setHelp("Option to listen only on the RX line, disables TX line to receive only data");
         stxdis1->mkEnable();
         top->addEntry(stxdis1);
-
-        SetupMenuSelect *sxauto = new SetupMenuSelect("Auto baud", RST_NONE, update_sX_autobaud, &serial1_autobaud);
-        sxauto->setHelp("Scan the baudrates until valid NMEA is received and keep the detected rate. "
-                        "Only for NMEA devices");
-        sxauto->mkEnable();
-        top->addEntry(sxauto);
     }
-    static_cast<SetupMenuSelect*>(top->getEntry(0))->setNvsVar( (sx==S1_RS232) ? &serial1_speed : &serial2_speed );
+    SerialLine *line = (sx==S1_RS232) ? S1 : S2;
+    SetupMenuSelect *speed = static_cast<SetupMenuSelect*>(top->getEntry(0));
+    speed->delEntry(detectOnceLbl);
+    speed->delEntry(variableLbl);
+    if ( line->baudDetectApplicable() ) {
+        speed->addEntry(detectOnceLbl);
+        speed->addEntry(variableLbl);
+    }
+    speed->setSelect( line->baudDetecting() ? BAUD_115200 + line->getBaudMode()
+                                             : ((sx==S1_RS232) ? serial1_speed : serial2_speed).get() );
     static_cast<SetupMenuSelect*>(top->getEntry(1))->setNvsVar( (sx==S1_RS232) ? &serial1_ttl_signals : &serial2_ttl_signals );
     static_cast<SetupMenuSelect*>(top->getEntry(2))->setNvsVar( (sx==S1_RS232) ? &serial1_pin_swap : &serial2_pin_swap );
     static_cast<SetupMenuSelect*>(top->getEntry(3))->setNvsVar( (sx==S1_RS232) ? &serial1_tx_enable : &serial2_tx_enable );
-    static_cast<SetupMenuSelect*>(top->getEntry(4))->setNvsVar( (sx==S1_RS232) ? &serial1_autobaud : &serial2_autobaud );
-    if ( !((sx==S1_RS232) ? S1 : S2)->autoBaudApplicable() ) {
-        top->getEntry(4)->lock();
-    } else {
-        top->getEntry(4)->unlock();
-    }
 }
 
 

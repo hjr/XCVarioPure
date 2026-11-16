@@ -47,8 +47,8 @@ static constexpr std::array<std::string_view, 3> MEMOS = {"S0", "S1", "S2"};
 // connection to nvs setup variables
 static constexpr std::array<t_serial_nvs_setup, 3> uart_setup = {{
     {nullptr, nullptr, nullptr, nullptr, nullptr},
-    {&serial1_speed, &serial1_ttl_signals, &serial1_pin_swap, &serial1_tx_enable, &serial1_autobaud},
-    {&serial2_speed, &serial2_ttl_signals, &serial2_pin_swap, &serial2_tx_enable, &serial2_autobaud}}};
+    {&serial1_speed, &serial1_ttl_signals, &serial1_pin_swap, &serial1_tx_enable, &serial1_baud_mode},
+    {&serial2_speed, &serial2_ttl_signals, &serial2_pin_swap, &serial2_tx_enable, &serial2_baud_mode}}};
 
 static constexpr uart_event_t stop_trigger = {UART_EVENT_MAX, 0, false};
 
@@ -141,8 +141,8 @@ void uartTask(SerialLine *s) {
         case UART_DATA: {
             int count = uart_read_bytes(un, rx_buf, BUF_LEN, 0);
             if (count > 0) {
-                if (s->autoBaudActive()) {
-                    s->autoBaud(rx_buf, count);
+                if (s->baudDetecting()) {
+                    s->detectBaud(rx_buf, count);
                 }
                 if (dltarget) {
                     rx_buf[count] = '\0';
@@ -154,8 +154,8 @@ void uartTask(SerialLine *s) {
         }
         case UART_BREAK:
             s->break_count++;
-            if (s->autoBaudActive()) {
-                s->autoBaud(nullptr, 0);
+            if (s->baudDetecting()) {
+                s->detectBaud(nullptr, 0);
             }
             // ESP_LOGI(FNAME, "Break detected on UART%d", un);
             break;
@@ -255,25 +255,26 @@ void SerialLine::applyBaud()
     _rescan = true;
 }
 
-void SerialLine::setAutoBaud(bool on)
+void SerialLine::setBaudMode(e_baud_mode mode)
 {
-    _autobaud = on;
+    _baud_mode = mode;
+    _setup.baud_mode->set(mode);
     _rescan = true;
-    if (!on && cfg.baud != _setup.baud->get()) {
+    if (mode == BAUD_MODE_FIXED && cfg.baud != _setup.baud->get()) {
         cfg.baud = (e_baud)_setup.baud->get();
         applyBaud();
     }
 }
 
 // binary protocols and the binary XCV sync frames cannot be validated by the NMEA probe
-bool SerialLine::autoBaudApplicable()
+bool SerialLine::baudDetectApplicable()
 {
     DataLink *dl = _dlink.begin()->link;
     return dl && dl->getNmea() && !dl->isBinActive() && !dl->hasProtocol(XCVSYNC_P);
 }
 
 // rx == nullptr: a line break
-void SerialLine::autoBaud(const char *rx, int len)
+void SerialLine::detectBaud(const char *rx, int len)
 {
     TickType_t now = xTaskGetTickCount();
     bool rescan = _rescan.exchange(false);
@@ -314,6 +315,9 @@ void SerialLine::autoBaud(const char *rx, int len)
         ESP_LOGI(FNAME, "UART%d locked at %d", uart_nr, baud_rate_table[cfg.baud]);
         _baud_locked = true;
         _setup.baud->set(cfg.baud);
+        if (_baud_mode == BAUD_MODE_DETECT_ONCE) {
+            setBaudMode(BAUD_MODE_FIXED);
+        }
     }
 }
 
@@ -382,7 +386,7 @@ void SerialLine::loadSetupDefaults()
     cfg.polarity = _setup.polarity->get();
     cfg.tx_ena = _setup.tx_ena->get();
     cfg.pin_swp = _setup.pin_swp->get();
-    _autobaud = _setup.autobaud->get();
+    _baud_mode = (e_baud_mode)_setup.baud_mode->get();
     ESP_LOGI(FNAME, "load default: %d/%d/%d/%d", cfg.baud, cfg.polarity, cfg.tx_ena, cfg.pin_swp);
 }
 
