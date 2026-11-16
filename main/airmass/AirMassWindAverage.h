@@ -1,7 +1,9 @@
 #pragma once
 
-// Averaged wind of the AirMass estimator, for the navigation and as synoptic fallback. In straight flight a 30s low
-// pass. While circling the mean over heading sectors: wind errors that depend on the heading (residual airspeed
+// Averaged wind of the AirMass estimator, for the navigation and as synoptic fallback. Turning, a TAU low pass. In
+// straight flight only the component along the heading follows the instant wind (ALONG_TAU), the crosswind is held:
+// there GNSS cannot tell the drifting gyro heading from the crosswind (RESULTS-2026-11-16-xcsoar-wind.md).
+// While circling the mean over heading sectors: wind errors that depend on the heading (residual airspeed
 // scale, heading or latency errors, sideslip) cancel when every heading counts the same, which a low pass only gives
 // for whole numbers of circles in its window, and not when the circle is flown unevenly. Each sector averages its
 // visits of the last circles (the latest visit weighs VISIT_WEIGHT), about as much turbulence as the low pass
@@ -17,7 +19,8 @@ namespace airmass {
 class WindAverage {
 public:
     static constexpr int SECTORS = 16;
-    static constexpr float TAU = 30.f;                             // s, straight flight low pass
+    static constexpr float TAU = 30.f;                             // s, turning low pass
+    static constexpr float ALONG_TAU = 100.f;                      // s, straight flight: the along heading low pass
     static constexpr float VISIT_WEIGHT = 0.5f;                    // weight of a sector's latest visit, ~2 circles memory
     static constexpr float RATE_HIGH = Units::deg_to_rad(4.f);     // rad/s, turning
     static constexpr float RATE_LOW = Units::deg_to_rad(0.5f);     // rad/s, straight
@@ -35,13 +38,21 @@ public:
 
     // wn, we: instant wind [m/s], psi: heading [rad], turn_rate: around the down axis [rad/s], dt [s]
     void update(float wn, float we, float psi, float turn_rate, float dt) {
-        const float a = dt / (TAU + dt);
-        _lpf[0] += (wn - _lpf[0]) * a;
-        _lpf[1] += (we - _lpf[1]) * a;
+        _rate += (turn_rate - _rate) * dt / (RATE_TAU + dt);
+        const bool turning = std::fabs(_rate) > RATE_HIGH;
+        if (turning) {
+            const float a = dt / (TAU + dt);
+            _lpf[0] += (wn - _lpf[0]) * a;
+            _lpf[1] += (we - _lpf[1]) * a;
+        } else {
+            const float ch = std::cos(psi), sh = std::sin(psi);
+            const float along = ((wn - _lpf[0]) * ch + (we - _lpf[1]) * sh) * dt / (ALONG_TAU + dt);
+            _lpf[0] += along * ch;
+            _lpf[1] += along * sh;
+        }
 
         // circling state with hysteresis
-        _rate += (turn_rate - _rate) * dt / (RATE_TAU + dt);
-        if (std::fabs(_rate) > RATE_HIGH) {
+        if (turning) {
             _counter = std::min(_counter + dt, CIRCLE_TIME);
         } else if (std::fabs(_rate) < RATE_LOW) {
             _counter = std::max(_counter - dt, 0.f);

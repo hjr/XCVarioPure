@@ -60,7 +60,7 @@ static bool naviWind(WindData& w)
 // $PXCVW,dir,speed,type,status: the wind like the $PLARW of the Larus
 //    * dir: the direction the wind blows from in deg
 //    * speed: wind speed in km/h
-//    * type: A the 30s average, I the instant wind
+//    * type: A the averaged wind, I the instant wind
 //    * status: A valid, D degraded (not checked against the GNSS track for a while, still the best estimate)
 static void sendWind(NmeaPrtcl* nmea, WindData w, char type, bool degraded)
 {

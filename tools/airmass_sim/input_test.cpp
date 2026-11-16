@@ -248,14 +248,20 @@ int main() {
         std::printf("  (a 30s low pass of the same wind is %.2f m/s off)\n", max_lpf);
         expect("circling: sector mean beats the low pass", max_avg < 0.2f * max_lpf ? 1.f : 0.f, 1.f, 0.f);
         expect("straight again after 10s", avg.circling() ? 1.f : 0.f, 0.f, 0.f);
-        // straight flight: the plain low pass
+        // straight flight heading north: the along heading component follows over ALONG_TAU, the crosswind is held
         airmass::WindAverage s;
         s.reset(0.f, 0.f);
-        for (int i = 0; i < 300; ++i) {
-            s.update(1.f, -2.f, 0.3f, 0.f, DT);
+        const int steps = static_cast<int>(airmass::WindAverage::ALONG_TAU / DT);
+        for (int i = 0; i < steps; ++i) {
+            s.update(1.f, -2.f, 0.f, 0.f, DT);
         }
-        expect("straight: 30s low pass after 30s, north [m/s]", s.windN(), 1.f - std::exp(-1.f), 0.01f);
-        expect("straight: 30s low pass after 30s, east [m/s]", s.windE(), -2.f * (1.f - std::exp(-1.f)), 0.02f);
+        expect("straight: along the heading after ALONG_TAU [m/s]", s.windN(), 1.f - std::exp(-1.f), 0.01f);
+        expect("straight: crosswind held [m/s]", s.windE(), 0.f, 1e-6f);
+        for (int i = 0; i < steps; ++i) {
+            s.update(1.f, -2.f, 90.f * D2R, 0.f, DT);
+        }
+        expect("straight after a heading change: crosswind follows [m/s]", s.windE(), -2.f * (1.f - std::exp(-1.f)), 0.02f);
+        expect("straight after a heading change: the other component kept [m/s]", s.windN(), 1.f - std::exp(-1.f), 0.01f);
     }
 
     std::printf("polar (AirMassPipeline.h, the formula of S2F::getSink)\n");
