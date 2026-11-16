@@ -101,6 +101,7 @@ static SetupMenu::SetupMenuCreator_t get_itf_menu_creator(InterfaceId iid)
 }
 
 static const char* baudLbl[] = {"2400 baud", "4800 baud", "9600 baud", "19200 baud", "38400 baud", "57600 baud", "115200 baud" };
+static const char* autoBaudLbl[] = {"Auto 2400", "Auto 4800", "Auto 9600", "Auto 19200", "Auto 38400", "Auto 57600", "Auto 115200" };
 static const char* canLbl[] = {"", "250 kbit", "500 kbit", "1000 kbit" };
 const char* get_itf_buzz(InterfaceId iid)
 {
@@ -110,7 +111,12 @@ const char* get_itf_buzz(InterfaceId iid)
         return (char *)(ptr->id);
     }
     else if ( iid == S1_RS232 || iid == S2_RS232 ) {
-        return baudLbl[ (iid == S1_RS232) ? serial1_speed.get() : serial2_speed.get() ];
+        SerialLine *sx = (iid == S1_RS232) ? S1 : S2;
+        SetupNG<int> &speed = (iid == S1_RS232) ? serial1_speed : serial2_speed;
+        if ( sx && sx->autoBaudActive() ) {
+            return autoBaudLbl[sx->getBaud()];
+        }
+        return baudLbl[ speed.get() ];
     }
     else if ( iid == CAN_BUS ) {
         return canLbl[can_speed.get()];
@@ -165,7 +171,15 @@ static int update_sX_baud(SetupMenuSelect *p)
     ESP_LOGI(FNAME, "Select baudrate: %d", p->getSelect());
     int sx = p->getParent()->getContId();
     ((sx==S1_RS232) ? S1 : S2)->setBaud((e_baud)(p->getSelect())); // 0: 2400, 1:4800, etc
-    p->getParent()->setBuzzword(baudLbl[p->getSelect()]);
+    p->getParent()->setBuzzword(get_itf_buzz(InterfaceId(sx)));
+    return 0;
+}
+
+static int update_sX_autobaud(SetupMenuSelect *p)
+{
+    int sx = p->getParent()->getContId();
+    ((sx==S1_RS232) ? S1 : S2)->setAutoBaud(p->getSelect());
+    p->getParent()->setBuzzword(get_itf_buzz(InterfaceId(sx)));
     return 0;
 }
 
@@ -228,11 +242,23 @@ static void connected_devices_menu_create_interfaceSX(SetupMenu *top)
         stxdis1->setHelp("Option to listen only on the RX line, disables TX line to receive only data");
         stxdis1->mkEnable();
         top->addEntry(stxdis1);
+
+        SetupMenuSelect *sxauto = new SetupMenuSelect("Auto baud", RST_NONE, update_sX_autobaud, &serial1_autobaud);
+        sxauto->setHelp("Scan the baudrates until valid NMEA is received and keep the detected rate. "
+                        "Only for NMEA devices");
+        sxauto->mkEnable();
+        top->addEntry(sxauto);
     }
     static_cast<SetupMenuSelect*>(top->getEntry(0))->setNvsVar( (sx==S1_RS232) ? &serial1_speed : &serial2_speed );
     static_cast<SetupMenuSelect*>(top->getEntry(1))->setNvsVar( (sx==S1_RS232) ? &serial1_ttl_signals : &serial2_ttl_signals );
     static_cast<SetupMenuSelect*>(top->getEntry(2))->setNvsVar( (sx==S1_RS232) ? &serial1_pin_swap : &serial2_pin_swap );
     static_cast<SetupMenuSelect*>(top->getEntry(3))->setNvsVar( (sx==S1_RS232) ? &serial1_tx_enable : &serial2_tx_enable );
+    static_cast<SetupMenuSelect*>(top->getEntry(4))->setNvsVar( (sx==S1_RS232) ? &serial1_autobaud : &serial2_autobaud );
+    if ( !((sx==S1_RS232) ? S1 : S2)->autoBaudApplicable() ) {
+        top->getEntry(4)->lock();
+    } else {
+        top->getEntry(4)->unlock();
+    }
 }
 
 
@@ -572,6 +598,15 @@ static void connected_devices_menu_device(SetupMenu *top) // dynamic!
         SetupMenuSelect *remove = new SetupMenuSelect("Remove device", RST_NONE, remove_device);
         remove->mkConfirm();
         top->addEntry(remove);
+    }
+
+    // auto baud locks while the menu exists
+    std::string_view itfname = DEVMAN->getItfName(dev->_itf->getId());
+    for ( int i = 0; i < top->getNrChilds(); i++ ) {
+        MenuEntry *e = top->getEntry(i);
+        if ( !e->isLeaf() && itfname == e->getTitle() ) {
+            static_cast<SetupMenu*>(e)->setBuzzword(get_itf_buzz(dev->_itf->getId()));
+        }
     }
 
     // list protocols
