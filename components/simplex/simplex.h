@@ -41,7 +41,7 @@ FOR A PARTICULAR PURPOSE.
 #include <vector>
 #include <limits>
 #include <algorithm>
-#include <iostream>
+#include <esp_log.h>
 
 namespace MATH{
 
@@ -189,7 +189,7 @@ std::vector<D> Simplex(OP f,                                              // tar
 
     // max number of iteration achieves before tol is satisfied
     if (cnt == iterations) {
-        std::cerr << "Iteration limit achieves, result may not be optimal" << std::endl;
+        ESP_LOGW("simplex", "Iteration limit achieves, result may not be optimal");
     }
     return x[x1];
 }
