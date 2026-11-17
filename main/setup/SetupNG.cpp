@@ -307,6 +307,11 @@ static void change_bugs() {
     }
 }
 
+// the vario figure's mode label names the TE method
+static void change_te_method() {
+    IpsDisplay::setCruiseChanged();
+}
+
 void change_cruise() {
     CRMOD.updateCache();
     Display->setCruiseChanged();
@@ -543,7 +548,7 @@ SetupNG<t_tenchar_id>  	ota_ap( "OTA_AP",  t_tenchar_id(""), FACTORY_RST);
 SetupNG<t_tenchar_id>  	ota_pwd( "OTA_PWD",  t_tenchar_id(""), FACTORY_RST );
 SetupNG<int>  			battery_display( "BAT_DISPLAY", Battery::BAT_NONE, FACTORY_RST );
 SetupNG<float>		    te_comp_adjust ( "ECOMP_ADJ", 92.f, USER_RST, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(80, 120, 0.1));
-SetupNG<int>		    te_comp_enable( "TECOMP_ENA", 0, USER_RST, SYNC_NONE, PERSISTENT );
+SetupNG<int>		    te_comp_enable( "TECOMP_ENA", 0, USER_RST, SYNC_NONE, PERSISTENT, change_te_method );
 SetupNG<int>		    rotary_inc( "ROTARY_INC", 1, USER_RST );
 SetupNG<int>		    student_mode( "STUD_MOD", 0, USER_RST );
 SetupNG<float>		    password( "PASSWORD", 0, 0, SYNC_NONE, VOLATILE, nullptr, quantity_t::QUANT_NONE, LIMITS(0, 1000, 1));
