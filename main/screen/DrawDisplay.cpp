@@ -73,7 +73,7 @@ void UiEventLoop(void *arg)
             }
             else if (event.isRotaryEvent()) {
                 // ESP_LOGI(FNAME, "Rotation step %d", event.getSDetail());
-                knob.sendRot(event.getSDetail());
+                knob.sendRot(event.getSDetail(), event.isPressedRotary());
                 if (uiMonitor) {
                     uiMonitor->pet(); // knob ui interaction happened
                 }

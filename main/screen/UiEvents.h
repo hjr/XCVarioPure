@@ -24,6 +24,9 @@ enum UiEventType {
     EVT_MODE   = 0x0800, // any mode change event
 };
 
+// Event modifier bits (above the event type mask)
+constexpr uint32_t MOD_PRESSED = 0x10000; // rotary event happened while the button was held down
+
 // The button press events are
 struct ButtonEvent
 {
@@ -41,9 +44,10 @@ struct ButtonEvent
 struct RotaryEvent
 {
     // const rotary values are -3, -2, -1, 1, 2, 3
+    // pressed: knob turned while the button is held down (press & turn gesture)
     uint32_t raw;
     RotaryEvent() = delete;
-    constexpr RotaryEvent(const unsigned v) : raw((0x00ff & v) | EVT_ROTARY) {}
+    constexpr RotaryEvent(const unsigned v, bool pressed = false) : raw((0x00ff & v) | EVT_ROTARY | (pressed ? MOD_PRESSED : 0)) {}
 };
 
 // The screen events are
@@ -91,7 +95,8 @@ union UiEvent {
     inline int8_t getSDetail() const { return static_cast<int8_t>(code & 0xff); } // get the event details with sign
     bool isButtonEvent() const { return (code & EVT_BUTTON) != 0; } // true if button event
     bool isRotaryEvent() const { return (code & EVT_ROTARY) != 0; } // true if rotary event
-    bool isKnobEvent() const { return (code & (EVT_BUTTON&EVT_ROTARY)) != 0; } // true if button  or rotary event
+    bool isPressedRotary() const { return (code & (EVT_ROTARY|MOD_PRESSED)) == (EVT_ROTARY|MOD_PRESSED); } // rotation with button held
+    bool isKnobEvent() const { return (code & (EVT_BUTTON|EVT_ROTARY)) != 0; } // true if button  or rotary event
     bool isScreenEvent() const { return (code & EVT_SCREEN) != 0; } // true if screen event
     bool isModeEvent() const { return (code & EVT_MODE) != 0; } // true if mode event
     // bool isFlarmEvent() const { return (code & EVT_FLARM) != 0; } // true if flarm event
