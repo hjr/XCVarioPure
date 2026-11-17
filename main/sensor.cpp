@@ -439,9 +439,6 @@ void system_startup(void *args){
     rot_default.set(rot_default.getDefault(), false, false);
     display_variant.set(DISPLAY_WHITE_ON_BLACK, false, false);
     imu_leverarm.set(0.f, false, false);
-    ahrs_gyro_factor.set(ahrs_gyro_factor.getDefault(), false, false);
-    ahrs_min_gyro_factor.set(ahrs_min_gyro_factor.getDefault(), false, false);
-    ahrs_dynamic_factor.set(ahrs_dynamic_factor.getDefault(), false, false);
     gyro_gating.set(gyro_gating.getDefault(), false, false);
     imu_reference.set(imu_reference.getDefault(), false, false);
     core_climb_period.set(core_climb_period.getDefault(), false, false);

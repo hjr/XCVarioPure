@@ -202,6 +202,19 @@ void ScreenRoot::rot(int count)
     }
 }
 
+void ScreenRoot::pressedRot(int count)
+{
+    if ( _page_setup || count == 0 ) {
+        rot(count);
+        return;
+    }
+    if (count > 0) {
+        te_comp_enable.set(TE_ECOMP);
+    } else {
+        te_comp_enable.set(TE_AIRMASS);
+    }
+}
+
 void ScreenRoot::press()
 {
     int current_screen = active_screen;

@@ -41,7 +41,6 @@ const char* varioLabel();
 
 // setup menu: Air Mass as TE compensation method (with the help of its eAdjustment), the wind to the navigation computer, and
 // for development builds (DEBUG_AND_TEST) the status page of the vario menu and the recording in the help of the logging
-void menuTeMethod(SetupMenuSelect* method, SetupMenuValFloat* adjustment);
 void menuLogging(SetupMenuSelect* logging);
 void menuVario(SetupMenu* vario);
 void menuWind(SetupMenu* wind);

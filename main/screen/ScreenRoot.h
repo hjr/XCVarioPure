@@ -45,6 +45,7 @@ public:
     void inPageSetupDone() { _page_setup = false; }
     // interaction
     void rot(int count) override;
+    void pressedRot(int count) override;
     void press() override;
     void longPress() override;
 

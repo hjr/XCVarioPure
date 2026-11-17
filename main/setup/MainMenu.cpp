@@ -406,22 +406,18 @@ static void vario_menu_create_s2f(SetupMenu *top) {
 	top->addEntry(s2flag);
 }
 
-static void tek_entries_create(SetupMenu *top, const char *method, const char *adjustment) {
-    SetupMenuSelect* enac = new SetupMenuSelect(method, RST_NONE, vario_setupS, &te_comp_enable);
+static void vario_menu_create_tek(SetupMenu *top) {
+    SetupMenuSelect* enac = new SetupMenuSelect("Method", RST_NONE, vario_setupS, &te_comp_enable);
     enac->setHelp("Probe or electronic TE compensation");
     enac->addEntry("Probe");
     enac->addEntry("eComp");
+    enac->addEntry("Air Mass");
     top->addEntry(enac);
 
-    SetupMenuValFloat* elca = new SetupMenuValFloat(adjustment, "%", vario_setup, &te_comp_adjust, RST_NONE, false);
-    elca->setHelp("Electronic correction factor deviating from lossless \"100%\"");
-    airmass::menuTeMethod(enac, elca);
+    SetupMenuValFloat* elca = new SetupMenuValFloat("eAdjustment", "%", vario_setup, &te_comp_adjust, RST_NONE, false);
+    elca->setHelp("Compensation factor, raise it if pull-ups show false climb, lower it if they show false sink");
     elca->setPrecision(1);
     top->addEntry(elca);
-}
-
-static void vario_menu_create_tek(SetupMenu *top) {
-    tek_entries_create(top, "Method", "eAdjustment");
 }
 
 static void bugs_item_create(SetupMenu *top) {
@@ -475,9 +471,6 @@ static void vario_menu_create(SetupMenu *vae) {
     SetupMenu *elco = new SetupMenu("TE Compensation", vario_menu_create_tek);
     elco->setHelp("TE compensation method");
     vae->addEntry(elco);
-#ifdef DEBUG_AND_TEST
-    airmass::menuVario(vae);
-#endif
 }
 
 static void options_menu_create_units(SetupMenu *top) {
@@ -971,11 +964,11 @@ static void system_menu_create(SetupMenu *sye) {
 void setup_create_root(SetupMenu *top) {
 	ESP_LOGI(FNAME,"setup_create_root()");
 #ifdef DEBUG_AND_TEST
-    // temporary, for test flights
-    if (!student_mode.get()) {
-        tek_entries_create(top, "TE Method", "TE eAdjustment");
-    }
+    SetupMenuValFloat* elca = new SetupMenuValFloat("eAdjustment", "%", vario_setup, &te_comp_adjust, RST_NONE, false);
+    elca->setPrecision(1);
+    top->addEntry(elca);
 #endif
+
 	if (rot_default.get() == 0) {
 		SetupMenuValFloat *mc = new SetupMenuValFloat("MC", "", nullptr, &MC);
 		mc->setHelp(

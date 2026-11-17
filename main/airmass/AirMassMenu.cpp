@@ -15,15 +15,6 @@ static bool available()
     return SetupCommon::isMaster() ? airmass::supported() : XcvCaps::haveCap(XcvCaps::AHRS_CAP);
 }
 
-void airmass::menuTeMethod(SetupMenuSelect* method, SetupMenuValFloat* adjustment)
-{
-    if (!available()) {
-        return;
-    }
-    method->setHelp("Probe, electronic or Air Mass compensation");
-    method->addEntry("Air Mass", TE_AIRMASS);
-    adjustment->setHelp("Compensation factor, raise it if pull-ups show false climb, lower it if they show false sink");
-}
 
 void airmass::menuLogging(SetupMenuSelect* logging)
 {
