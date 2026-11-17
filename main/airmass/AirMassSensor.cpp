@@ -129,6 +129,13 @@ static int speedSignature()
     return signatureOf({&speedcal, &glider_type});
 }
 
+// Airspeed without the airspeed display's low pass (0.3 s at its 10 Hz reads): the estimator models the pitot lag itself
+static void rawAirspeed(airmass::Frame& f)
+{
+    f.ias = asSensor ? Units::pascal_to_mps(asSensor->getHead()) : 0.f;
+    f.tas = f.ias * tas_per_ias.get();
+}
+
 // Body rates without the "Gyro Gating" of the processed gyro: its dead zone (0.5°/s) drops the slow rotations, the
 // gentle pitch changes in cruise, small heading corrections, the roll axis rate in a steady turn. The recorded
 // reading has the bias estimate subtracted once, the processed one twice (the estimator learns on the recorded
@@ -328,8 +335,7 @@ void AirMassSensor::start()
         st.gyro[i] = f.gyro[i] = gyro[i];
         f.f_body[i] = f_body[i];
     }
-    f.ias = ias.get();
-    f.tas = tas.get();
+    rawAirspeed(f);
     // a replay jump has just reset the AHRS: it knows the accelerometer direction only, level in every turn
     float in_flight[3];
     if (_jump.exchange(false) && f.tas > 10.f && airmass::downFromMotion(currentSetup(), f, warm, in_flight)) {
@@ -465,8 +471,7 @@ void AirMassSensor::postProcess()
         f.f_body[i] = f_body[i];
         f.gyro[i] = gyro[i];
     }
-    f.ias = ias.get();
-    f.tas = tas.get();
+    rawAirspeed(f);
     const bool baro_ok = readBaroAltitude(f.baro_alt);
     f.sample_times = true;
     f.sample_ms[0] = accSensor->getLastUpdateTimeMs();
