@@ -38,6 +38,7 @@ estimator, the page's `build`/`derive`), so they stay in step with the site. Bui
 | `circle_ref.js` | the gust-insensitive reference with a wind from GNSS alone (a circle fit per full turn, `CIRCLE='{"tas":true}'`: fitted to the measured airspeed) against the one with AirMass's wind; AirMass's wind against the GNSS-only one; each series' own error by the three-cornered hat |
 | `shear.js` | per thermal: the wind change rate (GNSS-only per-turn winds) and the once-per-circle part of the vario error against the GNSS-only reference, for AirMass and TE netto; whether the error follows the wind change or the wind |
 | `gusts.js` | horizontal gusts to look at in the web replay: straight flight, steady pitch and vertical air, an IAS jump that TE netto shows as lift or sink; flight, UTC, TE netto and AirMass deviation (`MIN_DIAS`, `MIN_TE`, `TOP`) |
+| `gust_events.js` | the gust detector (Gust Sound): events per hour of straight flight, head wind increase and drop, each with its IAS change and the pitch range around it (`LIST=1`; [2026-11-17 results](RESULTS-2026-11-17-gusts.md)) |
 | `learned.js` | the calibration AirMass learns per flight (`SETTINGS`) |
 | `phase.py` | the IMU acceleration vs airspeed change disagreement and AirMass vs AHRS pitch around the circle (native replays: `airmass_replay --csv` and `sens2rec.py --aux` outputs) |
 | `sim_agree.py` | simulator CSVs (`airmass_sim nl ... --csv`): AirMass, TE netto, GNSS/INS against the truth and a GNSS-style reference |

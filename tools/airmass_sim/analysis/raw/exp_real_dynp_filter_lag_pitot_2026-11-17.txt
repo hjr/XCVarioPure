@@ -1,0 +1,33 @@
+2026-08-24_12-01.nmea.gz
+2026-08-25_12-10.nmea.gz
+2026-08-30_10-03.nmea.gz
+2026-08-31_09-35.nmea.gz
+2026-09-01_09-30.nmea.gz
+2026-09-02_09-52.nmea.gz
+2026-09-02_12-05.nmea.gz
+2026-09-05_10-50.nmea.gz
+2026-09-05_16-16.nmea.gz
+2026-09-06_11-02.nmea.gz
+2026-09-07_11-17.nmea.gz
+
+=== reference with the speed term from pitot TAS (the page's GNSS netto)
+  delays: lag 0.2 (now) 2.4 s, lag 0.4 2.4 s, lag 0.5 2.4 s, lag 0.6 2.2 s, TE netto 2.2 s
+  10 s windows, rms (mean) m/s:
+    all       lag 0.2 (now) 0.400 (0.02)   lag 0.4 0.416 (0.02)   lag 0.5 0.425 (0.02)   lag 0.6 0.444 (0.02)   TE netto 0.276 (-0.02)   [12599 windows]
+    straight  lag 0.2 (now) 0.432 (0.00)   lag 0.4 0.446 (-0.00)   lag 0.5 0.454 (-0.00)   lag 0.6 0.471 (-0.01)   TE netto 0.256 (-0.03)   [4829 windows]
+    circling  lag 0.2 (now) 0.366 (0.05)   lag 0.4 0.384 (0.06)   lag 0.5 0.394 (0.06)   lag 0.6 0.418 (0.07)   TE netto 0.298 (0.01)   [4867 windows]
+  30 s windows, rms (mean) m/s:
+    all       lag 0.2 (now) 0.191 (0.02)   lag 0.4 0.195 (0.02)   lag 0.5 0.197 (0.02)   lag 0.6 0.203 (0.02)   TE netto 0.119 (-0.02)   [4045 windows]
+    straight  lag 0.2 (now) 0.223 (0.03)   lag 0.4 0.226 (0.02)   lag 0.5 0.228 (0.02)   lag 0.6 0.233 (0.02)   TE netto 0.116 (-0.00)   [1263 windows]
+    circling  lag 0.2 (now) 0.156 (0.00)   lag 0.4 0.160 (0.01)   lag 0.5 0.163 (0.01)   lag 0.6 0.169 (0.01)   TE netto 0.120 (-0.04)   [1487 windows]
+
+=== reference with the speed term from GNSS ground velocity minus a 2 min wind (gust-insensitive)
+  delays: lag 0.2 (now) 2.4 s, lag 0.4 2.8 s, lag 0.5 2.8 s, lag 0.6 3 s, TE netto 3 s
+  10 s windows, rms (mean) m/s:
+    all       lag 0.2 (now) 0.528 (0.02)   lag 0.4 0.518 (0.02)   lag 0.5 0.517 (0.02)   lag 0.6 0.513 (0.02)   TE netto 0.586 (-0.02)   [12580 windows]
+    straight  lag 0.2 (now) 0.419 (-0.01)   lag 0.4 0.409 (-0.01)   lag 0.5 0.406 (-0.01)   lag 0.6 0.402 (-0.01)   TE netto 0.553 (-0.03)   [4810 windows]
+    circling  lag 0.2 (now) 0.622 (0.05)   lag 0.4 0.611 (0.06)   lag 0.5 0.611 (0.06)   lag 0.6 0.607 (0.06)   TE netto 0.612 (-0.00)   [4867 windows]
+  30 s windows, rms (mean) m/s:
+    all       lag 0.2 (now) 0.239 (0.02)   lag 0.4 0.237 (0.02)   lag 0.5 0.237 (0.02)   lag 0.6 0.236 (0.02)   TE netto 0.251 (-0.02)   [4038 windows]
+    straight  lag 0.2 (now) 0.244 (-0.00)   lag 0.4 0.243 (-0.00)   lag 0.5 0.243 (-0.01)   lag 0.6 0.242 (-0.01)   TE netto 0.278 (-0.03)   [1256 windows]
+    circling  lag 0.2 (now) 0.199 (0.01)   lag 0.4 0.196 (0.01)   lag 0.5 0.196 (0.02)   lag 0.6 0.195 (0.02)   TE netto 0.194 (-0.03)   [1487 windows]

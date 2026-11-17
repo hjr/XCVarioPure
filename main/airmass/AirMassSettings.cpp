@@ -17,3 +17,4 @@ SetupNG<float> 			airmass_k_aoa("AM_KAOA", 1.0, USER_RST, SYNC_NONE, PERSISTENT,
 SetupNG<int> 			airmass_sig_pitch("AM_SIGP", 0, USER_RST, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, nullptr, true); // installation the pitch offset was learned with
 SetupNG<int> 			airmass_sig_speed("AM_SIGS", 0, USER_RST, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, nullptr, true); // installation the airspeed scale was learned with
 SetupNG<int> 			airmass_wind_nmea("AM_WNMEA", 0, USER_RST);
+SetupNG<int> 			airmass_gust_sound("AM_GUST", 1, USER_RST);

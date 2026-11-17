@@ -13,6 +13,7 @@
 #include "sensor/SensorMgr.h"
 #include "wind/Wind.h"
 #include "S2F.h"
+#include "driver/audio/ESPAudio.h"
 #include "Flap.h"
 #include "setup/SetupNG.h"
 #include "math/Trigonometry.h"
@@ -519,6 +520,9 @@ void AirMassSensor::postProcess()
 
     _pipe.endCycle();
     publish();
+    if (_pipe.gust().event() && airmass_gust_sound.get() && AUDIO) {
+        AUDIO->startSound(AUDIO_HORIZ_GUST, true);
+    }
     // the estimator output at 5Hz, after the cycle it belongs to
     if (rec && _output_timer.due(now, 200)) {
         queueLine([this] { return airmass::record::output(_pipe.ekf()); });

@@ -148,6 +148,7 @@ select { appearance: none; -webkit-appearance: none; padding-right: 26px !import
 .maplegend select { background-color: var(--bg); color: var(--ink); border: 1px solid var(--rule); border-radius: 4px; font-size: 0.72rem; margin: 0 0 3px 4px; padding: 1px 4px; padding-right: 22px !important; background-position: right 7px center; }
 .maplegend i { display: inline-block; width: 18px; height: 4px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
 .maplegend i.dash { height: 0; border-radius: 0; border-top: 2px dashed; background: none !important; }
+.maplegend i.dot { width: 10px; height: 10px; border-radius: 50%; margin: 0 10px 0 4px; box-sizing: border-box; border: 2px solid #fff; }
 .maplegend .sect { margin-top: 4px; font-weight: 600; }
 .leaflet-container { background: var(--tint); font: inherit; }
 .glider-icon svg { overflow: visible; }
@@ -252,6 +253,7 @@ select { appearance: none; -webkit-appearance: none; padding-right: 26px !import
           <legend>Map &amp; charts</legend>
           <label class="check" title="An arrow along the glider's axis: AirMass's instant wind along the heading. The ground speed shows it even in long glides, where the whole wind is not valid"><input type="checkbox" id="showhw"> Headwind / tailwind component</label>
           <label class="check" title="AirMass's instant wind as arrows along the track, pointing downwind, their length by the speed, fading as the wind gets less certain; spaced on the screen, so zooming in shows more of them"><input type="checkbox" id="windfield"> Wind along the track</label>
+          <label class="check" title="Where the device sounds its gust warning (Gust Sound): the head wind changed suddenly in straight flight"><input type="checkbox" id="gusts" checked> Gusts</label>
           <label class="check" title="The vario chart spans half the time a glider at 100 km/h needs to cross the map, around the current moment; it follows the map zoom"><input type="checkbox" id="chartsmap" checked> Chart width follows the map zoom</label>
         </fieldset>
       </div>
@@ -366,7 +368,7 @@ for (const name of Object.keys(AirMassConvert.GLIDERS)) $("glider").add(new Opti
 // Each newly loaded log selects its own type; manual overrides apply to the current log.
 $("glider").value = "log";
 const SETTINGS_KEY = "airmass-replay-settings";
-const FIELDS = ["harmonics", "clip", "glider", "mass", "bugs", "damping", "averager", "samesmooth", "sets", "noflaps", "mahony", "learn", "warm", "w0", "w1", "w2", "wlat", "wingpitch", "follow", "speed", "mainvario", "chartsmap", "showhw", "showgross", "windfield", "baud"];
+const FIELDS = ["harmonics", "clip", "glider", "mass", "bugs", "damping", "averager", "samesmooth", "sets", "noflaps", "mahony", "learn", "warm", "w0", "w1", "w2", "wlat", "wingpitch", "follow", "speed", "mainvario", "chartsmap", "showhw", "showgross", "windfield", "gusts", "baud"];
 try {
   const s = JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}");
   // The sound source became the main vario; old sound sources selected gross independently, the gross switch now
@@ -1043,6 +1045,7 @@ const layers = {
 };
 layers["Topographic"].addTo(map);
 L.control.layers(layers, null, { position: "topright" }).addTo(map);
+const GUST_COLORS = { 1: "#0f9d8f", [-1]: "#c2185b" };
 const legend = L.control({ position: "bottomleft" });
 legend.onAdd = () => {
   const d = L.DomUtil.create("div", "maplegend");
@@ -1052,7 +1055,8 @@ legend.onAdd = () => {
     `<div class="sect">Wind to the glider, ° km/h</div><i style="background:linear-gradient(90deg, ${C.am}, ${C.degraded})"></i>AirMass instant, fading as it gets less certain<br>` +
     `<i class="dash" style="border-color:${C.muted}"></i>AirMass average` +
     `<span id="hwkey"><br><i style="background:${C.hw}"></i>Headwind / tailwind component</span>` +
-    `<span id="wfkey"><br><i style="background:linear-gradient(90deg, #1b1f24, ${C.degraded})"></i>Wind along the track, downwind</span>`;
+    `<span id="wfkey"><br><i style="background:linear-gradient(90deg, #1b1f24, ${C.degraded})"></i>Wind along the track, downwind</span>` +
+    `<span id="gustkey"><br><i class="dot" style="background:${GUST_COLORS[1]}"></i>Gust, head wind increase<br><i class="dot" style="background:${GUST_COLORS[-1]}"></i>Gust, head wind drop</span>`;
   L.DomEvent.disableClickPropagation(d);
   L.DomEvent.disableScrollPropagation(d);
   return d;
@@ -1110,6 +1114,7 @@ function drawTrack(fit = true) {
   // click near the track: jump there
   D.mapPts = pts;
   drawWindField();
+  drawGusts();
   if (!fit) return;
   if (pts.length) map.fitBounds(L.latLngBounds(pts.map((p) => p.ll)), { padding: [20, 20] });
   if (gliderMarker) gliderMarker.remove();
@@ -1267,6 +1272,29 @@ updateVarioLabels();
 $("showgross").addEventListener("change", () => { updateVarioLabels(); invalidateCharts(); drawAll(); });
 $("mainvario").addEventListener("change", drawAll);
 $("windfield").addEventListener("change", drawWindField);
+$("gusts").addEventListener("change", drawGusts);
+
+// the device's gust warnings, at the track position of their cycle; a click goes there
+let gustLayer = null;
+function drawGusts() {
+  $("gustkey").hidden = !$("gusts").checked;
+  if (gustLayer) gustLayer.remove();
+  gustLayer = null;
+  const r = D && D.rep.cols;
+  if (!r || !r.gust_event || !$("gusts").checked) return;
+  gustLayer = L.layerGroup().addTo(map);
+  for (let i = 0; i < D.rep.n; i++) {
+    const e = r.gust_event[i];
+    if (!e) continue;
+    const t = D.rep.t_ms[i] / 1000, k = indexAt(t);
+    if (!Number.isFinite(D.lat[k])) continue;
+    L.circleMarker([D.lat[k], D.lon[k]], { radius: 6, color: "#fff", weight: 2, fillColor: GUST_COLORS[e], fillOpacity: 1, bubblingMouseEvents: false })
+      .bindTooltip(`${clockText(t)}${clockSuffix()} · head wind ${fmtV(r.gust[i])} m/s`)
+      .on("click", () => seek(t))
+      .addTo(gustLayer);
+  }
+}
+drawGusts();
 
 // AirMass's instant wind along the track: one arrow every WIND_FIELD_PX on the screen, in view, pointing downwind
 const WIND_FIELD_PX = 20, WIND_FIELD_INK = "#1b1f24"; // dark on the (always light) map tiles, a white halo (CSS)

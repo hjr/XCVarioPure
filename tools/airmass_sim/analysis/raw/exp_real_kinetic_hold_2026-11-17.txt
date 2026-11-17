@@ -1,0 +1,33 @@
+2026-08-24_12-01.nmea.gz
+2026-08-25_12-10.nmea.gz
+2026-08-30_10-03.nmea.gz
+2026-08-31_09-35.nmea.gz
+2026-09-01_09-30.nmea.gz
+2026-09-02_09-52.nmea.gz
+2026-09-02_12-05.nmea.gz
+2026-09-05_10-50.nmea.gz
+2026-09-05_16-16.nmea.gz
+2026-09-06_11-02.nmea.gz
+2026-09-07_11-17.nmea.gz
+
+=== reference with the speed term from pitot TAS (the page's GNSS netto)
+  delays: now 2.4 s, hold 0.5 2.2 s, hold 1 2.2 s, hold 2 2.2 s, TE netto 2.4 s
+  10 s windows, rms (mean) m/s:
+    all       now 0.426 (0.02)   hold 0.5 0.604 (-0.01)   hold 1 0.591 (-0.01)   hold 2 0.549 (0.00)   TE netto 0.267 (-0.02)   [12596 windows]
+    straight  now 0.459 (0.00)   hold 0.5 0.708 (-0.08)   hold 1 0.693 (-0.07)   hold 2 0.630 (-0.04)   TE netto 0.248 (-0.02)   [4816 windows]
+    circling  now 0.389 (0.05)   hold 0.5 0.475 (0.05)   hold 1 0.469 (0.06)   hold 2 0.453 (0.06)   TE netto 0.289 (-0.00)   [4865 windows]
+  30 s windows, rms (mean) m/s:
+    all       now 0.200 (0.02)   hold 0.5 0.326 (-0.01)   hold 1 0.313 (-0.01)   hold 2 0.278 (-0.00)   TE netto 0.116 (-0.02)   [4037 windows]
+    straight  now 0.231 (0.02)   hold 0.5 0.412 (-0.08)   hold 1 0.397 (-0.07)   hold 2 0.344 (-0.04)   TE netto 0.114 (-0.00)   [1264 windows]
+    circling  now 0.165 (0.01)   hold 0.5 0.229 (0.00)   hold 1 0.223 (0.00)   hold 2 0.208 (0.00)   TE netto 0.119 (-0.04)   [1486 windows]
+
+=== reference with the speed term from GNSS ground velocity minus a 2 min wind (gust-insensitive)
+  delays: now 2.6 s, hold 0.5 2.6 s, hold 1 2.6 s, hold 2 2.6 s, TE netto 3 s
+  10 s windows, rms (mean) m/s:
+    all       now 0.517 (0.02)   hold 0.5 0.567 (-0.01)   hold 1 0.565 (-0.01)   hold 2 0.544 (-0.00)   TE netto 0.585 (-0.02)   [12576 windows]
+    straight  now 0.402 (-0.01)   hold 0.5 0.509 (-0.10)   hold 1 0.511 (-0.09)   hold 2 0.467 (-0.06)   TE netto 0.549 (-0.03)   [4797 windows]
+    circling  now 0.611 (0.06)   hold 0.5 0.627 (0.05)   hold 1 0.622 (0.06)   hold 2 0.616 (0.06)   TE netto 0.611 (-0.01)   [4865 windows]
+  30 s windows, rms (mean) m/s:
+    all       now 0.238 (0.02)   hold 0.5 0.334 (-0.01)   hold 1 0.328 (-0.02)   hold 2 0.298 (-0.01)   TE netto 0.250 (-0.02)   [4029 windows]
+    straight  now 0.242 (-0.01)   hold 0.5 0.406 (-0.11)   hold 1 0.401 (-0.10)   hold 2 0.347 (-0.07)   TE netto 0.276 (-0.03)   [1256 windows]
+    circling  now 0.198 (0.02)   hold 0.5 0.233 (0.01)   hold 1 0.229 (0.01)   hold 2 0.220 (0.01)   TE netto 0.194 (-0.03)   [1486 windows]

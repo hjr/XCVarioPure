@@ -7,6 +7,7 @@
 #include "AirMassAttitude.h"
 #include "AirMassEKF.h"
 #include "AirMassFlaps.h"
+#include "AirMassGust.h"
 #include "AirMassInput.h"
 #include "AirMassSampling.h"
 #include "AirMassWindAverage.h"
@@ -176,6 +177,7 @@ public:
         _roll_mem = 0.f;
         _prev_time = time_ms;
         _avg_wind.reset(0.f, 0.f);
+        _gust.reset();
         _open = false;
         _have_frame = false;
         _have_attitude = false;
@@ -331,6 +333,9 @@ private:
             in.slip_sigma = 0.f;
         }
         _ekf.update(in);
+        const bool gust_active = (_ekf.status() & AirMassEKF::ST_VARIO_VALID) && _ekf.straightWeight() >= GustDetector::STRAIGHT &&
+                                 _ekf.inertialTrust() >= GustDetector::TRUST;
+        _gust.update(_ekf.gustAcc(), _ekf.gustAccSlow(), _ekf.kTas() * raw.tas, in.dt, gust_active);
         _open = true;
     }
 
@@ -380,6 +385,7 @@ public:
     const AirMassEKF::Input& input() const { return _in; } // the estimator input of the last cycle
     const Setup& setup() const { return _setup; }
     const WindAverage& avgWind() const { return _avg_wind; } // low pass, heading sectors while circling
+    const GustDetector& gust() const { return _gust; }
     // readings held out as implausible since the start, per channel (Frame::ACCEL .. AIRSPEED bit index)
     uint32_t heldOut(int channel) const { return _held_out[channel]; }
 
@@ -391,6 +397,7 @@ private:
     Options _opt;
     AirMassEKF::Input _in;
     WindAverage _avg_wind;
+    GustDetector _gust;
     bool _open = false; // a cycle stepped, not ended yet
 
     float _gyro_prev[3] = {};

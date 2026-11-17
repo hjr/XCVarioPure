@@ -206,6 +206,8 @@ struct Scenario {
     // pilot driven scenarios: the vario as the pilot reads it
     float max_climb_err_rms = 0.f;  // per thermal average climb reading error (0: not checked)
     float max_mean_wind_rms = 0.f;  // 30s averaged wind against the same average of the truth (0: not checked)
+    struct Gust { float from, to; int sign; };
+    std::vector<Gust> gusts; // head wind changes the gust detector has to find, any other event is a false one
 };
 
 struct Truth {
@@ -498,26 +500,38 @@ std::vector<Scenario> scenarios() {
         c.max_time_to_wind_valid = 150.f;
         s.push_back(c);
     }
-    {   // horizontal gust in straight flight: the TE vario shows a false climb
+    // horizontal gust in straight flight: the TE vario shows a false climb
+    auto gust = [](const char* name, float amp) {
         Scenario c;
-        c.name = "gust";
+        c.name = name;
         c.segments = {{90, 30, 28}, {90, -30, 28}, {200, 0, 32}};
-        c.air.horizontal = [](float t, float psi, float& wn, float& we) {
-            // 4 m/s head wind gust at t=250s in straight flight: 2s ramp up, 10s hold, 4s ramp down
+        c.air.horizontal = [amp](float t, float psi, float& wn, float& we) {
+            // head wind gust at t=250s in straight flight: 2s ramp up, 10s hold, 4s ramp down
             float g = 0.f;
             if (t > 250.f && t < 252.f) g = (t - 250.f) / 2.f;
             else if (t >= 252.f && t < 262.f) g = 1.f;
             else if (t >= 262.f && t < 266.f) g = 1.f - (t - 262.f) / 4.f;
-            wn = -4.f - 4.f * g * std::cos(psi); // head wind: air moves against the flight direction
-            we = 3.f - 4.f * g * std::sin(psi);
+            wn = -4.f - amp * g * std::cos(psi); // head wind: air moves against the flight direction
+            we = 3.f - amp * g * std::sin(psi);
         };
         c.eval_wind_after = 200.f;
         c.steady = {{200, 248}, {290, 380}};
         c.spikes = {{249, 275}};
+        return c;
+    };
+    {
+        Scenario c = gust("gust", 4.f);
         // the energy balance takes the inertial acceleration in gusts (kinetic blend): 1.3 m/s against TE netto's 3.9; it
         // was 0.5 with the energy balance down weighted in gusts, which read climbs 0.17 m/s low on real flights
         c.max_spike = 2.2f; // 2.1 with sigma_pitch 0.03 and kinetic_tau 5, the real-flight defaults (TE netto 4.0)
         c.max_wind_rms = 1.4f; // the wind estimate cannot follow a 4 m/s step within 2s, the evaluation includes it
+        s.push_back(c);
+    }
+    {   // above the gust detector's threshold: both edges sound (the 4 m/s gust reads 3.8 and 4.2 m/s, no event)
+        Scenario c = gust("gust6", 6.f);
+        c.gusts = {{250, 256, 1}, {262, 270, -1}};
+        c.max_spike = 3.f;     // 2.6 (TE netto 6.1)
+        c.max_wind_rms = 1.5f; // 1.2
         s.push_back(c);
     }
     {   // stick thermal: speed reduction pull-up in calm air
@@ -831,6 +845,11 @@ int main(int argc, char** argv) {
         std::vector<float> truth, shown[3];
     } pe;
 
+    std::vector<std::pair<float, int>> gust_events; // time, sign
+    auto stepPipe = [&](const airmass::Frame& f) {
+        pipe.step(f);
+        if (pipe.gust().event()) gust_events.push_back({tr.t, pipe.gust().event()});
+    };
     int step = 0;
     size_t seg = 0;
     float seg_t = 0.f;
@@ -1025,7 +1044,7 @@ int main(int argc, char** argv) {
         if (step % sensor_div != 0) {
             if (K.predict_hz == 20.f && ekf_started && ekf.isRunning() && step % (sensor_div / 2) == 0) {
                 held_frame.time_ms = (uint32_t)step * 10u;
-                pipe.step(held_frame);
+                stepPipe(held_frame);
                 pipe.endCycle();
                 if (rec) std::fputs(airmass::record::frame(held_frame).c_str(), rec);
             }
@@ -1102,7 +1121,7 @@ int main(int argc, char** argv) {
             }
             frame.flap_lever = lever;
         }
-        pipe.step(frame);
+        stepPipe(frame);
         held_frame = frame;
         if (rec) {
             std::fputs(airmass::record::frame(frame).c_str(), rec);
@@ -1235,13 +1254,13 @@ int main(int argc, char** argv) {
             }
         }
         if (csv) {
-            std::fprintf(csv, "%.1f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.3f,%.3f,%.3f,%.3f,%.4f,%d,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.1f,%.2f,%.1f,%.1f,%.1f,%d,%.3f,%.4f,%.5f,%.1f,%.1f,%.2f,%.2f,%.3f,%.3f,%.4f\n", tr.t, tr.wn, tr.we, ekf.windN(),
+            std::fprintf(csv, "%.1f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.3f,%.3f,%.3f,%.3f,%.4f,%d,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.1f,%.2f,%.1f,%.1f,%.1f,%d,%.3f,%.4f,%.5f,%.1f,%.1f,%.2f,%.2f,%.3f,%.3f,%.4f,%.2f,%d\n", tr.t, tr.wn, tr.we, ekf.windN(),
                          ekf.windE(), vario_true, am_vario, te_netto, std::remainder(ekf.heading() - tr.psi, 6.2831853f),
                          ekf.kTas(), ekf.pitchOffset(), ekf.accBias(), st, std::sqrt(ekf.sigma(0) * ekf.sigma(0) + ekf.sigma(1) * ekf.sigma(1)),
                          tr.roll / D2R, tr.vg[2], ekf.vDown(), ekf.airmassVario(), (in.roll - tr.roll) / D2R,
                          (in.pitch - tr.pitch) / D2R, tr.v, in.load_factor, tr.h, tr.xa, tr.ya, g_pilot.mode, te + te_polar,
                          ekf.sigma(AirMassEKF::PSI), ekf.yawRateBias(), tr.gn, tr.ge, ins.windN(), ins.windE(), ins_netto,
-                         tas_m, te_polar); // 34, 35: the measured TAS and the polar sink TE netto adds (positive), for references
+                         tas_m, te_polar, pipe.gust().value(), pipe.gust().event()); // 34, 35: the measured TAS and the polar sink TE netto adds (positive), for references
         }
     }
     if (rec) {
@@ -1295,6 +1314,16 @@ int main(int argc, char** argv) {
         }
     }
     check(std::fabs(k_err) < 0.03f, "k_tas did not converge");
+    auto matches = [](const std::pair<float, int>& e, const Scenario::Gust& g) { return e.first >= g.from && e.first <= g.to && e.second == g.sign; };
+    std::printf("  gusts:");
+    for (const auto& e : gust_events) {
+        std::printf(" %+d at %.1fs", e.second, e.first);
+        check(std::any_of(sc.gusts.begin(), sc.gusts.end(), [&](const auto& g) { return matches(e, g); }), "false gust");
+    }
+    std::printf("%s\n", gust_events.empty() ? " none" : "");
+    for (const auto& g : sc.gusts) {
+        check(std::any_of(gust_events.begin(), gust_events.end(), [&](const auto& e) { return matches(e, g); }), "gust not detected");
+    }
     if (flap_offsets) {
         flap_ofs.keep(ekf);
         // the offsets differ by the zero lift angle shift of the flaps; their common part is the mounting and AoA model

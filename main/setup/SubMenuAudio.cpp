@@ -7,6 +7,7 @@
  ***********************************************************/
 
 #include "SubMenuAudio.h"
+#include "airmass/AirMass.h"
 
 #include "driver/audio/ESPAudio.h"
 #include "setup/primitive/SetupMenu.h"
@@ -231,6 +232,7 @@ void audio_menu_create(SetupMenu *audio) {
         stawaen->setHelp("Alarm sound when speed goes below configured stall speed");
         stawaen->mkEnable();
         audio->addEntry(stawaen);
+        airmass::menuAudio(audio);
 
         SetupMenuSelect *amspvol = new SetupMenuSelect("Split Volume", RST_NONE, nullptr, &audio_split_vol);
         amspvol->setHelp("Independent audio volumes for Cruise and Vario mode");

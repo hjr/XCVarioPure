@@ -5,11 +5,10 @@
 // at its delay. Sorted by how much less AirMass deviates.
 //   node gusts.js <web dir> log1.nmea.gz ...   (MIN_DIAS km/h, default 8; MIN_TE m/s, default 1.5; TOP, default 15)
 const path = require("path");
-const { loadPage, cat, lagOf, freeMask } = require("./page.js");
+const { loadPage, cat, lagOf, freeMask, hms } = require("./page.js");
 const web = path.resolve(process.argv[2]);
 const { runReplay, loadFlight } = loadPage(web);
 const HZ = 10, MIN_DIAS = +(process.env.MIN_DIAS || 8), MIN_TE = +(process.env.MIN_TE || 1.5), TOP = +(process.env.TOP || 15);
-const hms = (s) => [s / 3600, (s / 60) % 60, s % 60].map((x) => String(Math.floor(x)).padStart(2, "0")).join(":");
 
 (async () => {
   const M = await require(path.join(web, "airmass.js"))();

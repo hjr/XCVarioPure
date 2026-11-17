@@ -196,6 +196,11 @@ class AirMassEKF {
     uint32_t gnssReceivedAgeMs() const { return _have_received_gnss ? _last_time_ms - _last_received_gnss_ms : UINT32_MAX; }
     uint32_t rejectedGnss() const { return _gnss_rejects; }
     float inertialTrust() const { return _inertial_trust; }
+    // m/s², the airspeed derivative minus the inertial acceleration along the air velocity (head wind increase
+    // positive, NAN while not flying), and its slow part (attitude error)
+    float gustAcc() const { return _gust; }
+    float gustAccSlow() const { return _acc_corr; }
+    float straightWeight() const { return _straight; }
     bool covarianceHealthy() const;
 
     // Air velocity in NED (no wind), as used by the filter
@@ -283,6 +288,7 @@ class AirMassEKF {
     float _anchor = 0.f;     // m/s, low pass of the plain energy balance minus the estimate (anchor_tau)
     float _vario_out = NAN;  // m/s, the vario output (airmassVario)
     float _straight = 1.f;   // the kinetic blend's weight at this cycle's bank (blendBankWeight)
+    float _gust = NAN;       // m/s², gustAcc()
     float _wd_energy = NAN, _wd_energy_plain = NAN, _wd_kinematic = NAN; // diagnostics, energyWd(), kinematicWd()
     float _ww_lp = 0.f, _blend_lp = 0.f; // low passes of the wind work and the blend correction (wind_work_hp, blend_hp)
     float _acc_mem = 0.f;// decaying peak of the longitudinal acceleration (AHRS disturbance memory)

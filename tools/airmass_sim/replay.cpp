@@ -5,7 +5,7 @@
 // own $PXCVA output, the replay compares itself with it: with the same firmware it reproduces the device.
 //
 // usage: airmass_replay <log> [--csv file] [--check m/s] [--warm k_tas,pitch_ofs,aoa_scale,latency] [--no-learn] [--mahony]
-//   --csv: per cycle t, air mass vario, wind N/E/D, status, heading, k_tas, pitch offset, latency, averaged wind
+//   --csv: per cycle t, air mass vario, wind N/E/D, status, heading, k_tas, pitch offset, latency, averaged wind, ..., gust detector
 //          N/E, roll, pitch, the device's vario where recorded, the estimator's polar sink (down positive), load
 //          factor, vertical speed (down), acceleration along the air velocity, vertical acceleration (down)
 //   --check: fail when the replayed vario differs from the device's by more than this, or a status differs
@@ -67,7 +67,7 @@ int main(int argc, char** argv) {
     }
     if (csv) {
         std::fprintf(csv, "t_s,vario,wind_n,wind_e,wind_d,status,heading_deg,k_tas,pitch_ofs_deg,latency_ms,avg_wind_n,avg_wind_e,roll_deg,pitch_deg,device_vario,"
-                          "polar_sink,load_factor,vd,acc_long,acc_down,wd_energy,wd_energy_plain,gnss_age_ms,gnss_received_age_ms,gnss_rejects,inertial_trust\n");
+                          "polar_sink,load_factor,vd,acc_long,acc_down,wd_energy,wd_energy_plain,gnss_age_ms,gnss_received_age_ms,gnss_rejects,inertial_trust,gust,gust_event\n");
     }
 
     airmass::replay::Replayer r;
@@ -76,7 +76,11 @@ int main(int argc, char** argv) {
     r.settings = settings;
     r.override_warm = override_warm;
     std::copy(std::begin(warm_override), std::end(warm_override), r.warm);
-    r.on_cycle = [csv](const airmass::Pipeline& pipe, float device_vario) {
+    long gusts_up = 0, gusts_down = 0;
+    r.on_cycle = [csv, &gusts_up, &gusts_down](const airmass::Pipeline& pipe, float device_vario) {
+        if (pipe.gust().event()) {
+            ++(pipe.gust().event() > 0 ? gusts_up : gusts_down);
+        }
         if (!csv) {
             return;
         }
@@ -90,8 +94,9 @@ int main(int argc, char** argv) {
             std::fprintf(csv, "%.2f", device_vario);
         }
         // the estimator's inputs and vertical speed, for diagnostics
-        std::fprintf(csv, ",%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%u,%u,%u,%.3f\n", i.polar_sink, i.load_factor, ekf.vDown(), i.acc_long, i.acc_down, ekf.energyWd(),
-                     ekf.energyWdPlain(), ekf.gnssAgeMs(), ekf.gnssReceivedAgeMs(), ekf.rejectedGnss(), ekf.inertialTrust());
+        std::fprintf(csv, ",%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%u,%u,%u,%.3f,%.2f,%d\n", i.polar_sink, i.load_factor, ekf.vDown(), i.acc_long, i.acc_down,
+                     ekf.energyWd(), ekf.energyWdPlain(), ekf.gnssAgeMs(), ekf.gnssReceivedAgeMs(), ekf.rejectedGnss(), ekf.inertialTrust(),
+                     pipe.gust().value(), pipe.gust().event());
     };
 
     char line[512];
@@ -116,6 +121,7 @@ int main(int argc, char** argv) {
     }
     std::printf("learned: k_tas %.3f, pitch ofs %.2f°, aoa scale %.3f, gnss latency %.0f ms, gyro z bias %.3f°/s\n", ekf.kTas(),
                 rad_to_deg(ekf.pitchOffset()), ekf.aoaScale(), ekf.gnssLatency() * 1000.f, rad_to_deg(ekf.yawRateBias()));
+    std::printf("gusts: %ld head wind increase, %ld head wind drop\n", gusts_up, gusts_down);
     bool ok = r.frames > 0;
     if (r.outputs) {
         std::printf("against the device's $PXCVA (%ld): vario rms %.3f m/s, max %.3f m/s, status differs %ld times\n", r.outputs, r.vario_diff.rms(),

@@ -207,6 +207,9 @@ function gnssNetWithWind(D, wn, we) {
 
 // The converter options of the real-flight scripts: the glider and the weight the log names (CA1, else the ASG 29/18
 // and the logged ballast factor, as the page does), or GLIDER=name, MASS=kg
+// seconds of the day as hh:mm:ss
+const hms = (s) => [s / 3600, (s / 60) % 60, s % 60].map((x) => String(Math.floor(x)).padStart(2, "0")).join(":");
+
 const logOptions = () => ({ glider: process.env.GLIDER || "log", mass: +(process.env.MASS || 0) });
 
-module.exports = { loadPage, pageScript, grab, cat, lagOf, dampSeries, freeMask, lsq, gnssCircleWind, gnssNetWithWind, logOptions };
+module.exports = { hms, loadPage, pageScript, grab, cat, lagOf, dampSeries, freeMask, lsq, gnssCircleWind, gnssNetWithWind, logOptions };

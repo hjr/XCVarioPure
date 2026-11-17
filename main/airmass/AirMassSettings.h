@@ -21,3 +21,4 @@ extern SetupNG<float> 		airmass_flap_ofs_6;
 extern SetupNG<int> 		airmass_sig_pitch;
 extern SetupNG<int> 		airmass_sig_speed;
 extern SetupNG<int> 		airmass_wind_nmea;
+extern SetupNG<int> 		airmass_gust_sound;

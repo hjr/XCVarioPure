@@ -64,6 +64,7 @@ const { convert, runReplay } = loadPage(__dirname);
     const rep = await runReplay(M, noGnss.rec, { mahony });
     assert.equal(rep.n, 141);
     assert(rep.cols.vario.every(Number.isFinite));
+    assert(rep.cols.gust.every(Number.isFinite) && rep.cols.gust_event.every(e => e === 0), "no gust without a valid start in straight flight");
     assert(rep.cols.status.every(s => !(s & (STATUS.WIND_VALID | STATUS.GNSS_FRESH | STATUS.ALIGNED))), "missing GNSS cannot invent wind, fixes or heading alignment");
     assert(rep.cols.status.every(s => !(s & STATUS.VARIO_VALID)), "a start in flight is not valid within 14 seconds");
     const longer = [];

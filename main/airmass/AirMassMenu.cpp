@@ -41,3 +41,15 @@ void airmass::menuWind(SetupMenu* wind)
     navi->mkEnable();
     wind->addEntry(navi);
 }
+
+void airmass::menuAudio(SetupMenu* audio)
+{
+    // only the estimator sounds it
+    if (!airmass::supported()) {
+        return;
+    }
+    SetupMenuSelect* gust = new SetupMenuSelect("Gust Sound", RST_NONE, nullptr, &airmass_gust_sound);
+    gust->setHelp("Wind noise when the head wind changes suddenly in straight flight");
+    gust->mkEnable();
+    audio->addEntry(gust);
+}

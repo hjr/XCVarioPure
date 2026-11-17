@@ -403,6 +403,7 @@ void AirMassEKF::update(const Input& in) {
     }
 
     _straight = blendBankWeight(in.roll);
+    _gust = NAN;
     if (flying_speed && continuous) {
         float va[3], dalpha[3];
         airVelocity(in.tas, _x[KTAS], tilt, _x[PSI], alphaOf(in.aoa), va, dalpha);
@@ -497,6 +498,7 @@ void AirMassEKF::updateKinetic(const Input& in, const float va[3]) {
     const float d = std::clamp(a_air - _acc_long_f, -KINETIC_DISAGREE_MAX, KINETIC_DISAGREE_MAX);
     _acc_corr += (d - _acc_corr) * in.dt / (_cfg.kinetic_tau + in.dt);
     const float gust = d - _acc_corr;
+    _gust = k * _tas_dot_f - _acc_long_f;
     const float w = std::clamp(std::fabs(gust) / _cfg.gust_acc, 0.f, 1.f) * _straight;
     float corr = -w * gust;
     if (_cfg.circling_blend_tau > 0.f) {

@@ -39,11 +39,12 @@ bool varioFallback();
 // the vario label of the TE compensation method: "air" for Air Mass, else "te"
 const char* varioLabel();
 
-// setup menu: Air Mass as TE compensation method (with the help of its eAdjustment), the wind to the navigation computer, and
-// for development builds (DEBUG_AND_TEST) the status page of the vario menu and the recording in the help of the logging
+// setup menu: the wind to the navigation computer, the gust sound in the audio menu, and for development builds
+// (DEBUG_AND_TEST) the status page of the vario menu and the recording in the help of the logging
 void menuLogging(SetupMenuSelect* logging);
 void menuVario(SetupMenu* vario);
 void menuWind(SetupMenu* wind);
+void menuAudio(SetupMenu* audio);
 MenuEntry* statusPage();
 void statusUpdate();
 // learned flap position offsets in NVS, -1 without flaps

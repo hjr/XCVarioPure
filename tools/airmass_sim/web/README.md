@@ -1,7 +1,7 @@
 # AirMass Replay in the browser
 
 `index.html` replays a flight log through the device's AirMass code, compiled to WebAssembly, and plays it back:
-the glider on a map with the winds as arrows (track coloured by the climb), the vario as the cockpit shows it in Air Mass
+the glider on a map with the winds as arrows and the gusts the device sounds (track coloured by the climb), the vario as the cockpit shows it in Air Mass
 mode against TE netto and a GNSS reference, the attitude, and the vario tone. Nothing is uploaded; the replay runs in
 the page.
 

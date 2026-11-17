@@ -1,0 +1,33 @@
+2026-08-24_12-01.nmea.gz
+2026-08-25_12-10.nmea.gz
+2026-08-30_10-03.nmea.gz
+2026-08-31_09-35.nmea.gz
+2026-09-01_09-30.nmea.gz
+2026-09-02_09-52.nmea.gz
+2026-09-02_12-05.nmea.gz
+2026-09-05_10-50.nmea.gz
+2026-09-05_16-16.nmea.gz
+2026-09-06_11-02.nmea.gz
+2026-09-07_11-17.nmea.gz
+
+=== reference with the speed term from pitot TAS (the page's GNSS netto)
+  delays: now 2.4 s, kts 15 2.4 s, kts 30 2.2 s, kts 60 2.2 s, TE netto 2.4 s
+  10 s windows, rms (mean) m/s:
+    all       now 0.426 (0.02)   kts 15 0.524 (0.02)   kts 30 0.576 (0.02)   kts 60 0.608 (0.02)   TE netto 0.267 (-0.02)   [12596 windows]
+    straight  now 0.459 (0.00)   kts 15 0.596 (-0.01)   kts 30 0.664 (-0.00)   kts 60 0.706 (0.01)   TE netto 0.248 (-0.02)   [4816 windows]
+    circling  now 0.389 (0.05)   kts 15 0.432 (0.05)   kts 30 0.462 (0.05)   kts 60 0.480 (0.04)   TE netto 0.289 (-0.00)   [4865 windows]
+  30 s windows, rms (mean) m/s:
+    all       now 0.200 (0.02)   kts 15 0.263 (0.02)   kts 30 0.309 (0.02)   kts 60 0.345 (0.02)   TE netto 0.116 (-0.02)   [4037 windows]
+    straight  now 0.231 (0.02)   kts 15 0.310 (0.02)   kts 30 0.373 (0.02)   kts 60 0.425 (0.03)   TE netto 0.114 (-0.00)   [1264 windows]
+    circling  now 0.165 (0.01)   kts 15 0.202 (0.00)   kts 30 0.228 (0.00)   kts 60 0.248 (-0.01)   TE netto 0.119 (-0.04)   [1486 windows]
+
+=== reference with the speed term from GNSS ground velocity minus a 2 min wind (gust-insensitive)
+  delays: now 2.6 s, kts 15 2.6 s, kts 30 2.6 s, kts 60 2.6 s, TE netto 3 s
+  10 s windows, rms (mean) m/s:
+    all       now 0.517 (0.02)   kts 15 0.535 (0.02)   kts 30 0.557 (0.02)   kts 60 0.575 (0.02)   TE netto 0.585 (-0.02)   [12576 windows]
+    straight  now 0.402 (-0.01)   kts 15 0.426 (-0.02)   kts 30 0.467 (-0.02)   kts 60 0.501 (-0.01)   TE netto 0.549 (-0.03)   [4797 windows]
+    circling  now 0.611 (0.06)   kts 15 0.623 (0.06)   kts 30 0.632 (0.05)   kts 60 0.641 (0.04)   TE netto 0.611 (-0.01)   [4865 windows]
+  30 s windows, rms (mean) m/s:
+    all       now 0.238 (0.02)   kts 15 0.280 (0.01)   kts 30 0.315 (0.01)   kts 60 0.344 (0.02)   TE netto 0.250 (-0.02)   [4029 windows]
+    straight  now 0.242 (-0.01)   kts 15 0.300 (-0.02)   kts 30 0.351 (-0.01)   kts 60 0.395 (-0.00)   TE netto 0.276 (-0.03)   [1256 windows]
+    circling  now 0.198 (0.02)   kts 15 0.219 (0.01)   kts 30 0.237 (0.01)   kts 60 0.253 (0.00)   TE netto 0.194 (-0.03)   [1486 windows]
