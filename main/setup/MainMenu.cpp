@@ -471,6 +471,9 @@ static void vario_menu_create(SetupMenu *vae) {
     SetupMenu *elco = new SetupMenu("TE Compensation", vario_menu_create_tek);
     elco->setHelp("TE compensation method");
     vae->addEntry(elco);
+#ifdef DEBUG_AND_TEST
+    airmass::menuVario(vae);
+#endif
 }
 
 static void options_menu_create_units(SetupMenu *top) {
