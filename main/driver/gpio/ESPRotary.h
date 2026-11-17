@@ -21,6 +21,9 @@ public:
 	RotaryReceiver() {};
 	virtual ~RotaryReceiver() {};
 	virtual void rot(int count) = 0;
+	// Knob turned while the button is held down. Default: treat like a plain rotation.
+	// The press is consumed by this gesture: no press()/longPress() follows, only a release().
+	virtual void pressedRot(int count) { rot(count); }
 	virtual void press() = 0;
 	virtual void longPress() = 0;
 	virtual void release() = 0;
@@ -51,7 +54,7 @@ public:
 	void setLongPressTimeout(int lptime_ms) { lp_duration = lptime_ms/10; }
 
 	// observer feed
-	void sendRot(int diff) const;
+	void sendRot(int diff, bool pressed = false) const;
 	void sendPress() const;
 	void sendRelease() const;
 	void sendLongPress() const;
