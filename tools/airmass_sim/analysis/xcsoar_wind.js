@@ -1,5 +1,6 @@
-// AirMass's wind against XCSoar's zigzag wind (WindEKF with its WindEKFGlue and the circling detection it depends on,
-// ported from XCSoar master, GPL-2.0-or-later, src/Computer/Wind and src/Computer/CirclingComputer.cpp), both against
+// AirMass's wind against XCSoar's zigzag wind (WindEKF with its WindEKFGlue and the circling detection it depends on)
+// and its circling wind (CirclingWind and the WindStore averaging it), ported from XCSoar master, GPL-2.0-or-later,
+// src/Computer/Wind and src/Computer/CirclingComputer.cpp, all against
 // the wind from GNSS alone (page.js gnssCircleWind: a circle fit per full turn, neither heading nor airspeed).
 // While circling: each estimate at the end of each turn against that turn's fit. In straight flight: against the
 // fits interpolated in time between the thermal before and the one after, by the time since leaving the thermal.
@@ -73,7 +74,124 @@ class XCSoarWind {
   }
 }
 
-const SERIES = ["AirMass nav", "AirMass instant", "AirMass 100 s", "XCSoar", "held thermal wind"];
+// XCSoar's circling wind (CirclingWind, with TAS, no gyroscope: XCVario sends none) and the wind store that averages
+// its measurements by quality, age and altitude (WindStore, WindMeasurementList), as displayed with auto wind "Circling"
+const delta = (a) => ((((a % 360) + 540) % 360) - 180);
+class CirclingWind {
+  constructor() { this.active = false; this.samples = []; this.suspend = 0; this.lastTime = NaN; this.lastTrack = NaN; }
+  // returns { quality, n, e } (n, e: air mass velocity) or null
+  sample(circling, utc, track, speed, tas) {
+    if (!circling) { this.active = false; return null; }
+    if (!Number.isFinite(track) || !Number.isFinite(speed) || utc === this.lastTime) return null;
+    if (!this.active) { this.active = true; this.samples = []; this.suspend = 0; this.lastTrack = track; }
+    this.lastTime = utc;
+    this.samples.unshift({ t: utc, track, gs: speed, tas: tas > 0 ? tas : 0, rate: delta(track - this.lastTrack) });
+    this.lastTrack = track;
+    if (this.samples.length > 80) this.samples.pop();
+    if (this.suspend > 0) { this.suspend--; return null; }
+    const S = this.samples;
+    let full = false, circle = 0, rateSum = 0, idx;
+    for (idx = 1; idx < S.length && !full; idx++) {
+      circle += delta(S[idx - 1].track - S[idx].track);
+      rateSum += S[idx - 1].rate;
+      full = Math.abs(circle) > 360;
+    }
+    const n = idx;
+    if (!full || n <= 8) return null;
+    const avg = rateSum / (n - 1);
+    let maxDev = 0;
+    for (let i = 1; i < n; i++) maxDev = Math.max(maxDev, Math.abs(S[i].rate - avg));
+    const roundness = avg === 0 ? 10000 : Math.abs(maxDev / avg);
+    if (!(roundness < 1)) return null;
+    const r = this.calc(roundness, n, circle);
+    this.suspend = r ? Math.floor(n / 4) : 0;
+    return r;
+  }
+  calc(roundness, n, circle) {
+    const S = this.samples, measure = S[0].t - S[n - 1].t, step = measure / (n - 1);
+    if (!(step > 0) || step > 4) return null;
+    const maxDev = Math.max(step * 0.5, 0.5);
+    for (let i = 1; i < n; i++) if (Math.abs(S[i - 1].t - S[i].t - step) > maxDev) return null;
+    const lastChange = delta(S[n - 2].track - S[n - 1].track);
+    if (Math.abs(lastChange) < 0.1) return null;
+    const excess = delta(circle - 360), frac = 1 - (lastChange - excess) / lastChange;
+    let last = 0, offset = 0;
+    for (let i = 0; i < n; i++) { last = S[i].gs - S[i].tas; offset += last; }
+    offset = (offset - last * frac) / (n - frac);
+    let amp = 0;
+    for (let i = 0; i < n; i++) { last = Math.abs(S[i].gs - S[i].tas - offset); amp += last; }
+    amp = (amp - last * frac) / (n - frac) * Math.PI / 2;
+    if (amp >= 30) return null;
+    const fit = (phase) => {
+      let ss = 0;
+      for (let i = 0; i < n; i++) {
+        let d = S[i].gs - S[i].tas - offset;
+        if (amp > 1) d /= amp;
+        ss += (-Math.cos((S[i].track - phase) * D2R) - d) ** 2;
+      }
+      return ss;
+    };
+    let mid = 180, steps = 6, width = Math.abs(circle) / steps, best = 10000;
+    steps += 1;
+    do {
+      let probe = mid - width * steps / 2;
+      for (let s = 0; s <= steps; s++, probe += width) {
+        const m = fit(probe);
+        if (m < best) { best = m; mid = probe; }
+      }
+      steps = 3; width /= 2;
+    } while (width > 2);
+    if (best > 9999) return null;
+    const from = (mid - circle * 0.25 / measure) * D2R;
+    const q = CirclingWind.quality(roundness, best, amp);
+    return q > 0 ? { quality: q, n: -amp * Math.cos(from), e: -amp * Math.sin(from) } : null;
+  }
+  static quality(roundness, fitq, amp) {
+    const skew = amp * 0.02;
+    let q = 5;
+    if (roundness > 0.2 + skew) q = 4;
+    if (roundness > 0.3 + skew) q = 3;
+    if (roundness > 0.4 + skew) q = 2;
+    if (roundness > 0.5 + skew) q = 1;
+    if (roundness > 0.7 + skew) return 0;
+    if (fitq > 10) q -= 1;
+    if (fitq < 5) q += 1;
+    if (fitq < 1) q += 1;
+    return Math.max(Math.min(q, 5), 0);
+  }
+}
+
+class WindStore {
+  constructor() { this.list = []; this.updated = false; this.lastAlt = NaN; this.out = null; }
+  add(utc, alt, w) {
+    const m = { t: utc, alt, n: w.n, e: w.e, quality: w.quality };
+    if (this.list.length < 200) this.list.push(m);
+    else {
+      let worst = this.list.length - 1, score = 0;
+      for (let i = this.list.length - 1; i >= 0; i--) {
+        const sc = 600 * (6 - this.list[i].quality) + (utc - this.list[i].t);
+        if (sc > score) { score = sc; worst = i; }
+      }
+      this.list[worst] = m;
+    }
+    this.updated = true;
+  }
+  altitude(utc, alt) {
+    if (!this.updated && !(Math.abs(alt - this.lastAlt) > 100)) return;
+    this.updated = false; this.lastAlt = alt;
+    let x = 0, y = 0, tot = 0;
+    for (const m of this.list) {
+      if (utc < m.t) continue;
+      const td = (utc - m.t) / 3600, ad = Math.abs(alt - m.alt) / 1000;
+      if (td >= 1 || ad >= 1) continue;
+      const q = Math.floor(Math.min(5, m.quality) * 100 / 5) * Math.round((2 / (ad * ad + 1) - 1) * 100) * Math.round(0.0025 * (1 - td) / (td * td + 0.0025) * 200);
+      x += m.n * q; y += m.e * q; tot += q;
+    }
+    if (tot > 0 && Math.hypot(x / tot, y / tot) < 30) this.out = { n: x / tot, e: y / tot };
+  }
+}
+
+const SERIES = ["AirMass nav", "AirMass instant", "AirMass 100 s", "XCSoar", "XCSoar circling", "XCSoar circle", "XCSoar both", "held thermal wind"];
 const SI = Object.fromEntries(SERIES.map((s, i) => [s, i]));
 // a sample's error [along, across] of a series; stored per series index, to the cm/s
 const E = (x, s) => x.e[SI[s]];
@@ -85,13 +203,25 @@ function evaluate(D) {
   const c = D.tr, r = D.rep.cols, n = D.n;
   const est = Object.fromEntries(SERIES.map((s) => [s, { n: new Float32Array(n).fill(NaN), e: new Float32Array(n).fill(NaN) }]));
   const xcs = new XCSoarWind(10);
+  const cw = new CirclingWind(), store = new WindStore();
+  let lastCircle = null;
   let j = 0, lp = null;
   for (let k = 0; k < n; k++) {
     for (; j < D.fixes.length && D.fixes[j].k <= k; j++) {
       const f = D.fixes[j], i = D.ai[f.k], roll = i >= 0 ? r.roll_deg[i] : 0;
       xcs.fix(f.u, D.t[f.k], f.track, f.speed, c.tas[f.k], 1 / Math.max(Math.cos(roll * D2R), 0.3));
+      if (c.tas[f.k] > xcs.vTakeoff || xcs.circling) {
+        const w = cw.sample(xcs.circling, f.u, f.track, f.speed, c.tas[f.k]);
+        if (w) { store.add(f.u, f.alt, w); lastCircle = w; }
+        store.altitude(f.u, f.alt);
+      }
     }
     if (xcs.out) { est.XCSoar.n[k] = xcs.out.n; est.XCSoar.e[k] = xcs.out.e; }
+    if (store.out) { est["XCSoar circling"].n[k] = store.out.n; est["XCSoar circling"].e[k] = store.out.e; }
+    // auto wind "Circling & ZigZag": the store's wind until the EKF's first wind, then the EKF's only
+    const both = xcs.out || store.out;
+    if (both) { est["XCSoar both"].n[k] = both.n; est["XCSoar both"].e[k] = both.e; }
+    if (lastCircle) { est["XCSoar circle"].n[k] = lastCircle.n; est["XCSoar circle"].e[k] = lastCircle.e; }
     const i = D.ai[k];
     if (i >= 0 && r.status[i] & (STATUS.WIND_VALID | STATUS.WIND_DEGRADED)) {
       est["AirMass nav"].n[k] = r.avg_wind_n[i]; est["AirMass nav"].e[k] = r.avg_wind_e[i];
@@ -114,7 +244,9 @@ function evaluate(D) {
     idx = m && turns[m - 1].thermal === t.thermal ? idx + 1 : 0;
     const k = indexAt(t.t1);
     if (!free[k]) return;
-    out.circling.push({ idx, e: SERIES.map((s) => [r2(est[s].n[k] - t.n), r2(est[s].e[k] - t.e)]) });
+    const nx = turns[m + 1] && turns[m + 1].thermal === t.thermal ? turns[m + 1] : null;
+    out.circling.push({ idx, e: SERIES.map((s) => [r2(est[s].n[k] - t.n), r2(est[s].e[k] - t.e)]),
+      next: nx && SERIES.map((s) => [r2(est[s].n[k] - nx.n), r2(est[s].e[k] - nx.e)]) });
   });
 
   // straight flight between two thermals, against the interpolated per-turn winds
@@ -137,7 +269,7 @@ function evaluate(D) {
       const dn = est[s].n[k] - ref.wn[k], de = est[s].e[k] - ref.we[k];
       return [r2(dn * ct + de * st), r2(-dn * st + de * ct)];
     });
-    out.straight.push({ bin, until, valid: !!(r.status[i] & STATUS.WIND_VALID), e });
+    out.straight.push({ bin, until, valid: !!(r.status[i] & STATUS.WIND_VALID), tas: r2(c.tas[k]), ias: r2(c.ias[k]), refAlong: r2(ref.wn[k] * ct + ref.we[k] * st), refAcross: r2(-ref.wn[k] * st + ref.we[k] * ct), e });
   }
 
   // how much each series moves within 10 s in straight flight (not air: the reference cannot resolve it)
@@ -161,6 +293,13 @@ function evaluate(D) {
     else if (b.t0 - a.t1 <= MAX_GAP) jumps.push([(b.t0 - a.t1) / 60, d]);
   }
   out.refJumps = jumps; out.refWithin = within;
+  // minutes from takeoff to each series' first wind
+  const k0 = Array.from({ length: n }, (_, k) => k).findIndex((k) => c.ias[k] > 60 / 3.6);
+  out.firstWind = Object.fromEntries(SERIES.map((s) => {
+    let k = k0;
+    while (k >= 0 && k < n && !Number.isFinite(est[s].n[k])) k++;
+    return [s, k0 >= 0 && k < n ? (D.t[k] - D.t[k0]) / 60 : NaN];
+  }));
   return out;
 }
 
@@ -212,6 +351,14 @@ function report(flights) {
       return `${s} ${f2(rms(v)).trim()} (${(100 * v.length / Math.max(1, rows.length)).toFixed(0)} %)`;
     }).join(",  "));
   }
+  lines.push("\n=== circling, at the end of each full turn against the NEXT turn's fit in the same thermal (independent GNSS data)");
+  for (const [lab, f] of [["all turns", () => true], ["1st turn", (x) => x.idx === 0], ["2nd turn on", (x) => x.idx >= 1]]) {
+    const rows = ci.filter((x) => x.next && f(x));
+    lines.push(`  ${lab.padEnd(12)} [${String(rows.length).padStart(4)}]  ` + SERIES.map((s) => {
+      const v = rows.filter((x) => OK(x.next[SI[s]])).map((x) => Math.hypot(...x.next[SI[s]]));
+      return `${s} ${f2(rms(v)).trim()} (${(100 * v.length / Math.max(1, rows.length)).toFixed(0)} %)`;
+    }).join(",  "));
+  }
   lines.push("\n=== how much the wind moves within 10 s in straight flight (rms m/s, mean over the flights)");
   lines.push("  " + Object.keys(flights[0].res.moves).map((s) => `${s} ${f2(mean(flights.map((f) => f.res.moves[s]).filter(Number.isFinite))).trim()}`).join(",  "));
   const jumps = flights.flatMap((f) => f.res.refJumps), within = flights.flatMap((f) => f.res.refWithin);
@@ -222,11 +369,11 @@ function report(flights) {
     lines.push(`  last turn of one thermal to the first of the next, ${lo}–${hi} min apart: rms ${f2(rms(v)).trim()} m/s [${v.length}]`);
   }
   lines.push("\n=== per flight, straight 0.5–10 min after the thermal, rms error on the common samples; XCSoar's learned airspeed scale, AirMass's k_tas");
-  lines.push("  flight                        fix s   samples   AirMass nav  100 s    XCSoar    held      XCSoar scale  AirMass k_tas");
+  lines.push("  flight                        fix s   samples   AirMass nav  100 s    XCSoar    XCS circ  held      XCSoar scale  AirMass k_tas");
   for (const f of flights) {
     const rows = f.res.straight.filter((x) => x.bin <= 2 && SERIES.every((s) => OK(E(x, s))));
     const v = (s) => f2(rows.length ? rms(rows.map((x) => Math.hypot(...E(x, s)))) : NaN);
-    lines.push(`  ${f.file.padEnd(28)}  ${fx(f.res.fixInterval, 2).trim().padStart(4)}   ${String(rows.length).padStart(6)}      ${v("AirMass nav")}     ${v("AirMass 100 s")}    ${v("XCSoar")}    ${v("held thermal wind")}        ${fx(f.res.xcsScale, 3)}        ${fx(f.res.amKtas, 3)}`);
+    lines.push(`  ${f.file.padEnd(28)}  ${fx(f.res.fixInterval, 2).trim().padStart(4)}   ${String(rows.length).padStart(6)}      ${v("AirMass nav")}     ${v("AirMass 100 s")}    ${v("XCSoar")}    ${v("XCSoar circling")}    ${v("held thermal wind")}        ${fx(f.res.xcsScale, 3)}        ${fx(f.res.amKtas, 3)}`);
   }
   return lines.join("\n");
 }

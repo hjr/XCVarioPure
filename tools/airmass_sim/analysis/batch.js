@@ -14,7 +14,7 @@ const clock = (u) => Number.isFinite(u) ? [Math.floor(u / 3600), Math.floor(u / 
 async function evaluate(M, file) {
   const bytes = fs.readFileSync(file);
   const conv = loadFlight(file, { glider: 'log' }); // the logged glider and weight, not GLIDER/MASS
-  const replay = await runReplay(M, conv.rec, {});
+  const replay = await runReplay(M, conv.rec, { settings: process.env.SETTINGS || "" });
   if (!conv.track.n || !replay.n) return { file: path.basename(file), bytes: bytes.length,
     sha256: crypto.createHash('sha256').update(bytes).digest('hex'), replayable: false,
     reason: conv.track.n ? 'No usable airborne initialization' : 'No sensor samples', summary: replay.summary };
