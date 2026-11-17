@@ -86,9 +86,9 @@ changes (an airspeed offset, or a scale depending on the lift coefficient), as X
 What it costs: removing the mean gives straight 0.5–10 min 1.946 → 1.937 (instant 2.80 → 2.76). It is a small part of
 the rms, but it does not average out over a glide.
 
-A learned straight-flight airspeed offset was tried on 2026-11-18 (branch `airmass-tas-offset`, not merged): pinned at
-0.5 m/s it removes the bias, but the filter learns only +0.13 on real flights. Parked until more real flights, issue
-#4 on XCVarioPurePrivate.
+A learned straight-flight airspeed offset was tried on 2026-11-18 and dropped: pinned at 0.5 m/s it removes the bias,
+but the filter learns only +0.13 on real flights. Parked until more real flights; the results are in issue #4 on
+XCVarioPurePrivate.
 
 ## Caveats
 
