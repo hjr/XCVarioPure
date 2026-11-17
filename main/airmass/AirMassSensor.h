@@ -35,7 +35,7 @@ private:
     airmass::Setup currentSetup() const;
     void applyConfig();
     bool readBaroAltitude(float& alt) const;
-    void start();
+    void start(bool keep_learned = false);
     void stop();
     void persistLearned();
     void publish();
@@ -49,6 +49,7 @@ private:
     airmass::SampleClock _compass_sample;
     bool _active = false;
     bool _recording = false;
+    int _sig_pitch = 0, _sig_speed = 0; // the installation signatures the running estimator started with
     bool _average_published = false; // the synoptic wind on the blackboard is the average of the estimator
     uint32_t _last_ms = 0; // the clock of the last cycle
     std::atomic<bool> _jump{false}; // a replay jump requested

@@ -162,12 +162,7 @@ inline Start snapshot(Pipeline& pipe, const Frame& next) {
         st.down[i] = pipe.attitude().down()[i];
         st.gyro[i] = next.gyro[i];
     }
-    const AirMassEKF& ekf = pipe.ekf();
-    st.warm.k_tas = ekf.kTas();
-    st.warm.pitch_ofs = ekf.pitchOffset();
-    st.warm.latency = ekf.gnssLatency();
-    st.warm.k_aoa = ekf.aoaScale();
-    for (int i = 0; i < FlapOffsets::N; ++i) st.warm.flap_ofs[i] = pipe.flaps().offset(i);
+    st.warm = pipe.learned();
     return st;
 }
 

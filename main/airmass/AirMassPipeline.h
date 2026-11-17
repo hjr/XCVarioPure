@@ -209,14 +209,8 @@ public:
         if (clock_back || elapsed > 10000 || source_gap) {
             // No usable motion history remains after a long outage. Restart dynamics, retaining calibration
             // and the last attitude; do not integrate seconds of unobserved acceleration as if measured.
-            Warm w;
-            w.k_tas = _ekf.kTas();
-            w.pitch_ofs = _ekf.pitchOffset();
-            w.latency = _ekf.gnssLatency();
-            w.k_aoa = _ekf.aoaScale();
-            for (int i = 0; i < FlapOffsets::N; ++i) w.flap_ofs[i] = _flaps.offset(i);
             const float down[3] = {_supported_down[0], _supported_down[1], _supported_down[2]};
-            start(f.time_ms, f.baro_alt, down, f.gyro, w);
+            start(f.time_ms, f.baro_alt, down, f.gyro, learned());
         }
         const bool gap = clock_back || elapsed > 300 || source_gap;
         if (gap && elapsed <= 10000) {
@@ -377,6 +371,17 @@ public:
     void gnss(const AirMassEKF::GnssVelocity& g, bool has_prior, float wn0, float we0) { _ekf.fuseGnss(g, has_prior, wn0, we0); }
     // absolute true heading (compass)
     void heading(float psi, float sigma) { _ekf.fuseHeading(psi, sigma); }
+
+    // the calibration learned so far, to restart with
+    Warm learned() const {
+        Warm w;
+        w.k_tas = _ekf.kTas();
+        w.pitch_ofs = _ekf.pitchOffset();
+        w.latency = _ekf.gnssLatency();
+        w.k_aoa = _ekf.aoaScale();
+        for (int i = 0; i < FlapOffsets::N; ++i) w.flap_ofs[i] = _flaps.offset(i);
+        return w;
+    }
 
     AirMassEKF& ekf() { return _ekf; }
     const AirMassEKF& ekf() const { return _ekf; }

@@ -301,26 +301,30 @@ bool AirMassSensor::readBaroAltitude(float& alt) const
     return ok && std::isfinite(alt);
 }
 
-void AirMassSensor::start()
+void AirMassSensor::start(bool keep_learned)
 {
-    // learned values only apply to the installation they were learned with
-    const bool pitch_ok = airmass_sig_pitch.get() == pitchSignature();
-    const bool speed_ok = airmass_sig_speed.get() == speedSignature();
-    const float k_tas = speed_ok ? airmass_k_tas.get() : 1.f;
-    const float pitch_ofs = pitch_ok ? airmass_pitch_ofs.get() : 0.f;
-    const float k_aoa = pitch_ok ? airmass_k_aoa.get() : 1.f;
-    ESP_LOGI(FNAME, "AirMass start, k_tas %.3f%s, pitch ofs %.2f°%s, gnss latency %.2fs", k_tas, speed_ok ? "" : " (reset)",
-             Units::rad_to_deg(pitch_ofs), pitch_ok ? "" : " (reset)", airmass_latency.get());
+    _sig_pitch = pitchSignature();
+    _sig_speed = speedSignature();
+    airmass::Warm warm;
+    if (keep_learned) {
+        // a jump keeps what the running estimator learned, stored only every few minutes
+        warm = _pipe.learned();
+    } else {
+        // learned values only apply to the installation they were learned with
+        const bool pitch_ok = airmass_sig_pitch.get() == _sig_pitch;
+        const bool speed_ok = airmass_sig_speed.get() == _sig_speed;
+        warm.k_tas = speed_ok ? airmass_k_tas.get() : 1.f;
+        warm.pitch_ofs = pitch_ok ? airmass_pitch_ofs.get() : 0.f;
+        warm.latency = airmass_latency.get();
+        warm.k_aoa = pitch_ok ? airmass_k_aoa.get() : 1.f;
+        for (int i = 0; i < airmass::FlapOffsets::N; ++i) {
+            warm.flap_ofs[i] = pitch_ok ? FLAP_OFS[i]->get() : airmass::FlapOffsets::UNKNOWN;
+        }
+    }
+    ESP_LOGI(FNAME, "AirMass start%s, k_tas %.3f, pitch ofs %.2f°, gnss latency %.2fs", keep_learned ? " keeping the learned" : "",
+             warm.k_tas, Units::rad_to_deg(warm.pitch_ofs), warm.latency);
     float alt = 0.f;
     readBaroAltitude(alt);
-    airmass::Warm warm;
-    warm.k_tas = k_tas;
-    warm.pitch_ofs = pitch_ofs;
-    warm.latency = airmass_latency.get();
-    warm.k_aoa = k_aoa;
-    for (int i = 0; i < airmass::FlapOffsets::N; ++i) {
-        warm.flap_ofs[i] = pitch_ok ? FLAP_OFS[i]->get() : airmass::FlapOffsets::UNKNOWN;
-    }
     // the own attitude starts from the converged AHRS
     airmass::record::Start st;
     st.t = Clock::getMillis();
@@ -446,11 +450,15 @@ void AirMassSensor::postProcess()
     if (!_pipe.ekf().isRunning()) {
         ESP_LOGW(FNAME, "AirMass estimator restart");
         start();
+    } else if (pitchSignature() != _sig_pitch || speedSignature() != _sig_speed) {
+        // another installation (glider, IMU reference, airspeed calibration): what was learned does not apply
+        ESP_LOGI(FNAME, "AirMass restart for another installation");
+        start();
     } else if (_jump || (int32_t)(Clock::getMillis() - _last_ms) < 0) {
         // A replay jump, or the clock going back when a faster replay returns to real time: restart (recorded, so
         // the replay of the recording restarts too) rather than hold the estimate until the clock catches up.
         ESP_LOGI(FNAME, "AirMass restart after a jump");
-        start();
+        start(true);
     }
     // settings, ballast and the polar can change in flight
     const bool rec = recording();
