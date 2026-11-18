@@ -305,6 +305,7 @@ void AirMassSensor::start(bool keep_learned)
 {
     _sig_pitch = pitchSignature();
     _sig_speed = speedSignature();
+    _ref = imuSensor ? imuSensor->getRefRot() : Quaternion();
     airmass::Warm warm;
     if (keep_learned) {
         // a jump keeps what the running estimator learned, stored only every few minutes
@@ -357,6 +358,33 @@ void AirMassSensor::start(bool keep_learned)
     }
     AirMassEKF::GnssVelocity g;
     _gnss_epoch = latestGnss(g); // only fresh epochs
+}
+
+// The IMU reference changed in flight (the pitch adjustment on the horizon page, the IMU calibration): the sensor
+// readings come in turned body axes. A restart would lose heading and wind until the next turn, the rotation between
+// the two references is known instead.
+void AirMassSensor::turnBody()
+{
+    const Quaternion ref = imuSensor->getRefRot();
+    const vector_f axes[3] = {vector_f(1.f, 0.f, 0.f), vector_f(0.f, 1.f, 0.f), vector_f(0.f, 0.f, 1.f)};
+    float m[3][3];
+    for (int j = 0; j < 3; ++j) {
+        const vector_f c = ref.rotate(_ref.get_conjugate().rotate(axes[j]));
+        m[0][j] = c.x;
+        m[1][j] = c.y;
+        m[2][j] = c.z;
+    }
+    airmass::record::Rotation r;
+    r.t = Clock::getMillis();
+    airmass::rotationVector(m, r.rv);
+    ESP_LOGI(FNAME, "AirMass body axes turned by %.2f/%.2f/%.2f°", Units::rad_to_deg(r.rv[0]), Units::rad_to_deg(r.rv[1]),
+             Units::rad_to_deg(r.rv[2]));
+    _pipe.rotateBody(r.rv);
+    if (_recording) {
+        queueLine([&r] { return airmass::record::rotation(r); });
+    }
+    _ref = ref;
+    _sig_pitch = pitchSignature();
 }
 
 // NVS write only when the value moved: learned values change in the last digits all the time, and every
@@ -450,10 +478,12 @@ void AirMassSensor::postProcess()
     if (!_pipe.ekf().isRunning()) {
         ESP_LOGW(FNAME, "AirMass estimator restart");
         start();
-    } else if (pitchSignature() != _sig_pitch || speedSignature() != _sig_speed) {
-        // another installation (glider, IMU reference, airspeed calibration): what was learned does not apply
+    } else if (speedSignature() != _sig_speed || (pitchSignature() != _sig_pitch && !imuSensor)) {
+        // another installation (glider, airspeed calibration): what was learned does not apply
         ESP_LOGI(FNAME, "AirMass restart for another installation");
         start();
+    } else if (pitchSignature() != _sig_pitch) {
+        turnBody();
     } else if (_jump || (int32_t)(Clock::getMillis() - _last_ms) < 0) {
         // A replay jump, or the clock going back when a faster replay returns to real time: restart (recorded, so
         // the replay of the recording restarts too) rather than hold the estimate until the clock catches up.

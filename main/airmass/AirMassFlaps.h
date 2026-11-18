@@ -64,6 +64,12 @@ public:
         }
     }
 
+    void shift(float d) {
+        for (int i = 0; i < N; ++i) {
+            if (known(i)) _ofs[i] += d;
+        }
+    }
+
     bool active() const { return _active; } // a flap lever is read
     float offset(int i) const { return _ofs[i]; }
     float sigma(int i) const { return _sig[i]; }

@@ -419,7 +419,7 @@ def main():
         # The device's AirMass records in a sensor log (System > Logging "All Sensor Data"): the estimator starts where
         # and how the device started it (attitude, calibration), with its setup, and the replay checks itself against
         # the device's output. Its GNSS velocities ($PXCVG) are left out, the navigation sentences give them.
-        if raw[:6] in ("$PXCVS", "$PXCVC", "$PXCVA", "$PXCVH", "$PXCVX") and raw[6:7] == ",":
+        if raw[:6] in ("$PXCVS", "$PXCVC", "$PXCVA", "$PXCVH", "$PXCVO", "$PXCVX") and raw[6:7] == ",":
             line, kind = raw.strip(), raw[5]
             if damaged(line):
                 continue

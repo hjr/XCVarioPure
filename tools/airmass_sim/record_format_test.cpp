@@ -282,11 +282,32 @@ void outputs() {
         compare(legacy::output(pipe.ekf()), record::output(pipe.ekf()));
     }
 }
+// $PXCVO back from its sentence, and the rotation vector back from its matrix
+void rotations() {
+    std::mt19937 rng(7);
+    std::uniform_real_distribution<float> u(-0.6f, 0.6f);
+    for (int i = 0; i < 1000; ++i) {
+        record::Rotation r{static_cast<uint32_t>(rng()), {u(rng), u(rng), u(rng)}};
+        record::Sentence sen;
+        record::Rotation back;
+        const bool ok = record::parse(record::rotation(r).c_str(), sen) && record::decode(sen, back) && back.t == r.t;
+        float m[3][3], rv[3];
+        rotationMatrix(r.rv, m);
+        rotationVector(m, rv);
+        float err = 0.f;
+        for (int k = 0; k < 3; ++k) err = std::fmax(err, std::fmax(std::fabs(back.rv[k] - r.rv[k]), std::fabs(rv[k] - r.rv[k])));
+        if (!ok || err > 1e-5f) {
+            std::printf("rotation %d: %.6f %.6f %.6f off by %g\n", i, r.rv[0], r.rv[1], r.rv[2], err);
+            failures++;
+        }
+    }
+}
 } // namespace
 
 int main() {
     sentences();
     outputs();
+    rotations();
     std::printf("record format: %d identical, %d too long and dropped, %d different\n", same, dropped, failures);
     const bool ok = failures == 0 && same > 100000 && dropped > 0;
     std::printf("%s\n", ok ? "PASS" : "FAIL");

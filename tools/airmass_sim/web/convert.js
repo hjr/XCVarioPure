@@ -621,7 +621,7 @@
       // The device's AirMass records in a sensor log (System > Logging "All Sensor Data"): the estimator starts where
       // and how the device started it (attitude, calibration), with its setup, and the replay checks itself against
       // the device's output. Its GNSS velocities ($PXCVG) are left out, the navigation sentences give them.
-      if (/^\$PXCV[SCAHX],/.test(raw)) {
+      if (/^\$PXCV[SCAHOX],/.test(raw)) {
         const line = raw.trim(), kind = line[5];
         if (damaged(line)) continue;
         if (kind === "C") {

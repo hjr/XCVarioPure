@@ -3,6 +3,7 @@
 #include "AirMassEKF.h"
 #include "AirMassPipeline.h"
 #include "sensor/SensorBase.h"
+#include "math/Quaternion.h"
 #include "math/vector_3d.h"
 #include "wind/Wind.h"
 
@@ -36,6 +37,7 @@ private:
     void applyConfig();
     bool readBaroAltitude(float& alt) const;
     void start(bool keep_learned = false);
+    void turnBody();
     void stop();
     void persistLearned();
     void publish();
@@ -50,6 +52,7 @@ private:
     bool _active = false;
     bool _recording = false;
     int _sig_pitch = 0, _sig_speed = 0; // the installation signatures the running estimator started with
+    Quaternion _ref; // the IMU reference of the estimator's body axes
     bool _average_published = false; // the synoptic wind on the blackboard is the average of the estimator
     uint32_t _last_ms = 0; // the clock of the last cycle
     std::atomic<bool> _jump{false}; // a replay jump requested

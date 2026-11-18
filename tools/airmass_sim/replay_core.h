@@ -29,7 +29,7 @@ public:
     bool override_warm = false;
     float warm[4] = {1.f, 0.f, 1.f, 0.75f}; // k_tas, pitch offset [rad], aoa scale, GNSS latency [s]
 
-    long lines = 0, frames = 0, gnss = 0, headings = 0, starts = 0, skipped = 0, bad = 0;
+    long lines = 0, frames = 0, gnss = 0, headings = 0, rotations = 0, starts = 0, skipped = 0, bad = 0;
     long recovered_starts = 0, estimated_attitude_starts = 0;
     uint32_t t_first = 0, t_last = 0;
     double seconds = 0.;
@@ -106,6 +106,9 @@ public:
         } else if (rec::decode(_s, _h)) {
             _pipe.heading(_h.psi, _h.sigma);
             headings++;
+        } else if (rec::decode(_s, _rot)) {
+            _pipe.rotateBody(_rot.rv);
+            rotations++;
         } else if (rec::decode(_s, _out)) {
             // the device's output for the cycle before
             const AirMassEKF& ekf = _pipe.ekf();
@@ -245,6 +248,7 @@ private:
     Frame _fr;
     airmass::record::Gnss _g;
     airmass::record::Heading _h;
+    airmass::record::Rotation _rot;
     airmass::record::Output _out;
 };
 

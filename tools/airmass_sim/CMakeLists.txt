@@ -127,6 +127,14 @@ foreach(scenario nl thermal)
     add_test(NAME ${scenario}_mount_roll3 COMMAND airmass_sim ${scenario} --set mount_roll=3)
 endforeach()
 
+# the IMU reference pitched 8° in flight (pitch adjustment): the estimator turns its body axes and the flap offsets,
+# keeps heading and wind; the replay of the recorded $PXCVO must follow
+add_test(NAME record_mount_step COMMAND airmass_sim nl --set flaps=1 --set mount_step=-8 --set mount_step_t=1800
+         --record ${CMAKE_CURRENT_BINARY_DIR}/mount_step_record.nmea)
+set_tests_properties(record_mount_step PROPERTIES FIXTURES_SETUP mount_step_record)
+add_test(NAME replay_mount_step COMMAND airmass_replay ${CMAKE_CURRENT_BINARY_DIR}/mount_step_record.nmea --check 0.02)
+set_tests_properties(replay_mount_step PROPERTIES FIXTURES_REQUIRED mount_step_record)
+
 # The same physical observations and truth, with prediction-only ticks between 10Hz measurements.
 foreach(scenario straight thermal gust nl)
     add_test(NAME ${scenario}_predict20 COMMAND airmass_sim ${scenario} --set predict_hz=20)

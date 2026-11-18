@@ -12,6 +12,7 @@
 //   $PXCVR,t,fx,fy,fz,gx,gy,gz,ias,tas,alt,lever[,ta,tg,tb,tv,valid]  one poll: optional source times and valid mask
 //   $PXCVG,t,vn,ve,sigma,latency,prior,wn0,we0[,fix_utc_ms]           GNSS velocity (arrival, nominal latency, optional source epoch)
 //   $PXCVH,t,psi,sigma                                                compass heading fused
+//   $PXCVO,t,rx,ry,rz                                                 body axes turned (IMU reference changed), rotation vector [rad]
 //   $PXCVX,t                                                          estimator stopped
 // t: device milliseconds. An empty field is NAN (no baro, no flap lever).
 //
@@ -220,6 +221,20 @@ inline Line heading(const Heading& h) {
     return s;
 }
 
+// the body axes turned in flight: v_new = R(rv) v_old (Pipeline::rotateBody)
+struct Rotation {
+    uint32_t t = 0;
+    float rv[3] = {};
+};
+
+inline Line rotation(const Rotation& r) {
+    Line s("$PXCVO");
+    appendu(s, r.t);
+    for (float v : r.rv) appendf(s, "%.6f", v);
+    finish(s);
+    return s;
+}
+
 inline Line stop(uint32_t t) {
     Line s("$PXCVX");
     appendu(s, t);
@@ -368,6 +383,16 @@ inline bool decode(const Sentence& s, Heading& h) {
     h.t = static_cast<uint32_t>(s.f[0]);
     h.psi = s.f[1];
     h.sigma = s.f[2];
+    return true;
+}
+
+inline bool decode(const Sentence& s, Rotation& r) {
+    if (!s.is("PXCVO", 4)) return false;
+    r.t = static_cast<uint32_t>(s.f[0]);
+    for (int i = 0; i < 3; ++i) {
+        if (!std::isfinite(s.f[1 + i]) || std::fabs(s.f[1 + i]) > 3.) return false;
+        r.rv[i] = s.f[1 + i];
+    }
     return true;
 }
 

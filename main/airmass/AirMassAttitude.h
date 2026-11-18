@@ -96,6 +96,20 @@ public:
         normalize(_d);
     }
 
+    // the body axes turned (another IMU reference): m maps a vector from the old body axes into the new ones
+    void rotate(const float m[3][3]) {
+        float d[3], b[3];
+        for (int i = 0; i < 3; ++i) {
+            d[i] = m[i][0] * _d[0] + m[i][1] * _d[1] + m[i][2] * _d[2];
+            b[i] = m[i][0] * _bias[0] + m[i][1] * _bias[1] + m[i][2] * _bias[2];
+        }
+        for (int i = 0; i < 3; ++i) {
+            _d[i] = d[i];
+            _bias[i] = b[i];
+        }
+        normalize(_d);
+    }
+
     const float* down() const { return _d; }
     float roll() const { return roll(_d); }
     float pitch() const { return std::asin(std::clamp(-_d[0], -1.f, 1.f)); }
