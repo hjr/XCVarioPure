@@ -43,6 +43,7 @@ struct Setup {
 struct Warm {
     float k_tas = 1.f, pitch_ofs = 0.f, latency = AirMassEKF::START_LATENCY, k_aoa = 1.f;
     float latency_sigma = AirMassEKF::START_LATENCY_SIGMA; // s, smaller for a learned latency
+    float lat_ratio = NAN; // the installation's lateral specific force per g, NAN: keep the one learned so far
     float flap_ofs[FlapOffsets::N];
     Warm() { std::fill(std::begin(flap_ofs), std::end(flap_ofs), FlapOffsets::UNKNOWN); }
 };
@@ -179,6 +180,7 @@ public:
     void start(uint32_t time_ms, float baro_alt, const float down[3], const float gyro[3], const Warm& w) {
         if (!std::isfinite(baro_alt)) baro_alt = 0.f;
         _ekf.reset(baro_alt, w.k_tas, w.pitch_ofs, w.latency, w.k_aoa, w.latency_sigma);
+        if (std::isfinite(w.lat_ratio)) _lat_ratio = std::clamp(w.lat_ratio, -LAT_RATIO_MAX, LAT_RATIO_MAX);
         _flaps.load(w.flap_ofs);
         _att.reset(down);
         std::copy(_att.down(), _att.down() + 3, _supported_down);
@@ -411,6 +413,7 @@ public:
     }
     // another IMU calibration: the installation's lateral force is learned anew
     void resetLateral() { _lat_ratio = 0.f; }
+    float latRatio() const { return _lat_ratio; }
 
     // GNSS ground velocity, with a trusted wind as prior for the alignment
     void gnss(const AirMassEKF::GnssVelocity& g, bool has_prior, float wn0, float we0) { _ekf.fuseGnss(g, has_prior, wn0, we0); }
@@ -425,6 +428,7 @@ public:
         w.latency = _ekf.gnssLatency();
         w.latency_sigma = _ekf.learnsLatencyFirst() ? AirMassEKF::START_LATENCY_SIGMA : _ekf.sigma(AirMassEKF::TAU);
         w.k_aoa = _ekf.aoaScale();
+        w.lat_ratio = _lat_ratio;
         for (int i = 0; i < FlapOffsets::N; ++i) w.flap_ofs[i] = _flaps.offset(i);
         return w;
     }

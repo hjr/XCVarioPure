@@ -61,17 +61,18 @@ std::string start(const record::Start& st) {
     appendf(s, "%.4f", st.warm.latency);
     appendf(s, "%.5f", st.warm.k_aoa);
     for (float o : st.warm.flap_ofs) appendf(s, "%.6f", o);
-    appendu(s, 3);
+    appendu(s, 4);
     appendf(s, "%.4f", st.warm.latency_sigma);
+    appendf(s, "%.4f", st.warm.lat_ratio);
     finish(s);
     return s;
 }
 
-// the format 2 start of earlier firmware
-std::string finishedStart2(const record::Start& st) {
+// the format 2 or 3 start of earlier firmware: without the lateral force, format 2 without the latency's uncertainty
+std::string earlierStart(const record::Start& st, int format) {
     std::string s = legacy::start(st);
-    s = s.substr(0, s.rfind(",3,"));
-    s += ",2";
+    const size_t fmt = s.rfind(",4,");
+    s = format == 2 ? s.substr(0, fmt) + ",2" : s.substr(0, fmt) + ",3" + s.substr(fmt + 2, s.rfind(',') - fmt - 2);
     finish(s);
     return s;
 }
@@ -242,6 +243,7 @@ void sentences() {
         st.warm.latency = value();
         st.warm.k_aoa = value();
         st.warm.latency_sigma = value();
+        st.warm.lat_ratio = value();
         for (float& o : st.warm.flap_ofs) o = (rng() & 1) ? FlapOffsets::UNKNOWN : value();
         compare(legacy::start(st), record::start(st));
 
@@ -311,20 +313,25 @@ void rotations() {
     }
 }
 
-// $PXCVS of format 3 carries the latency's uncertainty, the older ones start it at START_LATENCY_SIGMA
+// $PXCVS of format 4 carries the latency's uncertainty and the lateral force; format 3 the uncertainty only (the
+// replay keeps its own lateral force), format 2 neither (the uncertainty starts at START_LATENCY_SIGMA)
 void startFormats() {
     record::Start st;
     st.warm.latency = 0.2f;
     st.warm.latency_sigma = 0.05f;
+    st.warm.lat_ratio = -0.055f;
     record::Sentence sen;
-    record::Start back;
-    const bool ok3 = record::parse(record::start(st).c_str(), sen) && record::decode(sen, back) &&
-                     std::fabs(back.warm.latency_sigma - 0.05f) < 1e-4f && std::fabs(back.warm.latency - 0.2f) < 1e-4f;
-    record::Start old;
-    const bool ok2 = record::parse(legacy::finishedStart2(st).c_str(), sen) && record::decode(sen, old) &&
-                     old.warm.latency_sigma == AirMassEKF::START_LATENCY_SIGMA && std::fabs(old.warm.latency - 0.2f) < 1e-4f;
-    if (!ok3 || !ok2) {
-        std::printf("start formats: format 3 %s, format 2 %s\n", ok3 ? "ok" : "FAIL", ok2 ? "ok" : "FAIL");
+    record::Start b4, b3, b2;
+    const bool ok4 = record::parse(record::start(st).c_str(), sen) && record::decode(sen, b4) &&
+                     std::fabs(b4.warm.latency_sigma - 0.05f) < 1e-4f && std::fabs(b4.warm.lat_ratio + 0.055f) < 1e-4f &&
+                     std::fabs(b4.warm.latency - 0.2f) < 1e-4f;
+    const bool ok3 = record::parse(legacy::earlierStart(st, 3).c_str(), sen) && record::decode(sen, b3) &&
+                     std::fabs(b3.warm.latency_sigma - 0.05f) < 1e-4f && std::isnan(b3.warm.lat_ratio);
+    const bool ok2 = record::parse(legacy::earlierStart(st, 2).c_str(), sen) && record::decode(sen, b2) &&
+                     b2.warm.latency_sigma == AirMassEKF::START_LATENCY_SIGMA && std::isnan(b2.warm.lat_ratio) &&
+                     std::fabs(b2.warm.latency - 0.2f) < 1e-4f;
+    if (!ok4 || !ok3 || !ok2) {
+        std::printf("start formats: 4 %s, 3 %s, 2 %s\n", ok4 ? "ok" : "FAIL", ok3 ? "ok" : "FAIL", ok2 ? "ok" : "FAIL");
         failures++;
     }
 }

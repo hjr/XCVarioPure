@@ -326,6 +326,7 @@ void AirMassSensor::start(bool keep_learned)
         for (int i = 0; i < airmass::FlapOffsets::N; ++i) {
             warm.flap_ofs[i] = pitch_ok ? FLAP_OFS[i]->get() : airmass::FlapOffsets::UNKNOWN;
         }
+        warm.lat_ratio = _pipe.latRatio(); // learned since power-up, the recording needs it for the replay
     }
     ESP_LOGI(FNAME, "AirMass start%s, k_tas %.3f, pitch ofs %.2f°, gnss latency %.2fs", keep_learned ? " keeping the learned" : "",
              warm.k_tas, Units::rad_to_deg(warm.pitch_ofs), warm.latency);
