@@ -131,13 +131,7 @@ bool MpuImu::setup() {
     }
 
     // Load reference calibration
-    Quaternion basic_ref = imu_reference.get();
-    if (basic_ref == Quaternion()) {
-        _ref_rot = concatGaaAndImuReference(glider_ground_aa.get(), getDefaultImuReference());
-    } else {
-        _ref_rot = concatGaaAndImuReference(glider_ground_aa.get(), basic_ref);
-
-    }
+    _ref_rot = concatGaaAndImuReference(glider_ground_aa.get(), basicImuReference());
 
     return err == ESP_OK;
 }
@@ -188,6 +182,12 @@ Quaternion MpuImu::getDefaultImuReference(bool include_factory_ref) {
         accelDefaultRef = accelDefaultRef * imu_facref.get();
     }
     return accelDefaultRef;
+}
+
+// the calibrated reference, or the default one if none was calibrated
+Quaternion MpuImu::basicImuReference() {
+    Quaternion basic = imu_reference.get();
+    return basic == Quaternion() ? getDefaultImuReference() : basic;
 }
 
 void MpuImu::resetImuReference(bool save_nvs) {

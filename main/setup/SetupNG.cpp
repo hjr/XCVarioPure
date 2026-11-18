@@ -376,8 +376,7 @@ static void propagate_caps()
 
 static void adjust_gaa() {
     if (imuSensor) {
-        const Quaternion basic = imu_reference.get();
-        imuSensor->applyImuReference(glider_ground_aa.get(), basic == Quaternion() ? MpuImu::getDefaultImuReference() : basic);
+        imuSensor->applyImuReference(glider_ground_aa.get(), MpuImu::basicImuReference());
         ahrsSensor->startCalibration();
     }
 }
