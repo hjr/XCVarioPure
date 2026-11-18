@@ -39,6 +39,7 @@ constexpr float COMPASS_SIGMA = 0.15f;        // rad, compass heading incl. devi
 constexpr uint32_t COMPASS_MS = 10000;        // compass errors are correlated
 constexpr float COMPASS_MAX_ROLL = 0.17f;     // rad, the compass is only trusted in straight flight
 constexpr uint32_t PERSIST_MS = 300000;       // save the learned calibration every 5 minutes in flight
+constexpr float LATENCY_SIGMA = 0.1f;         // s, a GNSS latency this certain is kept, the next flight starts from it
 constexpr uint32_t SETUP_MS = 10000;          // repeat the recorded setup every 10s
 
 // Lines for the recording, from the sensor loop to the NMEA feed (5Hz), created with the first line. A ring buffer
@@ -317,6 +318,9 @@ void AirMassSensor::start(bool keep_learned)
         warm.k_tas = speed_ok ? airmass_k_tas.get() : 1.f;
         warm.pitch_ofs = pitch_ok ? airmass_pitch_ofs.get() : 0.f;
         warm.latency = airmass_latency.get();
+        if (airmass_latency.get() != airmass_latency.getDefault()) {
+            warm.latency_sigma = LATENCY_SIGMA; // learned on an earlier flight: one latency per installation
+        }
         warm.k_aoa = pitch_ok ? airmass_k_aoa.get() : 1.f;
         for (int i = 0; i < airmass::FlapOffsets::N; ++i) {
             warm.flap_ofs[i] = pitch_ok ? FLAP_OFS[i]->get() : airmass::FlapOffsets::UNKNOWN;
@@ -434,7 +438,7 @@ void AirMassSensor::persistLearned()
         store(airmass_k_aoa, ekf.aoaScale(), 1e-3f);
         store(airmass_sig_pitch, pitchSignature());
     }
-    if (ekf.sigma(AirMassEKF::TAU) < 0.1f) {
+    if (ekf.sigma(AirMassEKF::TAU) < LATENCY_SIGMA && !ekf.learnsLatencyFirst()) {
         store(airmass_latency, ekf.gnssLatency(), 0.01f);
     }
     ESP_LOGI(FNAME, "AirMass learned k_tas %.3f, pitch ofs %.2f°, gnss latency %.2fs", airmass_k_tas.get(),

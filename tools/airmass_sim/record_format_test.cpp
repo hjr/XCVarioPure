@@ -50,6 +50,16 @@ std::string setup(const Setup& c) {
     return s;
 }
 
+std::string start(const record::Start& st);
+// the format 2 start of earlier firmware
+std::string finishedStart2(const record::Start& st) {
+    std::string s = legacy::start(st);
+    s = s.substr(0, s.rfind(",3,"));
+    s += ",2";
+    finish(s);
+    return s;
+}
+
 std::string start(const record::Start& st) {
     std::string s = begin("$PXCVS");
     appendu(s, st.t);
@@ -61,7 +71,8 @@ std::string start(const record::Start& st) {
     appendf(s, "%.4f", st.warm.latency);
     appendf(s, "%.5f", st.warm.k_aoa);
     for (float o : st.warm.flap_ofs) appendf(s, "%.6f", o);
-    appendu(s, 2);
+    appendu(s, 3);
+    appendf(s, "%.4f", st.warm.latency_sigma);
     finish(s);
     return s;
 }
@@ -231,6 +242,7 @@ void sentences() {
         st.warm.pitch_ofs = value();
         st.warm.latency = value();
         st.warm.k_aoa = value();
+        st.warm.latency_sigma = value();
         for (float& o : st.warm.flap_ofs) o = (rng() & 1) ? FlapOffsets::UNKNOWN : value();
         compare(legacy::start(st), record::start(st));
 
@@ -302,12 +314,30 @@ void rotations() {
         }
     }
 }
+// $PXCVS of format 3 carries the latency's uncertainty, the older ones start it at START_LATENCY_SIGMA
+void startFormats() {
+    record::Start st;
+    st.warm.latency = 0.2f;
+    st.warm.latency_sigma = 0.05f;
+    record::Sentence sen;
+    record::Start back;
+    const bool ok3 = record::parse(record::start(st).c_str(), sen) && record::decode(sen, back) &&
+                     std::fabs(back.warm.latency_sigma - 0.05f) < 1e-4f && std::fabs(back.warm.latency - 0.2f) < 1e-4f;
+    record::Start old;
+    const bool ok2 = record::parse(legacy::finishedStart2(st).c_str(), sen) && record::decode(sen, old) &&
+                     old.warm.latency_sigma == AirMassEKF::START_LATENCY_SIGMA && std::fabs(old.warm.latency - 0.2f) < 1e-4f;
+    if (!ok3 || !ok2) {
+        std::printf("start formats: format 3 %s, format 2 %s\n", ok3 ? "ok" : "FAIL", ok2 ? "ok" : "FAIL");
+        failures++;
+    }
+}
 } // namespace
 
 int main() {
     sentences();
     outputs();
     rotations();
+    startFormats();
     std::printf("record format: %d identical, %d too long and dropped, %d different\n", same, dropped, failures);
     const bool ok = failures == 0 && same > 100000 && dropped > 0;
     std::printf("%s\n", ok ? "PASS" : "FAIL");

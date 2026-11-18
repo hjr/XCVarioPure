@@ -7,8 +7,9 @@
 // (sens2rec.py, web/convert.js) make the frames from them.
 //
 //   $PXCVC,lever,mass,area,a0,a1,a2,vstall,valid,wresp,vresp,teadj   setup (at start, on change, every 10s)
-//   $PXCVS,t,alt,d0,d1,d2,g0,g1,g2,ktas,pitch,lat,kaoa,f0,..,f6,fmt    estimator start: AHRS down axis, gyro, warm start
-//                                                                     fmt 2: lat is the latency; absent: an offset to 0.75 s
+//   $PXCVS,t,alt,d0,d1,d2,g0,g1,g2,ktas,pitch,lat,kaoa,f0,..,f6,fmt[,lat_sigma]  estimator start: AHRS down axis, gyro, warm
+//                                                                     start; fmt 2: lat is the latency; absent: an offset to
+//                                                                     0.75 s; 3: lat_sigma its uncertainty (else 0.3 s)
 //   $PXCVR,t,fx,fy,fz,gx,gy,gz,ias,tas,alt,lever[,ta,tg,tb,tv,valid]  one poll: optional source times and valid mask
 //   $PXCVG,t,vn,ve,sigma,latency,prior,wn0,we0[,fix_utc_ms]           GNSS velocity (arrival, nominal latency, optional source epoch)
 //   $PXCVH,t,psi,sigma                                                compass heading fused
@@ -148,7 +149,8 @@ inline Line start(const Start& st) {
     appendf(s, "%.4f", st.warm.latency);
     appendf(s, "%.5f", st.warm.k_aoa);
     for (float o : st.warm.flap_ofs) appendf(s, "%.6f", o);
-    appendu(s, 2); // format: the absolute latency
+    appendu(s, 3);
+    appendf(s, "%.4f", st.warm.latency_sigma);
     finish(s);
     return s;
 }
@@ -330,6 +332,9 @@ inline bool decode(const Sentence& s, Start& st) {
     st.warm.k_aoa = f[11];
     for (int i = 0; i < FlapOffsets::N; ++i) {
         st.warm.flap_ofs[i] = f[12 + i];
+    }
+    if (s.n > 13 + FlapOffsets::N && f[12 + FlapOffsets::N] >= 3. && std::isfinite(f[13 + FlapOffsets::N])) {
+        st.warm.latency_sigma = f[13 + FlapOffsets::N];
     }
     return true;
 }

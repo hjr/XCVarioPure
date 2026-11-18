@@ -129,6 +129,7 @@ private:
         w.pitch_ofs = warm[1];
         w.latency = warm[3];
         w.k_aoa = warm[2];
+        w.latency_sigma = AirMassEKF::START_LATENCY_SIGMA;
         std::fill(std::begin(w.flap_ofs), std::end(w.flap_ofs), FlapOffsets::UNKNOWN);
     }
 

@@ -67,8 +67,11 @@ class AirMassEKF {
         float q_vd = 0.25f;         // (m/s)²/s accelerometer noise
         float q_baz = 1e-5f;        // (m/s²)²/s accel bias random walk
         float q_bgz = 1e-8f;        // (rad/s)²/s body z gyro bias random walk (temperature drift)
-        float q_tau = 1e-5f;        // s²/s GNSS latency random walk: a receiver's latency is learned within half an hour
-                                    // (1e-6: 2.5 h); 1e-4 jitters by 0.15 s
+        float q_tau = 1e-6f;        // s²/s GNSS latency random walk: one latency per installation; 1e-5 swung by 0.17 s within
+                                    // 10 min on real flights, 1e-6 by 0.10 s; 3e-7 kept an early value 0.1 s off in a simulation
+        float q_tau_start = 1e-5f;  // s²/s while a latency is learned the first time (a start without a learned one): 1e-6
+                                    // took 2 h from the 0.75 s start to an Arcus's 0.05 s
+        float tau_start_time = 3600.f; // s of aligned flight with fresh GNSS for that first learning
         float q_kcl = 1e-8f;        // 1/s angle of attack scale random walk
         float r_baro = 0.09f;       // m² baro altitude noise
         float sigma_pitch = 0.03f;  // rad, the attitude's pitch error in calm straight flight: the weight of the pitch path
@@ -147,11 +150,14 @@ class AirMassEKF {
 
     // Start the vertical part, warm start with learned calibration values
     static constexpr float START_LATENCY = 0.75f; // s, the GNSS latency before anything was learned (classical Flarm)
-    void reset(float baro_alt, float k_tas = 1.f, float pitch_ofs = 0.f, float latency = START_LATENCY, float k_aoa = 1.f);
+    static constexpr float START_LATENCY_SIGMA = 0.3f; // s, its uncertainty
+    void reset(float baro_alt, float k_tas = 1.f, float pitch_ofs = 0.f, float latency = START_LATENCY, float k_aoa = 1.f,
+               float latency_sigma = START_LATENCY_SIGMA);
     void stop() { _running = false; }
     bool isRunning() const { return _running; }
     bool isAligned() const { return _aligned; }
     bool learnsAoaScale() const { return _cfg.learn_calibration && _cfg.kcl_min < _cfg.kcl_max; }
+    bool learnsLatencyFirst() const { return _tau_start_left > 0.f; } // the first learning of the latency, not settled yet
 
     // Main cycle: prediction plus baro, kinematic and energy fusion
     void update(const Input& in);
@@ -324,6 +330,7 @@ class AirMassEKF {
     uint32_t _settle_ms = SETTLE_MS; // what the vario needs now to be valid
     bool _running = false;
     bool _aligned = false;
+    float _tau_start_left = 0.f; // s, of the first learning of the latency
     bool _wind_valid = false;
     bool _wind_degraded = false;
     uint32_t _wind_valid_ms = 0; // the last cycle with a valid wind

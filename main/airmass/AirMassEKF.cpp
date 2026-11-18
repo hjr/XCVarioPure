@@ -12,7 +12,6 @@ constexpr float THB_MAX = 0.25f; // rad
 // lags too). Learned on 22 real flights: 0.7-1.1 s with one glider's Flarm on all of its 10 flights, 0.4-0.6 s with
 // another, 0-0.2 s with a third receiver, which a 0.25 s floor would clamp
 constexpr float TAU_MIN = 0.f, TAU_MAX = 1.75f;
-constexpr float TAU_SIGMA0 = 0.3f; // s, initial uncertainty of the latency
 constexpr float SLIP_ALIGN_MAX = 0.1f; // rad, slipping samples do not go into the turn alignment
 constexpr uint32_t HEADING_AID_AGE_MS = 3000;
 // m/s, no air moves faster vertically: a larger innovation of the vertical constraints is a corrupt input, whatever
@@ -126,7 +125,7 @@ AirMassEKF::AirMassEKF() {
     _running = false;
 }
 
-void AirMassEKF::reset(float baro_alt, float k_tas, float pitch_ofs, float latency, float k_aoa) {
+void AirMassEKF::reset(float baro_alt, float k_tas, float pitch_ofs, float latency, float k_aoa, float latency_sigma) {
     for (float& v : _x) {
         v = 0.f;
     }
@@ -146,7 +145,9 @@ void AirMassEKF::reset(float baro_alt, float k_tas, float pitch_ofs, float laten
     _cov(VD, VD) = 1.f;
     _cov(BAZ, BAZ) = 0.04f;
     _cov(BGZ, BGZ) = 0.01f * 0.01f;
-    _cov(TAU, TAU) = TAU_SIGMA0 * TAU_SIGMA0;
+    latency_sigma = std::isfinite(latency_sigma) ? std::clamp(latency_sigma, 0.01f, START_LATENCY_SIGMA) : START_LATENCY_SIGMA;
+    _cov(TAU, TAU) = latency_sigma * latency_sigma;
+    _tau_start_left = latency_sigma >= START_LATENCY_SIGMA ? _cfg.tau_start_time : 0.f;
     _cov(KCL, KCL) = 0.05f * 0.05f;
     if (!_cfg.learn_calibration) {
         for (int i : {KTAS, THB, TAU, KCL}) {
@@ -289,7 +290,8 @@ void AirMassEKF::predict(const Input& in, const Tilt& tilt) {
     if (_cfg.learn_calibration) {
         _cov(KTAS, KTAS) += _cfg.q_ktas * dt;
         _cov(THB, THB) += _cfg.q_thb * dt;
-        _cov(TAU, TAU) += _cfg.q_tau * dt;
+        _cov(TAU, TAU) += (_tau_start_left > 0.f ? _cfg.q_tau_start : _cfg.q_tau) * dt;
+        if (_aligned && gnssAgeMs() < 5000) _tau_start_left -= dt;
         if (learnsAoaScale()) _cov(KCL, KCL) += _cfg.q_kcl * dt;
     }
     _cov(ALT, ALT) += _cfg.q_alt * dt;

@@ -42,6 +42,7 @@ struct Setup {
 // learned values to start with
 struct Warm {
     float k_tas = 1.f, pitch_ofs = 0.f, latency = AirMassEKF::START_LATENCY, k_aoa = 1.f;
+    float latency_sigma = AirMassEKF::START_LATENCY_SIGMA; // s, smaller for a learned latency
     float flap_ofs[FlapOffsets::N];
     Warm() { std::fill(std::begin(flap_ofs), std::end(flap_ofs), FlapOffsets::UNKNOWN); }
 };
@@ -185,7 +186,7 @@ public:
     // start (or restart) with the device AHRS attitude: down axis in body coordinates
     void start(uint32_t time_ms, float baro_alt, const float down[3], const float gyro[3], const Warm& w) {
         if (!std::isfinite(baro_alt)) baro_alt = 0.f;
-        _ekf.reset(baro_alt, w.k_tas, w.pitch_ofs, w.latency, w.k_aoa);
+        _ekf.reset(baro_alt, w.k_tas, w.pitch_ofs, w.latency, w.k_aoa, w.latency_sigma);
         _flaps.load(w.flap_ofs);
         _att.reset(down);
         std::copy(_att.down(), _att.down() + 3, _supported_down);
@@ -425,6 +426,7 @@ public:
         w.k_tas = _ekf.kTas();
         w.pitch_ofs = _ekf.pitchOffset();
         w.latency = _ekf.gnssLatency();
+        w.latency_sigma = _ekf.learnsLatencyFirst() ? AirMassEKF::START_LATENCY_SIGMA : _ekf.sigma(AirMassEKF::TAU);
         w.k_aoa = _ekf.aoaScale();
         for (int i = 0; i < FlapOffsets::N; ++i) w.flap_ofs[i] = _flaps.offset(i);
         return w;
