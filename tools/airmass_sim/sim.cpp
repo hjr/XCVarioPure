@@ -319,27 +319,15 @@ vector_f mountRotate(const float b[3]) {
     return vector_f(cy * x + sy * y1, -sy * x + cy * y1, z1);
 }
 
-// the rotation of the sensor axes when the mounting pitch changes to mount (AirMassSensor::turnBody: the device knows
-// the old and the new IMU reference)
-void mountStep(float mount, float rv[3]) {
-    float a_old[3][3], a_new[3][3], m[3][3];
-    for (int pass = 0; pass < 2; ++pass) {
-        if (pass) K.mount = mount;
-        for (int j = 0; j < 3; ++j) {
-            const float e[3] = {j == 0 ? 1.f : 0.f, j == 1 ? 1.f : 0.f, j == 2 ? 1.f : 0.f};
-            const vector_f c = mountRotate(e);
-            float (&a)[3][3] = pass ? a_new : a_old;
-            a[0][j] = c.x;
-            a[1][j] = c.y;
-            a[2][j] = c.z;
-        }
-    }
-    for (int i = 0; i < 3; ++i) {
-        for (int j = 0; j < 3; ++j) {
-            m[i][j] = a_new[i][0] * a_old[j][0] + a_new[i][1] * a_old[j][1] + a_new[i][2] * a_old[j][2];
-        }
-    }
-    airmass::rotationVector(m, rv);
+// the turn of the sensor axes when the mounting pitch changes by d: about the mount's own wing axis (the device knows
+// the old and the new IMU reference, AirMassSensor::turnBody)
+void mountStep(float d, float rv[3]) {
+    const float y[3] = {0.f, 1.f, 0.f};
+    const vector_f axis = mountRotate(y);
+    rv[0] = -d * axis.x;
+    rv[1] = -d * axis.y;
+    rv[2] = -d * axis.z;
+    K.mount += d;
 }
 
 // ASW 20 flap positions (lever 0..4); a flap deflection shifts the zero lift angle of attack (Knobs::flap_alpha0).
@@ -793,8 +781,8 @@ int main(int argc, char** argv) {
     // raw IMU into the device AHRS, whose attitude starts the estimator
     DeviceAhrs ahrs;
     bool ekf_started = false;
-    bool mount_stepped = false, mount_pending = false;
-    float mount_rv[3] = {};
+    bool mount_pending = false;
+    airmass::record::Rotation mount_rot;
     airmass::Frame held_frame;
     float prev_vg[3] = {NAN, NAN, NAN};
     float prev_att[3] = {NAN, NAN, NAN};
@@ -1005,9 +993,10 @@ int main(int argc, char** argv) {
             const float yd = (tr.psi - prev_att[2]) / dt_truth;
             const float sr = std::sin(tr.roll), cr = std::cos(tr.roll), sp = std::sin(tr.pitch), cp = std::cos(tr.pitch);
             const float w_b[3] = {rd - yd * sp, pd * cr + yd * sr * cp, -pd * sr + yd * cr * cp};
-            if (K.mount_step_t >= 0.f && tr.t >= K.mount_step_t && !mount_stepped) {
-                mountStep(K.mount + K.mount_step * D2R, mount_rv);
-                mount_stepped = mount_pending = true;
+            if (K.mount_step_t >= 0.f && tr.t >= K.mount_step_t) {
+                mountStep(K.mount_step * D2R, mount_rot.rv);
+                K.mount_step_t = -1.f;
+                mount_pending = true;
             }
             f_sum += mountRotate(f_b);
             w_sum += mountRotate(w_b);
@@ -1131,11 +1120,9 @@ int main(int argc, char** argv) {
         }
         if (mount_pending) {
             mount_pending = false;
-            pipe.rotateBody(mount_rv);
-            if (rec) {
-                airmass::record::Rotation r{now, {mount_rv[0], mount_rv[1], mount_rv[2]}};
-                std::fputs(airmass::record::rotation(r).c_str(), rec);
-            }
+            mount_rot.t = now;
+            pipe.rotateBody(mount_rot.rv);
+            if (rec) std::fputs(airmass::record::rotation(mount_rot).c_str(), rec);
         }
         airmass::Frame frame;
         frame.time_ms = now;

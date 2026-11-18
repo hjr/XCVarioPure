@@ -7,7 +7,6 @@ namespace {
 constexpr float G0 = Units::g0;
 // plausible ranges of the learned calibration states
 constexpr float KTAS_MIN = 0.8f, KTAS_MAX = 1.25f;
-constexpr float THB_MAX = 0.25f; // rad
 // s, GNSS latency: the age of a fix at its arrival relative to the air data (the airspeed is filtered and the pitot line
 // lags too). Learned on 22 real flights: 0.7-1.1 s with one glider's Flarm on all of its 10 flights, 0.4-0.6 s with
 // another, 0-0.2 s with a third receiver, which a 0.25 s floor would clamp
@@ -291,7 +290,7 @@ void AirMassEKF::predict(const Input& in, const Tilt& tilt) {
         _cov(KTAS, KTAS) += _cfg.q_ktas * dt;
         _cov(THB, THB) += _cfg.q_thb * dt;
         _cov(TAU, TAU) += (_tau_start_left > 0.f ? _cfg.q_tau_start : _cfg.q_tau) * dt;
-        if (_aligned && gnssAgeMs() < 5000) _tau_start_left -= dt;
+        if (_tau_start_left > 0.f && _aligned && gnssAgeMs() < GNSS_FRESH_MS) _tau_start_left -= dt;
         if (learnsAoaScale()) _cov(KCL, KCL) += _cfg.q_kcl * dt;
     }
     _cov(ALT, ALT) += _cfg.q_alt * dt;
@@ -849,6 +848,12 @@ void AirMassEKF::setPitchOffset(float thb, float sigma) {
     _cov(THB, THB) = sigma * sigma;
 }
 
+void AirMassEKF::turnHeading(float d) {
+    _x[PSI] = wrapPi(_x[PSI] + d);
+    _psi_gyro = wrapPi(_psi_gyro + d);
+    if (!_aligned) restartAlignment(); // the turns collected so far were in the old axes
+}
+
 void AirMassEKF::fuseHeading(float psi, float sig) {
     if (!_running) {
         return;
@@ -878,7 +883,7 @@ uint8_t AirMassEKF::status() const {
     if (_aligned) {
         st |= ST_ALIGNED;
         const uint32_t age = gnssAgeMs();
-        if (age < 5000) {
+        if (age < GNSS_FRESH_MS) {
             st |= ST_GNSS_FRESH;
         }
         if (_wind_valid) {

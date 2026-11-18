@@ -108,6 +108,7 @@ public:
             headings++;
         } else if (rec::decode(_s, _rot)) {
             _pipe.rotateBody(_rot.rv);
+            if (_use_mahony) _mahony.rotate(_rot.rv);
             rotations++;
         } else if (rec::decode(_s, _out)) {
             // the device's output for the cycle before
@@ -125,12 +126,11 @@ public:
 private:
     void overrideWarm(Warm& w) const {
         if (!override_warm) return;
+        w = Warm();
         w.k_tas = warm[0];
         w.pitch_ofs = warm[1];
         w.latency = warm[3];
         w.k_aoa = warm[2];
-        w.latency_sigma = AirMassEKF::START_LATENCY_SIGMA;
-        std::fill(std::begin(w.flap_ofs), std::end(w.flap_ofs), FlapOffsets::UNKNOWN);
     }
 
     void begin(record::Start st) {

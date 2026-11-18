@@ -66,6 +66,15 @@ public:
         return att;
     }
 
+    // the body axes turned by the rotation vector rv (Pipeline::rotateBody)
+    void rotate(const float rv[3]) {
+        const float a = std::sqrt(rv[0] * rv[0] + rv[1] * rv[1] + rv[2] * rv[2]);
+        if (!(a > 0.f)) return;
+        const Quaternion back(-a, vector_f(rv[0] / a, rv[1] / a, rv[2] / a));
+        _q = _q * back;
+        _supported_q = _supported_q * back;
+    }
+
 private:
     Quaternion _q, _supported_q; // the attitude, and its last one supported by the accelerometer
     float _omega = 0.f;

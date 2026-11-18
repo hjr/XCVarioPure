@@ -10,6 +10,7 @@ extern SetupNG<int>  		airmass_status; // AirMassEKF status bits
 extern SetupNG<float> 		airmass_k_tas;
 extern SetupNG<float> 		airmass_pitch_ofs;
 extern SetupNG<float> 		airmass_latency;
+extern SetupNG<float> 		airmass_latency_sigma;
 extern SetupNG<float> 		airmass_k_aoa;
 extern SetupNG<float> 		airmass_flap_ofs_0; // learned pitch/AoA offset per flap lever position
 extern SetupNG<float> 		airmass_flap_ofs_1;

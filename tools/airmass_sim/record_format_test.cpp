@@ -50,16 +50,6 @@ std::string setup(const Setup& c) {
     return s;
 }
 
-std::string start(const record::Start& st);
-// the format 2 start of earlier firmware
-std::string finishedStart2(const record::Start& st) {
-    std::string s = legacy::start(st);
-    s = s.substr(0, s.rfind(",3,"));
-    s += ",2";
-    finish(s);
-    return s;
-}
-
 std::string start(const record::Start& st) {
     std::string s = begin("$PXCVS");
     appendu(s, st.t);
@@ -73,6 +63,15 @@ std::string start(const record::Start& st) {
     for (float o : st.warm.flap_ofs) appendf(s, "%.6f", o);
     appendu(s, 3);
     appendf(s, "%.4f", st.warm.latency_sigma);
+    finish(s);
+    return s;
+}
+
+// the format 2 start of earlier firmware
+std::string finishedStart2(const record::Start& st) {
+    std::string s = legacy::start(st);
+    s = s.substr(0, s.rfind(",3,"));
+    s += ",2";
     finish(s);
     return s;
 }
@@ -294,7 +293,7 @@ void outputs() {
         compare(legacy::output(pipe.ekf()), record::output(pipe.ekf()));
     }
 }
-// $PXCVO back from its sentence, and the rotation vector back from its matrix
+// $PXCVO back from its sentence
 void rotations() {
     std::mt19937 rng(7);
     std::uniform_real_distribution<float> u(-0.6f, 0.6f);
@@ -303,17 +302,15 @@ void rotations() {
         record::Sentence sen;
         record::Rotation back;
         const bool ok = record::parse(record::rotation(r).c_str(), sen) && record::decode(sen, back) && back.t == r.t;
-        float m[3][3], rv[3];
-        rotationMatrix(r.rv, m);
-        rotationVector(m, rv);
         float err = 0.f;
-        for (int k = 0; k < 3; ++k) err = std::fmax(err, std::fmax(std::fabs(back.rv[k] - r.rv[k]), std::fabs(rv[k] - r.rv[k])));
+        for (int k = 0; k < 3; ++k) err = std::fmax(err, std::fabs(back.rv[k] - r.rv[k]));
         if (!ok || err > 1e-5f) {
             std::printf("rotation %d: %.6f %.6f %.6f off by %g\n", i, r.rv[0], r.rv[1], r.rv[2], err);
             failures++;
         }
     }
 }
+
 // $PXCVS of format 3 carries the latency's uncertainty, the older ones start it at START_LATENCY_SIGMA
 void startFormats() {
     record::Start st;

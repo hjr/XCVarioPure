@@ -137,23 +137,15 @@ struct Plausibility {
     };
 };
 
-// rotation matrix of a rotation vector (axis times angle, rad) and back, for angles below 180°
+// rotation matrix of a rotation vector (axis times angle, rad)
 inline void rotationMatrix(const float rv[3], float m[3][3]) {
     const float a = std::sqrt(rv[0] * rv[0] + rv[1] * rv[1] + rv[2] * rv[2]);
-    const float k[3] = {a > 0.f ? rv[0] / a : 0.f, a > 0.f ? rv[1] / a : 0.f, a > 0.f ? rv[2] / a : 0.f};
+    const float inv = a > 0.f ? 1.f / a : 0.f;
+    const float k[3] = {rv[0] * inv, rv[1] * inv, rv[2] * inv};
     const float c = std::cos(a), s = std::sin(a), t = 1.f - c;
     m[0][0] = c + k[0] * k[0] * t;        m[0][1] = k[0] * k[1] * t - k[2] * s; m[0][2] = k[0] * k[2] * t + k[1] * s;
     m[1][0] = k[1] * k[0] * t + k[2] * s; m[1][1] = c + k[1] * k[1] * t;        m[1][2] = k[1] * k[2] * t - k[0] * s;
     m[2][0] = k[2] * k[0] * t - k[1] * s; m[2][1] = k[2] * k[1] * t + k[0] * s; m[2][2] = c + k[2] * k[2] * t;
-}
-
-inline void rotationVector(const float m[3][3], float rv[3]) {
-    const float a = std::acos(std::clamp((m[0][0] + m[1][1] + m[2][2] - 1.f) / 2.f, -1.f, 1.f));
-    const float s = std::sin(a);
-    const float f = s > 1e-6f ? a / (2.f * s) : 0.5f;
-    rv[0] = (m[2][1] - m[1][2]) * f;
-    rv[1] = (m[0][2] - m[2][0]) * f;
-    rv[2] = (m[1][0] - m[0][1]) * f;
 }
 
 class Pipeline {
@@ -334,7 +326,7 @@ private:
                 raw.down_body[i] = _att.down()[i];
             }
         }
-        if (in.continuous && airdata && air.ias > 15.f && std::fabs(air.f_cg[2]) > 0.5f && std::fabs(raw.gyro[0]) < LAT_RATE_MAX) {
+        if (_learn && in.continuous && airdata && air.ias > 15.f && std::fabs(air.f_cg[2]) > 0.5f && std::fabs(raw.gyro[0]) < LAT_RATE_MAX) {
             const float ratio = air.f_cg[1] / std::fabs(air.f_cg[2]);
             if (std::fabs(ratio) < LAT_RATIO_MAX) _lat_ratio += (ratio - _lat_ratio) * std::min(in.dt / LAT_TAU, 1.f);
         }
@@ -393,27 +385,32 @@ public:
 
     // A new IMU reference in flight: the body axes turn by the rotation vector rv [rad] (v_new = R(rv) v_old), the
     // pitch offsets by the angle the body x axis turned in its x-z plane; heading and wind stay.
-    void rotateBody(const float rv[3]) {
+    // False, nothing changed, when a pitch offset would leave its range: the caller restarts.
+    bool rotateBody(const float rv[3]) {
         float m[3][3];
         rotationMatrix(rv, m);
-        _att.rotate(m);
-        float d[3], g[3];
-        for (int i = 0; i < 3; ++i) {
-            d[i] = m[i][0] * _supported_down[0] + m[i][1] * _supported_down[1] + m[i][2] * _supported_down[2];
-            g[i] = m[i][0] * _gyro_prev[0] + m[i][1] * _gyro_prev[1] + m[i][2] * _gyro_prev[2];
-        }
-        std::copy(d, d + 3, _supported_down);
-        std::copy(g, g + 3, _gyro_prev);
-        if (std::fabs(rv[0]) > 1e-3f) {
-            _lat_ratio = 0.f; // rolled: learn the installation's lateral force anew
-        }
         const float turn = std::atan2(m[2][0], m[0][0]); // the AoA of the body x axis grows by it
         _flaps.keep(_ekf);
+        if (_ekf.isRunning() && std::fabs(_ekf.pitchOffset() - turn) > AirMassEKF::THB_MAX) return false;
+        for (int i = 0; i < FlapOffsets::N; ++i) {
+            if (_flaps.known(i) && std::fabs(_flaps.offset(i) - turn) > AirMassEKF::THB_MAX) return false;
+        }
+        // the new body x axis (row 0 of m, in the old axes) through the attitude of the last cycle: banked, a turn about
+        // the wing changes its heading too
+        const float cr = std::cos(_in.roll), sr = std::sin(_in.roll), cp = std::cos(_in.pitch), sp = std::sin(_in.pitch);
+        const float y1 = cr * m[0][1] - sr * m[0][2], z1 = sr * m[0][1] + cr * m[0][2];
+        if (_ekf.isRunning()) _ekf.turnHeading(std::atan2(y1, cp * m[0][0] + sp * z1));
+        _att.rotate(m);
+        Attitude::turn(m, _supported_down);
+        Attitude::turn(m, _gyro_prev);
         _flaps.shift(-turn);
         if (_ekf.isRunning()) {
             _ekf.setPitchOffset(_ekf.pitchOffset() - turn, _ekf.sigma(AirMassEKF::THB));
         }
+        return true;
     }
+    // another IMU calibration: the installation's lateral force is learned anew
+    void resetLateral() { _lat_ratio = 0.f; }
 
     // GNSS ground velocity, with a trusted wind as prior for the alignment
     void gnss(const AirMassEKF::GnssVelocity& g, bool has_prior, float wn0, float we0) { _ekf.fuseGnss(g, has_prior, wn0, we0); }

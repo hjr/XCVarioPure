@@ -333,9 +333,9 @@ inline bool decode(const Sentence& s, Start& st) {
     for (int i = 0; i < FlapOffsets::N; ++i) {
         st.warm.flap_ofs[i] = f[12 + i];
     }
-    if (s.n > 13 + FlapOffsets::N && f[12 + FlapOffsets::N] >= 3. && std::isfinite(f[13 + FlapOffsets::N])) {
-        st.warm.latency_sigma = f[13 + FlapOffsets::N];
-    }
+    const double fmt = s.n > 12 + FlapOffsets::N ? f[12 + FlapOffsets::N] : 0.;
+    st.warm.latency_sigma = s.n > 13 + FlapOffsets::N && fmt >= 3. && std::isfinite(f[13 + FlapOffsets::N])
+                                ? f[13 + FlapOffsets::N] : AirMassEKF::START_LATENCY_SIGMA;
     return true;
 }
 

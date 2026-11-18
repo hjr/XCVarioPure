@@ -5,6 +5,7 @@ SetupNG<int>  			airmass_status( "AM_STAT", 0, 0, SYNC_FROM_MASTER, VOLATILE );
 SetupNG<float> 			airmass_k_tas("AM_KTAS", 1.0, USER_RST, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, nullptr, true); // learned
 SetupNG<float> 			airmass_pitch_ofs("AM_PITCH", 0.0, USER_RST, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, nullptr, true); // learned
 SetupNG<float> 			airmass_latency("AM_LAT", 0.75, USER_RST, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, nullptr, true); // learned GNSS latency [s]
+SetupNG<float> 			airmass_latency_sigma("AM_LATSIG", 0.3, USER_RST, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, nullptr, true); // its uncertainty [s], 0.3: not learned yet
 // learned pitch/AoA offset per flap lever position [rad], 1.0: not learned yet
 SetupNG<float> 			airmass_flap_ofs_0("AM_FOFS0", 1.0, USER_RST, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, nullptr, true);
 SetupNG<float> 			airmass_flap_ofs_1("AM_FOFS1", 1.0, USER_RST, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, nullptr, true);

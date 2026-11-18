@@ -98,16 +98,15 @@ public:
 
     // the body axes turned (another IMU reference): m maps a vector from the old body axes into the new ones
     void rotate(const float m[3][3]) {
-        float d[3], b[3];
-        for (int i = 0; i < 3; ++i) {
-            d[i] = m[i][0] * _d[0] + m[i][1] * _d[1] + m[i][2] * _d[2];
-            b[i] = m[i][0] * _bias[0] + m[i][1] * _bias[1] + m[i][2] * _bias[2];
-        }
-        for (int i = 0; i < 3; ++i) {
-            _d[i] = d[i];
-            _bias[i] = b[i];
-        }
+        turn(m, _d);
+        turn(m, _bias);
         normalize(_d);
+    }
+    static void turn(const float m[3][3], float v[3]) {
+        const float x[3] = {v[0], v[1], v[2]};
+        for (int i = 0; i < 3; ++i) {
+            v[i] = m[i][0] * x[0] + m[i][1] * x[1] + m[i][2] * x[2];
+        }
     }
 
     const float* down() const { return _d; }

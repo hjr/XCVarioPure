@@ -39,6 +39,7 @@ constexpr float COMPASS_SIGMA = 0.15f;        // rad, compass heading incl. devi
 constexpr uint32_t COMPASS_MS = 10000;        // compass errors are correlated
 constexpr float COMPASS_MAX_ROLL = 0.17f;     // rad, the compass is only trusted in straight flight
 constexpr uint32_t PERSIST_MS = 300000;       // save the learned calibration every 5 minutes in flight
+constexpr float PITCH_ONLY = 0.01f;           // rad, an IMU reference change with less roll and yaw is a pitch adjustment
 constexpr float LATENCY_SIGMA = 0.1f;         // s, a GNSS latency this certain is kept, the next flight starts from it
 constexpr uint32_t SETUP_MS = 10000;          // repeat the recorded setup every 10s
 
@@ -318,7 +319,7 @@ void AirMassSensor::start(bool keep_learned)
         warm.k_tas = speed_ok ? airmass_k_tas.get() : 1.f;
         warm.pitch_ofs = pitch_ok ? airmass_pitch_ofs.get() : 0.f;
         warm.latency = airmass_latency.get();
-        if (airmass_latency.get() != airmass_latency.getDefault()) {
+        if (airmass_latency_sigma.get() < AirMassEKF::START_LATENCY_SIGMA) {
             warm.latency_sigma = LATENCY_SIGMA; // learned on an earlier flight: one latency per installation
         }
         warm.k_aoa = pitch_ok ? airmass_k_aoa.get() : 1.f;
@@ -364,30 +365,36 @@ void AirMassSensor::start(bool keep_learned)
     _gnss_epoch = latestGnss(g); // only fresh epochs
 }
 
-// The IMU reference changed in flight (the pitch adjustment on the horizon page, the IMU calibration): the sensor
-// readings come in turned body axes. A restart would lose heading and wind until the next turn, the rotation between
-// the two references is known instead.
+// The IMU reference changed in flight. A pitch adjustment (the horizon page) turns the body axes about the wing: a
+// restart would lose heading and wind until the next turn, the rotation between the two references is known instead.
+// Anything else (a new IMU calibration) changes the installation, it restarts.
 void AirMassSensor::turnBody()
 {
-    const Quaternion ref = imuSensor->getRefRot();
-    const vector_f axes[3] = {vector_f(1.f, 0.f, 0.f), vector_f(0.f, 1.f, 0.f), vector_f(0.f, 0.f, 1.f)};
-    float m[3][3];
-    for (int j = 0; j < 3; ++j) {
-        const vector_f c = ref.rotate(_ref.get_conjugate().rotate(axes[j]));
-        m[0][j] = c.x;
-        m[1][j] = c.y;
-        m[2][j] = c.z;
-    }
+    Quaternion d = imuSensor->getRefRot() * _ref.get_conjugate();
+    if (d._w < 0.f) d = Quaternion(-d._w, -d._x, -d._y, -d._z);
+    const float s = std::sqrt(d._x * d._x + d._y * d._y + d._z * d._z);
+    const float f = s > 1e-7f ? 2.f * std::atan2(s, d._w) / s : 2.f;
     airmass::record::Rotation r;
     r.t = Clock::getMillis();
-    airmass::rotationVector(m, r.rv);
-    ESP_LOGI(FNAME, "AirMass body axes turned by %.2f/%.2f/%.2f°", Units::rad_to_deg(r.rv[0]), Units::rad_to_deg(r.rv[1]),
-             Units::rad_to_deg(r.rv[2]));
-    _pipe.rotateBody(r.rv);
+    r.rv[0] = d._x * f;
+    r.rv[1] = d._y * f;
+    r.rv[2] = d._z * f;
+    if (std::fabs(r.rv[0]) > PITCH_ONLY || std::fabs(r.rv[2]) > PITCH_ONLY) {
+        ESP_LOGI(FNAME, "AirMass restart for another IMU reference");
+        _pipe.resetLateral();
+        start();
+        return;
+    }
+    if (!_pipe.rotateBody(r.rv)) {
+        ESP_LOGI(FNAME, "AirMass restart, the pitch adjustment leaves the pitch offset range");
+        start();
+        return;
+    }
+    ESP_LOGI(FNAME, "AirMass body axes turned by %.2f°", Units::rad_to_deg(r.rv[1]));
     if (_recording) {
         queueLine([&r] { return airmass::record::rotation(r); });
     }
-    _ref = ref;
+    _ref = imuSensor->getRefRot();
     _sig_pitch = pitchSignature();
 }
 
@@ -440,6 +447,7 @@ void AirMassSensor::persistLearned()
     }
     if (ekf.sigma(AirMassEKF::TAU) < LATENCY_SIGMA && !ekf.learnsLatencyFirst()) {
         store(airmass_latency, ekf.gnssLatency(), 0.01f);
+        store(airmass_latency_sigma, LATENCY_SIGMA, 0.001f);
     }
     ESP_LOGI(FNAME, "AirMass learned k_tas %.3f, pitch ofs %.2f°, gnss latency %.2fs", airmass_k_tas.get(),
              Units::rad_to_deg(airmass_pitch_ofs.get()), airmass_latency.get());
@@ -482,11 +490,11 @@ void AirMassSensor::postProcess()
     if (!_pipe.ekf().isRunning()) {
         ESP_LOGW(FNAME, "AirMass estimator restart");
         start();
-    } else if (speedSignature() != _sig_speed || (pitchSignature() != _sig_pitch && !imuSensor)) {
+    } else if (speedSignature() != _sig_speed || (!imuSensor && pitchSignature() != _sig_pitch)) {
         // another installation (glider, airspeed calibration): what was learned does not apply
         ESP_LOGI(FNAME, "AirMass restart for another installation");
         start();
-    } else if (pitchSignature() != _sig_pitch) {
+    } else if (imuSensor && !(imuSensor->getRefRot() == _ref)) {
         turnBody();
     } else if (_jump || (int32_t)(Clock::getMillis() - _last_ms) < 0) {
         // A replay jump, or the clock going back when a faster replay returns to real time: restart (recorded, so

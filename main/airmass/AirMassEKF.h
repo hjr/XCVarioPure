@@ -151,6 +151,8 @@ class AirMassEKF {
     // Start the vertical part, warm start with learned calibration values
     static constexpr float START_LATENCY = 0.75f; // s, the GNSS latency before anything was learned (classical Flarm)
     static constexpr float START_LATENCY_SIGMA = 0.3f; // s, its uncertainty
+    static constexpr float THB_MAX = 0.25f;            // rad, the largest pitch offset
+    static constexpr uint32_t GNSS_FRESH_MS = 5000;     // a GNSS velocity fused this recently: ST_GNSS_FRESH
     void reset(float baro_alt, float k_tas = 1.f, float pitch_ofs = 0.f, float latency = START_LATENCY, float k_aoa = 1.f,
                float latency_sigma = START_LATENCY_SIGMA);
     void stop() { _running = false; }
@@ -185,6 +187,8 @@ class AirMassEKF {
     float aoaScale() const { return _x[KCL]; }
     // replace the pitch/AoA offset, e.g. for another flap setting, with its uncertainty [rad]
     void setPitchOffset(float thb, float sigma);
+    // the body x axis turned by d in heading (another IMU reference); the snapshots keep their heading
+    void turnHeading(float d);
     // angle of attack of the body x axis for a modelled angle of attack, with the learned scale and offset
     float alphaOf(float aoa_model) const { return aoa_model * _x[KCL] - _x[THB]; }
     float vDown() const { return _x[VD]; }
