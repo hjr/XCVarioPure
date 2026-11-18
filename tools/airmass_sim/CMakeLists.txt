@@ -121,6 +121,12 @@ set_tests_properties(record_nl PROPERTIES FIXTURES_SETUP nl_record)
 add_test(NAME replay_nl COMMAND airmass_replay ${CMAKE_CURRENT_BINARY_DIR}/nl_record.nmea --check 0.02)
 set_tests_properties(replay_nl PROPERTIES FIXTURES_REQUIRED nl_record)
 
+# an IMU rolled 3° against the wings: its lateral force is learned, not taken for sideslip (the wind never got valid in
+# thermal before)
+foreach(scenario nl thermal)
+    add_test(NAME ${scenario}_mount_roll3 COMMAND airmass_sim ${scenario} --set mount_roll=3)
+endforeach()
+
 # The same physical observations and truth, with prediction-only ticks between 10Hz measurements.
 foreach(scenario straight thermal gust nl)
     add_test(NAME ${scenario}_predict20 COMMAND airmass_sim ${scenario} --set predict_hz=20)

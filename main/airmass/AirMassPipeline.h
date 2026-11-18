@@ -314,7 +314,11 @@ private:
                 raw.down_body[i] = _att.down()[i];
             }
         }
-        fillInput(raw, air, in);
+        if (in.continuous && airdata && air.ias > 15.f && std::fabs(air.f_cg[2]) > 0.5f && std::fabs(raw.gyro[0]) < LAT_RATE_MAX) {
+            const float ratio = air.f_cg[1] / std::fabs(air.f_cg[2]);
+            if (std::fabs(ratio) < LAT_RATIO_MAX) _lat_ratio += (ratio - _lat_ratio) * std::min(in.dt / LAT_TAU, 1.f);
+        }
+        fillInput(raw, air, in, _lat_ratio);
         if (in.continuous) std::copy(std::begin(raw.down_body), std::end(raw.down_body), _supported_down);
         // Wheel support is not wing lift. Below the flying-speed cutoff the air-vector/AoA
         // model cannot distinguish ground roll from flying; let the caller use TE instead.
@@ -408,6 +412,7 @@ private:
     float _gyro_prev[3] = {};
     float _gyro_dot[3] = {};
     float _roll_mem = 0.f; // rad/s, recent roll rate
+    float _lat_ratio = 0.f; // the installation's lateral specific force per g, kept over restarts
     uint32_t _prev_time = 0;
     bool _learn = true;
     Frame _last_frame;

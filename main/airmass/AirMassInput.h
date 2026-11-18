@@ -20,6 +20,12 @@ constexpr float SLIP_MAX = 0.35f;
 // sideslip per rad/s of roll rate, settling with the yaw dynamics (ROLL_SLIP_TAU)
 constexpr float ROLL_SLIP = 0.3f;     // s
 constexpr float ROLL_SLIP_TAU = 1.f;  // s
+// The mean lateral specific force per g while not rolling (straight flight and steady turns, the same on real flights)
+// is the IMU rolled against the wings, not sideslip: 3° make 0.05 g, read as 5-10° of sideslip. Learned within
+// minutes, LAT_RATE_MAX/LAT_RATIO_MAX keep roll in/out (adverse yaw) and real sideslip out.
+constexpr float LAT_TAU = 120.f;        // s
+constexpr float LAT_RATE_MAX = 0.05f;   // rad/s roll rate
+constexpr float LAT_RATIO_MAX = 0.15f;
 
 struct Raw {
     float f_body[3] = {0.f, 0.f, -1.f}; // g, specific force at the IMU, body NED (level at rest: 0,0,-1)
@@ -96,8 +102,9 @@ inline AirData airData(const Raw& r, const AirMassEKF& ekf) {
 }
 
 // Fills the acceleration, load factor, AoA, polar sink and slip inputs; the attitude, time and
-// baro fields are set by the caller.
-inline void fillInput(const Raw& r, const AirData& a, AirMassEKF::Input& in) {
+// baro fields are set by the caller. lat_ratio: the lateral specific force per g of normal force that is the
+// installation's (an IMU rolled against the wings), not sideslip.
+inline void fillInput(const Raw& r, const AirData& a, AirMassEKF::Input& in, float lat_ratio = 0.f) {
     const float* f = a.f_cg;
     const float* dn = r.down_body;
     // inertial acceleration = specific force + gravity, gravity in body coordinates is g * down_body
@@ -106,7 +113,7 @@ inline void fillInput(const Raw& r, const AirData& a, AirMassEKF::Input& in) {
     in.tas = r.tas; // the estimator applies its airspeed scale itself
     in.aoa = a.aoa;
     in.polar_sink = NAN;
-    in.slip_beta = slipBeta(f[1], a.ias, r.mass, r.wing_area);
+    in.slip_beta = slipBeta(f[1] - lat_ratio * std::fabs(f[2]), a.ias, r.mass, r.wing_area);
     in.slip_sigma = std::fabs(in.slip_beta);
     // the polar is defined on IAS: the true sink scales with TAS/IAS
     if (a.ias > 10.f && r.wing_area > 1.f && r.mass > 0.f && r.polar_sink_ias < 0.f) {
