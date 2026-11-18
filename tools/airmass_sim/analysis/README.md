@@ -2,6 +2,8 @@
 
 Results: [RESULTS-2026-11-06.md](RESULTS-2026-11-06.md), raw script outputs in `raw/`.
 
+Latest: [2026-11-18, the IMU's lateral offset and in-flight IMU reference changes](RESULTS-2026-11-18-lateral-offset.md).
+
 Latest: [2026-11-10, all 34 logs of ~/Downloads/NMEAlogs](RESULTS-2026-11-10.md): new defaults `sigma_pitch` 0.03 and
 `kinetic_tau` 5 s (AirMass now beats TE netto over 30 s too), plausibility guards against garbled readings, the covariance
 fixes behind two blow-ups, and the bias decomposition by bank (`decomp.js`). `table.js` tabulates `batch.js` outputs.
