@@ -601,7 +601,8 @@ async function replayOnce() {
       setupUsed.slice(3),
       `${attitudeUsed} · cycles ${s.cycles} · GNSS fixes ${s.gnss} · compass ${s.compass}`,
       `learned: k_tas ${s.k_tas.toFixed(3)}, pitch offset ${s.pitch_ofs_deg.toFixed(2)}°, AoA scale ${s.aoa_scale.toFixed(3)}, ` +
-        `GNSS latency ${s.latency_ms} ms, gyro z bias ${s.gyro_z_bias_dps.toFixed(3)}°/s`,
+        `GNSS latency ${s.latency_ms} ms, gyro z bias ${s.gyro_z_bias_dps.toFixed(3)}°/s` +
+        (Number.isFinite(s.imu_roll_deg) ? `, IMU roll ${s.imu_roll_deg.toFixed(1)}°` : ""),
       conv.fixes && `GNSS reference: altitude ${Math.round(D.altDelay * 1000)} ms old at arrival, ground speed ${Math.round((D.altDelay + D.speedLag) * 1000)} ms (measured from the log)`,
       conv.temperatureEstimatedSamples && `OAT estimated for ${conv.temperatureEstimatedSamples} samples: 25°C at sea level, −6.5°C/km`,
       conv.temperatureKelvinSamples && `OAT converted from Kelvin for ${conv.temperatureKelvinSamples} samples`,

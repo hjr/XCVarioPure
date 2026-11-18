@@ -414,6 +414,7 @@ public:
     // another IMU calibration: the installation's lateral force is learned anew
     void resetLateral() { _lat_ratio = 0.f; }
     float latRatio() const { return _lat_ratio; }
+    float imuRoll() const { return -std::asin(_lat_ratio); } // rad, the IMU's roll against the wings, right wing down positive
 
     // GNSS ground velocity, with a trusted wind as prior for the alignment
     void gnss(const AirMassEKF::GnssVelocity& g, bool has_prior, float wn0, float we0) { _ekf.fuseGnss(g, has_prior, wn0, we0); }

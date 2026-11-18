@@ -29,6 +29,7 @@ public:
     void postProcess() override;
 
     const AirMassEKF& getEKF() const { return _pipe.ekf(); }
+    float imuRoll() const { return _pipe.imuRoll(); }
     // instrument replay: restart for a disruptive jump of the replayed flight (any task)
     void prepareForSimJump() { _jump = true; }
 

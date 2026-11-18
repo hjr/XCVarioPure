@@ -157,8 +157,15 @@ void StatusPage::draw()
     if (ekf) {
         snprintf(buf, sizeof(buf), "TAS scale: %.3f +-%.3f", ekf->kTas(), ekf->sigma(AirMassEKF::KTAS));
         line(ln++, buf);
-        snprintf(buf, sizeof(buf), "Pitch: %.2f° +-%.2f", Units::rad_to_deg(ekf->pitchOffset()),
-                 Units::rad_to_deg(ekf->sigma(AirMassEKF::THB)));
+        const int plen = snprintf(buf, sizeof(buf), "Pitch: %.2f° +-%.2f", Units::rad_to_deg(ekf->pitchOffset()),
+                                  Units::rad_to_deg(ekf->sigma(AirMassEKF::THB)));
+        const float roll = Units::rad_to_deg(airmassSensor->imuRoll());
+        if (dwidth > dheight) {
+            snprintf(buf + plen, sizeof(buf) - plen, ", roll %.1f°", roll);
+        } else {
+            line(ln++, buf);
+            snprintf(buf, sizeof(buf), "IMU roll: %.1f°", roll);
+        }
         line(ln++, buf);
         snprintf(buf, sizeof(buf), "GNSS lag: %.0f +-%.0f ms", ekf->gnssLatency() * 1000.f, ekf->sigma(AirMassEKF::TAU) * 1000.f);
         line(ln++, buf);
