@@ -365,12 +365,10 @@
   }
 
   const utcOf = (hhmmss) => +hhmmss.slice(0, 2) * 3600 + +hhmmss.slice(2, 4) * 60 + +hhmmss.slice(4);
+  const ggaUtc = (hhmmss) => (/^\d{6}/.test(hhmmss || "") ? utcOf(hhmmss) : NaN);
   // The newest GNSS time of a fix ($GPRMC or a $GPGGA with altitude) for stampRepair: after a logging gap the sensors
   // can resume before the next RMC, its GGA then confirms the gap. An older time (a GGA after the next RMC) is ignored.
-  const laterUtc = (current, hhmmss) => {
-    const utc = /^\d{6}/.test(hhmmss || "") ? utcOf(hhmmss) : NaN;
-    return Number.isFinite(utc) && !((utc - current + 86400) % 86400 >= 43200) ? utc : current;
-  };
+  const laterUtc = (current, utc) => (Number.isFinite(utc) && !((utc - current + 86400) % 86400 >= 43200) ? utc : current);
 
   function parseRmc(f) {
     if (f.length > 8 && f[2] === "A" && f[7]) {
@@ -527,9 +525,9 @@
       } else if (/^\$(?:G[PN](?:GGA|GSA|RMC)|PGRMZ|PFLA[UAL]),/.test(line)) {
         if (/^G[PN]RMC$/.test(f[0])) {
           const fix = parseRmc(f);
-          if (fix) gnssUtc = laterUtc(gnssUtc, f[1]);
+          if (fix) gnssUtc = laterUtc(gnssUtc, fix.utc);
         }
-        if (/^G[PN]GGA$/.test(f[0]) && Number.isFinite(parseFloat(f[9]))) { gnssAlt = parseFloat(f[9]); gnssUtc = laterUtc(gnssUtc, f[1]); }
+        if (/^G[PN]GGA$/.test(f[0]) && Number.isFinite(parseFloat(f[9]))) { gnssAlt = parseFloat(f[9]); gnssUtc = laterUtc(gnssUtc, ggaUtc(f[1])); }
         output = sentence(f[0], f.slice(1));
       }
       if (output) events.push({ t, line: output, kind });
@@ -648,11 +646,11 @@
         if (f.length > 11 && Number.isFinite(num(f[11]))) pxcv.pitch = num(f[11]);
       } else if (raw.startsWith("$GPRMC,") || raw.startsWith("$GNRMC,")) {
         const f = fields(raw.trim()), r = parseRmc(f);
-        if (r) { fix = r; pendingFix = r; gnssUtc = laterUtc(gnssUtc, f[1]); }
+        if (r) { fix = r; pendingFix = r; gnssUtc = laterUtc(gnssUtc, r.utc); }
         if (!Number.isFinite(utcDay)) utcDay = rmcDay(f);
       } else if (raw.startsWith("$GPGGA,") || raw.startsWith("$GNGGA,")) {
         const f = fields(raw.trim()), v = parseFloat(f[9]);
-        if (Number.isFinite(v)) { gnssAlt = v; altUtc = utcOf(f[1]); gnssUtc = laterUtc(gnssUtc, f[1]); }
+        if (Number.isFinite(v)) { gnssAlt = v; altUtc = ggaUtc(f[1]); gnssUtc = laterUtc(gnssUtc, altUtc); }
       } else if (raw.startsWith("$SENS,")) {
         const f = fields(raw.trim());
         const sensor = normalize(f, gnssAlt, gnssUtc);

@@ -217,13 +217,17 @@ def scan_log(lines):
     return out
 
 
-def later_utc(current, hhmmss):
+def utc_of(hhmmss):
+    """hhmmss[.ss] in seconds of the day, nan if it is none (web/convert.js ggaUtc)"""
+    try:
+        return int(hhmmss[0:2]) * 3600 + int(hhmmss[2:4]) * 60 + float(hhmmss[4:]) if hhmmss[:6].isdigit() else math.nan
+    except ValueError:
+        return math.nan
+
+
+def later_utc(current, utc):
     """The newest GNSS time of a fix ($GPRMC or a $GPGGA with altitude) for StampRepair, as web/convert.js laterUtc:
     after a logging gap the sensors can resume before the next RMC, its GGA then confirms the gap."""
-    try:
-        utc = int(hhmmss[0:2]) * 3600 + int(hhmmss[2:4]) * 60 + float(hhmmss[4:]) if len(hhmmss) >= 6 and hhmmss[:6].isdigit() else math.nan
-    except ValueError:
-        utc = math.nan
     if math.isfinite(utc) and not (math.isfinite(current) and (utc - current) % 86400 >= 43200):
         return utc
     return current
@@ -461,14 +465,14 @@ def main():
                     trk = float(f[8]) if f[8] else math.nan
                     fix = dict(utc=hh * 3600 + mm * 60 + ss, speed=spd, track=trk, lat=lat, lon=lon)
                     pending_fix = fix
-                    gnss_utc = later_utc(gnss_utc, f[1])
+                    gnss_utc = later_utc(gnss_utc, fix["utc"])
                 except ValueError:
                     pass
         elif raw.startswith("$GPGGA,") or raw.startswith("$GNGGA,"):
             f = nmea_fields(raw)
             try:
                 gnss_alt = float(f[9])
-                gnss_utc = later_utc(gnss_utc, f[1])
+                gnss_utc = later_utc(gnss_utc, utc_of(f[1]))
             except (ValueError, IndexError):
                 pass
         elif raw.startswith("$SENS,"):
