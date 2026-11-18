@@ -217,6 +217,18 @@ def scan_log(lines):
     return out
 
 
+def later_utc(current, hhmmss):
+    """The newest GNSS time of a fix ($GPRMC or a $GPGGA with altitude) for StampRepair, as web/convert.js laterUtc:
+    after a logging gap the sensors can resume before the next RMC, its GGA then confirms the gap."""
+    try:
+        utc = int(hhmmss[0:2]) * 3600 + int(hhmmss[2:4]) * 60 + float(hhmmss[4:]) if len(hhmmss) >= 6 and hhmmss[:6].isdigit() else math.nan
+    except ValueError:
+        utc = math.nan
+    if math.isfinite(utc) and not (math.isfinite(current) and (utc - current) % 86400 >= 43200):
+        return utc
+    return current
+
+
 class StampRepair:
     """Keep forward sensor gaps confirmed by elapsed GNSS time, allowing two seconds for fix cadence/arrival.
     Other large jumps (UTC synchronization) and backward jumps (midnight/reboot) continue at the sensor cycle.
@@ -350,6 +362,7 @@ def main():
     pxcv = dict(vario=math.nan, bugs=0.0, ballast=1.0, roll=0.0, pitch=0.0)
     fix = None            # the last $GPRMC: utc seconds of day, speed, track, lat, lon
     gnss_alt = math.nan
+    gnss_utc = math.nan
     last_ms = 0
     pending_fix = None    # a fix not yet passed to the estimator (its arrival time comes with the next $SENS)
     running, above, below = False, 0, 0
@@ -448,12 +461,14 @@ def main():
                     trk = float(f[8]) if f[8] else math.nan
                     fix = dict(utc=hh * 3600 + mm * 60 + ss, speed=spd, track=trk, lat=lat, lon=lon)
                     pending_fix = fix
+                    gnss_utc = later_utc(gnss_utc, f[1])
                 except ValueError:
                     pass
         elif raw.startswith("$GPGGA,") or raw.startswith("$GNGGA,"):
             f = nmea_fields(raw)
             try:
                 gnss_alt = float(f[9])
+                gnss_utc = later_utc(gnss_utc, f[1])
             except (ValueError, IndexError):
                 pass
         elif raw.startswith("$SENS,"):
@@ -481,7 +496,7 @@ def main():
             if scan["temperature_kelvin"] and plausible_temperature(oat - 273.15):
                 oat -= 273.15
                 temperature_kelvin_samples += 1
-            t_ms = monotone(stamp, fix["utc"] if fix else math.nan, raw_age)
+            t_ms = monotone(stamp, gnss_utc, raw_age)
             before_ms, last_ms = last_ms, t_ms
             if monotone.recovered:
                 timestamp_recovered_samples += 1

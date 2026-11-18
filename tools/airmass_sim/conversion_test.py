@@ -145,6 +145,40 @@ console.log(JSON.stringify([...c.track.cols.t_ms]));
                                                        cwd=Path(__file__).parent))
                 self.assertEqual(js, expected)
 
+    def test_gap_confirmed_by_gga_before_the_next_rmc(self):
+        sens = lambda t: f"$SENS,{t:.3f},0,900,899,500,15,0,0,-1,0,0,0"
+        cases = [
+            # a logging gap, resumed with a GGA and sensors before the next RMC: kept
+            (["$GPRMC,100000.00,A,4800,N,01100,E,60,90,091126,,,A", sens(1000), sens(1000.1),
+              "$GPGGA,105000.00,4800,N,01100,E,1,10,1.0,900.0,M,0,M,,", sens(4000), sens(4000.1),
+              "$GPRMC,105001.00,A,4800,N,01100,E,60,90,091126,,,A", sens(4001)],
+             [1000000, 1000100, 4000000, 4000100, 4001000]),
+            # a GGA older than the last RMC confirms nothing
+            (["$GPRMC,100001.00,A,4800,N,01100,E,60,90,091126,,,A", sens(1000),
+              "$GPGGA,100000.00,4800,N,01100,E,1,10,1.0,900.0,M,0,M,,", sens(4000)],
+             [1000000, 1000100]),
+            # a GGA without a fix (no altitude) confirms nothing
+            (["$GPRMC,100000.00,A,4800,N,01100,E,60,90,091126,,,A", sens(1000),
+              "$GPGGA,105000.00,,,,,0,0,,,M,,M,,", sens(4000)],
+             [1000000, 1000100]),
+        ]
+        script = """
+const fs = require('fs'), {convert, serialTimeline} = require('./web/convert.js');
+const text = fs.readFileSync(0, 'utf8');
+const serial = serialTimeline(text).events.filter(e => e.kind === 'sensor').map(e => Math.round(e.t * 1000));
+console.log(JSON.stringify({offline: [...convert(text).track.cols.t_ms], serial}));
+"""
+        for lines, expected in cases:
+            with self.subTest(lines=lines), tempfile.TemporaryDirectory() as tmp:
+                text = "\n".join(lines) + "\n"
+                js = json.loads(subprocess.check_output(["node", "-e", script], input=text.encode(), cwd=Path(__file__).parent))
+                self.assertEqual(js, dict(offline=expected, serial=expected))
+                source, aux = Path(tmp) / "log.nmea", Path(tmp) / "aux.csv"
+                source.write_text(text)
+                subprocess.run([sys.executable, str(Path(__file__).with_name("sens2rec.py")), str(source), str(Path(tmp) / "rec.nmea"),
+                                "--aux", str(aux)], check=True, capture_output=True)
+                self.assertEqual([int(row.split(",")[0]) for row in aux.read_text().splitlines()[1:]], expected)
+
 
 class FlightDetectionTests(unittest.TestCase):
     def test_flight_detection_does_not_require_ground_speed(self):

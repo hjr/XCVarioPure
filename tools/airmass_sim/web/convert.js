@@ -365,6 +365,12 @@
   }
 
   const utcOf = (hhmmss) => +hhmmss.slice(0, 2) * 3600 + +hhmmss.slice(2, 4) * 60 + +hhmmss.slice(4);
+  // The newest GNSS time of a fix ($GPRMC or a $GPGGA with altitude) for stampRepair: after a logging gap the sensors
+  // can resume before the next RMC, its GGA then confirms the gap. An older time (a GGA after the next RMC) is ignored.
+  const laterUtc = (current, hhmmss) => {
+    const utc = /^\d{6}/.test(hhmmss || "") ? utcOf(hhmmss) : NaN;
+    return Number.isFinite(utc) && !((utc - current + 86400) % 86400 >= 43200) ? utc : current;
+  };
 
   function parseRmc(f) {
     if (f.length > 8 && f[2] === "A" && f[7]) {
@@ -521,9 +527,9 @@
       } else if (/^\$(?:G[PN](?:GGA|GSA|RMC)|PGRMZ|PFLA[UAL]),/.test(line)) {
         if (/^G[PN]RMC$/.test(f[0])) {
           const fix = parseRmc(f);
-          if (fix) gnssUtc = fix.utc;
+          if (fix) gnssUtc = laterUtc(gnssUtc, f[1]);
         }
-        if (/^G[PN]GGA$/.test(f[0]) && Number.isFinite(parseFloat(f[9]))) gnssAlt = parseFloat(f[9]);
+        if (/^G[PN]GGA$/.test(f[0]) && Number.isFinite(parseFloat(f[9]))) { gnssAlt = parseFloat(f[9]); gnssUtc = laterUtc(gnssUtc, f[1]); }
         output = sentence(f[0], f.slice(1));
       }
       if (output) events.push({ t, line: output, kind });
@@ -573,7 +579,7 @@
     const track = new Track();
     const pxcv = { vario: NaN, bugs: 0.0, ballast: 1.0, roll: 0.0, pitch: 0.0 };
     let teNew = 0;
-    let fix = null, gnssAlt = NaN, altUtc = NaN, pendingFix = null, running = false, above = 0, below = 0;
+    let fix = null, gnssAlt = NaN, altUtc = NaN, gnssUtc = NaN, pendingFix = null, running = false, above = 0, below = 0;
     let setupLine = null, setupCount = 0, starts = 0, frames = 0, fixes = 0, polar = null, flaps = null, tMs = 0;
     // the setup the device recorded ($PXCVC), used while no glider, mass or bugs are set here
     let deviceSetup = null;
@@ -642,14 +648,14 @@
         if (f.length > 11 && Number.isFinite(num(f[11]))) pxcv.pitch = num(f[11]);
       } else if (raw.startsWith("$GPRMC,") || raw.startsWith("$GNRMC,")) {
         const f = fields(raw.trim()), r = parseRmc(f);
-        if (r) { fix = r; pendingFix = r; }
+        if (r) { fix = r; pendingFix = r; gnssUtc = laterUtc(gnssUtc, f[1]); }
         if (!Number.isFinite(utcDay)) utcDay = rmcDay(f);
       } else if (raw.startsWith("$GPGGA,") || raw.startsWith("$GNGGA,")) {
         const f = fields(raw.trim()), v = parseFloat(f[9]);
-        if (Number.isFinite(v)) { gnssAlt = v; altUtc = utcOf(f[1]); }
+        if (Number.isFinite(v)) { gnssAlt = v; altUtc = utcOf(f[1]); gnssUtc = laterUtc(gnssUtc, f[1]); }
       } else if (raw.startsWith("$SENS,")) {
         const f = fields(raw.trim());
-        const sensor = normalize(f, gnssAlt, fix ? fix.utc : NaN);
+        const sensor = normalize(f, gnssAlt, gnssUtc);
         if (!sensor) continue;
         const { t, age, p, q, oat, acc, gyro, alt, teAlt } = sensor;
         if (sensor.kelvin) temperatureKelvinSamples++;
