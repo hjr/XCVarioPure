@@ -1,0 +1,26 @@
+2026-11-18_10-02+11-33.nmea 1.4 h
+
+per flight, gust-insensitive reference, 10 s windows, rms m/s (TE-TEp: the two TE varios against each other)
+flight                        glider            h     AirMass  TE      TEp     TE-TEp  delay AM/TE/TEp s  1 s motion AM/TE/TEp
+2026-11-18_10-02+11-33.nmea   Arcus             1.4   0.577   0.784   1.170   0.984   2.4/2.4/2.6        0.529/2.085/0.560
+
+pooled over 1 flights (1.4 h scored)
+
+gust-insensitive reference: rms (bias) m/s against it; own error by the three-cornered hat with AirMass
+  10 s all      [  454]  AirMass 0.577 (-0.03)  TE 0.784 (+0.01)  TEp 1.170 (+0.01)  TE-TEp 0.984  |  own: AirMass -0.105/-0.189, TE 0.521, TEp 1.001, ref 0.586/0.607
+  10 s straight [  349]  AirMass 0.521 (-0.00)  TE 0.779 (+0.01)  TEp 1.144 (-0.01)  TE-TEp 0.980  |  own: AirMass -0.191/-0.243, TE 0.546, TEp 0.989, ref 0.555/0.575
+  10 s circling [   14]  AirMass 1.277 (-0.08)  TE 1.179 (+0.06)  TEp 1.617 (-0.27)  TE-TEp 0.915  |  own: AirMass 0.448/0.343, TE -0.200, TEp 1.050, ref 1.196/1.230
+  30 s all      [  127]  AirMass 0.292 (-0.03)  TE 0.390 (+0.01)  TEp 0.595 (+0.01)  TE-TEp 0.437  |  own: AirMass -0.085/-0.141, TE 0.243, TEp 0.499, ref 0.305/0.325
+  30 s straight [  101]  AirMass 0.295 (-0.02)  TE 0.387 (+0.03)  TEp 0.596 (+0.04)  TE-TEp 0.460  |  own: AirMass -0.077/-0.114, TE 0.238, TEp 0.506, ref 0.305/0.316
+  30 s circling [    2]  AirMass 0.211 (-0.04)  TE 0.146 (+0.13)  TEp 0.532 (-0.11)  TE-TEp 0.521  |  own: AirMass 0.196/-0.260, TE 0.123, TEp 0.413, ref 0.078/0.335
+
+pitot reference: rms (bias) m/s against it; own error by the three-cornered hat with AirMass
+  10 s all      [  443]  AirMass 0.727 (-0.04)  TE 0.496 (-0.01)  TEp 1.191 (-0.00)  TE-TEp 1.257  |  own: AirMass 0.521/0.462, TE -0.103, TEp 1.050, ref 0.507/0.561
+  10 s straight [  341]  AirMass 0.727 (-0.04)  TE 0.494 (-0.02)  TEp 1.202 (-0.01)  TE-TEp 1.249  |  own: AirMass 0.524/0.419, TE -0.102, TEp 1.045, ref 0.505/0.594
+  10 s circling [   13]  AirMass 0.662 (-0.08)  TE 0.560 (+0.10)  TEp 1.013 (-0.77)  TE-TEp 1.318  |  own: AirMass 0.403/0.736, TE 0.194, TEp 1.063, ref 0.525/-0.323
+  30 s all      [  124]  AirMass 0.292 (-0.05)  TE 0.163 (-0.01)  TEp 0.624 (+0.01)  TE-TEp 0.636  |  own: AirMass 0.242/0.167, TE -0.009, TEp 0.576, ref 0.163/0.239
+  30 s straight [  100]  AirMass 0.292 (-0.05)  TE 0.170 (-0.01)  TEp 0.660 (+0.02)  TE-TEp 0.673  |  own: AirMass 0.235/0.126, TE -0.034, TEp 0.605, ref 0.173/0.263
+  30 s circling [    2]  AirMass 0.404 (-0.36)  TE 0.118 (-0.10)  TEp 0.744 (-0.57)  TE-TEp 0.627  |  own: AirMass 0.340/-0.361, TE -0.182, TEp 0.510, ref 0.217/0.542
+
+median delay to the gust-insensitive reference, s: AirMass 2.4, TE 2.4, TEp 2.6
+median 1 s needle movement, m/s: AirMass 0.529, TE 2.085, TEp 0.560

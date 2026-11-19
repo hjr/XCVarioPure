@@ -11,25 +11,47 @@ The flight was ridge soaring: 7 full turns in 4.7 h, bank over 25° 3 % of the t
 
 ## Vario
 
-Replay against the device: corr 0.994, rms 0.18 m/s (4 s damping), so the replay scores are what the pilot saw.
+Corrected 2026-11-19. The device was switched between electronic TE compensation and AirMass in flight, and on AirMass
+it logs the AirMass vario plus the polar sink as its TE vario (`$PXCV`). The first version of this section scored that
+as "logged TE" over the whole flight. `teActive` in `page.js` now finds where the logged vario is the device's own
+`$PXCVA` output and the scripts have no TE netto there:
 
-The usual gust-insensitive reference uses AirMass's wind only while WIND_VALID, 2 % of this flight: `batch.js` scores
-10 min of it. Scored here instead (scratch script, not kept) against the same reference with AirMass's averaged wind
-wherever ALIGNED (3.5 h, 12:55–16:35) and against the pitot reference (4.55 h). Equal 4 s damping for AirMass, each
-series shifted by its fitted delay, logged TE as the device damped it. TE pressure (the page's `TeVario`) is much worse
-than the logged TE on this log (10 s 1.15 straight) and is left out.
+| UTC | on the needle |
+|---|---|
+| 10:14:50 (airborne) – 10:21:22 | TE (tow) |
+| 10:21:22 – 10:43:50, 11:33:36 – 11:59:27 | AirMass (TE fallback after each restart 11:42–11:48) |
+| 11:59:27 – 13:07:47 | TE |
+| 13:07:47 – 13:37:57 | AirMass |
+| 13:37:57 – 14:52:53 | TE |
+| 14:52:53 – 16:29:54 (landing) | AirMass |
+
+So the pilot saw AirMass for 2.9 h and TE for 2.5 h. The replay then matched the device's `$PXCVA` with corr 0.994,
+rms 0.18 m/s (4 s damping).
+
+Scored on the joined log, where TE was on the needle, with the estimator of 573e3fb6. The usual gust-insensitive
+reference uses AirMass's wind only while WIND_VALID, 2 % of this flight, so it takes AirMass's averaged wind wherever
+ALIGNED instead (scratch wrapper around `te_pressure.js`, not kept; 1.4 h with TE, 12:55–13:07 and 13:38–14:52). The
+pitot reference over all the TE time (2.4 h). Equal 4 s damping for AirMass, each series shifted by its fitted delay,
+logged TE as the device damped it. Raw: `raw/arcus_ridge_2026-11-19_te_active_*.txt`.
 
 | reference, window | AirMass | logged TE | hat own AirMass / TE |
 |---|---|---|---|
-| aligned wind, 10 s straight (869) | **0.565** | 0.654 | 0.08 / 0.34 |
-| aligned wind, 30 s straight (258) | **0.359** | 0.383 | 0.07 / 0.15 |
-| pitot, 10 s straight (1158) | 0.640 | **0.596** | 0.33 / 0.23 |
-| pitot, 10 s circling (64) | **0.435** | 0.610 | 0.00 / 0.38 |
-| pitot, 30 s straight (343) | 0.293 | **0.240** | 0.18 / 0.05 |
+| aligned wind, 10 s straight (349) | **0.521** | 0.779 | −0.19 / 0.55 |
+| aligned wind, 30 s straight (101) | **0.295** | 0.387 | −0.08 / 0.24 |
+| pitot, 10 s straight (605) | 0.767 | **0.521** | 0.54 / −0.16 |
+| pitot, 30 s straight (179) | 0.298 | **0.182** | 0.23 / −0.06 |
 
-The aligned-wind reference's circling windows are dominated by its own error (1.75), not scored. The pitot reference
-shows horizontal gusts as air movement like TE, which in 25–45 km/h wind along a ridge favours TE (as on all earlier
-flights). Delays (aligned wind): AirMass 2.4 s, logged TE 2.8 s. 1 s needle movement: AirMass 0.49, logged TE 1.55 m/s.
+Too few circling windows with TE to score (14 and 16 of 10 s). The electronic TE takes its kinetic energy from the
+same pitot as the pitot reference, so that reference and TE differ by little more than GNSS against static altitude
+(TE's own error comes out negative): it says nothing about gusts here. A negative own error for AirMass against the
+aligned-wind reference likewise: that reference has AirMass's wind. Delays (aligned wind): AirMass 2.4 s, logged TE
+2.4 s. 1 s needle movement: AirMass 0.53, logged TE 2.09 m/s. False climbs ≥ 2 m/s for 2 s in straight flight (0.64 h,
+`batch.js` with the same reference): AirMass 25/h, TE 83/h; false sinks 16/h against 70/h.
+
+The same scripts without the correction, the logged vario taken as TE everywhere (3.8 h): aligned wind 10 s straight
+AirMass 0.463 / TE 0.602, 30 s 0.274 / 0.323, TE's needle movement 1.30 m/s, false climbs 18/h against 44/h. Over half
+of that "TE" was AirMass. The TE replayed from the TE pressure (the page's `TeVario`) scores 1.14 over 10 s on this
+log: the TE port follows only 0.14 of the dynamic pressure, no working probe on it.
 
 ## What went wrong on the device
 
@@ -65,10 +87,8 @@ crashes on the empty set).
 ## Both logs joined
 
 `2026-11-18_10-02+11-33.nmea` (the two logs, the CA1 now at the start): 5.33 h airborne, 25 full turns, vario valid
-96.6 %, wind valid 2.9 %, degraded 35.5 %, replay against the device rms 0.21 m/s (corr 0.992). Aligned-wind reference
-(3.8 h): 10 s straight AirMass 0.569 / logged TE 0.655 (hat 0.12 / 0.34), 30 s straight 0.341 / 0.364, 10 s circling
-1.48 / 1.47 (reference 1.47 of it). False climbs ≥ 2 m/s for 2 s in straight flight (1.74 h): AirMass 23/h, TE 48/h;
-false sinks 12/h vs 38/h. Wind against the next turn's GNSS fit (19 turns): AirMass nav 1.37, XCSoar zigzag 1.45,
+96.6 %, wind valid 2.9 %, degraded 35.5 %, replay against the device rms 0.21 m/s (corr 0.992). The vario scores that stood here took the logged
+vario as TE over the whole flight: see Vario above. Wind against the next turn's GNSS fit (19 turns): AirMass nav 1.37, XCSoar zigzag 1.45,
 XCSoar circling 2.04 m/s.
 
 The log-2 sensors before its first RMC made the converter collapse the 50 min logging gap (its forward-gap check only

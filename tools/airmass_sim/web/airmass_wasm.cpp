@@ -17,8 +17,8 @@ namespace {
 
 // per cycle, see am_columns()
 enum Col { VARIO, WIND_N, WIND_E, WIND_D, STATUS, HEADING, AVG_N, AVG_E, ROLL, PITCH, K_TAS, PITCH_OFS, LATENCY, POLAR_SINK, WIND_FADE,
-           GNSS_AGE, GNSS_RECEIVED_AGE, GNSS_REJECTS, INERTIAL_TRUST, SLIP_BETA, ENERGY_WD, ENERGY_WD_PLAIN, KINEMATIC_WD, VD, SIGMA_WD, GUST, GUST_EVENT, NCOLS };
-const char* COLUMNS = "vario,wind_n,wind_e,wind_d,status,heading_deg,avg_wind_n,avg_wind_e,roll_deg,pitch_deg,k_tas,pitch_ofs_deg,latency_ms,polar_sink,wind_fade,gnss_age_ms,gnss_received_age_ms,gnss_rejects,inertial_trust,slip_beta_deg,energy_wd,energy_wd_plain,kinematic_wd,vd,sigma_wd,gust,gust_event";
+           GNSS_AGE, GNSS_RECEIVED_AGE, GNSS_REJECTS, INERTIAL_TRUST, SLIP_BETA, ENERGY_WD, ENERGY_WD_PLAIN, KINEMATIC_WD, VD, SIGMA_WD, GUST, GUST_EVENT, DEVICE_VARIO, NCOLS };
+const char* COLUMNS = "vario,wind_n,wind_e,wind_d,status,heading_deg,avg_wind_n,avg_wind_e,roll_deg,pitch_deg,k_tas,pitch_ofs_deg,latency_ms,polar_sink,wind_fade,gnss_age_ms,gnss_received_age_ms,gnss_rejects,inertial_trust,slip_beta_deg,energy_wd,energy_wd_plain,kinematic_wd,vd,sigma_wd,gust,gust_event,device_vario";
 
 airmass::replay::Replayer* g_replay = nullptr;
 std::vector<float> g_rows;
@@ -47,7 +47,7 @@ EMSCRIPTEN_KEEPALIVE int am_begin(const char* settings, int learn, int warm, flo
     if (!airmass::replay::parseSettings(settings ? settings : "", g_replay->settings, &g_replay->error)) {
         return 0;
     }
-    g_replay->on_cycle = [](const airmass::Pipeline& pipe, float) {
+    g_replay->on_cycle = [](const airmass::Pipeline& pipe, float device_vario) {
         const AirMassEKF& ekf = pipe.ekf();
         const AirMassEKF::Input& i = pipe.input();
         // the wind's uncertainty from the validity limit (0) to where it is no longer shown (1)
@@ -58,7 +58,7 @@ EMSCRIPTEN_KEEPALIVE int am_begin(const char* settings, int learn, int warm, flo
                                   i.polar_sink, fade, static_cast<float>(ekf.gnssAgeMs()), static_cast<float>(ekf.gnssReceivedAgeMs()),
                                   static_cast<float>(ekf.rejectedGnss()), ekf.inertialTrust(), Units::rad_to_deg(i.slip_beta),
                                   ekf.energyWd(), ekf.energyWdPlain(), ekf.kinematicWd(), ekf.vDown(), ekf.sigma(AirMassEKF::WD),
-                                  pipe.gust().value(), static_cast<float>(pipe.gust().event())};
+                                  pipe.gust().value(), static_cast<float>(pipe.gust().event()), device_vario};
         g_rows.insert(g_rows.end(), row, row + NCOLS);
         g_times.push_back(i.time_ms);
     };
