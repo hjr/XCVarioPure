@@ -169,10 +169,6 @@ void StatusPage::draw()
         line(ln++, buf);
         snprintf(buf, sizeof(buf), "GNSS lag: %.0f +-%.0f ms", ekf->gnssLatency() * 1000.f, ekf->sigma(AirMassEKF::TAU) * 1000.f);
         line(ln++, buf);
-        const uint32_t age = ekf->gnssAgeMs();
-        snprintf(buf, sizeof(buf), "Fix %d ms, rejected %u", age == UINT32_MAX ? -1 : static_cast<int>(age),
-                 static_cast<unsigned>(ekf->rejectedGnss()));
-        line(ln++, buf);
         snprintf(buf, sizeof(buf), "Bias: %.2f°/s %.2fm/s2", Units::rad_to_deg(ekf->yawRateBias()), ekf->accBias());
         line(ln++, buf);
     } else {
