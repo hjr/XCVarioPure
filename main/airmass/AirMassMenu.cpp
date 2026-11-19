@@ -49,7 +49,7 @@ void airmass::menuAudio(SetupMenu* audio)
         return;
     }
     SetupMenuSelect* gust = new SetupMenuSelect("Gust Sound", RST_NONE, nullptr, &airmass_gust_sound);
-    gust->setHelp("Wind noise when the head wind changes suddenly in straight flight");
+    gust->setHelp("Wind noise and a message when the head wind changes suddenly in straight flight");
     gust->mkEnable();
     audio->addEntry(gust);
 }

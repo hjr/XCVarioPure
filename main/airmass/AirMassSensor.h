@@ -52,6 +52,7 @@ private:
     airmass::SampleClock _compass_sample;
     bool _active = false;
     bool _recording = false;
+    uint8_t _gust_msg = 0;
     int _sig_pitch = 0, _sig_speed = 0; // the installation signatures the running estimator started with
     Quaternion _ref; // the IMU reference of the estimator's body axes
     bool _average_published = false; // the synoptic wind on the blackboard is the average of the estimator

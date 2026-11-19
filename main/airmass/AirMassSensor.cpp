@@ -15,6 +15,8 @@
 #include "S2F.h"
 #include "driver/audio/ESPAudio.h"
 #include "Flap.h"
+#include "Atmosphere.h"
+#include "screen/MessageBox.h"
 #include "setup/SetupNG.h"
 #include "math/Trigonometry.h"
 #include "math/Units.h"
@@ -25,6 +27,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdio>
 #include <initializer_list>
 
 AirMassSensor *airmassSensor = nullptr;
@@ -576,8 +579,18 @@ void AirMassSensor::postProcess()
 
     _pipe.endCycle();
     publish();
-    if (_pipe.gust().event() && airmass_gust_sound.get() && AUDIO) {
-        AUDIO->startSound(AUDIO_HORIZ_GUST, true);
+    if (_pipe.gust().event() && airmass_gust_sound.get()) {
+        if (AUDIO) {
+            AUDIO->startSound(AUDIO_HORIZ_GUST, true);
+        }
+        if (MBOX) {
+            char text[32];
+            snprintf(text, sizeof(text), "Gust %+.0f %s", SpeedUnit->apply(_pipe.gust().value()), SpeedUnit->getName());
+            if (_gust_msg) {
+                MBOX->popMessage(_gust_msg);
+            }
+            _gust_msg = MBOX->pushMessage(2, text, 30);
+        }
     }
     // the estimator output at 5Hz, after the cycle it belongs to
     if (rec && _output_timer.due(now, 200)) {
