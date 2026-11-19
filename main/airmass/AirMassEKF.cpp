@@ -160,6 +160,7 @@ void AirMassEKF::reset(float baro_alt, float k_tas, float pitch_ofs, float laten
     _aid = {};
     _hist_head = -1;
     _lat_v = 0.f;
+    _vin[0] = _vin[1] = 0.f;
     _lat_breaks = 0;
     _lat_fix = {};
     _hist_level = 0;
@@ -398,12 +399,17 @@ void AirMassEKF::update(const Input& in) {
     s.alpha_shift = 0.f;
     s.psi_gyro = _psi_gyro;
     s.slip_sigma = in.slip_sigma;
-    if (continuous && flying_speed && std::isfinite(in.acc_lat)) {
+    if (continuous && flying_speed && std::isfinite(in.acc_lat) && std::isfinite(in.acc_fwd)) {
         _lat_v += in.acc_lat * in.dt;
+        const float c = std::cos(_psi_gyro), sn = std::sin(_psi_gyro);
+        _vin[0] += (c * in.acc_fwd - sn * in.acc_lat) * in.dt;
+        _vin[1] += (sn * in.acc_fwd + c * in.acc_lat) * in.dt;
     } else {
         ++_lat_breaks;
     }
     s.lat_v = _lat_v;
+    s.vin[0] = _vin[0];
+    s.vin[1] = _vin[1];
     s.lat_breaks = _lat_breaks;
     s.continuous = continuous && merged_continuous;
     s.flying_speed = flying_speed && merged_flying;
@@ -640,8 +646,7 @@ bool AirMassEKF::delayedState(uint32_t t, Delayed& d) const {
     return true;
 }
 
-// the integral of the lateral acceleration at time t and the acceleration there
-bool AirMassEKF::lateralVelocity(uint32_t t, float& v, float& a, uint16_t& breaks) const {
+bool AirMassEKF::inertialAt(uint32_t t, Inertial& o) const {
     if (_hist_level < 2 || (uint32_t)(_last_time_ms - t) > HISTORY_MS) return false;
     const int oldest = (_hist_head - _hist_level + 1 + HIST) % HIST;
     if ((int32_t)(t - _hist[oldest].time_ms) < 0 || (int32_t)(t - _hist[_hist_head].time_ms) > 0) return false;
@@ -656,9 +661,14 @@ bool AirMassEKF::lateralVelocity(uint32_t t, float& v, float& a, uint16_t& break
     const Snapshot& s1 = _hist[(i0 + 1) % HIST];
     const float span = (s1.time_ms - s0.time_ms) * 1e-3f;
     if (!(span > 0.f) || span > 0.3f || s0.lat_breaks != s1.lat_breaks) return false;
-    a = (s1.lat_v - s0.lat_v) / span;
-    v = s0.lat_v + a * (int32_t)(t - s0.time_ms) * 1e-3f;
-    breaks = s1.lat_breaks;
+    const float f = (int32_t)(t - s0.time_ms) * 1e-3f;
+    o.lat_a = (s1.lat_v - s0.lat_v) / span;
+    o.lat_v = s0.lat_v + o.lat_a * f;
+    for (int k = 0; k < 2; ++k) {
+        o.a[k] = (s1.vin[k] - s0.vin[k]) / span;
+        o.vin[k] = s0.vin[k] + o.a[k] * f;
+    }
+    o.breaks = s1.lat_breaks;
     return true;
 }
 
@@ -676,11 +686,11 @@ void AirMassEKF::fuseInertialLatency(const GnssVelocity& g, uint32_t t_fix) {
     const float turn = wrapPi(std::atan2(g.ve, g.vn) - std::atan2(prev.ve, prev.vn));
     if (std::fabs(turn) > 0.6f * dt) return;
     const uint32_t lag = (uint32_t)(gnssLatency() * 1000.f + 0.5f);
-    float v0, v1, a0, a1;
-    uint16_t b0, b1;
-    if (!lateralVelocity(prev.time_ms - lag, v0, a0, b0) || !lateralVelocity(t_fix - lag, v1, a1, b1) || b0 != b1) return;
+    Inertial i0, i1;
+    if (!inertialAt(prev.time_ms - lag, i0) || !inertialAt(t_fix - lag, i1) || i0.breaks != i1.breaks) return;
+    const float v0 = i0.lat_v, v1 = i1.lat_v;
     float h[NX] = {};
-    h[TAU] = -(a1 - a0);
+    h[TAU] = -(i1.lat_a - i0.lat_a);
     const float before = _x[TAU];
     // the relation is linear in the latency only near it, and a fix pair can be an outlier: neither may carry it far
     scalarUpdate(_cov, _x, h, turn * 0.5f * (s0 + s1) - (v1 - v0), _cfg.sigma_tau_inertial * _cfg.sigma_tau_inertial);
@@ -843,23 +853,42 @@ void AirMassEKF::fuseGnss(const GnssVelocity& g, bool has_prior, float wn0, floa
         return;
     }
 
+    // the fix carried to the newest cycle by the integrated inertial acceleration, compared with the air vector there
+    Delayed dn;
+    Inertial i_obs, i_now;
+    const uint32_t t_now = _hist[_hist_head].time_ms;
+    const bool bridged = _cfg.gnss_bridge > 0.f && inertialAt(t_obs, i_obs) && inertialAt(t_now, i_now) && i_obs.breaks == i_now.breaks &&
+                         delayedState(t_now, dn);
+    const Delayed& da = bridged ? dn : d;
+    float bridge[2] = {}, acc_obs[2] = {}, bridge_sigma = 0.f;
+    if (bridged) {
+        const float off = _x[PSI] - _psi_gyro, c = std::cos(off), sn = std::sin(off);
+        const float dg[2] = {i_now.vin[0] - i_obs.vin[0], i_now.vin[1] - i_obs.vin[1]};
+        bridge[0] = c * dg[0] - sn * dg[1];
+        bridge[1] = sn * dg[0] + c * dg[1];
+        acc_obs[0] = c * i_obs.a[0] - sn * i_obs.a[1];
+        acc_obs[1] = sn * i_obs.a[0] + c * i_obs.a[1];
+        bridge_sigma = _cfg.sigma_bridge * (int32_t)(t_now - t_obs) * 1e-3f;
+    }
+
     // GNSS noise plus the error of the modelled air vector (airspeed noise, attitude, sideslip)
-    const float sair = _cfg.sigma_air + 0.01f * d.tas + (1.f - _inertial_trust) * 0.1f * d.tas;
-    const float sslip = d.tas * d.slip_sigma;
-    const float r = std::max(g.sigma_h * g.sigma_h, 0.01f) + sair * sair + sslip * sslip;
-    const float meas[2] = {g.vn, g.ve};
+    const float sair = _cfg.sigma_air + 0.01f * da.tas + (1.f - _inertial_trust) * 0.1f * da.tas;
+    const float sslip = da.tas * da.slip_sigma;
+    const float r = std::max(g.sigma_h * g.sigma_h, 0.01f) + sair * sair + sslip * sslip + bridge_sigma * bridge_sigma;
+    const float meas[2] = {g.vn + bridge[0], g.ve + bridge[1]};
     float h[2][NX] = {}, y[2], variance[2];
     // Source timestamps remove transport jitter. Without them its unknown part must not be fitted as wind
     // or calibration, especially while turning. Irregular cadence alone does not make a fix invalid.
     const float time_sigma = g.fix_time_ms == airmass::GnssTiming::UNKNOWN ? 0.1f : 0.05f;
     for (int i = 0; i < 2; ++i) {
         h[i][WN + i] = 1.f;
-        h[i][PSI] = i ? d.va[0] : -d.va[1]; // d(va)/d(psi) = (-va_e, va_n)
-        h[i][KTAS] = d.va[i] / _x[KTAS];
-        h[i][THB] = -d.dalpha[i];
-        h[i][KCL] = d.dalpha[i] * d.aoa;
-        y[i] = meas[i] - (d.va[i] + _x[WN + i]);
-        variance[i] = r + time_sigma * time_sigma * d.va_dot[i] * d.va_dot[i];
+        h[i][PSI] = (i ? da.va[0] : -da.va[1]) - (i ? bridge[0] : -bridge[1]); // d(va - bridge)/d(psi)
+        h[i][KTAS] = da.va[i] / _x[KTAS];
+        h[i][THB] = -da.dalpha[i];
+        h[i][KCL] = da.dalpha[i] * da.aoa;
+        y[i] = meas[i] - (da.va[i] + _x[WN + i]);
+        const float rate = bridged ? acc_obs[i] : d.va_dot[i];
+        variance[i] = r + time_sigma * time_sigma * rate * rate;
     }
     const bool rejected = !velocityUpdate(_cov, _x, h, y, variance, _cfg.gate, _inertial_trust < 1.f || _gnss_trust < 0.5f);
     wrapPsi();

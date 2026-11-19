@@ -33,6 +33,7 @@ class AirMassEKF {
         float acc_down = 0.f;   // m/s², inertial acceleration NED down component (gravity removed)
         float acc_long = 0.f;   // m/s², inertial acceleration along the air velocity (gravity removed)
         float acc_lat = NAN;    // m/s², horizontal inertial acceleration to the right of the heading; NAN when unknown
+        float acc_fwd = NAN;    // m/s², horizontal inertial acceleration along the heading; NAN when unknown
         float tas = 0.f;        // m/s, unfiltered
         float load_factor = 1.f;// g
         float aoa = 0.f;        // rad, model angle of attack from lift coefficient (CL/CLalpha)
@@ -70,6 +71,9 @@ class AirMassEKF {
         float q_bgz = 1e-8f;        // (rad/s)²/s body z gyro bias random walk (temperature drift)
         float q_tau = 1e-7f;        // s²/s GNSS latency random walk: one latency per installation
         float sigma_tau_inertial = 0.8f; // m/s, noise of the cross-track velocity change between two fixes, for the latency
+        float gnss_bridge = 1.f;    // 1: a GNSS velocity is carried to now by the integrated inertial acceleration and
+                                    // compared with the air vector of now, the wind state is the current wind; 0: at its time
+        float sigma_bridge = 0.1f;  // m/s per s of that bridge, its integration error
         float q_tau_start = 1e-5f;  // s²/s while a latency is learned the first time (a start without a learned one): 1e-6
                                     // took 2 h from the 0.75 s start to an Arcus's 0.05 s
         float tau_start_time = 3600.f; // s of aligned flight with fresh GNSS for that first learning
@@ -238,7 +242,8 @@ class AirMassEKF {
         float psi_gyro; // gyro heading integral at that time
         float slip_sigma;
         float lat_v;         // integral of the lateral acceleration
-        uint16_t lat_breaks; // count of its interruptions so far
+        float vin[2];        // integral of the horizontal inertial acceleration, in the gyro heading frame
+        uint16_t lat_breaks; // count of their interruptions so far
         bool continuous;
         bool flying_speed;
     };
@@ -275,7 +280,12 @@ class AirMassEKF {
     void restartAlignment();
     const Snapshot* findSnapshot(uint32_t t) const;
     bool delayedState(uint32_t t, Delayed& d) const;
-    bool lateralVelocity(uint32_t t, float& v, float& a, uint16_t& breaks) const;
+    // the inertial integrals at a past time, interpolated: lateral, horizontal (gyro heading frame), their rates
+    struct Inertial {
+        float lat_v, lat_a, vin[2], a[2];
+        uint16_t breaks;
+    };
+    bool inertialAt(uint32_t t, Inertial& o) const;
     void fuseInertialLatency(const GnssVelocity& g, uint32_t t_fix);
     void wrapPsi();
     void clampCalibration();
@@ -341,6 +351,7 @@ class AirMassEKF {
     bool _aligned = false;
     float _tau_start_left = 0.f; // s, of the first learning of the latency
     float _lat_v = 0.f;
+    float _vin[2] = {};
     uint16_t _lat_breaks = 0;
     struct { uint32_t time_ms; float vn, ve; bool valid; } _lat_fix = {};
     bool _wind_valid = false;

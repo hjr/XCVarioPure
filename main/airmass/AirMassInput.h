@@ -124,6 +124,7 @@ inline void fillInput(const Raw& r, const AirData& a, AirMassEKF::Input& in, flo
     in.acc_long = ((f[0] + dn[0]) * a.ca + (f[2] + dn[2]) * a.sa) * G0;
     const float level = std::hypot(dn[1], dn[2]);
     in.acc_lat = level > 0.3f ? (f[1] * dn[2] - f[2] * dn[1]) / level * G0 : NAN;
+    in.acc_fwd = level > 0.3f ? (f[0] * level * level - (f[1] * dn[1] + f[2] * dn[2]) * dn[0]) / level * G0 : NAN;
 }
 
 } // namespace airmass
