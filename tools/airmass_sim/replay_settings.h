@@ -18,7 +18,7 @@ inline bool applySettings(AirMassEKF& ekf, const Settings& settings, std::string
     AirMassEKF::Config c = ekf.config();
     const std::pair<const char*, float*> known[] = {
         {"sigma_pitch", &c.sigma_pitch}, {"sigma_energy", &c.sigma_energy}, {"energy_tau", &c.energy_tau}, {"q_wind_v", &c.q_wind_v},
-        {"q_wind_h", &c.q_wind_h}, {"q_thb", &c.q_thb}, {"q_kcl", &c.q_kcl}, {"q_tau", &c.q_tau}, {"q_tau_start", &c.q_tau_start}, {"tau_start_time", &c.tau_start_time}, {"q_psi", &c.q_psi}, {"lag_static", &c.lag_static}, {"lag_pitot", &c.lag_pitot},
+        {"q_wind_h", &c.q_wind_h}, {"q_thb", &c.q_thb}, {"q_kcl", &c.q_kcl}, {"q_tau", &c.q_tau}, {"q_tau_start", &c.q_tau_start}, {"tau_start_time", &c.tau_start_time}, {"sigma_tau_inertial", &c.sigma_tau_inertial}, {"q_psi", &c.q_psi}, {"lag_static", &c.lag_static}, {"lag_pitot", &c.lag_pitot},
         {"sigma_air", &c.sigma_air}, {"gust_acc", &c.gust_acc}, {"kinetic_tau", &c.kinetic_tau}, {"r_baro", &c.r_baro},
         {"wind_work", &c.wind_work}, {"gate", &c.gate}, {"energy_load_weight", &c.energy_load_weight},
         {"energy_gust_weight", &c.energy_gust_weight}, {"anchor_tau", &c.anchor_tau},

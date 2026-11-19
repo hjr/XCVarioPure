@@ -122,6 +122,8 @@ inline void fillInput(const Raw& r, const AirData& a, AirMassEKF::Input& in, flo
     // along the air velocity u = (cos(alpha), 0, sin(alpha)), where it compares to the airspeed change: the body x
     // axis would pick up the centripetal acceleration w x (V u) in turns (wy V sin(alpha), ~1 m/s² at 40° bank)
     in.acc_long = ((f[0] + dn[0]) * a.ca + (f[2] + dn[2]) * a.sa) * G0;
+    const float level = std::hypot(dn[1], dn[2]);
+    in.acc_lat = level > 0.3f ? (f[1] * dn[2] - f[2] * dn[1]) / level * G0 : NAN;
 }
 
 } // namespace airmass

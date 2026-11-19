@@ -17,6 +17,7 @@
 //   --max-wind-valid: override the scenario's limit for the time to a valid wind
 //   --max-wind-rms: override the scenario's limit for the wind rms
 //   --max-climb-err: override the scenario's limit for the per thermal climb reading error
+//   --max-latency-err: check the estimated GNSS latency against this limit [ms]
 //   --seed: sensor noise realisation (the scenario's air mass stays the same)
 //   --vario-agility: like the device setting, scales the vertical air movement process noise by its square
 //   --set name=value: change an assumption (see Knobs), e.g. --set k_tas=0.95 --set wind=11
@@ -634,6 +635,7 @@ int main(int argc, char** argv) {
     int lat_err = 0;
     float static_adj = 1.f, comp = 1.f;
     float compass_sigma = -1.f, max_wind_valid = -1.f, max_wind_rms = -1.f, max_climb_err = -1.f;
+    int max_latency_err = -1;
     bool slip_aid = true;
     unsigned seed = 4711;
     float vario_agility = 1.f;
@@ -693,6 +695,8 @@ int main(int argc, char** argv) {
             max_climb_err = std::atof(argv[i + 1]);
         } else if (std::strcmp(argv[i], "--max-wind-rms") == 0) {
             max_wind_rms = std::atof(argv[i + 1]);
+        } else if (std::strcmp(argv[i], "--max-latency-err") == 0) {
+            max_latency_err = std::atoi(argv[i + 1]);
         } else if (std::strcmp(argv[i], "--record") == 0) {
             record_name = argv[i + 1];
         } else if (std::strcmp(argv[i], "--csv") == 0) {
@@ -725,6 +729,10 @@ int main(int argc, char** argv) {
     }
     if (max_climb_err > 0.f) {
         sc.max_climb_err_rms = max_climb_err;
+    }
+    if (max_latency_err > 0) {
+        sc.check_latency = true;
+        sc.max_latency_err = max_latency_err;
     }
 
     std::mt19937 rng(seed);

@@ -32,6 +32,7 @@ class AirMassEKF {
         float yaw_rate = 0.f;   // rad/s, heading rate (clockwise positive), with the body z gyro bias left in
         float acc_down = 0.f;   // m/s², inertial acceleration NED down component (gravity removed)
         float acc_long = 0.f;   // m/s², inertial acceleration along the air velocity (gravity removed)
+        float acc_lat = NAN;    // m/s², horizontal inertial acceleration to the right of the heading; NAN when unknown
         float tas = 0.f;        // m/s, unfiltered
         float load_factor = 1.f;// g
         float aoa = 0.f;        // rad, model angle of attack from lift coefficient (CL/CLalpha)
@@ -67,8 +68,8 @@ class AirMassEKF {
         float q_vd = 0.25f;         // (m/s)²/s accelerometer noise
         float q_baz = 1e-5f;        // (m/s²)²/s accel bias random walk
         float q_bgz = 1e-8f;        // (rad/s)²/s body z gyro bias random walk (temperature drift)
-        float q_tau = 1e-6f;        // s²/s GNSS latency random walk: one latency per installation; 1e-5 swung by 0.17 s within
-                                    // 10 min on real flights, 1e-6 by 0.10 s; 3e-7 kept an early value 0.1 s off in a simulation
+        float q_tau = 1e-7f;        // s²/s GNSS latency random walk: one latency per installation
+        float sigma_tau_inertial = 0.8f; // m/s, noise of the cross-track velocity change between two fixes, for the latency
         float q_tau_start = 1e-5f;  // s²/s while a latency is learned the first time (a start without a learned one): 1e-6
                                     // took 2 h from the 0.75 s start to an Arcus's 0.05 s
         float tau_start_time = 3600.f; // s of aligned flight with fresh GNSS for that first learning
@@ -236,6 +237,8 @@ class AirMassEKF {
         float alpha_shift; // flap offset changes since this snapshot, independent of the lift slope
         float psi_gyro; // gyro heading integral at that time
         float slip_sigma;
+        float lat_v;         // integral of the lateral acceleration
+        uint16_t lat_breaks; // count of its interruptions so far
         bool continuous;
         bool flying_speed;
     };
@@ -272,6 +275,8 @@ class AirMassEKF {
     void restartAlignment();
     const Snapshot* findSnapshot(uint32_t t) const;
     bool delayedState(uint32_t t, Delayed& d) const;
+    bool lateralVelocity(uint32_t t, float& v, float& a, uint16_t& breaks) const;
+    void fuseInertialLatency(const GnssVelocity& g, uint32_t t_fix);
     void wrapPsi();
     void clampCalibration();
     void updateWindValid();
@@ -335,6 +340,9 @@ class AirMassEKF {
     bool _running = false;
     bool _aligned = false;
     float _tau_start_left = 0.f; // s, of the first learning of the latency
+    float _lat_v = 0.f;
+    uint16_t _lat_breaks = 0;
+    struct { uint32_t time_ms; float vn, ve; bool valid; } _lat_fix = {};
     bool _wind_valid = false;
     bool _wind_degraded = false;
     uint32_t _wind_valid_ms = 0; // the last cycle with a valid wind

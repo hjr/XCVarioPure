@@ -86,6 +86,11 @@ foreach(scenario straight endurance)
         add_test(NAME ${scenario}_lat${err} COMMAND airmass_sim ${scenario} --lat-err ${err})
     endforeach()
 endforeach()
+# the latency from the lateral acceleration against the GNSS track change: a Dutch day gets it within 30 ms from 300 ms
+# off (7 ms; it was 50 ms short when it was learned from the air vector)
+foreach(err -300 300)
+    add_test(NAME nl_lat${err} COMMAND airmass_sim nl --lat-err ${err} --max-latency-err 30)
+endforeach()
 # in a single steady circle the latency error is indistinguishable from a heading offset (turn rate * error),
 # the remaining heading error after the roll-out costs wind accuracy until the next turn rate change
 foreach(err -300 300)

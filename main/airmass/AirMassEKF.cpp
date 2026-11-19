@@ -11,6 +11,7 @@ constexpr float KTAS_MIN = 0.8f, KTAS_MAX = 1.25f;
 // lags too). Learned on 22 real flights: 0.7-1.1 s with one glider's Flarm on all of its 10 flights, 0.4-0.6 s with
 // another, 0-0.2 s with a third receiver, which a 0.25 s floor would clamp
 constexpr float TAU_MIN = 0.f, TAU_MAX = 1.75f;
+constexpr float TAU_STEP_MAX = 0.02f; // s per fix pair, of the latency from the lateral acceleration
 constexpr float SLIP_ALIGN_MAX = 0.1f; // rad, slipping samples do not go into the turn alignment
 constexpr uint32_t HEADING_AID_AGE_MS = 3000;
 // m/s, no air moves faster vertically: a larger innovation of the vertical constraints is a corrupt input, whatever
@@ -158,6 +159,9 @@ void AirMassEKF::reset(float baro_alt, float k_tas, float pitch_ofs, float laten
     }
     _aid = {};
     _hist_head = -1;
+    _lat_v = 0.f;
+    _lat_breaks = 0;
+    _lat_fix = {};
     _hist_level = 0;
     _psi_gyro = 0.f;
     _heading_rate = 0.f;
@@ -394,6 +398,13 @@ void AirMassEKF::update(const Input& in) {
     s.alpha_shift = 0.f;
     s.psi_gyro = _psi_gyro;
     s.slip_sigma = in.slip_sigma;
+    if (continuous && flying_speed && std::isfinite(in.acc_lat)) {
+        _lat_v += in.acc_lat * in.dt;
+    } else {
+        ++_lat_breaks;
+    }
+    s.lat_v = _lat_v;
+    s.lat_breaks = _lat_breaks;
     s.continuous = continuous && merged_continuous;
     s.flying_speed = flying_speed && merged_flying;
 
@@ -629,6 +640,54 @@ bool AirMassEKF::delayedState(uint32_t t, Delayed& d) const {
     return true;
 }
 
+// the integral of the lateral acceleration at time t and the acceleration there
+bool AirMassEKF::lateralVelocity(uint32_t t, float& v, float& a, uint16_t& breaks) const {
+    if (_hist_level < 2 || (uint32_t)(_last_time_ms - t) > HISTORY_MS) return false;
+    const int oldest = (_hist_head - _hist_level + 1 + HIST) % HIST;
+    if ((int32_t)(t - _hist[oldest].time_ms) < 0 || (int32_t)(t - _hist[_hist_head].time_ms) > 0) return false;
+    int i0 = _hist_head;
+    for (int i = 0; i < _hist_level - 1 && (int32_t)(t - _hist[i0].time_ms) < 0; ++i) {
+        i0 = (i0 - 1 + HIST) % HIST;
+    }
+    if (i0 == _hist_head) {
+        i0 = (i0 - 1 + HIST) % HIST;
+    }
+    const Snapshot& s0 = _hist[i0];
+    const Snapshot& s1 = _hist[(i0 + 1) % HIST];
+    const float span = (s1.time_ms - s0.time_ms) * 1e-3f;
+    if (!(span > 0.f) || span > 0.3f || s0.lat_breaks != s1.lat_breaks) return false;
+    a = (s1.lat_v - s0.lat_v) / span;
+    v = s0.lat_v + a * (int32_t)(t - s0.time_ms) * 1e-3f;
+    breaks = s1.lat_breaks;
+    return true;
+}
+
+// The GNSS latency without air data: the cross-track velocity change between two fixes (ground speed times track
+// change) is the integral of the horizontal lateral acceleration over the same span, the latency earlier. Learned
+// from the air vector instead, one latency had to fit the heading's timing in turns and the airspeed's in speed
+// changes, and moved with what the glider did (RESULTS-2026-11-19-inertial-latency.md).
+void AirMassEKF::fuseInertialLatency(const GnssVelocity& g, uint32_t t_fix) {
+    const auto prev = _lat_fix;
+    _lat_fix = {t_fix, g.vn, g.ve, true};
+    if (!prev.valid || !_cfg.learn_calibration || _inertial_trust < 1.f) return;
+    const float dt = (int32_t)(t_fix - prev.time_ms) * 1e-3f;
+    const float s0 = std::hypot(prev.vn, prev.ve), s1 = std::hypot(g.vn, g.ve);
+    if (!(dt > 0.5f && dt < 1.5f) || s0 < 15.f || s1 < 15.f) return;
+    const float turn = wrapPi(std::atan2(g.ve, g.vn) - std::atan2(prev.ve, prev.vn));
+    if (std::fabs(turn) > 0.6f * dt) return;
+    const uint32_t lag = (uint32_t)(gnssLatency() * 1000.f + 0.5f);
+    float v0, v1, a0, a1;
+    uint16_t b0, b1;
+    if (!lateralVelocity(prev.time_ms - lag, v0, a0, b0) || !lateralVelocity(t_fix - lag, v1, a1, b1) || b0 != b1) return;
+    float h[NX] = {};
+    h[TAU] = -(a1 - a0);
+    const float before = _x[TAU];
+    // the relation is linear in the latency only near it, and a fix pair can be an outlier: neither may carry it far
+    scalarUpdate(_cov, _x, h, turn * 0.5f * (s0 + s1) - (v1 - v0), _cfg.sigma_tau_inertial * _cfg.sigma_tau_inertial);
+    _x[TAU] = std::clamp(_x[TAU], before - TAU_STEP_MAX, before + TAU_STEP_MAX);
+    clampCalibration();
+}
+
 // heading from the air vector, given a trusted prior wind. The bearing of the air vector belongs to the observation
 // time and differs from the heading in banked flight (angle of attack). The delayed air vector of the current heading
 // estimate has both, the gyro carries it to now: the alignment turns the heading by the bearing difference.
@@ -754,6 +813,7 @@ void AirMassEKF::fuseGnss(const GnssVelocity& g, bool has_prior, float wn0, floa
         ++_gnss_rejects;
         return;
     }
+    fuseInertialLatency(g, g.time_ms - transport_delay);
     const uint32_t t_obs = g.time_ms - transport_delay - (uint32_t)(gnssLatency() * 1000.f + 0.5f);
     Delayed d;
     if (!delayedState(t_obs, d)) {
@@ -798,7 +858,6 @@ void AirMassEKF::fuseGnss(const GnssVelocity& g, bool has_prior, float wn0, floa
         h[i][KTAS] = d.va[i] / _x[KTAS];
         h[i][THB] = -d.dalpha[i];
         h[i][KCL] = d.dalpha[i] * d.aoa;
-        h[i][TAU] = -d.va_dot[i]; // a larger latency looks further back
         y[i] = meas[i] - (d.va[i] + _x[WN + i]);
         variance[i] = r + time_sigma * time_sigma * d.va_dot[i] * d.va_dot[i];
     }
