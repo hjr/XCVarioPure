@@ -1,0 +1,16 @@
+metric                                                  ours      TE     ref
+held-out nl: cruise rms                                0.340   0.452   0.338  LOSS
+held-out nl: false lift /h                             3.667  10.167   1.333  LOSS
+held-out nl: entry rms                                 0.488   0.577   1.222  
+held-out nl: entry max                                 1.430   1.560   2.997  
+held-out nl: circling rms                              0.362   0.445   0.540  
+held-out nl: climb per thermal                         0.075   0.067   0.098  LOSS
+held-out nl: display lag s                             1.433   2.417   0.333  LOSS
+held-out nl: wind instant (valid)                      0.535       -   1.002  
+held-out nl: wind instant (all)                        0.682       -   1.195  
+held-out nl: wind shown (valid+degraded)               0.682       -   1.195  
+held-out nl: wind not shown %                          0.333       -       -  
+held-out nl: wind 30s avg                              0.453       -   0.962  
+held-out nl: avg vs mean, straight                     0.832       -   1.747  
+held-out nl: avg vs mean, circling                     0.843       -   1.343  
+losses: 4 of 14
