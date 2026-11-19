@@ -196,7 +196,7 @@ void AirMassEKF::reset(float baro_alt, float k_tas, float pitch_ofs, float laten
     _aligned = false;
     _wind_valid = false;
     _wind_degraded = false;
-    _wind_valid_ms = 0;
+    _wind_was_valid = false;
     restartAlignment();
     _running = true;
 }
@@ -990,13 +990,10 @@ void AirMassEKF::updateWindValid() {
     const float u = windUncertainty();
     const bool ok = _running && _aligned && gnssAgeMs() < 30000;
     _wind_valid = ok && u < (_wind_valid ? 1.f : RECOVER);
-    if (_wind_valid) {
-        _wind_valid_ms = _last_time_ms;
-    }
+    _wind_was_valid |= _wind_valid;
     // after the wind got invalid (long straight glides: the heading is only checked in turns) the estimate stays
-    // better than the last valid wind for a while
-    _wind_degraded = !_wind_valid && ok && _wind_valid_ms != 0 && (_last_time_ms - _wind_valid_ms) * 1e-3f <= _cfg.degraded_time &&
-                     u < _cfg.degraded_factor;
+    // better than the last valid wind
+    _wind_degraded = !_wind_valid && ok && _wind_was_valid && u < _cfg.degraded_factor;
 }
 
 bool AirMassEKF::covarianceHealthy() const {

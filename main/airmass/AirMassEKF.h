@@ -138,10 +138,11 @@ class AirMassEKF {
         float gate = 5.f;           // innovation gate in sigma
         float energy_gate = 100.f;  // innovation gate of the energy balance in sigma (effectively none, see above)
         bool learn_calibration = true; // false: airspeed scale, pitch/AoA offset, AoA scale and latency stay as started
-        float sigma_wind_valid = 1.5f; // m/s horizontal wind validity threshold
+        float sigma_wind_valid = 1.5f; // m/s horizontal wind validity threshold,
+        float sigma_wind_valid_angle = 0.044f; // rad, or the airspeed times this if more: a heading or sideslip error
+                                               // of that angle is that much crosswind (fast ridge runs)
         float sigma_psi_valid = 0.17f; // rad heading validity threshold
-        float degraded_factor = 2.f;   // degraded wind: up to this times the validity thresholds,
-        float degraded_time = 1200.f;  // s, and this long after the wind was valid (about 40 km of glide)
+        float degraded_factor = 2.f;   // degraded wind: up to this times the validity thresholds
     };
 
     // status bits
@@ -204,7 +205,8 @@ class AirMassEKF {
     float sigma(int i) const { return std::sqrt(_cov(i, i)); }
     // the wind's uncertainty relative to its validity limits, the larger of wind and heading: valid below 1
     float windUncertainty() const {
-        return std::max(std::sqrt(_cov(WN, WN) + _cov(WE, WE)) / _cfg.sigma_wind_valid, sigma(PSI) / _cfg.sigma_psi_valid);
+        const float limit = std::fmax(_cfg.sigma_wind_valid, _x[KTAS] * _tas_f * _cfg.sigma_wind_valid_angle); // no airspeed yet: NAN
+        return std::max(std::sqrt(_cov(WN, WN) + _cov(WE, WE)) / limit, sigma(PSI) / _cfg.sigma_psi_valid);
     }
     uint8_t status() const;
     uint32_t gnssAgeMs() const { return _have_gnss ? _last_time_ms - _last_gnss_ms : UINT32_MAX; }
@@ -356,5 +358,5 @@ class AirMassEKF {
     struct { uint32_t time_ms; float vn, ve; bool valid; } _lat_fix = {};
     bool _wind_valid = false;
     bool _wind_degraded = false;
-    uint32_t _wind_valid_ms = 0; // the last cycle with a valid wind
+    bool _wind_was_valid = false;
 };
