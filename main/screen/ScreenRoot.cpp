@@ -103,7 +103,6 @@ void ScreenRoot::begin(MenuEntry *setup)
     if ( start_setup ) {
         _childs.front()->enter();
     }
-    SetupMenu::initGearWarning(); // Huh fixme
 }
 
 void ScreenRoot::pushTop(MenuEntry *setup)

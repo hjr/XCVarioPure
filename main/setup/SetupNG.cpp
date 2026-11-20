@@ -629,7 +629,6 @@ SetupNG<int> 			vario_upper_gauge("SCR_GT", MultiGauge::GAUGE_NONE, FACTORY_RST)
 SetupNG<int> 			vario_lower_gauge("SCR_GB", MultiGauge::GAUGE_NONE, FACTORY_RST);
 SetupNG<int> 			vario_mc_gauge("SCR_GMC", 1, FACTORY_RST);
 // SetupNG<bitfield_compass>  calibration_bits("CALBIT", { 0,0,0,0,0,0 } );
-SetupNG<int> 			gear_warning("GEARWA", 0, FACTORY_RST );
 SetupNG<t_tenchar_id>	custom_wireless_id("WLID", t_tenchar_id(""), FACTORY_RST );
 SetupNG<int> 			logging("LOGGING", 0, USER_RST );
 SetupNG<float>      	display_clock_adj("DSCLADHJ", 0, USER_RST, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(-2, 2, 0.1));
@@ -652,6 +651,7 @@ SetupNG<int>			peer_caps("PCAPS", 0, 0, SYNC_NONE, VOLATILE );
 SetupNG<DeviceNVS>		anemoi_devsetup("ANEMOI", DeviceNVS(), FACTORY_RST );
 SetupNG<DeviceNVS>		flarm_devsetup("FLARM", DeviceNVS(RoutingTarget({FLARM_DEV, S1_RS232, 0}), ProtocolList({FLARM_P, FLARMBIN_P}, 0), 0, 0), FACTORY_RST );
 SetupNG<DeviceNVS>		flp_sens_devsetup("FLPSENS", DeviceNVS(), FACTORY_RST );
+SetupNG<DeviceNVS>		gear_sens_devsetup("GEARSENS", DeviceNVS(), FACTORY_RST );
 SetupNG<DeviceNVS>		master_devsetup("MASTER", DeviceNVS(), FACTORY_RST );
 SetupNG<DeviceNVS>		second_devsetup("SECOND", DeviceNVS(), FACTORY_RST );
 SetupNG<DeviceNVS>		magleg_devsetup("MAGLEG", DeviceNVS(), FACTORY_RST );

@@ -25,6 +25,7 @@
 #include "setup/specific/DataMonitor.h"
 #include "setup/SetupNG.h"
 #include "sensor/adc/FlapSens.h"
+#include "sensor/adc/GearSens.h"
 #include "sensor/mag/MagVSensor.h"
 #include "sensor/gps/GpsVSensor.h"
 #include "sensor/temp/ds18b20.h"
@@ -118,7 +119,8 @@ constexpr std::pair<DeviceId, DeviceAttributes> DEVATTR[] = {
     {DeviceId::FLARM_DEV,  {"", {{S2_RS232}}, {{FLARM_P, FLARMBIN_P}, 2}, 0, 0, nullptr}},
     {DeviceId::FLARM_DEV,  {"", {{BT_SPP}}, {{FLARM_P}, 1}, 0, 0, nullptr}},
     // {DeviceId::FLARM_DEV,  {"", {{XCVPROXY}}, {{FLARM_P, FLARMBIN_P}, 2}, 0, 0, nullptr}},
-    {DeviceId::FLAP_SENS_DEV,  {"FlapSens", {{S2_PIN6}}, {{NO_ONE}, 0}, FlapSens::UNIT1_CHANNEL6, IS_SEL, &flp_sens_devsetup}}, // ADC unit and ADC channel # as port
+    {DeviceId::FLAP_SENS_DEV,  {"Flap Sensor", {{S2_PIN6}}, {{NO_ONE}, 0}, FlapSens::UNIT1_CHANNEL6, IS_SEL, &flp_sens_devsetup}}, // ADC unit and ADC channel # as port
+    {DeviceId::GEAR_SENS_DEV,  {"Gear Warning", {{S2_PIN6}}, {{NO_ONE}, 0}, 0, IS_SEL, &gear_sens_devsetup}}, // inverted signal logic as port
     {DeviceId::JUMBO_DEV,  {"jumbo putzi", {{CAN_BUS}}, {{JUMBOCMD_P}, 1} , 0, 0, nullptr}}, // auto reg
     {DeviceId::XCVARIOFIRST_DEV, {"Master XCV", {{S2_RS232}}, {{XCVSYNC_P}, 1}, 0, IS_SEL|SECOND_ONLY, &master_devsetup}},
     {DeviceId::XCVARIOSECOND_DEV, {"Second XCV", {{S2_RS232}}, {{XCVSYNC_P}, 1}, 0, IS_SEL|MASTER_ONLY, &second_devsetup}},
@@ -495,6 +497,10 @@ Device* DeviceManager::addDevice(DeviceId did, ProtocolType proto, int listen_po
                 dev->_sensor = FlapSens::create(listen_port);
                 dev->_protos = {(uint8_t)listen_port};
             }
+            else if ( did == GEAR_SENS_DEV ) {
+                dev->_sensor = GearSens::create(listen_port != 0);
+                dev->_protos = {(uint8_t)(listen_port != 0)};
+            }
             
             if ( ! dev->_sensor ) {
                 ESP_LOGW(FNAME, "Could not create sensor for device %d on itf %d", did, iid);
@@ -701,6 +707,10 @@ bool DeviceManager::isAvail(InterfaceId iid) const
         return false;
     }
     else if ( iid == WIFI_APSTA && (isIntf(BT_SPP) || isIntf(BT_LE)) ) {
+        return false;
+    }
+    // S2 pin 6 serves one device only (flap sensor or gear warning)
+    else if ( iid == S2_PIN6 && isIntf(S2_PIN6) ) {
         return false;
     }
     return true;

@@ -37,6 +37,7 @@ enum DeviceId : uint8_t
     TEMPSENS_DEV,
     FLARM_HOST3_DEV,
     FLAP_SENS_DEV,
+    GEAR_SENS_DEV,
     TEST_DEV,
     TEST_DEV2
 };
