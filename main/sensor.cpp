@@ -317,14 +317,14 @@ void readSensors(void *pvParameters)
 
 #ifdef DEBUG_AND_TEST
         if ( !(count % 600) ) {
-            ESP_LOGI(FNAME, "Free Heap: %d bytes", heap_caps_get_free_size(MALLOC_CAP_8BIT));
+            std::printf("%s: Free Heap: %d bytes\n", FNAME, heap_caps_get_free_size(MALLOC_CAP_8BIT));
             if (uxTaskGetStackHighWaterMark(NULL) < 512)
             {
-                ESP_LOGW(FNAME, "Warning %s task stack low: %d bytes", pcTaskGetName(NULL), uxTaskGetStackHighWaterMark(NULL));
+                std::printf("Warning %s task stack low: %d bytes\n", pcTaskGetName(NULL), uxTaskGetStackHighWaterMark(NULL));
             }
             if (heap_caps_get_free_size(MALLOC_CAP_8BIT) < 20000)
             {
-                ESP_LOGW(FNAME, "Warning heap_caps_get_free_size getting low: %d", heap_caps_get_free_size(MALLOC_CAP_8BIT));
+                std::printf("Warning heap_caps_get_free_size getting low: %d\n", heap_caps_get_free_size(MALLOC_CAP_8BIT));
             }
             extern MessagePool MP;
             ESP_LOGI(FNAME, "MPool in-use:%d, acq-fails: %d", MP.nrUsed(), MP.nrAcqFails());
