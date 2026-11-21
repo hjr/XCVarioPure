@@ -7,7 +7,7 @@
 // between the swept ones are interpolated in the mean square.
 const exclude = new Set((process.env.EXCLUDE || "").split(",").filter(Boolean));
 const flights = process.argv.slice(2).flatMap((f) => require(require("path").resolve(f)).flights).filter((r) => r.sums && r.sums.all && !exclude.has(r.file));
-const installation = (r) => (r.glider === "Arcus" ? `Arcus ${r.file.slice(0, 7)}` : r.glider);
+const { installation: inst } = require("./page.js"), installation = (r) => inst(r.file, r.glider);
 const PHASES = ["speed change", "all"];
 
 // pooled mean squares per series and phase

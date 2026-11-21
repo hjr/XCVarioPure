@@ -4,13 +4,16 @@
 // control for eComp, TEK0 (ImuTek without its IMU term). The vario logged in $PXCV is not scored: it is whatever
 // method the device showed.
 //   node te_pressure.js OUTPUT.json LOG...      (EXCLUDE=file,...: logs left out of the pools)
+// COMP: the TE compensation setting of eComp, the IMU TEK and AirMass's setup (half its deviation): "tuned" each
+// installation's (TUNED_SETTING in page.js), a number for all; unset eComp and the IMU TEK at 92 and AirMass at the
+// setup's (the device's, 100 for $SENS logs without one).
 // All at the same 4 s damping (the page's Damp, not the single 4 s low pass the IMU TEK's firmware damps with) and
 // each shifted by its fitted delay, like batch.js; the delays and the 1 s needle movement as shown. Own errors by the
 // three-cornered hat of AirMass, each other vario and the reference. Windows by phase: straight (bank under 10°),
 // circling (over 25°) and speed change (the kinetic energy height TAS²/2g changing by more than 15 m over the
 // window, where the TE compensation matters most).
 const fs = require("fs"), path = require("path");
-const { loadPage, lagOf, dampSeries, freeMask } = require("./page.js");
+const { loadPage, lagOf, dampSeries, freeMask, withSetting, installation, TUNED_SETTING } = require("./page.js");
 const web = path.resolve(__dirname, "../web");
 const { runReplay, loadFlight } = loadPage(web);
 const SERIES = ["AirMass", "eComp", "TEp", "TEK", "TEK0"], FALSE_CLIMBS = [[1, 1], [2, 2]], OTHERS = SERIES.slice(1), REFS = ["inertial", "pitot"], WINDOWS = [10, 30], PHASES = ["all", "straight", "circling", "speed change"], SPEED_CHANGE = 15;
@@ -19,14 +22,20 @@ const exclude = new Set((process.env.EXCLUDE || "").split(",").filter(Boolean));
 async function evaluate(M, file) {
   const conv = loadFlight(file, { glider: "log" });
   if (!conv.track.n || !conv.track.cols.te_alt.some(Number.isFinite)) return { file: path.basename(file), skipped: "no TE pressure" };
-  const rep = await runReplay(M, conv.rec, {});
-  if (!rep.n) return { file: path.basename(file), skipped: "no replay" };
-  globalThis.fileName = path.basename(file);
+  const comp = process.env.COMP, name = path.basename(file);
+  const setting = comp === "tuned" ? TUNED_SETTING[installation(name, conv.glider)] : comp ? +comp : NaN;
+  if (comp && !Number.isFinite(setting)) return { file: name, skipped: `no setting for ${installation(name, conv.glider)}` };
+  const rep = await runReplay(M, Number.isFinite(setting) ? withSetting(conv.rec, setting) : conv.rec, {});
+  if (!rep.n) return { file: name, skipped: "no replay" };
+  globalThis.fileName = name;
   globalThis.D = build(conv, rep);
+  const page$ = globalThis.$, adjust = Number.isFinite(setting) ? setting : 92;
+  globalThis.$ = (id) => (id === "ecomp" ? { value: String(adjust) } : page$(id));
   derive(D); // deriveDamping at page.js's damping of 4 s
+  globalThis.$ = page$;
   const c = D.tr, r = D.rep.cols, n = D.n;
   const tekNetto = (imu) => {
-    const f = new ImuTek(0, 0.92), damp = new Damp(4), out = new Float32Array(n).fill(NaN);
+    const f = new ImuTek(0, adjust / 100), damp = new Damp(4), out = new Float32Array(n).fill(NaN);
     for (let k = 0; k < n; k++) {
       const pitch = imu && D.ai[k] >= 0 ? r.pitch_deg[D.ai[k]] * Math.PI / 180 : NaN;
       const raw = f.at(D.t[k], { p: c.p_static[k], q: c.q_dyn[k], ax: c.acc_x[k], pitch });
@@ -54,7 +63,7 @@ async function evaluate(M, file) {
     const tas = c.tas[a] + f * (c.tas[a + 1] - c.tas[a]);
     ekin[j] = tas * tas / (2 * 9.80665);
   }
-  const out = { file: path.basename(file), glider: conv.glider, hours: gOk.reduce((s, v) => s + v, 0) / 36000, refs: {} };
+  const out = { file: path.basename(file), glider: conv.glider, setting: Number.isFinite(setting) ? setting : null, hours: gOk.reduce((s, v) => s + v, 0) / 36000, refs: {} };
   // the 1 s needle movement as shown, rms m/s
   out.motion = {};
   for (const s of SERIES) {

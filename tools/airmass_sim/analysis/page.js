@@ -212,4 +212,22 @@ const hms = (s) => [s / 3600, (s / 60) % 60, s % 60].map((x) => String(Math.floo
 
 const logOptions = () => ({ glider: process.env.GLIDER || "log", mass: +(process.env.MASS || 0) });
 
-module.exports = { hms, loadPage, pageScript, grab, cat, lagOf, dampSeries, freeMask, lsq, gnssCircleWind, gnssNetWithWind, logOptions };
+// the recording (convert()'s rec) with every setup line ($PXCVC) at this TE compensation setting [%]
+function withSetting(rec, adjust) {
+  const { checksum } = require(path.join(__dirname, "../web/convert.js"));
+  return rec.map((line) => {
+    if (!line.startsWith("$PXCVC,")) return line;
+    const f = line.split("*")[0].split(",");
+    f[11] = adjust.toFixed(3);
+    return checksum(f.join(","));
+  });
+}
+
+// an installation, for the TE compensation: the glider type, for the Arcus with the month (its flights wanted
+// different settings, RESULTS-2026-11-21-te-adjust.md)
+const installation = (file, glider) => (glider === "Arcus" ? `Arcus ${file.slice(0, 7)}` : glider);
+// each installation's eComp optimum in the speed-change windows (the fine sweep of RESULTS-2026-11-21-te-adjust.md;
+// the DG's is the edge of the sweep)
+const TUNED_SETTING = { "ASG 29/18": 90, "DG 800B/18": 76, "Arcus 2025-07": 96, "Arcus 2026-05": 100, "Arcus 2026-11": 90 };
+
+module.exports = { withSetting, installation, TUNED_SETTING, hms, loadPage, pageScript, grab, cat, lagOf, dampSeries, freeMask, lsq, gnssCircleWind, gnssNetWithWind, logOptions };

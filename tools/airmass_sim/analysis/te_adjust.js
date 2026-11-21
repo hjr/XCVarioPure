@@ -8,22 +8,16 @@
 // change" (the kinetic energy height TAS²/2g changing by more than 15 m over the window, where a wrong compensation
 // shows); false climbs of 2 m/s for 2 s in straight flight as batch.js counts them.
 const fs = require("fs"), path = require("path");
-const { loadPage, lagOf, dampSeries, freeMask } = require("./page.js");
+const { loadPage, lagOf, dampSeries, freeMask, withSetting } = require("./page.js");
 const web = path.resolve(__dirname, "../web");
 const { runReplay, loadFlight } = loadPage(web);
-const { checksum } = require(path.join(web, "convert.js"));
 const list = (text, dflt) => (text ? text.split(",").map(Number) : dflt);
 const AIRMASS = list(process.env.AIRMASS, [100, 96, 90]), ECOMP = list(process.env.ECOMP, [84, 88, 90, 92, 96, 100, 104]), PHASES = ["all", "straight", "circling", "speed change"];
 const exclude = new Set((process.env.EXCLUDE || "").split(",").filter(Boolean));
 const G = 9.80665, isa = (p) => (p > 0 ? 44330.76923 * (1 - Math.pow(p / 101325, 1 / 5.25588)) : NaN);
 
-// the recording with every setup line's setting giving AirMass this static_comp [%]
-const withAdjust = (rec, staticComp) => rec.map((line) => {
-  if (!line.startsWith("$PXCVC,")) return line;
-  const f = line.split("*")[0].split(",");
-  f[11] = (2 * staticComp - 100).toFixed(3);
-  return checksum(f.join(","));
-});
+// the recording with the setup's setting giving AirMass this static_comp [%]
+const withAdjust = (rec, staticComp) => withSetting(rec, 2 * staticComp - 100);
 
 async function evaluate(M, file) {
   const conv = loadFlight(file, { glider: "log" });
