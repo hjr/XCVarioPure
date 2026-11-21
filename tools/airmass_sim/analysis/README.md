@@ -28,7 +28,9 @@ ballast factor, 441 kg (450 kg on two flights). `GLIDER=name` and `MASS=kg` set 
 
 All real-flight scripts run the browser replay's own code (`tools/airmass_sim/web`: the converter, the WebAssembly
 estimator, the page's `build`/`derive`), so they stay in step with the site. Build `airmass.js` first
-(`tools/airmass_sim/web/build.sh`).
+(`tools/airmass_sim/web/build.sh`). Their TE netto (`D.netto`) is the page's eComp replayed from the static and
+dynamic pressure since 2026-11-20; before, it was the vario the device logged in `$PXCV`, whatever method the device
+showed, so results before that date compare AirMass with a mix of TE probe, eComp and the device's own AirMass.
 
 | Script | What it does |
 |---|---|
@@ -50,7 +52,7 @@ estimator, the page's `build`/`derive`), so they stay in step with the site. Bui
 | `same_windows.js` | two builds of the estimator (`node same_windows.js OUT.json A.js B.js LOG...`) on the same scored windows, per flight and pooled, and how far their series are apart; `REF=first` scores both against the first build's reference, `REF=pitot` against the pitot one |
 | `restart.js` | restarts in flight every ten minutes of a log against the uninterrupted estimator: vario difference and validity by time since the restart, for a start attitude from the accelerometer alone, the true one and the turn-corrected one, restarts in straight flight and while banked |
 | `decomp.js` | per-sample means of AirMass, its energy, plain-energy and pitch paths, TE netto and both references, binned by bank (left / right) and by time since circling; `--print` merges outputs |
-| `te_pressure.js` | AirMass netto, the logged TE netto and the TE netto replayed from the logged TE pressure (the page's `TeVario`) at equal 4 s damping against both references, per flight and pooled (`EXCLUDE`), with the three-cornered hat once per TE (the two share the probe), delays and 1 s needle movement; `node te_pressure.js OUT.json` alone re-reports a saved run |
+| `te_pressure.js` | AirMass netto and the TE methods replayed from `$SENS`: eComp (XCVarioPure's electronic compensation through `TeVario`), TE pressure (the TE probe through `TeVario`), the IMU TEK (the page's `ImuTek`) and, as eComp's control, the IMU TEK without its IMU term (the vario logged in `$PXCV` is whatever method the device showed, so it is not scored), at equal 4 s damping against both references, per flight and pooled (`EXCLUDE`), with the three-cornered hat of AirMass and each other vario, delays and 1 s needle movement; `node te_pressure.js OUT.json` alone re-reports a saved run |
 | `xcsoar_wind.js` | AirMass's wind against XCSoar's zigzag wind (WindEKF and its glue, ported) and its circling wind (CirclingWind and WindStore, ported, [2026-11-17 results](RESULTS-2026-11-17-xcsoar-circling-wind.md)) and against the per-turn GNSS-only wind: while circling, and in straight flight by the time since the thermal before and until the next one; `node xcsoar_wind.js OUT.json` alone re-reports ([2026-11-16 results](RESULTS-2026-11-16-xcsoar-wind.md)) |
 | `imu_latency.js` | the GNSS velocity's age without air data: the track change between consecutive fixes against the integrated lateral acceleration (and the speed change against the longitudinal one in level flight), per log and per quarter, next to the estimator's latency and the transport delay ([2026-11-19 results](RESULTS-2026-11-19-inertial-latency.md)) |
 | `opposite_legs.js` | reference-free along-track wind bias in straight flight, from pairs of opposite straight legs ([2026-11-17 results](RESULTS-2026-11-17-xcsoar-circling-wind.md#the-tailwind-bias)) |
