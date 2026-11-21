@@ -105,7 +105,7 @@ All windows: half rule +0.1 %, the setting itself +0.9 %, 100 +1.1 % over the op
 - The DG is the exception: eComp still improves below 76 (the edge of the sweep), while AirMass wants 90–92, which
   the half rule maps to an eComp of about 82. Its learned k_tas (0.91–0.96) fits a suction static port of
   ε ≈ −0.09, as AirMass's optimum says, so eComp there corrects for something beyond the static port; pneumatic lag
-  of its tubes (AirMass models it, eComp does not) is a candidate, not verified. The half rule still costs only 1.2 %
+  of its tubes (AirMass models it, eComp does not) is a candidate, not verified (see below: it is the cause). The half rule still costs only 1.2 %
   there, against 13 % for the setting itself.
 - k_tas is not a clean measure of the pitot alone: the ASG 29 learns 1.01–1.03 where its static port (AirMass 95–96)
   would give 0.97, so a rule from k_tas instead of the setting does not work.
@@ -116,3 +116,14 @@ the expected k_tas is K.k_tas/√(1 − ε)). All 46 host tests pass; k_tas conv
 (pullup --static-adj 108: 1.070, err −0.001), the AirMass vario is unchanged, and `pullup --static-adj 92 --comp 100`,
 which failed before, passes (a wrong setting now costs AirMass half). `te_adjust.js` writes 2·value − 100 into the
 setup, so its AirMass values stay AirMass's own static_comp.
+
+## The DG's pitot lag (added the same day)
+
+The airspeed's time shift against the static altitude that makes h + adj·V²/2g smoothest (scratch script, every
+flying sample of each log): the DG 800's airspeed is late by 0.6–0.9 s on all five flights (0.8, 0.7, 0.6, 0.9, 0.9);
+the ASG 29 and both Arcus installations 0.0–0.1 s. Whether its tubing or its airspeed filtering, the logs do not tell.
+eComp combines the two directly, so on the DG every speed exchange leaves a derivative-shaped error: its optimum drops
+to ≤ 76 (less of the late term), and its fitted circling delay comes out early (2.4 s against TE pressure's 3.4 s; at
+92 and 100 1.6 s, while its circling 10 s rms rises 0.840 → 0.851 → 0.864). The AirMass needle's circling lead over
+eComp on the DG (0.8 s) is short for that reason; over the TE probe it is 1.8 s. AirMass assumes 0.2 s on both lines;
+the DG's spread of learned GNSS latencies (422–790 ms) may absorb part of the unmodelled pitot lag, not verified.
