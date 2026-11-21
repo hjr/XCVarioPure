@@ -1,15 +1,18 @@
 """Scoreboard of the AirMass estimator against TE netto and the GNSS/INS reference (ins_reference.h), lower is better.
 Every metric of the synthetic flights, NL day and segment scenarios averaged over 6 noise seeds; LOSS marks a metric
-where TE netto or the reference does better. --holdout scores the held-out days instead (see HOLDOUT).
+where TE netto or the reference does better. --holdout scores the held-out days instead (see HOLDOUT); --json prints the
+rows as JSON ([name, ours, TE, reference]).
 Run after tools/airmass_sim/run.sh built build_sim, from the repo root:
   docker run --rm --entrypoint "" -v "$PWD":/project -w /project espressif/idf:release-v5.4 python3 -I tools/airmass_sim/scoreboard.py [sim args]"""
+import json
 import re
 import subprocess
 import sys
 
 B = "build_sim/airmass_sim"
 holdout = "--holdout" in sys.argv
-extra = [a for a in sys.argv[1:] if a != "--holdout"]
+as_json = "--json" in sys.argv
+extra = [a for a in sys.argv[1:] if a not in ("--holdout", "--json")]
 
 # Held-out flights: other days (air mass realisations, conditions) than the Dutch day the estimator was developed on.
 # Report them, never tune on them: a change is judged on the development set, the held-out set shows whether it
@@ -109,6 +112,9 @@ else:
     for sc in ["straight", "thermal", "gust", "pullup", "slip", "endurance"]:
         segment(sc)
 
+if as_json:
+    print(json.dumps(rows))
+    sys.exit(0)
 losses = 0
 print(f"{'metric':52s} {'ours':>7s} {'TE':>7s} {'ref':>7s}")
 for name, o, te, rf in rows:

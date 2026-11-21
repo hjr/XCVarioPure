@@ -5,7 +5,7 @@
 // method the device showed.
 //   node te_pressure.js OUTPUT.json LOG...      (EXCLUDE=file,...: logs left out of the pools)
 // COMP: the TE compensation setting of eComp, the IMU TEK and AirMass's setup (half its deviation): "tuned" each
-// installation's (TUNED_SETTING in page.js), a number for all; unset eComp and the IMU TEK at 92 and AirMass at the
+// installation's (TUNED_SETTING in page.js, the default 92 for one not in it), a number for all; unset eComp and the IMU TEK at 92 and AirMass at the
 // setup's (the device's, 100 for $SENS logs without one).
 // All at the same 4 s damping (the page's Damp, not the single 4 s low pass the IMU TEK's firmware damps with) and
 // each shifted by its fitted delay, like batch.js; the delays and the 1 s needle movement as shown. Own errors by the
@@ -13,7 +13,7 @@
 // circling (over 25°) and speed change (the kinetic energy height TAS²/2g changing by more than 15 m over the
 // window, where the TE compensation matters most).
 const fs = require("fs"), path = require("path");
-const { loadPage, lagOf, dampSeries, freeMask, withSetting, installation, TUNED_SETTING } = require("./page.js");
+const { loadPage, lagOf, dampSeries, freeMask, withSetting, installation, TUNED_SETTING, gnssCircleWind } = require("./page.js");
 const web = path.resolve(__dirname, "../web");
 const { runReplay, loadFlight } = loadPage(web);
 const SERIES = ["AirMass", "eComp", "TEp", "TEK", "TEK0"], FALSE_CLIMBS = [[1, 1], [2, 2]], OTHERS = SERIES.slice(1), REFS = ["inertial", "pitot"], WINDOWS = [10, 30], PHASES = ["all", "straight", "circling", "speed change"], SPEED_CHANGE = 15;
@@ -23,8 +23,8 @@ async function evaluate(M, file) {
   const conv = loadFlight(file, { glider: "log" });
   if (!conv.track.n || !conv.track.cols.te_alt.some(Number.isFinite)) return { file: path.basename(file), skipped: "no TE pressure" };
   const comp = process.env.COMP, name = path.basename(file);
-  const setting = comp === "tuned" ? TUNED_SETTING[installation(name, conv.glider)] : comp ? +comp : NaN;
-  if (comp && !Number.isFinite(setting)) return { file: name, skipped: `no setting for ${installation(name, conv.glider)}` };
+  const setting = comp === "tuned" ? TUNED_SETTING[installation(name, conv.glider)] ?? 92 : comp ? +comp : NaN;
+  if (comp && !Number.isFinite(setting)) return { file: name, skipped: `no setting ${comp}` };
   const rep = await runReplay(M, Number.isFinite(setting) ? withSetting(conv.rec, setting) : conv.rec, {});
   if (!rep.n) return { file: name, skipped: "no replay" };
   globalThis.fileName = name;
@@ -48,7 +48,7 @@ async function evaluate(M, file) {
   const ecomp = D.netto;
   const { free } = freeMask(D, (k) => c.ias[k] > 60 / 3.6 && c.gnss_speed[k] > 10);
   const ok = Uint8Array.from(free, (v, k) => v && D.amOk[k] && Number.isFinite(D.tep[k]) && Number.isFinite(tek[k]) && Number.isFinite(ecomp[k]) && Number.isFinite(D.gnssNetInert[k]));
-  const source = { AirMass: dampSeries(D.amRaw, ok), eComp: ecomp, TEp: D.tep, TEK: tek, TEK0: tek0, inertial: D.gnssNetInert, pitot: D.gnssNetPitot };
+  const source = { AirMass: dampSeries(D.amRaw, ok), eComp: ecomp, TEp: D.tep, TEK: tek, TEK0: tek0, inertial: D.gnssNetInert, pitot: D.gnssNetPitot, cockpit: D.am };
   // a 10 Hz grid, interpolating only over short measured intervals (batch.js)
   const N = Math.floor((D.t[n - 1] - D.t[0]) * 10) + 1, g = {};
   for (const s in source) g[s] = new Float32Array(N).fill(NaN);
@@ -63,7 +63,9 @@ async function evaluate(M, file) {
     const tas = c.tas[a] + f * (c.tas[a + 1] - c.tas[a]);
     ekin[j] = tas * tas / (2 * 9.80665);
   }
-  const out = { file: path.basename(file), glider: conv.glider, setting: Number.isFinite(setting) ? setting : null, hours: gOk.reduce((s, v) => s + v, 0) / 36000, refs: {} };
+  const out = { file: path.basename(file), glider: conv.glider, setting: Number.isFinite(setting) ? setting : null,
+    untuned: comp === "tuned" && !(installation(name, conv.glider) in TUNED_SETTING) ? installation(name, conv.glider) : undefined, hours: gOk.reduce((s, v) => s + v, 0) / 36000, refs: {} };
+  extras(out, { D, rep, c, r, n, free, g, gOk, roll, N });
   // the 1 s needle movement as shown, rms m/s
   out.motion = {};
   for (const s of SERIES) {
@@ -127,6 +129,93 @@ async function evaluate(M, file) {
   return out;
 }
 
+// The cockpit needle (AirMass with its own damping, D.am, against eComp and TE pressure with the vario damping): each
+// one's delay to the reference by phase and its unshifted 10 s windows. Availability while flying (IAS over 60 km/h):
+// AirMass vario valid, wind valid, wind degraded, the time to the first valid wind. The wind against the GNSS circle
+// fits (gnssCircleWind) while valid, the averaged wind while valid, and the degraded wind (straight flight, no circle
+// fits) against the wind it becomes valid at: every 10 s of a degraded stretch against the mean valid wind of the 30 s
+// after it. The learned calibration and how
+// the GNSS latency moves over the last two thirds of the flight. Gust alerts and the straight flight they count on.
+function extras(out, { D, rep, c, r, n, free, g, gOk, roll, N }) {
+  const R = g.inertial, mask = Uint8Array.from(gOk, (v, k) => v && Number.isFinite(R[k]) && Number.isFinite(g.cockpit[k]));
+  const shown = { AirMass: g.cockpit, eComp: g.eComp, TEp: g.TEp };
+  const cockpit = (out.cockpit = { delay: {}, sums: { n: 0 } });
+  for (const ph of ["all", "straight", "circling"]) {
+    const m = Uint8Array.from(mask, (v, k) => v && (ph === "all" || (ph === "straight" ? roll[k] < 10 : roll[k] > 25)));
+    cockpit.delay[ph] = Object.fromEntries(Object.entries(shown).map(([s, x]) => [s, lagOf(x, R, m) / 10]));
+  }
+  for (let k = 0; k + 100 < N; k += 100) {
+    let good = true;
+    const sum = { AirMass: 0, eComp: 0, TEp: 0 };
+    for (let j = k; j < k + 100 && good; j++) {
+      if (!mask[j]) { good = false; break; }
+      for (const s in shown) sum[s] += shown[s][j] - R[j];
+    }
+    if (!good) continue;
+    cockpit.sums.n++;
+    for (const s in sum) cockpit.sums[s] = (cockpit.sums[s] || 0) + (sum[s] / 100) ** 2;
+  }
+
+  const flying = (k) => D.ai[k] >= 0 && c.ias[k] > 60 / 3.6;
+  const av = (out.availability = { seconds: 0, vario: 0, wind: 0, degraded: 0, firstWind: null, starts: rep.summary.starts, sensorGaps: 0 });
+  let start = NaN;
+  for (let k = 1; k < n; k++) {
+    if (D.t[k] - D.t[k - 1] > 0.3) av.sensorGaps++;
+    if (!flying(k)) continue;
+    const dt = Math.min(0.5, Math.max(0, D.t[k] - D.t[k - 1])), st = r.status[D.ai[k]];
+    if (!Number.isFinite(start)) start = D.t[k];
+    av.seconds += dt;
+    if (st & STATUS.VARIO_VALID) av.vario += dt;
+    if (st & STATUS.WIND_VALID) { av.wind += dt; if (av.firstWind === null) av.firstWind = D.t[k] - start; }
+    else if (st & STATUS.WIND_DEGRADED) av.degraded += dt;
+  }
+
+  const wind = (out.wind = { valid: [], degraded: [], avg: [] }), r2 = (x) => Math.round(x * 100) / 100;
+  for (const turn of gnssCircleWind(D).turns) {
+    const k = indexAt(turn.t), i = D.ai[k];
+    if (i < 0 || !free[k] || turn.res > 1) continue;
+    const st = r.status[i], e = Math.hypot(turn.n - r.wind_n[i], turn.e - r.wind_e[i]);
+    if (st & STATUS.WIND_VALID) { wind.valid.push(r2(e)); wind.avg.push(r2(Math.hypot(turn.n - r.avg_wind_n[i], turn.e - r.avg_wind_e[i]))); }
+    else if (st & STATUS.WIND_DEGRADED) wind.degraded.push(r2(e));
+  }
+  wind.recovered = [];
+  for (let k = 0, k0 = -1; k < n; k++) {
+    const i = D.ai[k];
+    if (i < 0) { k0 = -1; continue; }
+    const st = r.status[i];
+    if (!(st & STATUS.WIND_VALID) && st & STATUS.WIND_DEGRADED) { if (k0 < 0) k0 = k; continue; }
+    if (k0 >= 0 && st & STATUS.WIND_VALID) {
+      let sn = 0, se = 0, m = 0;
+      for (let j = k; j < n && D.t[j] - D.t[k] < 30; j++) {
+        const ij = D.ai[j];
+        if (ij >= 0 && r.status[ij] & STATUS.WIND_VALID) { sn += r.wind_n[ij]; se += r.wind_e[ij]; m++; }
+      }
+      for (let j = k0, last = -Infinity; m && j < k; j++) {
+        if (D.t[j] - last < 10 || D.ai[j] < 0) continue;
+        last = D.t[j];
+        wind.recovered.push(r2(Math.hypot(r.wind_n[D.ai[j]] - sn / m, r.wind_e[D.ai[j]] - se / m)));
+      }
+    }
+    k0 = -1;
+  }
+
+  const lat = [];
+  for (let k = 0; k < n; k++) if (flying(k) && Number.isFinite(r.latency_ms[D.ai[k]])) lat.push(r.latency_ms[D.ai[k]]);
+  const tail = lat.slice(Math.floor(lat.length / 3)), S = rep.summary;
+  out.calibration = { k_tas: S.k_tas, latency_ms: S.latency_ms, pitch_ofs_deg: S.pitch_ofs_deg, imu_roll_deg: S.imu_roll_deg,
+    latency_min: tail.reduce((a, b) => Math.min(a, b), Infinity), latency_max: tail.reduce((a, b) => Math.max(a, b), -Infinity) };
+
+  const nr = rep.n, ias = new Float32Array(nr).fill(NaN);
+  for (let k = 0; k < n; k++) if (D.ai[k] >= 0) ias[D.ai[k]] = c.ias[k];
+  let straightMs = 0, gusts = 0;
+  for (let i = 1; i < nr; i++) {
+    if (!Number.isFinite(ias[i])) ias[i] = ias[i - 1];
+    if ((r.status[i] & STATUS.VARIO_VALID) && ias[i] > 60 / 3.6 && Math.abs(r.roll_deg[i]) < 10) straightMs += Math.min(rep.t_ms[i] - rep.t_ms[i - 1], 300);
+    if (r.gust_event[i]) gusts++;
+  }
+  out.gusts = { events: gusts, straightHours: straightMs / 3.6e6 };
+}
+
 // rms of a term over pooled sums, the three-cornered hat's own errors
 const rms = (a, name) => (a && a.n ? Math.sqrt(a[name] / a.n) : NaN);
 const hat = (a, x, y) => {
@@ -185,14 +274,14 @@ function report(rows) {
   }
   console.log("\nmedian delay to the gust-insensitive reference, s: " + SERIES.map((s) => `${s} ${median(pooled.map((r) => r.refs.inertial.delay[s])).toFixed(1)}`).join(", ") +
     "\nmedian 1 s needle movement, m/s: " + SERIES.map((s) => `${s} ${f3(median(pooled.map((r) => r.motion[s])))}`).join(", "));
-  combined(pooled, P);
+  combined(pooled);
 }
 
-// all of the above in one markdown table, gust-insensitive reference; the best of each row in bold (TEK0, the
-// control, not ranked). AirMass's own error is a range, one per hat with each other vario (ranked by its top); a
-// negative variance from the hat shows as ≈0.
-function combined(pooled, P) {
-  const NAMES = { AirMass: "AirMass", eComp: "eComp", TEp: "TE pressure", TEK: "IMU TEK", TEK0: "TEK0 (control)" }, RANKED = SERIES.slice(0, -1);
+// all of the above as rows of { label, values (per series), fmt, lowBest }, gust-insensitive reference. AirMass's own
+// error is a range, one per hat with each other vario (ranked by its top); a negative variance from the hat shows as ≈0.
+const NAMES = { AirMass: "AirMass", eComp: "eComp", TEp: "TE pressure", TEK: "IMU TEK", TEK0: "TEK0 (control)" }, RANKED = SERIES.slice(0, -1);
+function metrics(pooled) {
+  const P = pool(pooled);
   const fc = (kind, thr) => {
     const hours = pooled.reduce((h, r) => h + r.refs.inertial.falseClimbs.straightHours, 0);
     return Object.fromEntries(SERIES.map((s) => [s, pooled.reduce((n, r) => n + r.refs.inertial.falseClimbs[`${kind}${thr} ${s}`], 0) / hours]));
@@ -208,20 +297,10 @@ function combined(pooled, P) {
     const best = Math.min(...RANKED.map((s) => rms(a, s)));
     for (const s of RANKED) if (rms(a, s) === best) wins[s]++;
   }
-  const rows = [];
-  const row = (label, values, fmt, lowBest = true) => {
-    const key = (v) => (Array.isArray(v) ? v[1] : v), ranked = RANKED.map((s) => key(values[s])).filter(Number.isFinite);
-    const best = lowBest ? Math.min(...ranked) : Math.max(...ranked);
-    rows.push(`| ${label} | ` + SERIES.map((s) => { const t = fmt(values[s]); return RANKED.includes(s) && key(values[s]) === best ? `**${t}**` : t; }).join(" | ") + " |");
-  };
-  for (const W of WINDOWS) for (const ph of PHASES) {
-    const a = P.inertial[W][ph];
-    row(`rms ${W} s ${ph}, m/s`, Object.fromEntries(SERIES.map((s) => [s, rms(a, s)])), f3);
-  }
-  for (const ph of PHASES) {
-    const o = own(10, ph);
-    row(`own error 10 s ${ph} (hat), m/s`, o, (v) => { const g = (x) => (x < 0 ? "≈0" : f3(x)); return Array.isArray(v) ? `${g(v[0])}–${g(v[1])}` : g(v); });
-  }
+  const rows = [], row = (label, values, fmt, lowBest = true) => rows.push({ label, values, fmt, lowBest });
+  for (const W of WINDOWS) for (const ph of PHASES) row(`rms ${W} s ${ph}, m/s`, Object.fromEntries(SERIES.map((s) => [s, rms(P.inertial[W][ph], s)])), f3);
+  const ownFmt = (v) => { const g = (x) => (x < 0 ? "≈0" : f3(x)); return Array.isArray(v) ? `${g(v[0])}–${g(v[1])}` : g(v); };
+  for (const ph of PHASES) row(`own error 10 s ${ph} (hat), m/s`, own(10, ph), ownFmt);
   row("median delay, s", Object.fromEntries(SERIES.map((s) => [s, median(pooled.map((r) => r.refs.inertial.delay[s]))])), (v) => v.toFixed(1));
   row("median needle movement in 1 s, m/s", Object.fromEntries(SERIES.map((s) => [s, median(pooled.map((r) => r.motion[s]))])), f3);
   for (const [thr, dur] of FALSE_CLIMBS.slice().reverse()) {
@@ -229,11 +308,27 @@ function combined(pooled, P) {
     row(`false sinks ${thr} m/s ${dur} s, per h straight`, fc("sink", thr), (v) => v.toFixed(1));
   }
   row("flights best at 10 s", wins, String, false);
-  const hours = pooled.reduce((s, r) => s + r.hours, 0), straight = pooled.reduce((h, r) => h + r.refs.inertial.falseClimbs.straightHours, 0);
-  console.log(`\ncombined, ${pooled.length} flights, ${hours.toFixed(1)} h scored (${straight.toFixed(1)} h straight for the false climbs), gust-insensitive reference\n`);
-  console.log("| | " + SERIES.map((s) => NAMES[s]).join(" | ") + " |\n|---|" + SERIES.map(() => "---|").join(""));
-  console.log(rows.join("\n"));
+  return { rows, flights: pooled.length, hours: pooled.reduce((s, r) => s + r.hours, 0), straight: pooled.reduce((h, r) => h + r.refs.inertial.falseClimbs.straightHours, 0) };
 }
+// the comparable number of a value (a range by its top)
+const top = (v) => (Array.isArray(v) ? v[1] : v);
+// metrics() as a markdown table, the best of each row in bold (TEK0, the control, not ranked)
+function markdown(m) {
+  const lines = ["| | " + SERIES.map((s) => NAMES[s]).join(" | ") + " |", "|---|" + SERIES.map(() => "---|").join("")];
+  for (const { label, values, fmt, lowBest } of m.rows) {
+    const ranked = RANKED.map((s) => top(values[s])).filter(Number.isFinite), best = lowBest ? Math.min(...ranked) : Math.max(...ranked);
+    lines.push(`| ${label} | ` + SERIES.map((s) => { const t = fmt(values[s]); return RANKED.includes(s) && top(values[s]) === best ? `**${t}**` : t; }).join(" | ") + " |");
+  }
+  return lines.join("\n");
+}
+function combined(pooled) {
+  const m = metrics(pooled);
+  console.log(`\ncombined, ${m.flights} flights, ${m.hours.toFixed(1)} h scored (${m.straight.toFixed(1)} h straight for the false climbs), gust-insensitive reference\n`);
+  console.log(markdown(m));
+}
+
+module.exports = { SERIES, NAMES, RANKED, metrics, markdown, top, rms, f3 };
+if (require.main !== module) return;
 
 (async () => {
   const [outFile, ...logs] = process.argv.slice(2);
