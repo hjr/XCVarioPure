@@ -10,8 +10,9 @@
 // usage: airmass_sim <scenario> [--lat-err ms] [--static-adj %] [--comp %] [--compass deg]
 //                     [--slip-aid 0|1] [--max-wind-valid s] [--csv file]
 //   --lat-err: the true GNSS latency differs from the nominal one the filter is told
-//   --static-adj: static port error of the installation, as the TE adjustment that would cancel it
-//   --comp: configured compensation of the air mass filter and the electronic TE reference
+//   --static-adj: static port error of the installation, as the TE adjustment that would cancel it (in the altitude
+//                 and the dynamic pressure)
+//   --comp: the TE adjustment setting, of the electronic TE reference and (half its deviation) the air mass filter
 //   --compass: magnetic compass with this noise (plus a fixed deviation) aids the heading
 //   --slip-aid: sideslip estimate from the lateral acceleration (default on)
 //   --max-wind-valid: override the scenario's limit for the time to a valid wind
@@ -762,6 +763,9 @@ int main(int argc, char** argv) {
     setup.polar = devicePolar();
     setup.vario_resp = vario_agility;
     setup.te_adjust = comp * 100.f;
+    // the port's pressure error per dynamic pressure that the TE adjustment static_adj cancels:
+    // (1 + eps) / (1 - eps) = static_adj
+    const float static_eps = (static_adj - 1.f) / (static_adj + 1.f);
     pipe.setLearning(learn);
     pipe.configure(setup);
     airmass::Pipeline::Options opts;
@@ -1053,10 +1057,11 @@ int main(int argc, char** argv) {
         tr.yaw_rate = (side_acc + G * std::sin(tr.roll) * std::cos(tr.pitch)) / (tr.v * std::cos(tr.roll));
         tr.yaw_rate += gust_load * G * std::sin(tr.roll) / tr.v; // the gust lift tightens the turn
         // air data at the sensors: static port error (installation, with the angle of attack), pneumatic lags
-        const float cp_static = (static_adj - 1.f) + K.static_cl * (cl - 0.6f);
+        const float cp_static = static_eps + K.static_cl * (cl - 0.6f);
         const float alt_port = tr.h - cp_static * tr.v * tr.v / (2.f * G);
         static_alt = std::isnan(static_alt) ? alt_port : static_alt + (alt_port - static_alt) * dt_truth / std::max(K.lag_static, dt_truth);
-        pitot_v2 = std::isnan(pitot_v2) ? tr.v * tr.v : pitot_v2 + (tr.v * tr.v - pitot_v2) * dt_truth / std::max(K.lag_pitot, dt_truth);
+        const float q_port = (1.f - cp_static) * tr.v * tr.v; // the pitot's total pressure minus the port's
+        pitot_v2 = std::isnan(pitot_v2) ? q_port : pitot_v2 + (q_port - pitot_v2) * dt_truth / std::max(K.lag_pitot, dt_truth);
         tr.psi += tr.yaw_rate * dt_truth;
         tr.h -= tr.vg[2] * dt_truth;
         tr.xa += tr.va[0] * dt_truth;
@@ -1316,7 +1321,7 @@ int main(int argc, char** argv) {
     }
 
     // expected learned calibration
-    const float k_err = ekf.kTas() - K.k_tas;
+    const float k_err = ekf.kTas() - K.k_tas / std::sqrt(1.f - static_eps);
     const int lat_est_err = (int)std::lround(ekf.gnssLatency() * 1000.f) - (gnss_latency + lat_err);
     std::printf("[%s] wind valid after %.0fs, wind rms %.2f m/s (max %.2f), vario rms %.2f m/s (TE netto %.2f), "
                 "spike max %.2f m/s (TE netto %.2f), k_tas %.3f (err %.3f), pitch ofs %.3f rad, aoa scale %.3f (true %.3f), acc bias %.3f, "

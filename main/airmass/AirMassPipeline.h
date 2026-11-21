@@ -163,7 +163,9 @@ public:
         AirMassEKF::Config cfg;
         cfg.q_wind_h *= s.wind_resp * s.wind_resp;
         cfg.q_wind_v *= s.vario_resp * s.vario_resp;
-        cfg.static_comp = s.te_adjust / 100.f;
+        // the static port's error is in the altitude and, with the opposite sign, in the dynamic pressure: eComp
+        // corrects both, AirMass only the altitude (k_tas takes the airspeed), so half the setting's deviation
+        cfg.static_comp = 0.5f + s.te_adjust / 200.f;
         cfg.learn_calibration = _learn;
         _ekf.setConfig(cfg);
     }

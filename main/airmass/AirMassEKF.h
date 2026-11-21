@@ -133,8 +133,8 @@ class AirMassEKF {
         float lag_static = 0.2f;    // s, static pressure: the baro altitude model
         float lag_pitot = 0.2f;     // s, dynamic pressure: the energy balance delays the inertial terms by it, to
                                     // compare them with the airspeed change at the same time
-        float static_comp = 1.f;    // static port error compensation, like the TE adjustment (1 = lossless):
-                                    // baro altitude corrected by (static_comp - 1) * V²/2g
+        float static_comp = 1.f;    // static port error compensation (1 = lossless, half the TE adjustment's
+                                    // deviation): baro altitude corrected by (static_comp - 1) * V²/2g
         float gate = 5.f;           // innovation gate in sigma
         float energy_gate = 100.f;  // innovation gate of the energy balance in sigma (effectively none, see above)
         bool learn_calibration = true; // false: airspeed scale, pitch/AoA offset, AoA scale and latency stay as started
