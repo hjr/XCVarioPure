@@ -48,12 +48,16 @@ gust-insensitive reference: rms (bias) m/s against it; own error by the three-co
                          own: AirMass -0.061/-0.121/0.103/0.078, eComp 0.373, TEp 0.467, TEK 0.438, TEK0 0.432, ref 0.483/0.494/0.468/0.473
   10 s circling [ 9127]  AirMass 0.661 (+0.05)  eComp 0.652 (-0.01)  TEp 0.670 (-0.00)  TEK 0.672 (+0.07)  TEK0 0.663 (+0.06)  eComp-TEK0 0.149  eComp-TEp 0.205  TEK-TEK0 0.085
                          own: AirMass 0.235/0.222/0.262/0.260, eComp 0.209, TEp 0.247, TEK 0.288, TEK0 0.265, ref 0.618/0.623/0.607/0.608
+  10 s speed change [ 6426]  AirMass 0.602 (+0.01)  eComp 0.740 (+0.01)  TEp 0.922 (-0.00)  TEK 0.777 (-0.01)  TEK0 0.775 (-0.01)  eComp-TEK0 0.220  eComp-TEp 0.643  TEK-TEK0 0.123
+                         own: AirMass 0.120/-0.116/0.211/0.192, eComp 0.447, TEp 0.688, TEK 0.534, TEK0 0.524, ref 0.590/0.613/0.564/0.571
   30 s all      [10573]  AirMass 0.252 (+0.01)  eComp 0.274 (-0.01)  TEp 0.296 (-0.01)  TEK 0.286 (-0.00)  TEK0 0.286 (-0.00)  eComp-TEK0 0.106  eComp-TEp 0.153  TEK-TEK0 0.029
                          own: AirMass 0.111/0.108/0.129/0.129, eComp 0.154, TEp 0.188, TEK 0.187, TEK0 0.186, ref 0.226/0.228/0.217/0.217
   30 s straight [ 5169]  AirMass 0.249 (+0.01)  eComp 0.291 (+0.01)  TEp 0.317 (+0.01)  TEK 0.307 (-0.03)  TEK0 0.307 (-0.03)  eComp-TEK0 0.112  eComp-TEp 0.180  TEK-TEK0 0.031
                          own: AirMass 0.095/0.095/0.121/0.120, eComp 0.178, TEp 0.218, TEK 0.216, TEK0 0.215, ref 0.231/0.230/0.218/0.219
   30 s circling [ 2759]  AirMass 0.216 (+0.01)  eComp 0.205 (-0.04)  TEp 0.210 (-0.04)  TEK 0.213 (+0.04)  TEK0 0.212 (+0.04)  eComp-TEK0 0.113  eComp-TEp 0.076  TEK-TEK0 0.024
                          own: AirMass 0.119/0.118/0.130/0.130, eComp 0.100, TEp 0.107, TEK 0.126, TEK0 0.123, ref 0.180/0.181/0.172/0.172
+  30 s speed change [ 3497]  AirMass 0.277 (+0.01)  eComp 0.321 (-0.00)  TEp 0.368 (-0.01)  TEK 0.343 (-0.03)  TEK0 0.345 (-0.03)  eComp-TEK0 0.125  eComp-TEp 0.247  TEK-TEK0 0.036
+                         own: AirMass 0.113/0.109/0.134/0.134, eComp 0.198, TEp 0.265, TEK 0.242, TEK0 0.244, ref 0.253/0.255/0.243/0.243
 
 pitot reference: rms (bias) m/s against it; own error by the three-cornered hat with AirMass
   10 s all      [32887]  AirMass 0.517 (+0.01)  eComp 0.422 (-0.00)  TEp 0.507 (-0.00)  TEK 0.478 (-0.00)  TEK0 0.433 (-0.00)  eComp-TEK0 0.156  eComp-TEp 0.362  TEK-TEK0 0.090
@@ -62,12 +66,16 @@ pitot reference: rms (bias) m/s against it; own error by the three-cornered hat 
                          own: AirMass 0.355/0.350/0.363/0.380, eComp 0.082, TEp 0.313, TEK 0.270, TEK0 0.208, ref 0.431/0.436/0.425/0.409
   10 s circling [ 9121]  AirMass 0.447 (+0.04)  eComp 0.415 (+0.02)  TEp 0.423 (-0.00)  TEK 0.462 (+0.10)  TEK0 0.416 (+0.09)  eComp-TEK0 0.149  eComp-TEp 0.225  TEK-TEK0 0.088
                          own: AirMass 0.249/0.259/0.258/0.279, eComp 0.188, TEp 0.215, TEK 0.283, TEK0 0.227, ref 0.370/0.364/0.365/0.349
+  10 s speed change [ 6422]  AirMass 0.623 (-0.00)  eComp 0.482 (+0.00)  TEp 0.727 (-0.01)  TEK 0.586 (-0.02)  TEK0 0.531 (-0.01)  eComp-TEK0 0.207  eComp-TEp 0.612  TEK-TEK0 0.133
+                         own: AirMass 0.423/0.383/0.423/0.445, eComp 0.152, TEp 0.536, TEK 0.367, TEK0 0.303, ref 0.457/0.491/0.458/0.436
   30 s all      [10574]  AirMass 0.225 (+0.01)  eComp 0.147 (-0.00)  TEp 0.212 (-0.00)  TEK 0.169 (-0.00)  TEK0 0.155 (-0.00)  eComp-TEK0 0.106  eComp-TEp 0.173  TEK-TEK0 0.031
                          own: AirMass 0.178/0.169/0.189/0.193, eComp 0.051, TEp 0.151, TEK 0.117, TEK0 0.103, ref 0.137/0.148/0.122/0.115
   30 s straight [ 5175]  AirMass 0.242 (+0.01)  eComp 0.143 (+0.01)  TEp 0.232 (+0.01)  TEK 0.177 (-0.04)  TEK0 0.161 (-0.03)  eComp-TEK0 0.112  eComp-TEp 0.202  TEK-TEK0 0.034
                          own: AirMass 0.198/0.183/0.211/0.214, eComp 0.032, TEp 0.170, TEK 0.130, TEK0 0.115, ref 0.139/0.158/0.119/0.113
   30 s circling [ 2759]  AirMass 0.186 (+0.01)  eComp 0.148 (-0.04)  TEp 0.159 (-0.04)  TEK 0.154 (+0.04)  TEK0 0.144 (+0.04)  eComp-TEK0 0.113  eComp-TEp 0.079  TEK-TEK0 0.025
                          own: AirMass 0.130/0.130/0.141/0.145, eComp 0.064, TEp 0.087, TEK 0.095, TEK0 0.084, ref 0.134/0.133/0.121/0.116
+  30 s speed change [ 3499]  AirMass 0.261 (+0.01)  eComp 0.164 (+0.00)  TEp 0.296 (-0.01)  TEK 0.204 (-0.02)  TEK0 0.190 (-0.02)  eComp-TEK0 0.123  eComp-TEp 0.266  TEK-TEK0 0.041
+                         own: AirMass 0.212/0.185/0.221/0.226, eComp 0.061, TEp 0.232, TEK 0.150, TEK0 0.139, ref 0.152/0.184/0.139/0.130
 
 false climbs (sinks) per hour of straight flight, 36.7 h, gust-insensitive reference:
   1 m/s 1 s  AirMass 124.6 (123.2)  eComp 179.5 (169.9)  TEp 164.6 (158.1)  TEK 256.5 (270.9)  TEK0 255.5 (264.2)
@@ -79,3 +87,27 @@ false climbs (sinks) per hour of straight flight, 36.7 h, pitot reference:
 
 median delay to the gust-insensitive reference, s: AirMass 2.4, eComp 3.0, TEp 3.2, TEK 2.8, TEK0 2.6
 median 1 s needle movement, m/s: AirMass 0.485, eComp 0.683, TEp 0.565, TEK 1.360, TEK0 1.348
+
+combined, 28 flights, 93.7 h scored (36.7 h straight for the false climbs), gust-insensitive reference
+
+| | AirMass | eComp | TE pressure | IMU TEK | TEK0 (control) |
+|---|---|---|---|---|---|
+| rms 10 s all, m/s | **0.547** | 0.625 | 0.683 | 0.650 | 0.647 |
+| rms 10 s straight, m/s | **0.479** | 0.610 | 0.680 | 0.641 | 0.641 |
+| rms 10 s circling, m/s | 0.661 | **0.652** | 0.670 | 0.672 | 0.663 |
+| rms 10 s speed change, m/s | **0.602** | 0.740 | 0.922 | 0.777 | 0.775 |
+| rms 30 s all, m/s | **0.252** | 0.274 | 0.296 | 0.286 | 0.286 |
+| rms 30 s straight, m/s | **0.249** | 0.291 | 0.317 | 0.307 | 0.307 |
+| rms 30 s circling, m/s | 0.216 | **0.205** | 0.210 | 0.213 | 0.212 |
+| rms 30 s speed change, m/s | **0.277** | 0.321 | 0.368 | 0.343 | 0.345 |
+| own error 10 s all (hat), m/s | **0.089–0.175** | 0.329 | 0.420 | 0.393 | 0.384 |
+| own error 10 s straight (hat), m/s | **≈0–0.103** | 0.373 | 0.467 | 0.438 | 0.432 |
+| own error 10 s circling (hat), m/s | 0.222–0.262 | **0.209** | 0.247 | 0.288 | 0.265 |
+| own error 10 s speed change (hat), m/s | **≈0–0.211** | 0.447 | 0.688 | 0.534 | 0.524 |
+| median delay, s | **2.4** | 3.0 | 3.2 | 2.8 | 2.6 |
+| median needle movement in 1 s, m/s | **0.485** | 0.683 | 0.565 | 1.360 | 1.348 |
+| false climbs 2 m/s 2 s, per h straight | **13.2** | 35.5 | 36.9 | 42.3 | 40.5 |
+| false sinks 2 m/s 2 s, per h straight | **16.2** | 34.0 | 37.5 | 46.0 | 43.8 |
+| false climbs 1 m/s 1 s, per h straight | **124.6** | 179.5 | 164.6 | 256.5 | 255.5 |
+| false sinks 1 m/s 1 s, per h straight | **123.2** | 169.9 | 158.1 | 270.9 | 264.2 |
+| flights best at 10 s | **24** | 0 | 3 | 1 | 0 |

@@ -22,19 +22,23 @@ AirMass 0.55 / 0.52. The table pools 26 flights, 87.1 h, without these two (raw/
 by the three-cornered hat with AirMass (AirMass: the range over its hats with each other vario, ≈0 a negative
 variance). False climbs as batch.js counts them: straight flight (bank under 10° for 8 s), the needle as shown, not
 shifted, above the reference's centred 2 s mean, counted again after it came back within half the threshold; false
-sinks the same below it.
+sinks the same below it. Speed change: 10 s or 30 s windows over which the kinetic energy height TAS²/2g changes by more
+than 15 m, where the TE compensation matters most (rerun 2026-11-21, the other rows unchanged).
 
 | | AirMass | eComp | TE pressure | IMU TEK | TEK0 (control) |
 |---|---|---|---|---|---|
 | rms 10 s all, m/s | **0.548** | 0.621 | 0.621 | 0.648 | 0.645 |
 | rms 10 s straight, m/s | **0.480** | 0.607 | 0.607 | 0.640 | 0.639 |
 | rms 10 s circling, m/s | 0.659 | **0.650** | 0.650 | 0.669 | 0.661 |
+| rms 10 s speed change, m/s | **0.600** | 0.736 | 0.724 | 0.775 | 0.773 |
 | rms 30 s all, m/s | **0.252** | 0.271 | 0.264 | 0.284 | 0.284 |
 | rms 30 s straight, m/s | **0.248** | 0.288 | 0.278 | 0.305 | 0.305 |
 | rms 30 s circling, m/s | 0.216 | 0.206 | **0.203** | 0.213 | 0.212 |
+| rms 30 s speed change, m/s | **0.278** | 0.319 | 0.301 | 0.343 | 0.345 |
 | own error 10 s all (hat), m/s | **0.125–0.178** | 0.323 | 0.318 | 0.390 | 0.381 |
 | own error 10 s straight (hat), m/s | **≈0–0.105** | 0.367 | 0.364 | 0.436 | 0.430 |
 | own error 10 s circling (hat), m/s | 0.228–0.263 | 0.209 | **0.202** | 0.289 | 0.265 |
+| own error 10 s speed change (hat), m/s | **0.116–0.214** | 0.442 | 0.423 | 0.536 | 0.525 |
 | median delay, s | **2.4** | 3.0 | 3.2 | 2.8 | 2.6 |
 | median needle movement in 1 s, m/s | **0.485** | 0.677 | 0.565 | 1.338 | 1.328 |
 | false climbs 2 m/s 2 s, per h straight | **12.8** | 33.6 | 35.0 | 40.5 | 38.6 |

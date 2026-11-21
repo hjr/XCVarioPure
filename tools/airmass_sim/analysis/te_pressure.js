@@ -6,12 +6,14 @@
 //   node te_pressure.js OUTPUT.json LOG...      (EXCLUDE=file,...: logs left out of the pools)
 // All at the same 4 s damping (the page's Damp, not the single 4 s low pass the IMU TEK's firmware damps with) and
 // each shifted by its fitted delay, like batch.js; the delays and the 1 s needle movement as shown. Own errors by the
-// three-cornered hat of AirMass, each other vario and the reference.
+// three-cornered hat of AirMass, each other vario and the reference. Windows by phase: straight (bank under 10°),
+// circling (over 25°) and speed change (the kinetic energy height TAS²/2g changing by more than 15 m over the
+// window, where the TE compensation matters most).
 const fs = require("fs"), path = require("path");
 const { loadPage, lagOf, dampSeries, freeMask } = require("./page.js");
 const web = path.resolve(__dirname, "../web");
 const { runReplay, loadFlight } = loadPage(web);
-const SERIES = ["AirMass", "eComp", "TEp", "TEK", "TEK0"], FALSE_CLIMBS = [[1, 1], [2, 2]], OTHERS = SERIES.slice(1), REFS = ["inertial", "pitot"], WINDOWS = [10, 30], PHASES = ["all", "straight", "circling"];
+const SERIES = ["AirMass", "eComp", "TEp", "TEK", "TEK0"], FALSE_CLIMBS = [[1, 1], [2, 2]], OTHERS = SERIES.slice(1), REFS = ["inertial", "pitot"], WINDOWS = [10, 30], PHASES = ["all", "straight", "circling", "speed change"], SPEED_CHANGE = 15;
 const exclude = new Set((process.env.EXCLUDE || "").split(",").filter(Boolean));
 
 async function evaluate(M, file) {
@@ -41,7 +43,7 @@ async function evaluate(M, file) {
   // a 10 Hz grid, interpolating only over short measured intervals (batch.js)
   const N = Math.floor((D.t[n - 1] - D.t[0]) * 10) + 1, g = {};
   for (const s in source) g[s] = new Float32Array(N).fill(NaN);
-  const gOk = new Uint8Array(N), roll = new Float32Array(N);
+  const gOk = new Uint8Array(N), roll = new Float32Array(N), ekin = new Float32Array(N).fill(NaN);
   for (let j = 0, a = 0; j < N; j++) {
     const t = D.t[0] + j / 10;
     while (a + 1 < n && D.t[a + 1] <= t) a++;
@@ -49,6 +51,8 @@ async function evaluate(M, file) {
     const f = (t - D.t[a]) / (D.t[a + 1] - D.t[a]);
     for (const s in source) g[s][j] = source[s][a] + f * (source[s][a + 1] - source[s][a]);
     gOk[j] = 1; roll[j] = Math.abs(r.roll_deg[D.ai[a]]);
+    const tas = c.tas[a] + f * (c.tas[a + 1] - c.tas[a]);
+    ekin[j] = tas * tas / (2 * 9.80665);
   }
   const out = { file: path.basename(file), glider: conv.glider, hours: gOk.reduce((s, v) => s + v, 0) / 36000, refs: {} };
   // the 1 s needle movement as shown, rms m/s
@@ -101,7 +105,8 @@ async function evaluate(M, file) {
         const e = Object.fromEntries(SERIES.map((s) => [s, (sum[s] - sr) / L]));
         const terms = { ...e };
         for (let i = 0; i < SERIES.length; i++) for (let j = i + 1; j < SERIES.length; j++) terms[`${SERIES[i]}-${SERIES[j]}`] = e[SERIES[i]] - e[SERIES[j]];
-        for (const ph of ["all", bank < 10 ? "straight" : bank > 25 ? "circling" : null]) {
+        const speedChange = Math.abs(ekin[k + L - 1] - ekin[k]) > SPEED_CHANGE ? "speed change" : null;
+        for (const ph of ["all", bank < 10 ? "straight" : bank > 25 ? "circling" : null, speedChange]) {
           if (!ph) continue;
           const acc = ((res.sums[W] ||= {})[ph] ||= { n: 0 });
           acc.n++;
