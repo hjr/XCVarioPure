@@ -1,0 +1,45 @@
+per flight, 10 s rms all / speed change, m/s: best AirMass, best eComp adjust
+2026-08-24_12-01.nmea.gz      ASG 29/18         AirMass 100 / 100   eComp 90 / 92
+2026-08-25_12-10.nmea.gz      ASG 29/18         AirMass 96 / 96   eComp 90 / 92
+2026-08-30_10-03.nmea.gz      ASG 29/18         AirMass 90 / 96   eComp 88 / 90
+2026-08-31_09-35.nmea.gz      ASG 29/18         AirMass 96 / 96   eComp 88 / 88
+2026-09-01_09-30.nmea.gz      ASG 29/18         AirMass 90 / 96   eComp 90 / 92
+2026-09-02_09-52.nmea.gz      ASG 29/18         AirMass 96 / 96   eComp 90 / 90
+2026-09-02_12-05.nmea.gz      ASG 29/18         AirMass 96 / 96   eComp 88 / 88
+2026-09-05_10-50.nmea.gz      ASG 29/18         AirMass 90 / 90   eComp 84 / 84
+2026-09-05_16-16.nmea.gz      ASG 29/18         AirMass 96 / 100   eComp 96 / 104
+2026-09-06_11-02.nmea.gz      ASG 29/18         AirMass 90 / 90   eComp 84 / 88
+2026-09-07_11-17.nmea.gz      ASG 29/18         AirMass 90 / 90   eComp 88 / 90
+2024-09-21_10-38.nmea         DG 800B/18        AirMass 90 / 90   eComp 84 / 84
+2025-04-16_06-02.nmea         DG 800B/18        AirMass 90 / 90   eComp 84 / 84
+2025-05-16_11-09.nmea         DG 800B/18        AirMass 90 / 90   eComp 84 / 84
+2025-06-09_09-40.nmea         DG 800B/18        AirMass 90 / 90   eComp 84 / 84
+2025-07-04_10-36.nmea         Arcus             AirMass 90 / 90   eComp 92 / 96
+2025-07-05_10-13.nmea         Arcus             AirMass 96 / 100   eComp 92 / 96
+2025-07-08_06-46.nmea         Arcus             AirMass 100 / 100   eComp 104 / 104
+2025-07-10_10-04.nmea         Arcus             AirMass 96 / 96   eComp 96 / 96
+2025-07-11_09-24.nmea         Arcus             AirMass 96 / 96   eComp 92 / 92
+(2025-07-12_09-05.nmea)       Arcus             AirMass 96 / 96   eComp 96 / 96
+2026-03-03_12-49.nmea         DG 800B/18        AirMass 90 / 90   eComp 84 / 84
+2026-05-24_11-20.nmea         Arcus             AirMass 100 / 100   eComp 100 / 100
+2026-05-25_12-12.nmea         Arcus             AirMass 100 / 100   eComp 100 / 100
+2026-08-22_09-38.nmea         ASG 29/18         AirMass 96 / 100   eComp 90 / 92
+2026-09-02_10-15.nmea         ASG 29/18         AirMass 90 / 100   eComp 96 / 104
+2026-09-02_11-01.nmea         ASG 29/18         AirMass 96 / 96   eComp 88 / 88
+2026-11-18_10-02+11-33.nmea   Arcus             AirMass 90 / 90   eComp 90 / 88
+2026-11-19_08-02.nmea         Arcus             AirMass 96 / 96   eComp 90 / 90
+
+pooled over 28 flights, gust-insensitive reference, 10 s windows, rms m/s; false climbs 2 m/s 2 s per h straight (36.7 h)
+
+| | all [32874] | straight [17470] | circling [9123] | speed change [6556] | false climbs | delay, s |
+|---|---|---|---|---|---|---|
+| AirMass 100 | 0.518 | 0.418 | 0.656 | 0.601 | 13.6 | 2.4 |
+| AirMass 96 | 0.514 | 0.413 | 0.652 | 0.589 | 12.6 | 2.4 |
+| AirMass 90 | 0.516 | 0.422 | 0.647 | 0.603 | 12.0 | 2.4 |
+| eComp 84 | 0.601 | 0.567 | 0.644 | 0.756 | 32.6 | 3.0 |
+| eComp 88 | 0.598 | 0.562 | 0.645 | 0.744 | 33.7 | 3.0 |
+| eComp 90 | 0.598 | 0.561 | 0.646 | 0.743 | 34.4 | 3.0 |
+| eComp 92 | 0.599 | 0.562 | 0.647 | 0.745 | 35.3 | 3.0 |
+| eComp 96 | 0.604 | 0.569 | 0.652 | 0.760 | 37.5 | 3.2 |
+| eComp 100 | 0.614 | 0.582 | 0.658 | 0.788 | 40.3 | 3.2 |
+| eComp 104 | 0.627 | 0.600 | 0.666 | 0.827 | 42.6 | 3.2 |
