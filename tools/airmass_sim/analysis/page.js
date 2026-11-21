@@ -22,8 +22,8 @@ function grab(script, name) {
 function loadPage(web, { refSink = process.env.REF_SINK } = {}) {
   web = path.resolve(web); // a relative path would be taken for a package name by require()
   const script = pageScript(web);
-  const names = ["build", "gnssAltDelay", "gnssSpeedLag", "atFixes", "Damp", "TeVario", "derive", "deriveDamping", "indexAt", "runningSums", "cockpitSeries", "gnssNetFromEnergy"];
-  let src = ["function build(conv, rep)", "function gnssAltDelay(fixes, t, baro, running)", "function gnssSpeedLag(fixes, t)", "function atFixes(D, get, maxHold)", "class Damp", "class TeVario", "function derive(D)", "function deriveDamping(D)", "function indexAt(t)",
+  const names = ["build", "gnssAltDelay", "gnssSpeedLag", "atFixes", "Damp", "TeVario", "PressureKF", "ImuTek", "derive", "deriveDamping", "indexAt", "runningSums", "cockpitSeries", "gnssNetFromEnergy"];
+  let src = ["function build(conv, rep)", "function gnssAltDelay(fixes, t, baro, running)", "function gnssSpeedLag(fixes, t)", "function atFixes(D, get, maxHold)", "class Damp", "class TeVario", "class PressureKF", "class ImuTek", "function derive(D)", "function deriveDamping(D)", "function indexAt(t)",
     "function runningSums(n, val)", "function cockpitSeries(D, dampAt)", "function gnssNetFromEnergy(D, sinkUp, energyOf)"].map((name) => grab(script, name)).join("\n");
   if (refSink === "airmass") {
     const patched = src.replace("if (Number.isFinite(sink)) sinkUp[k] = sink;", "if (Number.isFinite(r.polar_sink[i])) sinkUp[k] = -r.polar_sink[i];");
@@ -31,53 +31,17 @@ function loadPage(web, { refSink = process.env.REF_SINK } = {}) {
     src = patched;
   }
   const { runReplay, STATUS } = require(path.join(web, "replay.js"));
-  globalThis.$ = (id) => ({ damping: { value: "4" }, samesmooth: { checked: false } })[id];
+  globalThis.$ = (id) => ({ damping: { value: "4" }, ecomp: { value: "92" }, samesmooth: { checked: false } })[id];
   globalThis.D = null;
   globalThis.fileName = "";
   globalThis.STATUS = STATUS;
   (0, eval)(src + "\n" + names.map((x) => `globalThis.${x} = ${x};`).join(" "));
-  // no TE netto where the device logged its AirMass vario
-  const pageDerive = globalThis.derive;
-  globalThis.derive = (D) => {
-    pageDerive(D);
-    const te = teActive(D);
-    for (let k = 0; k < D.n; k++) if (!te[k]) D.netto[k] = NaN;
-  };
   const { convert } = require(path.join(web, "convert.js"));
   const loadFlight = (log, opts = logOptions()) => {
     const bytes = fs.readFileSync(log);
     return convert((log.endsWith(".gz") ? zlib.gunzipSync(bytes) : bytes).toString("latin1"), opts);
   };
   return { convert, runReplay, loadFlight };
-}
-
-// 1 where the vario the device logged ($PXCV) was its TE. On the AirMass method it logs its AirMass vario plus the polar
-// sink there: its own AirMass output (device_vario), low-passed, then moves with the logged vario
-// (RESULTS-2026-11-18-arcus-ridge.md). All 1 for a log without the device's output.
-function teActive(D) {
-  const n = D.n, te = D.tr.te_vario, device = D.rep.cols.device_vario, held = new Float32Array(n).fill(NaN);
-  for (let k = 0, age = 9; k < n; k++) {
-    const v = D.ai[k] < 0 || !device ? NaN : device[D.ai[k]];
-    if (Number.isFinite(v)) { held[k] = v; age = 0; } else if (++age <= 5 && k) held[k] = held[k - 1];
-  }
-  const dev = dampSeries(held, new Uint8Array(n).fill(1), 9, D.t, true);
-  const span = (S, j, half) => S[Math.min(n, j + half)] - S[Math.max(0, j - half)];
-  const both = (j) => Number.isFinite(dev[j]) && Number.isFinite(te[j]);
-  // each minus its 20 s mean
-  const A0 = runningSums(n, (j) => (both(j) ? dev[j] : NaN)), B0 = runningSums(n, (j) => (both(j) ? te[j] : NaN));
-  const a = new Float32Array(n).fill(NaN), b = new Float32Array(n).fill(NaN);
-  for (let k = 0; k < n; k++) {
-    const m = span(A0.N, k, 100);
-    if (!both(k) || m < 150) continue;
-    a[k] = dev[k] - span(A0.S, k, 100) / m; b[k] = te[k] - span(B0.S, k, 100) / m;
-  }
-  // the correlation over the 2 min around a sample: AirMass over 0.8, and a minute around it
-  const A = runningSums(n, (j) => a[j]), B = runningSums(n, (j) => b[j]), AA = runningSums(n, (j) => a[j] * a[j]), BB = runningSums(n, (j) => b[j] * b[j]), AB = runningSums(n, (j) => a[j] * b[j]);
-  const airmass = runningSums(n, (j) => {
-    const m = span(A.N, j, 600), sa = span(A.S, j, 600), sb = span(B.S, j, 600);
-    return m >= 600 && (m * span(AB.S, j, 600) - sa * sb) / Math.sqrt((m * span(AA.S, j, 600) - sa * sa) * (m * span(BB.S, j, 600) - sb * sb)) > 0.8 ? 1 : 0;
-  }).S;
-  return Uint8Array.from({ length: n }, (_, j) => (span(airmass, j, 600) ? 0 : 1));
 }
 
 // f(run, k) of every sample k of all runs ({ n, ... }), in one array

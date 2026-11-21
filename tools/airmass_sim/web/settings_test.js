@@ -21,7 +21,7 @@ function harness({ connected = false, playing = true } = {}) {
     serial: { connected, port: connected ? {} : null, ready: true, speed: 5, timeline },
     localStorage: { getItem: () => "{}", setItem() {} }, performance: { now: () => 100 },
     modulePromise: Promise.resolve({}), tick: async () => {},
-    setStatus() {}, serialControls() {}, showTePressure() {}, drawTrack(fit) { calls.trackFit.push(fit); }, invalidateCharts() {},
+    setStatus() {}, serialControls() {}, showTePressure() {}, showImuTek() {}, drawTrack(fit) { calls.trackFit.push(fit); }, invalidateCharts() {},
     drawAll() { calls.draw++; }, deriveDamping() { calls.damping++; }, updateVarioLabels() { calls.labels++; },
     logDate: () => ({ day: NaN }), console: { error() {} },
     AirMassConvert: { convert: () => ({ frames: 2, kind: "XCVario sensor log", track: { n: 2 }, fixes: 0 }),
@@ -112,10 +112,11 @@ test("rapid estimator edits serialize and resume only after the latest recalcula
 test("live damping updates cached display series while retaining estimator/reference/average data", () => {
   const $ = elements(), n = 200;
   const data = { n, t: Float64Array.from({ length: n }, (_, i) => i / 10), ai: Int32Array.from({ length: n }, (_, i) => i), amOk: new Uint8Array(n).fill(1),
-    amRaw: Float32Array.from({ length: n }, (_, i) => i < 100 ? 0 : 4), netto: new Float32Array(n).fill(2),
+    amRaw: Float32Array.from({ length: n }, (_, i) => i < 100 ? 0 : 4), sec: [],
     sinkUp: new Float32Array(n).fill(-1), gnssNet: Float32Array.from({ length: n }, (_, i) => i < 100 ? 0 : 3),
     gnssGrossRaw: Float32Array.from({ length: n }, (_, i) => i < 100 ? 0 : 5),
-    tr: { te_vario: new Float32Array(n).fill(2), te_alt: Float64Array.from({ length: n }, (_, i) => 500 + (i < 100 ? 0 : (i - 100) * 0.2)) }, rep: {}, cum: {} };
+    tr: { te_alt: Float64Array.from({ length: n }, (_, i) => 500 + (i < 100 ? 0 : (i - 100) * 0.2)), p_static: new Float64Array(n).fill(95000),
+      q_dyn: new Float64Array(n).fill(600), tas: new Float64Array(n).fill(32), running: new Uint8Array(n).fill(1) }, rep: {}, cum: {} };
   const retained = [data.rep, data.tr, data.cum, data.amRaw, data.gnssNet, data.gnssGrossRaw];
   data.amOk[90] = 0;
   const context = vm.createContext({ $ });
@@ -127,10 +128,34 @@ test("live damping updates cached display series while retaining estimator/refer
   assert(Math.abs(data.tep[199] - 3) < 0.05, "its netto adds back the polar sink");
   $("damping").value = "8"; context.deriveDamping(data);
   assert(data.am[120] < fast); assert(data.gnss[120] < fastGnss); assert(data.tepGross[120] < fastTe);
-  assert.equal(data.am[90], 2); assert.equal(data.amGross[90], 2, "gross fallback remains logged TE");
+  assert(Math.abs(data.netto[150] - 1) < 1e-6, "eComp level flight: netto adds back the polar sink");
+  assert(Math.abs(data.am[90] - 1) < 1e-6); assert(Math.abs(data.amGross[90]) < 1e-6, "gross fallback is eComp");
   $("samesmooth").checked = false; context.deriveDamping(data);
   assert.equal(data.gnss[120], 3); assert.equal(data.gnssGross[120], 5);
   assert.deepEqual([data.rep, data.tr, data.cum, data.amRaw, data.gnssNet, data.gnssGrossRaw], retained);
+});
+
+test("the IMU TEK shows a climb and compensates a pull-up", () => {
+  const context = vm.createContext({});
+  vm.runInContext(["class PressureKF", "class ImuTek"].map(grab).join("\n") + "\nthis.ImuTek = ImuTek;", context);
+  const G = 9.80665, isaP = (h) => 101325 * Math.pow(1 - h / 44330.76923, 5.25588), rho = (h) => isaP(h) / (287.058 * 288.15);
+  const sample = (h, v, climb, dvdt) => { const pitch = Math.asin(climb / v); return { p: isaP(h), q: 0.5 * rho(h) * v * v, ax: dvdt / G + Math.sin(pitch), pitch }; };
+  const climbing = new context.ImuTek(1, 1);
+  let y;
+  for (let t = 0; t <= 60; t += 0.1) y = climbing.at(t, sample(300 + 1.5 * t, 30, 1.5, 0));
+  assert(Math.abs(y - 1.5) < 0.05, `steady climb: ${y}`);
+  // energy neutral: 40 -> 30 m/s while climbing by (40² - 30²) / 2g, the climb rate from the speed change
+  const pull = new context.ImuTek(1, 1), E = 300 + 40 * 40 / (2 * G);
+  let worst = 0, settled = 0;
+  for (let t = 0; t <= 60; t += 0.1) {
+    const v = t < 20 ? 40 : t < 25 ? 40 - 2 * (t - 20) : 30, dvdt = t >= 20 && t < 25 ? -2 : 0;
+    const out = Math.abs(pull.at(t, sample(E - v * v / (2 * G), v, -v * dvdt / G, dvdt)));
+    worst = Math.max(worst, t > 10 ? out : 0);
+    settled = Math.max(settled, t > 32 ? out : 0);
+  }
+  assert(worst < 3, `pull-up, uncompensated about 7 m/s: ${worst}`);
+  assert(settled < 0.05, `after the pull-up: ${settled}`);
+  assert(Number.isNaN(pull.at(61, { p: NaN, q: 0 })), "no pressure: no value");
 });
 
 test("the TE pressure vario follows the TE altitude at any frame rate and restarts after a gap", () => {

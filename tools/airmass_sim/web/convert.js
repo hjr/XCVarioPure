@@ -326,8 +326,10 @@
   class Track {
     constructor() {
       // te_new: 1 on the first sample after a $PXCV (the device's TE vario, 5 Hz in the log), for the interpolation;
-      // te_alt: the ISA altitude of the logged TE pressure ($SENS only), for the TE vario replayed from it
-      this.names = ["t_ms", "utc", "lat", "lon", "gnss_alt", "alt_utc", "gnss_speed", "gnss_track", "baro_alt", "te_vario", "te_new", "te_alt", "ias", "tas", "polar_sink", "running"];
+      // te_alt: the ISA altitude of the logged TE pressure ($SENS only), for the TE vario replayed from it;
+      // p_static, q_dyn [Pa] and acc_x [g] for the IMU TEK
+      this.names = ["t_ms", "utc", "lat", "lon", "gnss_alt", "alt_utc", "gnss_speed", "gnss_track", "baro_alt", "te_vario", "te_new", "te_alt", "ias", "tas", "polar_sink", "running",
+        "p_static", "q_dyn", "acc_x"];
       this.n = 0;
       this.cap = 1 << 16;
       this.cols = {};
@@ -410,9 +412,11 @@
         else if (kind === "R") {
           const f = fields(line);
           frames++;
+          const alt = f[10] === "" ? NaN : +f[10], ias = +f[8];
           track.push({ t_ms: +f[1], utc: fix ? fix.utc : NaN, lat: fix ? fix.lat : NaN, lon: fix ? fix.lon : NaN, gnss_alt: gnssAlt, alt_utc: altUtc,
-            gnss_speed: fix ? fix.speed : NaN, gnss_track: fix ? fix.track : NaN, baro_alt: f[10] === "" ? NaN : +f[10], te_vario: te,
-            te_new: teNew, ias: +f[8], tas: +f[9], polar_sink: NaN, running: running ? 1 : 0 });
+            gnss_speed: fix ? fix.speed : NaN, gnss_track: fix ? fix.track : NaN, baro_alt: alt, te_vario: te,
+            te_new: teNew, ias, tas: +f[9], polar_sink: NaN, running: running ? 1 : 0,
+            p_static: P0 * Math.pow(1 - alt / T0DIVL, G0DIVRXL), q_dyn: 0.5 * RHO0 * ias * ias, acc_x: +f[2] });
           teNew = 0;
         }
       } else if (line.startsWith("$PXCV,")) {
@@ -708,7 +712,7 @@
         }
         track.push({ t_ms: t, utc: fix ? fix.utc : NaN, lat: fix ? fix.lat : NaN, lon: fix ? fix.lon : NaN, gnss_alt: gnssAlt, alt_utc: altUtc,
           gnss_speed: fix ? fix.speed : NaN, gnss_track: fix ? fix.track : NaN, baro_alt: alt, te_vario: pxcv.vario, te_new: teNew, te_alt: teAlt, ias, tas,
-          polar_sink: sink, running: running ? 1 : 0 });
+          polar_sink: sink, running: running ? 1 : 0, p_static: p, q_dyn: q, acc_x: acc[0] });
         teNew = 0;
       }
     }

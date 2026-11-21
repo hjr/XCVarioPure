@@ -2,7 +2,7 @@
 
 `index.html` replays a flight log through the device's AirMass code, compiled to WebAssembly, and plays it back:
 the glider on a map with the winds as arrows and the gusts the device sounds (track coloured by the climb), the vario as the cockpit shows it in Air Mass
-mode against TE netto and a GNSS reference, the attitude, and the vario tone. Nothing is uploaded; the replay runs in
+mode against the TE varios replayed from the log's pressures (eComp, TE pressure, IMU TEK) and a GNSS reference, the attitude, and the vario tone. Nothing is uploaded; the replay runs in
 the page.
 
     tools/airmass_sim/web/build.sh                          # airmass.js, in the emscripten/emsdk Docker image
@@ -100,9 +100,9 @@ of the last accepted observation, received age is the time since the last fusion
 `sensor_gnss_robustness` in the host CTest suite covers delayed/irregular fixes, transport jitter, out-of-order and
 duplicate epochs, outages, outliers, midnight/clock wrap, unsupported history, whole-fix rejection and sensor gaps.
 
-**Main vario**, the selector in the header, picks AirMass, TE or TE pressure as the main vario: it has the big
+**Main vario**, the selector in the header, picks AirMass, eComp, TE pressure or IMU TEK as the main vario: it has the big
 needle (in its own colour), the tone, and its average on the gauge, right of the centre, instead of a momentary value; its
-average leaves the readouts below the gauge. Where the log has no TE pressure, TE pressure falls back to TE. The
+average leaves the readouts below the gauge. Where the log has no TE pressure or IMU TEK input, they fall back to eComp. The
 choice is saved in this browser.
 
 **Averager**, beside Damping in **Settings → Vario**, controls the trailing averaging window for the main vario's
@@ -116,22 +116,38 @@ flap, calibration and estimator settings recalculate automatically while retaini
 chart view, playback speed and running/paused state. Instrument transmission pauses during recalculation;
 the same log keeps its serial timeline and resumes at the selected speed after a successful update.
 
+**eComp** (orange) is the device's electronic TE compensation replayed from the static and dynamic pressure
+(`VarioFilter::postProcess` with `te_comp_enable`): the mean of the ISA altitude plus TAS²/2g and the ISA altitude of
+the static minus the dynamic pressure, both × **eComp** (Settings → Vario, `te_comp_adjust`, 92 % by default),
+through the device's TEK altitude filter (the rate per 10 Hz cycle and the vario damping set here), netto minus the
+polar sink of the moment. AirMass recordings give the ISA pressure of their altitude and the dynamic pressure of
+their IAS. It is the AirMass needle's fallback and the TE of the gauge, chart, readouts, CSV (`ecomp_vario`,
+`ecomp_netto`) and the map's "eComp vario" colour (1 s damping). The vario the device logged in `$PXCV` is not shown:
+it is whatever method the device was set to (TE probe, eComp or AirMass).
+
 **TE pressure** (green) is the device's TE vario replayed from the TE pressure in `$SENS` logs: the ISA altitude of
-the pressure through `VarioFilter::postProcess` with a TEK probe (its altitude filter, the rate per 10 Hz cycle and the
-vario damping set here), netto minus the polar sink like TE netto. The TE line is what the device logged in `$PXCV`
-(damped with its own setting, 0.1 m/s steps, 5 Hz). On real flights the two agree to about 0.3 m/s RMS at 4 s damping,
-so a difference shows a TE probe or tube problem in the log, or electronic compensation, which this replay does
-not model. It has its own needle, average, chart line, tooltip value, main-vario option and CSV columns
-(`te_pressure_vario`, `te_pressure_netto`); AirMass recordings carry no TE pressure, so it is hidden for them.
+the pressure through the same filter, netto minus the polar sink like eComp. Where it differs from eComp and the IMU
+TEK, the TE probe or its tube is faulty in the log. It has its own needle, average, chart line, tooltip value,
+main-vario option and CSV columns (`te_pressure_vario`, `te_pressure_netto`); AirMass recordings carry no TE pressure,
+so it is hidden for them.
+
+**IMU TEK** (red) is the electronic TE compensation of XCVarioProModules (`VarioKF.cpp`, `VarioFilter.cpp`) replayed:
+the static and the dynamic pressure each through a `PressureKF` at 20 Hz, the dynamic one's rate predicted from the
+body x acceleration and the pitch (`ImuPressurePredictor`), and TE = static vario + the dynamic pressure's energy
+rate × **eComp**, then the vario damping (one low pass with the damping as its time constant). `$SENS` logs give
+the logged static and dynamic pressure, AirMass recordings the ISA pressure of their altitude and the dynamic pressure
+of their IAS. The pitch is the replay's attitude; without one (before the estimator starts) it runs without the IMU
+term. Like TE pressure it has its own needle, average, chart line, tooltip value, main-vario option and CSV columns
+(`imu_tek_vario`, `imu_tek_netto`).
 
 **Gross mode for all varios** switches the vario needles, chart lines, numeric averages and the main vario's tone
-together. AirMass gross includes the polar sink and falls back to TE gross; TE gross is the logged TE vario;
+together. AirMass gross includes the polar sink and falls back to eComp gross;
 GNSS gross is the total-energy climb before subtracting the polar sink. The GNSS damping option applies to both
 modes. The switch takes effect immediately and is saved in the browser; the map's named colour sources keep their
 own meanings.
 
 Below the flying-speed cutoff (80% of the polar's stall-speed reference, with a 10 m/s minimum), AirMass invalidates
-its vario and stops using the wing air-vector model. The dashed blue needle follows TE through landing and ground
+its vario and stops using the wing air-vector model. The dashed blue needle follows eComp through landing and ground
 roll; it returns to AirMass after five seconds of supported flying-speed samples. This policy runs in the shared
 device/replay pipeline, including a separate 10 m/s TAS floor for direct EKF inputs.
 
