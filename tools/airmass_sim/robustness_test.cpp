@@ -377,9 +377,19 @@ void turningPriorAlignment() {
     std::printf("  heading error %.2f deg\n", err * 180.f / (float)M_PI);
     check(ekf.isAligned() && std::fabs(err) < 0.25f * (float)M_PI / 180.f, "aligned heading is the current one");
 }
+
+void unboundedHeading() {
+    std::printf("heading aid out of any range\n");
+    AirMassEKF ekf;
+    ekf.reset(1000.f, 1.f, 0.f, 0.75f);
+    ekf.fuseHeading(INFINITY, 0.1f);
+    ekf.fuseHeading(1e30f, 0.1f);
+    check(!ekf.isAligned(), "returns without an alignment");
+}
 } // namespace
 
 int main() {
+    unboundedHeading();
     timing();
     rejection();
     gaps();

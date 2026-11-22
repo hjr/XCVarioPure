@@ -114,9 +114,7 @@ bool velocityUpdate(Matrix<AirMassEKF::NX, AirMassEKF::NX>& p, float (&x)[AirMas
 }
 
 inline float wrapPi(float a) {
-    while (a >= My_PIf) a -= 2.f * My_PIf;
-    while (a < -My_PIf) a += 2.f * My_PIf;
-    return a;
+    return std::remainder(a, 2.f * My_PIf);
 }
 } // namespace
 
