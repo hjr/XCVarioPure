@@ -101,7 +101,10 @@ Before reporting a task done, re-read this checklist against the actual diff and
 
       docker run --rm -v "$PWD":/project -w /project espressif/idf:release-v5.4 bash -c ". \$IDF_PATH/export.sh > /dev/null && cmake -S tools/airmass_sim -B build_sim -DCMAKE_BUILD_TYPE=Release && cmake --build build_sim -j && ctest --test-dir build_sim --output-on-failure"
 
-- Firmware build: the same image with `idf.py build`. Flashing stays outside the container.
+- Firmware build: the same image, with the ESP-IDF patches of `patches/esp-idf/` applied before `idf.py build` (`patches/esp-idf/README.md`). Flashing stays outside the container.
+
+      docker run --rm -v "$PWD":/project -w /project espressif/idf:release-v5.4 bash -c ". \$IDF_PATH/export.sh > /dev/null && git -C \$IDF_PATH apply /project/patches/esp-idf/*.patch && idf.py build"
+
 - Add simulator scenarios and unit tests in `tools/airmass_sim/` (`add_test` in its `CMakeLists.txt`) when modifying estimator logic.
 - Browser replay tests: `node --test tools/airmass_sim/web/settings_test.js`, `node --test tools/airmass_sim/web/serial_test.js`, and after `build.sh` `node tools/airmass_sim/web/replay_start_test.js`. Log conversion parity between `sens2rec.py` and `convert.js`: `python3 tools/airmass_sim/conversion_test.py`.
 
