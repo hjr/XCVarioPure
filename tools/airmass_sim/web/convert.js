@@ -221,21 +221,26 @@
 
   // Keep forward sensor gaps when elapsed GNSS time confirms them (allowing two seconds for fix cadence/arrival).
   // Other large jumps (UTC synchronization) and backward jumps (midnight/reboot) continue at the sensor cycle.
-  // A frozen timestamp can advance using the independent GNSS-age counter when its stale values still tick.
+  // A frozen timestamp can advance using the independent GNSS-age counter when its stale values still tick, otherwise
+  // at the sensor cycle once GNSS time has run on for two seconds (a duplicated line does not move the flight).
   // Use the same repair for offline and serial replay, and in sens2rec.py.
   function stampRepair() {
-    let last = NaN, lastRaw = NaN, lastUtc = NaN, lastAge = NaN, correction = 0, recovering = false;
+    let last = NaN, lastRaw = NaN, lastUtc = NaN, lastAge = NaN, rawUtc = NaN, correction = 0, recovering = false;
     const repair = (raw, utc = NaN, age = NaN) => {
       const d = raw - correction - last;
       const elapsedUtc = ((utc - lastUtc + 86400) % 86400) * 1000;
       const sensorGap = Number.isFinite(elapsedUtc) && Math.abs(d - elapsedUtc) <= 2000;
       const ageDelta = age - lastAge;
       const ageTicks = age > 2000 && lastAge > 2000 && ageDelta > 0 && ageDelta <= 2000;
-      repair.recovered = d === 0 && raw === lastRaw && ageTicks;
+      const byAge = d === 0 && raw === lastRaw && ageTicks;
+      if (raw !== lastRaw) rawUtc = utc;
+      const stalledUtc = (utc - rawUtc + 86400) % 86400;
+      const byCycle = !byAge && raw === lastRaw && stalledUtc >= 2 && stalledUtc < 43200;
       // Align the first resumed clock sample with the counter too, so a catching-up clock cannot count the gap twice.
-      if (repair.recovered || (recovering && raw !== lastRaw && ageTicks)) correction = raw - last - ageDelta;
-      else if (d < 0 || (d > 5000 && !sensorGap)) correction = raw - last - 100;
-      recovering = repair.recovered || (recovering && raw === lastRaw);
+      if (byAge || (recovering && raw !== lastRaw && ageTicks)) correction = raw - last - ageDelta;
+      else if (byCycle || d < 0 || (d > 5000 && !sensorGap)) correction = raw - last - 100;
+      recovering = byAge || (recovering && raw === lastRaw);
+      repair.recovered = byAge || byCycle;
       lastRaw = raw; lastUtc = utc; lastAge = age;
       return (last = raw - correction);
     };

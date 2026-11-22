@@ -236,27 +236,34 @@ def later_utc(current, utc):
 class StampRepair:
     """Keep forward sensor gaps confirmed by elapsed GNSS time, allowing two seconds for fix cadence/arrival.
     Other large jumps (UTC synchronization) and backward jumps (midnight/reboot) continue at the sensor cycle.
-    Frozen timestamps use measured increments of an independently advancing, stale GNSS-age counter.
+    Frozen timestamps use measured increments of an independently advancing, stale GNSS-age counter, otherwise the
+    sensor cycle once GNSS time has run on for two seconds (a duplicated line does not move the flight).
     Mirrored in web/convert.js for offline and serial replay."""
 
     def __init__(self):
         self.last, self.last_utc, self.correction = None, math.nan, 0
         self.last_raw, self.last_age, self.recovered, self.recovering = None, math.nan, False, False
+        self.raw_utc = math.nan
 
     def __call__(self, raw, utc=math.nan, age=math.nan):
         self.recovered = False
+        if raw != self.last_raw:
+            self.raw_utc = utc
         if self.last is not None:
             delta = raw - self.correction - self.last
             elapsed_utc = ((utc - self.last_utc) % 86400) * 1000
             sensor_gap = math.isfinite(elapsed_utc) and abs(delta - elapsed_utc) <= 2000
             age_delta = age - self.last_age
             age_ticks = age > 2000 and self.last_age > 2000 and 0 < age_delta <= 2000
-            self.recovered = delta == 0 and raw == self.last_raw and age_ticks
-            if self.recovered or (self.recovering and raw != self.last_raw and age_ticks):
+            by_age = delta == 0 and raw == self.last_raw and age_ticks
+            stalled_utc = (utc - self.raw_utc) % 86400
+            by_cycle = not by_age and raw == self.last_raw and 2 <= stalled_utc < 43200
+            if by_age or (self.recovering and raw != self.last_raw and age_ticks):
                 self.correction = raw - self.last - age_delta
-            elif delta < 0 or (delta > 5000 and not sensor_gap):
+            elif by_cycle or delta < 0 or (delta > 5000 and not sensor_gap):
                 self.correction = raw - self.last - 100
-            self.recovering = self.recovered or (self.recovering and raw == self.last_raw)
+            self.recovering = by_age or (self.recovering and raw == self.last_raw)
+            self.recovered = by_age or by_cycle
         self.last_raw, self.last_utc, self.last_age = raw, utc, age
         self.last = raw - self.correction
         return self.last

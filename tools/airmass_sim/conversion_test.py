@@ -145,6 +145,33 @@ console.log(JSON.stringify([...c.track.cols.t_ms]));
                                                        cwd=Path(__file__).parent))
                 self.assertEqual(js, expected)
 
+    def test_stalled_clock_without_age_counter_steps_once_gnss_runs_on(self):
+        cases = [
+            ([(10000, 100), (10100, 100), (10100, 101), (10100, 101), (10100, 102), (10100, 102), (10100, 103),
+              (500, 103)], [10000, 10100, 10100, 10100, 10200, 10300, 10400, 10500]),
+            ([(10000, 100), (10000, 101), (10100, 101)], [10000, 10000, 10100]),
+            ([(10000, None), (10000, None), (10000, None)], [10000, 10000, 10000]),
+        ]
+        script = """
+const fs = require('fs'), {convert, serialTimeline} = require('./web/convert.js');
+const text = fs.readFileSync(0, 'utf8');
+console.log(JSON.stringify({times: [...convert(text).track.cols.t_ms],
+  serial: serialTimeline(text).events.filter(e => e.kind === 'sensor').map(e => Math.round(e.t * 1000))}));
+"""
+        for samples, expected in cases:
+            with self.subTest(samples=samples):
+                repair = StampRepair()
+                self.assertEqual([repair(t, utc if utc is not None else math.nan) for t, utc in samples], expected)
+                lines = []
+                for stamp, utc in samples:
+                    if utc is not None:
+                        lines.append(f"$GPRMC,{int(utc // 3600):02d}{int(utc // 60) % 60:02d}{utc % 60:06.3f},"
+                                     "A,4800,N,01100,E,60,90,091126,,,A")
+                    lines.append(f"$SENS,{stamp / 1000:.3f},0,900,899,500,15,0,0,-1,0,0,0")
+                js = json.loads(subprocess.check_output(["node", "-e", script], input="\n".join(lines).encode(),
+                                                       cwd=Path(__file__).parent))
+                self.assertEqual(js, dict(times=expected, serial=expected))
+
     def test_gap_confirmed_by_gga_before_the_next_rmc(self):
         sens = lambda t: f"$SENS,{t:.3f},0,900,899,500,15,0,0,-1,0,0,0"
         cases = [
