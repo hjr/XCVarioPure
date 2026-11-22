@@ -105,7 +105,7 @@ void WindIndicator::drawWind(bool erase)
         MYUCG->setColor(_color.color[0], _color.color[1], _color.color[2]);
     }
     // a number at where the wind is coming from
-    int16_t value = _wind.getVal() * _gauge._unit_fac;
+    int16_t value = fast_iroundf(_wind.getVal() * _gauge._unit_fac);
     int16_t sw = _cwidth * count_digits(value);
     int16_t xshift = sw / 2;
     if (erase) {
