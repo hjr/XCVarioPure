@@ -232,6 +232,7 @@ bool solve4(float a[4][4], float b[4], float x[4]) {
     }
     return true;
 }
+
 } // namespace
 
 void AirMassEKF::airVelocity(float tas, float k, const Tilt& tilt, float psi, float alpha, float out[3], float dalpha[3]) {
@@ -812,7 +813,9 @@ void AirMassEKF::accumulateAlignment(const GnssVelocity& g, const Snapshot& s) {
     if (_cfg.learn_calibration) {
         _x[KTAS] = std::clamp(_x[KTAS] * k_rel, KTAS_MIN, KTAS_MAX);
     }
-    commitAlignment(p[0], p[1], _psi_gyro + std::atan2(p[3], p[2]), 1.f, 0.01f);
+    // the wind's error after a turn alignment is 1.2 m/s rms in the simulator (56 alignments in turbulence, gusts and
+    // calm air; the fit's own residual claims a third of it): 0.9 m/s each way, valid right after the turn
+    commitAlignment(p[0], p[1], _psi_gyro + std::atan2(p[3], p[2]), 0.81f, 0.01f);
 }
 
 void AirMassEKF::fuseGnss(const GnssVelocity& g, bool has_prior, float wn0, float we0) {
