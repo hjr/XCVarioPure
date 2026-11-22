@@ -15,8 +15,9 @@ SetupNG<float> 			airmass_flap_ofs_4("AM_FOFS4", 1.0, USER_RST, SYNC_NONE, PERSI
 SetupNG<float> 			airmass_flap_ofs_5("AM_FOFS5", 1.0, USER_RST, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, nullptr, true);
 SetupNG<float> 			airmass_flap_ofs_6("AM_FOFS6", 1.0, USER_RST, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, nullptr, true);
 SetupNG<float> 			airmass_k_aoa("AM_KAOA", 1.0, USER_RST, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, nullptr, true); // learned angle of attack scale
-SetupNG<int> 			airmass_sig_pitch("AM_SIGP", 0, USER_RST, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, nullptr, true); // installation the pitch offset was learned with
-SetupNG<int> 			airmass_sig_speed("AM_SIGS", 0, USER_RST, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, nullptr, true); // installation the airspeed scale was learned with
+SetupNG<float> 			airmass_lat_ratio("AM_LATR", 0.0, USER_RST, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, nullptr, true);
+SetupNG<int> 			airmass_sig_pitch("AM_SIGP", 0, USER_RST, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, nullptr, true); // installation the stored pitch and flap offsets, AoA scale and IMU roll belong to
+SetupNG<int> 			airmass_sig_speed("AM_SIGS", 0, USER_RST, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, nullptr, true); // installation the stored airspeed scale and TE compensation belong to
 SetupNG<int> 			airmass_wind_nmea("AM_WNMEA", 0, USER_RST);
 SetupNG<int> 			airmass_gust_sound("AM_GUST", 1, USER_RST);
 SetupNG<float> 			airmass_te_set("AM_TESET", 0.0, USER_RST, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, nullptr, true); // learned
@@ -24,4 +25,3 @@ SetupNG<float> 			airmass_te_wt("AM_TEWT", 0.0, USER_RST, SYNC_NONE, PERSISTENT,
 SetupNG<float> 			airmass_te_h("AM_TEH", 0.0, USER_RST, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, nullptr, true);
 SetupNG<float> 			airmass_te_age("AM_TEAGE", 0.85, USER_RST, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, nullptr, true);
 SetupNG<int> 			airmass_te_fl("AM_TEFL", 0, USER_RST, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, nullptr, true);
-SetupNG<int> 			airmass_te_sig("AM_TESIG", 0, USER_RST, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, nullptr, true);

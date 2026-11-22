@@ -420,7 +420,7 @@ public:
         return true;
     }
     // another IMU calibration: the installation's lateral force is learned anew
-    void resetLateral() { _lat_ratio = 0.f; }
+    void resetLateral(float lat_ratio = 0.f) { _lat_ratio = std::clamp(lat_ratio, -LAT_RATIO_MAX, LAT_RATIO_MAX); }
     float latRatio() const { return _lat_ratio; }
     float imuRoll() const { return -std::asin(_lat_ratio); } // rad, the IMU's roll against the wings, right wing down positive
 

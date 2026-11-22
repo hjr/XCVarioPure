@@ -280,8 +280,15 @@ AirMassSensor::AirMassSensor() :
 {
     // after AHRS and airspeed, right before the vario filter
     _id = SensorId(SensorType::AIRMASS, 9);
-    _pipe.teLearn().setState({airmass_te_set.get() > 0.f ? airmass_te_set.get() : NAN, airmass_te_wt.get(), airmass_te_h.get(), airmass_te_age.get(),
-                             airmass_te_fl.get()});
+    claimInstallation();
+    _pipe.resetLateral(airmass_lat_ratio.get());
+    loadTeLearn();
+}
+
+void AirMassSensor::loadTeLearn()
+{
+    _pipe.teLearn().setState({airmass_te_set.get() > 0.f ? airmass_te_set.get() : NAN, airmass_te_wt.get(), airmass_te_h.get(),
+                              airmass_te_age.get(), airmass_te_fl.get()});
 }
 
 AirMassSensor::~AirMassSensor()
@@ -334,7 +341,35 @@ bool AirMassSensor::readBaroAltitude(float& alt) const
 // learned with this installation
 float AirMassSensor::teRecommended() const
 {
-    return airmass_te_sig.get() == speedSignature() ? _pipe.teLearn().learned() : NAN;
+    return airmass_sig_speed.get() == speedSignature() ? _pipe.teLearn().learned() : NAN;
+}
+
+// the learned values of each installation signature (the GNSS latency and the GNSS altitude's age belong to the receiver)
+static SetupNG<float>* const PITCH_LEARNED[] = {&airmass_pitch_ofs, &airmass_k_aoa, &airmass_lat_ratio};
+static SetupNG<float>* const SPEED_LEARNED[] = {&airmass_k_tas, &airmass_te_set, &airmass_te_wt, &airmass_te_h};
+
+template <typename T>
+static void clear(SetupNG<T>& item)
+{
+    item.set(item.getDefault(), false);
+}
+
+// The stored learned values belong to the installation of their group's signature: another installation clears them,
+// and what the running estimator learned with the old one.
+void AirMassSensor::claimInstallation()
+{
+    if (airmass_sig_pitch.get() != pitchSignature()) {
+        for (SetupNG<float>* item : PITCH_LEARNED) clear(*item);
+        for (SetupNG<float>* item : FLAP_OFS) clear(*item);
+        airmass_sig_pitch.set(pitchSignature(), false);
+        _pipe.resetLateral();
+    }
+    if (airmass_sig_speed.get() != speedSignature()) {
+        for (SetupNG<float>* item : SPEED_LEARNED) clear(*item);
+        clear(airmass_te_fl);
+        airmass_sig_speed.set(speedSignature(), false);
+        loadTeLearn();
+    }
 }
 
 void AirMassSensor::start(bool keep_learned)
@@ -347,28 +382,18 @@ void AirMassSensor::start(bool keep_learned)
         // a jump keeps what the running estimator learned, stored only every few minutes
         warm = _pipe.learned();
     } else {
-        // learned values only apply to the installation they were learned with
-        const bool pitch_ok = airmass_sig_pitch.get() == _sig_pitch;
-        const bool speed_ok = airmass_sig_speed.get() == _sig_speed;
-        warm.k_tas = speed_ok ? airmass_k_tas.get() : 1.f;
-        warm.pitch_ofs = pitch_ok ? airmass_pitch_ofs.get() : 0.f;
+        claimInstallation();
+        warm.k_tas = airmass_k_tas.get();
+        warm.pitch_ofs = airmass_pitch_ofs.get();
         warm.latency = airmass_latency.get();
         if (airmass_latency_sigma.get() < AirMassEKF::START_LATENCY_SIGMA) {
             warm.latency_sigma = LATENCY_SIGMA; // learned on an earlier flight: one latency per installation
         }
-        warm.k_aoa = pitch_ok ? airmass_k_aoa.get() : 1.f;
+        warm.k_aoa = airmass_k_aoa.get();
         for (int i = 0; i < airmass::FlapOffsets::N; ++i) {
-            warm.flap_ofs[i] = pitch_ok ? FLAP_OFS[i]->get() : airmass::FlapOffsets::UNKNOWN;
+            warm.flap_ofs[i] = FLAP_OFS[i]->get();
         }
-        warm.lat_ratio = _pipe.latRatio(); // learned since power-up, the recording needs it for the replay
-        if (airmass_te_sig.get() != _sig_speed) {
-            _pipe.teLearn().setState({});
-            airmass_te_set.set(0.f, false);
-            airmass_te_wt.set(0.f, false);
-            airmass_te_h.set(0.f, false);
-            airmass_te_fl.set(0, false);
-            airmass_te_sig.set(_sig_speed, false);
-        }
+        warm.lat_ratio = _pipe.latRatio(); // the recording needs it for the replay
     }
     ESP_LOGI(FNAME, "AirMass start%s, k_tas %.3f, pitch ofs %.2f°, gnss latency %.2fs", keep_learned ? " keeping the learned" : "",
              warm.k_tas, Units::rad_to_deg(warm.pitch_ofs), warm.latency);
@@ -424,7 +449,6 @@ void AirMassSensor::turnBody()
     r.rv[2] = d._z * f;
     if (std::fabs(r.rv[0]) > PITCH_ONLY || std::fabs(r.rv[2]) > PITCH_ONLY) {
         ESP_LOGI(FNAME, "AirMass restart for another IMU reference");
-        _pipe.resetLateral();
         start();
         return;
     }
@@ -439,6 +463,7 @@ void AirMassSensor::turnBody()
     }
     _ref = imuSensor->getRefRot();
     _sig_pitch = pitchSignature();
+    persistLearned(true);
 }
 
 // NVS write only when the value moved: learned values change in the last digits all the time, and every
@@ -457,37 +482,44 @@ static void store(SetupNG<int>& item, int value)
 }
 
 // keep the learned calibration as warm start for the next flight
-void AirMassSensor::persistLearned()
+void AirMassSensor::persistLearned(bool new_reference)
 {
     AirMassEKF& ekf = _pipe.ekf();
     airmass::FlapOffsets& flaps = _pipe.flaps();
-    if (!ekf.isRunning() || !ekf.isAligned()) {
+    const bool ready = ekf.isRunning() && ekf.isAligned();
+    if (!ready && !new_reference) {
         return;
     }
     constexpr float PITCH_SIGMA = 0.01f; // rad, a pitch offset this certain is kept
-    if (ekf.sigma(AirMassEKF::KTAS) < 0.02f) {
-        store(airmass_k_tas, ekf.kTas(), 1e-3f);
-        store(airmass_sig_speed, speedSignature());
-    }
-    if (flaps.active()) {
-        // flapped glider: an offset per lever position
-        flaps.keep(ekf);
-        // offsets of another installation must not survive the new signature
-        const bool same_installation = airmass_sig_pitch.get() == pitchSignature();
-        for (int i = 0; i < airmass::FlapOffsets::N; ++i) {
-            if (flaps.sigma(i) < PITCH_SIGMA) {
-                store(*FLAP_OFS[i], flaps.offset(i), 1e-3f);
-            } else if (!same_installation) {
-                store(*FLAP_OFS[i], airmass::FlapOffsets::UNKNOWN, 1e-3f);
-            }
+    // a new IMU reference: the stored offsets are the old one's, the turned ones where learned, the others cleared
+    auto keep = [new_reference](SetupNG<float>& item, bool learned, float value) {
+        if (learned) {
+            store(item, value, 1e-3f);
+        } else if (new_reference) {
+            clear(item);
         }
-        store(airmass_k_aoa, ekf.aoaScale(), 1e-3f);
-        store(airmass_sig_pitch, pitchSignature());
-    } else if (ekf.sigma(AirMassEKF::THB) < PITCH_SIGMA) {
-        store(airmass_pitch_ofs, ekf.pitchOffset(), 1e-3f);
-        store(airmass_k_aoa, ekf.aoaScale(), 1e-3f);
-        store(airmass_sig_pitch, pitchSignature());
+    };
+    if (ready && ekf.sigma(AirMassEKF::KTAS) < 0.02f) {
+        store(airmass_k_tas, ekf.kTas(), 1e-3f);
     }
+    // flapped glider: an offset per lever position
+    const bool flapped = ready && flaps.active();
+    if (flapped) {
+        flaps.keep(ekf);
+    }
+    for (int i = 0; i < airmass::FlapOffsets::N; ++i) {
+        keep(*FLAP_OFS[i], flapped && flaps.sigma(i) < PITCH_SIGMA, flaps.offset(i));
+    }
+    const bool pitch_learned = ready && !flaps.active() && ekf.sigma(AirMassEKF::THB) < PITCH_SIGMA;
+    keep(airmass_pitch_ofs, pitch_learned, ekf.pitchOffset());
+    keep(airmass_k_aoa, flapped || pitch_learned, ekf.aoaScale());
+    if (new_reference) {
+        airmass_sig_pitch.set(pitchSignature(), false);
+    }
+    if (!ready) {
+        return;
+    }
+    store(airmass_lat_ratio, _pipe.latRatio(), 2e-3f);
     const airmass::TeLearn::State& te = _pipe.teLearn().state();
     if (std::isfinite(te.setting)) {
         store(airmass_te_set, te.setting, 0.5f);
@@ -495,7 +527,6 @@ void AirMassSensor::persistLearned()
         store(airmass_te_h, te.hours, 0.1f);
         store(airmass_te_age, te.age, 0.05f);
         store(airmass_te_fl, te.flights);
-        store(airmass_te_sig, speedSignature());
     }
     if (ekf.sigma(AirMassEKF::TAU) < LATENCY_SIGMA && !ekf.learnsLatencyFirst()) {
         store(airmass_latency, ekf.gnssLatency(), 0.01f);

@@ -12,6 +12,7 @@ extern SetupNG<float> 		airmass_pitch_ofs;
 extern SetupNG<float> 		airmass_latency;
 extern SetupNG<float> 		airmass_latency_sigma;
 extern SetupNG<float> 		airmass_k_aoa;
+extern SetupNG<float> 		airmass_lat_ratio; // learned lateral specific force per g, the IMU's roll against the wings
 extern SetupNG<float> 		airmass_flap_ofs_0; // learned pitch/AoA offset per flap lever position
 extern SetupNG<float> 		airmass_flap_ofs_1;
 extern SetupNG<float> 		airmass_flap_ofs_2;
@@ -28,4 +29,3 @@ extern SetupNG<float> 		airmass_te_wt;  // its regression weight
 extern SetupNG<float> 		airmass_te_h;   // the hours of flight behind it
 extern SetupNG<float> 		airmass_te_age; // the learned age of the GNSS altitude [s]
 extern SetupNG<int> 		airmass_te_fl;  // the flights behind it
-extern SetupNG<int> 		airmass_te_sig; // installation it was learned with

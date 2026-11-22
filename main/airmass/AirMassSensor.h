@@ -42,7 +42,9 @@ private:
     void start(bool keep_learned = false);
     void turnBody();
     void stop();
-    void persistLearned();
+    void persistLearned(bool new_reference = false);
+    void claimInstallation();
+    void loadTeLearn();
     void publish();
     void withdrawWind();
 
