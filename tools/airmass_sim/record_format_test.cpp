@@ -313,6 +313,19 @@ void rotations() {
     }
 }
 
+// $PXCVE: the GNSS altitude at its arrival, to the decimetre; a non-finite altitude is no sentence to use
+void altitudes() {
+    const record::Altitude a{123456789u, 1534.37f};
+    record::Sentence sen;
+    record::Altitude back;
+    const bool ok = record::parse(record::altitude(a).c_str(), sen) && record::decode(sen, back) && back.t == a.t && std::fabs(back.alt - 1534.4f) < 1e-3f;
+    const bool bad = record::parse("$PXCVE,1000,", sen) && record::decode(sen, back);
+    if (!ok || bad) {
+        std::printf("altitude: round trip %s, empty altitude %s\n", ok ? "ok" : "FAIL", bad ? "accepted" : "rejected");
+        failures++;
+    }
+}
+
 // $PXCVS of format 4 carries the latency's uncertainty and the lateral force; format 3 the uncertainty only (the
 // replay keeps its own lateral force), format 2 neither (the uncertainty starts at START_LATENCY_SIGMA)
 void startFormats() {
@@ -341,6 +354,7 @@ int main() {
     sentences();
     outputs();
     rotations();
+    altitudes();
     startFormats();
     std::printf("record format: %d identical, %d too long and dropped, %d different\n", same, dropped, failures);
     const bool ok = failures == 0 && same > 100000 && dropped > 0;

@@ -10,6 +10,7 @@
 #include "AirMassGust.h"
 #include "AirMassInput.h"
 #include "AirMassSampling.h"
+#include "AirMassTeLearn.h"
 #include "AirMassWindAverage.h"
 #include "AirMassPolar.h"
 
@@ -194,6 +195,7 @@ public:
         _prev_time = time_ms;
         _avg_wind.reset(0.f, 0.f);
         _gust.reset();
+        _te.restart();
         _open = false;
         _have_frame = false;
         _have_attitude = false;
@@ -340,6 +342,10 @@ private:
         // model cannot distinguish ground roll from flying; let the caller use TE instead.
         const float polar_ias = _ekf.config().polar_calibrated > 0.5f ? air.ias : raw.ias;
         in.flying_speed = airdata && std::isfinite(polar_ias) && polar_ias >= std::max(10.f, _setup.polar.v_stall * 0.8f);
+        if (fresh[2] || fresh[3]) {
+            const bool wind = _ekf.status() & (AirMassEKF::ST_WIND_VALID | AirMassEKF::ST_WIND_DEGRADED);
+            _te.air(f.time_ms, _values.baro_alt, raw.tas, _learn && in.continuous && in.flying_speed && wind);
+        }
         // sideslip while rolling (adverse yaw), the side force shows little of it
         _roll_mem = std::max(std::fabs(raw.gyro[0]), _roll_mem * (1.f - in.dt / ROLL_SLIP_TAU));
         in.slip_sigma = std::min(std::max(in.slip_sigma, ROLL_SLIP * _roll_mem), SLIP_MAX);
@@ -419,7 +425,17 @@ public:
     float imuRoll() const { return -std::asin(_lat_ratio); } // rad, the IMU's roll against the wings, right wing down positive
 
     // GNSS ground velocity, with a trusted wind as prior for the alignment
-    void gnss(const AirMassEKF::GnssVelocity& g, bool has_prior, float wn0, float we0) { _ekf.fuseGnss(g, has_prior, wn0, we0); }
+    void gnss(const AirMassEKF::GnssVelocity& g, bool has_prior, float wn0, float we0) {
+        const uint32_t rejects = _ekf.rejectedGnss();
+        _ekf.fuseGnss(g, has_prior, wn0, we0);
+        if (_ekf.rejectedGnss() == rejects) _te.velocity(g.time_ms, g.vn, g.ve, _avg_wind.windN(), _avg_wind.windE());
+    }
+    // GNSS altitude (MSL) at its arrival, for the TE compensation learning
+    void gnssAltitude(uint32_t time_ms, float alt) {
+        if (std::isfinite(alt)) _te.altitude(time_ms, alt);
+    }
+    TeLearn& teLearn() { return _te; }
+    const TeLearn& teLearn() const { return _te; }
     // absolute true heading (compass)
     void heading(float psi, float sigma) { _ekf.fuseHeading(psi, sigma); }
 
@@ -456,6 +472,7 @@ private:
     AirMassEKF::Input _in;
     WindAverage _avg_wind;
     GustDetector _gust;
+    TeLearn _te;
     bool _open = false; // a cycle stepped, not ended yet
 
     float _gyro_prev[3] = {};

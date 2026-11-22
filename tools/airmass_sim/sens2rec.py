@@ -369,6 +369,7 @@ def main():
     gnss_utc = math.nan
     last_ms = 0
     pending_fix = None    # a fix not yet passed to the estimator (its arrival time comes with the next $SENS)
+    pending_alt = math.nan  # a GNSS altitude (GGA) not yet passed, the same way
     running, above, below = False, 0, 0
     setup_line, setup_count, starts, frames, fixes = None, 0, 0, 0, 0
     # the setup the device recorded ($PXCVC), used while no glider, mass or bugs are set here
@@ -422,7 +423,7 @@ def main():
             continue
         # The device's AirMass records in a sensor log (System > Logging "All Sensor Data"): the estimator starts where
         # and how the device started it (attitude, calibration), with its setup, and the replay checks itself against
-        # the device's output. Its GNSS velocities ($PXCVG) are left out, the navigation sentences give them.
+        # the device's output. Its GNSS velocities and altitudes ($PXCVG, $PXCVE) are left out, the navigation sentences give them.
         if raw[:6] in ("$PXCVS", "$PXCVC", "$PXCVA", "$PXCVH", "$PXCVO", "$PXCVX") and raw[6:7] == ",":
             line, kind = raw.strip(), raw[5]
             if damaged(line):
@@ -473,6 +474,8 @@ def main():
             try:
                 gnss_alt = float(f[9])
                 gnss_utc = later_utc(gnss_utc, utc_of(f[1]))
+                if len(f) > 10 and f[6] != "0" and f[10] == "M":  # as the device takes it (GpsMsg::parseGPGGA)
+                    pending_alt = gnss_alt
             except (ValueError, IndexError):
                 pass
         elif raw.startswith("$SENS,"):
@@ -552,7 +555,11 @@ def main():
                     out.write(sentence("PXCVG", [str(max(t_ms - age, before_ms)), fmt(vn, "%.3f"), fmt(ve, "%.3f"), "0.500", "750", "0",
                                                  "0.000", "0.000", str(round(pending_fix["utc"] * 1000) % 86400000)]))
                     fixes += 1
+                # the GNSS altitude (GGA, with the RMC), for the TE compensation learning
+                if math.isfinite(pending_alt):
+                    out.write(sentence("PXCVE", [str(max(t_ms - age, before_ms)), fmt(pending_alt, "%.1f")]))
                 pending_fix = None
+                pending_alt = math.nan
             if aux:
                 fx = fix or {}
                 aux.write(",".join([str(t_ms), fmt(fx.get("utc"), "%.1f"), fmt(fx.get("lat"), "%.6f"), fmt(fx.get("lon"), "%.6f"),

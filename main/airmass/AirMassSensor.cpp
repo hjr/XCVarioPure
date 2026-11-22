@@ -165,6 +165,29 @@ void airmass::gnssVelocity(mps_t speed, rad_t course, uint32_t time_ms, uint16_t
     taskEXIT_CRITICAL(&gnss_mux);
 }
 
+// latest GNSS altitude, the same way
+static airmass::record::Altitude gnss_alt;
+static uint16_t alt_epoch = 0;
+
+void airmass::gnssAltitude(float alt, uint32_t time_ms)
+{
+    taskENTER_CRITICAL(&gnss_mux);
+    gnss_alt = {time_ms, alt};
+    if (++alt_epoch == 0) {
+        alt_epoch = 1;
+    }
+    taskEXIT_CRITICAL(&gnss_mux);
+}
+
+static uint16_t latestAltitude(airmass::record::Altitude& a)
+{
+    taskENTER_CRITICAL(&gnss_mux);
+    a = gnss_alt;
+    const uint16_t epoch = alt_epoch;
+    taskEXIT_CRITICAL(&gnss_mux);
+    return epoch;
+}
+
 static uint16_t latestGnss(AirMassEKF::GnssVelocity& v)
 {
     taskENTER_CRITICAL(&gnss_mux);
@@ -257,6 +280,8 @@ AirMassSensor::AirMassSensor() :
 {
     // after AHRS and airspeed, right before the vario filter
     _id = SensorId(SensorType::AIRMASS, 9);
+    _pipe.teLearn().setState({airmass_te_set.get() > 0.f ? airmass_te_set.get() : NAN, airmass_te_wt.get(), airmass_te_h.get(), airmass_te_age.get(),
+                             airmass_te_fl.get()});
 }
 
 AirMassSensor::~AirMassSensor()
@@ -306,6 +331,12 @@ bool AirMassSensor::readBaroAltitude(float& alt) const
     return ok && std::isfinite(alt);
 }
 
+// learned with this installation
+float AirMassSensor::teRecommended() const
+{
+    return airmass_te_sig.get() == speedSignature() ? _pipe.teLearn().learned() : NAN;
+}
+
 void AirMassSensor::start(bool keep_learned)
 {
     _sig_pitch = pitchSignature();
@@ -330,6 +361,14 @@ void AirMassSensor::start(bool keep_learned)
             warm.flap_ofs[i] = pitch_ok ? FLAP_OFS[i]->get() : airmass::FlapOffsets::UNKNOWN;
         }
         warm.lat_ratio = _pipe.latRatio(); // learned since power-up, the recording needs it for the replay
+        if (airmass_te_sig.get() != _sig_speed) {
+            _pipe.teLearn().setState({});
+            airmass_te_set.set(0.f, false);
+            airmass_te_wt.set(0.f, false);
+            airmass_te_h.set(0.f, false);
+            airmass_te_fl.set(0, false);
+            airmass_te_sig.set(_sig_speed, false);
+        }
     }
     ESP_LOGI(FNAME, "AirMass start%s, k_tas %.3f, pitch ofs %.2f°, gnss latency %.2fs", keep_learned ? " keeping the learned" : "",
              warm.k_tas, Units::rad_to_deg(warm.pitch_ofs), warm.latency);
@@ -448,6 +487,15 @@ void AirMassSensor::persistLearned()
         store(airmass_pitch_ofs, ekf.pitchOffset(), 1e-3f);
         store(airmass_k_aoa, ekf.aoaScale(), 1e-3f);
         store(airmass_sig_pitch, pitchSignature());
+    }
+    const airmass::TeLearn::State& te = _pipe.teLearn().state();
+    if (std::isfinite(te.setting)) {
+        store(airmass_te_set, te.setting, 0.5f);
+        store(airmass_te_wt, te.weight, te.weight * 0.1f);
+        store(airmass_te_h, te.hours, 0.1f);
+        store(airmass_te_age, te.age, 0.05f);
+        store(airmass_te_fl, te.flights);
+        store(airmass_te_sig, speedSignature());
     }
     if (ekf.sigma(AirMassEKF::TAU) < LATENCY_SIGMA && !ekf.learnsLatencyFirst()) {
         store(airmass_latency, ekf.gnssLatency(), 0.01f);
@@ -574,6 +622,15 @@ void AirMassSensor::postProcess()
         _pipe.gnss(g.v, g.prior, g.wn0, g.we0);
         if (rec) {
             queueLine([&g] { return airmass::record::gnss(g); });
+        }
+    }
+    airmass::record::Altitude a;
+    const uint16_t aepoch = latestAltitude(a);
+    if (aepoch && aepoch != _alt_epoch) {
+        _alt_epoch = aepoch;
+        _pipe.gnssAltitude(a.t, a.alt);
+        if (rec) {
+            queueLine([&a] { return airmass::record::altitude(a); });
         }
     }
 

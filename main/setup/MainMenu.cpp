@@ -407,17 +407,20 @@ static void vario_menu_create_s2f(SetupMenu *top) {
 }
 
 static void vario_menu_create_tek(SetupMenu *top) {
-    SetupMenuSelect* enac = new SetupMenuSelect("Method", RST_NONE, vario_setupS, &te_comp_enable);
-    enac->setHelp("Probe or electronic TE compensation");
-    enac->addEntry("Probe");
-    enac->addEntry("eComp");
-    enac->addEntry("Air Mass");
-    top->addEntry(enac);
+    if (top->getNrChilds() == 0) {
+        top->setDynContent(); // the eAdjustment's help changes with what Air Mass learned
+        SetupMenuSelect* enac = new SetupMenuSelect("Method", RST_NONE, vario_setupS, &te_comp_enable);
+        enac->setHelp("Probe or electronic TE compensation");
+        enac->addEntry("Probe");
+        enac->addEntry("eComp");
+        enac->addEntry("Air Mass");
+        top->addEntry(enac);
 
-    SetupMenuValFloat* elca = new SetupMenuValFloat("eAdjustment", "%", vario_setup, &te_comp_adjust, RST_NONE, false);
-    elca->setHelp("Compensation factor, raise it if pull-ups show false climb, lower it if they show false sink");
-    elca->setPrecision(1);
-    top->addEntry(elca);
+        SetupMenuValFloat* elca = new SetupMenuValFloat("eAdjustment", "%", vario_setup, &te_comp_adjust, RST_NONE, false);
+        elca->setPrecision(1);
+        top->addEntry(elca);
+    }
+    airmass::menuEAdjust(top->getEntry(1), "Compensation factor, raise it if pull-ups show false climb, lower it if they show false sink");
 }
 
 static void bugs_item_create(SetupMenu *top) {

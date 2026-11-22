@@ -8,6 +8,11 @@
 #include "setup/SetupCommon.h"
 #include "setup/Capability.h"
 #include "sensor.h"
+#include "AirMassSensor.h"
+
+#include <algorithm>
+#include <cmath>
+#include <cstdio>
 
 // the estimator runs on the master, a second seat shows its values
 static bool available()
@@ -21,6 +26,22 @@ void airmass::menuLogging(SetupMenuSelect* logging)
     if (available()) {
         logging->setHelp("R&D option, do not just enable!\n Collect data with NMEA logger in XCSoar. All Sensor Data includes the Air Mass "
                          "output and start for the replay on a PC (1.4 kB/s in all, use Wi-Fi or Bluetooth)");
+    }
+}
+
+void airmass::menuEAdjust(MenuEntry* eadjust, const char* help)
+{
+    if (!eadjust) {
+        return;
+    }
+    static char text[200];
+    const float v = airmassSensor ? airmassSensor->teRecommended() : NAN;
+    if (std::isfinite(v)) {
+        snprintf(text, sizeof(text), "%s. Recommended value for this glider: %.0f%%.", help,
+                 std::clamp(v, te_comp_adjust.getMin(), te_comp_adjust.getMax()));
+        eadjust->setHelp(text);
+    } else {
+        eadjust->setHelp(help);
     }
 }
 

@@ -19,3 +19,9 @@ SetupNG<int> 			airmass_sig_pitch("AM_SIGP", 0, USER_RST, SYNC_NONE, PERSISTENT,
 SetupNG<int> 			airmass_sig_speed("AM_SIGS", 0, USER_RST, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, nullptr, true); // installation the airspeed scale was learned with
 SetupNG<int> 			airmass_wind_nmea("AM_WNMEA", 0, USER_RST);
 SetupNG<int> 			airmass_gust_sound("AM_GUST", 1, USER_RST);
+SetupNG<float> 			airmass_te_set("AM_TESET", 0.0, USER_RST, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, nullptr, true); // learned
+SetupNG<float> 			airmass_te_wt("AM_TEWT", 0.0, USER_RST, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, nullptr, true);
+SetupNG<float> 			airmass_te_h("AM_TEH", 0.0, USER_RST, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, nullptr, true);
+SetupNG<float> 			airmass_te_age("AM_TEAGE", 0.85, USER_RST, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, nullptr, true);
+SetupNG<int> 			airmass_te_fl("AM_TEFL", 0, USER_RST, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, nullptr, true);
+SetupNG<int> 			airmass_te_sig("AM_TESIG", 0, USER_RST, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, nullptr, true);

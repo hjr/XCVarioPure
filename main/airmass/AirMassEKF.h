@@ -151,7 +151,11 @@ class AirMassEKF {
 
     AirMassEKF();
 
-    void setConfig(const Config& c) { _cfg = c; }
+    // a static compensation changed in flight steps the compensated altitude: the altitude state follows the step
+    void setConfig(const Config& c) {
+        _static_step += c.static_comp - _cfg.static_comp;
+        _cfg = c;
+    }
     const Config& config() const { return _cfg; }
 
     // Start the vertical part, warm start with learned calibration values
@@ -330,6 +334,7 @@ class AirMassEKF {
     uint32_t _gnss_rejects = 0;
     uint16_t _gnss_consecutive_rejects = 0;
     uint32_t _baro_reject_ms = 0;
+    float _static_step = 0.f;
     uint32_t _energy_reject_ms = 0; // the energy balance off by more than WD_INNOVATION_MAX for this long
     airmass::SampleClock _baro_clock, _kinematic_clock, _energy_clock;
     // least squares alignment: v_gnss = W + Rz(psi_gyro) * [c -s; s c] * u_air

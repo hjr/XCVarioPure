@@ -23,3 +23,9 @@ extern SetupNG<int> 		airmass_sig_pitch;
 extern SetupNG<int> 		airmass_sig_speed;
 extern SetupNG<int> 		airmass_wind_nmea;
 extern SetupNG<int> 		airmass_gust_sound;
+extern SetupNG<float> 		airmass_te_set; // learned TE compensation [%], 0: none yet
+extern SetupNG<float> 		airmass_te_wt;  // its regression weight
+extern SetupNG<float> 		airmass_te_h;   // the hours of flight behind it
+extern SetupNG<float> 		airmass_te_age; // the learned age of the GNSS altitude [s]
+extern SetupNG<int> 		airmass_te_fl;  // the flights behind it
+extern SetupNG<int> 		airmass_te_sig; // installation it was learned with

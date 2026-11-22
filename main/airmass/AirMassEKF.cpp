@@ -135,6 +135,7 @@ void AirMassEKF::reset(float baro_alt, float k_tas, float pitch_ofs, float laten
     _x[KCL] = k_aoa;
     clampCalibration();
     _x[ALT] = baro_alt;
+    _static_step = 0.f;
     _cov = Matrix<NX, NX>();
     _cov(WN, WN) = _cov(WE, WE) = 100.f; // unknown until aligned with GNSS
     _cov(WD, WD) = 1.f;
@@ -417,6 +418,10 @@ void AirMassEKF::update(const Input& in) {
     if (in.baro_fresh && std::isfinite(in.baro_alt) && _baro_clock.observe(in.time_ms, in.time_ms, true)) {
         // the static pressure error grows with dynamic pressure and fakes climb/sink on speed changes
         const float sample_dt = _baro_clock.interval_ms ? _baro_clock.interval_ms * 1e-3f : in.dt;
+        if (_static_step != 0.f && std::isfinite(in.tas)) {
+            _x[ALT] += _static_step * in.tas * in.tas / (2.f * G0);
+            _static_step = 0.f;
+        }
         fuseBaro(in.baro_alt + (_cfg.static_comp - 1.f) * in.tas * in.tas / (2.f * G0), sample_dt);
     }
 

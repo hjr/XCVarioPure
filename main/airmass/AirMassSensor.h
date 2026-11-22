@@ -30,6 +30,8 @@ public:
 
     const AirMassEKF& getEKF() const { return _pipe.ekf(); }
     float imuRoll() const { return _pipe.imuRoll(); }
+    const airmass::TeLearn::State& teLearned() const { return _pipe.teLearn().state(); }
+    float teRecommended() const;
     // instrument replay: restart for a disruptive jump of the replayed flight (any task)
     void prepareForSimJump() { _jump = true; }
 
@@ -47,6 +49,7 @@ private:
     // estimator, own attitude and flap offsets, the same code the host simulation and replay run
     airmass::Pipeline _pipe;
     uint16_t _gnss_epoch = 0;
+    uint16_t _alt_epoch = 0;
     airmass::Periodic _setup_timer, _compass_timer, _persist_timer, _output_timer;
     airmass::Periodic _sync_timer, _wind_timer, _average_timer, _diagnostic_timer;
     airmass::SampleClock _compass_sample;

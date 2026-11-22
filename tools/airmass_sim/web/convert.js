@@ -581,7 +581,7 @@
     const track = new Track();
     const pxcv = { vario: NaN, bugs: 0.0, ballast: 1.0, roll: 0.0, pitch: 0.0 };
     let teNew = 0;
-    let fix = null, gnssAlt = NaN, altUtc = NaN, gnssUtc = NaN, pendingFix = null, running = false, above = 0, below = 0;
+    let fix = null, gnssAlt = NaN, altUtc = NaN, gnssUtc = NaN, pendingFix = null, pendingAlt = NaN, running = false, above = 0, below = 0;
     let setupLine = null, setupCount = 0, starts = 0, frames = 0, fixes = 0, polar = null, flaps = null, tMs = 0;
     // the setup the device recorded ($PXCVC), used while no glider, mass or bugs are set here
     let deviceSetup = null;
@@ -622,7 +622,7 @@
       }
       // The device's AirMass records in a sensor log (System > Logging "All Sensor Data"): the estimator starts where
       // and how the device started it (attitude, calibration), with its setup, and the replay checks itself against
-      // the device's output. Its GNSS velocities ($PXCVG) are left out, the navigation sentences give them.
+      // the device's output. Its GNSS velocities and altitudes ($PXCVG, $PXCVE) are left out, the navigation sentences give them.
       if (/^\$PXCV[SCAHOX],/.test(raw)) {
         const line = raw.trim(), kind = line[5];
         if (damaged(line)) continue;
@@ -654,7 +654,10 @@
         if (!Number.isFinite(utcDay)) utcDay = rmcDay(f);
       } else if (raw.startsWith("$GPGGA,") || raw.startsWith("$GNGGA,")) {
         const f = fields(raw.trim()), v = parseFloat(f[9]);
-        if (Number.isFinite(v)) { gnssAlt = v; altUtc = ggaUtc(f[1]); gnssUtc = laterUtc(gnssUtc, altUtc); }
+        if (Number.isFinite(v)) {
+          gnssAlt = v; altUtc = ggaUtc(f[1]); gnssUtc = laterUtc(gnssUtc, altUtc);
+          if (f[6] !== "0" && f[10] === "M") pendingAlt = v; // as the device takes it (GpsMsg::parseGPGGA)
+        }
       } else if (raw.startsWith("$SENS,")) {
         const f = fields(raw.trim());
         const sensor = normalize(f, gnssAlt, gnssUtc);
@@ -708,7 +711,10 @@
               "0.500", "750", "0", "0.000", "0.000", String(Math.round(pendingFix.utc * 1000) % 86400000)]));
             fixes++;
           }
+          // the GNSS altitude (GGA, with the RMC), for the TE compensation learning
+          if (Number.isFinite(pendingAlt)) rec.push(sentence("PXCVE", [String(Math.max(t - age, before)), fx(pendingAlt, 1)]));
           pendingFix = null;
+          pendingAlt = NaN;
         }
         track.push({ t_ms: t, utc: fix ? fix.utc : NaN, lat: fix ? fix.lat : NaN, lon: fix ? fix.lon : NaN, gnss_alt: gnssAlt, alt_utc: altUtc,
           gnss_speed: fix ? fix.speed : NaN, gnss_track: fix ? fix.track : NaN, baro_alt: alt, te_vario: pxcv.vario, te_new: teNew, te_alt: teAlt, ias, tas,

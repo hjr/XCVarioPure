@@ -127,3 +127,128 @@ to ≤ 76 (less of the late term), and its fitted circling delay comes out early
 92 and 100 1.6 s, while its circling 10 s rms rises 0.840 → 0.851 → 0.864). The AirMass needle's circling lead over
 eComp on the DG (0.8 s) is short for that reason; over the TE probe it is 1.8 s. AirMass assumes 0.2 s on both lines;
 the DG's spread of learned GNSS latencies (422–790 ms) may absorb part of the unmodelled pitot lag, not verified.
+
+## Learned in flight (2026-11-22)
+
+`AirMassTeLearn.h` in the Pipeline: over 10 s windows the change of eComp's energy height (static altitude +
+setting·V²/2g) minus the change of the GNSS energy height (GNSS altitude, `$PXCVE`, and the ground velocity of the same
+fix against the averaged wind), regressed on the change of V²/2g. Carried over flights (weight and setting in NVS,
+forgotten over 20 h), the eAdjustment set from it at power-up on the ground after 1.5 h of windows. What made it work,
+each found on the real flights or the simulator:
+
+- the GNSS velocity lags the altitude of its fix by 0–0.64 s (the page's reference measures it, 0.3 s typical): the
+  altitude is paired with the velocity interpolated 0.3 s towards the next fix;
+- the GNSS altitude's age at arrival differs per receiver (0.2–1.05 s): learned like the page's `gnssAltDelay` (2 s
+  changes against the static altitude). With a wrong age, windows where speed and climb change together (thermal
+  entries, dolphin flight) biased the setting 7–13 % in the simulator;
+- a horizontal gust moves the measured V²/2g but neither altitude: plain window ends read the setting 2–7 % low on real
+  flights, means over ±2.5 s around them fixed it. An instrument (the GNSS kinetic height) did not: its noise is in the
+  GNSS energy height too, the setting came out 15–25 % high;
+- windows more than 8 m off what the setting learned so far expects are left out after 15 min: in double turbulence
+  (simulator) a few of them took 3 of 8 seeds to ~68 % against ~114 %.
+
+Real flights, each replayed at its installation's tuned setting from a fresh learner (`telearn.js`, scratch), carried
+over in date order like the device:
+
+| installation | after the 1st flight | carried over all | sweep optimum |
+|---|---|---|---|
+| DG 800B/18 (5) | 77–80 | 75.0 | 75 |
+| Arcus 2025-07 (5) | 93–99 | 95.6 | 95 |
+| Arcus 2026-05 (2) | 99 | 99.0 | 99 |
+| ASG 29/18 (14) | 92–93 | 90.0 | 88 |
+| Arcus 2026-11 (3) | 85–88 | 91.4 | 90 |
+
+Simulator (`nl`, one hour, 8 seeds): learned 108–119 against `static_adj·k_tas²` = 110.2 (the formula leaves out the
+lines' lags), 95–98 against 90, ~113 against 110; double turbulence 90–119. Tests `nl_te_learn*` (±8 %). The vario of a
+flight is not changed (the setting moves at the next power-up); the GNSS altitude ages learned on the real flights:
+ASG 29 0.65 s, DG 0.8–1.0 s, Arcus 0.0–0.1 s (the page's reference adds 0.2 s to its fit).
+
+## Applied in flight (2026-11-22)
+
+The learned eAdjustment was set only at power-up on the ground. It is now also set in flight, every 5 minutes when it
+moved by 1 % or more. eComp re-anchors its TE altitude on a change (one 0.1 s sample without a rate). AirMass did not:
+its static compensation (half the setting's deviation) steps the compensated altitude by Δ·V²/2g, and the estimator
+read the step as climb or sink. Simulator (`--comp-change`, the same seed with and without the change), shown vario
+before the fix:
+
+| | per 1 % of eAdjustment, peak | after |
+|---|---|---|
+| `nl` cruise, 96 km/h | 0.07 m/s | 1.5 s, gone in ~20 s |
+| `nl` circling, 79 km/h | 0.04 m/s | 2 s |
+| scaled with V², 150 / 200 km/h | ~0.17 / ~0.30 m/s | |
+
+Since then the estimator's altitude moves with the step (`AirMassEKF::setConfig`): mean difference in the first 10 s
+after a change of 2–18 % at most 0.006 m/s (0.05–0.33 before); `straight` with 100 → 80 % at 97 km/h: largest shown
+error over the next 20 s 0.15 m/s, the same as without a change, against 1.37 m/s before (`straight_comp_change`).
+
+The learner does not depend on the setting in use (its regression subtracts it again): `endurance` (3 h) from 85, 100
+or 115 % learns 109.8 against 110.2 and sets the eAdjustment once, to 110.3 (`endurance_te_apply`).
+
+## When to apply: the learner at hours of windows (2026-11-22)
+
+The browser replay's rows carry the learner's state (`te_setting`, `te_weight`, `te_hours`). On the 29 clean real
+flights, error of the learned setting against the sweep optimum [%] (scratch `checkpoints.js`; carried over an
+installation's flights in date order with the device's forgetting):
+
+| hours of windows | each flight fresh: median / max | carried: median / max |
+|---|---|---|
+| 0.5 | 5.2 / 17.8 | 8.4 / 17.2 |
+| 1 | 4.5 / 11.2 | 9.2 / 11.2 |
+| 1.5 | 3.6 / 9.3 | 2.5 / 9.3 |
+| 2 | 4.1 / 7.1 | 3.4 / 7.1 |
+| 3 | 3.7 / 6.2 | 2.3 / 4.1 |
+| 5 | 1.7 / 2.0 (3 flights) | 1.4 / 4.9 |
+
+The default 92: median 4.0, max 17 over the five installations. Carried, per installation, at 1.5 / 3 / 5 h and the
+end: DG (75) 77.5 / 77.3 / 72.7 / 75.1; Arcus 2025-07 (95) 96.9 / 96.1 / 93.6 / 96.0; Arcus 2026-05 (99) 97.0 / 98.5 /
+– / 99.0; ASG 29 (88) 92.9 / 92.1 / 92.9 / 88.9; Arcus 2026-11 (90) 80.7 / 86.8 / 90.9 / 91.7. Within one flight the
+error levels off at about 4 %; it shrinks over flights. At 1.5 h the November Arcus (first flight on the ridge) would
+get 80.7 against the default's 92, 9 % off instead of 2; at 3 h no installation is more than 1 % worse off than at the
+default. A flight gives 0.4–0.9 h of windows per hour, 2.6 of 6.1 h on the ridge.
+
+Why the November Arcus reads low (the learner's windows printed from a debug build, grouped, scratch `winsplit.py`): on
+the ridge flight 2026-11-18 the windows below 1000 m read 69–80, above 1000 m 85–87; on 2026-11-21 every altitude
+band reads 91–94. Bank, speed, turns, wind strength and the flight's airspeed scale (k_tas 0.99–1.01, temperature
+logged) make no difference. AirMass's own sweep of that flight agrees with the learner (best at static_comp 92, the
+half rule's 84); eComp's is flat there (84 at 0.850 m/s, 88–90 at 0.844). A local error near the ridge (the flow's
+pressure field over the terrain, or the wind there against the averaged wind) the learner cannot tell from the
+installation's: only other days dilute it.
+
+The wind for the GNSS kinetic height, the 29 clean flights each from a fresh learner (|error| against the sweep
+optimum per flight: median / mean / max; carried over flights at 1.5 and 3 h: max), with the 11-18 ridge flight:
+
+| wind | per flight | carried max at 1.5 / 3 h | 2026-11-18 |
+|---|---|---|---|
+| averaged (`WindAverage`, as in use) | 3.6 / 3.2 / 7.8 | 9.3 / 4.1 | 83.6 |
+| instant (the estimator's) | 3.3 / 3.8 / 10.0 | 13.2 / 9.4 | 80.0 |
+| instant, 30 s low pass | 3.0 / 3.1 / 11.5 | 15.8 / 6.6 | 78.5 |
+| instant, 10 s low pass | 2.5 / 3.3 / 14.1 | 18.2 / 9.1 | 75.9 |
+
+The faster the wind follows, the lower the ridge flight reads: not a local wind the average misses. The averaged wind
+stays: the smallest worst cases, per flight and carried.
+
+## Two flights before applying (2026-11-22)
+
+The learned setting is applied from 1.5 h of windows and two flights on, a flight counting once it gave FLIGHT_H of
+windows in one power-up (`TeLearn::State::flights`, stored as `AM_TEFL`, on the status page). The first value applied
+on the real flights (scratch `checkpoints.js`, the device's learner carried over flights), off by, against the sweep
+optimum:
+
+| a flight counts after | DG (default off by 17) | Arcus 2025-07 (3) | Arcus 2026-05 (7) | ASG 29 (4) | Arcus 2026-11 (2) |
+|---|---|---|---|---|---|
+| 0.25 h | 2.9 | 0.1 | 0.2 | 4.0 | 4.2 |
+| 0.5 h | 3.2 | 0.5 | 0.3 | 4.0 | 3.0 |
+| **1 h** (in use) | 3.0 | 0.6 | 0.9 | 4.6 | 1.1 |
+| 1.5 h | 2.5 (from flight 3) | 1.6 | 1.0 | 4.6 | 0.7 |
+
+After a quarter of an hour the second flight barely moves the first one's setting (the November Arcus at 85.8 after
+its ridge flight). The ASG's first flights all read 90–94: no rule applies it closer than ~4 before its later flights.
+Tests: `endurance_te_apply` (one flight before, applied), `endurance_te_one_flight` (none before, not applied).
+
+## Recommended, not applied (2026-11-22)
+
+The device no longer sets the eAdjustment: a few % off costs eComp little (November Arcus, speed-change rms: 4 % off
++0.6 %, 10 % off +4 %), the learned value is 1–5 off when first available, and setting it automatically overrode the
+pilot's setting and learned from Bluetooth replays. The eAdjustment's help in the TE Compensation menu ends with
+"Recommended value for this glider: N%." once the flight rule above allows it. The estimator's altitude step on a
+change of the setting stays: a pilot changing it in flight.

@@ -115,6 +115,14 @@ add_test(NAME nl_asw20_bent COMMAND airmass_sim nl --set flaps=1 --set aoa_nonli
 # rate in turns with sin(roll), the body z bias with cos(roll), the heading must not drift off after circling; the
 # attitude takes the body z bias from the estimator, unlearned it tilts the attitude in every circle (climb reading 0.13)
 add_test(NAME nl_gyro_bias COMMAND airmass_sim nl --set gyro_bias=0.01 --max-climb-err 0.06)
+# the TE compensation learned from the GNSS energy height (AirMassTeLearn.h): one simulated hour, a low and a high port error
+add_test(NAME nl_te_learn COMMAND airmass_sim nl --max-te-err 8)
+add_test(NAME nl_te_learn_low COMMAND airmass_sim nl --set k_tas=1.0 --static-adj 90 --max-te-err 8)
+add_test(NAME nl_te_learn_high COMMAND airmass_sim nl --set k_tas=1.0 --static-adj 110 --max-te-err 8)
+# recommended after 1.5 hours and from the second flight on, from a setting far off; an eAdjustment change in flight does not show on the vario
+add_test(NAME endurance_te_recommended COMMAND airmass_sim endurance --comp 85 --te-flights 1 --expect-te-recommended 1 --max-te-err 3)
+add_test(NAME endurance_te_one_flight COMMAND airmass_sim endurance --comp 85 --expect-te-recommended 0 --max-te-err 3)
+add_test(NAME straight_comp_change COMMAND airmass_sim straight --comp-change 340:80 --max-step-err 0.3)
 
 # compass aided alignment: the wind gets valid early in the first turn (78s without compass)
 add_test(NAME straight_compass COMMAND airmass_sim straight --compass 2 --max-wind-valid 70)

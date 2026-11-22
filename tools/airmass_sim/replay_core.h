@@ -106,6 +106,8 @@ public:
         } else if (rec::decode(_s, _h)) {
             _pipe.heading(_h.psi, _h.sigma);
             headings++;
+        } else if (rec::decode(_s, _alt)) {
+            _pipe.gnssAltitude(_alt.t, _alt.alt);
         } else if (rec::decode(_s, _rot)) {
             _pipe.rotateBody(_rot.rv);
             if (_use_mahony) _mahony.rotate(_rot.rv);
@@ -250,6 +252,7 @@ private:
     airmass::record::Gnss _g;
     airmass::record::Heading _h;
     airmass::record::Rotation _rot;
+    airmass::record::Altitude _alt;
     airmass::record::Output _out;
 };
 

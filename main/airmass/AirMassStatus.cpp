@@ -118,6 +118,16 @@ int windText(char* buf, size_t size, const char* label, int raw)
     return snprintf(buf, size, "%s --", label);
 }
 
+// the eAdjustment in use and the one learned, with the hours and flights behind it
+void eAdjustLine(char* buf, size_t size, const airmass::TeLearn::State& te)
+{
+    if (std::isfinite(te.setting)) {
+        snprintf(buf, size, "eAdjust: %.0f%%, learned %.0f (%.1fh, %d flights)", te_comp_adjust.get(), te.setting, te.hours, te.flights);
+    } else {
+        snprintf(buf, size, "eAdjust: %.0f%%, learning", te_comp_adjust.get());
+    }
+}
+
 void StatusPage::draw()
 {
     char buf[64];
@@ -171,6 +181,8 @@ void StatusPage::draw()
         line(ln++, buf);
         snprintf(buf, sizeof(buf), "Bias: %.2f°/s %.2fm/s2", Units::rad_to_deg(ekf->yawRateBias()), ekf->accBias());
         line(ln++, buf);
+        eAdjustLine(buf, sizeof(buf), airmassSensor->teLearned());
+        line(ln++, buf);
     } else {
         snprintf(buf, sizeof(buf), "TAS scale: %.3f", airmass_k_tas.get());
         line(ln++, buf);
@@ -183,6 +195,10 @@ void StatusPage::draw()
         line(ln++, buf);
         snprintf(buf, sizeof(buf), "GNSS lag: %.0f ms", airmass_latency.get() * 1000.f);
         line(ln++, buf);
+        if (airmassSensor) {
+            eAdjustLine(buf, sizeof(buf), airmassSensor->teLearned());
+            line(ln++, buf);
+        }
         while (ln < maxLines() - (maxLines() > LANDSCAPE_ROWS)) {
             line(ln++, "");
         }

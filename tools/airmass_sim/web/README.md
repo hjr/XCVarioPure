@@ -66,6 +66,10 @@ decreasing by 6.5°C per kilometre**. Altitude comes from GNSS, falling back to 
 feeds TAS and the replay; plausible logged temperatures remain unchanged. The replay summary reports how many
 samples used the estimate. `sens2rec.py` uses the same rule. AirMass recordings already contain TAS and pass through.
 
+The GNSS altitude (GGA) reaches AirMass as `$PXCVE,t,alt` at its arrival, for learning the TE eAdjustment
+(`AirMassTeLearn.h`); the converters write it from the logs' GGA, older recordings without it replay unchanged and learn
+nothing. The replay summary gives what a flight learned (`te_learned`, `te_hours`, `te_age_ms` the GNSS altitude's age).
+
 GNSS timing uses each RMC fix's source UTC as well as its arrival time. New recordings retain source UTC as an
 optional ninth `PXCVG` field; older recordings remain readable. Repeated/backward source epochs and invalid
 velocities are rejected. Source/arrival intervals distinguish irregular fix cadence from extra transport delay,

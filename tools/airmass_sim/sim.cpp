@@ -19,6 +19,10 @@
 //   --max-wind-rms: override the scenario's limit for the wind rms
 //   --max-climb-err: override the scenario's limit for the per thermal climb reading error
 //   --max-latency-err: check the estimated GNSS latency against this limit [ms]
+//   --max-te-err: check the learned TE compensation against the one that cancels the port error [%]
+//   --comp-change s:%: the eAdjustment changed in flight; --max-step-err: the shown vario's error after it [m/s]
+//   --te-flights n: earlier flights behind the TE compensation learner; --expect-te-recommended 0|1: whether it
+//                   recommends an eAdjustment after this flight
 //   --seed: sensor noise realisation (the scenario's air mass stays the same)
 //   --vario-agility: like the device setting, scales the vertical air movement process noise by its square
 //   --set name=value: change an assumption (see Knobs), e.g. --set k_tas=0.95 --set wind=11
@@ -630,6 +634,9 @@ int main(int argc, char** argv) {
     }
     const std::string which = argv[1];
     FILE* csv = nullptr;
+    float comp_change_t = -1.f, comp_change = NAN;
+    float comp_changed = -1.f, step_err = 0.f, max_step_err = -1.f;
+    int te_flights = 0, expect_te_recommended = -1;
     airmass::replay::Settings cfg_settings; // --set cfg.<name>=value: estimator settings by name
     const char* csv_name = nullptr;
     const char* record_name = nullptr;
@@ -637,6 +644,7 @@ int main(int argc, char** argv) {
     float static_adj = 1.f, comp = 1.f;
     float compass_sigma = -1.f, max_wind_valid = -1.f, max_wind_rms = -1.f, max_climb_err = -1.f;
     int max_latency_err = -1;
+    float max_te_err = -1.f;
     bool slip_aid = true;
     unsigned seed = 4711;
     float vario_agility = 1.f;
@@ -654,6 +662,9 @@ int main(int argc, char** argv) {
             static_adj = std::atof(argv[i + 1]) / 100.f;
         } else if (std::strcmp(argv[i], "--comp") == 0) {
             comp = std::atof(argv[i + 1]) / 100.f;
+        } else if (std::strcmp(argv[i], "--comp-change") == 0 && std::strchr(argv[i + 1], ':')) {
+            comp_change_t = std::atof(argv[i + 1]);
+            comp_change = std::atof(std::strchr(argv[i + 1], ':') + 1);
         } else if (std::strcmp(argv[i], "--compass") == 0) {
             compass_sigma = std::atof(argv[i + 1]) * D2R;
         } else if (std::strcmp(argv[i], "--slip-aid") == 0) {
@@ -698,6 +709,14 @@ int main(int argc, char** argv) {
             max_wind_rms = std::atof(argv[i + 1]);
         } else if (std::strcmp(argv[i], "--max-latency-err") == 0) {
             max_latency_err = std::atoi(argv[i + 1]);
+        } else if (std::strcmp(argv[i], "--max-te-err") == 0) {
+            max_te_err = std::atof(argv[i + 1]);
+        } else if (std::strcmp(argv[i], "--te-flights") == 0) {
+            te_flights = std::atoi(argv[i + 1]);
+        } else if (std::strcmp(argv[i], "--expect-te-recommended") == 0) {
+            expect_te_recommended = std::atoi(argv[i + 1]);
+        } else if (std::strcmp(argv[i], "--max-step-err") == 0) {
+            max_step_err = std::atof(argv[i + 1]);
         } else if (std::strcmp(argv[i], "--record") == 0) {
             record_name = argv[i + 1];
         } else if (std::strcmp(argv[i], "--csv") == 0) {
@@ -768,6 +787,11 @@ int main(int argc, char** argv) {
     const float static_eps = (static_adj - 1.f) / (static_adj + 1.f);
     pipe.setLearning(learn);
     pipe.configure(setup);
+    if (te_flights > 0) {
+        airmass::TeLearn::State te;
+        te.flights = te_flights;
+        pipe.teLearn().setState(te);
+    }
     airmass::Pipeline::Options opts;
     opts.slip_aid = slip_aid;
     pipe.setOptions(opts);
@@ -805,6 +829,13 @@ int main(int argc, char** argv) {
     float prev_te_alt = NAN;
     struct GnssSample { uint32_t t_obs; float vn, ve; };
     std::vector<GnssSample> gnss_q;
+    // the Flarm's GNSS altitude: of the velocity's fix, the velocity lagging it by TeLearn::SPEED_LAG_MS, arriving
+    // with it; its own noise (the other noise stays as it was)
+    struct AltSample { uint32_t t_obs; float alt; };
+    std::vector<AltSample> alt_q;
+    std::mt19937 rng_alt(seed + 7);
+    std::normal_distribution<float> nd_alt(0.f, 1.f); // own one too: a normal distribution keeps the pair it draws
+    bool alt_pending = false;
 
     Stats wind_err, vario_err, te_err, spike_err, te_spike_err, avg_wind_err;
     // the GNSS/INS reference instrument (ins_reference.h) with its own 10 Hz GNSS and sensors; its own random numbers,
@@ -1073,6 +1104,11 @@ int main(int argc, char** argv) {
         const bool gps_out = K.gps_out >= 0.f && tr.t >= K.gps_out && tr.t < K.gps_out + K.gps_out_len;
         if (step % gnss_div == 0 && !gps_out) {
             gnss_q.push_back({(uint32_t)step * 10u, tr.vg[0] + gnss_sigma * nd(rng), tr.vg[1] + gnss_sigma * nd(rng)});
+            alt_pending = true;
+        }
+        if (alt_pending && step % gnss_div == (int)airmass::TeLearn::SPEED_LAG_MS / 10) {
+            alt_q.push_back({(uint32_t)(step - airmass::TeLearn::SPEED_LAG_MS / 10) * 10u, tr.h + 1.f * nd_alt(rng_alt)});
+            alt_pending = false;
         }
 
         if (step % sensor_div != 0) {
@@ -1110,6 +1146,9 @@ int main(int argc, char** argv) {
             while (!gnss_q.empty() && gnss_q.front().t_obs + gnss_latency + lat_err <= now) {
                 gnss_q.erase(gnss_q.begin());
             }
+            while (!alt_q.empty() && alt_q.front().t_obs + gnss_latency + lat_err <= now) {
+                alt_q.erase(alt_q.begin());
+            }
             continue;
         }
 
@@ -1136,6 +1175,13 @@ int main(int argc, char** argv) {
             mount_rot.t = now;
             pipe.rotateBody(mount_rot.rv);
             if (rec) std::fputs(airmass::record::rotation(mount_rot).c_str(), rec);
+        }
+        if (comp_change_t >= 0.f && tr.t >= comp_change_t) {
+            comp_changed = comp_change_t;
+            comp_change_t = -1.f;
+            setup.te_adjust = comp_change;
+            pipe.configure(setup);
+            if (rec) std::fputs(airmass::record::setup(pipe.setup()).c_str(), rec);
         }
         airmass::Frame frame;
         frame.time_ms = now;
@@ -1188,6 +1234,14 @@ int main(int argc, char** argv) {
             }
             gnss_q.erase(gnss_q.begin());
         }
+        while (!alt_q.empty() && alt_q.front().t_obs + gnss_latency + lat_err <= now) {
+            const airmass::record::Altitude a{alt_q.front().t_obs + gnss_latency + lat_err, alt_q.front().alt};
+            pipe.gnssAltitude(a.t, a.alt);
+            if (rec) {
+                std::fputs(airmass::record::altitude(a).c_str(), rec);
+            }
+            alt_q.erase(alt_q.begin());
+        }
         pipe.endCycle();
         if (rec && !(++rec_count % 2)) {
             std::fputs(airmass::record::output(ekf).c_str(), rec);
@@ -1207,6 +1261,7 @@ int main(int argc, char** argv) {
         const uint8_t st = ekf.status();
         const float vario_true = -tr.wd;
         const float am_vario = am_display.f(ekf.airmassVario()); // as displayed
+        if (comp_changed >= 0.f && tr.t - comp_changed < 20.f) step_err = std::max(step_err, std::fabs(am_vario - vario_true));
         if ((st & AirMassEKF::ST_WIND_VALID) && t_wind_valid < 0.f) {
             t_wind_valid = tr.t;
         }
@@ -1461,6 +1516,20 @@ int main(int argc, char** argv) {
                 (int)std::lround(ekf.gnssLatency() * 1000.f));
     if (sc.check_latency) {
         check(std::abs(lat_est_err) <= sc.max_latency_err, "gnss latency did not converge");
+    }
+    // eComp's energy height h + setting·TAS²/2g of the measured values is the true one at static_adj·k_tas² (the port
+    // error in the altitude and the dynamic pressure, the airspeed k_tas off)
+    const airmass::TeLearn::State& te = pipe.teLearn().state();
+    const float te_true = 100.f * static_adj * K.k_tas * K.k_tas;
+    std::printf("  TE compensation: true %.1f %%, learned %.1f %% (%.2f h of windows), GNSS altitude age true %d ms, learned %.0f ms, %d flights, recommended %.1f %%\n", te_true, te.setting,
+                te.hours, gnss_latency + lat_err - (int)airmass::TeLearn::SPEED_LAG_MS, te.age * 1000.f, te.flights, pipe.teLearn().learned());
+    if (expect_te_recommended >= 0) check(std::isfinite(pipe.teLearn().learned()) == (expect_te_recommended > 0), "TE compensation recommended against the flight rule");
+    if (comp_changed >= 0.f) {
+        std::printf("  eAdjustment changed at %.0f s: shown vario error over the next 20 s %.2f m/s\n", comp_changed, step_err);
+        if (max_step_err > 0.f) check(step_err <= max_step_err, "eAdjustment change shows as climb or sink");
+    }
+    if (max_te_err > 0.f) {
+        check(std::fabs(te.setting - te_true) <= max_te_err, "TE compensation not learned");
     }
     std::printf("  %s\n", ok ? "PASS" : "FAILED");
     return ok ? 0 : 1;

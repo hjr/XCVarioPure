@@ -28,6 +28,8 @@ void prepareForSimJump();
 
 // GNSS: a new ground velocity (protocol task)
 void gnssVelocity(mps_t speed, rad_t course, uint32_t time_ms, uint16_t latency_ms, uint32_t fix_time_ms = UINT32_MAX);
+// GNSS altitude (MSL) at its arrival, for learning the TE compensation
+void gnssAltitude(float alt, uint32_t time_ms);
 // GNSS: true heading and wind correction angle from the estimator; false while it has none
 bool heading(rad_t track);
 
@@ -42,6 +44,8 @@ const char* varioLabel();
 // setup menu: the wind to the navigation computer, the gust sound in the audio menu, and for development builds
 // (DEBUG_AND_TEST) the status page of the vario menu and the recording in the help of the logging
 void menuLogging(SetupMenuSelect* logging);
+// the eAdjustment's help with the value learned in flight, on each visit of its menu
+void menuEAdjust(MenuEntry* eadjust, const char* help);
 void menuVario(SetupMenu* vario);
 void menuWind(SetupMenu* wind);
 void menuAudio(SetupMenu* audio);

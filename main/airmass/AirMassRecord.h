@@ -16,6 +16,7 @@
 //   $PXCVG,t,vn,ve,sigma,latency,prior,wn0,we0[,fix_utc_ms]           GNSS velocity (arrival, nominal latency, optional source epoch)
 //   $PXCVH,t,psi,sigma                                                compass heading fused
 //   $PXCVO,t,rx,ry,rz                                                 body axes turned (IMU reference changed), rotation vector [rad]
+//   $PXCVE,t,alt                                                      GNSS altitude MSL at its arrival (TE compensation learning)
 //   $PXCVX,t                                                          estimator stopped
 // t: device milliseconds. An empty field is NAN (no baro, no flap lever).
 //
@@ -240,6 +241,20 @@ inline Line rotation(const Rotation& r) {
     return s;
 }
 
+// a GNSS altitude at its arrival
+struct Altitude {
+    uint32_t t = 0;
+    float alt = 0.f;
+};
+
+inline Line altitude(const Altitude& a) {
+    Line s("$PXCVE");
+    appendu(s, a.t);
+    appendf(s, "%.1f", a.alt);
+    finish(s);
+    return s;
+}
+
 inline Line stop(uint32_t t) {
     Line s("$PXCVX");
     appendu(s, t);
@@ -392,6 +407,13 @@ inline bool decode(const Sentence& s, Heading& h) {
     h.t = static_cast<uint32_t>(s.f[0]);
     h.psi = s.f[1];
     h.sigma = s.f[2];
+    return true;
+}
+
+inline bool decode(const Sentence& s, Altitude& a) {
+    if (!s.is("PXCVE", 2) || !std::isfinite(s.f[1])) return false;
+    a.t = static_cast<uint32_t>(s.f[0]);
+    a.alt = s.f[1];
     return true;
 }
 
