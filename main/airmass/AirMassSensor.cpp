@@ -20,10 +20,13 @@
 #include "setup/SetupNG.h"
 #include "math/Trigonometry.h"
 #include "math/Units.h"
+#include "sensor.h"
 #include "logdefnone.h"
 
 #include <freertos/FreeRTOS.h>
 #include <freertos/ringbuf.h>
+#include <esp_system.h>
+#include <esp_timer.h>
 
 #include <algorithm>
 #include <cmath>
@@ -45,6 +48,7 @@ constexpr uint32_t PERSIST_MS = 300000;       // save the learned calibration ev
 constexpr float PITCH_ONLY = 0.01f;           // rad, an IMU reference change with less roll and yaw is a pitch adjustment
 constexpr float LATENCY_SIGMA = 0.1f;         // s, a GNSS latency this certain is kept, the next flight starts from it
 constexpr uint32_t SETUP_MS = 10000;          // repeat the recorded setup every 10s
+constexpr int64_t CLOCK_STALL_US = 5000000;   // the device clock standing still this long is a blocked timer task
 
 // Lines for the recording, from the sensor loop to the NMEA feed (5Hz), created with the first line. A ring buffer
 // holds them at their length (about 130 bytes, a queue would take the longest one for each): the recording queues about
@@ -556,8 +560,26 @@ void AirMassSensor::withdrawWind()
     }
 }
 
+// The timer task counts the device clock: standing still while the hardware timer runs, that task is blocked (seen
+// in flight, the vario, the rotary and the switches frozen until a power cycle). The panic's core dump has every
+// task's stack, the only record of where it hangs. A replay pauses the clock on purpose.
+static void trapStalledClock()
+{
+    static int seen_ms = 0;
+    static int64_t seen_us = 0;
+    const int ms = Clock::getMillis();
+    const int64_t us = esp_timer_get_time();
+    if (ms != seen_ms || gflags.inSimulationMode || seen_us == 0) {
+        seen_ms = ms;
+        seen_us = us;
+    } else if (us - seen_us > CLOCK_STALL_US) {
+        esp_system_abort("AirMass: the device clock stands still, the timer task is blocked");
+    }
+}
+
 void AirMassSensor::postProcess()
 {
+    trapStalledClock();
     const bool active = airborne.get() && ahrsSensor && accSensor && gyroSensor;
     if (active != _active) {
         _active = active;
