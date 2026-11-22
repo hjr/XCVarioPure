@@ -206,11 +206,11 @@ dl_action_t GpsMsg::parseGPGGA(NmeaPlugin *plg)
             }
         }
 
-        float alt = std::strtof(sm->_frame.c_str() + word->at(8), nullptr);
-        // GPGGA altitude is defined in meters (MSL)
-        // Unit field should be 'M', ignore otherwise
-        if ((sm->_frame.c_str() + word->at(8))[0] == 'M') {
-            gpsSensor->setExternalAltitude(alt);
+        // GPGGA altitude is defined in meters (MSL): the unit field after it should be 'M', ignore otherwise, and
+        // without a fix (quality 0) or an altitude
+        const char* f = sm->_frame.c_str();
+        if (gpsSensor && f[word->at(5)] != '0' && f[word->at(8)] != ',' && f[word->at(9)] == 'M') {
+            gpsSensor->setExternalAltitude(std::strtof(f + word->at(8), nullptr));
         }
 
     }
