@@ -128,6 +128,7 @@ void PolarGauge::forceAllRedraw()
     _old_bow_idx = 0; // redraw bows
     _old_polar_sink = 0;
     _avg_climb = -1.f;
+    _prev_climb = -1.f; // the mean climb mark gets redrawn with the next update
 }
 
 void PolarGauge::setRange(float pos_range, float center_at, bool log)
@@ -196,44 +197,52 @@ void PolarGauge::drawPolarSink(mps_t a)
     drawBow(val, _old_polar_sink, 5, 1, BLUE);
 }
 
+// The mean climb mark on the vario scale
 void PolarGauge::drawAvgClimb() {
-    // average climb in [m/sec]
-    mps_t avclimb = average_climb.get();
+    constexpr mps_t AVG_CLIMB_MIN = 0.1f;    // below: no mark
+    constexpr mps_t AVG_CLIMB_NOISE = 0.05f; // ignore smaller changes
+
+    mps_t avclimb = average_climb.get(); // [m/sec]
+    bool has = avclimb >= AVG_CLIMB_MIN;
+    bool had = _avg_climb > .0f;
+    if ( !has && !had ) {
+        return;
+    }
+    // compare against the drawn value, so slow drifts add up and get drawn eventually
     mps_t delta = avclimb - _prev_climb;
-    _prev_climb = avclimb;
-
-    // ESP_LOGI(FNAME, "drawAVG: av=%.2f delta=%.2f", avclimb, delta);
-    if ( std::fabs(delta) < 0.08 || avclimb < 0.25) {
-        return; // that is just noise
-    }
-    float from = VarioUnit->apply(avclimb);
-    float downto = _avg_climb;
-    if ( delta < 0.f ) {
-        downto = from;
-        from = _avg_climb;
+    if ( has && had && std::fabs(delta) < AVG_CLIMB_NOISE ) {
+        return;
     }
 
-    if (_avg_climb > .0f) {
-        // old value was valid, draw the disc
+    float old_pos = _avg_climb;                        // [scale units]
+    float new_pos = has ? avclimb * _unit_fac : -1.f;  // [scale units]
+
+    if ( had ) {
+        // erase the old disc
         MYUCG->setColor(COLOR_BLACK);
-        drawDisc(_avg_climb);
-    } else {
-        // never set
-        downto = from;
+        drawDisc(old_pos);
     }
 
-    float T = mean_climb_major_change.get() / (core_climb_history.get() * 2);
-    if (delta > T) {
+    float T = mean_climb_major_change.get();
+    if ( had && delta >= T ) {
         _avg_climb_color = {COLOR_GREEN};
-    } else if (delta < -T) {
+    } else if ( had && delta <= -T ) {
         _avg_climb_color = {COLOR_RED};
     } else {
         _avg_climb_color = {COLOR_FIGURE};
     }
 
-    ESP_LOGI(FNAME, "draw scale from: %f to: %f", from, downto);
-    _avg_climb = VarioUnit->apply(avclimb);
-    drawScale(from, downto);
+    _avg_climb = new_pos;
+    _prev_climb = has ? avclimb : -1.f;
+
+    // repaint the scale under the old disc, and the new disc on top
+    if ( had && has ) {
+        drawScale(std::max(old_pos, new_pos), std::min(old_pos, new_pos));
+    } else if ( had ) {
+        drawScale(old_pos, old_pos);
+    } else {
+        drawScale(new_pos, new_pos);
+    }
 }
 
 void PolarGauge::drawFigure(float a)
