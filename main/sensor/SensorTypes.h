@@ -31,6 +31,7 @@ enum SensorType : uint8_t {
     BATTERY_VOLTAGE,
     AIRMASS,
     GEAR_SIGNAL,
+    CLIMB_STATS,
     MAX_SENSOR_ID
 };
 

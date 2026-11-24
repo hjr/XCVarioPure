@@ -503,7 +503,7 @@ SetupNG<float>  		bat_yellow_volt( "BAT_YELLOW_VOLT" , 12.0, USER_RST, SYNC_BIDI
 SetupNG<float>  		bat_full_volt( "BAT_FULL_VOLT", 12.8, USER_RST, SYNC_BIDIR, PERSISTENT, nullptr, quantity_t::QUANT_NONE, &bat_limits);
 SetupNG<second_t>  		core_climb_period( "CORE_CLIMB_P" , 60, USER_RST, SYNC_BIDIR, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(60, 300, 1));
 SetupNG<mps_t>  		core_climb_min( "CORE_CLIMB_MIN" , 0.5, USER_RST, SYNC_BIDIR, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(0.0, 2.0, 0.1));
-SetupNG<minute_t>  		core_climb_history( "CORE_CLIMB_HIST" , 45, USER_RST, SYNC_BIDIR, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(1, 300, 1));
+SetupNG<minute_t>  		core_climb_history( "CORE_CLIMB_HIST" , 45, USER_RST, SYNC_BIDIR, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(1, 180, 1));
 SetupNG<mps_t>  		mean_climb_major_change( "MEAN_CLMC", 0.5, USER_RST, SYNC_BIDIR, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(0.1, 5.0, 0.1));
 SetupNG<meter_t>  		airfield_elevation( "ELEVATION", NO_ELEVATION, FACTORY_RST, SYNC_BIDIR, PERSISTENT, nullptr, quantity_t::QUANT_ALT, LIMITS(NO_ELEVATION, 3000, 1));
 SetupNG<float>  		s2f_deadband( "DEADBAND_S2F", 10.0, USER_RST, SYNC_BIDIR, PERSISTENT, nullptr, quantity_t::QUANT_HSLEGACY, LIMITS(.0, 25.0, 1));

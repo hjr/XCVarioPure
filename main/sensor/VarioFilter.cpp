@@ -11,7 +11,6 @@
 #include "pressure/PressureSensor.h"
 #include "press_diff/AirspeedSensor.h"
 #include "S2F.h"
-#include "AverageVario.h"
 #include "setup/CruiseMode.h"
 #include "setup/SetupNG.h"
 #include "logdef.h"
@@ -152,6 +151,7 @@ void VarioFilter::postProcess()
         ESP_LOGI(FNAME, "Cruise mode changed, restarting running average");
     }
     if (CRMOD.isGross()) {
+        _gross_offset = 0.f;
         pushAndPublish(te_gr, now);  // damp
         te_gross.set(get());                 // use damped value
         te_netto.set(get() - _polar_sink);
@@ -163,6 +163,7 @@ void VarioFilter::postProcess()
             circle_sink = Speed2Fly.getCirclingSink() * tas_per_ias.get();
         }
 
+        _gross_offset = _polar_sink - circle_sink;
         pushAndPublish(te_ne + circle_sink, now);
         te_gross.set(get() - circle_sink + _polar_sink);
         te_netto.set(get());
@@ -172,5 +173,4 @@ void VarioFilter::postProcess()
     // speed to fly update on current vario
     s2f_ideal.set(Speed2Fly.calculate(te_ne, !CRMOD.getCMode()));
 
-    AverageVario::newSample(te_gr);
 }

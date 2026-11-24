@@ -328,21 +328,21 @@ void vario_menu_create_damping(SetupMenu *top) {
 
 static void vario_menu_create_meanclimb(SetupMenu* top) {
     SetupMenuValFloat* vccm = new SetupMenuValFloat("Minimum climb", "", nullptr, &core_climb_min, RST_NONE, false);
-    vccm->setHelp("Minimum climb rate that goes into the statistics");
+    vccm->setHelp("Minimum gross climb rate that counts as thermalling and goes into the statistics");
     top->addEntry(vccm);
 
     SetupMenuValFloat* vcch = new SetupMenuValFloat("Avg. Period", "min", nullptr, &core_climb_history, RST_NONE, false);
-    vcch->setHelp("Duration in minutes over which mean climb rate is computed: Default: last 3 thermals or 45 min");
+    vcch->setHelp("Time window in minutes over which the mean climb rate is computed. Default: 45 min, about the last 3 thermals");
     top->addEntry(vcch);
 
 #ifdef DEBUG_AND_TEST
     SetupMenuValFloat* vcp = new SetupMenuValFloat("Duty Cycle", "sec", nullptr, &core_climb_period, RST_NONE, false);
-    vcp->setHelp("Cycle: number of seconds when mean climb value is recalculated, default is every 60 seconds");
+    vcp->setHelp("Statistics bin length in seconds, the mean climb value is recalculated once per bin. Default: 60 seconds. A change restarts the statistics");
     top->addEntry(vcp);
 #endif
 
     SetupMenuValFloat* vcmc = new SetupMenuValFloat("Major Change", "m/s", nullptr, &mean_climb_major_change, RST_NONE, false);
-    vcmc->setHelp("Change in mean climb during the last minute, that results in a green/red indication color");
+    vcmc->setHelp("Change of the mean climb from one update to the next, that results in a green/red indication color");
     top->addEntry(vcmc);
 }
 

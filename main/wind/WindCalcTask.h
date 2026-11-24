@@ -23,7 +23,6 @@ struct CalkTaskJob
             CALK_TASK_EVENT_NEW_GPSPOSE,
             CALK_TASK_EVENT_NUMSAT,
             CALK_TASK_SEND_SENS,
-            CALK_TASK_THERMAL_STATS,
             CALK_TASK_TOY_FEED,
             CALK_1S_CACHE
     };

@@ -16,6 +16,7 @@
 #include "sensor/imu/FlightAHRS.h"
 #include "sensor/SensorMgr.h"
 #include "sensor/VarioFilter.h"
+#include "sensor/ClimbStats.h"
 #include "sensor/gps/GpsVSensor.h"
 #include "sensor/mag/MagVSensor.h"
 #include "comm/OneWireBus.h"
@@ -241,13 +242,6 @@ void readSensors(void *pvParameters)
                 CalkTaskJob job(CalkTaskJob::CALK_TASK_TOY_FEED);
                 xQueueSend(BackgroundTaskQueue, &job, 0);
             }
-        }
-
-        // todo convert to a sensor and reimplement
-        // low rate update of long term climb average
-        if ( ! (count % (((int)core_climb_period.get()) * 20)) ) {
-            CalkTaskJob job(CalkTaskJob::CALK_TASK_THERMAL_STATS);
-            xQueueSend(BackgroundTaskQueue, &job, 0);
         }
 
         // 2Hz tasks
@@ -982,6 +976,11 @@ void system_startup(void *args){
     if ( (baroSensor && teSensor && asSensor) || SetupCommon::isClient() ) {
         varioSensor->setup();
         SensorRegistry::registerSensor(varioSensor);
+
+        // long term thermal statistics on top of the vario history
+        climbStats = new ClimbStats();
+        climbStats->setup();
+        SensorRegistry::registerSensor(climbStats);
     }
 
     // apply a none default alt_select

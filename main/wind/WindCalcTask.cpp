@@ -12,7 +12,6 @@
 #include "driver/gpio/S2fSwitch.h"
 #include "Atmosphere.h"
 #include "protocol/NMEA.h"
-#include "AverageVario.h"
 #include "setup/SetupCommon.h"
 #include "setup/SetupNG.h"
 #include "logdefnone.h"
@@ -65,9 +64,6 @@ static void wind_calc_task(void *arg)
                 if ( ToyNmeaPrtcl ) {
                     ToyNmeaPrtcl->sendSens();
                 }
-                break;
-            case CalkTaskJob::CALK_TASK_THERMAL_STATS:
-                AverageVario::recalcAvgClimb();
                 break;
             case CalkTaskJob::CALK_TASK_TOY_FEED:
             {

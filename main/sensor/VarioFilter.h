@@ -24,6 +24,15 @@ class VarioFilter final : public SensorTP<mps_t> {
     void prepareForSimJump() { _prepare_jump = 3; } // prepare for a disruptive jump in altitude in simulation mode
     mps_t getAvgVario() const { return _avg_vario.get(); }
     float getPolarSink() const { return _polar_sink; }
+    // Add to the indicator (history) value to get the gross climb.
+    // HACK: the history records whatever the gauge shows (gross, netto or super netto, as per CRMOD),
+    // so readers needing gross climb (ClimbStats, ThermalAssist) have to compensate with this offset,
+    // which is only the latest one and not the one of each history sample.
+    // TODO: record a fixed gross history instead and derive the shown value from it:
+    //   needle te_vario = gross + display offset (0 | -polar_sink | -polar_sink + circle_sink),
+    //   average figure  = getRunningAvg() + low pass filtered display offset (no restart on mode change),
+    //   then drop this getter and use getAVG() directly in ClimbStats.
+    mps_t getGrossOffset() const { return _gross_offset; }
     bool gotPositive() const { return _got_positive; }
 
    private:
@@ -38,6 +47,7 @@ class VarioFilter final : public SensorTP<mps_t> {
     LowPassFilterT<mps_t> _avg_vario;
     float _eCompAdjust = 1.f;
     mps_t _polar_sink = 0.f;
+    mps_t _gross_offset = 0.f;
     uint16_t count = 0;
     int8_t _prepare_jump = 0;
     int8_t _got_positive : 1 = 0;
