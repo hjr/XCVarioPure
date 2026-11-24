@@ -30,6 +30,7 @@ enum SensorType : uint8_t {
     FLAP_POSITION,
     BATTERY_VOLTAGE,
     AIRMASS,
+    GEAR_SIGNAL,
     MAX_SENSOR_ID
 };
 

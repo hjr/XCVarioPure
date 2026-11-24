@@ -12,7 +12,7 @@
 #include "logdef.h"
 
 #ifndef ALL_LOGS_DISABLED
-const char *idmemo[] = { "", "Tmp", "dP", "sP", "teP", "Pos", "Alt", "virtual", "Var", "Mag", "Acc", "Gyr", "HUM", "FLP", "Bat", "AirM" };
+const char *idmemo[] = { "", "Tmp", "dP", "sP", "teP", "Pos", "Alt", "virtual", "Var", "Mag", "Acc", "Gyr", "HUM", "FLP", "Bat", "AirM", "Gear" };
 #endif
 
 // queue changes
@@ -178,9 +178,9 @@ bool SensorRegistry::addSensor(SensorBase* s)
             (uint16_t)(s->getProcessInterval() / SENSOR_LOOP_ATOMIC_CYCLE)
         }; // store dutycycle in 50ms units
 
-            ESP_LOGW(FNAME, "%d. %s%s sensor%s (%s) registered with dutycycle %dmsec and postproccycle %dmsec", 
+            ESP_LOGW(FNAME, "%d. %s%s sensor%s (%s) registered with dutycycle %dmsec and postproccycle %dmsec, prio %d", 
                 numSensors, (id.isLocalSensor() ? "internal," : ""), idmemo[id.type], (id.isEssentialSensor() ? "*" : ""), 
-                s->name(), e->dutycycle * SENSOR_LOOP_ATOMIC_CYCLE, e->postproccycle * SENSOR_LOOP_ATOMIC_CYCLE);
+                s->name(), e->dutycycle * SENSOR_LOOP_ATOMIC_CYCLE, e->postproccycle * SENSOR_LOOP_ATOMIC_CYCLE, id.prio);
         // increment numSensors to account for the new sensor
         numSensors++;
 #ifdef DEBUG_AND_TEST

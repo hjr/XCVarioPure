@@ -73,7 +73,6 @@ enum e_volatility { VOLATILE, PERSISTENT };  // stored in RAM only, or additiona
 enum e_altimeter_source { ALT_TE_SENSOR, ALT_BARO_SENSOR, ALT_EXTERNAL };
 typedef enum e_s2f_arrow_color { AC_WHITE_WHITE, AC_BLUE_BLUE, AC_GREEN_RED } e_s2f_arrow_color_t;
 typedef enum e_display_orientation { DISPLAY_NORMAL, DISPLAY_TOPDOWN, DISPLAY_NINETY } e_display_orientation_t;
-typedef enum e_gear_warning_io { GW_OFF, GW_FLAP_SENSOR, GW_S2_RS232_RX, GW_FLAP_SENSOR_INV, GW_S2_RS232_RX_INV, GW_EXTERNAL }  e_gear_warning_io_t;
 typedef enum e_data_mon_mode { MON_MOD_ASCII, MON_MOD_BINARY } e_data_mon_mode_t;
 typedef enum e_hardware_rev {
     HW_UNKNOWN = 0,
@@ -321,9 +320,6 @@ extern SetupNG<int>		    rotary_inc;
 extern SetupNG<int>		    student_mode;
 extern SetupNG<float>		password;
 extern SetupNG<int>		    ahrs_rpyl_nmea;
-extern SetupNG<float>		ahrs_gyro_factor;
-extern SetupNG<float>		ahrs_min_gyro_factor;
-extern SetupNG<float>		ahrs_dynamic_factor;
 extern SetupNG<dps_t>       gyro_gating;
 extern SetupNG<int>		    s2f_switch_type;
 extern SetupNG<int>		    hardwareRevision;
@@ -406,7 +402,6 @@ extern SetupNG<int> 		vario_upper_gauge;
 extern SetupNG<int> 		vario_lower_gauge;
 extern SetupNG<int> 		vario_mc_gauge;
 // extern SetupNG<bitfield_compass> 	calibration_bits;
-extern SetupNG<int> 		gear_warning;
 extern SetupNG<t_tenchar_id>  custom_wireless_id;
 extern SetupNG<int> 		logging;
 extern SetupNG<float>      	display_clock_adj;
@@ -427,6 +422,7 @@ extern SetupNG<int> 		peer_caps;
 extern SetupNG<DeviceNVS>	anemoi_devsetup;
 extern SetupNG<DeviceNVS>	flarm_devsetup;
 extern SetupNG<DeviceNVS>	flp_sens_devsetup;
+extern SetupNG<DeviceNVS>	gear_sens_devsetup;
 extern SetupNG<DeviceNVS>	master_devsetup;
 extern SetupNG<DeviceNVS>	second_devsetup;
 extern SetupNG<DeviceNVS>	magleg_devsetup;

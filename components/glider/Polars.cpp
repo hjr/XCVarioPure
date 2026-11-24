@@ -32,14 +32,16 @@ struct compressed_polar {
 	uint8_t  max_ballast;	// 2x kg
 	uint16_t wingarea;		// 1/100x mxm
 	uint8_t  flags;         // bit 0 = 0x01 -> has flaps
+    constexpr compressed_polar(uint16_t idx = 0, std::string_view t = "", uint16_t wl = 0, uint8_t s1 = 0, int16_t si1 = 0, uint8_t s2 = 0, int16_t si2 = 0, uint8_t s3 = 0, int16_t si3 = 0, uint8_t mb = 0, uint16_t wa = 0, uint8_t f = 0)
+        : index(idx), type(t), wingload(wl), speed1(s1), sink1(si1), speed2(s2), sink2(si2), speed3(s3), sink3(si3), max_ballast(mb), wingarea(wa), flags(f) {}
 };
 
-const flap_table flap_default_arr[] = {
+constexpr flap_table flap_default_arr[] = {
 #include "FlapTable.txt"
 };
 
 
-const compressed_polar polars_default_arr[] = {
+constexpr compressed_polar polars_default_arr[] = {
 #include <PackedPolarTable.inc>
 };
 

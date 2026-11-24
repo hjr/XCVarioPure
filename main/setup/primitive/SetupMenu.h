@@ -59,8 +59,6 @@ public:
 	void press() override;
 	void longPress() override;
 
-	static gpio_num_t getGearWarningIO();
-	static void initGearWarning();
 	static int switch_alt_source(SetupMenuSelect* p);
 
 	static SetupMenu* createTopSetup();

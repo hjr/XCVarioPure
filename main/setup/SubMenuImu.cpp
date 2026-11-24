@@ -41,9 +41,6 @@ static int gload_reset(SetupMenuSelect *p) {
 
 static int set_ahrs_defaults(SetupMenuSelect *p) {
 	if (p->getSelect() == 1) {
-		ahrs_gyro_factor.set(ahrs_gyro_factor.getDefault());
-		ahrs_min_gyro_factor.set(ahrs_min_gyro_factor.getDefault());
-		ahrs_dynamic_factor.set(ahrs_dynamic_factor.getDefault());
 		gyro_gating.set(gyro_gating.getDefault());
 	}
 	p->setSelect(0);
@@ -494,21 +491,6 @@ void system_menu_create_hardware_ahrs_parameter(SetupMenu *top) {
     lever_arm->setHelp(
         "Distance from XCVario back to the CG of the glider. Used to compensate accelerometer readings.");
     top->addEntry(lever_arm);
-
-    SetupMenuValFloat *ahrsgf = new SetupMenuValFloat("Gyro Max Trust", "x", nullptr, &ahrs_gyro_factor, RST_NONE, false);
-	ahrsgf->setPrecision(0);
-	ahrsgf->setHelp("Maximum Gyro trust factor in artifical horizon");
-	top->addEntry(ahrsgf);
-
-	SetupMenuValFloat *ahrsgfm = new SetupMenuValFloat("Gyro Min Trust", "x", nullptr, &ahrs_min_gyro_factor, RST_NONE, false);
-	ahrsgfm->setPrecision(0);
-	ahrsgfm->setHelp("Minimum Gyro trust factor in artifical horizon");
-	top->addEntry(ahrsgfm);
-
-	SetupMenuValFloat *ahrsdgf = new SetupMenuValFloat("Gyro Dynamics", "", nullptr, &ahrs_dynamic_factor, RST_NONE, false);
-	ahrsdgf->setHelp(
-			"Gyro dynamics factor, higher value trusts gyro more when load factor is different from one");
-	top->addEntry(ahrsdgf);
 
 	SetupMenuValFloat *gyrog = new SetupMenuValFloat("Gyro Gating", "°", nullptr, &gyro_gating, RST_NONE, false);
 	gyrog->setHelp("Minimum accepted gyro rate in degree per second");

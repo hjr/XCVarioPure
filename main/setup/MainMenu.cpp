@@ -134,11 +134,6 @@ static int tube_swap(SetupMenuSelect* p) {
     return 0;
 }
 
-int config_gear_warning(SetupMenuSelect *p) {
-	SetupMenu::initGearWarning();
-	return 0;
-}
-
 int do_display_test(SetupAction* p) {
     MYUCG->setColor(0, 0, 0);
     MYUCG->drawBox(0, 0, DISPLAY_W, DISPLAY_H);
@@ -875,17 +870,6 @@ static void system_menu_create_hardware(SetupMenu *top) { // dynamic!
         ageda->addEntry("Enable", AUDIO_ON);
         top->addEntry(ageda);
 
-        // Todo move into connected devices scheme
-        SetupMenuSelect *gear = new SetupMenuSelect("Gear Warn", RST_NONE, config_gear_warning, &gear_warning);
-		top->addEntry(gear);
-		gear->setHelp("Enable gear warning on S2 flap sensor or serial RS232 pin (pos. or neg. signal) or by external command");
-		gear->addEntry("Disable");
-		gear->addEntry("S2 Flap positive"); // A positive signal, high signal or > 2V will start alarm
-		gear->addEntry("S2 RS232 positive");
-		gear->addEntry("S2 Flap negative"); // A negative signal, low signal or < 1V will start alarm
-		gear->addEntry("S2 RS232 negative");
-		gear->addEntry("External");  // A $g,w<n>*CS command from an external device
-
         if ( SetupCommon::isMaster() ) {
             // Airspeed
             SetupMenu* velocity = new SetupMenu("Airspeed", system_menu_create_airspeed);
@@ -1032,34 +1016,6 @@ void setup_create_root(SetupMenu *top) {
 // Central menu creation
 ////////////////////////////////////
 
-
-gpio_num_t SetupMenu::getGearWarningIO() {
-	gpio_num_t io = GPIO_NUM_0;
-	if (gear_warning.get() == GW_FLAP_SENSOR
-			|| gear_warning.get() == GW_FLAP_SENSOR_INV) {
-		io = GPIO_NUM_34;
-	} else if (gear_warning.get() == GW_S2_RS232_RX
-			|| gear_warning.get() == GW_S2_RS232_RX_INV) {
-		io = GPIO_NUM_18;
-	}
-	return io;
-}
-
-void SetupMenu::initGearWarning() {
-	gpio_num_t io = SetupMenu::getGearWarningIO();
-	if (io != GPIO_NUM_0) {
-		gpio_reset_pin(io);
-		gpio_set_direction(io, GPIO_MODE_INPUT);
-		gpio_set_pull_mode(io, GPIO_PULLUP_ONLY);
-		gpio_pullup_en(io);
-        // add gear warn to my caps
-        XcvCaps::addToMine(XcvCaps::GEARSENS_CAP);
-	}
-    else {
-        XcvCaps::removeFromMine(XcvCaps::GEARSENS_CAP);
-    }
-	ESP_LOGI(FNAME,"initGearWarning: IO: %d", io );
-}
 
 int SetupMenu::switch_alt_source(SetupMenuSelect* p) {
     if (alt_select.get() == ALT_BARO_SENSOR) {

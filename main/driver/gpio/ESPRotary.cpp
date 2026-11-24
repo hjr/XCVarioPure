@@ -30,6 +30,10 @@ ESPRotary *Rotary = nullptr;
 static std::vector<RotaryReceiver *> receiverstack;
 static SemaphoreMutex stack_mutex;
 
+// Shared between the 10msec button poll (task) and the PCNT ISR
+static volatile bool s_button_down = false;       // debounced button state
+static volatile bool s_rot_while_pressed = false; // ISR saw a rotation while the button was down
+
 // clock tick timer (task context)
 bool ESPRotary::tick()
 {
@@ -38,6 +42,9 @@ bool ESPRotary::tick()
 	bool buttonRead = gpio_get_level(_sw) == 0; // button pressed (active LOW)
 	debounceCount = (buttonRead == lastButtonRead) ? (debounceCount+1) : 0;
 	lastButtonRead = buttonRead;
+	if ( holdCount > 0 && s_rot_while_pressed ) {
+		holdCount = -1; // press & turn gesture: no short/long press anymore, only a "release"
+	}
 	if ( holdCount > 0 ) {
 		holdCount++; // hold timer
 		if ( holdCount > lp_duration ) {
@@ -53,6 +60,7 @@ bool ESPRotary::tick()
 	// A valid edge detected
 	state = buttonRead;
 	if (state) {
+		s_rot_while_pressed = false;
 		holdCount = 1; // start counting
 	}
 	else { // Button released
@@ -65,6 +73,7 @@ bool ESPRotary::tick()
 		xQueueSend(uiEventQueue, &gotEvent, 0);
 		holdCount = 0; // stop counting
 	}
+	s_button_down = state;
 
 	return false;
 }
@@ -97,7 +106,11 @@ static bool IRAM_ATTR pcnt_event_handler(pcnt_unit_handle_t unit, const pcnt_wat
     pulse_time = my_time;
 #endif
 	//else suppress all of a sudden changes in rotational direction
-	int evt = RotaryEvent(step * wp_value).raw;
+	bool pressed = s_button_down;
+	if ( pressed ) {
+		s_rot_while_pressed = true;
+	}
+	int evt = RotaryEvent(step * wp_value, pressed).raw;
 	BaseType_t high_task_wakeup = pdFALSE;
 	xQueueSendFromISR((QueueHandle_t)user_ctx, &evt, &high_task_wakeup);
 	lastPulseTime = currentTime;
@@ -233,14 +246,18 @@ void ESPRotary::updateIncrement(int inc)
 	begin();
 }
 
-void ESPRotary::sendRot( int diff ) const
+void ESPRotary::sendRot( int diff, bool pressed ) const
 {
 	// ESP_LOGI(FNAME,"Rotary action");
 	if (!receiverstack.empty()) {
 		auto obs = receiverstack.back();
 		float step = pow(obs->getRotDynamic(), abs(diff)-1) * sign(diff);
 		ESP_LOGI(FNAME, "Rotation step %.2f, time %u us", step, (unsigned)pulse_time);
-		obs->rot( int(step) );
+		if ( pressed ) {
+			obs->pressedRot( int(step) );
+		} else {
+			obs->rot( int(step) );
+		}
 	}
 }
 

@@ -24,6 +24,7 @@
 #include "comm/WifiApSta.h"
 #include "protocol/NMEA.h"
 #include "sensor/SensorBase.h"
+#include "sensor/adc/GearSens.h"
 #include "sensor.h"
 #include "logdefnone.h"
 
@@ -53,6 +54,31 @@ static int getFlvEnumFromProto(ProtocolType ptyp)
 //
 // Device special menus
 //
+static int gear_logic_act(SetupMenuSelect *p)
+{
+    bool inv = p->getSelect() != 0;
+    ESP_LOGI(FNAME, "Gear signal inverted: %d", inv);
+    Device *geardev = DEVMAN->getDevice(GEAR_SENS_DEV);
+    if ( gearSensor && geardev ) {
+        gearSensor->setInverted(inv);
+        geardev->_protos = {(uint8_t)inv};
+        const DeviceAttributes &da = DEVMAN->getDevAttr(GEAR_SENS_DEV);
+        if ( da.nvsetup ) {
+            da.nvsetup->set(geardev->getNvsData(), false, false);
+        }
+    }
+    return 0;
+}
+static void create_menu_gear_dev(SetupMenu *top)
+{
+    SetupMenuSelect *logic = new SetupMenuSelect("Signal Logic", RST_NONE, gear_logic_act);
+    logic->addEntry("Active high"); // a high signal (> 2V) starts the alarm
+    logic->addEntry("Active low");  // a low signal (< 1V) starts the alarm
+    logic->setHelp("Signal level on S2 pin 6 that raises the gear alarm");
+    logic->setSelect((gearSensor && gearSensor->isInverted()) ? 1 : 0);
+    top->addEntry(logic);
+}
+
 static SetupMenu::SetupMenuCreator_t get_dev_menu_creator(DeviceId did)
 {
     if ( did == MAGLEG_DEV ) {
@@ -60,6 +86,9 @@ static SetupMenu::SetupMenuCreator_t get_dev_menu_creator(DeviceId did)
     }
     else if ( did == FLAP_SENS_DEV ) {
         return create_menu_flap_dev;
+    }
+    else if ( did == GEAR_SENS_DEV ) {
+        return create_menu_gear_dev;
     }
     return nullptr;
 }

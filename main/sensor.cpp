@@ -6,6 +6,7 @@
 #include "sensor/SensorTypes.h"
 #include "sensor/adc/BatteryVoltage.h"
 #include "sensor/adc/FlapSens.h"
+#include "sensor/adc/GearSens.h"
 #include "sensor/pressure/PressureSensor.h"
 #include "sensor/pressure/PSclient.h"
 #include "sensor/press_diff/AirspeedSensor.h"
@@ -138,18 +139,10 @@ static void checkWarnings()
             MBOX->popMessage();
         }
     }
-    // Gear Warning - fixme should not be part of the sensor loop
-    if (gear_warning.get()) {
-        int gw = 0;
+    // Gear Warning, from the S2 pin 6 gear sensor device, or an external command
+    {
         static uint8_t mbox_id = 0;
-        if (gear_warning.get() == GW_EXTERNAL) {
-            gw = gflags.gear_warn_external;
-        } else {
-            gw = gpio_get_level(SetupMenu::getGearWarningIO());
-            if (gear_warning.get() == GW_FLAP_SENSOR_INV || gear_warning.get() == GW_S2_RS232_RX_INV) {
-                gw = !gw;
-            }
-        }
+        bool gw = gflags.gear_warn_external || (gearSensor && gearSensor->isAlarm());
         if (gw) {
             if (!gear_warning_active && !stall_warning_active) {
                 // never repeat sound, only show message until condition is gone
@@ -317,14 +310,14 @@ void readSensors(void *pvParameters)
 
 #ifdef DEBUG_AND_TEST
         if ( !(count % 600) ) {
-            ESP_LOGI(FNAME, "Free Heap: %d bytes", heap_caps_get_free_size(MALLOC_CAP_8BIT));
+            std::printf("%s: Free Heap: %d bytes\n", FNAME, heap_caps_get_free_size(MALLOC_CAP_8BIT));
             if (uxTaskGetStackHighWaterMark(NULL) < 512)
             {
-                ESP_LOGW(FNAME, "Warning %s task stack low: %d bytes", pcTaskGetName(NULL), uxTaskGetStackHighWaterMark(NULL));
+                std::printf("Warning %s task stack low: %d bytes\n", pcTaskGetName(NULL), uxTaskGetStackHighWaterMark(NULL));
             }
             if (heap_caps_get_free_size(MALLOC_CAP_8BIT) < 20000)
             {
-                ESP_LOGW(FNAME, "Warning heap_caps_get_free_size getting low: %d", heap_caps_get_free_size(MALLOC_CAP_8BIT));
+                std::printf("Warning heap_caps_get_free_size getting low: %d\n", heap_caps_get_free_size(MALLOC_CAP_8BIT));
             }
             extern MessagePool MP;
             ESP_LOGI(FNAME, "MPool in-use:%d, acq-fails: %d", MP.nrUsed(), MP.nrAcqFails());
@@ -430,9 +423,6 @@ void system_startup(void *args){
     rot_default.set(rot_default.getDefault(), false, false);
     display_variant.set(DISPLAY_WHITE_ON_BLACK, false, false);
     imu_leverarm.set(0.f, false, false);
-    ahrs_gyro_factor.set(ahrs_gyro_factor.getDefault(), false, false);
-    ahrs_min_gyro_factor.set(ahrs_min_gyro_factor.getDefault(), false, false);
-    ahrs_dynamic_factor.set(ahrs_dynamic_factor.getDefault(), false, false);
     gyro_gating.set(gyro_gating.getDefault(), false, false);
     imu_reference.set(imu_reference.getDefault(), false, false);
     core_climb_period.set(core_climb_period.getDefault(), false, false);
@@ -583,6 +573,15 @@ void system_startup(void *args){
             SetupCommon::eraseEntry("FLAP_SENS");
             if (fval != 0) {
                 DEVMAN->addDevice(FLAP_SENS_DEV, NO_ONE, FlapSens::UNIT1_CHANNEL6, 0, S2_PIN6, true);
+            }
+        }
+        // Check on abandonned GEARWA nvs variable (remove in 2028)
+        // old enum: GW_OFF, GW_FLAP_SENSOR, GW_S2_RS232_RX, GW_FLAP_SENSOR_INV, GW_S2_RS232_RX_INV, GW_EXTERNAL
+        if (SetupCommon::getOldInt("GEARWA", fval)) {
+            ESP_LOGI(FNAME, "Found old GEARWA var: %d", fval);
+            SetupCommon::eraseEntry("GEARWA");
+            if ((fval == 1 || fval == 3) && !DEVMAN->isIntf(S2_PIN6)) {
+                DEVMAN->addDevice(GEAR_SENS_DEV, NO_ONE, (fval == 3) ? 1 : 0, 0, S2_PIN6, true);
             }
         }
     }
@@ -1001,10 +1000,6 @@ void system_startup(void *args){
     if (Speed2Fly.hasFlaps()) {
         Flap::theFlap();  // check on FLAP pointer further on
     }
-    // if (hardwareRevision.get() != XCVARIO_20) {
-    // This pin has no internal pull-up resistor !!
-    //     gpio_pullup_en(GPIO_NUM_34);  // fixme gear warning input
-    // }
 
     // enter normal operation
     xTaskCreate(&readSensors, "readSensors", 5120, NULL, 12, &ReadSensorsLoop);
