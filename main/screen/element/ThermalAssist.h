@@ -37,10 +37,11 @@ public:
 
 private:
     ThermalAssist(PolarGauge &g);
-    void drawThermal(float th_strength, int idir);
+    int slotDir(int i) const;
+    void drawThermal(float th_strength, int idir, float cg_level = -1.f);
     void drawGlider(Point center);
     // int maxClimbIndex();
-    Point getThermalCG() const;
+    int calcThermalCG(const float ths[], float &level) const;
     float getTop8Norm() const;
 
     const PolarGauge &_gauge;

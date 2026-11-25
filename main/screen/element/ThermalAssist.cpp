@@ -25,6 +25,12 @@
 constexpr rad_t CA_STEP = Units::deg_to_rad(360/CA_NUM_DIRS); // 15
 constexpr rad_t CA_STEP_2 = CA_STEP/2.f;  // 7.5
 constexpr int16_t MAX_DISK_RAD = 7;
+constexpr int16_t CG_MIN_DISK_RAD = 2;   // the thermal CG mark, smallest
+constexpr float CG_MIN_WEIGHT = 2.f;      // min. sum of normalized strengths to show a CG
+constexpr float CG_MIN_ECC = 0.15f;       // below: evenly spread, well centered, no mark
+constexpr float CG_FULL_ECC = 0.6f;       // from here on: max. mark size and full red
+constexpr uint32_t CG_MAX_AGE_MS = 40000; // slots older than this do not count as observed
+constexpr int CG_MIN_SLOTS = CA_NUM_DIRS * 3 / 4; // observed part of the circle to show a CG
 
 extern AdaptUGC *MYUCG;
 ThermalAssist  *thrmAssist = nullptr;
@@ -81,22 +87,29 @@ ThermalAssist::ThermalAssist(PolarGauge &g) :
     _th_norm.reset(std::max(1.f, MC.get()));
 }
 
+// display slot (0 = glider position) to the drawing direction on the gauge [CA_STEP]
+int ThermalAssist::slotDir(int i) const {
+    if (!_glider_on_top) {
+        if (_cdir == (uint8_t)circdir_t::circlRight) {
+            return (i + 3 * CA_NUM_DIRS / 4) % CA_NUM_DIRS;  // move reference to the left
+        } else if (_cdir == (uint8_t)circdir_t::circlLeft) {
+            return (i + CA_NUM_DIRS / 4) % CA_NUM_DIRS;  // move reference to the right
+        }
+    }
+    return i;
+}
+
 // th_strength normalized to 0 .. 1
-void ThermalAssist::drawThermal(float th_strength, int idir) {
+// cg_level: the thermal's center of gravity points to this spot, with a CG offset level 0..1
+//           (white and small .. red and filling the spot), < 0 for no mark
+void ThermalAssist::drawThermal(float th_strength, int idir, float cg_level) {
     static const uint8_t hem_flag[4] = {1, 8, 2, 4};
     // ESP_LOGI(FNAME,"drawThermal, th_strength: %.1f, idir: %d", th_strength, idir);
     if (idir >= CA_NUM_DIRS || idir < 0) {
         ESP_LOGE(FNAME, "index out of range: %d", idir);
         return;
     }
-    int ddir = idir;
-    if (!_glider_on_top) {
-        if (_cdir == (uint8_t)circdir_t::circlRight) {
-            ddir = (idir + 3 * CA_NUM_DIRS / 4) % CA_NUM_DIRS;  // move reference to the left
-        } else if (_cdir == (uint8_t)circdir_t::circlLeft) {
-            ddir = (idir + CA_NUM_DIRS / 4) % CA_NUM_DIRS;  // move reference to the right
-        }
-    }
+    int ddir = slotDir(idir);
     Point center = {(int16_t)(fast_sin_rad(ddir * CA_STEP) * _gauge._radius), (int16_t)(fast_cos_rad(ddir * CA_STEP) * _gauge._radius)};
     uint8_t hem = (center.y < 0) ? 2 : 0;
     hem |= (center.x < 0);
@@ -112,6 +125,20 @@ void ThermalAssist::drawThermal(float th_strength, int idir) {
         // MYUCG->drawFrame(center.x-MAX_DISK_RAD, center.y-MAX_DISK_RAD, 2*MAX_DISK_RAD, 2*MAX_DISK_RAD-1);
         int16_t radius = std::clamp((int16_t)fast_iroundf_positive(th_strength * MAX_DISK_RAD), (int16_t)1, MAX_DISK_RAD);
         MYUCG->drawDisc(center.x, center.y, radius, UCG_DRAW_ALL);
+        if ( cg_level >= 0.f ) {
+            // piggy-back the CG mark, the buffered box wipes it again with the next redraw
+            // grows with the CG offset up to the full spot size, dominating the green spot,
+            // and turns from white to red
+            int16_t cg_rad = CG_MIN_DISK_RAD + fast_iroundf_positive(cg_level * (MAX_DISK_RAD - CG_MIN_DISK_RAD));
+            const ucg_color_t white = { COLOR_WHITE }; // runtime display variant
+            constexpr ucg_color_t red = { COLOR_RED };
+            ucg_color_t mc;
+            for (int k = 0; k < 3; k++) {
+                mc.color[k] = (uint8_t)(white.color[k] + (red.color[k] - white.color[k]) * cg_level);
+            }
+            MYUCG->setColor(mc.color[0], mc.color[1], mc.color[2]);
+            MYUCG->drawDisc(center.x, center.y, cg_rad, UCG_DRAW_ALL);
+        }
         if ( _last_radius > 5 ) {
             // fill potential bbox overlap with the previous disc
             MYUCG->drawDisc(_last_center.x, _last_center.y, _last_radius, hem_flag[hem]);
@@ -177,24 +204,41 @@ void ThermalAssist::drawGlider(Point center) {
 //     return max_index;
 // }
 
-Point ThermalAssist::getThermalCG() const {
-    float sx = 0.0f, sy = 0.0f;
-    float sum = 0.f;
+// Center of gravity of the observed climb around the circle.
+// ths: normalized strengths per display slot (0 = glider position).
+// The CG is the strength weighted mean of the slot direction vectors. Its length (0..1) tells
+// how much the climb concentrates on one side, its direction where to shift the circle.
+// Returns the display slot the CG points to, or -1 for none (not enough data, or well centered),
+// and in level the CG offset scaled to 0..1 for the mark.
+int ThermalAssist::calcThermalCG(const float ths[], float &level) const {
+    uint32_t now = Clock::getMillis();
+    float sx = 0.f, sy = 0.f, sum = 0.f;
+    int observed = 0;
 
-    for (int i = 0; i < 24; i++) {
-        float w = thermals[i].strength;
+    for (int i = 0; i < CA_NUM_DIRS; i++) {
+        const Thermal &th = thermals[(i + _idir) % CA_NUM_DIRS];
+        if (th.timestamp == 0 || now - th.timestamp > CG_MAX_AGE_MS) {
+            continue; // nothing (recent) observed in this direction
+        }
+        observed++;
+        float w = std::clamp(ths[i], 0.f, 1.f);
+        rad_t dir = i * CA_STEP; // slot frame, the display rotation applies equally to all slots
+        sx += w * fast_sin_rad(dir);
+        sy += w * fast_cos_rad(dir);
         sum += w;
-        sx += w * fast_cos_idx(i * 360/CA_NUM_DIRS*2);
-        sy += w * fast_sin_idx(i * 360/CA_NUM_DIRS*2);
     }
-
-    float magnitude = std::sqrt(sx*sx + sy*sy);
-    float eccentricity = magnitude / sum;  // 0.0 .. ~1.0
-    float roundness = 1.0f - eccentricity;
-
-
-    // float angle = std::atan2(sy, sx);
-    return Point(sx, sy);
+    if (observed < CG_MIN_SLOTS || sum < CG_MIN_WEIGHT) {
+        return -1;
+    }
+    float ecc = std::sqrt(sx * sx + sy * sy) / sum;
+    if (ecc < CG_MIN_ECC) {
+        return -1;
+    }
+    level = std::clamp((ecc - CG_MIN_ECC) / (CG_FULL_ECC - CG_MIN_ECC), 0.f, 1.f);
+    int slot = fast_iroundf(std::atan2(sx, sy) / CA_STEP);
+    slot = (slot + CA_NUM_DIRS) % CA_NUM_DIRS;
+    // ESP_LOGI(FNAME, "thermal CG: ecc %.2f slot %d, observed %d, weight %.1f", ecc, slot, observed, sum);
+    return slot;
 }
 
 
@@ -236,12 +280,18 @@ void ThermalAssist::draw() {
     _th_norm.filter(std::max(th_top - th_min, 1.f));
 
     // ESP_LOGI(FNAME,"TA draw, peak norm: %.2f, %.2f, %.2f", th_min, th_top, _th_norm.get());
+    float ths[CA_NUM_DIRS];
     for (int i = 0; i < CA_NUM_DIRS; i++) {
         int d = (i + _idir) % CA_NUM_DIRS;
-        float ths = std::min((thermals[d].getStrength() - th_min) / _th_norm.get(), 1.f); // normalized strength 0..1
-
+        ths[i] = std::min((thermals[d].getStrength() - th_min) / _th_norm.get(), 1.f); // normalized strength 0..1
         // ESP_LOGI(FNAME,"dir:%d TE:%.1f", d, thermals[d].strength );
-        drawThermal(ths, i);
+    }
+    // the spot the thermal CG points to, while circling
+    float cg_level = 0.f;
+    int cg_slot = (_confidence.get() > 0.7f) ? calcThermalCG(ths, cg_level) : -1;
+
+    for (int i = 0; i < CA_NUM_DIRS; i++) {
+        drawThermal(ths[i], i, (i == cg_slot) ? cg_level : -1.f);
     }
 }
 
