@@ -625,6 +625,7 @@ SetupNG<int> 			menu_long_press("MENU_LONG", 0, USER_RST );
 SetupNG<int> 			screen_gmeter("SCR_GMET", SCREEN_OFF, FACTORY_RST);
 SetupNG<int> 			screen_horizon("SCR_HORIZ", SCREEN_OFF, FACTORY_RST);
 SetupNG<int> 			thermal_assist("SCR_CA", 1, FACTORY_RST); // 0: off, 1: top-ref, 2: side-ref
+SetupNG<int> 			thermal_assist_audio("SCR_CAAU", 0, FACTORY_RST); // acoustic centering commands
 SetupNG<int> 			vario_upper_gauge("SCR_GT", MultiGauge::GAUGE_NONE, FACTORY_RST);
 SetupNG<int> 			vario_lower_gauge("SCR_GB", MultiGauge::GAUGE_NONE, FACTORY_RST);
 SetupNG<int> 			vario_mc_gauge("SCR_GMC", 1, FACTORY_RST);

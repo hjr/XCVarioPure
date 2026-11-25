@@ -398,6 +398,7 @@ extern SetupNG<int> 		menu_long_press;
 extern SetupNG<int> 		screen_gmeter;
 extern SetupNG<int> 		screen_horizon;
 extern SetupNG<int> 		thermal_assist;
+extern SetupNG<int> 		thermal_assist_audio;
 extern SetupNG<int> 		vario_upper_gauge;
 extern SetupNG<int> 		vario_lower_gauge;
 extern SetupNG<int> 		vario_mc_gauge;

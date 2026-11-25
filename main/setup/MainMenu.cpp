@@ -626,6 +626,12 @@ static void screens_menu_create_vario(SetupMenu *top) {
     scrcaid->addEntry("Heading-Up");
     top->addEntry(scrcaid);
 
+    SetupMenuSelect *scrcaau = new SetupMenuSelect("Thrm-Audio", RST_NONE, nullptr, &thermal_assist_audio);
+    scrcaau->setHelp("Acoustic centering commands of the thermal assistant: a low double tone to fly straight, "
+        "a high double tone to turn again. Shifts the circle towards the climb's center of gravity.");
+    scrcaau->mkEnable();
+    top->addEntry(scrcaau);
+
     SetupMenuSelect *wke = new SetupMenuSelect("Flap-Assist", RST_NONE, nullptr, &flapbox_enable);
     wke->mkEnable();
     wke->addEntry("En.Audio");
@@ -698,13 +704,13 @@ static void options_menu_create(SetupMenu *opt) { // dynamic!
 		opt->addEntry(va);
         va->setHelp("Vario scale range, mode, damping"); 
 
-        //S2F
+        // S2F
         SetupMenu *s2f = new SetupMenu("Speed to Fly", vario_menu_create_s2f);
         opt->addEntry(s2f);
         s2f->setHelp("S2F switch options");
 
-		// Audio
-		SetupMenu *ad = new SetupMenu("Audio", audio_menu_create);
+		// Vario Sound
+		SetupMenu *ad = new SetupMenu("Vario Sound", audio_menu_create);
 		opt->addEntry(ad);
         ad->setHelp("Vario tone, deadband");
 

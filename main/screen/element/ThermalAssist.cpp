@@ -14,12 +14,17 @@
 #include "driver/time/Clock.h"
 #include "math/Trigonometry.h"
 #include "Flarm.h"
+#include "driver/audio/ESPAudio.h"
+#include "vector.h"
+#include "sensor/imu/Gyroscope.h"
 #include "setup/SetupNG.h"
 #include "AdaptUGC.h"
 #include "Colors.h"
+#include "screen/MessageBox.h"
 #include "logdefnone.h"
 
 #include <algorithm>
+#include <cmath>
 
 
 constexpr rad_t CA_STEP = Units::deg_to_rad(360/CA_NUM_DIRS); // 15
@@ -31,6 +36,21 @@ constexpr float CG_MIN_ECC = 0.15f;       // below: evenly spread, well centered
 constexpr float CG_FULL_ECC = 0.6f;       // from here on: max. mark size and full red
 constexpr uint32_t CG_MAX_AGE_MS = 40000; // slots older than this do not count as observed
 constexpr int CG_MIN_SLOTS = CA_NUM_DIRS * 3 / 4; // observed part of the circle to show a CG
+
+// acoustic centering commands
+constexpr float    CMD_MIN_CONFIDENCE = 0.8f;  // steady thermaling
+constexpr float    CMD_MIN_LEVEL = 0.2f;       // min. CG level to bother the pilot
+constexpr uint32_t CMD_CG_MAX_AGE_MS = 3000;   // CG is refreshed with every 15° heading step
+constexpr float    CG_SHIFT_GAIN = 1.0f;       // center shift = gain * CG eccentricity * circle radius
+constexpr float    CMD_MIN_SHIFT = 12.f;       // [m] smaller corrections are not worth it
+constexpr float    CMD_MAX_SHIFT_R = 1.0f;     // max. shift in circle radii per maneuver
+constexpr second_t CMD_REACT_TIMEOUT = 4.f;    // pilot ignored the command
+constexpr second_t LEAD_INIT = 1.5f;           // pilot lag command -> half rolled out [s]
+constexpr second_t LEAD_MIN = 0.5f;
+constexpr second_t LEAD_MAX = 3.5f;
+constexpr rad_t    ROLL_STEADY = Units::deg_to_rad(5.f); // [/s] max. roll rate for steady circling
+constexpr rad_t    ROLL_ONSET = Units::deg_to_rad(8.f);  // [/s] pilot starts to roll out
+constexpr rad_t    CMD_HOLDOFF_TURN = 2.5f * My_PIf;     // 1.25 circles to re-observe after a maneuver
 
 extern AdaptUGC *MYUCG;
 ThermalAssist  *thrmAssist = nullptr;
@@ -81,10 +101,14 @@ ThermalAssist::ThermalAssist(PolarGauge &g) :
     _gauge(g),
     _glider_on_top(true),
     _confidence(LowPassFilterT<float>::alphaFromTau(2.0, 0.1f)),
-    _th_norm(LowPassFilterT<float>::alphaFromTau(vario_av_delay.get() * 2, .5f))
+    _th_norm(LowPassFilterT<float>::alphaFromTau(vario_av_delay.get() * 2, .5f)),
+    _step_ms(0.2f),   // per heading step, ~5 steps
+    _lead_s(0.3f),    // per maneuver
+    _roll_rate(LowPassFilterT<float>::alphaFromTau(0.3f, 0.1f))
 {
     _glider_on_top = thermal_assist.get() != 2;
     _th_norm.reset(std::max(1.f, MC.get()));
+    _lead_s.reset(LEAD_INIT);
 }
 
 // display slot (0 = glider position) to the drawing direction on the gauge [CA_STEP]
@@ -208,13 +232,14 @@ void ThermalAssist::drawGlider(Point center) {
 // ths: normalized strengths per display slot (0 = glider position).
 // The CG is the strength weighted mean of the slot direction vectors. Its length (0..1) tells
 // how much the climb concentrates on one side, its direction where to shift the circle.
-// Returns the display slot the CG points to, or -1 for none (not enough data, or well centered),
-// and in level the CG offset scaled to 0..1 for the mark.
-int ThermalAssist::calcThermalCG(const float ths[], float &level) const {
+// Returns false for none (not enough data, or well centered), else the CG with the display slot
+// it points to, the offset level 0..1 for the mark, the raw eccentricity and the direction.
+bool ThermalAssist::calcThermalCG(const float ths[], ThermalCG &cg) const {
     uint32_t now = Clock::getMillis();
     float sx = 0.f, sy = 0.f, sum = 0.f;
     int observed = 0;
 
+    cg.slot = -1;
     for (int i = 0; i < CA_NUM_DIRS; i++) {
         const Thermal &th = thermals[(i + _idir) % CA_NUM_DIRS];
         if (th.timestamp == 0 || now - th.timestamp > CG_MAX_AGE_MS) {
@@ -228,19 +253,30 @@ int ThermalAssist::calcThermalCG(const float ths[], float &level) const {
         sum += w;
     }
     if (observed < CG_MIN_SLOTS || sum < CG_MIN_WEIGHT) {
-        return -1;
+        return false;
     }
-    float ecc = std::sqrt(sx * sx + sy * sy) / sum;
-    if (ecc < CG_MIN_ECC) {
-        return -1;
+    cg.ecc = std::sqrt(sx * sx + sy * sy) / sum;
+    if (cg.ecc < CG_MIN_ECC) {
+        return false;
     }
-    level = std::clamp((ecc - CG_MIN_ECC) / (CG_FULL_ECC - CG_MIN_ECC), 0.f, 1.f);
-    int slot = fast_iroundf(std::atan2(sx, sy) / CA_STEP);
-    slot = (slot + CA_NUM_DIRS) % CA_NUM_DIRS;
-    // ESP_LOGI(FNAME, "thermal CG: ecc %.2f slot %d, observed %d, weight %.1f", ecc, slot, observed, sum);
-    return slot;
+    cg.level = std::clamp((cg.ecc - CG_MIN_ECC) / (CG_FULL_ECC - CG_MIN_ECC), 0.f, 1.f);
+    cg.angle = std::atan2(sx, sy);
+    int slot = fast_iroundf(cg.angle / CA_STEP);
+    cg.slot = (slot + CA_NUM_DIRS) % CA_NUM_DIRS;
+    // ESP_LOGI(FNAME, "thermal CG: ecc %.2f slot %d, observed %d, weight %.1f", cg.ecc, cg.slot, observed, sum);
+    return true;
 }
 
+// normalized strength 0..1 per display slot (0 = glider position)
+void ThermalAssist::normStrengths(float ths[]) const {
+    float th_top = std::min(getTop8Norm(), MC.get() + 2.f); // max. norm according to MC
+    float th_min = std::max(th_top - 3.0f, .0f);
+    float norm = std::max(_th_norm.get(), 1.f);
+    for (int i = 0; i < CA_NUM_DIRS; i++) {
+        int d = (i + _idir) % CA_NUM_DIRS;
+        ths[i] = std::min((thermals[d].getStrength() - th_min) / norm, 1.f);
+    }
+}
 
 float ThermalAssist::getTop8Norm() const {
     constexpr int TOP_N = 5;
@@ -281,17 +317,15 @@ void ThermalAssist::draw() {
 
     // ESP_LOGI(FNAME,"TA draw, peak norm: %.2f, %.2f, %.2f", th_min, th_top, _th_norm.get());
     float ths[CA_NUM_DIRS];
-    for (int i = 0; i < CA_NUM_DIRS; i++) {
-        int d = (i + _idir) % CA_NUM_DIRS;
-        ths[i] = std::min((thermals[d].getStrength() - th_min) / _th_norm.get(), 1.f); // normalized strength 0..1
-        // ESP_LOGI(FNAME,"dir:%d TE:%.1f", d, thermals[d].strength );
-    }
+    normStrengths(ths);
     // the spot the thermal CG points to, while circling
-    float cg_level = 0.f;
-    int cg_slot = (_confidence.get() > 0.7f) ? calcThermalCG(ths, cg_level) : -1;
+    ThermalCG cg;
+    if (_confidence.get() > 0.7f) {
+        calcThermalCG(ths, cg);
+    }
 
     for (int i = 0; i < CA_NUM_DIRS; i++) {
-        drawThermal(ths[i], i, (i == cg_slot) ? cg_level : -1.f);
+        drawThermal(ths[i], i, (i == cg.slot) ? cg.level : -1.f);
     }
 }
 
@@ -336,7 +370,8 @@ void ThermalAssist::checkHeading(rad_t vheading, rad_t omega, rad_t bank) {
         //     Units::rad_to_deg(vheading), Units::rad_to_deg(omega), Units::rad_to_deg(bank), c_turn, c_bank, _confidence.get() );
 
         mps_t te = 0.f;
-        if ( _confidence.get() > 0.7f && dt < 20000 ) { // 15° in max 20sec
+        bool circling = _confidence.get() > 0.7f && dt < 20000; // 15° in max 20sec
+        if ( circling ) {
 
             te = varioSensor->getAVG(dt * 2.f);
             // ESP_LOGI(FNAME,"New thermal at heading %.1f, TE: %.2f, %dmsec", Units::rad_to_deg(cur_heading), te, (int)dt );
@@ -351,6 +386,162 @@ void ThermalAssist::checkHeading(rad_t vheading, rad_t omega, rad_t bank) {
             // ESP_LOGI(FNAME,"ThermalAssist checkHeading, no thermaling detected, reset peak value %.2f, dt: %d", _confidence.get(), (int)dt);
         }
         thermals[_idir].set(te);
+
+        // refresh the CG and circle geometry for the centering aid
+        _cg_fresh = false;
+        if ( circling ) {
+            updateCircleGeometry(dt);
+            float ths[CA_NUM_DIRS];
+            normStrengths(ths);
+            _cg_fresh = calcThermalCG(ths, _cg);
+            _cg_time = Clock::getMillis();
+        }
+    }
+    centeringAid(vheading, omega, bank);
+}
+
+// learn the time per heading step during steady circling (not while a centering maneuver distorts it)
+void ThermalAssist::updateCircleGeometry(uint32_t step_ms)
+{
+    if ( (_cmd_state != cmd_state_t::IDLE && _cmd_state != cmd_state_t::HOLDOFF)
+        || std::fabs(_roll_rate.get()) > ROLL_STEADY
+        || step_ms < 300 || step_ms > 5000 ) { // 3..50 °/s
+        return;
+    }
+    if ( _step_ms.get() <= 0.f ) {
+        _step_ms.reset(step_ms);
+    } else {
+        _step_ms.filter(step_ms);
+    }
+}
+
+//
+// Acoustic centering aid, 10Hz
+//
+// Shifting the circle: flying (more) straight for a moment on heading h moves the circle center along h.
+// The lift CG direction seen from the circle center is the CG heading -/+ 90° (right/left turn), which
+// in turn is the heading to fly straight on. So the "turn out" command is given a quarter circle ahead of
+// the CG, early by the learned pilot lag. The pilot's response is monitored through roll rate and
+// turn rate, the achieved center shift is integrated, and "turn in" is commanded when it will meet the
+// wanted shift, which is derived from the CG eccentricity and the circle radius:
+//   circle radius   R = TAS / omega, omega = 360° / circle time (cross checked with R = TAS² / (g tan(bank)))
+//   wanted shift    d = gain * ecc * R
+//   achieved shift  d = integral TAS * (1 - omega/omega_ref) dt   (center of the reference circle tangent to the path)
+// After a maneuver the TA needs at least one fresh circle before the next command.
+//
+void ThermalAssist::centeringAid(rad_t vheading, rad_t omega, rad_t bank)
+{
+    uint32_t now = Clock::getMillis();
+    second_t dt = (now - _prev_tick) / 1000.f;
+    _prev_tick = now;
+    if ( dt <= 0.f || dt > 0.5f || ! gyroSensor ) { // first call or a gap
+        return;
+    }
+    // body roll rate ~ bank rate at the small pitch angles of circling, lightly damped against turbulence
+    _roll_rate.filter(gyroSensor->getRollRate());
+
+    const rad_t aomega = std::fabs(omega);
+    const mps_t v = tas.get();
+
+    switch ( _cmd_state ) {
+    case cmd_state_t::IDLE:
+    {
+        if ( thermal_assist_audio.get() == 0 || ! AUDIO || ! _cg_fresh || now - _cg_time > CMD_CG_MAX_AGE_MS
+            || _confidence.get() < CMD_MIN_CONFIDENCE || _cg.level < CMD_MIN_LEVEL || _step_ms.get() <= 0.f ) {
+            break;
+        }
+        // steady circling, no pilot action in progress
+        rad_t omega0 = CA_STEP * 1000.f / _step_ms.get(); // mean circling turn rate
+        if ( std::fabs(_roll_rate.get()) > ROLL_STEADY || std::fabs(aomega - omega0) > 0.25f * omega0 ) {
+            break;
+        }
+        // circle radius from speed and circle time, cross checked with the bank angle
+        float radius = v / omega0;
+        float tb = std::tan(std::fabs(bank));
+        if ( tb < 0.1f ) {
+            break;
+        }
+        float radius_bank = v * v / (Units::g0 * tb);
+        if ( radius_bank < 0.6f * radius || radius_bank > 1.6f * radius ) {
+            ESP_LOGI(FNAME, "implausible circle R %.0fm, bank R %.0fm", radius, radius_bank);
+            break;
+        }
+        float target = std::min(CG_SHIFT_GAIN * _cg.ecc * radius, CMD_MAX_SHIFT_R * radius);
+        if ( target < CMD_MIN_SHIFT ) {
+            break;
+        }
+        // CG heading, slot i was flown at cur_heading - i*CA_STEP
+        bool right = omega > 0.f;
+        rad_t h_cg = cur_heading - _cg.angle;
+        // the lift lies 90° into the turn from there, fly straight on that bearing
+        rad_t h_cmd = h_cg + (right ? -My_PIf / 2.f : My_PIf / 2.f);
+        rad_t togo = Vector::normalizePI2(right ? h_cmd - vheading : vheading - h_cmd);
+        if ( togo > aomega * _lead_s.get() ) {
+            break; // not yet
+        }
+        AUDIO->startSound(AUDIO_CMD_CIRCLE_OUT, true);
+        MBOX->pushMessage(1, "  turn now", 10);
+        _cmd_state = cmd_state_t::OUT_CMD;
+        _cmd_time = now;
+        _omega_ref = omega0;
+        _shift = 0.f;
+        _shift_target = target;
+        _roll_onset = false;
+        ESP_LOGI(FNAME, "turn out: R %.0fm (bank R %.0fm), ecc %.2f, shift %.0fm towards %.0f°, lead %.1fs",
+            radius, radius_bank, _cg.ecc, target, Units::rad_to_deg(Vector::normalizePI2(h_cmd)), _lead_s.get());
+        break;
+    }
+    case cmd_state_t::OUT_CMD:
+    case cmd_state_t::STRAIGHT:
+    {
+        second_t elapsed = (now - _cmd_time) / 1000.f;
+        // the center of a reference circle tangent to the flight path moves with TAS * (1 - omega/omega_ref)
+        float rate = v * std::max(0.f, 1.f - aomega / _omega_ref);
+        _shift += rate * dt;
+
+        if ( _cmd_state == cmd_state_t::OUT_CMD ) {
+            if ( ! _roll_onset && _roll_rate.get() * bank < 0.f && std::fabs(_roll_rate.get()) > ROLL_ONSET ) {
+                _roll_onset = true; // pilot rolls towards wings level
+                ESP_LOGI(FNAME, "roll out after %.1fs", elapsed);
+            }
+            if ( aomega < 0.5f * _omega_ref ) {
+                // half rolled out, learn the pilot's lag for the next command
+                _lead_s.filter(std::clamp(elapsed, LEAD_MIN, LEAD_MAX));
+                _cmd_state = cmd_state_t::STRAIGHT;
+            }
+            else if ( elapsed > CMD_REACT_TIMEOUT ) {
+                if ( _shift < 0.3f * _shift_target ) {
+                    // ignored, no further command
+                    ESP_LOGI(FNAME, "turn out ignored (onset %d, shift %.0fm)", _roll_onset, _shift);
+                    _turned = 0.f;
+                    _cmd_state = cmd_state_t::HOLDOFF;
+                    break;
+                }
+                _cmd_state = cmd_state_t::STRAIGHT; // only shallowed the turn, that does it as well
+            }
+        }
+        if ( _cmd_state == cmd_state_t::STRAIGHT ) {
+            // turn in again, anticipating the shift until the pilot is back in the turn
+            second_t t_max = CMD_REACT_TIMEOUT + 2.f * _lead_s.get() + _shift_target / std::max(v, 10.f);
+            if ( _shift + rate * _lead_s.get() >= _shift_target || elapsed > t_max ) {
+                AUDIO->startSound(AUDIO_CMD_CIRCLE_IN, true);
+                MBOX->pushMessage(1, "  go straight", 10);
+                ESP_LOGI(FNAME, "turn in: shift %.0fm of %.0fm after %.1fs", _shift, _shift_target, elapsed);
+                _turned = 0.f;
+                _cmd_state = cmd_state_t::HOLDOFF;
+            }
+        }
+        break;
+    }
+    case cmd_state_t::HOLDOFF:
+        // let the TA observe at least one more full circle around the new center
+        if ( _confidence.get() > 0.7f ) {
+            _turned += aomega * dt;
+        }
+        if ( _turned > CMD_HOLDOFF_TURN ) {
+            _cmd_state = cmd_state_t::IDLE;
+        }
+        break;
     }
 }
 
