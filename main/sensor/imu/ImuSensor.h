@@ -39,6 +39,7 @@ public:
     ImuType getImuType() const { return _who_typ; }
     temp_status_t getTempStatus() const;
     static Quaternion getDefaultImuReference(bool include_factory_ref=true);
+    static Quaternion basicImuReference();
     void applyImuReference(const degree_t gAA, const Quaternion& basic) {
         _ref_rot = concatGaaAndImuReference(gAA, basic);
     }

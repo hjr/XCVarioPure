@@ -371,7 +371,7 @@ static void propagate_caps()
 
 static void adjust_gaa() {
     if (imuSensor) {
-        imuSensor->applyImuReference(glider_ground_aa.get(), MpuImu::getDefaultImuReference());
+        imuSensor->applyImuReference(glider_ground_aa.get(), MpuImu::basicImuReference()); //todo clarify which reference is the correct one
         ahrsSensor->startCalibration();
     }
 }
