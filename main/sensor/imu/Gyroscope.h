@@ -40,6 +40,11 @@ public:
     void saveBias();
     inline const vector_f& getBias() const { return _bias_estimator.getRef(); }
 
+    // Single axe accessors
+    inline float getRollRate() const { return _processed.x; }
+    inline float getPitchRate() const { return _processed.y; }
+    inline float getYawRate() const { return _processed.z; }
+
 private:
     void pushBias(vector_f& bias);
     const float _scale;
