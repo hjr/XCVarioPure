@@ -53,12 +53,8 @@ public:
     void frame(const VoiceInput &in, SynthFrame &f) const override;
 
 private:
-    void timbre(float s0, float s1, float *harm) const;
     Params _p;
     float _minf = 250.f, _maxf = 1000.f, _expMax = 2.f;
-    // cache of the last timbre (the DFT of the clipped waveform only on change)
-    mutable float _s0 = -1.f, _s1 = -1.f;
-    mutable float _harm[SynthFrame::NH] = {};
 };
 
 // Curves (0.1 steps from -6 to +10) and harmonic sets (48 sets over 3 octaves from 250 Hz, 12 harmonics each)

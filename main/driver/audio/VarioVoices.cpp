@@ -8,7 +8,6 @@
 
 #include "VarioVoices.h"
 #include "VarioShaper.h"
-#include "AudioTables.h"
 
 #include <algorithm>
 #include <cmath>
@@ -21,7 +20,6 @@ constexpr float TREND_MAX_ST = 1.f;      // semitones
 inline float cl01(float x) { return std::min(1.f, std::max(0.f, x)); }
 inline float smooth(float x) { x = cl01(x); return x * x * (3.f - 2.f * x); }
 inline float lerp(float a, float b, float t) { return a + (b - a) * t; }
-inline float sinTab(int i) { return audiotab::SIN_Q15[i & (audiotab::SIN_LEN - 1)] * (1.f / 32767.f); }
 
 // piecewise linear curve over sorted points
 struct Pt { float x, y; };
@@ -70,46 +68,12 @@ void ProfileVoice::configure(const Params &p)
     _maxf = p.center * p.toneVar;
     _minf = p.center / p.toneVar;
     _expMax = std::pow(2.f, p.factor);
-    _s0 = _s1 = -1.f; // rebuild the timbre
 }
 
 float ProfileVoice::clamp(float v, bool s2f) const
 {
     const float max = s2f ? 5.f : _p.range;
     return std::clamp(v, -max, max);
-}
-
-// Timbre of the sequencer tone: voice 0 (sine, gain 220) plus voice 1 (5th harmonic, gain = harmonics setting),
-// each with the level rule, summed and clipped at +-64 DAC steps. The fundamental drives into the clipping,
-// which gives the familiar slightly square tone. Here as harmonics 1 .. 12 of that waveform: band limited.
-void ProfileVoice::timbre(float s0, float s1, float *harm) const
-{
-    for (int k = 0; k < NH; k++) { harm[k] = 0.f; }
-    if ( s0 + s1 <= 64.f ) {
-        harm[0] = s0 / 64.f * FULL;
-        harm[4] = s1 / 64.f * FULL;
-        return;
-    }
-    // clipped: odd symmetric waveform, only odd sine harmonics
-    constexpr int N = audiotab::SIN_LEN;
-    float x[N];
-    for (int j = 0; j < N; j++) {
-        x[j] = std::clamp(s0 * sinTab(j) + s1 * sinTab(5 * j), -64.f, 64.f) * (1.f / 64.f);
-    }
-    for (int k = 0; k < NH; k += 2) {
-        float b = 0.f;
-        for (int j = 0; j < N; j++) { b += x[j] * sinTab((k + 1) * j); }
-        harm[k] = b * (2.f / N);
-    }
-    // the band limited waveform overshoots a little at the corners: scale to full scale
-    float peak = 1e-6f;
-    for (int j = 0; j < N; j++) {
-        float y = 0.f;
-        for (int k = 0; k < NH; k += 2) { y += harm[k] * sinTab((k + 1) * j); }
-        peak = std::max(peak, std::fabs(y));
-    }
-    const float s = FULL / std::max(1.f, peak);
-    for (int k = 0; k < NH; k += 2) { harm[k] *= s; }
 }
 
 void ProfileVoice::frame(const VoiceInput &in, SynthFrame &f) const
@@ -123,16 +87,15 @@ void ProfileVoice::frame(const VoiceInput &in, SynthFrame &f) const
     const float mult = std::pow((std::fabs(v) / range) + 1.f, _p.factor);
     f.hz = std::max(50.f, center + ((mult * v) / range) * (maxVar / _expMax));
 
-    // timbre (rebuilt on a change of the drive levels only)
+    // timbre: pure sine plus the 5th harmonic, in the level relation of the sequencer voices
+    // (tone voice gain 220, harmonic voice gain = harmonics setting, each with the level rule)
     const float bright = in.shaper ? in.shaper->brightness() : 0.f;
-    const float s0 = 63.f / 128.f * maxGain(f.hz) * 220.f / 128.f;
-    const float s1 = 63.f / 128.f * maxGain(5.f * f.hz) * _p.harmonics / 128.f * (1.f + BRIGHT_BOOST * bright);
-    if ( std::fabs(s0 - _s0) > .005f * _s0 || std::fabs(s1 - _s1) > .005f * std::max(_s1, 1.f) ) {
-        timbre(s0, s1, _harm);
-        _s0 = s0;
-        _s1 = s1;
-    }
-    for (int k = 0; k < NH; k++) { f.harm[k] = _harm[k]; }
+    const float g0 = maxGain(f.hz) / 128.f;
+    const float g5 = (g0 > 0.f) ? g0 * (maxGain(5.f * f.hz) * _p.harmonics) / (maxGain(f.hz) * 220.f) * (1.f + BRIGHT_BOOST * bright) : 0.f;
+    const float norm = std::max(1.f, g0 + g5);   // peak never above full scale
+    for (int k = 0; k < NH; k++) { f.harm[k] = 0.f; }
+    f.harm[0] = g0 / norm * FULL;
+    f.harm[4] = g5 / norm * FULL;
     f.phase = nullptr;
     f.gainGlide = true;
     f.glideS = GLIDE_S;
