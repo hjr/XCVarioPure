@@ -797,12 +797,18 @@ void Audio::applySetup() {
     }
     _exponent_max  = std::pow( 2, audio_factor.get());
 
-    const bool shaper = audio_adaptive.get() != 0;
-    if ( shaper && !_shaperOn ) {
+    // adaptive tone: calm only = calm zone and soft S2F dead band edges, full = also steady value, speed and trend
+    const int adapt = audio_adaptive.get();
+    const bool full = adapt == AUD_ADAPT_FULL;
+    if ( adapt != AUD_ADAPT_OFF && !_shaperOn ) {
         _shaper.reset();
         _lastVarioUs = 0;
     }
-    _shaperOn = shaper;
+    _shaperOn = adapt != AUD_ADAPT_OFF;
+    _shaper.setCalmZone(audio_calm_db.get(), audio_calm_width.get(), 2.f, .5f);
+    _shaper.setHabituation(full ? audio_steady_db.get() : 0.f, 60.f);
+    _shaper.setSpeedAdapt(full ? audio_slow_db.get() : 0.f, full);
+    _shaper.setTrend(full ? .5f : 0.f);
     _shaper.setPolar(polar_speed1.get(), polar_sink1.get(), polar_speed2.get(), polar_sink2.get(), polar_speed3.get(), polar_sink3.get());
 
     maxf = center_freq.get() * tone_var.get();

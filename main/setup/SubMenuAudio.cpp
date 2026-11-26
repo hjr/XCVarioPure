@@ -18,6 +18,7 @@
 #include "Atmosphere.h"
 #include "logdef.h"
 
+#include <algorithm>
 #include <cstdint>
 #include <string>
 #include <string_view>
@@ -26,6 +27,10 @@ extern int unitChangeS(SetupMenuSelect* p);
 
 static void audio_menu_create_tonestyle(SetupMenu *top);
 static void audio_menu_create_deadband(SetupMenu *top);
+static void audio_menu_create_adaptive(SetupMenu *top);
+
+const std::array<std::string_view, 3> adaptive_mode = { "Off", "Calm only", "Full" };
+static const char *adaptiveName() { return adaptive_mode[std::min((unsigned)audio_adaptive.get(), 2u)].data(); }
 
 static std::string range0;
 static std::string range1;
@@ -187,6 +192,37 @@ void audio_menu_create_tonestyle(SetupMenu *top) { // dynamic!
     ESP_LOGI(FNAME,"set selection %d", profile_idx);
 }
 
+static int update_adaptive_buzz(SetupMenuSelect *p) {
+    p->getParent()->setBuzzword(adaptiveName());
+    return 0;
+}
+
+void audio_menu_create_adaptive(SetupMenu *top) {
+    SetupMenuSelect *mode = new SetupMenuSelect("Mode", RST_NONE, update_adaptive_buzz, &audio_adaptive);
+    mode->setHelp("Calm only: quieter around netto zero while circling, soft S2F dead band edges. "
+        "Full: also quieter on a long steady value and when flying slowly, brighter sink tone at speed, pitch lift on increasing climb");
+    for (const auto &m : adaptive_mode) {
+        mode->addEntry(m.data());
+    }
+    top->addEntry(mode);
+
+    SetupMenuValFloat *cdb = new SetupMenuValFloat("Calm Zone", "dB", nullptr, &audio_calm_db);
+    cdb->setHelp("Level reduction at netto zero while circling, 0 switches it off");
+    top->addEntry(cdb);
+
+    SetupMenuValFloat *cw = new SetupMenuValFloat("Calm Zone Width", "", nullptr, &audio_calm_width);
+    cw->setHelp("Netto climb or sink at which the calm zone has faded out completely");
+    top->addEntry(cw);
+
+    SetupMenuValFloat *sdb = new SetupMenuValFloat("Steady Value", "dB", nullptr, &audio_steady_db);
+    sdb->setHelp("Full mode: level reduction when the vario stays the same for more than a minute, 0 switches it off");
+    top->addEntry(sdb);
+
+    SetupMenuValFloat *ldb = new SetupMenuValFloat("Slow Flight", "dB", nullptr, &audio_slow_db);
+    ldb->setHelp("Full mode: level reduction when flying slowly, corner speeds follow the polar, 0 switches it off");
+    top->addEntry(ldb);
+}
+
 void audio_menu_create_deadband(SetupMenu *top) {
     update_range_entry(0);
     SetupMenuSelect *audio_range_sm = new SetupMenuSelect("Range", RST_NONE, set_parent_dirty, &audio_range);
@@ -219,11 +255,6 @@ void audio_menu_create(SetupMenu *audio) {
         asida->addEntry(ENABLE_MODE[1].data(), 0); // inverted logic
         audio->addEntry(asida);
 
-        SetupMenuSelect *aadapt = new SetupMenuSelect("Adaptive Tone", RST_NONE, nullptr, &audio_adaptive);
-        aadapt->setHelp("Vario tone adapts to the flight: quieter around netto zero while circling, quieter on a long steady value and at low speed, brighter sink tone at speed, soft S2F dead band edges");
-        aadapt->mkEnable();
-        audio->addEntry(aadapt);
-
         SetupMenuValFloat *dv = new SetupMenuValFloat("Default Volume", "%", show_vol_dflt, &default_volume, RST_NONE, true);
         dv->setHelp("Default volume for Audio when device is switched on");
         audio->addEntry(dv);
@@ -253,6 +284,11 @@ void audio_menu_create(SetupMenu *audio) {
         astyle->setBuzzword(audio_prfls[pidx].getName());
         astyle->setHelp("Refine XCV audio by preset tone styles, or a customized parameter set");
         audio->addEntry(astyle);
+
+        SetupMenu *adapt = new SetupMenu("Adaptive Tone", audio_menu_create_adaptive);
+        adapt->setBuzzword(adaptiveName());
+        adapt->setHelp("Vario tone adapts to the flight situation, works with every tone style");
+        audio->addEntry(adapt);
 
         SetupMenu *db = new SetupMenu("Range & Deadbands", audio_menu_create_deadband);
         audio->addEntry(db);

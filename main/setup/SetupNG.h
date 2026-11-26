@@ -54,6 +54,7 @@ enum e_audiomode_type { AM_VARIO, AM_S2F, AM_MANUALLY, AM_AUTOSPEED, AM_FLAP, AM
 enum e_audio_tone_mode { ATM_SINGLE_TONE, ATM_DUAL_TONE };
 enum e_audio_chopping_style { AUDIO_CHOP_SOFT, AUDIO_CHOP_HARD };
 enum e_audio_range { AUDIO_RANGE_5_MS, AUDIO_RANGE_10_MS, AUDIO_RANGE_VARIABLE };
+enum e_audio_adaptive { AUD_ADAPT_OFF=0, AUD_ADAPT_CALM=1, AUD_ADAPT_FULL=2 };
 enum e_audio_harmonics { AUD_HARM_OFF=0, AUD_HARM_LOW=7, AUD_HARM_MED=14, AUD_HARM_HIGH=21 };
 enum e_audio_mute_gen { AUDIO_ON, AUDIO_OFF=2 };
 typedef enum e_amp_shutdown { AMP_STAY_ON, AMP_SHUTDOWN, AMP_SHUTDOWN_5S } e_amp_shutdown_t;
@@ -377,6 +378,10 @@ extern SetupNG<float> 		flap_takeoff;
 extern SetupNG<int> 		audio_mute_sink;
 extern SetupNG<int> 		audio_mute_gen;
 extern SetupNG<int> 		audio_adaptive;
+extern SetupNG<float> 		audio_calm_db;
+extern SetupNG<float> 		audio_calm_width;
+extern SetupNG<float> 		audio_steady_db;
+extern SetupNG<float> 		audio_slow_db;
 extern SetupNG<int>			vario_mode;
 extern SetupNG<int>			airspeed_sensor;
 extern SetupNG<int>			cruise_audio_mode;
