@@ -115,9 +115,9 @@ ThermalAssist::ThermalAssist(PolarGauge &g) :
 int ThermalAssist::slotDir(int i) const {
     if (!_glider_on_top) {
         if (_cdir == (uint8_t)circdir_t::circlRight) {
-            return (i + 3 * CA_NUM_DIRS / 4) % CA_NUM_DIRS;  // move reference to the left
+            return (i + CA_NUM_DIRS / 4) % CA_NUM_DIRS;  // move reference to the left
         } else if (_cdir == (uint8_t)circdir_t::circlLeft) {
-            return (i + CA_NUM_DIRS / 4) % CA_NUM_DIRS;  // move reference to the right
+            return (i + 3 * CA_NUM_DIRS / 4) % CA_NUM_DIRS;  // move reference to the right
         }
     }
     return i;
@@ -127,14 +127,18 @@ int ThermalAssist::slotDir(int i) const {
 // cg_level: the thermal's center of gravity points to this spot, with a CG offset level 0..1
 //           (white and small .. red and filling the spot), < 0 for no mark
 void ThermalAssist::drawThermal(float th_strength, int idir, float cg_level) {
-    static const uint8_t hem_flag[4] = {1, 8, 2, 4};
+    // the quadrant of the previous (clockwise neighbor) disc reaching into this disc's box,
+    // indexed by this disc's quadrant: lower right, lower left, upper right, upper left
+    static const uint8_t hem_flag[4] = {UCG_DRAW_UPPER_RIGHT, UCG_DRAW_LOWER_RIGHT, UCG_DRAW_UPPER_LEFT, UCG_DRAW_LOWER_LEFT};
     // ESP_LOGI(FNAME,"drawThermal, th_strength: %.1f, idir: %d", th_strength, idir);
     if (idir >= CA_NUM_DIRS || idir < 0) {
         ESP_LOGE(FNAME, "index out of range: %d", idir);
         return;
     }
     int ddir = slotDir(idir);
-    Point center = {(int16_t)(fast_sin_rad(ddir * CA_STEP) * _gauge._radius), (int16_t)(fast_cos_rad(ddir * CA_STEP) * _gauge._radius)};
+    // slot 0 on top, counting counter clockwise (slot i was flown at heading - i*CA_STEP, screen y grows downwards),
+    // so the spots move against the glider's flight direction in both circling directions
+    Point center = {(int16_t)(-fast_sin_rad(ddir * CA_STEP) * _gauge._radius), (int16_t)(-fast_cos_rad(ddir * CA_STEP) * _gauge._radius)};
     uint8_t hem = (center.y < 0) ? 2 : 0;
     hem |= (center.x < 0);
     center += _gauge._ref;
