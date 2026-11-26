@@ -7,6 +7,8 @@
 
 #pragma once
 
+#include "VarioShaper.h"
+
 #include <driver/dac_continuous.h>
 
 #include <cstdint>
@@ -72,6 +74,7 @@ private:
     void stopAudio();                // terminate any sound output
     bool inDeadBand(float a) const { return (a > _deadband_n && a < _deadband_p); }
     bool calculateFrequency(float a);       // determine frequency to be generated depending on TE value
+    void applyShaper();                     // set the vario voice levels from the shaper
     void writeVolume(float volume);
     static void mute();                     // mute the amplifier entirely
     static void unmute();                   // unmutes
@@ -96,6 +99,10 @@ private:
     float maxf;
     float minf;
     float _exponent_max = 2;
+    VarioShaper _shaper;                    // context dependent level, brightness and pitch of the vario tone
+    bool _shaperOn = false;
+    int64_t _lastVarioUs = 0;
+    int _polarCheck = 0;
 
     bool _terminate = true;
 };

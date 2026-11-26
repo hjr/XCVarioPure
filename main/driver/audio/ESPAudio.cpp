@@ -22,6 +22,7 @@
 #include <freertos/task.h>
 #include <freertos/queue.h>
 #include <esp_system.h>
+#include <esp_timer.h>
 #include <driver/i2c_master.h>
 
 #include <cmath>
@@ -796,6 +797,14 @@ void Audio::applySetup() {
     }
     _exponent_max  = std::pow( 2, audio_factor.get());
 
+    const bool shaper = audio_adaptive.get() != 0;
+    if ( shaper && !_shaperOn ) {
+        _shaper.reset();
+        _lastVarioUs = 0;
+    }
+    _shaperOn = shaper;
+    _shaper.setPolar(polar_speed1.get(), polar_sink1.get(), polar_speed2.get(), polar_sink2.get(), polar_speed3.get(), polar_sink3.get());
+
     maxf = center_freq.get() * tone_var.get();
     minf = center_freq.get() / tone_var.get();
     ESP_LOGI(FNAME,"tonevar %.1f; min/max freq. %.1f/%.1f", tone_var.get(), minf, maxf);
@@ -1043,7 +1052,7 @@ bool Audio::calculateFrequency(float val) {
         vario_tim[0].setSamples(50);
         vario_tim[1].setSamples(50);
     }
-    bool ret = inDeadBand(val) || speaker_volume < 1.0;
+    bool ret = inDeadBand(val) || speaker_volume < 1.0 || (_shaperOn && _shaper.silent());
     if ( ret && volumeadjust == 0 && ! current_dmacmd->voice[2].active) {
         vario_seq[0].step = vario_extra[0].step = vario_seq[1].step = vario_extra[1].step = 0;
         if ( current_dmacmd->repcount == -1 ) { mute(); } // stop only the vario sound
@@ -1052,6 +1061,8 @@ bool Audio::calculateFrequency(float val) {
         if (volumeadjust>0) { volumeadjust--; }
         // frequencies
         unmute();
+        applyShaper();
+        if ( _shaperOn ) { freq *= _shaper.pitchFactor(); }
         vario_seq[0].setStep(freq);
         vario_extra[0].setStep(freq * 5.);
         if ( CRMOD.audioIsChopping() && val > 0 ) {
@@ -1065,6 +1076,20 @@ bool Audio::calculateFrequency(float val) {
     }
     // ESP_LOGI(FNAME, "New Freq: (%0.1f) TE:%0.2f exp_fac:%0.1f", freq, a, mult );
     return ! ret;
+}
+
+// Level of the vario voices: voice 0 carries the tone, voice 1 the harmonic (brightness).
+// Takes effect with the next sequence step in the ISR, which then fades to the new gain.
+void Audio::applyShaper()
+{
+    if ( current_dmacmd->timeseq != vario_tim.data() ) {
+        return; // another sound owns the voices
+    }
+    constexpr float BRIGHT_BOOST = 2.f; // harmonic voice up to 3 times (+9.5 dB) at speed
+    const float g = _shaperOn ? _shaper.gain() : 1.f;
+    const float b = _shaperOn ? 1.f + BRIGHT_BOOST * _shaper.brightness() : 1.f;
+    current_dmacmd->voice[0].gain_adjust = (uint16_t)(vario_vconf[0].gain_adjust * g + .5f);
+    current_dmacmd->voice[1].gain_adjust = (uint16_t)(vario_vconf[1].gain_adjust * g * b + .5f);
 }
 
 // set the digital volume poti, 0..100%
@@ -1142,6 +1167,25 @@ void Audio::dactask()
                         max = 5.0; // +/- 50km/h range, same audio as +/-5m/s
                     }
                     audio_value = std::clamp( audio_value, -max, max );
+                    if ( _shaperOn ) {
+                        const int64_t now = esp_timer_get_time();
+                        const float dt = _lastVarioUs ? (now - _lastVarioUs) * 1e-6f : 0.1f;
+                        _lastVarioUs = now;
+                        if ( ++_polarCheck >= 50 ) { // polar may change with glider selection, check every 5 s
+                            _polarCheck = 0;
+                            _shaper.setPolar(polar_speed1.get(), polar_sink1.get(), polar_speed2.get(), polar_sink2.get(), polar_speed3.get(), polar_sink3.get());
+                        }
+                        VarioShaper::Input in;
+                        in.v = audio_value;
+                        in.dt = dt;
+                        in.s2f = !CRMOD.audioIsVario();
+                        in.netto = te_netto.get();
+                        in.circling = !CRMOD.getCMode();
+                        in.iasKmh = ias.getValid() ? ias.get() * 3.6f : 0.f;
+                        in.dbNeg = _deadband_n;
+                        in.dbPos = _deadband_p;
+                        _shaper.update(in);
+                    }
                     calculateFrequency(audio_value);
                 }
             }

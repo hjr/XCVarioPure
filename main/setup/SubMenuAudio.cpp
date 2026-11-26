@@ -219,6 +219,11 @@ void audio_menu_create(SetupMenu *audio) {
         asida->addEntry(ENABLE_MODE[1].data(), 0); // inverted logic
         audio->addEntry(asida);
 
+        SetupMenuSelect *aadapt = new SetupMenuSelect("Adaptive Tone", RST_NONE, nullptr, &audio_adaptive);
+        aadapt->setHelp("Vario tone adapts to the flight: quieter around netto zero while circling, quieter on a long steady value and at low speed, brighter sink tone at speed, soft S2F dead band edges");
+        aadapt->mkEnable();
+        audio->addEntry(aadapt);
+
         SetupMenuValFloat *dv = new SetupMenuValFloat("Default Volume", "%", show_vol_dflt, &default_volume, RST_NONE, true);
         dv->setHelp("Default volume for Audio when device is switched on");
         audio->addEntry(dv);

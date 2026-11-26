@@ -602,6 +602,7 @@ SetupNG<int> 			wk_label_6( "WK_LBL_6", 0, FACTORY_RST, SYNC_BIDIR, PERSISTENT, 
 SetupNG<float> 			flap_takeoff("FLAPTOp", 0,  FACTORY_RST, SYNC_BIDIR, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(0, 6, 1));
 SetupNG<int> 			audio_mute_sink( "AUDISS", 0, FACTORY_RST, SYNC_BIDIR, PERSISTENT, change_audio );
 SetupNG<int> 			audio_mute_gen( "AUDISG", AUDIO_ON, USER_RST, SYNC_NONE, PERSISTENT, change_audio );
+SetupNG<int> 			audio_adaptive( "AUDADAPT", 0, USER_RST, SYNC_NONE, PERSISTENT, change_audio ); // context dependent vario tone (VarioShaper)
 SetupNG<int>			vario_mode("VAMOD", (int)e_vario_mode::CRUISE_ONLY_NETTO, USER_RST, SYNC_NONE, PERSISTENT, change_cruise);  // switch to netto mode when cruising
 SetupNG<int>			airspeed_sensor("PTYPE", AirspeedSensor::NONE, RESET_NONE, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, nullptr, true);
 SetupNG<int>			cruise_audio_mode("CAUDIO", 0, USER_RST );
