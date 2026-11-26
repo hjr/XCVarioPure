@@ -483,6 +483,8 @@ SetupNG<float>  		tone_var( "OCTAVES", 2.0, USER_RST, SYNC_BIDIR, PERSISTENT, ch
 SetupNG<int>  			dual_tone( "DUAL_TONE", 0, USER_RST, SYNC_BIDIR, PERSISTENT, change_audio );
 SetupNG<int>  			chopping_mode( "CHOPPING_MODE", BOTH_CHOP, USER_RST, SYNC_BIDIR, PERSISTENT, change_audio );
 SetupNG<int>  			audio_harmonics( "AUD_HARMONICS" , AUD_HARM_HIGH, USER_RST, SYNC_BIDIR, PERSISTENT, change_audio );
+SetupNG<int>  			audio_voice( "AUDVOICE" , AUD_VOICE_PROFILE, USER_RST, SYNC_BIDIR, PERSISTENT, change_audio ); // tone from the settings, or the Pur tables
+SetupNG<int>  			audio_sink_tone( "AUDSINK" , AUD_SINK_STEADY, USER_RST, SYNC_BIDIR, PERSISTENT, change_audio );
 SetupNG<float>		    audio_factor( "AUDIO_FACTOR", 1, USER_RST, SYNC_NONE, PERSISTENT, change_audio, quantity_t::QUANT_NONE, LIMITS(0.1, 2, 0.025));
 SetupNG<float>  		deadband( "DEADBAND", 0.3, USER_RST, SYNC_BIDIR, PERSISTENT, change_audio, quantity_t::QUANT_VSPEED, LIMITS(.0, 5.0, 0.1));
 SetupNG<float>  		deadband_neg("DEADBAND_NEG" , -0.3, USER_RST, SYNC_BIDIR, PERSISTENT, change_audio, quantity_t::QUANT_VSPEED, LIMITS(-5.0, .0, 0.1));

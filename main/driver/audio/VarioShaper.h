@@ -14,10 +14,10 @@
 //  - Habituation: quieter when the vario value stays the same for a long time (vario mode only)
 //  - Speed:       quieter when flying slowly, brighter sink tone at speed (corner speeds scaled by the polar)
 //  - S2F:         soft edge just outside the dead band, and a pause when the command changes side
-//  - Trend:       slight pitch lift while the climb is increasing (vario mode only)
 //
-// Runs in the audio task at ~10 Hz, float math only, no tables. The results are a level factor,
-// a brightness for the harmonic voice and a pitch factor, which the regular vario sound applies.
+// Runs in the audio task at ~10 Hz, float math only, no tables. The results are a level factor and
+// a brightness, plus the smoothed value and its rate of change for the voices (timbre blend, trend slide).
+// With all features switched off it still tracks the value, and gain() stays 1.
 class VarioShaper
 {
 public:
@@ -43,12 +43,13 @@ public:
     void setCalmZone(float attDb, float widthMs, float tDown90, float tUp90);   // attDb = 0 disables
     void setHabituation(float depthDb, float startS) { _habDepthDb = depthDb; _habStartS = startS; }  // depthDb = 0 disables
     void setSpeedAdapt(float quietDb, bool bright) { _spdQuietDb = quietDb; _brightOn = bright; }
-    void setTrend(float stPerMs2) { _trendSt = stPerMs2; }                      // 0 disables
+    void setS2fEdge(bool on) { _s2fEdge = on; }                                 // soft dead band edges and side change pause
 
     // Results
     float gain() const { return _gain; }               // 0 .. 1, level factor
-    float brightness() const { return _bright; }       // 0 .. 1, raise of the harmonic voice
-    float pitchFactor() const { return _pitch; }       // >= 1, frequency factor
+    float brightness() const { return _bright; }       // 0 .. 1, brighter sink tone at speed
+    float value() const { return _vs; }                // smoothed value (250 ms)
+    float trend() const { return _s2f ? 0.f : _dvs; }  // rate of change of the vario, m/s^2 (0 in S2F)
     bool  silent() const { return _gain < 0.01f; }
 
 private:
@@ -66,12 +67,12 @@ private:
     float _habAvg = 0.f, _habRef = 0.f, _habT = 0.f, _habG = 1.f;
     bool  _habInit = false;
     // results
-    float _gain = 1.f, _bright = 0.f, _pitch = 1.f;
+    float _gain = 1.f, _bright = 0.f;
 
     // parameters
     float _rzAttDb = 12.f, _rzWidth = 0.8f, _rzTauDown = 2.f / 2.3026f, _rzTauUp = 0.5f / 2.3026f;
     float _habDepthDb = 3.f, _habStartS = 60.f;
     float _spdQuietDb = 6.f;
     bool  _brightOn = true;
-    float _trendSt = 0.5f;
+    bool  _s2fEdge = true;
 };

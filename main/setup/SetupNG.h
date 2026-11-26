@@ -54,6 +54,8 @@ enum e_audiomode_type { AM_VARIO, AM_S2F, AM_MANUALLY, AM_AUTOSPEED, AM_FLAP, AM
 enum e_audio_tone_mode { ATM_SINGLE_TONE, ATM_DUAL_TONE };
 enum e_audio_chopping_style { AUDIO_CHOP_SOFT, AUDIO_CHOP_HARD };
 enum e_audio_range { AUDIO_RANGE_5_MS, AUDIO_RANGE_10_MS, AUDIO_RANGE_VARIABLE };
+enum e_audio_voice { AUD_VOICE_PROFILE=0, AUD_VOICE_PUR=1 };
+enum e_audio_sink_tone { AUD_SINK_STEADY=0, AUD_SINK_BREATHING=1 };
 enum e_audio_adaptive { AUD_ADAPT_OFF=0, AUD_ADAPT_CALM=1, AUD_ADAPT_FULL=2 };
 enum e_audio_harmonics { AUD_HARM_OFF=0, AUD_HARM_LOW=7, AUD_HARM_MED=14, AUD_HARM_HIGH=21 };
 enum e_audio_mute_gen { AUDIO_ON, AUDIO_OFF=2 };
@@ -258,6 +260,8 @@ extern SetupNG<float>  		tone_var;
 extern SetupNG<int>  		dual_tone;
 extern SetupNG<int>  		chopping_mode;
 extern SetupNG<int>  		audio_harmonics;
+extern SetupNG<int>  		audio_voice;
+extern SetupNG<int>  		audio_sink_tone;
 extern SetupNG<float>		audio_factor;
 extern SetupNG<float>  		deadband;
 extern SetupNG<float>  		deadband_neg;

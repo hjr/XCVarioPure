@@ -7,6 +7,9 @@
  ***********************************************************/
 
 #include "driver/audio/ESPAudio.h"
+#include "driver/audio/AudioTables.h"
+#include "driver/audio/VarioSynth.h"
+#include "driver/audio/VarioVoices.h"
 
 #include "mcp4018.h"
 #include "cat5171.h"
@@ -60,13 +63,8 @@ constexpr const int TABLE_BITS  = 7;        // log2((double)TABLE_SIZE);
 constexpr const int DAC_CENTER  = 127;      // center level for DAC output
 constexpr const int DAC_HLF_AMPL = 64;
 
-// predefined sine wave table
-const std::array<int8_t, TABLE_SIZE> sine_table = {
-      0, 3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 32, 35, 37, 40, 42, 45, 47, 49, 51, 53, 54, 56, 57, 58, 60, 61, 61, 62,
-     63, 63, 63, 63, 63, 63, 63, 62, 61, 61, 60, 58, 57, 56, 54, 53, 51, 49, 47, 45, 42, 40, 37, 35, 32, 30, 27, 24,
-     21, 18, 15, 12, 9, 6, 3, 0, -3, -6, -9, -12, -15, -18, -21, -24, -27, -30, -32, -35, -37, -40, -42, -45, -47,
-    -49, -51, -53, -54, -56, -57, -58, -60, -61, -61, -62, -63, -63, -63, -63, -63, -63, -63, -62, -61, -61, -60,
-    -58, -57, -56, -54, -53, -51, -49, -47, -45, -42, -40, -37, -35, -32, -30, -27, -24, -21, -18, -15, -12, -9, -6, -3 };
+// sine wave table of the sequencer voices, from the shared generator
+constexpr std::array<int8_t, TABLE_SIZE> sine_table = audiotab::makeSine<int8_t, TABLE_SIZE>(63.);
 
 const std::array<int8_t, TABLE_SIZE> sawtooth_table = {
       0,   36,   43,   63,   53,   58,   52,   55,   51,   53,   49,   50,   47,   48,   46,   46, 
@@ -300,14 +298,21 @@ constexpr float fC7 = noteFreq(27);
 const std::array<DURATION, 2> no_tone_tim = {{ {0}, {0} }};
 const std::array<TONE, 2> silence_seq = {{ {0.}, {0.} }};
 
-// Vario tone (static memory set from calc frequency)
-static std::array<DURATION, 3> vario_tim = {{ {100}, {50}, {0} }};
-static std::array<TONE, 3> vario_seq = {{ {0.}, {0.}, {0.} }};
-static std::array<TONE, 3> vario_extra = {{ {0.}, {0.}, {0.} }};
-static std::array<VOICECONF, 2> vario_vconf = {{ {0, 220}, {0, 21} }};
+// Vario tone: played by the vario synthesizer while VarioSound is loaded. The sequence only marks
+// that the vario sound is playing, voices 0/1 stay silent, voices 2/3 carry overlays.
+const std::array<DURATION, 3> vario_tim = {{ {100}, {50}, {0} }};
+const std::array<TONE, 3> vario_seq = {{ {0.}, {0.}, {0.} }};
+const std::array<TONE, 3> vario_extra = {{ {0.}, {0.}, {0.} }};
+const std::array<VOICECONF, 2> vario_vconf = {{ {0, 220}, {0, 21} }};
 const SOUND VarioSound = { vario_tim.data(), { vario_seq.data(), vario_extra.data(), nullptr, nullptr }, vario_vconf.data(), -1 };
 const SOUND NoSound = { no_tone_tim.data(), { silence_seq.data(), nullptr, nullptr, nullptr }, vario_vconf.data(), -1 };
-constexpr float HIGH_TONE_VAR = toneFactor(2); // major prime up
+
+// Vario synthesizer and its voices (static, ~1.3 kB)
+static VarioSynth SYNTH;
+static ProfileVoice PROFILE_VOICE;          // computed from the tone style settings
+static const TableVoice PUR_VOICE(VOICE_PUR);
+static const VarioVoice *vario_voice = &PROFILE_VOICE;
+static const VarioVoice *pending_voice = nullptr; // voice change: fade out, then switch
 
 // Audio check ok sound
 const std::array<DURATION, 16> check_tim = {{ {150}, {150}, {150}, {150}, {150}, {150}, {150}, {150}, {150}, {150}, {150}, {150},     {4*150}, {4*150}, {1000}, {0} }};
@@ -600,11 +605,17 @@ static bool IRAM_ATTR dacdma_done(dac_continuous_handle_t h, const dac_event_dat
     irq_counter++;
 #endif
 
+    // the synthesizer plays the vario tone while the vario sound is loaded, voices 0/1 are silent then
+    const bool synth = cmd.timeseq == vario_tim.data();
+    const int firstVoice = synth ? 2 : 0;
+
     // on the fly counting of active voices
     int numVoices = 0;
-    for (int j = 0; j < MAX_VOICES; j++) {
+    for (int j = firstVoice; j < MAX_VOICES; j++) {
         if ( vl[j].active ) numVoices++;
     }
+    const bool overlay = numVoices > 0;
+    if ( synth ) numVoices += 2; // counts as the two vario voices did (same mix with overlays)
     if (cmd.counter < reload_count) {
         // reload the frequencies, making the variometer more responsive (even w/o sync to voice cycle)
         for (int j = 0; j < cmd.voicecount; j++) {
@@ -617,6 +628,10 @@ static bool IRAM_ATTR dacdma_done(dac_continuous_handle_t h, const dac_event_dat
     // multi tone
     // 1 or 2 channels, each 16 bit
     constexpr int INC_SHIFT = (DAC_MODE == DAC_CHANNEL_MODE_ALTER ? 2 : 1); // corresponding to INC
+    if ( synth ) {
+        // whole buffer at once, overlay voices are added below
+        SYNTH.render(buf + 1, e->buf_size >> INC_SHIFT, 1 << INC_SHIFT);
+    }
     int i = 0;
     int z = (cmd.counter > 0 && cmd.counter < (e->buf_size>>INC_SHIFT)) ? 2 : 1; // divide loop
     int loop_end = (z==1) ? (e->buf_size>>INC_SHIFT) : cmd.counter;
@@ -630,12 +645,16 @@ static bool IRAM_ATTR dacdma_done(dac_continuous_handle_t h, const dac_event_dat
             // silent
             memset(buf+i, DAC_CENTER, (loop_end-i)<<INC_SHIFT);
         }
+        else if ( synth && !overlay ) {
+            i = loop_end; // synthesizer only: already in the buffer
+        }
         else {
             // fuse all voices
             for (; i < loop_end; i++) {
-                int sum = 0;
+                // the synthesizer delivers +-VarioSynth::DAC_AMPL; scaled to +-64 as the other voices for the mix
+                int sum = synth ? ((int)buf[(i<<INC_SHIFT)+1] - DAC_CENTER) >> (VarioSynth::DAC_AMPL > DAC_HLF_AMPL ? 1 : 0) : 0;
                 fade++;
-                for (int j = 0; j < MAX_VOICES; j++) {
+                for (int j = firstVoice; j < MAX_VOICES; j++) {
                     // all voices
                     VOICECMD& v = vl[j];
                     if (!v.active) continue; // a silent voice
@@ -749,6 +768,7 @@ Audio::Audio()
     dma_cmd[0].init();
     dma_cmd[1].init();
     current_dmacmd = &dma_cmd[0];
+    SYNTH.init();
     if ( ! AudioQueue ) {
         AudioQueue = xQueueCreate(10, sizeof(uint32_t));
     }
@@ -775,10 +795,6 @@ void Audio::applySetup() {
     } else {
         _range = scale_range.get();
     }
-    if (vario_vconf[1].gain_adjust != audio_harmonics.get()) {
-        vario_vconf[1].gain_adjust = audio_harmonics.get();
-    }
-
     if (audio_mute_gen.get() == AUDIO_OFF) {
         if ( isUp() ) {
             // stop any sound
@@ -795,25 +811,33 @@ void Audio::applySetup() {
             }
         }
     }
-    _exponent_max  = std::pow( 2, audio_factor.get());
 
     // adaptive tone: calm only = calm zone and soft S2F dead band edges, full = also steady value, speed and trend
     const int adapt = audio_adaptive.get();
+    const bool on = adapt != AUD_ADAPT_OFF;
     const bool full = adapt == AUD_ADAPT_FULL;
-    if ( adapt != AUD_ADAPT_OFF && !_shaperOn ) {
-        _shaper.reset();
-        _lastVarioUs = 0;
-    }
-    _shaperOn = adapt != AUD_ADAPT_OFF;
-    _shaper.setCalmZone(audio_calm_db.get(), audio_calm_width.get(), 2.f, .5f);
+    _shaper.setCalmZone(on ? audio_calm_db.get() : 0.f, audio_calm_width.get(), 2.f, .5f);
     _shaper.setHabituation(full ? audio_steady_db.get() : 0.f, 60.f);
     _shaper.setSpeedAdapt(full ? audio_slow_db.get() : 0.f, full);
-    _shaper.setTrend(full ? .5f : 0.f);
+    _shaper.setS2fEdge(on);
     _shaper.setPolar(polar_speed1.get(), polar_sink1.get(), polar_speed2.get(), polar_sink2.get(), polar_speed3.get(), polar_sink3.get());
 
-    maxf = center_freq.get() * tone_var.get();
-    minf = center_freq.get() / tone_var.get();
-    ESP_LOGI(FNAME,"tonevar %.1f; min/max freq. %.1f/%.1f", tone_var.get(), minf, maxf);
+    // vario voice from the tone style
+    ProfileVoice::Params vp;
+    vp.center = center_freq.get();
+    vp.toneVar = tone_var.get();
+    vp.factor = audio_factor.get();
+    vp.range = _range;
+    vp.dual = dual_tone.get() != 0;
+    vp.harmonics = audio_harmonics.get();
+    vp.breathe = audio_sink_tone.get() == AUD_SINK_BREATHING;
+    vp.trendSt = full ? .5f : 0.f;
+    PROFILE_VOICE.configure(vp);
+    const VarioVoice *voice = (audio_voice.get() == AUD_VOICE_PUR) ? static_cast<const VarioVoice*>(&PUR_VOICE) : &PROFILE_VOICE;
+    if ( voice != vario_voice ) {
+        pending_voice = voice; // taken over by the audio task after a short fade out
+    }
+    ESP_LOGI(FNAME,"vario voice %s, center %.0f Hz, tonevar %.1f", voice == &PUR_VOICE ? "Pur" : "profile", vp.center, vp.toneVar);
     CRMOD.updateCache(); // force re- evaluation of cruise and audio mode
     updateAudioMode();
 }
@@ -1037,65 +1061,62 @@ void Audio::stopAudio() {
     xQueueSend(AudioQueue, &ev, 0);
 }
 
-// returns true when actually making a vario tone, false when in dead band
-bool Audio::calculateFrequency(float val) {
-    float max_var = (val > 0) ? ((maxf - center_freq.get()) * 2) : (center_freq.get() - minf);
-    float range = (CRMOD.audioIsVario()) ? _range : 5.0;
-    float mult = std::pow((abs(val) / range) + 1, audio_factor.get());
-    float freq = center_freq.get() + ((mult * val) / range) * (max_var / _exponent_max);
-    if (val > 0) {
-        // durations
-        float tmp = 1000. / (1 + 9 * (val / range));
-        // duration of main tone 1Hz: 900 ms; 10Hz: 50 ms
-        int duration = (int)(tmp * 0.9) - 40;
-        vario_tim[0].setSamples(duration);
-
-        // duration of break (or second tone)
-        duration = (int)(tmp * 0.1) + 40; // 1Hz: 100 ms; 10Hz: 50 ms
-        vario_tim[1].setSamples(duration);
-        // ESP_LOGI(FNAME, "d0 %d d1 %d", (int)vario_tim[0].duration, (int)vario_tim[1].duration );
-    } else {
-        vario_tim[0].setSamples(50);
-        vario_tim[1].setSamples(50);
-    }
-    bool ret = inDeadBand(val) || speaker_volume < 1.0 || (_shaperOn && _shaper.silent());
-    if ( ret && volumeadjust == 0 && ! current_dmacmd->voice[2].active) {
-        vario_seq[0].step = vario_extra[0].step = vario_seq[1].step = vario_extra[1].step = 0;
-        if ( current_dmacmd->repcount == -1 ) { mute(); } // stop only the vario sound
-    }
-    else {
-        if (volumeadjust>0) { volumeadjust--; }
-        // frequencies
-        unmute();
-        applyShaper();
-        if ( _shaperOn ) { freq *= _shaper.pitchFactor(); }
-        vario_seq[0].setStep(freq);
-        vario_extra[0].setStep(freq * 5.);
-        if ( CRMOD.audioIsChopping() && val > 0 ) {
-            if ( dual_tone.get() ) vario_seq[1].setStep(freq * HIGH_TONE_VAR);
-            else vario_seq[1].step = vario_extra[1].step = 0;
+// Vario tone, ~10 Hz from the audio task: shaper, voice and synthesizer
+void Audio::updateVario(float value)
+{
+    const bool s2f = !CRMOD.audioIsVario();
+    // voice change: one update faded out (25 ms), the next one with the new voice
+    bool fadeOut = false;
+    if ( pending_voice ) {
+        if ( _voiceFade || SYNTH.silent() ) {
+            vario_voice = pending_voice;
+            pending_voice = nullptr;
+            _voiceFade = false;
+            SYNTH.resetWave();
         }
         else {
-            vario_seq[1].step = vario_seq[0].step;
-            vario_extra[1].step = vario_extra[0].step;
+            _voiceFade = fadeOut = true;
         }
     }
-    // ESP_LOGI(FNAME, "New Freq: (%0.1f) TE:%0.2f exp_fac:%0.1f", freq, a, mult );
-    return ! ret;
-}
+    const VarioVoice &voice = *vario_voice;
+    value = voice.clamp(value, s2f);
 
-// Level of the vario voices: voice 0 carries the tone, voice 1 the harmonic (brightness).
-// Takes effect with the next sequence step in the ISR, which then fades to the new gain.
-void Audio::applyShaper()
-{
-    if ( current_dmacmd->timeseq != vario_tim.data() ) {
-        return; // another sound owns the voices
+    const int64_t now = esp_timer_get_time();
+    const float dt = _lastVarioUs ? (now - _lastVarioUs) * 1e-6f : 0.1f;
+    _lastVarioUs = now;
+    if ( ++_polarCheck >= 50 ) { // polar may change with glider selection, check every 5 s
+        _polarCheck = 0;
+        _shaper.setPolar(polar_speed1.get(), polar_sink1.get(), polar_speed2.get(), polar_sink2.get(), polar_speed3.get(), polar_sink3.get());
     }
-    constexpr float BRIGHT_BOOST = 2.f; // harmonic voice up to 3 times (+9.5 dB) at speed
-    const float g = _shaperOn ? _shaper.gain() : 1.f;
-    const float b = _shaperOn ? 1.f + BRIGHT_BOOST * _shaper.brightness() : 1.f;
-    current_dmacmd->voice[0].gain_adjust = (uint16_t)(vario_vconf[0].gain_adjust * g + .5f);
-    current_dmacmd->voice[1].gain_adjust = (uint16_t)(vario_vconf[1].gain_adjust * g * b + .5f);
+    VarioShaper::Input in;
+    in.v = value;
+    in.dt = dt;
+    in.s2f = s2f;
+    in.netto = te_netto.get();
+    in.circling = !CRMOD.getCMode();
+    in.iasKmh = ias.getValid() ? ias.get() * 3.6f : 0.f;
+    in.dbNeg = _deadband_n;
+    in.dbPos = _deadband_p;
+    _shaper.update(in);
+
+    // on: outside the dead band and audible, or a short noise after turning the volume knob
+    bool on = (!inDeadBand(value) && speaker_volume >= 1.0f && !_shaper.silent()) || volumeadjust > 0;
+    if ( volumeadjust > 0 ) { volumeadjust--; }
+    on = on && !fadeOut;
+
+    SynthFrame f;
+    const VoiceInput vi = { value, s2f, CRMOD.audioIsChopping(), &_shaper };
+    voice.frame(vi, f);
+    f.on = on;
+    f.vol = _shaper.gain();
+    SYNTH.update(f);
+
+    if ( on ) {
+        unmute();
+    }
+    else if ( SYNTH.silent() && ! current_dmacmd->voice[2].active && current_dmacmd->repcount == -1 ) {
+        mute(); // only for the vario sound, after the fade out
+    }
 }
 
 // set the digital volume poti, 0..100%
@@ -1159,40 +1180,16 @@ void Audio::dactask()
                 if ( _alarm_mode == alarm_type_t::ALARM_NONE ) {
                     // update vario sound (10Hz)
                     // pull the intput value from vario indicator, or speed respectively
-                    float max = _range;
                     float audio_value;
                     if( CRMOD.audioIsVario() ) {
                         // vario is the parameter for audio
                         audio_value = te_vario.get(); // includes the circling sink for Super Netto
                     }
                     else {
-                        // speed to fly is the parameter for audio
-                        // map s2f_delta to -5..+5, instead of heaving another set of min/max variables.
-                        // ESP_LOGI(FNAME, "S2F delta: %.1f km/h", Speed2Fly.getDelta());
+                        // speed to fly is the parameter for audio, in units of 10 km/h (same audio as m/s)
                         audio_value = - Speed2Fly.getDelta() / Units::kmh_to_mps(10.f);
-                        max = 5.0; // +/- 50km/h range, same audio as +/-5m/s
                     }
-                    audio_value = std::clamp( audio_value, -max, max );
-                    if ( _shaperOn ) {
-                        const int64_t now = esp_timer_get_time();
-                        const float dt = _lastVarioUs ? (now - _lastVarioUs) * 1e-6f : 0.1f;
-                        _lastVarioUs = now;
-                        if ( ++_polarCheck >= 50 ) { // polar may change with glider selection, check every 5 s
-                            _polarCheck = 0;
-                            _shaper.setPolar(polar_speed1.get(), polar_sink1.get(), polar_speed2.get(), polar_sink2.get(), polar_speed3.get(), polar_sink3.get());
-                        }
-                        VarioShaper::Input in;
-                        in.v = audio_value;
-                        in.dt = dt;
-                        in.s2f = !CRMOD.audioIsVario();
-                        in.netto = te_netto.get();
-                        in.circling = !CRMOD.getCMode();
-                        in.iasKmh = ias.getValid() ? ias.get() * 3.6f : 0.f;
-                        in.dbNeg = _deadband_n;
-                        in.dbPos = _deadband_p;
-                        _shaper.update(in);
-                    }
-                    calculateFrequency(audio_value);
+                    updateVario(audio_value);
                 }
             }
             else if ( event.cmd == VLOAD_DONE ) {

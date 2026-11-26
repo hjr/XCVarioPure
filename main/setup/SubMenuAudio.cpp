@@ -49,6 +49,8 @@ struct AUDIO_PROFILE
     int   chopping;
     int   harmonics;
     float exponent;
+    int   voice;      // e_audio_voice
+    int   sink;       // e_audio_sink_tone
 };
 bool AUDIO_PROFILE::isEqual(const AUDIO_PROFILE &ap) const
 {
@@ -58,21 +60,27 @@ bool AUDIO_PROFILE::isEqual(const AUDIO_PROFILE &ap) const
     if (chopping != ap.chopping) return false;
     if (harmonics != ap.harmonics) return false;
     if (!floatEqualFast(exponent, ap.exponent)) return false;
+    if (voice != ap.voice) return false;
+    if (sink != ap.sink) return false;
     return true;
 }
-constexpr int NUM_AUDIO_PRFLS = 7;
+constexpr int NUM_AUDIO_PRFLS = 8;
+constexpr int PUR_PRFL = 0;
 const std::array<AUDIO_PROFILE, NUM_AUDIO_PRFLS> audio_prfls = {{ 
-    {"XCVario",    500., 2.,  false, BOTH_CHOP, AUD_HARM_HIGH, 1. }, 
-    {"eXtended",   500., 3.,  false, BOTH_CHOP, AUD_HARM_HIGH, 1.2 },
-    {"Ilec",       500., 3.,  true,  BOTH_CHOP, AUD_HARM_MED,  1.2 },
-    {"Westerboer", 500., 1.2, false, BOTH_CHOP, AUD_HARM_MED,  1. },
-    {"Zander",     600., 2.,  false, BOTH_CHOP, AUD_HARM_HIGH, 1. },
-    {"Borgelt",    500., 1.4, false, BOTH_CHOP, AUD_HARM_LOW, 0.8 },
-    {"Custom",     500., 2.,  false, BOTH_CHOP, AUD_HARM_OFF, 1. } }};
+    // Pur: tone from its own tables, the other values are not used by it
+    {"Pur",        520., 1.8, false, BOTH_CHOP, AUD_HARM_HIGH, .7,  AUD_VOICE_PUR,     AUD_SINK_BREATHING },
+    {"XCVario",    500., 2.,  false, BOTH_CHOP, AUD_HARM_HIGH, 1.,  AUD_VOICE_PROFILE, AUD_SINK_STEADY },
+    {"eXtended",   500., 3.,  false, BOTH_CHOP, AUD_HARM_HIGH, 1.2, AUD_VOICE_PROFILE, AUD_SINK_STEADY },
+    {"Ilec",       500., 3.,  true,  BOTH_CHOP, AUD_HARM_MED,  1.2, AUD_VOICE_PROFILE, AUD_SINK_STEADY },
+    {"Westerboer", 500., 1.2, false, BOTH_CHOP, AUD_HARM_MED,  1.,  AUD_VOICE_PROFILE, AUD_SINK_STEADY },
+    {"Zander",     600., 2.,  false, BOTH_CHOP, AUD_HARM_HIGH, 1.,  AUD_VOICE_PROFILE, AUD_SINK_STEADY },
+    {"Borgelt",    500., 1.4, false, BOTH_CHOP, AUD_HARM_LOW, 0.8,  AUD_VOICE_PROFILE, AUD_SINK_STEADY },
+    {"Custom",     500., 2.,  false, BOTH_CHOP, AUD_HARM_OFF, 1.,   AUD_VOICE_PROFILE, AUD_SINK_STEADY } }};
 
 static int getAudioProfile()
 {
-    AUDIO_PROFILE ap = { "", center_freq.get(), tone_var.get(), dual_tone.get() != 0, chopping_mode.get(), audio_harmonics.get(), audio_factor.get() };
+    AUDIO_PROFILE ap = { "", center_freq.get(), tone_var.get(), dual_tone.get() != 0, chopping_mode.get(), audio_harmonics.get(), audio_factor.get(),
+        audio_voice.get(), audio_sink_tone.get() };
     int i = 0;
     for (; i < NUM_AUDIO_PRFLS-1; i++) {
         if (audio_prfls[i].isEqual(ap)) {
@@ -94,10 +102,17 @@ static int applyAudioProfile(SetupMenuSelect *p)
         chopping_mode.set(ap.chopping);
         audio_harmonics.set(ap.harmonics);
         audio_factor.set(ap.exponent);
+        audio_sink_tone.set(ap.sink);
+        audio_voice.set(ap.voice);
         AUDIO->applySetup();
         p->getParent()->setDirty();
     }
-    // custom profile - do nothing
+    else if ( audio_voice.get() != AUD_VOICE_PROFILE ) {
+        // custom: always the tone from the settings
+        audio_voice.set(AUD_VOICE_PROFILE);
+        AUDIO->applySetup();
+        p->getParent()->setDirty();
+    }
     return 0;
 }
 
@@ -184,12 +199,25 @@ void audio_menu_create_tonestyle(SetupMenu *top) { // dynamic!
         SetupMenuValFloat *afac = new SetupMenuValFloat("Audio Response", "", set_parent_dirty, &audio_factor);
         afac->setHelp("How the audio frequency responds to the climb rate: < 1 for logarithmic, and > 1 for exponential, response");
         top->addEntry(afac);
+
+        SetupMenuSelect *sink = new SetupMenuSelect("Sink Tone", RST_NONE, set_parent_dirty, &audio_sink_tone);
+        sink->setHelp("Steady tone in sink, or a slow breathing tone that swells and fades");
+        sink->addEntry("Steady", AUD_SINK_STEADY);
+        sink->addEntry("Breathing", AUD_SINK_BREATHING);
+        top->addEntry(sink);
     }
 
     // update selected profile
     SetupMenuSelect *prfl = static_cast<SetupMenuSelect*>(top->getEntry(0));
     prfl->setSelect(profile_idx);
     ESP_LOGI(FNAME,"set selection %d", profile_idx);
+
+    // the Pur tone comes from its own tables: its values cannot be modified
+    for (int i = 1; i < top->getNrChilds(); i++) {
+        MenuEntry *me = top->getEntry(i);
+        if ( profile_idx == PUR_PRFL ) { me->lock(); }
+        else { me->unlock(); }
+    }
 }
 
 static int update_adaptive_buzz(SetupMenuSelect *p) {

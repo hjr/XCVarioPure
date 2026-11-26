@@ -73,8 +73,7 @@ private:
     bool startAudio(int16_t ch = 0); // initialisations and self-test, starts task driving the sequencer
     void stopAudio();                // terminate any sound output
     bool inDeadBand(float a) const { return (a > _deadband_n && a < _deadband_p); }
-    bool calculateFrequency(float a);       // determine frequency to be generated depending on TE value
-    void applyShaper();                     // set the vario voice levels from the shaper
+    void updateVario(float value);          // vario tone from the vario or S2F value
     void writeVolume(float volume);
     static void mute();                     // mute the amplifier entirely
     static void unmute();                   // unmutes
@@ -96,11 +95,8 @@ private:
     float _deadband_p;
     float _deadband_n;
     alarm_type_t _alarm_mode = static_cast<alarm_type_t>(0); // enum
-    float maxf;
-    float minf;
-    float _exponent_max = 2;
-    VarioShaper _shaper;                    // context dependent level, brightness and pitch of the vario tone
-    bool _shaperOn = false;
+    VarioShaper _shaper;                    // context dependent level and brightness of the vario tone
+    bool _voiceFade = false;
     int64_t _lastVarioUs = 0;
     int _polarCheck = 0;
 

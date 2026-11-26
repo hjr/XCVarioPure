@@ -18,7 +18,6 @@ constexpr float LN10_20 = 0.11512925f;              // ln(10) / 20, dB to natura
 
 // vario smoothing and trend
 constexpr float VS_TAU = 0.25f, DVS_TAU = 0.30f;   // s
-constexpr float TREND_MAX_ST = 1.f;                // semitones
 // S2F edge outside the dead band, in units of 10 km/h
 constexpr float S2F_EDGE = 0.5f;
 constexpr float S2F_T_DOWN = 0.15f, S2F_T_UP = 0.30f, S2F_GAP = 0.60f;   // s to 90 %, min. pause on side change
@@ -42,7 +41,7 @@ void VarioShaper::reset()
     _zSide = 0; _zQuiet = _zGap = 0.f;
     _habInit = false; _habG = 1.f;
     _zone = _spdG = 1.f; _brightSpd = 0.f;
-    _gain = 1.f; _bright = 0.f; _pitch = 1.f;
+    _gain = 1.f; _bright = 0.f;
 }
 
 void VarioShaper::setCalmZone(float attDb, float widthMs, float tDown90, float tUp90)
@@ -124,7 +123,7 @@ void VarioShaper::update(const Input &in)
 
     // zone: calm zone around netto zero (vario), or soft dead band edge with side change pause (S2F)
     float g = 1.f, tauDown = _rzTauDown, tauUp = _rzTauUp;
-    if ( _s2f ) {
+    if ( _s2f && _s2fEdge ) {
         float dbPos = in.dbPos, dbNeg = in.dbNeg;
         if ( dbPos < dbNeg ) { dbPos = dbNeg = 0.f; } // no dead band configured
         int side = 0;
@@ -151,11 +150,11 @@ void VarioShaper::update(const Input &in)
         tauDown = S2F_T_DOWN / 2.3026f;
         tauUp = S2F_T_UP / 2.3026f;
     }
-    else if ( in.circling && _rzAttDb > 0.f ) {
+    else if ( !_s2f && in.circling && _rzAttDb > 0.f ) {
         const float x = std::fabs(in.netto) / _rzWidth; // half cosine up to |netto| = width
         if ( x < 1.f ) { g = dbToLin(-_rzAttDb * 0.5f * (1.f + std::cos(PI_F * x))); }
     }
-    if ( _snap || (_s2f && g == 0.f && _zGap > 0.f) ) {
+    if ( _snap || (_s2f && _s2fEdge && g == 0.f && _zGap > 0.f) ) {
         _zone = g; // start, or side change pause: no fading
     }
     else {
@@ -166,7 +165,5 @@ void VarioShaper::update(const Input &in)
     _gain = std::min(1.f, _zone * _spdG * _habG);
     const float sinkPart = 1.f - smooth((_vs + 1.5f) / 1.5f); // brightness applies to the sink tone only
     _bright = _brightSpd * sinkPart;
-    const float trend = _s2f ? 0.f : std::min(TREND_MAX_ST, std::max(0.f, _dvs * _trendSt));
-    _pitch = std::exp2(trend / 12.f);
     _snap = false;
 }
