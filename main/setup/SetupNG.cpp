@@ -487,7 +487,7 @@ SetupNG<int>  			audio_voice( "AUDVOICE" , AUD_VOICE_PROFILE, USER_RST, SYNC_BID
 SetupNG<int>  			audio_sink_tone( "AUDSINK" , AUD_SINK_STEADY, USER_RST, SYNC_BIDIR, PERSISTENT, change_audio );
 SetupNG<float>		    audio_factor( "AUDIO_FACTOR", 1, USER_RST, SYNC_NONE, PERSISTENT, change_audio, quantity_t::QUANT_NONE, LIMITS(0.1, 2, 0.025));
 SetupNG<float>  		deadband( "DEADBAND", 0.3, USER_RST, SYNC_BIDIR, PERSISTENT, change_audio, quantity_t::QUANT_VSPEED, LIMITS(.0, 5.0, 0.1));
-SetupNG<float>  		deadband_neg("DEADBAND_NEG" , -0.3, USER_RST, SYNC_BIDIR, PERSISTENT, change_audio, quantity_t::QUANT_VSPEED, LIMITS(-5.0, .0, 0.1));
+SetupNG<int>  			deadband_depth( "AUDDBDEPTH", AUD_DB_SILENT, USER_RST, SYNC_BIDIR, PERSISTENT, change_audio ); // dB quieter inside the vario dead band while circling, 0 = silent
 
 SetupNG<float>  		wifi_max_power( "WIFI_MP" , 50, USER_RST, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(10.0, 100.0, 5.0));
 SetupNG<int>  			normal_setup( "FACTMENU" , 0, FACTORY_RST, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, nullptr, true ); // 0: factory factory menu 1: normal setup menu
@@ -508,8 +508,7 @@ SetupNG<mps_t>  		core_climb_min( "CORE_CLIMB_MIN" , 0.5, USER_RST, SYNC_BIDIR, 
 SetupNG<minute_t>  		core_climb_history( "CORE_CLIMB_HIST" , 45, USER_RST, SYNC_BIDIR, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(1, 180, 1));
 SetupNG<mps_t>  		mean_climb_major_change( "MEAN_CLMC", 0.5, USER_RST, SYNC_BIDIR, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(0.1, 5.0, 0.1));
 SetupNG<meter_t>  		airfield_elevation( "ELEVATION", NO_ELEVATION, FACTORY_RST, SYNC_BIDIR, PERSISTENT, nullptr, quantity_t::QUANT_ALT, LIMITS(NO_ELEVATION, 3000, 1));
-SetupNG<float>  		s2f_deadband( "DEADBAND_S2F", 10.0, USER_RST, SYNC_BIDIR, PERSISTENT, nullptr, quantity_t::QUANT_HSLEGACY, LIMITS(.0, 25.0, 1));
-SetupNG<float>  		s2f_deadband_neg( "DB_S2F_NEG", -10.0, USER_RST, SYNC_BIDIR, PERSISTENT, nullptr, quantity_t::QUANT_HSLEGACY, LIMITS(-25.0, .0, 1));
+SetupNG<float>  		s2f_deadband( "DEADBAND_S2F", 10.0, USER_RST, SYNC_BIDIR, PERSISTENT, change_audio, quantity_t::QUANT_HSLEGACY, LIMITS(.0, 25.0, 1));
 SetupNG<float>  		s2f_delay( "S2F_DELAY", 5.0, USER_RST, SYNC_BIDIR, PERSISTENT, nullptr, quantity_t::QUANT_TIME, LIMITS(2.0, 12.0, 0.5));
 SetupNG<float>  		factory_volt_adjust("FACT_VOLT_ADJ", 0.00815, RESET_NONE, SYNC_NONE, PERSISTENT, nullptr, quantity_t::QUANT_NONE, LIMITS(-25.0, 25.0, 0.01));
 
@@ -605,8 +604,6 @@ SetupNG<float> 			flap_takeoff("FLAPTOp", 0,  FACTORY_RST, SYNC_BIDIR, PERSISTEN
 SetupNG<int> 			audio_mute_sink( "AUDISS", 0, FACTORY_RST, SYNC_BIDIR, PERSISTENT, change_audio );
 SetupNG<int> 			audio_mute_gen( "AUDISG", AUDIO_ON, USER_RST, SYNC_NONE, PERSISTENT, change_audio );
 SetupNG<int> 			audio_adaptive( "AUDADAPT", AUD_ADAPT_OFF, USER_RST, SYNC_NONE, PERSISTENT, change_audio ); // context dependent vario tone (VarioShaper)
-SetupNG<float> 			audio_calm_db( "AUDCALMDB", 12.0, USER_RST, SYNC_NONE, PERSISTENT, change_audio, quantity_t::QUANT_NONE, LIMITS(0.0, 20.0, 1.0));
-SetupNG<float> 			audio_calm_width( "AUDCALMW", 0.8, USER_RST, SYNC_NONE, PERSISTENT, change_audio, quantity_t::QUANT_VSPEED, LIMITS(0.2, 2.0, 0.1));
 SetupNG<float> 			audio_steady_db( "AUDSTEADYDB", 3.0, USER_RST, SYNC_NONE, PERSISTENT, change_audio, quantity_t::QUANT_NONE, LIMITS(0.0, 6.0, 0.5));
 SetupNG<float> 			audio_slow_db( "AUDSLOWDB", 6.0, USER_RST, SYNC_NONE, PERSISTENT, change_audio, quantity_t::QUANT_NONE, LIMITS(0.0, 10.0, 1.0));
 SetupNG<int>			vario_mode("VAMOD", (int)e_vario_mode::CRUISE_ONLY_NETTO, USER_RST, SYNC_NONE, PERSISTENT, change_cruise);  // switch to netto mode when cruising

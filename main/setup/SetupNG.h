@@ -56,7 +56,8 @@ enum e_audio_chopping_style { AUDIO_CHOP_SOFT, AUDIO_CHOP_HARD };
 enum e_audio_range { AUDIO_RANGE_5_MS, AUDIO_RANGE_10_MS, AUDIO_RANGE_VARIABLE };
 enum e_audio_voice { AUD_VOICE_PROFILE=0, AUD_VOICE_PUR=1 };
 enum e_audio_sink_tone { AUD_SINK_STEADY=0, AUD_SINK_BREATHING=1 };
-enum e_audio_adaptive { AUD_ADAPT_OFF=0, AUD_ADAPT_CALM=1, AUD_ADAPT_FULL=2 };
+enum e_audio_adaptive { AUD_ADAPT_OFF=0, AUD_ADAPT_ON=1 };
+enum e_deadband_depth { AUD_DB_SILENT=0 }; // else dB quieter
 enum e_audio_harmonics { AUD_HARM_OFF=0, AUD_HARM_LOW=7, AUD_HARM_MED=14, AUD_HARM_HIGH=21 };
 enum e_audio_mute_gen { AUDIO_ON, AUDIO_OFF=2 };
 typedef enum e_amp_shutdown { AMP_STAY_ON, AMP_SHUTDOWN, AMP_SHUTDOWN_5S } e_amp_shutdown_t;
@@ -264,7 +265,7 @@ extern SetupNG<int>  		audio_voice;
 extern SetupNG<int>  		audio_sink_tone;
 extern SetupNG<float>		audio_factor;
 extern SetupNG<float>  		deadband;
-extern SetupNG<float>  		deadband_neg;
+extern SetupNG<int>  		deadband_depth;
 
 extern SetupNG<float>  		wifi_max_power;
 extern SetupNG<int>  		normal_setup;
@@ -286,7 +287,6 @@ extern SetupNG<minute_t>  		core_climb_history;
 extern SetupNG<mps_t>  		mean_climb_major_change;
 extern SetupNG<meter_t>  	airfield_elevation;
 extern SetupNG<float>  		s2f_deadband;
-extern SetupNG<float>  		s2f_deadband_neg;
 extern SetupNG<float>  		s2f_delay;
 extern SetupNG<float>  		factory_volt_adjust;
 
@@ -382,8 +382,6 @@ extern SetupNG<float> 		flap_takeoff;
 extern SetupNG<int> 		audio_mute_sink;
 extern SetupNG<int> 		audio_mute_gen;
 extern SetupNG<int> 		audio_adaptive;
-extern SetupNG<float> 		audio_calm_db;
-extern SetupNG<float> 		audio_calm_width;
 extern SetupNG<float> 		audio_steady_db;
 extern SetupNG<float> 		audio_slow_db;
 extern SetupNG<int>			vario_mode;

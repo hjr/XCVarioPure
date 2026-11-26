@@ -10,7 +10,7 @@
 
 // Context dependent shaping of the vario tone, independent of the sound profile in use.
 // Taken from the "Klar" prototype, without its own synthesizer:
-//  - Calm zone:   quieter around netto zero while circling
+//  - Dead band:   with a depth in dB, quieter (not silent) inside the vario dead band while circling
 //  - Habituation: quieter when the vario value stays the same for a long time (vario mode only)
 //  - Speed:       quieter when flying slowly, brighter sink tone at speed (corner speeds scaled by the polar)
 //  - S2F:         soft edge just outside the dead band, and a pause when the command changes side
@@ -25,11 +25,9 @@ public:
         float v;        // vario in m/s, or S2F delta in units of 10 km/h (+ = too fast)
         float dt;       // seconds since last call
         bool  s2f;      // true: S2F command, false: vario
-        float netto;    // netto vario in m/s (calm zone)
-        bool  circling; // calm zone applies
+        bool  circling; // the soft vario dead band applies
         float iasKmh;   // indicated airspeed in km/h, 0 = unknown (treated as slow)
-        float dbNeg;    // dead band edges of the current mode, same unit as v
-        float dbPos;
+        float db;       // dead band half width of the current mode, same unit as v
     };
 
     void reset();
@@ -40,7 +38,8 @@ public:
     void setPolar(float v1, float w1, float v2, float w2, float v3, float w3);
 
     // Parameters (defaults from the prototype)
-    void setCalmZone(float attDb, float widthMs, float tDown90, float tUp90);   // attDb = 0 disables
+    // soft vario dead band: depth at zero (dB), fading out to the dead band edge; 90 % times quieter / louder. depthDb = 0 disables
+    void setDeadbandDepth(float depthDb, float tDown90, float tUp90);
     void setHabituation(float depthDb, float startS) { _habDepthDb = depthDb; _habStartS = startS; }  // depthDb = 0 disables
     void setSpeedAdapt(float quietDb, bool bright) { _spdQuietDb = quietDb; _brightOn = bright; }
     void setS2fEdge(bool on) { _s2fEdge = on; }                                 // soft dead band edges and side change pause
@@ -70,7 +69,7 @@ private:
     float _gain = 1.f, _bright = 0.f;
 
     // parameters
-    float _rzAttDb = 12.f, _rzWidth = 0.8f, _rzTauDown = 2.f / 2.3026f, _rzTauUp = 0.5f / 2.3026f;
+    float _rzAttDb = 0.f, _rzTauDown = 2.f / 2.3026f, _rzTauUp = 0.5f / 2.3026f;
     float _habDepthDb = 3.f, _habStartS = 60.f;
     float _spdQuietDb = 6.f;
     bool  _brightOn = true;

@@ -29,8 +29,8 @@ static void audio_menu_create_tonestyle(SetupMenu *top);
 static void audio_menu_create_deadband(SetupMenu *top);
 static void audio_menu_create_adaptive(SetupMenu *top);
 
-const std::array<std::string_view, 3> adaptive_mode = { "Off", "Calm only", "Full" };
-static const char *adaptiveName() { return adaptive_mode[std::min((unsigned)audio_adaptive.get(), 2u)].data(); }
+const std::array<std::string_view, 2> adaptive_mode = { "Off", "On" };
+static const char *adaptiveName() { return adaptive_mode[audio_adaptive.get() != AUD_ADAPT_OFF ? 1 : 0].data(); }
 
 static std::string range0;
 static std::string range1;
@@ -227,27 +227,19 @@ static int update_adaptive_buzz(SetupMenuSelect *p) {
 
 void audio_menu_create_adaptive(SetupMenu *top) {
     SetupMenuSelect *mode = new SetupMenuSelect("Mode", RST_NONE, update_adaptive_buzz, &audio_adaptive);
-    mode->setHelp("Calm only: quieter around netto zero while circling, soft S2F dead band edges. "
-        "Full: also quieter on a long steady value and when flying slowly, brighter sink tone at speed, pitch lift on increasing climb");
+    mode->setHelp("Quieter on a long steady value and when flying slowly, brighter sink tone at speed, pitch lift on increasing climb, "
+        "soft S2F dead band edges with a pause when the command changes side");
     for (const auto &m : adaptive_mode) {
         mode->addEntry(m.data());
     }
     top->addEntry(mode);
 
-    SetupMenuValFloat *cdb = new SetupMenuValFloat("Calm Zone", "dB", nullptr, &audio_calm_db);
-    cdb->setHelp("Level reduction at netto zero while circling, 0 switches it off");
-    top->addEntry(cdb);
-
-    SetupMenuValFloat *cw = new SetupMenuValFloat("Calm Zone Width", "", nullptr, &audio_calm_width);
-    cw->setHelp("Netto climb or sink at which the calm zone has faded out completely");
-    top->addEntry(cw);
-
     SetupMenuValFloat *sdb = new SetupMenuValFloat("Steady Value", "dB", nullptr, &audio_steady_db);
-    sdb->setHelp("Full mode: level reduction when the vario stays the same for more than a minute, 0 switches it off");
+    sdb->setHelp("Level reduction when the vario stays the same for more than a minute, 0 switches it off");
     top->addEntry(sdb);
 
     SetupMenuValFloat *ldb = new SetupMenuValFloat("Slow Flight", "dB", nullptr, &audio_slow_db);
-    ldb->setHelp("Full mode: level reduction when flying slowly, corner speeds follow the polar, 0 switches it off");
+    ldb->setHelp("Level reduction when flying slowly, corner speeds follow the polar, 0 switches it off");
     top->addEntry(ldb);
 }
 
@@ -260,17 +252,21 @@ void audio_menu_create_deadband(SetupMenu *top) {
     audio_range_sm->setHelp("Audio range: fixed, or variable according to current Vario display range setting");
     top->addEntry(audio_range_sm);
 
-	SetupMenuValFloat *dbminlv = new SetupMenuValFloat("Lower Vario", "", set_parent_dirty, &deadband_neg);
-	top->addEntry(dbminlv);
+    SetupMenuValFloat *dbv = new SetupMenuValFloat("Vario", "", set_parent_dirty, &deadband);
+    dbv->setHelp("Vario dead band, symmetric around zero");
+    top->addEntry(dbv);
 
-	SetupMenuValFloat *dbmaxlv = new SetupMenuValFloat("Upper Vario", "", set_parent_dirty, &deadband);
-	top->addEntry(dbmaxlv);
+    SetupMenuSelect *dbd = new SetupMenuSelect("Vario Depth", RST_NONE, set_parent_dirty, &deadband_depth);
+    dbd->setHelp("Silent inside the vario dead band, or while circling only quieter: fading from the edge to the given level at zero");
+    dbd->addEntry("Silent", AUD_DB_SILENT);
+    dbd->addEntry("-6 dB", 6);
+    dbd->addEntry("-12 dB", 12);
+    dbd->addEntry("-18 dB", 18);
+    top->addEntry(dbd);
 
-	SetupMenuValFloat *dbmaxls2fn = new SetupMenuValFloat("Lower S2F", "", set_parent_dirty, &s2f_deadband_neg);
-	top->addEntry(dbmaxls2fn);
-
-	SetupMenuValFloat *dbmaxls2f = new SetupMenuValFloat("Upper S2F", "", set_parent_dirty, &s2f_deadband);
-	top->addEntry(dbmaxls2f);
+    SetupMenuValFloat *dbs = new SetupMenuValFloat("S2F", "", set_parent_dirty, &s2f_deadband);
+    dbs->setHelp("S2F dead band, symmetric around zero");
+    top->addEntry(dbs);
 }
 
 

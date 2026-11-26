@@ -812,14 +812,13 @@ void Audio::applySetup() {
         }
     }
 
-    // adaptive tone: calm only = calm zone and soft S2F dead band edges, full = also steady value, speed and trend
-    const int adapt = audio_adaptive.get();
-    const bool on = adapt != AUD_ADAPT_OFF;
-    const bool full = adapt == AUD_ADAPT_FULL;
-    _shaper.setCalmZone(on ? audio_calm_db.get() : 0.f, audio_calm_width.get(), 2.f, .5f);
+    // soft vario dead band while circling: quieter instead of silent
+    _shaper.setDeadbandDepth((float)deadband_depth.get(), 2.f, .5f);
+    // adaptive tone: steady value, slow flight, brightness, trend and soft S2F dead band edges
+    const bool full = audio_adaptive.get() != AUD_ADAPT_OFF;
     _shaper.setHabituation(full ? audio_steady_db.get() : 0.f, 60.f);
     _shaper.setSpeedAdapt(full ? audio_slow_db.get() : 0.f, full);
-    _shaper.setS2fEdge(on);
+    _shaper.setS2fEdge(full);
     _shaper.setPolar(polar_speed1.get(), polar_sink1.get(), polar_speed2.get(), polar_sink2.get(), polar_speed3.get(), polar_sink3.get());
 
     // vario voice from the tone style
@@ -907,15 +906,15 @@ void Audio::setVolume(float vol, bool sync) {
 // call when cruise mode changes, setup changes
 void Audio::updateAudioMode()
 {
-    // adjust dead band doe S2F
-    // deadband also used to implement audio mute options
+    // symmetric dead band of the current mode, S2F in units of 10 km/h
+    // the dead band also implements the sink mute: it then reaches down beyond the range
     if (CRMOD.audioIsVario()) {
         _deadband_p = deadband.get();
-        _deadband_n = audio_mute_sink.get() ? -_range-1 : deadband_neg.get();
+        _deadband_n = audio_mute_sink.get() ? -_range-1 : -deadband.get();
     }
     else {
         _deadband_p = s2f_deadband.get()/10;
-        _deadband_n = s2f_deadband_neg.get()/10;
+        _deadband_n = -_deadband_p;
     }
     if (std::abs(_deadband_p-_deadband_n) < 0.02) {
         _deadband_n = 0.01;
@@ -1092,15 +1091,18 @@ void Audio::updateVario(float value)
     in.v = value;
     in.dt = dt;
     in.s2f = s2f;
-    in.netto = te_netto.get();
     in.circling = !CRMOD.getCMode();
     in.iasKmh = ias.getValid() ? ias.get() * 3.6f : 0.f;
-    in.dbNeg = _deadband_n;
-    in.dbPos = _deadband_p;
+    in.db = std::max(0.f, _deadband_p);
     _shaper.update(in);
 
     // on: outside the dead band and audible, or a short noise after turning the volume knob
-    bool on = (!inDeadBand(value) && speaker_volume >= 1.0f && !_shaper.silent()) || volumeadjust > 0;
+    // inside the vario dead band while circling with a depth: quieter instead of silent (sink mute stays silent)
+    bool quiet = inDeadBand(value);
+    if ( quiet && !s2f && in.circling && deadband_depth.get() != AUD_DB_SILENT && value > -_deadband_p ) {
+        quiet = false;
+    }
+    bool on = (!quiet && speaker_volume >= 1.0f && !_shaper.silent()) || volumeadjust > 0;
     if ( volumeadjust > 0 ) { volumeadjust--; }
     on = on && !fadeOut;
 
