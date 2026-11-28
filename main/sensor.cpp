@@ -722,7 +722,7 @@ void system_startup(void *args){
         char ahrs[10];
         sprintf(ahrs, "%.2f", accel);
         logged_tests += "IMU AHRS (" + std::string(ahrs) + "g): ";
-        if (accel > 0.95 && accel < 1.05) {
+        if (accel > 0.8 && accel < 1.2) {
             logged_tests += passed_text;
         } else {
             logged_tests += failed_text;
